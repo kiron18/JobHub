@@ -54,9 +54,9 @@ router.post('/profile', authenticate, async (req, res) => {
                     experience: {
                         deleteMany: {},
                         create: experience?.map((exp: any) => ({
-                            company: exp.company,
-                            role: exp.role,
-                            startDate: exp.startDate,
+                            company: exp.company || 'Unknown Company',
+                            role: exp.role || 'Unknown Role',
+                            startDate: exp.startDate || 'Unknown',
                             endDate: exp.endDate,
                             description: exp.bullets?.join('\n') || exp.description || '',
                             coachingTips: Array.isArray(exp.coachingTips) ? exp.coachingTips.join(' | ') : (exp.coachingTips || null)
@@ -65,33 +65,33 @@ router.post('/profile', authenticate, async (req, res) => {
                     education: {
                         deleteMany: {},
                         create: education?.map((edu: any) => ({
-                            institution: edu.institution,
-                            degree: edu.degree,
+                            institution: edu.institution || 'Unknown Institution',
+                            degree: edu.degree || 'Unknown Degree',
                             year: edu.year,
                             coachingTips: Array.isArray(edu.coachingTips) ? edu.coachingTips.join(' | ') : (edu.coachingTips || null)
                         })) || []
                     },
                     volunteering: {
                         deleteMany: {},
-                        create: volunteering?.map((vol: any) => ({
-                            organization: vol.org || vol.organization,
-                            role: vol.role,
+                        create: volunteering?.filter((vol: any) => vol.org || vol.organization).map((vol: any) => ({
+                            organization: vol.org || vol.organization || 'Unknown Organisation',
+                            role: vol.role || 'Volunteer',
                             description: vol.desc || vol.description
                         })) || []
                     },
                     certifications: {
                         deleteMany: {},
-                        create: certifications?.map((cert: any) => ({
+                        create: certifications?.filter((cert: any) => cert.name).map((cert: any) => ({
                             name: cert.name,
-                            issuingBody: cert.issuer || cert.issuingBody,
+                            issuingBody: cert.issuer || cert.issuingBody || 'Unknown',
                             year: cert.year
                         })) || []
                     },
                     languages: {
                         deleteMany: {},
-                        create: languages?.map((lang: any) => ({
+                        create: languages?.filter((lang: any) => lang.name).map((lang: any) => ({
                             name: lang.name,
-                            proficiency: lang.proficiency
+                            proficiency: lang.proficiency || 'Conversational'
                         })) || []
                     },
                 } as any,
@@ -107,9 +107,9 @@ router.post('/profile', authenticate, async (req, res) => {
                     coachingAlerts: coachingAlerts || undefined,
                     experience: {
                         create: experience?.map((exp: any) => ({
-                            company: exp.company,
-                            role: exp.role,
-                            startDate: exp.startDate,
+                            company: exp.company || 'Unknown Company',
+                            role: exp.role || 'Unknown Role',
+                            startDate: exp.startDate || 'Unknown',
                             endDate: exp.endDate,
                             description: exp.bullets?.join('\n') || exp.description || '',
                             coachingTips: Array.isArray(exp.coachingTips) ? exp.coachingTips.join(' | ') : (exp.coachingTips || null)
@@ -117,30 +117,30 @@ router.post('/profile', authenticate, async (req, res) => {
                     },
                     education: {
                         create: education?.map((edu: any) => ({
-                            institution: edu.institution,
-                            degree: edu.degree,
+                            institution: edu.institution || 'Unknown Institution',
+                            degree: edu.degree || 'Unknown Degree',
                             year: edu.year,
                             coachingTips: Array.isArray(edu.coachingTips) ? edu.coachingTips.join(' | ') : (edu.coachingTips || null)
                         })) || []
                     },
                     volunteering: {
-                        create: volunteering?.map((vol: any) => ({
-                            organization: vol.org || vol.organization,
-                            role: vol.role,
+                        create: volunteering?.filter((vol: any) => vol.org || vol.organization).map((vol: any) => ({
+                            organization: vol.org || vol.organization || 'Unknown Organisation',
+                            role: vol.role || 'Volunteer',
                             description: vol.desc || vol.description
                         })) || []
                     },
                     certifications: {
-                        create: certifications?.map((cert: any) => ({
+                        create: certifications?.filter((cert: any) => cert.name).map((cert: any) => ({
                             name: cert.name,
-                            issuingBody: cert.issuer || cert.issuingBody,
+                            issuingBody: cert.issuer || cert.issuingBody || 'Unknown',
                             year: cert.year
                         })) || []
                     },
                     languages: {
-                        create: languages?.map((lang: any) => ({
+                        create: languages?.filter((lang: any) => lang.name).map((lang: any) => ({
                             name: lang.name,
-                            proficiency: lang.proficiency
+                            proficiency: lang.proficiency || 'Conversational'
                         })) || []
                     }
                 },
