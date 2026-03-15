@@ -212,10 +212,17 @@ Generate the ${type} as high-impact Markdown.
 
 5. ${type === 'RESUME' ? `FORMATTING:
    - Use ## for section headers (not the header block at top)
-   - Skills as single horizontal lines with • separator: **Technical Skills:** Python • SQL • Excel
+   - Experience bullets MUST use markdown list syntax — each bullet on its own line starting with "- ". Never use • for bullet points.
+   - Skills layout: each category on a SEPARATE paragraph (blank line between each). Format exactly:
+       **Technical Skills:** Skill A • Skill B • Skill C
+
+       **Industry Knowledge:** Domain A • Domain B
+
+       **Soft Skills:** Skill A • Skill B
+   - The bold label (**Technical Skills:**, **Industry Knowledge:**, **Soft Skills:**) always starts flush at the beginning of its line. Never appear mid-line or mid-paragraph.
+   - Omit any skill category entirely if no data exists for it
    - Omit any section entirely if no candidate data exists for it
-   - Minimise vertical whitespace — target 1–2 pages
-   - No blank lines between bullets` : ''}
+   - Minimise vertical whitespace — target 1–2 pages` : ''}
 
 CONSTRAINTS:
 - Do NOT use bold ** within bullet points unless highlighting a metric.

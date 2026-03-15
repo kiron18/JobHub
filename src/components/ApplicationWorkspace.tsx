@@ -224,16 +224,18 @@ export const ApplicationWorkspace: React.FC = () => {
   <title>${filename}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Arial, sans-serif; padding: 32px 40px; font-size: 10.5pt; line-height: 1.5; color: #111; max-width: 800px; margin: 0 auto; }
+    body { font-family: Arial, sans-serif; padding: 32px 40px; font-size: 10.5pt; line-height: 1.45; color: #111; max-width: 800px; margin: 0 auto; }
     h1 { font-size: 18pt; font-weight: 700; margin-bottom: 2px; }
-    h2 { font-size: 10pt; font-weight: 700; border-bottom: 1px solid #333; padding-bottom: 2px; margin: 14px 0 5px; text-transform: uppercase; letter-spacing: 0.06em; }
-    h3 { font-size: 10.5pt; font-weight: 700; margin: 8px 0 2px; }
-    p { margin: 3px 0; }
-    ul { padding-left: 18px; margin: 3px 0; }
-    li { margin: 1px 0; }
+    h2 { font-size: 10pt; font-weight: 700; border-bottom: 1px solid #333; padding-bottom: 2px; margin: 12px 0 4px; text-transform: uppercase; letter-spacing: 0.06em; }
+    h3 { font-size: 10.5pt; font-weight: 700; margin: 6px 0 1px; }
+    p { margin: 2px 0; display: block; }
+    ul { padding-left: 16px; margin: 2px 0 4px; list-style-type: disc; }
+    li { margin: 1px 0; line-height: 1.4; display: list-item; }
     strong { font-weight: 700; }
     em { font-style: italic; color: inherit; }
-    hr { border: none; border-top: 1px solid #ccc; margin: 8px 0; }
+    hr { border: none; border-top: 1px solid #ccc; margin: 6px 0; }
+    /* Skill category lines: bold label always block-level, content wraps with hanging indent */
+    p:has(> strong:first-child) { padding-left: 0; }
     [data-missing-flag] { background: #fef3c7; padding: 1px 5px; border-radius: 3px; font-size: 9pt; font-weight: 700; }
     @media print { @page { margin: 12mm 15mm; } body { padding: 0; } }
   </style>
@@ -607,7 +609,7 @@ export const ApplicationWorkspace: React.FC = () => {
                                         placeholder={`Start typing your ${state.activeTab}...`}
                                     />
                                 ) : (
-                                    <article id="resume-preview-content" className="prose prose-slate max-w-none">
+                                    <article id="resume-preview-content" className="prose prose-slate max-w-none [&_p]:my-0.5 [&_ul]:my-1 [&_li]:my-0 [&_h2]:mt-3 [&_h2]:mb-1 [&_h3]:mt-2 [&_h3]:mb-0.5">
                                         <ReactMarkdown
                                             components={{
                                                 text: ({ children }) => {
