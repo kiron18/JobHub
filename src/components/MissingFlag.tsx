@@ -24,7 +24,7 @@ export const MissingFlag: React.FC<MissingFlagProps> = ({
     };
 
     return (
-        <span className="relative inline-block mx-1">
+        <span className="relative inline-block mx-1" data-missing-flag="true">
             <button
                 onClick={(e) => {
                     e.preventDefault();

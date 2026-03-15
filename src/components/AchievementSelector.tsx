@@ -35,9 +35,9 @@ export const AchievementSelector: React.FC<AchievementSelectorProps> = ({
 }) => {
     const [filter, setFilter] = useState<'ALL' | 'STRONG' | 'MEDIUM' | 'WEAK'>('ALL');
 
-    const filteredAchievements = achievements.filter(a => 
-        filter === 'ALL' || a.tier === filter
-    );
+    const filteredAchievements = achievements
+        .filter((a, idx, arr) => arr.findIndex(b => b.id === a.id) === idx)
+        .filter(a => filter === 'ALL' || a.tier === filter);
 
     const toggleId = (id: string) => {
         if (selectedIds.includes(id)) {

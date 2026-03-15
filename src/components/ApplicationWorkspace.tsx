@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { 
-    ChevronLeft, 
-    FileText, 
-    Download, 
+import {
+    ChevronLeft,
+    FileText,
+    Download,
     Database,
     Mail,
     List,
-    RefreshCcw
+    RefreshCcw,
+    PlusCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../lib/api';
@@ -210,53 +211,68 @@ export const ApplicationWorkspace: React.FC = () => {
     };    
     
     const executeDownload = (content: string) => {
-        const blob = new Blob([content], { type: 'text/markdown' });
+        const companyName = state.metadata?.company?.replace(/\s+/g, '_') || 'document';
+        const filename = `${state.activeTab}-${companyName}`;
+
+        const articleEl = document.getElementById('resume-preview-content');
+        if (articleEl) {
+            const printWindow = window.open('', '_blank', 'width=900,height=1100');
+            if (printWindow) {
+                printWindow.document.write(`<!DOCTYPE html>
+<html><head>
+  <meta charset="utf-8">
+  <title>${filename}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; padding: 32px 40px; font-size: 10.5pt; line-height: 1.5; color: #111; max-width: 800px; margin: 0 auto; }
+    h1 { font-size: 18pt; font-weight: 700; margin-bottom: 2px; }
+    h2 { font-size: 10pt; font-weight: 700; border-bottom: 1px solid #333; padding-bottom: 2px; margin: 14px 0 5px; text-transform: uppercase; letter-spacing: 0.06em; }
+    h3 { font-size: 10.5pt; font-weight: 700; margin: 8px 0 2px; }
+    p { margin: 3px 0; }
+    ul { padding-left: 18px; margin: 3px 0; }
+    li { margin: 1px 0; }
+    strong { font-weight: 700; }
+    em { font-style: italic; color: inherit; }
+    hr { border: none; border-top: 1px solid #ccc; margin: 8px 0; }
+    [data-missing-flag] { background: #fef3c7; padding: 1px 5px; border-radius: 3px; font-size: 9pt; font-weight: 700; }
+    @media print { @page { margin: 12mm 15mm; } body { padding: 0; } }
+  </style>
+</head><body>${articleEl.innerHTML}</body></html>`);
+                printWindow.document.close();
+                setTimeout(() => { printWindow.focus(); printWindow.print(); }, 300);
+                return;
+            }
+        }
+
+        // Fallback: markdown download
+        const blob = new Blob([content], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.style.display = 'none';
         a.href = url;
-        const companyName = state.metadata?.company ? state.metadata.company.replace(/\s+/g, '_') : 'document';
-        a.download = `${state.activeTab}-${companyName}.md`;
+        a.download = `${filename}.md`;
         document.body.appendChild(a);
         a.click();
-        
-        // Clean up
-        setTimeout(() => {
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }, 100);
+        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
     };
 
     const handleDownload = () => {
         const content = state.documents[state.activeTab];
         if (!content) return;
 
-        // Check for missing flags
         if (content.includes('[MISSING:')) {
-            toast.warning("Unresolved Missing Information", {
-                description: "This document contains [MISSING] tags. Do you want to review them first?",
+            const count = (content.match(/\[MISSING:/g) || []).length;
+            toast.info(`${count} gap${count > 1 ? 's' : ''} still to fill`, {
+                description: "Click the amber tags in your document to add the missing information.",
                 action: {
-                    label: "View Tags",
+                    label: "Show me",
                     onClick: () => {
                         const firstFlag = document.querySelector('[data-missing-flag="true"]');
-                        if (firstFlag) {
-                            firstFlag.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }
+                        if (firstFlag) firstFlag.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     }
                 },
                 duration: 5000
             });
-        }
-
-        if (profile?.completion && !profile.completion.isReady) {
-            toast.warning("Profile Incomplete", {
-                description: "This document contains placeholders. Complete your profile for better results.",
-                action: {
-                    label: "Download Anyway",
-                    onClick: () => executeDownload(content)
-                }
-            });
-            return;
         }
 
         executeDownload(content);
@@ -530,7 +546,23 @@ export const ApplicationWorkspace: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-hidden p-6 flex justify-center bg-slate-900/10">
+                    <div className="flex-1 overflow-hidden p-6 flex flex-col items-center bg-slate-900/10">
+                        {state.activeTab === 'resume' && !state.isGenerating && (profile?.certifications?.length === 0 || profile?.volunteering?.length === 0) && (
+                            <div className="w-full max-w-3xl mb-3 flex gap-2 flex-wrap">
+                                {profile?.certifications?.length === 0 && (
+                                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-full text-[10px] font-bold text-amber-400">
+                                        <PlusCircle size={10} />
+                                        Add certifications to your profile to include this section
+                                    </div>
+                                )}
+                                {profile?.volunteering?.length === 0 && (
+                                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-full text-[10px] font-bold text-amber-400">
+                                        <PlusCircle size={10} />
+                                        Add volunteering to your profile — valued by Australian employers
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         <div className="w-full max-w-3xl bg-white text-slate-900 shadow-2xl rounded-sm flex flex-col overflow-hidden">
                             <div className="flex-1 overflow-y-auto p-12 custom-scrollbar-light">
                                 {state.isGenerating ? (
@@ -575,7 +607,7 @@ export const ApplicationWorkspace: React.FC = () => {
                                         placeholder={`Start typing your ${state.activeTab}...`}
                                     />
                                 ) : (
-                                    <article className="prose prose-slate max-w-none">
+                                    <article id="resume-preview-content" className="prose prose-slate max-w-none">
                                         <ReactMarkdown
                                             components={{
                                                 text: ({ children }) => {

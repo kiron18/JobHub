@@ -166,7 +166,7 @@ ${analysisContext?.competencies?.map(c => `- ${c}`).join('\n') || "Map candidate
 
 CANDIDATE DATA:
 Name: ${profile.name}
-Contact: ${profile.email}, ${profile.phone}, ${profile.location}${profile.linkedin ? `, ${profile.linkedin}` : ''}
+Contact (use | as separator on one line): ${[profile.email, profile.phone, profile.linkedin, profile.location].filter(Boolean).join(' | ')}
 Professional Summary: ${profile.professionalSummary}
 Skills: ${JSON.stringify(profile.skills)}
 Experience: ${JSON.stringify(profile.experience || [])}
@@ -187,6 +187,10 @@ ${jd}
 TASK:
 Generate the ${type} as high-impact Markdown.
 1. Use standard English (e.g., "organized", "analyzed").
+   HEADER BLOCK (resume only — no "## Header" label, just these 3 lines):
+   Line 1: Candidate full name (e.g. # John Smith)
+   Line 2: Target Job Title from JD | Industry (e.g. *Senior Product Manager | FinTech*)
+   Line 3: contact details separated by | (e.g. john@email.com | 0400 000 000 | linkedin.com/in/john | Sydney, NSW, Australia)
 2. CONTENT GAP HANDLING: If you need a specific piece of information from the candidate that is NOT in the data above, YOU MUST insert a "Missing Flag".
    - Format: [MISSING: clear description of what is needed]
 3. Map achievements specifically to the "Impact" the JD asks for. Do NOT just list achievements; synthesize them into the narrative.
