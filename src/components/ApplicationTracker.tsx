@@ -13,7 +13,8 @@ import {
     Copy,
     ChevronDown,
     ChevronUp,
-    Star
+    Star,
+    Bell
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -89,9 +90,109 @@ const DocumentBadge: React.FC<{ type: Document['type'] }> = ({ type }) => {
     );
 };
 
+const FollowUpNudge: React.FC<{ jobs: JobApplication[] }> = ({ jobs }) => {
+    const [expandedId, setExpandedId] = useState<string | null>(null);
+
+    const dueJobs = jobs.filter(j => {
+        const days = daysSinceApplied(j.dateApplied);
+        return j.status === 'APPLIED' && days !== null && days >= 7;
+    });
+
+    if (dueJobs.length === 0) return null;
+
+    const handleCopy = (job: JobApplication, e: React.MouseEvent) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(buildFollowUpEmail(job));
+        toast.success('Copied to clipboard');
+    };
+
+    const toggleExpand = (id: string) => {
+        setExpandedId(prev => (prev === id ? null : id));
+    };
+
+    return (
+        <div className="border border-amber-500/30 bg-amber-500/5 rounded-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-amber-500/20 flex items-start gap-3">
+                <Bell size={16} className="text-amber-400 mt-0.5 shrink-0" />
+                <div>
+                    <p className="text-sm font-black text-amber-400 uppercase tracking-wider leading-tight">
+                        Follow-up Reminder
+                    </p>
+                    <p className="text-xs text-amber-400/70 font-medium mt-0.5">
+                        These applications are 7+ days old with no update — time to reach out
+                    </p>
+                </div>
+            </div>
+
+            <div className="divide-y divide-amber-500/10">
+                {dueJobs.map(job => {
+                    const days = daysSinceApplied(job.dateApplied) as number;
+                    const isOpen = expandedId === job.id;
+
+                    return (
+                        <div key={job.id}>
+                            <button
+                                onClick={() => toggleExpand(job.id)}
+                                aria-expanded={isOpen}
+                                aria-label={`Toggle follow-up template for ${job.title} at ${job.company}`}
+                                className="w-full px-5 py-3.5 flex items-center justify-between gap-4 hover:bg-amber-500/10 transition-colors text-left"
+                            >
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-bold text-slate-200 truncate">
+                                            {job.title} at {job.company}
+                                        </p>
+                                    </div>
+                                    <span className="text-[10px] font-black text-amber-400/80 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded shrink-0">
+                                        {days} days elapsed
+                                    </span>
+                                </div>
+
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <button
+                                        onClick={(e) => handleCopy(job, e)}
+                                        aria-label={`Copy follow-up email for ${job.title}`}
+                                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black text-amber-400 border border-amber-500/30 hover:bg-amber-500/20 hover:text-amber-300 transition-colors uppercase tracking-wider"
+                                    >
+                                        <Copy size={10} />
+                                        Copy Email
+                                    </button>
+                                    {isOpen ? (
+                                        <ChevronUp size={14} className="text-amber-400/60" />
+                                    ) : (
+                                        <ChevronDown size={14} className="text-amber-400/60" />
+                                    )}
+                                </div>
+                            </button>
+
+                            <AnimatePresence initial={false}>
+                                {isOpen && (
+                                    <motion.div
+                                        key="template"
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: 'auto', opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{ duration: 0.2, ease: 'easeInOut' }}
+                                        className="overflow-hidden"
+                                    >
+                                        <div className="px-5 pb-4">
+                                            <pre className="text-xs text-slate-300 whitespace-pre-wrap font-mono leading-relaxed p-4 bg-slate-900/60 border border-amber-500/15 rounded-xl">
+                                                {buildFollowUpEmail(job)}
+                                            </pre>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+
 const JobCard: React.FC<{ job: JobApplication; onStatusChange: (id: string, status: ApplicationStatus, dateApplied?: string) => void }> = ({ job, onStatusChange }) => {
     const [expanded, setExpanded] = useState(false);
-    const [showFollowUp, setShowFollowUp] = useState(false);
 
     const days = daysSinceApplied(job.dateApplied);
     const showFollowUpAlert = job.status === 'APPLIED' && days !== null && days >= 7;
@@ -104,11 +205,6 @@ const JobCard: React.FC<{ job: JobApplication; onStatusChange: (id: string, stat
         onStatusChange(job.id, status, dateApplied);
     };
 
-    const copyFollowUp = () => {
-        navigator.clipboard.writeText(buildFollowUpEmail(job));
-        toast.success('Follow-up email copied to clipboard');
-    };
-
     return (
         <motion.div
             layout
@@ -117,17 +213,9 @@ const JobCard: React.FC<{ job: JobApplication; onStatusChange: (id: string, stat
             className={`glass-card overflow-hidden transition-all ${showFollowUpAlert ? 'border-amber-500/40' : ''}`}
         >
             {showFollowUpAlert && (
-                <div className="px-5 py-2 bg-amber-500/10 border-b border-amber-500/20 flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-amber-400 text-xs font-bold">
-                        <Clock size={12} />
-                        {days} days since you applied — time to follow up
-                    </div>
-                    <button
-                        onClick={() => setShowFollowUp(!showFollowUp)}
-                        className="text-[10px] font-black text-amber-400 uppercase tracking-wider hover:text-amber-300 transition-colors"
-                    >
-                        {showFollowUp ? 'Hide' : 'Get Template'}
-                    </button>
+                <div className="px-5 py-2 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-2 text-amber-400 text-xs font-bold">
+                    <Clock size={12} />
+                    {days} days since you applied — time to follow up
                 </div>
             )}
 
@@ -158,39 +246,14 @@ const JobCard: React.FC<{ job: JobApplication; onStatusChange: (id: string, stat
                         )}
                         <button
                             onClick={() => setExpanded(!expanded)}
+                            aria-expanded={expanded}
+                            aria-label={expanded ? 'Collapse job details' : 'Expand job details'}
                             className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 transition-colors"
                         >
                             {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                         </button>
                     </div>
                 </div>
-
-                <AnimatePresence>
-                    {showFollowUp && (
-                        <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            className="overflow-hidden"
-                        >
-                            <div className="mt-4 p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl">
-                                <div className="flex items-center justify-between mb-2">
-                                    <p className="text-[10px] font-black text-amber-400 uppercase tracking-wider">Follow-up Template</p>
-                                    <button
-                                        onClick={copyFollowUp}
-                                        className="flex items-center gap-1.5 text-[10px] font-bold text-amber-400 hover:text-amber-300 transition-colors"
-                                    >
-                                        <Copy size={10} />
-                                        Copy
-                                    </button>
-                                </div>
-                                <pre className="text-xs text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">
-                                    {buildFollowUpEmail(job)}
-                                </pre>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
             </div>
 
             <AnimatePresence>
@@ -312,6 +375,8 @@ export const ApplicationTracker: React.FC = () => {
                 <h2 className="text-4xl font-extrabold tracking-tight text-white">Application Tracker</h2>
                 <p className="text-xl text-slate-400 font-medium">Track your pipeline from saved to signed.</p>
             </header>
+
+            {!isLoading && <FollowUpNudge jobs={jobs} />}
 
             {/* Stats row */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

@@ -387,6 +387,14 @@ export const ApplicationWorkspace: React.FC = () => {
 
     const handleBack = () => navigate('/');
 
+    // CommonMark collapses consecutive lines into one <p> unless separated by a blank line.
+    // The LLM doesn't reliably add blank lines between skill category lines, so enforce it here.
+    const normaliseMarkdown = (md: string): string =>
+        md.replace(
+            /([^\n])\n(\*\*(Technical Skills|Industry Knowledge|Soft Skills):\*\*)/g,
+            '$1\n\n$2'
+        );
+
     return (
         <div className="fixed inset-0 bg-slate-950 z-50 flex flex-col overflow-hidden text-slate-200">
             <Toaster position="top-center" richColors />
@@ -611,6 +619,7 @@ export const ApplicationWorkspace: React.FC = () => {
                                 ) : (
                                     <article id="resume-preview-content" className="prose prose-slate max-w-none [&_p]:my-0.5 [&_ul]:my-1 [&_li]:my-0 [&_h2]:mt-3 [&_h2]:mb-1 [&_h3]:mt-2 [&_h3]:mb-0.5">
                                         <ReactMarkdown
+                                            children={normaliseMarkdown(state.documents[state.activeTab] || '')}
                                             components={{
                                                 text: ({ children }) => {
                                                     if (typeof children === 'string' && children.includes('[MISSING:')) {
@@ -637,9 +646,7 @@ export const ApplicationWorkspace: React.FC = () => {
                                                     return <>{children}</>;
                                                 }
                                             }}
-                                        >
-                                            {state.documents[state.activeTab] || ''}
-                                        </ReactMarkdown>
+                                        />
                                     </article>
                                 )}
                             </div>
