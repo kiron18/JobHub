@@ -166,9 +166,14 @@ ${analysisContext?.competencies?.map(c => `- ${c}`).join('\n') || "Map candidate
 
 CANDIDATE DATA:
 Name: ${profile.name}
-Contact: ${profile.email}, ${profile.phone}, ${profile.location}
+Contact: ${profile.email}, ${profile.phone}, ${profile.location}${profile.linkedin ? `, ${profile.linkedin}` : ''}
 Professional Summary: ${profile.professionalSummary}
 Skills: ${JSON.stringify(profile.skills)}
+Experience: ${JSON.stringify(profile.experience || [])}
+Education: ${JSON.stringify(profile.education || [])}
+Certifications: ${JSON.stringify(profile.certifications || [])}
+Volunteering: ${JSON.stringify(profile.volunteering || [])}
+Languages: ${JSON.stringify(profile.languages || [])}
 
 SELECTED ACHIEVEMENTS (Use ONLY these for evidence):
 ${selectedAchievements.length > 0 
@@ -186,11 +191,16 @@ Generate the ${type} as high-impact Markdown.
    - Format: [MISSING: clear description of what is needed]
 3. Map achievements specifically to the "Impact" the JD asks for. Do NOT just list achievements; synthesize them into the narrative.
 4. For Cover Letters: Focus heavily on the "Why this role" and "Why this company" mapping. Include placeholders at the top for contact details if missing.
-5. Standardized Formatting: 
-   - ${type === 'COVER_LETTER' ? 'Do NOT use headers or subheadings.' : 'Use ## for main section headers.'}
+5. Standardized Formatting (RESUME only — ignore for COVER_LETTER):
+   - ${type === 'COVER_LETTER' ? 'Do NOT use headers or subheadings.' : `Use ## for main section headers EXCEPT the header block — the name/title/contact block at the top has NO heading label. Never output the word "Header" or "## Header".`}
    - Use - for bullet points.
-   - Ensure a clean, formal layout.
-   - Maximize readability with white space.
+   - SKILLS SECTION: Format each sub-category as a single horizontal line, not a vertical list.
+     Example: **Technical Skills:** Python • Excel • SQL • Tableau
+     Example: **Industry Knowledge:** Financial Modelling • Regulatory Compliance • Agile
+     Example: **Languages:** English (Professional) • Mandarin (Native)
+     Example: **Soft Skills:** Stakeholder Engagement • Data Storytelling • Cross-cultural Communication
+   - OMIT any section entirely if the candidate has no data for it. Never output an empty section or a section with placeholder text.
+   - Minimise vertical whitespace — the goal is 1–2 pages. Do not add blank lines between bullets.
 
 CONSTRAINTS:
 - Do NOT use bold ** within bullet points unless highlighting a metric.

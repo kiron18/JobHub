@@ -52,6 +52,8 @@ Generate sections in this exact sequence:
 
 ## SECTION 2 — HEADER
 
+> **FORMATTING RULE:** The header block does NOT have a section heading. Do NOT output `## Header` or the word "Header" anywhere. The name/title/contact information appears directly at the top of the document with no label above it.
+
 ### 2.1 Required Fields
 | Field | Format | Example |
 |---|---|---|
@@ -157,15 +159,23 @@ Spearheaded, Delivered, Orchestrated, Drove, Managed, Led, Designed, Implemented
 ## SECTION 6 — SKILLS & COMPETENCIES
 
 ### 6.1 Structure
-Organise into clearly labelled sub-categories:
+Each sub-category is a **single horizontal line** — not a vertical list. This saves space and is ATS-friendly.
 
-**Technical Skills:** Hard, role-specific tools and software (be specific — not *Microsoft Office* but *Excel: pivot tables, VLOOKUP, Power Query*)
+Format exactly as:
+```
+**Technical Skills:** Python • Excel (pivot tables, Power Query) • SQL • Tableau
+**Industry Knowledge:** Financial Modelling • Regulatory Compliance • Agile/Scrum
+**Languages:** English (Professional) • Hindi (Native) • French (Conversational)
+**Soft Skills:** Stakeholder Engagement • Cross-cultural Communication • Data Storytelling
+```
 
-**Industry Knowledge:** Domain expertise relevant to the target role (e.g., *Financial modelling, Regulatory compliance, Agile/Scrum, Social media strategy*)
-
-**Languages:** List with proficiency level (e.g., *English (Professional) • Hindi (Native) • French (Conversational)*)
-
-**Soft Skills:** Maximum 3–4. Only list if the candidate can back it up with a real story in interview. Examples: *Stakeholder engagement, Cross-cultural communication, Data storytelling*
+Rules:
+- Use `•` as the separator between items on each line.
+- Omit a sub-category line entirely if the candidate has no data for it.
+- **Technical Skills:** Hard, role-specific tools and software (be specific — not *Microsoft Office* but *Excel: pivot tables, VLOOKUP, Power Query*).
+- **Industry Knowledge:** Domain expertise relevant to the target role.
+- **Languages:** Only include if data exists. List with proficiency level.
+- **Soft Skills:** Maximum 3–4. Only list if the candidate can back it up with evidence.
 
 ### 6.2 ATS Alignment Rule
 Cross-reference this section against the target job description. At least 60% of listed skills must directly mirror language from the job ad. Do not use synonyms where the job ad uses a specific term.
