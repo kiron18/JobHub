@@ -1,0 +1,14 @@
+[
+  {
+    "index": 1,
+    "name": "Candidate 5998",
+    "status": "Failed",
+    "error": "Request failed with status code 500"
+  },
+  {
+    "index": 2,
+    "name": "Candidate 6901",
+    "status": "Failed",
+    "error": "Request failed with status code 500"
+  }
+]

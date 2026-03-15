@@ -1,0 +1,51 @@
+{
+  "totalTimeSeconds": 148.772,
+  "averageLatencyMs": 55709,
+  "p95LatencyMs": 132097,
+  "p99LatencyMs": 145405,
+  "successCount": 5,
+  "failureCount": 0,
+  "memUsageMB": 11,
+  "results": [
+    {
+      "index": 4,
+      "name": "Candidate 5163",
+      "status": "Success",
+      "latencyMs": 16747,
+      "achievementsFound": 1,
+      "alertsCount": 7
+    },
+    {
+      "index": 1,
+      "name": "Candidate 3191",
+      "status": "Success",
+      "latencyMs": 21712,
+      "achievementsFound": 2,
+      "alertsCount": 6
+    },
+    {
+      "index": 5,
+      "name": "Candidate 2003",
+      "status": "Success",
+      "latencyMs": 25797,
+      "achievementsFound": 2,
+      "alertsCount": 6
+    },
+    {
+      "index": 2,
+      "name": "Candidate 5773",
+      "status": "Success",
+      "latencyMs": 65557,
+      "achievementsFound": 1,
+      "alertsCount": 6
+    },
+    {
+      "index": 3,
+      "name": "Candidate 5360",
+      "status": "Success",
+      "latencyMs": 148732,
+      "achievementsFound": 9,
+      "alertsCount": 5
+    }
+  ]
+}

@@ -1,0 +1,156 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model CandidateProfile {
+  id                   String       @id @default(uuid())
+  userId               String       @unique // Supabase Auth UID
+  name                 String?
+  email                String?      @unique
+  phone                String?
+  linkedin             String?
+  location             String?
+  professionalSummary  String?
+  skills               String?      // JSON blob: { technical: [], industry: [], soft: [] }
+  experience           Experience[]
+  education            Education[]
+  volunteering         Volunteering[]
+  certifications       Certification[]
+  languages            Language[]
+  coachingAlerts       Json?        // List of { type, field, message, color }
+  achievements         Achievement[]
+  jobApplications      JobApplication[]
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+}
+
+model Experience {
+  id                String           @id @default(uuid())
+  candidateProfileId String
+  candidateProfile  CandidateProfile  @relation(fields: [candidateProfileId], references: [id])
+  company           String
+  role              String
+  startDate         String
+  endDate           String?
+  isCurrent         Boolean           @default(false)
+  description       String?           // Original bullet points
+  coachingTips      String?           // AI suggestions for CAR method
+  achievements      Achievement[]
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+}
+
+model Education {
+  id                String           @id @default(uuid())
+  candidateProfileId String
+  candidateProfile  CandidateProfile  @relation(fields: [candidateProfileId], references: [id])
+  institution       String
+  degree            String
+  field             String?
+  startDate         String?
+  endDate           String?
+  year              String?
+  location          String?
+  coachingTips      String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+}
+
+model Volunteering {
+  id                String           @id @default(uuid())
+  candidateProfileId String
+  candidateProfile  CandidateProfile  @relation(fields: [candidateProfileId], references: [id])
+  organization      String
+  role              String
+  description       String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+}
+
+model Certification {
+  id                String           @id @default(uuid())
+  candidateProfileId String
+  candidateProfile  CandidateProfile  @relation(fields: [candidateProfileId], references: [id])
+  name              String
+  issuingBody       String
+  year              String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+}
+
+model Language {
+  id                String           @id @default(uuid())
+  candidateProfileId String
+  candidateProfile  CandidateProfile  @relation(fields: [candidateProfileId], references: [id])
+  name              String
+  proficiency       String
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+}
+
+model Achievement {
+  id                 String           @id @default(uuid())
+  userId             String           // Supabase Auth UID for direct querying/RLS
+  candidateProfileId  String
+  candidateProfile    CandidateProfile  @relation(fields: [candidateProfileId], references: [id])
+  experienceId       String?
+  experience         Experience?       @relation(fields: [experienceId], references: [id])
+  title              String
+  description        String
+  metric             String?
+  metricType         String?           // e.g. "Revenue", "Efficiency", "Scale", "Team"
+  industry           String?           // e.g. "FinTech", "Retail", "Healthcare"
+  skills             String?
+  tags               String?
+  isStaged           Boolean           @default(false)
+  coachingTips       String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+}
+
+model JobApplication {
+  id             String     @id @default(uuid())
+  userId         String     // Supabase Auth UID
+  candidateProfileId String
+  candidateProfile   CandidateProfile @relation(fields: [candidateProfileId], references: [id])
+  title          String
+  company        String
+  description    String
+  dateApplied    DateTime?
+  status         ApplicationStatus @default(SAVED)
+  documents      Document[]
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+}
+
+model Document {
+  id             String           @id @default(uuid())
+  userId         String           // Supabase Auth UID
+  title          String?          // Add title
+  jobApplicationId String?
+  jobApplication JobApplication?   @relation(fields: [jobApplicationId], references: [id])
+  type           DocumentType
+  content        String
+  templateConfig Json?            // Section order, font styles, etc.
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+}
+
+enum ApplicationStatus {
+  SAVED
+  APPLIED
+  INTERVIEW
+  REJECTED
+  OFFER
+}
+
+enum DocumentType {
+  RESUME
+  COVER_LETTER
+  STAR_RESPONSE
+}

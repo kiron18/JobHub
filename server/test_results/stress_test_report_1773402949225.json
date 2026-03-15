@@ -1,0 +1,78 @@
+[
+  {
+    "index": 1,
+    "name": "Candidate 32",
+    "status": "Success",
+    "alerts": [
+      {
+        "type": "MISSING_CONTACT_INFO",
+        "field": "profile",
+        "message": "Please add contact information (email, phone, LinkedIn URL) to make it easy for potential employers to reach out.",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_METRIC",
+        "field": "experience[0].bullets[0]",
+        "message": "Add a % or $ result to show impact.",
+        "color": "orange"
+      },
+      {
+        "type": "MISSING_EDUCATION",
+        "field": "education",
+        "message": "Please add relevant education background to support your experience and skills.",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_PROFESSIONAL_SUMMARY",
+        "field": "profile.professionalSummary",
+        "message": "Add a professional summary to highlight your key strengths, experience, and career aspirations.",
+        "color": "orange"
+      }
+    ],
+    "achievementsFound": 0
+  },
+  {
+    "index": 2,
+    "name": "Candidate 4980",
+    "status": "Success",
+    "alerts": [
+      {
+        "type": "MISSING_CONTACT_INFO",
+        "field": "profile",
+        "message": "Add email, phone, and LinkedIn URL to increase visibility",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_METRIC",
+        "field": "experience[0].bullets[2]",
+        "message": "Quantify the amount of money saved to show impact",
+        "color": "orange"
+      },
+      {
+        "type": "MISSING_METRIC",
+        "field": "experience[1].bullets",
+        "message": "Add metrics or outcomes to demonstrate value",
+        "color": "orange"
+      },
+      {
+        "type": "MISSING_METRIC",
+        "field": "experience[2].bullets",
+        "message": "Add metrics or outcomes to demonstrate impact",
+        "color": "orange"
+      },
+      {
+        "type": "MISSING_EDUCATION",
+        "field": "education",
+        "message": "Add relevant education or training to enhance credibility",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_LOCATION",
+        "field": "profile.location",
+        "message": "Add location to increase visibility and targeting",
+        "color": "red"
+      }
+    ],
+    "achievementsFound": 0
+  }
+]

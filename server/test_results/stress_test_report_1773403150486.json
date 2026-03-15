@@ -1,0 +1,58 @@
+[
+  {
+    "index": 1,
+    "name": "Candidate 2256",
+    "status": "Failed",
+    "error": "Request failed with status code 500"
+  },
+  {
+    "index": 2,
+    "name": "Candidate 1099",
+    "status": "Success",
+    "alerts": [
+      {
+        "type": "MISSING_INFO",
+        "field": "profile.email",
+        "message": "Add a valid email address",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_INFO",
+        "field": "profile.phone",
+        "message": "Add a valid phone number",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_INFO",
+        "field": "profile.linkedin",
+        "message": "Add a LinkedIn profile URL",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_INFO",
+        "field": "profile.location",
+        "message": "Add a valid location",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_INFO",
+        "field": "profile.professionalSummary",
+        "message": "Write a professional summary in 3-4 sentences",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_METRIC",
+        "field": "experience[0].bullets[0]",
+        "message": "Add a % or $ result to show impact",
+        "color": "orange"
+      },
+      {
+        "type": "MISSING_METRIC",
+        "field": "experience[1].bullets[0]",
+        "message": "Add a % or $ result to show impact",
+        "color": "orange"
+      }
+    ],
+    "achievementsFound": 3
+  }
+]

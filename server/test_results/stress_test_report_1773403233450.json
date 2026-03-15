@@ -1,0 +1,52 @@
+[
+  {
+    "index": 1,
+    "name": "Candidate 1531",
+    "status": "Failed",
+    "error": "Request failed with status code 500"
+  },
+  {
+    "index": 2,
+    "name": "Candidate 2866",
+    "status": "Success",
+    "alerts": [
+      {
+        "type": "MISSING_CONTACT_INFO",
+        "field": "profile.email",
+        "message": "Please add your email address",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_CONTACT_INFO",
+        "field": "profile.phone",
+        "message": "Please add your phone number",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_CONTACT_INFO",
+        "field": "profile.linkedin",
+        "message": "Please add your LinkedIn URL",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_CONTACT_INFO",
+        "field": "profile.location",
+        "message": "Please add your location",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_EDUCATION",
+        "field": "education",
+        "message": "Please add your education details",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_METRIC",
+        "field": "experience[2].bullets",
+        "message": "Consider adding metrics or results to these bullet points to demonstrate impact",
+        "color": "orange"
+      }
+    ],
+    "achievementsFound": 6
+  }
+]

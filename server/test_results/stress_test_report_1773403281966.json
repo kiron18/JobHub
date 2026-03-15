@@ -1,0 +1,52 @@
+[
+  {
+    "index": 1,
+    "name": "Candidate 1495",
+    "status": "Success",
+    "alerts": [
+      {
+        "type": "MISSING_CONTACT_INFO",
+        "field": "profile.email",
+        "message": "Please add an email address for contact.",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_CONTACT_INFO",
+        "field": "profile.phone",
+        "message": "Please add a phone number for contact.",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_CONTACT_INFO",
+        "field": "profile.linkedin",
+        "message": "Please add a LinkedIn URL for professional networking.",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_LOCATION",
+        "field": "profile.location",
+        "message": "Please add a suburb and state for location.",
+        "color": "red"
+      },
+      {
+        "type": "MISSING Profesional Summary",
+        "field": "profile.professionalSummary",
+        "message": "Please add a 3-4 sentence professional summary.",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_EDUCATION",
+        "field": "education",
+        "message": "Please add relevant education information.",
+        "color": "red"
+      }
+    ],
+    "achievementsFound": 1
+  },
+  {
+    "index": 2,
+    "name": "Candidate 6663",
+    "status": "Failed",
+    "error": "read ECONNRESET"
+  }
+]

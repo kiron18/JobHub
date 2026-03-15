@@ -1,0 +1,827 @@
+{
+  "totalTimeSeconds": 743.652,
+  "averageLatencyMs": 36851.09782608696,
+  "p95LatencyMs": 85373.30000000003,
+  "p99LatencyMs": 130003.02000000014,
+  "successCount": 92,
+  "failureCount": 8,
+  "memUsageMB": 17,
+  "results": [
+    {
+      "index": 2,
+      "name": "Candidate 6093",
+      "status": "Success",
+      "latencyMs": 42910,
+      "achievementsFound": 5,
+      "alertsCount": 6
+    },
+    {
+      "index": 5,
+      "name": "Candidate 5338",
+      "status": "Success",
+      "latencyMs": 45505,
+      "achievementsFound": 2,
+      "alertsCount": 6
+    },
+    {
+      "index": 4,
+      "name": "Candidate 8338",
+      "status": "Success",
+      "latencyMs": 53257,
+      "achievementsFound": 5,
+      "alertsCount": 8
+    },
+    {
+      "index": 1,
+      "name": "Candidate 5765",
+      "status": "Success",
+      "latencyMs": 56772,
+      "achievementsFound": 5,
+      "alertsCount": 4
+    },
+    {
+      "index": 3,
+      "name": "Candidate 561",
+      "status": "Success",
+      "latencyMs": 61901,
+      "achievementsFound": 4,
+      "alertsCount": 6
+    },
+    {
+      "index": 6,
+      "name": "Candidate 7206",
+      "status": "Success",
+      "latencyMs": 23350,
+      "achievementsFound": 1,
+      "alertsCount": 5
+    },
+    {
+      "index": 9,
+      "name": "Candidate 3322",
+      "status": "Failed",
+      "failedAt": "extraction",
+      "error": "Request failed with status code 500",
+      "details": {
+        "error": "Failed to extract data from resume"
+      }
+    },
+    {
+      "index": 12,
+      "name": "Candidate 3457",
+      "status": "Failed",
+      "failedAt": "extraction",
+      "error": "Request failed with status code 500",
+      "details": {
+        "error": "Failed to extract data from resume"
+      }
+    },
+    {
+      "index": 10,
+      "name": "Candidate 4753",
+      "status": "Success",
+      "latencyMs": 38626,
+      "achievementsFound": 2,
+      "alertsCount": 4
+    },
+    {
+      "index": 7,
+      "name": "Candidate 9988",
+      "status": "Success",
+      "latencyMs": 70994,
+      "achievementsFound": 6,
+      "alertsCount": 7
+    },
+    {
+      "index": 8,
+      "name": "Candidate 2624",
+      "status": "Success",
+      "latencyMs": 65002,
+      "achievementsFound": 5,
+      "alertsCount": 6
+    },
+    {
+      "index": 11,
+      "name": "Candidate 8858",
+      "status": "Success",
+      "latencyMs": 59883,
+      "achievementsFound": 5,
+      "alertsCount": 5
+    },
+    {
+      "index": 15,
+      "name": "Candidate 292",
+      "status": "Success",
+      "latencyMs": 24091,
+      "achievementsFound": 5,
+      "alertsCount": 9
+    },
+    {
+      "index": 16,
+      "name": "Candidate 4533",
+      "status": "Success",
+      "latencyMs": 38677,
+      "achievementsFound": 6,
+      "alertsCount": 4
+    },
+    {
+      "index": 13,
+      "name": "Candidate 446",
+      "status": "Success",
+      "latencyMs": 79498,
+      "achievementsFound": 4,
+      "alertsCount": 5
+    },
+    {
+      "index": 20,
+      "name": "Candidate 1222",
+      "status": "Failed",
+      "failedAt": "extraction",
+      "error": "Request failed with status code 500",
+      "details": {
+        "error": "Failed to extract data from resume"
+      }
+    },
+    {
+      "index": 18,
+      "name": "Candidate 2188",
+      "status": "Success",
+      "latencyMs": 63109,
+      "achievementsFound": 3,
+      "alertsCount": 8
+    },
+    {
+      "index": 19,
+      "name": "Candidate 1535",
+      "status": "Success",
+      "latencyMs": 63896,
+      "achievementsFound": 4,
+      "alertsCount": 5
+    },
+    {
+      "index": 14,
+      "name": "Candidate 6461",
+      "status": "Success",
+      "latencyMs": 126450,
+      "achievementsFound": 6,
+      "alertsCount": 8
+    },
+    {
+      "index": 21,
+      "name": "Candidate 7739",
+      "status": "Success",
+      "latencyMs": 29005,
+      "achievementsFound": 2,
+      "alertsCount": 6
+    },
+    {
+      "index": 23,
+      "name": "Candidate 2914",
+      "status": "Failed",
+      "failedAt": "extraction",
+      "error": "Request failed with status code 500",
+      "details": {
+        "error": "Failed to extract data from resume"
+      }
+    },
+    {
+      "index": 22,
+      "name": "Candidate 9555",
+      "status": "Success",
+      "latencyMs": 41949,
+      "achievementsFound": 5,
+      "alertsCount": 4
+    },
+    {
+      "index": 26,
+      "name": "Candidate 5863",
+      "status": "Success",
+      "latencyMs": 11613,
+      "achievementsFound": 2,
+      "alertsCount": 6
+    },
+    {
+      "index": 25,
+      "name": "Candidate 8365",
+      "status": "Success",
+      "latencyMs": 30832,
+      "achievementsFound": 4,
+      "alertsCount": 7
+    },
+    {
+      "index": 29,
+      "name": "Candidate 4452",
+      "status": "Success",
+      "latencyMs": 11820,
+      "achievementsFound": 1,
+      "alertsCount": 7
+    },
+    {
+      "index": 28,
+      "name": "Candidate 7258",
+      "status": "Failed",
+      "failedAt": "extraction",
+      "error": "Request failed with status code 500",
+      "details": {
+        "error": "Failed to extract data from resume"
+      }
+    },
+    {
+      "index": 27,
+      "name": "Candidate 654",
+      "status": "Success",
+      "latencyMs": 39738,
+      "achievementsFound": 4,
+      "alertsCount": 6
+    },
+    {
+      "index": 30,
+      "name": "Candidate 7946",
+      "status": "Success",
+      "latencyMs": 18019,
+      "achievementsFound": 3,
+      "alertsCount": 6
+    },
+    {
+      "index": 17,
+      "name": "Candidate 834",
+      "status": "Success",
+      "latencyMs": 165928,
+      "achievementsFound": 7,
+      "alertsCount": 7
+    },
+    {
+      "index": 32,
+      "name": "Candidate 4330",
+      "status": "Success",
+      "latencyMs": 25162,
+      "achievementsFound": 2,
+      "alertsCount": 6
+    },
+    {
+      "index": 34,
+      "name": "Candidate 4904",
+      "status": "Success",
+      "latencyMs": 19850,
+      "achievementsFound": 1,
+      "alertsCount": 8
+    },
+    {
+      "index": 31,
+      "name": "Candidate 566",
+      "status": "Success",
+      "latencyMs": 41613,
+      "achievementsFound": 6,
+      "alertsCount": 8
+    },
+    {
+      "index": 35,
+      "name": "Candidate 9155",
+      "status": "Success",
+      "latencyMs": 10551,
+      "achievementsFound": 5,
+      "alertsCount": 6
+    },
+    {
+      "index": 37,
+      "name": "Candidate 737",
+      "status": "Success",
+      "latencyMs": 13272,
+      "achievementsFound": 1,
+      "alertsCount": 4
+    },
+    {
+      "index": 24,
+      "name": "Candidate 7366",
+      "status": "Success",
+      "latencyMs": 103616,
+      "achievementsFound": 5,
+      "alertsCount": 6
+    },
+    {
+      "index": 38,
+      "name": "Candidate 3110",
+      "status": "Success",
+      "latencyMs": 20781,
+      "achievementsFound": 2,
+      "alertsCount": 5
+    },
+    {
+      "index": 33,
+      "name": "Candidate 5143",
+      "status": "Success",
+      "latencyMs": 53975,
+      "achievementsFound": 7,
+      "alertsCount": 6
+    },
+    {
+      "index": 39,
+      "name": "Candidate 3839",
+      "status": "Success",
+      "latencyMs": 17650,
+      "achievementsFound": 3,
+      "alertsCount": 6
+    },
+    {
+      "index": 41,
+      "name": "Candidate 9245",
+      "status": "Success",
+      "latencyMs": 11038,
+      "achievementsFound": 3,
+      "alertsCount": 3
+    },
+    {
+      "index": 40,
+      "name": "Candidate 5479",
+      "status": "Success",
+      "latencyMs": 24224,
+      "achievementsFound": 5,
+      "alertsCount": 7
+    },
+    {
+      "index": 36,
+      "name": "Candidate 3613",
+      "status": "Success",
+      "latencyMs": 52713,
+      "achievementsFound": 5,
+      "alertsCount": 8
+    },
+    {
+      "index": 42,
+      "name": "Candidate 7450",
+      "status": "Success",
+      "latencyMs": 25503,
+      "achievementsFound": 3,
+      "alertsCount": 3
+    },
+    {
+      "index": 44,
+      "name": "Candidate 135",
+      "status": "Success",
+      "latencyMs": 23625,
+      "achievementsFound": 2,
+      "alertsCount": 7
+    },
+    {
+      "index": 43,
+      "name": "Candidate 5666",
+      "status": "Success",
+      "latencyMs": 31724,
+      "achievementsFound": 4,
+      "alertsCount": 6
+    },
+    {
+      "index": 46,
+      "name": "Candidate 3769",
+      "status": "Success",
+      "latencyMs": 29153,
+      "achievementsFound": 5,
+      "alertsCount": 8
+    },
+    {
+      "index": 48,
+      "name": "Candidate 3248",
+      "status": "Success",
+      "latencyMs": 26009,
+      "achievementsFound": 2,
+      "alertsCount": 6
+    },
+    {
+      "index": 47,
+      "name": "Candidate 7868",
+      "status": "Success",
+      "latencyMs": 44025,
+      "achievementsFound": 7,
+      "alertsCount": 7
+    },
+    {
+      "index": 50,
+      "name": "Candidate 9496",
+      "status": "Success",
+      "latencyMs": 20707,
+      "achievementsFound": 2,
+      "alertsCount": 5
+    },
+    {
+      "index": 49,
+      "name": "Candidate 8185",
+      "status": "Failed",
+      "failedAt": "extraction",
+      "error": "Request failed with status code 500",
+      "details": {
+        "error": "Failed to extract data from resume"
+      }
+    },
+    {
+      "index": 51,
+      "name": "Candidate 2085",
+      "status": "Success",
+      "latencyMs": 22897,
+      "achievementsFound": 2,
+      "alertsCount": 6
+    },
+    {
+      "index": 52,
+      "name": "Candidate 3718",
+      "status": "Success",
+      "latencyMs": 14821,
+      "achievementsFound": 1,
+      "alertsCount": 5
+    },
+    {
+      "index": 45,
+      "name": "Candidate 8724",
+      "status": "Success",
+      "latencyMs": 77876,
+      "achievementsFound": 3,
+      "alertsCount": 4
+    },
+    {
+      "index": 55,
+      "name": "Candidate 8042",
+      "status": "Success",
+      "latencyMs": 8156,
+      "achievementsFound": 1,
+      "alertsCount": 7
+    },
+    {
+      "index": 53,
+      "name": "Candidate 2406",
+      "status": "Success",
+      "latencyMs": 21160,
+      "achievementsFound": 5,
+      "alertsCount": 7
+    },
+    {
+      "index": 56,
+      "name": "Candidate 6979",
+      "status": "Failed",
+      "failedAt": "extraction",
+      "error": "Request failed with status code 500",
+      "details": {
+        "error": "Failed to extract data from resume"
+      }
+    },
+    {
+      "index": 59,
+      "name": "Candidate 6981",
+      "status": "Success",
+      "latencyMs": 15263,
+      "achievementsFound": 1,
+      "alertsCount": 6
+    },
+    {
+      "index": 54,
+      "name": "Candidate 5659",
+      "status": "Success",
+      "latencyMs": 33993,
+      "achievementsFound": 4,
+      "alertsCount": 6
+    },
+    {
+      "index": 57,
+      "name": "Candidate 5478",
+      "status": "Success",
+      "latencyMs": 19507,
+      "achievementsFound": 1,
+      "alertsCount": 7
+    },
+    {
+      "index": 60,
+      "name": "Candidate 7877",
+      "status": "Success",
+      "latencyMs": 19219,
+      "achievementsFound": 2,
+      "alertsCount": 5
+    },
+    {
+      "index": 63,
+      "name": "Candidate 8962",
+      "status": "Success",
+      "latencyMs": 16523,
+      "achievementsFound": 4,
+      "alertsCount": 6
+    },
+    {
+      "index": 58,
+      "name": "Candidate 6679",
+      "status": "Success",
+      "latencyMs": 40493,
+      "achievementsFound": 6,
+      "alertsCount": 6
+    },
+    {
+      "index": 61,
+      "name": "Candidate 4670",
+      "status": "Success",
+      "latencyMs": 24473,
+      "achievementsFound": 1,
+      "alertsCount": 6
+    },
+    {
+      "index": 62,
+      "name": "Candidate 5324",
+      "status": "Success",
+      "latencyMs": 24837,
+      "achievementsFound": 2,
+      "alertsCount": 5
+    },
+    {
+      "index": 64,
+      "name": "Candidate 1904",
+      "status": "Success",
+      "latencyMs": 20734,
+      "achievementsFound": 8,
+      "alertsCount": 6
+    },
+    {
+      "index": 66,
+      "name": "Candidate 2694",
+      "status": "Failed",
+      "failedAt": "extraction",
+      "error": "Request failed with status code 500",
+      "details": {
+        "error": "Failed to extract data from resume"
+      }
+    },
+    {
+      "index": 65,
+      "name": "Candidate 2894",
+      "status": "Success",
+      "latencyMs": 29134,
+      "achievementsFound": 2,
+      "alertsCount": 7
+    },
+    {
+      "index": 68,
+      "name": "Candidate 2679",
+      "status": "Success",
+      "latencyMs": 25174,
+      "achievementsFound": 3,
+      "alertsCount": 5
+    },
+    {
+      "index": 70,
+      "name": "Candidate 8809",
+      "status": "Success",
+      "latencyMs": 24279,
+      "achievementsFound": 2,
+      "alertsCount": 5
+    },
+    {
+      "index": 69,
+      "name": "Candidate 1975",
+      "status": "Success",
+      "latencyMs": 31108,
+      "achievementsFound": 8,
+      "alertsCount": 7
+    },
+    {
+      "index": 72,
+      "name": "Candidate 414",
+      "status": "Success",
+      "latencyMs": 16216,
+      "achievementsFound": 1,
+      "alertsCount": 5
+    },
+    {
+      "index": 75,
+      "name": "Candidate 9491",
+      "status": "Success",
+      "latencyMs": 5873,
+      "achievementsFound": 1,
+      "alertsCount": 6
+    },
+    {
+      "index": 71,
+      "name": "Candidate 4998",
+      "status": "Success",
+      "latencyMs": 31450,
+      "achievementsFound": 3,
+      "alertsCount": 6
+    },
+    {
+      "index": 73,
+      "name": "Candidate 7466",
+      "status": "Success",
+      "latencyMs": 21591,
+      "achievementsFound": 1,
+      "alertsCount": 7
+    },
+    {
+      "index": 76,
+      "name": "Candidate 462",
+      "status": "Success",
+      "latencyMs": 14738,
+      "achievementsFound": 1,
+      "alertsCount": 4
+    },
+    {
+      "index": 74,
+      "name": "Candidate 3211",
+      "status": "Success",
+      "latencyMs": 22108,
+      "achievementsFound": 6,
+      "alertsCount": 6
+    },
+    {
+      "index": 77,
+      "name": "Candidate 1894",
+      "status": "Success",
+      "latencyMs": 24735,
+      "achievementsFound": 2,
+      "alertsCount": 7
+    },
+    {
+      "index": 80,
+      "name": "Candidate 8298",
+      "status": "Success",
+      "latencyMs": 16276,
+      "achievementsFound": 1,
+      "alertsCount": 5
+    },
+    {
+      "index": 81,
+      "name": "Candidate 3387",
+      "status": "Success",
+      "latencyMs": 6809,
+      "achievementsFound": 1,
+      "alertsCount": 6
+    },
+    {
+      "index": 79,
+      "name": "Candidate 526",
+      "status": "Success",
+      "latencyMs": 25042,
+      "achievementsFound": 2,
+      "alertsCount": 5
+    },
+    {
+      "index": 67,
+      "name": "Candidate 5747",
+      "status": "Success",
+      "latencyMs": 90232,
+      "achievementsFound": 3,
+      "alertsCount": 8
+    },
+    {
+      "index": 78,
+      "name": "Candidate 6763",
+      "status": "Success",
+      "latencyMs": 32458,
+      "achievementsFound": 3,
+      "alertsCount": 6
+    },
+    {
+      "index": 82,
+      "name": "Candidate 7877",
+      "status": "Success",
+      "latencyMs": 39847,
+      "achievementsFound": 6,
+      "alertsCount": 4
+    },
+    {
+      "index": 84,
+      "name": "Candidate 9369",
+      "status": "Success",
+      "latencyMs": 34660,
+      "achievementsFound": 5,
+      "alertsCount": 3
+    },
+    {
+      "index": 86,
+      "name": "Candidate 9629",
+      "status": "Success",
+      "latencyMs": 31557,
+      "achievementsFound": 4,
+      "alertsCount": 4
+    },
+    {
+      "index": 85,
+      "name": "Candidate 793",
+      "status": "Success",
+      "latencyMs": 45722,
+      "achievementsFound": 1,
+      "alertsCount": 6
+    },
+    {
+      "index": 87,
+      "name": "Candidate 33",
+      "status": "Success",
+      "latencyMs": 34205,
+      "achievementsFound": 9,
+      "alertsCount": 7
+    },
+    {
+      "index": 89,
+      "name": "Candidate 5933",
+      "status": "Success",
+      "latencyMs": 33895,
+      "achievementsFound": 5,
+      "alertsCount": 6
+    },
+    {
+      "index": 88,
+      "name": "Candidate 8753",
+      "status": "Success",
+      "latencyMs": 35282,
+      "achievementsFound": 3,
+      "alertsCount": 8
+    },
+    {
+      "index": 83,
+      "name": "Candidate 4204",
+      "status": "Success",
+      "latencyMs": 77115,
+      "achievementsFound": 3,
+      "alertsCount": 6
+    },
+    {
+      "index": 91,
+      "name": "Candidate 3261",
+      "status": "Success",
+      "latencyMs": 21850,
+      "achievementsFound": 3,
+      "alertsCount": 9
+    },
+    {
+      "index": 93,
+      "name": "Candidate 8199",
+      "status": "Success",
+      "latencyMs": 25651,
+      "achievementsFound": 6,
+      "alertsCount": 7
+    },
+    {
+      "index": 92,
+      "name": "Candidate 6818",
+      "status": "Success",
+      "latencyMs": 32921,
+      "achievementsFound": 5,
+      "alertsCount": 6
+    },
+    {
+      "index": 96,
+      "name": "Candidate 6251",
+      "status": "Success",
+      "latencyMs": 15519,
+      "achievementsFound": 2,
+      "alertsCount": 6
+    },
+    {
+      "index": 95,
+      "name": "Candidate 8384",
+      "status": "Success",
+      "latencyMs": 37883,
+      "achievementsFound": 7,
+      "alertsCount": 5
+    },
+    {
+      "index": 98,
+      "name": "Candidate 656",
+      "status": "Success",
+      "latencyMs": 17221,
+      "achievementsFound": 8,
+      "alertsCount": 4
+    },
+    {
+      "index": 97,
+      "name": "Candidate 5887",
+      "status": "Success",
+      "latencyMs": 26570,
+      "achievementsFound": 6,
+      "alertsCount": 7
+    },
+    {
+      "index": 90,
+      "name": "Candidate 4207",
+      "status": "Success",
+      "latencyMs": 81398,
+      "achievementsFound": 6,
+      "alertsCount": 6
+    },
+    {
+      "index": 100,
+      "name": "Candidate 1291",
+      "status": "Success",
+      "latencyMs": 20719,
+      "achievementsFound": 3,
+      "alertsCount": 6
+    },
+    {
+      "index": 99,
+      "name": "Candidate 9183",
+      "status": "Success",
+      "latencyMs": 37508,
+      "achievementsFound": 6,
+      "alertsCount": 8
+    },
+    {
+      "index": 94,
+      "name": "Candidate 9181",
+      "status": "Success",
+      "latencyMs": 105587,
+      "achievementsFound": 5,
+      "alertsCount": 6
+    }
+  ]
+}

@@ -1,0 +1,96 @@
+[
+  {
+    "index": 1,
+    "name": "Candidate 919",
+    "status": "Success",
+    "alerts": [
+      {
+        "type": "MISSING CONTACT_INFO",
+        "field": "profile.email",
+        "message": "Add a professional email address",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_LOCATION",
+        "field": "profile.location",
+        "message": "Include your location to help with job searching",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_LINKEDIN",
+        "field": "profile.linkedin",
+        "message": "Add a LinkedIn URL to increase online visibility",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_SUMMARY",
+        "field": "profile.professionalSummary",
+        "message": "Write a compelling professional summary to introduce yourself",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_METRIC",
+        "field": "experience[0].bullets[0]",
+        "message": "Add a metric to demonstrate the impact of typing projects",
+        "color": "orange"
+      },
+      {
+        "type": "MISSING_METRIC",
+        "field": "experience[1].bullets[0]",
+        "message": "Provide specific metrics for Excel projects",
+        "color": "orange"
+      },
+      {
+        "type": "MISSING_RELEVANT_EXPERIENCE",
+        "field": "experience[2].bullets",
+        "message": "As a Data Scientist, focus on projects that demonstrate data analysis skills",
+        "color": "orange"
+      }
+    ],
+    "achievementsFound": 0
+  },
+  {
+    "index": 2,
+    "name": "Candidate 3708",
+    "status": "Success",
+    "alerts": [
+      {
+        "type": "MISSING_CONTACT_INFO",
+        "field": "profile",
+        "message": "Add email, phone, and LinkedIn URL to improve visibility",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_METRIC",
+        "field": "experience[0].bullets[0]",
+        "message": "Add a % or $ result to show impact",
+        "color": "orange"
+      },
+      {
+        "type": "UNKNOWN_ROLE",
+        "field": "experience[0].role",
+        "message": "Unemployed is not a typical role, consider rephrasing or removing",
+        "color": "orange"
+      },
+      {
+        "type": "MISSING_EDUCATION",
+        "field": "education",
+        "message": "Add relevant education background",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_LANGUAGES",
+        "field": "languages",
+        "message": "Consider adding language proficiency",
+        "color": "orange"
+      },
+      {
+        "type": "MISSING_VOLUNTEERING",
+        "field": "volunteering",
+        "message": "Add any relevant community work or student societies",
+        "color": "orange"
+      }
+    ],
+    "achievementsFound": 0
+  }
+]

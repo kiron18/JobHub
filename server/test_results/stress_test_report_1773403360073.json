@@ -1,0 +1,58 @@
+[
+  {
+    "index": 1,
+    "name": "Candidate 627",
+    "status": "Success",
+    "alerts": [
+      {
+        "type": "MISSING_INFO",
+        "field": "profile.email",
+        "message": "Please add a valid email address",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_INFO",
+        "field": "profile.phone",
+        "message": "Please add a valid phone number",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_INFO",
+        "field": "profile.linkedin",
+        "message": "Please add a LinkedIn URL",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_INFO",
+        "field": "profile.location",
+        "message": "Please add a suburb and state",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_METRIC",
+        "field": "experience[0].bullets[3]",
+        "message": "Add a specific metric to the last bullet point, e.g., 'Increased GCP infrastructure projects by 30% in 6 months'",
+        "color": "orange"
+      },
+      {
+        "type": "MISSING_METRIC",
+        "field": "experience[1].bullets[1]",
+        "message": "Add a specific metric to the second bullet point, e.g., 'Optimized Salesforce CRM projects, resulting in a 20% reduction in customer complaints'",
+        "color": "orange"
+      },
+      {
+        "type": "MISSING_BULLETS",
+        "field": "experience[2].bullets",
+        "message": "Consider adding more bullet points to showcase a range of achievements in this role",
+        "color": "orange"
+      }
+    ],
+    "achievementsFound": 6
+  },
+  {
+    "index": 2,
+    "name": "Candidate 3475",
+    "status": "Failed",
+    "error": "read ECONNRESET"
+  }
+]

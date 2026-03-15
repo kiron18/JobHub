@@ -1,0 +1,252 @@
+[
+  {
+    "index": 1,
+    "name": "Candidate 7351",
+    "status": "Success",
+    "alerts": [
+      {
+        "type": "MISSING_MANDATORY_INFO",
+        "field": "profile.email",
+        "message": "Please add your email address",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_MANDATORY_INFO",
+        "field": "profile.phone",
+        "message": "Please add your phone number",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_MANDATORY_INFO",
+        "field": "profile.linkedin",
+        "message": "Please add your LinkedIn URL",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_MANDATORY_INFO",
+        "field": "profile.location",
+        "message": "Please add your location",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_INFO",
+        "field": "profile.professionalSummary",
+        "message": "Please add a professional summary",
+        "color": "orange"
+      },
+      {
+        "type": "MISSING_EDUCATION",
+        "field": "education",
+        "message": "Please add your education details",
+        "color": "red"
+      }
+    ],
+    "achievementsFound": 1
+  },
+  {
+    "index": 2,
+    "name": "Candidate 1923",
+    "status": "Success",
+    "alerts": [
+      {
+        "type": "MISSING_CONTACT_INFO",
+        "field": "profile.email",
+        "message": "Please add your email address.",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_CONTACT_INFO",
+        "field": "profile.phone",
+        "message": "Please add your phone number.",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_CONTACT_INFO",
+        "field": "profile.linkedin",
+        "message": "Please add your LinkedIn URL.",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_LOCATION",
+        "field": "profile.location",
+        "message": "Please add your location.",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_PROFESSIONAL_SUMMARY",
+        "field": "profile.professionalSummary",
+        "message": "Please add a professional summary.",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_METRIC",
+        "field": "experience[1].bullets[1]",
+        "message": "Consider adding a specific metric to 'Increased React & TypeScript projects' to demonstrate its impact.",
+        "color": "orange"
+      },
+      {
+        "type": "MISSING_METRIC",
+        "field": "experience[1].bullets[2]",
+        "message": "Consider adding a specific metric to 'Spearheaded React & TypeScript projects' to demonstrate its impact.",
+        "color": "orange"
+      }
+    ],
+    "achievementsFound": 3
+  },
+  {
+    "index": 3,
+    "name": "Candidate 7999",
+    "status": "Success",
+    "alerts": [
+      {
+        "type": "MISSING_CONTACT_INFO",
+        "field": "profile.email",
+        "message": "Add email address for contact",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_CONTACT_INFO",
+        "field": "profile.phone",
+        "message": "Add phone number for contact",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_LOCATION",
+        "field": "profile.location",
+        "message": "Add suburb and state for location",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_LINKEDIN",
+        "field": "profile.linkedin",
+        "message": "Add LinkedIn URL for professional networking",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_PROFESSIONAL_SUMMARY",
+        "field": "profile.professionalSummary",
+        "message": "Add a 3-4 sentence professional summary",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_EDUCATION",
+        "field": "education",
+        "message": "Add relevant education information",
+        "color": "red"
+      }
+    ],
+    "achievementsFound": 1
+  },
+  {
+    "index": 4,
+    "name": "Candidate 7804",
+    "status": "Success",
+    "alerts": [
+      {
+        "type": "MISSING_CONTACT_INFO",
+        "field": "profile.email",
+        "message": "Please add your email address",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_CONTACT_INFO",
+        "field": "profile.phone",
+        "message": "Please add your phone number",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_CONTACT_INFO",
+        "field": "profile.linkedin",
+        "message": "Please add your LinkedIn URL",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_CONTACT_INFO",
+        "field": "profile.location",
+        "message": "Please add your location",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_METRIC",
+        "field": "experience[0].bullets[2]",
+        "message": "Consider adding a metric to the 'Delivered Python Data Pipelines projects' point",
+        "color": "orange"
+      },
+      {
+        "type": "DUPLICATED_BULLET_POINTS",
+        "field": "experience[1].bullets",
+        "message": "Avoid duplicating bullet points, consider merging similar points",
+        "color": "orange"
+      }
+    ],
+    "achievementsFound": 2
+  },
+  {
+    "index": 5,
+    "name": "Candidate 5",
+    "status": "Success",
+    "alerts": [
+      {
+        "type": "MISSING_CONTACT_INFO",
+        "field": "profile.email",
+        "message": "Please add your email address for contact purposes",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_CONTACT_INFO",
+        "field": "profile.phone",
+        "message": "Please add your phone number for contact purposes",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_CONTACT_INFO",
+        "field": "profile.linkedin",
+        "message": "Consider adding your LinkedIn profile URL for professional networking",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_LOCATION",
+        "field": "profile.location",
+        "message": "Please specify your location for job relevance",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_SUMMARY",
+        "field": "profile.professionalSummary",
+        "message": "Craft a professional summary to highlight your expertise and career goals",
+        "color": "red"
+      },
+      {
+        "type": "MISSING_METRIC",
+        "field": "experience[0].bullets[0]",
+        "message": "Add a metric or outcome to 'Optimized Salesforce CRM projects' to demonstrate impact",
+        "color": "orange"
+      },
+      {
+        "type": "MISSING_METRIC",
+        "field": "experience[0].bullets[1]",
+        "message": "Add a metric or outcome to 'Delivered Salesforce CRM projects' to demonstrate impact",
+        "color": "orange"
+      },
+      {
+        "type": "MISSING_METRIC",
+        "field": "experience[0].bullets[2]",
+        "message": "Quantify the outcome of 'Automated Python Data Pipelines projects'",
+        "color": "orange"
+      },
+      {
+        "type": "MISSING_METRIC",
+        "field": "experience[1].bullets[2]",
+        "message": "Specify how 'Increased Python Data Pipelines projects' contributed to the company's goals",
+        "color": "orange"
+      },
+      {
+        "type": "MISSING_METRIC",
+        "field": "experience[2].bullets[1]",
+        "message": "Add metrics or outcomes to 'Delivered React & TypeScript projects' to show its impact",
+        "color": "orange"
+      }
+    ],
+    "achievementsFound": 7
+  }
+]
