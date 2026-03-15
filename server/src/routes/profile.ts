@@ -375,4 +375,28 @@ router.get('/jobs', authenticate, async (req, res) => {
     }
 });
 
+router.patch('/jobs/:id', authenticate, async (req, res) => {
+    const { id } = req.params as any;
+    const userId = (req as any).user.id;
+    const { status, dateApplied } = req.body;
+
+    try {
+        const job = await prisma.jobApplication.update({
+            where: {
+                id,
+                candidateProfile: { userId }
+            },
+            data: {
+                ...(status && { status }),
+                ...(dateApplied !== undefined && { dateApplied: dateApplied ? new Date(dateApplied) : null })
+            },
+            include: { documents: true }
+        });
+        res.json(job);
+    } catch (error) {
+        console.error('Update Job Error:', error);
+        res.status(500).json({ error: 'Failed to update job application' });
+    }
+});
+
 export default router;

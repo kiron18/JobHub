@@ -1,8 +1,8 @@
 export const STAGE_1_PROMPT = (text: string) => `
-You are a expert Career Coach and Data Extraction Engine. 
+You are a expert Career Coach and Data Extraction Engine.
 Your goal is 100% data density and providing helpful coaching hints to candidates.
 
-Extract EVERY piece of information into the structured JSON format below. 
+Extract EVERY piece of information into the structured JSON format below.
 Compare extracted data against the "Standard Resume Standards" (Reverse chronological, metrics needed, no personal ID).
 
 Specific Instructions:
@@ -61,7 +61,7 @@ ${text}
 `;
 
 export const STAGE_2_PROMPT = (role: string, company: string, bullets: string[]) => `
-Review the following resume bullet points for the role of "${role}" at "${company}". 
+Review the following resume bullet points for the role of "${role}" at "${company}".
 Identify which points represent "Achievements" with measurable impact, leadership, or significant projects.
 
 For each achievement, extract:
@@ -116,10 +116,11 @@ TASK:
 4. Identify 3-5 "Core Competencies" the JD emphasizes most (beyond keywords, what are they actually looking for?).
 5. Rank the provided achievements by relevance to this JD.
 6. Calculate an overall match score (0-100).
+7. Set requiresSelectionCriteria to true ONLY if the JD explicitly contains the words "Selection Criteria", "Key Selection Criteria", "KSC", "Statement of Claims", or "Capability Statements". Do NOT set to true for general competency questions or role requirement lists.
 
 ---
 CONSTRAINTS:
-- Return ONLY valid JSON. 
+- Return ONLY valid JSON.
 - No preamble, no conversational text.
 
 OUTPUT SCHEMA:
@@ -127,7 +128,7 @@ OUTPUT SCHEMA:
   "matchScore": number,
   "keywords": string[],
   "analysisTone": string,
-  "requiresSelectionCriteria": boolean (true if the JD explicitly asks for a standalone selection criteria document or 'Selection Criteria' responses),
+  "requiresSelectionCriteria": boolean,
   "coreCompetencies": string[],
   "extractedMetadata": {
     "company": string,
@@ -142,14 +143,14 @@ OUTPUT SCHEMA:
   ]
 }
 
-You must respond with valid JSON only. 
+You must respond with valid JSON only.
 `;
 
 export const DOCUMENT_GENERATION_PROMPT = (
-    type: 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE', 
-    jd: string, 
-    profile: any, 
-    selectedAchievements: any[], 
+    type: 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE',
+    jd: string,
+    profile: any,
+    selectedAchievements: any[],
     ruleBase: string,
     analysisContext?: { tone?: string, competencies?: string[] }
 ) => `
@@ -176,9 +177,9 @@ Volunteering: ${JSON.stringify(profile.volunteering || [])}
 Languages: ${JSON.stringify(profile.languages || [])}
 
 SELECTED ACHIEVEMENTS (Use ONLY these for evidence):
-${selectedAchievements.length > 0 
+${selectedAchievements.length > 0
     ? selectedAchievements.map(a => `- [${a.title}] ${a.description} (Metric: ${a.metric})`).join('\n')
-    : "No specific achievements selected. Focus on general skills and background if possible, or use placeholders."}
+    : "No specific achievements selected. Focus on general skills and background."}
 
 JOB DESCRIPTION:
 ${jd}
@@ -186,28 +187,39 @@ ${jd}
 ---
 TASK:
 Generate the ${type} as high-impact Markdown.
-1. Use standard English (e.g., "organized", "analyzed").
-   HEADER BLOCK (resume only — no "## Header" label, just these 3 lines):
-   Line 1: Candidate full name (e.g. # John Smith)
-   Line 2: Target Job Title from JD | Industry (e.g. *Senior Product Manager | FinTech*)
-   Line 3: contact details separated by | (e.g. john@email.com | 0400 000 000 | linkedin.com/in/john | Sydney, NSW, Australia)
-2. CONTENT GAP HANDLING: If you need a specific piece of information from the candidate that is NOT in the data above, YOU MUST insert a "Missing Flag".
-   - Format: [MISSING: clear description of what is needed]
-3. Map achievements specifically to the "Impact" the JD asks for. Do NOT just list achievements; synthesize them into the narrative.
-4. For Cover Letters: Focus heavily on the "Why this role" and "Why this company" mapping. Include placeholders at the top for contact details if missing.
-5. Standardized Formatting (RESUME only — ignore for COVER_LETTER):
-   - ${type === 'COVER_LETTER' ? 'Do NOT use headers or subheadings.' : `Use ## for main section headers EXCEPT the header block — the name/title/contact block at the top has NO heading label. Never output the word "Header" or "## Header".`}
-   - Use - for bullet points.
-   - SKILLS SECTION: Format each sub-category as a single horizontal line, not a vertical list.
-     Example: **Technical Skills:** Python • Excel • SQL • Tableau
-     Example: **Industry Knowledge:** Financial Modelling • Regulatory Compliance • Agile
-     Example: **Languages:** English (Professional) • Mandarin (Native)
-     Example: **Soft Skills:** Stakeholder Engagement • Data Storytelling • Cross-cultural Communication
-   - OMIT any section entirely if the candidate has no data for it. Never output an empty section or a section with placeholder text.
-   - Minimise vertical whitespace — the goal is 1–2 pages. Do not add blank lines between bullets.
+1. Use Australian English (organised, analysed, recognised, programme, labour, colour).
+   ${type !== 'COVER_LETTER' && type !== 'STAR_RESPONSE' ? `HEADER BLOCK (no "## Header" label — just these 3 lines at the top):
+   Line 1: # Candidate full name
+   Line 2: *Target Job Title from JD | Industry*
+   Line 3: contact details separated by | (e.g. john@email.com | 0400 000 000 | linkedin.com/in/john | Sydney, NSW, Australia)` : ''}
+
+2. MISSING DATA RULE: If a section has no data in CANDIDATE DATA above, OMIT that section entirely.
+   - Never insert [MISSING:] placeholders or empty sections into the document.
+   - Never write "Available upon request" for sections that simply don't exist in the candidate's data.
+   ${type === 'STAR_RESPONSE' ? `- For selection criteria gaps, flag with [MISSING: description] only in the criteria response itself.` : ''}
+
+3. ACHIEVEMENT INTEGRATION: ${type === 'COVER_LETTER'
+    ? `Weave the selected achievements directly into the cover letter as specific evidence. Each achievement should be referenced naturally within the narrative paragraphs — not as a bullet list. Show HOW these achievements prove fit for this specific role.`
+    : type === 'STAR_RESPONSE'
+    ? `Map each selected achievement to the most relevant selection criterion. Build each STAR response around the achievement evidence.`
+    : `Map each selected achievement to the most impactful bullet point under the relevant experience entry.`}
+
+4. ${type === 'STAR_RESPONSE'
+    ? `STAR FORMAT REQUIRED: Each criterion response must follow Situation (10-15%) → Task (10-15%) → Action (40-50%) → Result (20-25%). Do NOT label these components as subheadings. Write in flowing prose, first person, active voice.`
+    : type === 'COVER_LETTER'
+    ? `COVER LETTER FORMAT: No headers or subheadings. 3-4 paragraphs. Opening: why this specific role and company. Body: evidence from achievements. Closing: next step.`
+    : `SPECIALIST POSITIONING: Present the candidate as a deep specialist in their field. Cut generic filler. Every bullet must demonstrate domain expertise. Quality over quantity — 3 sharp bullets beat 6 weak ones.`}
+
+5. ${type === 'RESUME' ? `FORMATTING:
+   - Use ## for section headers (not the header block at top)
+   - Skills as single horizontal lines with • separator: **Technical Skills:** Python • SQL • Excel
+   - Omit any section entirely if no candidate data exists for it
+   - Minimise vertical whitespace — target 1–2 pages
+   - No blank lines between bullets` : ''}
 
 CONSTRAINTS:
 - Do NOT use bold ** within bullet points unless highlighting a metric.
 - Do NOT include any meta-talk or pleasantries (e.g., "Here is your resume...").
 - Output ONLY the Markdown content.
+- Do NOT fabricate any data not present in CANDIDATE DATA above.
 `;

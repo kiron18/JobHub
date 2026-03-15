@@ -9,6 +9,7 @@ import { ResumeImporter } from './components/ResumeImporter';
 import { MatchEngine } from './components/MatchEngine';
 import { ProfileModal } from './components/ProfileModal';
 import { ApplicationWorkspace } from './components/ApplicationWorkspace';
+import { ApplicationTracker } from './components/ApplicationTracker';
 
 // Auth & Context
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -162,10 +163,9 @@ function App() {
                 <DashboardLayout>
                   <Routes>
                     <Route path="/" element={<Dashboard />} />
-                    <Route path="/tracker" element={<div className="glass-card p-12 text-2xl font-bold text-white">Application Tracker Coming Soon</div>} />
+                    <Route path="/tracker" element={<ApplicationTracker />} />
                     <Route path="/application-workspace" element={<ApplicationWorkspace />} />
                     <Route path="/workspace" element={<Workspace />} />
-                    <Route path="/settings" element={<div className="glass-card p-12 text-2xl font-bold text-white">Settings Coming Soon</div>} />
                     {/* Fallback to dashboard */}
                     <Route path="*" element={<Dashboard />} />
                   </Routes>

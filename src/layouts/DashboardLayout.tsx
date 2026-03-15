@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, FileText, Briefcase, Settings, PlusCircle, LogOut, User } from 'lucide-react';
+import { LayoutDashboard, FileText, Briefcase, LogOut, User } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -8,8 +8,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
     const navItems = [
         { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/tracker', icon: Briefcase, label: 'Applications' },
-        { to: '/workspace', icon: FileText, label: 'Documents' },
-        { to: '/settings', icon: Settings, label: 'Settings' },
+        { to: '/workspace', icon: FileText, label: 'Profile & Achievements' },
     ];
 
     return (
@@ -60,10 +59,6 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                         </button>
                     </div>
 
-                    <button className="w-full flex items-center justify-center gap-3 px-4 py-4 bg-brand-600 hover:bg-brand-500 rounded-2xl font-bold transition-all group shadow-lg shadow-brand-600/20 active:scale-95">
-                        <PlusCircle size={20} className="group-hover:rotate-90 transition-transform" />
-                        <span>New Application</span>
-                    </button>
                 </div>
             </aside>
 

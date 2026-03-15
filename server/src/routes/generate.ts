@@ -78,6 +78,19 @@ router.post('/:type', authenticate, async (req, res) => {
             analysisContext
         );
 
+        console.log('=== GENERATION DIAGNOSTIC ===');
+        console.log('type:', type);
+        console.log('jdLength:', jobDescription.length);
+        console.log('achievementCount:', selectedAchievements.length);
+        console.log('profileFields:', Object.keys(profile).filter(
+            k => !!(profile as any)[k]
+        ));
+        console.log('achievementSample:', JSON.stringify(
+            selectedAchievements.slice(0, 2)
+        ));
+        console.log('promptFirst500:', prompt.substring(0, 500));
+        console.log('=== END DIAGNOSTIC ===');
+
         console.log(`[Generation] Prompt built, calling LLM for ${type}...`);
         const content = await callLLM(prompt, false); // Not JSON, returns Markdown
         console.log(`[Generation] LLM responded with ${content.length} characters.`);

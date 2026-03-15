@@ -3,7 +3,7 @@ import { prisma } from '../index';
 
 export interface RankedAchievement {
   id: string;
-  text: string;
+  description: string;
   relevanceScore: number;
   tier: 'STRONG' | 'MODERATE' | 'WEAK';
   matchedKeywords: string[];
@@ -19,7 +19,14 @@ export async function rankAchievements(
   keywords: string[]
 ): Promise<RankedAchievement[]> {
   // 1. Semantic Search for top achievements in user's namespace
-  const matches = await searchAchievements(userId, jobDescription, 15);
+  const rawMatches = await searchAchievements(userId, jobDescription, 15);
+  // Deduplicate by ID (same achievement can appear multiple times if re-indexed)
+  const seen = new Set<string>();
+  const matches = rawMatches.filter((m: any) => {
+    if (seen.has(m.id)) return false;
+    seen.add(m.id);
+    return true;
+  });
 
   const ranked: RankedAchievement[] = matches.map((match: any) => {
     const meta = match.metadata;
@@ -42,7 +49,7 @@ export async function rankAchievements(
 
     return {
       id: match.id,
-      text: meta.text,
+      description: meta.text,
       relevanceScore: Math.round(semanticScore * 100),
       tier,
       matchedKeywords,
