@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { callLLM } from '../services/llm';
 import { STAGE_1_PROMPT, STAGE_2_PROMPT } from '../services/prompts';
+import { parseLLMJson } from '../utils/parseLLMResponse';
 
 const router = Router();
 
@@ -16,45 +17,30 @@ router.post('/resume', async (req, res) => {
         console.log('--- Stage 1: Structure Extraction ---');
         let stage1Raw = await callLLM(STAGE_1_PROMPT(text));
         console.log('Raw Stage 1 Output:', stage1Raw);
-        
-        let cleanedStage1 = stage1Raw;
-        // Clean JSON if LLM returned markdown backticks
-        if (cleanedStage1.includes('```json')) {
-            cleanedStage1 = cleanedStage1.split('```json')[1].split('```')[0].trim();
-        } else if (cleanedStage1.includes('```')) {
-            cleanedStage1 = cleanedStage1.split('```')[1].split('```')[0].trim();
-        }
 
         let stage1Data: any;
         try {
-            stage1Data = JSON.parse(cleanedStage1);
+            stage1Data = parseLLMJson(stage1Raw);
         } catch (e: any) {
-            console.error('Failed to parse Stage 1 JSON. Cleaned output:', cleanedStage1);
+            console.error('Failed to parse Stage 1 JSON. Raw output:', stage1Raw);
             throw new Error(`Invalid Stage 1 JSON: ${e.message}`);
         }
 
         console.log('--- Stage 2: Achievement Detection (Per-Role) ---');
         let achievements: any[] = [];
-        
+
         if (stage1Data.experience && Array.isArray(stage1Data.experience)) {
             for (let i = 0; i < stage1Data.experience.length; i++) {
                 const exp = stage1Data.experience[i];
                 if (exp.bullets && exp.bullets.length > 0) {
                     console.log(`Analyzing role: ${exp.role} at ${exp.company}`);
                     let stage2Raw = await callLLM(STAGE_2_PROMPT(exp.role, exp.company, exp.bullets));
-                    let cleanedStage2 = stage2Raw;
-
-                    if (cleanedStage2.includes('```json')) {
-                        cleanedStage2 = cleanedStage2.split('```json')[1].split('```')[0].trim();
-                    } else if (cleanedStage2.includes('```')) {
-                        cleanedStage2 = cleanedStage2.split('```')[1].split('```')[0].trim();
-                    }
 
                     let stage2Data;
                     try {
-                        stage2Data = JSON.parse(cleanedStage2);
+                        stage2Data = parseLLMJson(stage2Raw);
                     } catch (e: any) {
-                        console.error('Failed to parse Stage 2 JSON. Cleaned output:', cleanedStage2);
+                        console.error('Failed to parse Stage 2 JSON. Raw output:', stage2Raw);
                         // Don't fail the whole extraction if one role fails, just log and continue
                         continue;
                     }
@@ -81,7 +67,7 @@ router.post('/resume', async (req, res) => {
         });
     } catch (error: any) {
         console.error('Extraction Workflow Error:', error);
-        res.status(500).json({ 
+        res.status(500).json({
             error: 'Failed to extract data from resume',
             details: error.message,
             stack: error.stack

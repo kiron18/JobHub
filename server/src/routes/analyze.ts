@@ -4,8 +4,25 @@ import { authenticate } from '../middleware/auth';
 import { callLLM } from '../services/llm';
 import { searchAchievements } from '../services/vector';
 import { JOB_ANALYSIS_PROMPT } from '../services/prompts';
+import { parseLLMJson } from '../utils/parseLLMResponse';
 
 const router = Router();
+
+async function callLLMWithRetry(
+  prompt: string, isJson: boolean, maxRetries = 3
+): Promise<string> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await callLLM(prompt, isJson);
+    } catch (error) {
+      if (attempt === maxRetries) throw error;
+      const delay = Math.pow(2, attempt) * 1000;
+      console.log(`[LLM Retry] Attempt ${attempt} failed. Retrying in ${delay}ms`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  throw new Error('All LLM retries exhausted');
+}
 
 router.post('/job', authenticate, async (req: any, res: any) => {
     try {
@@ -49,7 +66,7 @@ router.post('/job', authenticate, async (req: any, res: any) => {
             console.error('Pinecone Search Failed:', err.message);
             // We continue, just with less context
         }
-        
+
         const achievementsText = (matches && matches.length > 0)
             ? matches.map((match: any) => {
                 const meta = match.metadata || {};
@@ -60,14 +77,14 @@ router.post('/job', authenticate, async (req: any, res: any) => {
         // 4. Call LLM to analyze the match
         console.log('Step 3: Calling LLM for Analysis...');
         const analysisPrompt = JOB_ANALYSIS_PROMPT(
-            jobDescription, 
-            { ...profile, skills: parsedSkills }, 
+            jobDescription,
+            { ...profile, skills: parsedSkills },
             achievementsText
         );
 
         let analysisRaw;
         try {
-            analysisRaw = await callLLM(analysisPrompt, true);
+            analysisRaw = await callLLMWithRetry(analysisPrompt, true);
             console.log('LLM Response received');
         } catch (err: any) {
             console.error('LLM Call Failed:', err.message);
@@ -76,15 +93,10 @@ router.post('/job', authenticate, async (req: any, res: any) => {
 
         let analysis;
         try {
-            const cleaned = analysisRaw.trim().replace(/^```json|```$/g, '').trim();
-            analysis = JSON.parse(cleaned);
+            analysis = parseLLMJson(analysisRaw);
             console.log('LLM Response parsed successfully');
         } catch (e) {
-            console.error('[Parse Failure] Raw LLM response:', analysisRaw);
-            return res.status(500).json({ 
-                error: 'Failed to process AI analysis results. Please retry.',
-                rawResponse: analysisRaw 
-            });
+            return res.status(500).json({ error: 'Failed to process AI analysis results. Please retry.' });
         }
 
         // 5. Detailed Ranking & Metadata Enrichment
@@ -146,8 +158,8 @@ router.post('/job', authenticate, async (req: any, res: any) => {
             extractedMetadata: { company, role },
             rankedAchievements: finalRanked,
             hasSufficientEvidence,
-            evidenceWarning: hasSufficientEvidence 
-                ? null 
+            evidenceWarning: hasSufficientEvidence
+                ? null
                 : "You have fewer than 3 'Strong' matched achievements. Consider adding more specific metrics to your profile for a better match."
         });
 
