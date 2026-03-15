@@ -1,0 +1,35 @@
+Sarah Chen
+sarah.chen@gmail.com | 0412 345 678 | linkedin.com/in/sarahchen | Sydney, NSW, Australia
+
+PROFESSIONAL SUMMARY
+Data analyst with 5+ years of experience in financial services, specialising in business intelligence, automated reporting, and stakeholder-facing data visualisation. Delivered $2M in efficiency savings through process automation at ANZ. Seeking a senior analyst role in a data-driven organisation.
+
+WORK EXPERIENCE
+
+Senior Data Analyst | ANZ Banking Group, Sydney
+January 2020 – Present
+• Reduced monthly reporting cycle from 5 days to 6 hours by building automated Tableau dashboards used by 60 stakeholders across retail banking
+• Designed a Python-based anomaly detection pipeline that flagged $1.8M in fraudulent transactions across 3 months, presented findings to the CFO
+• Led a team of 3 junior analysts, conducting weekly code reviews and upskilling sessions on SQL best practices
+• Partnered with the compliance team to deliver regulatory reporting for APRA — zero late submissions over 3 years
+
+Data Analyst | Commonwealth Bank, Sydney
+June 2018 – December 2019
+• Built 12 self-service Power BI dashboards adopted by the retail operations team, eliminating 8 hours/week of manual Excel work
+• Wrote complex SQL queries (window functions, CTEs) against a 50M-row transaction database
+• Participated in the migration of legacy reporting systems to Snowflake, improving query performance by 65%
+
+EDUCATION
+
+Bachelor of Commerce (Statistics) | University of Sydney | 2017
+Relevant subjects: Statistical Modelling, Database Systems, Financial Analysis
+
+SKILLS
+Technical: SQL (advanced), Python (pandas, numpy, matplotlib), Tableau, Power BI, Snowflake, Excel
+Industry Knowledge: Financial Services, Regulatory Reporting, Fraud Detection, Business Intelligence
+Languages: English (Native), Mandarin (Professional)
+Soft Skills: Stakeholder Engagement, Data Storytelling, Team Leadership
+
+CERTIFICATIONS
+Tableau Desktop Specialist — Tableau | 2021
+AWS Certified Cloud Practitioner | 2022

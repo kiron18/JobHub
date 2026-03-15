@@ -1,0 +1,25 @@
+Data Analyst — Financial Services
+ANZ Banking Group | Melbourne, VIC (Hybrid)
+
+About the role:
+Join ANZ's Business Intelligence team to transform complex financial data into actionable insights that drive strategic decisions across our retail banking division.
+
+Key responsibilities:
+- Develop and maintain Tableau dashboards used by 50+ stakeholders across the business
+- Write complex SQL queries to extract, transform, and analyse large datasets
+- Conduct ad hoc analysis to support business decisions and regulatory reporting
+- Partner with business units to understand data requirements and translate them into analytical solutions
+- Identify trends and anomalies in transaction data and present findings to senior leadership
+- Automate recurring reports using Python (pandas, numpy)
+
+Requirements:
+- 3+ years experience in a data analysis or business intelligence role
+- Advanced SQL skills — comfortable with window functions, CTEs, complex joins
+- Proficiency in Tableau or similar BI tools (Power BI, Looker)
+- Python experience for data manipulation (pandas, numpy)
+- Strong stakeholder management and presentation skills
+- Experience in financial services or banking preferred
+- Tertiary qualification in Statistics, Mathematics, Computer Science, or related field
+
+What we offer:
+Competitive salary, annual performance bonus, flexible working arrangements, career development pathways.

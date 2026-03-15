@@ -1,0 +1,27 @@
+Senior Software Engineer — FinTech Platform
+Afterpay | Sydney, NSW (Hybrid)
+
+About the role:
+We're looking for a Senior Software Engineer to join our core payments platform team. You'll design and build distributed systems that process millions of transactions daily across Australia, New Zealand, and the US.
+
+What you'll do:
+- Architect and implement scalable microservices using TypeScript and Node.js
+- Design and optimise PostgreSQL databases handling high transaction volumes
+- Build and maintain REST and GraphQL APIs consumed by mobile and web clients
+- Lead technical design discussions and mentor junior engineers
+- Collaborate with Product and Data teams to define technical requirements
+- Champion engineering best practices: code review, testing, documentation
+
+What we're looking for:
+- 5+ years professional software engineering experience
+- Strong TypeScript and Node.js expertise
+- Deep understanding of relational databases (PostgreSQL preferred)
+- Experience with cloud infrastructure (AWS or GCP)
+- Familiarity with containerisation (Docker, Kubernetes)
+- Understanding of payment systems or financial technology is a plus
+- Excellent communication and collaboration skills
+
+Tech stack: TypeScript, Node.js, React, PostgreSQL, Redis, AWS, GitHub Actions
+
+Why Afterpay:
+Flexible working, competitive salary, equity participation, learning & development budget.
