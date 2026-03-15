@@ -135,11 +135,11 @@ router.post('/job', authenticate, async (req: any, res: any) => {
            jobApplication = await prisma.jobApplication.create({
             data: {
                 userId,
+                candidateProfileId: profile.id,
                 title: role,
                 company: company,
-                description: jobDescription,
-                analysisContext: JSON.stringify(analysis)
-            } as any
+                description: jobDescription
+            }
         });
             console.log(`Job Application created: ${jobApplication.id}`);
         } catch (err: any) {

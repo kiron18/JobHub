@@ -150,7 +150,7 @@ router.post('/profile', authenticate, async (req, res) => {
                 }
             }) as any;
 
-            // Process achievements
+            // Process achievements — deduplicate against existing by title to prevent re-import stacking
             if (discoveredAchievements && discoveredAchievements.length > 0) {
                 const achievementsToCreate = discoveredAchievements.map((ach: any) => {
                     const experienceId = ach.experienceIndex !== undefined && updatedProfile.experience && updatedProfile.experience[ach.experienceIndex]
@@ -171,9 +171,17 @@ router.post('/profile', authenticate, async (req, res) => {
                     };
                 });
 
-                await tx.achievement.createMany({
-                    data: achievementsToCreate
+                // Fetch existing titles so re-importing the same resume doesn't stack duplicates
+                const existing = await tx.achievement.findMany({
+                    where: { candidateProfileId: updatedProfile.id },
+                    select: { title: true }
                 });
+                const existingTitles = new Set(existing.map((a: any) => a.title.toLowerCase().trim()));
+                const newOnly = achievementsToCreate.filter((a: any) => !existingTitles.has(a.title.toLowerCase().trim()));
+
+                if (newOnly.length > 0) {
+                    await tx.achievement.createMany({ data: newOnly });
+                }
             }
 
             return updatedProfile;
