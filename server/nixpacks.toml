@@ -1,5 +1,5 @@
 [phases.build]
-cmds = ["npm ci", "npx prisma generate"]
+cmds = ["npx prisma generate"]
 
 [start]
 cmd = "npx tsx src/index.ts"
