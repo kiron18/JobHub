@@ -1,5 +1,8 @@
+[phases.install]
+cmds = ["npm ci --include=dev"]
+
 [phases.build]
-cmds = ["npm ci --include=dev", "npx prisma generate", "npx tsc"]
+cmds = ["npx prisma generate", "npx tsc"]
 
 [start]
 cmd = "node dist/index.js"
