@@ -2,7 +2,7 @@ import axios from 'axios';
 import { supabase } from './supabase';
 
 const api = axios.create({
-  baseURL: 'http://localhost:3002/api',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3002/api',
   timeout: 70000, // 70s timeout to allow server-side LLM calls (60s) to finish
 });
 

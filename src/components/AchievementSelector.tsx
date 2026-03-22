@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 interface Achievement {
     id: string;
     description: string;
-    tier: 'STRONG' | 'MEDIUM' | 'WEAK';
+    tier: 'STRONG' | 'MODERATE' | 'WEAK';
     category?: string;
 }
 
@@ -33,7 +33,7 @@ export const AchievementSelector: React.FC<AchievementSelectorProps> = ({
     onUpdate,
     onConfirm
 }) => {
-    const [filter, setFilter] = useState<'ALL' | 'STRONG' | 'MEDIUM' | 'WEAK'>('ALL');
+    const [filter, setFilter] = useState<'ALL' | 'STRONG' | 'MODERATE' | 'WEAK'>('ALL');
 
     const filteredAchievements = achievements
         .filter((a, idx, arr) => arr.findIndex(b => b.id === a.id) === idx)
@@ -84,7 +84,7 @@ export const AchievementSelector: React.FC<AchievementSelectorProps> = ({
                         </header>
 
                         <div className="p-4 border-b border-slate-800 flex gap-2 shrink-0 overflow-x-auto no-scrollbar">
-                            {(['ALL', 'STRONG', 'MEDIUM', 'WEAK'] as const).map(f => (
+                            {(['ALL', 'STRONG', 'MODERATE', 'WEAK'] as const).map(f => (
                                 <button
                                     key={f}
                                     onClick={() => setFilter(f)}
@@ -123,7 +123,7 @@ export const AchievementSelector: React.FC<AchievementSelectorProps> = ({
                                             <div className="flex items-center gap-2 mb-1">
                                                 <span className={`text-[8px] px-1.5 py-0.5 rounded font-black tracking-tighter ${
                                                     achievement.tier === 'STRONG' ? 'bg-emerald-500/20 text-emerald-400' :
-                                                    achievement.tier === 'MEDIUM' ? 'bg-amber-500/20 text-amber-400' :
+                                                    achievement.tier === 'MODERATE' ? 'bg-amber-500/20 text-amber-400' :
                                                     'bg-slate-500/20 text-slate-400'
                                                 }`}>
                                                     {achievement.tier}

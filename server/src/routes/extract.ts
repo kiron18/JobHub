@@ -6,11 +6,18 @@ import { parseLLMJson } from '../utils/parseLLMResponse';
 
 const router = Router();
 
-router.post('/resume', async (req, res) => {
+router.post('/resume', authenticate, async (req, res) => {
     const { text } = req.body;
 
     if (!text) {
         return res.status(400).json({ error: 'Resume text is required' });
+    }
+
+    // Scanned / image-only PDF detection
+    if (text.trim().length < 100) {
+        return res.status(400).json({
+            error: "We weren't able to read the text in your PDF \u2014 it looks like it may be a scanned image rather than a text-based document. This is easy to fix: run it through a free OCR tool like smallpdf.com or ilovepdf.com, then re-upload the result. Alternatively, copy and paste your resume text directly into the text box below."
+        });
     }
 
     try {

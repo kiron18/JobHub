@@ -14,7 +14,8 @@ import {
     ChevronDown,
     ChevronUp,
     Star,
-    Bell
+    Bell,
+    Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -103,7 +104,9 @@ const FollowUpNudge: React.FC<{ jobs: JobApplication[] }> = ({ jobs }) => {
     const handleCopy = (job: JobApplication, e: React.MouseEvent) => {
         e.stopPropagation();
         navigator.clipboard.writeText(buildFollowUpEmail(job));
-        toast.success('Copied to clipboard');
+        toast.success('Copied to clipboard', {
+            description: 'Remember to replace [Hiring Manager\'s Name] and [Your Name] before sending.'
+        });
     };
 
     const toggleExpand = (id: string) => {
@@ -191,7 +194,7 @@ const FollowUpNudge: React.FC<{ jobs: JobApplication[] }> = ({ jobs }) => {
     );
 };
 
-const JobCard: React.FC<{ job: JobApplication; onStatusChange: (id: string, status: ApplicationStatus, dateApplied?: string) => void }> = ({ job, onStatusChange }) => {
+const JobCard: React.FC<{ job: JobApplication; onStatusChange: (id: string, status: ApplicationStatus, dateApplied?: string) => void; onDelete: (id: string) => void }> = ({ job, onStatusChange, onDelete }) => {
     const [expanded, setExpanded] = useState(false);
 
     const days = daysSinceApplied(job.dateApplied);
@@ -313,6 +316,17 @@ const JobCard: React.FC<{ job: JobApplication; onStatusChange: (id: string, stat
                                     </div>
                                 </div>
                             )}
+
+                            {/* Delete */}
+                            <div className="pt-2 border-t border-slate-800">
+                                <button
+                                    onClick={() => onDelete(job.id)}
+                                    className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600 hover:text-red-400 transition-colors uppercase tracking-wider"
+                                >
+                                    <Trash2 size={12} />
+                                    Remove application
+                                </button>
+                            </div>
                         </div>
                     </motion.div>
                 )}
@@ -347,8 +361,25 @@ export const ApplicationTracker: React.FC = () => {
         }
     });
 
+    const deleteJobMutation = useMutation({
+        mutationFn: async (id: string) => {
+            await api.delete(`/jobs/${id}`);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['jobs'] });
+            toast.success('Application removed');
+        },
+        onError: () => {
+            toast.error('Failed to remove application');
+        }
+    });
+
     const handleStatusChange = (id: string, status: ApplicationStatus, dateApplied?: string) => {
         updateJobMutation.mutate({ id, status, dateApplied });
+    };
+
+    const handleDelete = (id: string) => {
+        deleteJobMutation.mutate(id);
     };
 
     const filteredJobs = filterStatus === 'ALL'
@@ -456,6 +487,7 @@ export const ApplicationTracker: React.FC = () => {
                             key={job.id}
                             job={job}
                             onStatusChange={handleStatusChange}
+                            onDelete={handleDelete}
                         />
                     ))}
                 </div>

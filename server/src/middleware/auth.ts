@@ -16,8 +16,20 @@ export interface AuthRequest extends Request {
   };
 }
 
+// ── DEV BYPASS ──────────────────────────────────────────────────────────────
+// Set DEV_BYPASS_AUTH=true in .env to skip Supabase token verification.
+// Pins all requests to the real account (Kiron). Remove/unset to re-enable auth.
+const DEV_BYPASS_USER_ID = '00ddaaef-1799-4591-bbb5-536f6f81769e';
+const DEV_BYPASS_EMAIL   = 'kiron182@gmail.com';
+// ────────────────────────────────────────────────────────────────────────────
+
 export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
   if (req.method === 'OPTIONS') {
+    return next();
+  }
+
+  if (process.env.DEV_BYPASS_AUTH === 'true') {
+    req.user = { id: DEV_BYPASS_USER_ID, email: DEV_BYPASS_EMAIL };
     return next();
   }
 

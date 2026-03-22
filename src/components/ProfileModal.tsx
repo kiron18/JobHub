@@ -1,8 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Save, User, Briefcase, GraduationCap, Plus, Loader2, RotateCcw, RotateCw, Trophy, Check } from 'lucide-react';
+import { X, Save, User, Briefcase, GraduationCap, Plus, Loader2, RotateCcw, RotateCw, Trophy, Check, FileText, Trash2 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import api from '../lib/api';
 import { toast } from 'sonner';
+
+interface ResumeVersion {
+  id: string;
+  label: string;
+  createdAt: string;
+}
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -10,15 +17,19 @@ interface ProfileModalProps {
 }
 
 export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
+  const queryClient = useQueryClient();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
   const [redoStack, setRedoStack] = useState<any[]>([]);
+  const [resumeVersions, setResumeVersions] = useState<ResumeVersion[]>([]);
+  const [isDeletingVersion, setIsDeletingVersion] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       fetchProfile();
+      fetchResumeVersions();
     }
   }, [isOpen]);
 
@@ -32,6 +43,30 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
       toast.error('Failed to load profile data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchResumeVersions = async () => {
+    try {
+      const { data } = await api.get('/profile/resumes');
+      setResumeVersions(data);
+    } catch (error) {
+      console.error('Failed to fetch resume versions:', error);
+    }
+  };
+
+  const handleDeleteVersion = async (id: string, label: string) => {
+    if (!window.confirm(`Delete the resume import "${label}"? This does not remove any achievements already added to your bank.`)) return;
+    setIsDeletingVersion(id);
+    try {
+      await api.delete(`/profile/resumes/${id}`);
+      setResumeVersions(prev => prev.filter(v => v.id !== id));
+      toast.success('Resume import deleted');
+    } catch (error) {
+      console.error('Failed to delete resume version:', error);
+      toast.error('Failed to delete resume import');
+    } finally {
+      setIsDeletingVersion(null);
     }
   };
 
@@ -77,7 +112,25 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await api.post('/profile', profile);
+      // Server expects { profile: {...}, experience, education, ... } shape
+      await api.post('/profile', {
+        profile: {
+          name: profile?.name,
+          email: profile?.email,
+          professionalSummary: profile?.professionalSummary,
+          location: profile?.location,
+          phone: profile?.phone,
+          linkedin: profile?.linkedin,
+        },
+        experience: profile?.experience,
+        education: profile?.education,
+        volunteering: profile?.volunteering,
+        certifications: profile?.certifications,
+        languages: profile?.languages,
+        skills: profile?.skills,
+        coachingAlerts: profile?.coachingAlerts,
+      });
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
       toast.success("Profile saved successfully");
       onClose();
     } catch (error) {
@@ -272,7 +325,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
                 <ProfileIsland title="Education" icon={<GraduationCap className="w-5 h-5" />}>
                   <div className="flex flex-wrap gap-3">
                     {profile?.education?.map((edu: any, idx: number) => (
-                      <EditablePill 
+                      <EditablePill
                         key={idx}
                         value={`${edu.degree} at ${edu.institution}`}
                         onSave={(val) => {
@@ -283,13 +336,52 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
                         }}
                       />
                     ))}
-                    <button 
+                    <button
                       onClick={() => updateProfile({ ...profile, education: [...(profile?.education || []), { institution: 'University', degree: 'Degree' }]})}
                       className="px-4 py-2 rounded-full border border-brand-500/30 text-brand-400 text-sm hover:bg-brand-500/10 transition-colors flex items-center gap-2"
                     >
                       <Plus className="w-4 h-4" /> Add Education
                     </button>
                   </div>
+                </ProfileIsland>
+
+                {/* Resume History — read-only log of named resume imports */}
+                <ProfileIsland title="Your resume imports" icon={<FileText className="w-5 h-5" />}>
+                  <p className="text-xs text-white/30 mb-4">
+                    Each resume you import expands your achievement bank. Your achievements are shared across all imports.
+                  </p>
+                  {resumeVersions.length === 0 ? (
+                    <p className="text-sm text-white/20 italic">No resume imports recorded yet.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {resumeVersions.map((version) => (
+                        <div
+                          key={version.id}
+                          className="flex items-center justify-between px-4 py-3 rounded-xl bg-white/5 border border-white/10"
+                        >
+                          <div>
+                            <p className="text-sm font-semibold text-white/80">{version.label}</p>
+                            <p className="text-xs text-white/30">
+                              {new Date(version.createdAt).toLocaleDateString('en-AU', {
+                                day: 'numeric', month: 'short', year: 'numeric'
+                              })}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => handleDeleteVersion(version.id, version.label)}
+                            disabled={isDeletingVersion === version.id}
+                            className="p-2 text-white/20 hover:text-red-400 transition-colors disabled:opacity-30"
+                            title="Delete this import record"
+                          >
+                            {isDeletingVersion === version.id
+                              ? <Loader2 className="w-4 h-4 animate-spin" />
+                              : <Trash2 className="w-4 h-4" />
+                            }
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </ProfileIsland>
               </>
             )}

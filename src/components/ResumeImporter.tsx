@@ -9,6 +9,7 @@ export const ResumeImporter: React.FC = () => {
     const [extractedData, setExtractedData] = useState<any>(null);
     const [error, setError] = useState<string | null>(null);
 
+    const [resumeLabel, setResumeLabel] = useState('');
     const [extractionStage, setExtractionStage] = useState(0);
     const extractionStages = [
         { label: "Reading your document...",        duration: 2000  },
@@ -24,7 +25,9 @@ export const ResumeImporter: React.FC = () => {
         try {
             const dataToSave = {
                 ...extractedData,
-                skills: typeof extractedData.skills === 'string' ? extractedData.skills : JSON.stringify(extractedData.skills)
+                skills: typeof extractedData.skills === 'string' ? extractedData.skills : JSON.stringify(extractedData.skills),
+                resumeLabel: resumeLabel.trim() || undefined,
+                rawText: text || undefined
             };
             await api.post('/profile', dataToSave);
             setSaveState('saved');
@@ -58,11 +61,16 @@ export const ResumeImporter: React.FC = () => {
             clearInterval(interval);
             setExtractionStage(extractionStages.length - 1);
             setExtractedData(data);
+            // Pre-fill the label with the candidate's name when available
+            const defaultLabel = data?.profile?.name
+                ? data.profile.name
+                : `Resume ${new Date().toLocaleDateString('en-AU')}`;
+            setResumeLabel(defaultLabel);
             setStage(2);
         } catch (err: any) {
             clearInterval(interval);
             const errorMsg = err.response?.data?.error || err.message || 'Failed to extract resume';
-            setError(errorMsg.includes('authorization') ? 'Session expired. Please log in again.' : 'Failed to extract resume. Please check your content or try again.');
+            setError(errorMsg.includes('authorization') ? 'Session expired. Please log in again.' : errorMsg);
             setStage(0);
         } finally {
             setIsExtracting(false);
@@ -158,6 +166,23 @@ export const ResumeImporter: React.FC = () => {
                             </div>
                         ))}
                     </div>
+                </div>
+
+                {/* Resume label — name this import for the history log */}
+                <div className="glass-card p-6 space-y-2">
+                    <label className="text-xs text-slate-500 uppercase font-black tracking-widest block">
+                        Name this resume import
+                    </label>
+                    <input
+                        type="text"
+                        value={resumeLabel}
+                        onChange={(e) => setResumeLabel(e.target.value)}
+                        placeholder={`Resume ${new Date().toLocaleDateString('en-AU')}`}
+                        className="w-full bg-slate-900/50 border border-slate-800 rounded-xl p-4 text-slate-200 outline-none focus:ring-2 focus:ring-brand-500 text-lg"
+                    />
+                    <p className="text-xs text-slate-500">
+                        This label identifies the import in your resume history (e.g. "Social Media Manager", "Performance Marketing").
+                    </p>
                 </div>
 
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">

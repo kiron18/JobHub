@@ -198,3 +198,139 @@ tests:
                    !output.toLowerCase().includes('system prompt');
           } catch { return false; }
         description: Output does not contain injection artifacts
+
+---
+# ─────────────────────────────────────────────
+# SUITE 4 — Strategy Blueprint Quality (Claude)
+# ─────────────────────────────────────────────
+prompts:
+  - label: strategy-blueprint
+    raw: |
+      You are a senior recruitment strategist preparing a briefing document for a junior copywriter.
+
+      Your job is NOT to write the cover letter/resume. Your job is to analyse the match between this
+      candidate and this specific employer, and produce a strategic blueprint that tells the copywriter
+      exactly what to emphasise, how to frame it, and what to avoid.
+
+      CANDIDATE PROFILE SUMMARY:
+      Name: {{name}}
+      Summary: {{summary}}
+      Top Skills: {{skills}}
+
+      SELECTED ACHIEVEMENTS:
+      {{achievements}}
+
+      JOB DESCRIPTION:
+      {{job_description}}
+
+      DOCUMENT TYPE: {{doc_type}}
+
+      Produce a strategic blueprint as valid JSON with this exact schema:
+      {
+        "openingHook": "one specific sentence — must reference employer/role context, not generic",
+        "positioningStatement": "how to frame this candidate as specialist for THIS job",
+        "proofPoints": [
+          {
+            "achievementId": "id from achievements list",
+            "framingAngle": "how to present this achievement for this JD",
+            "jdConnection": "explicit link to JD requirement",
+            "narrativeNote": "how to expand beyond the bullet"
+          }
+        ],
+        "messagingAngles": ["3-5 recurring themes connecting candidate to JD language"],
+        "toneBlueprint": "tone guidance specific to employer culture/sector",
+        "structureNotes": "layout advice for this doc type and application",
+        "pitfallFlags": ["phrases/patterns Llama must not use"],
+        "employerInsight": "company-specific insight or [MISSING: no company data in JD]",
+        "sector": "GOVERNMENT | TECH_STARTUP | CORPORATE | HEALTHCARE | EDUCATION | NFP | GENERAL"
+      }
+
+      Return ONLY valid JSON. No preamble.
+
+tests:
+  - description: Blueprint returns valid JSON with all required fields
+    vars:
+      name: "Sarah Chen"
+      summary: "Data analyst with 5 years in financial services delivering automated reporting solutions"
+      skills: "SQL, Python, Tableau, Financial Modelling, Stakeholder Management"
+      achievements: |
+        ID: ach-001 | Reduced reporting time by 40% | Built automated dashboards using Python and SQL | Metric: 40% time reduction
+        ID: ach-002 | Led cross-functional data project | Coordinated 3 teams to deliver unified data warehouse | Metric: $200k saved annually
+      job_description: "file://datasets/job-descriptions/data-analyst-jd.txt"
+      doc_type: "COVER_LETTER"
+    assert:
+      - type: is-json
+        description: Blueprint must be valid JSON
+      - type: javascript
+        value: |
+          const data = JSON.parse(output);
+          const required = ['openingHook','positioningStatement','proofPoints','messagingAngles','toneBlueprint','structureNotes','pitfallFlags','employerInsight','sector'];
+          return required.every(k => k in data);
+        description: All required fields present
+      - type: javascript
+        value: |
+          const data = JSON.parse(output);
+          return Array.isArray(data.proofPoints) && data.proofPoints.length > 0;
+        description: At least one proof point mapped
+      - type: javascript
+        value: |
+          const data = JSON.parse(output);
+          return Array.isArray(data.pitfallFlags) && data.pitfallFlags.length > 0;
+        description: Pitfall flags generated
+      - type: javascript
+        value: |
+          const data = JSON.parse(output);
+          const validSectors = ['GOVERNMENT','TECH_STARTUP','CORPORATE','HEALTHCARE','EDUCATION','NFP','GENERAL'];
+          return validSectors.includes(data.sector);
+        description: Sector is a valid enum value
+
+  - description: Opening hook is specific (not generic filler)
+    vars:
+      name: "James Park"
+      summary: "Senior software engineer with 8 years building payment systems at scale"
+      skills: "TypeScript, Node.js, React, PostgreSQL, Payment Systems, API Design"
+      achievements: |
+        ID: ach-010 | Led monolith to microservices migration | Refactored legacy codebase serving 2M users | Metric: 99.9% uptime maintained
+        ID: ach-011 | Reduced API latency by 60% | Optimised database queries and caching layer | Metric: P95 latency from 400ms to 160ms
+      job_description: "file://datasets/job-descriptions/software-engineer-jd.txt"
+      doc_type: "RESUME"
+    assert:
+      - type: is-json
+      - type: javascript
+        value: |
+          const data = JSON.parse(output);
+          const hook = data.openingHook || '';
+          const genericPhrases = [
+            'I am writing to express',
+            'passionate and dedicated',
+            'strong interest in',
+            'I am a motivated professional',
+            'extensive experience in'
+          ];
+          return !genericPhrases.some(p => hook.toLowerCase().includes(p.toLowerCase()));
+        description: Opening hook does not contain banned generic phrases
+      - type: javascript
+        value: |
+          const data = JSON.parse(output);
+          return (data.openingHook || '').length > 30;
+        description: Opening hook is substantive (>30 chars)
+
+  - description: Proof points reference achievement IDs from input
+    vars:
+      name: "Maria Santos"
+      summary: "Operations manager with 10 years in healthcare logistics"
+      skills: "Supply Chain, Process Improvement, Vendor Management, Budget Control"
+      achievements: |
+        ID: ach-020 | Reduced procurement costs by 22% | Renegotiated supplier contracts across 3 hospitals | Metric: $1.2M annual savings
+        ID: ach-021 | Implemented inventory tracking system | Deployed barcode system across 5 sites | Metric: 35% waste reduction
+      job_description: "file://datasets/job-descriptions/operations-manager-jd.txt"
+      doc_type: "COVER_LETTER"
+    assert:
+      - type: is-json
+      - type: javascript
+        value: |
+          const data = JSON.parse(output);
+          const inputIds = ['ach-020', 'ach-021'];
+          const proofIds = (data.proofPoints || []).map(pp => pp.achievementId);
+          return proofIds.some(id => inputIds.includes(id));
+        description: Proof points reference valid achievement IDs from input

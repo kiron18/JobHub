@@ -25,8 +25,19 @@ model CandidateProfile {
   coachingAlerts       Json?        // List of { type, field, message, color }
   achievements         Achievement[]
   jobApplications      JobApplication[]
+  resumeVersions       ResumeVersion[]
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt
+}
+
+model ResumeVersion {
+  id                 String           @id @default(cuid())
+  userId             String
+  candidateProfileId String
+  label              String           // e.g. "Social Media Manager", "Performance Marketing"
+  rawText            String?          // the original resume text that was imported
+  createdAt          DateTime         @default(now())
+  candidateProfile   CandidateProfile @relation(fields: [candidateProfileId], references: [id], onDelete: Cascade)
 }
 
 model Experience {

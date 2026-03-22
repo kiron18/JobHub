@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/node';
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -15,6 +16,13 @@ import authRouter from './routes/auth';
 
 dotenv.config();
 
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  environment: process.env.NODE_ENV || 'development',
+  enabled: !!process.env.SENTRY_DSN, // only active when DSN is set
+  tracesSampleRate: 0.1,
+});
+
 process.on('uncaughtException', (err) => {
   console.error('CRITICAL: Uncaught Exception:', err);
 });
@@ -28,16 +36,20 @@ const app = express();
 const PORT = process.env.PORT || 3002;
 
 app.use(cors({
-    origin: '*',
+    origin: process.env.ALLOWED_ORIGIN ? process.env.ALLOWED_ORIGIN.split(',') : '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json({ limit: '10mb' }));
 
-const logFile = path.join(__dirname, '../server.log');
+const isDev = process.env.NODE_ENV !== 'production';
+const logFile = isDev ? path.join(__dirname, '../server.log') : null;
+
 const log = (msg: string) => {
-    const entry = `${new Date().toISOString()} - ${msg}\n`;
-    fs.appendFileSync(logFile, entry);
+  const entry = `${new Date().toISOString()} - ${msg}\n`;
+  if (logFile) {
+    try { fs.appendFileSync(logFile, entry); } catch {}
+  }
 };
 
 // Redirect console to file
@@ -71,6 +83,9 @@ app.use('/api/extract', extractRouter);
 app.use('/api/generate', generateRouter);
 app.use('/api', profileRouter);
 app.use('/api', documentsRouter);
+
+// Sentry error handler - must be before any other error handling middleware
+Sentry.setupExpressErrorHandler(app);
 
 // Final error handler - must be after all routes
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {

@@ -66,6 +66,61 @@ export async function callLLM(prompt: string, jsonMode: boolean = true) {
     });
 }
 
+const CLAUDE_MODEL = process.env.CLAUDE_MODEL || 'anthropic/claude-sonnet-4-5';
+
+/**
+ * Calls Claude via OpenRouter for strategic/reasoning tasks.
+ * Returns content + usage for cost tracking.
+ */
+export async function callClaude(
+    prompt: string,
+    jsonMode: boolean = true
+): Promise<{ content: string; usage: { promptTokens: number; completionTokens: number } }> {
+    if (!OPENROUTER_API_KEY) {
+        throw new Error('OPENROUTER_API_KEY is not set in environment variables.');
+    }
+
+    return await retryWithBackoff(async () => {
+        const response = await axios.post(
+            OPENROUTER_URL,
+            {
+                model: CLAUDE_MODEL,
+                messages: [
+                    {
+                        role: 'system',
+                        content: jsonMode
+                            ? 'You are a strategic analyst. Return ONLY valid JSON. No preamble, no markdown fences.'
+                            : 'You are a strategic analyst.'
+                    },
+                    {
+                        role: 'user',
+                        content: prompt
+                    }
+                ],
+            },
+            {
+                headers: {
+                    'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+                    'HTTP-Referer': 'http://localhost:5174',
+                    'X-Title': 'JobHub',
+                    'Content-Type': 'application/json',
+                },
+                timeout: 90000,
+            }
+        );
+
+        const content = response.data.choices[0].message.content as string;
+        const usage = response.data.usage || {};
+        return {
+            content,
+            usage: {
+                promptTokens: usage.prompt_tokens || 0,
+                completionTokens: usage.completion_tokens || 0,
+            }
+        };
+    });
+}
+
 /**
  * Generates embeddings for a given text.
  */

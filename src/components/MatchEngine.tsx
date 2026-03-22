@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Target, Loader2, Zap, AlertTriangle, FileText, Mail, List, X, AlertCircle } from 'lucide-react';
+import { Target, Loader2, Zap, AlertTriangle, FileText, Mail, List, X, AlertCircle, XCircle, TrendingDown, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../lib/api';
 
@@ -37,6 +37,103 @@ interface AnalysisResult {
     evidenceWarning?: string;
     requiresSelectionCriteria?: boolean;
 }
+
+interface LowMatchWarningProps {
+    result: AnalysisResult;
+    onProceed: () => void;
+    onClose: () => void;
+}
+
+const LowMatchWarning: React.FC<LowMatchWarningProps> = ({ result, onProceed, onClose }) => {
+    const weakAchievements = result.rankedAchievements.filter(a => a.tier === 'WEAK').slice(0, 3);
+    const strongCount = result.rankedAchievements.filter(a => a.tier === 'STRONG').length;
+    const totalCount = result.rankedAchievements.length;
+
+    return (
+        <AnimatePresence>
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-6"
+                onClick={onClose}
+            >
+                <motion.div
+                    initial={{ scale: 0.92, opacity: 0, y: 20 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    exit={{ scale: 0.92, opacity: 0, y: 20 }}
+                    transition={{ type: 'spring', damping: 22, stiffness: 280 }}
+                    onClick={e => e.stopPropagation()}
+                    className="w-full max-w-lg bg-slate-900 border-2 border-red-500/40 rounded-2xl shadow-2xl shadow-red-900/30 overflow-hidden"
+                >
+                    {/* Red gradient header */}
+                    <div className="bg-gradient-to-br from-red-950/80 to-slate-900 p-8 pb-6 border-b border-red-500/20">
+                        <div className="flex items-center gap-4 mb-4">
+                            <div className="w-14 h-14 bg-red-500/15 rounded-2xl flex items-center justify-center shrink-0">
+                                <XCircle size={28} className="text-red-400" />
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-black text-red-300">Poor Role Match Detected</h2>
+                                <p className="text-sm text-red-400/70 mt-0.5">Applying here is unlikely to lead to an interview</p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-baseline gap-3">
+                            <span className="text-6xl font-black text-red-400">{result.matchScore}%</span>
+                            <div className="space-y-0.5">
+                                <div className="flex items-center gap-1.5 text-red-300/80 text-xs font-bold">
+                                    <TrendingDown size={12} />
+                                    Match Score
+                                </div>
+                                <p className="text-xs text-slate-400">
+                                    {strongCount} of {totalCount} achievements relevant
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="p-8 space-y-5">
+                        {weakAchievements.length > 0 && (
+                            <div className="space-y-2">
+                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Why Your Profile Doesn't Fit</p>
+                                <div className="space-y-2">
+                                    {weakAchievements.map(a => (
+                                        <div key={a.id} className="flex items-start gap-2.5 p-3 bg-slate-800/60 rounded-lg border border-slate-700/50">
+                                            <XCircle size={13} className="text-red-400/70 mt-0.5 shrink-0" />
+                                            <p className="text-xs text-slate-400 leading-relaxed">{a.reason}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl">
+                            <p className="text-xs text-amber-300/80 leading-relaxed">
+                                <span className="font-bold text-amber-300">Recommendation:</span> Find roles that align with your existing achievement evidence. A 60%+ match score gives you a strong foundation to write a compelling, evidence-based application.
+                            </p>
+                        </div>
+
+                        <div className="flex flex-col gap-2 pt-1">
+                            <button
+                                onClick={onClose}
+                                className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/30"
+                            >
+                                <ArrowLeft size={16} />
+                                Go Back — Find a Better Role
+                            </button>
+                            <button
+                                onClick={onProceed}
+                                className="w-full py-2 rounded-xl text-slate-600 hover:text-slate-400 text-xs font-medium transition-colors"
+                            >
+                                Proceed anyway — I understand the risk
+                            </button>
+                        </div>
+                    </div>
+                </motion.div>
+            </motion.div>
+        </AnimatePresence>
+    );
+};
 
 interface TailorModalProps {
     onConfirm: () => void;
@@ -136,15 +233,42 @@ export const MatchEngine: React.FC = () => {
     });
     const [error, setError] = useState<string | null>(null);
     const [showTailorModal, setShowTailorModal] = useState(false);
+    const [showLowMatchWarning, setShowLowMatchWarning] = useState(false);
+    const [pendingNavType, setPendingNavType] = useState<'resume' | 'cover-letter' | 'selection-criteria' | null>(null);
+
+    const LOW_MATCH_THRESHOLD = 40;
 
     const navigateTo = (type: 'resume' | 'cover-letter' | 'selection-criteria') => {
         if (!result) return;
+        if ((result.matchScore || 0) < LOW_MATCH_THRESHOLD) {
+            setPendingNavType(type);
+            setShowLowMatchWarning(true);
+            return;
+        }
         navigate('/application-workspace', {
             state: { jobDescription, analysis: result, initialTab: type }
         });
     };
 
-    const handleTailorResumeClick = () => setShowTailorModal(true);
+    const handleLowMatchProceed = () => {
+        setShowLowMatchWarning(false);
+        if (pendingNavType) {
+            navigate('/application-workspace', {
+                state: { jobDescription, analysis: result, initialTab: pendingNavType }
+            });
+        }
+        setPendingNavType(null);
+    };
+
+    const handleTailorResumeClick = () => {
+        if (!result) return;
+        if ((result.matchScore || 0) < LOW_MATCH_THRESHOLD) {
+            setPendingNavType('resume');
+            setShowLowMatchWarning(true);
+            return;
+        }
+        setShowTailorModal(true);
+    };
     const handleTailorConfirm = () => {
         setShowTailorModal(false);
         navigateTo('resume');
@@ -183,6 +307,13 @@ export const MatchEngine: React.FC = () => {
 
     return (
         <>
+            {showLowMatchWarning && result && (
+                <LowMatchWarning
+                    result={result}
+                    onProceed={handleLowMatchProceed}
+                    onClose={() => { setShowLowMatchWarning(false); setPendingNavType(null); }}
+                />
+            )}
             {showTailorModal && (
                 <TailorResumeModal
                     onConfirm={handleTailorConfirm}
@@ -247,8 +378,9 @@ export const MatchEngine: React.FC = () => {
                             <div className="flex flex-col items-center px-4 border-r border-slate-800">
                                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Match Score</span>
                                 <span className={`text-2xl font-black ${
-                                    (result?.matchScore || 0) > 80 ? 'text-emerald-400' :
-                                    (result?.matchScore || 0) > 60 ? 'text-brand-400' : 'text-orange-400'
+                                    (result?.matchScore || 0) >= 80 ? 'text-emerald-400' :
+                                    (result?.matchScore || 0) >= 60 ? 'text-brand-400' :
+                                    (result?.matchScore || 0) >= 40 ? 'text-orange-400' : 'text-red-400'
                                 }`}>
                                     {result?.matchScore || 0}%
                                 </span>

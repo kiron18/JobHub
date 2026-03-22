@@ -9,7 +9,8 @@ import {
     Mail,
     List,
     RefreshCcw,
-    PlusCircle
+    PlusCircle,
+    AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../lib/api';
@@ -17,6 +18,7 @@ import ReactMarkdown from 'react-markdown';
 import { Toaster, toast } from 'sonner';
 import { AchievementSelector } from './AchievementSelector';
 import { MissingFlag } from './MissingFlag';
+import { StrategistDebrief } from './StrategistDebrief';
 
 interface WorkspaceState {
     jobDescription: string;
@@ -49,9 +51,30 @@ interface WorkspaceState {
     coreCompetencies?: string[];
     jobApplicationId?: string;
     requiresSelectionCriteria?: boolean;
+    matchScore?: number;
+    blueprint?: any | null;
 }
 
 import { ProfileCompletion } from './ProfileCompletion';
+
+// Inline amber pill for [VERIFY: ...] tags produced by the LLM.
+const VerifyTag: React.FC<{ description: string }> = ({ description }) => {
+    const [expanded, setExpanded] = useState(false);
+    return (
+        <span className="inline-block mx-1">
+            <span
+                role="button"
+                tabIndex={0}
+                aria-label={`Verify: ${description}`}
+                onClick={() => setExpanded(prev => !prev)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setExpanded(prev => !prev); }}
+                className="bg-amber-100 text-amber-800 border border-amber-300 rounded-full px-2 py-0.5 text-xs font-medium cursor-pointer hover:bg-amber-200 transition-colors select-none"
+            >
+                {expanded ? description : '✓ verify'}
+            </span>
+        </span>
+    );
+};
 
 export const ApplicationWorkspace: React.FC = () => {
     const location = useLocation();
@@ -107,7 +130,9 @@ export const ApplicationWorkspace: React.FC = () => {
             analysisTone: currentAnalysis.analysisTone,
             coreCompetencies: currentAnalysis.coreCompetencies,
             jobApplicationId: currentAnalysis.jobApplicationId,
-            requiresSelectionCriteria: currentAnalysis.requiresSelectionCriteria
+            requiresSelectionCriteria: currentAnalysis.requiresSelectionCriteria,
+            matchScore: currentAnalysis.matchScore,
+            blueprint: null
         } as any;
     });
 
@@ -124,7 +149,8 @@ export const ApplicationWorkspace: React.FC = () => {
             extractedMetadata: state.metadata,
             analysisTone: state.analysisTone,
             coreCompetencies: state.coreCompetencies,
-            jobApplicationId: state.jobApplicationId
+            jobApplicationId: state.jobApplicationId,
+            matchScore: state.matchScore
         };
         localStorage.setItem('jobhub_current_analysis', JSON.stringify(currentAnalysis));
     }, [state.jobDescription, state.activeTab, state.documents, state.documentIds, state.metadata, state.jobApplicationId]);
@@ -132,6 +158,7 @@ export const ApplicationWorkspace: React.FC = () => {
 
     const [isEditing, setIsEditing] = useState(false);
     const [isConfirmingRegen, setIsConfirmingRegen] = useState(false);
+    const [rateLimitError, setRateLimitError] = useState(false);
 
     useEffect(() => {
         // Fetch existing documents if we have a jobApplicationId but NO document contents for the current tab
@@ -308,10 +335,11 @@ export const ApplicationWorkspace: React.FC = () => {
 
     const handleGenerate = async (type: WorkspaceState['activeTab'], regenerate = false) => {
         if (state.hasFailed[type] && !regenerate) return;
-        
+
         const controller = new AbortController();
         setAbortController(controller);
-        
+        setRateLimitError(false);
+
         setState(prev => ({ ...prev, isGenerating: true }));
         try {
             const { data } = await api.post(`/generate/${type}`, {
@@ -340,13 +368,19 @@ export const ApplicationWorkspace: React.FC = () => {
                     [type]: false
                 },
                 saveStatus: 'saved',
-                isGenerating: false
+                isGenerating: false,
+                blueprint: data.blueprint ?? prev.blueprint
             }));
             setIsConfirmingRegen(false);
             setIsEditing(false);
         } catch (err: any) {
             if (err.name === 'CanceledError' || err.name === 'AbortError') {
                 console.log('Generation cancelled by user');
+                return;
+            }
+            if (err?.response?.status === 429) {
+                setRateLimitError(true);
+                setState(prev => ({ ...prev, isGenerating: false }));
                 return;
             }
             console.error('Generation failed:', err);
@@ -535,7 +569,7 @@ export const ApplicationWorkspace: React.FC = () => {
                                         exit={{ opacity: 0, y: 10 }}
                                         className="absolute right-0 top-full mt-2 w-48 bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-2xl z-20"
                                     >
-                                        <p className="text-[10px] text-slate-400 font-bold mb-3">Replaced current draft?</p>
+                                        <p className="text-[10px] text-slate-400 font-bold mb-3">Replace current draft?</p>
                                         <div className="flex gap-2">
                                             <button 
                                                 onClick={() => handleGenerate(state.activeTab, true)}
@@ -556,7 +590,7 @@ export const ApplicationWorkspace: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-hidden p-6 flex flex-col items-center bg-slate-900/10">
+                    <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center bg-slate-900/10 custom-scrollbar">
                         {state.activeTab === 'resume' && !state.isGenerating && (profile?.certifications?.length === 0 || profile?.volunteering?.length === 0) && (
                             <div className="w-full max-w-3xl mb-3 flex gap-2 flex-wrap">
                                 {profile?.certifications?.length === 0 && (
@@ -575,7 +609,21 @@ export const ApplicationWorkspace: React.FC = () => {
                         )}
                         <div className="w-full max-w-3xl bg-white text-slate-900 shadow-2xl rounded-sm flex flex-col overflow-hidden">
                             <div className="flex-1 overflow-y-auto p-12 custom-scrollbar-light">
-                                {state.isGenerating ? (
+                                {rateLimitError ? (
+                                    <div className="flex flex-col items-center justify-center h-full py-40 space-y-4">
+                                        <div className="flex items-start gap-3 max-w-md w-full bg-amber-50 border border-amber-200 rounded-xl p-5">
+                                            <AlertCircle size={18} className="text-amber-600 mt-0.5 shrink-0" />
+                                            <div className="space-y-1">
+                                                <p className="text-amber-900 font-bold text-sm">
+                                                    You've used all 10 of your free generations today.
+                                                </p>
+                                                <p className="text-amber-700 text-sm leading-relaxed">
+                                                    Come back tomorrow — your documents and achievements are all saved.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : state.isGenerating ? (
                                     <div className="flex flex-col items-center justify-center h-full py-40 space-y-6">
                                         <div className="relative">
                                             <div className="animate-spin text-brand-600">
@@ -622,28 +670,35 @@ export const ApplicationWorkspace: React.FC = () => {
                                             children={normaliseMarkdown(state.documents[state.activeTab] || '')}
                                             components={{
                                                 text: ({ children }) => {
-                                                    if (typeof children === 'string' && children.includes('[MISSING:')) {
-                                                        const parts = children.split(/(\[MISSING:[^\]]+\])/);
-                                                        return (
-                                                            <>
-                                                                {parts.map((part, i) => {
-                                                                    if (part.startsWith('[MISSING:')) {
-                                                                        return (
-                                                                            <MissingFlag 
-                                                                                key={i} 
-                                                                                text={part} 
-                                                                                onEditInline={() => setIsEditing(true)}
-                                                                                onAddToProfile={handleAddToProfile}
-                                                                                onRemove={handleRemoveFlag}
-                                                                            />
-                                                                        );
-                                                                    }
-                                                                    return part;
-                                                                })}
-                                                            </>
-                                                        );
-                                                    }
-                                                    return <>{children}</>;
+                                                    if (typeof children !== 'string') return <>{children}</>;
+                                                    const hasMissing = children.includes('[MISSING:');
+                                                    const hasVerify = children.includes('[VERIFY:');
+                                                    if (!hasMissing && !hasVerify) return <>{children}</>;
+
+                                                    // Split on both tag types in a single pass
+                                                    const parts = children.split(/(\[MISSING:[^\]]+\]|\[VERIFY:[^\]]+\])/g);
+                                                    return (
+                                                        <>
+                                                            {parts.map((part, i) => {
+                                                                if (part.startsWith('[MISSING:')) {
+                                                                    return (
+                                                                        <MissingFlag
+                                                                            key={i}
+                                                                            text={part}
+                                                                            onEditInline={() => setIsEditing(true)}
+                                                                            onAddToProfile={handleAddToProfile}
+                                                                            onRemove={handleRemoveFlag}
+                                                                        />
+                                                                    );
+                                                                }
+                                                                if (part.startsWith('[VERIFY:')) {
+                                                                    const description = part.replace(/^\[VERIFY:\s*/, '').replace(/\]$/, '').trim();
+                                                                    return <VerifyTag key={i} description={description} />;
+                                                                }
+                                                                return part;
+                                                            })}
+                                                        </>
+                                                    );
                                                 }
                                             }}
                                         />
@@ -651,6 +706,13 @@ export const ApplicationWorkspace: React.FC = () => {
                                 )}
                             </div>
                         </div>
+                        {state.blueprint && !state.isGenerating && (
+                            <StrategistDebrief
+                                blueprint={state.blueprint}
+                                rankedAchievements={state.rankedAchievements}
+                                companyName={state.metadata?.company}
+                            />
+                        )}
                     </div>
                 </section>
             </main>
