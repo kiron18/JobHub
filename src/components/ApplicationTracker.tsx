@@ -5,7 +5,7 @@ import {
     FileText,
     ChevronRight,
     Clock,
-    CheckCircle2,
+
     XCircle,
     Send,
     Trophy,

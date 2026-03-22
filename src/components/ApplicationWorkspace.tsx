@@ -635,11 +635,7 @@ export const ApplicationWorkspace: React.FC = () => {
                                         </div>
                                         <div className="text-center space-y-2">
                                             <p className="text-slate-500 font-bold text-sm tracking-tight">
-                                                {(() => {
-                                                    const steps = ['Analyzing requirements...', 'Synthesizing achievements...', 'Matching tonal profile...', 'Drafting content...', 'Polishing results...'];
-                                                    // Simple stage selector based on how long it usually takes
-                                                    return "Drafting your " + state.activeTab.replace('-', ' ') + "...";
-                                                })()}
+                                                {"Drafting your " + state.activeTab.replace('-', ' ') + "..."}
                                             </p>
                                             <div className="w-48 h-1 bg-slate-100 rounded-full overflow-hidden mx-auto">
                                                 <motion.div 
