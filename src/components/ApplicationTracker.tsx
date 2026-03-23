@@ -5,7 +5,7 @@ import {
     FileText,
     ChevronRight,
     Clock,
-
+    X,
     XCircle,
     Send,
     Trophy,
@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import ReactMarkdown from 'react-markdown';
 import api from '../lib/api';
 
 type ApplicationStatus = 'SAVED' | 'APPLIED' | 'INTERVIEW' | 'REJECTED' | 'OFFER';
@@ -88,6 +89,76 @@ const DocumentBadge: React.FC<{ type: Document['type'] }> = ({ type }) => {
         <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded border ${colors[type]}`}>
             {labels[type]}
         </span>
+    );
+};
+
+const DocumentViewerModal: React.FC<{
+    doc: Document;
+    jobTitle: string;
+    company: string;
+    onClose: () => void;
+}> = ({ doc, jobTitle, company, onClose }) => {
+    const handleCopy = () => {
+        navigator.clipboard.writeText(doc.content);
+        toast.success('Copied to clipboard');
+    };
+
+    const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (e.target === e.currentTarget) onClose();
+    };
+
+    return (
+        <div
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-6"
+            onClick={handleBackdropClick}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Document viewer: ${doc.title ?? doc.type}`}
+        >
+            <motion.div
+                initial={{ y: 100, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 100, opacity: 0 }}
+                transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+                className="w-full sm:max-w-3xl bg-slate-900 border border-slate-800 rounded-t-2xl sm:rounded-2xl flex flex-col h-screen sm:h-auto sm:max-h-[85vh] overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+            >
+                {/* Header */}
+                <div className="flex items-center justify-between gap-4 px-5 py-4 border-b border-slate-800 shrink-0">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <DocumentBadge type={doc.type} />
+                        <div className="min-w-0">
+                            <p className="text-sm font-bold text-slate-100 truncate">{jobTitle}</p>
+                            <p className="text-xs text-slate-500 truncate">{company}</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                        <button
+                            onClick={handleCopy}
+                            aria-label="Copy document content to clipboard"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider text-slate-400 border border-slate-700 hover:border-slate-600 hover:text-slate-200 transition-colors"
+                        >
+                            <Copy size={11} />
+                            Copy
+                        </button>
+                        <button
+                            onClick={onClose}
+                            aria-label="Close document viewer"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors"
+                        >
+                            <X size={16} />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Content */}
+                <div className="overflow-y-auto flex-1 custom-scrollbar-light p-6">
+                    <div className="prose prose-invert prose-sm max-w-none">
+                        <ReactMarkdown>{doc.content}</ReactMarkdown>
+                    </div>
+                </div>
+            </motion.div>
+        </div>
     );
 };
 
@@ -196,6 +267,7 @@ const FollowUpNudge: React.FC<{ jobs: JobApplication[] }> = ({ jobs }) => {
 
 const JobCard: React.FC<{ job: JobApplication; onStatusChange: (id: string, status: ApplicationStatus, dateApplied?: string) => void; onDelete: (id: string) => void }> = ({ job, onStatusChange, onDelete }) => {
     const [expanded, setExpanded] = useState(false);
+    const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
 
     const days = daysSinceApplied(job.dateApplied);
     const showFollowUpAlert = job.status === 'APPLIED' && days !== null && days >= 7;
@@ -209,6 +281,7 @@ const JobCard: React.FC<{ job: JobApplication; onStatusChange: (id: string, stat
     };
 
     return (
+        <>
         <motion.div
             layout
             initial={{ opacity: 0, y: 8 }}
@@ -311,7 +384,14 @@ const JobCard: React.FC<{ job: JobApplication; onStatusChange: (id: string, stat
                                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">Documents</p>
                                     <div className="flex flex-wrap gap-2">
                                         {job.documents.map(doc => (
-                                            <DocumentBadge key={doc.id} type={doc.type} />
+                                            <button
+                                                key={doc.id}
+                                                onClick={() => setSelectedDoc(doc)}
+                                                aria-label={`View ${doc.title ?? doc.type} document`}
+                                                className="cursor-pointer opacity-100 hover:opacity-70 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded"
+                                            >
+                                                <DocumentBadge type={doc.type} />
+                                            </button>
                                         ))}
                                     </div>
                                 </div>
@@ -332,6 +412,19 @@ const JobCard: React.FC<{ job: JobApplication; onStatusChange: (id: string, stat
                 )}
             </AnimatePresence>
         </motion.div>
+
+        <AnimatePresence>
+            {selectedDoc && (
+                <DocumentViewerModal
+                    key={selectedDoc.id}
+                    doc={selectedDoc}
+                    jobTitle={job.title}
+                    company={job.company}
+                    onClose={() => setSelectedDoc(null)}
+                />
+            )}
+        </AnimatePresence>
+        </>
     );
 };
 
