@@ -8,6 +8,9 @@ server/.env.production
 
 # Large/generated files
 Resumes/
+
+# Git worktrees
+.worktrees/
 screenshots/
 Report/
 server/scripts/qa_report.md
@@ -38,3 +41,5 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+.vercel
