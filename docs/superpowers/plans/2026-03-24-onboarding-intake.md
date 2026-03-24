@@ -513,6 +513,12 @@ router.post('/retry', authenticate, async (req: AuthRequest, res: Response) => {
           where: { id: report.id },
           data: { status: 'COMPLETE', reportMarkdown: markdown },
         });
+        // Must also set hasCompletedOnboarding here — same as submit route.
+        // Without this, a successful retry leaves the dashboard permanently locked.
+        await prisma.candidateProfile.update({
+          where: { userId },
+          data: { hasCompletedOnboarding: true },
+        });
       })
       .catch(async (err) => {
         console.error('[Onboarding] Retry failed:', err);
