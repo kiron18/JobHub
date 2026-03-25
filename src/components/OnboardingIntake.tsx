@@ -1,35 +1,87 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useContext, createContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import api from '../lib/api';
 
-// ── Types ────────────────────────────────────────────────────────────────────
+// ── Theme ─────────────────────────────────────────────────────────────────────
+
+interface Theme {
+  bg: string; dotColor: string;
+  card: string; cardBorder: string; cardShadow: string;
+  text: string; textMuted: string; textFaint: string;
+  inputBg: string; inputBorder: string; inputText: string;
+  btnBg: string; btnText: string; btnShadow: string;
+  progressBg: string; progressFill: string;
+  chipBg: string; chipText: string;
+  optBg: string; optBorder: string; optText: string;
+  optActiveBg: string; optActiveBorder: string; optActiveText: string;
+  pillBg: string; pillBorder: string; pillText: string;
+  pillActiveBg: string; pillActiveBorder: string; pillActiveText: string;
+  blobGrad: string; blobShadow: string;
+  toggleBg: string; toggleIcon: string;
+  fileBg: string; fileBorder: string;
+}
+
+const LIGHT: Theme = {
+  bg: '#eceef4', dotColor: '#bfc4d1',
+  card: 'rgba(255,255,255,0.62)', cardBorder: 'rgba(255,255,255,0.9)',
+  cardShadow: '0 8px 80px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.95)',
+  text: '#111827', textMuted: '#6b7280', textFaint: '#9ca3af',
+  inputBg: 'rgba(255,255,255,0.78)', inputBorder: 'rgba(0,0,0,0.1)', inputText: '#111827',
+  btnBg: '#111827', btnText: '#ffffff', btnShadow: '0 4px 24px rgba(0,0,0,0.2)',
+  progressBg: 'rgba(0,0,0,0.08)', progressFill: '#111827',
+  chipBg: 'rgba(17,24,39,0.07)', chipText: '#374151',
+  optBg: 'rgba(255,255,255,0.55)', optBorder: 'rgba(0,0,0,0.1)', optText: '#374151',
+  optActiveBg: '#111827', optActiveBorder: '#111827', optActiveText: '#ffffff',
+  pillBg: 'rgba(255,255,255,0.6)', pillBorder: 'rgba(0,0,0,0.12)', pillText: '#6b7280',
+  pillActiveBg: '#111827', pillActiveBorder: '#111827', pillActiveText: '#ffffff',
+  blobGrad: 'radial-gradient(circle at 33% 28%, #ffffff 0%, #dde1ec 55%, #c4c9d9 100%)',
+  blobShadow: 'inset -10px -10px 28px rgba(0,0,0,0.07), inset 5px 5px 18px rgba(255,255,255,0.95), 20px 32px 80px rgba(0,0,0,0.14)',
+  toggleBg: 'rgba(0,0,0,0.08)', toggleIcon: '#6b7280',
+  fileBg: 'rgba(255,255,255,0.5)', fileBorder: 'rgba(0,0,0,0.12)',
+};
+
+const DARK: Theme = {
+  bg: '#0d1117', dotColor: '#1b2030',
+  card: 'rgba(255,255,255,0.05)', cardBorder: 'rgba(255,255,255,0.1)',
+  cardShadow: '0 8px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)',
+  text: '#f3f4f6', textMuted: '#9ca3af', textFaint: '#4b5563',
+  inputBg: 'rgba(255,255,255,0.07)', inputBorder: 'rgba(255,255,255,0.11)', inputText: '#f3f4f6',
+  btnBg: '#f3f4f6', btnText: '#111827', btnShadow: '0 4px 24px rgba(0,0,0,0.4)',
+  progressBg: 'rgba(255,255,255,0.1)', progressFill: '#f3f4f6',
+  chipBg: 'rgba(255,255,255,0.08)', chipText: '#d1d5db',
+  optBg: 'rgba(255,255,255,0.04)', optBorder: 'rgba(255,255,255,0.1)', optText: '#d1d5db',
+  optActiveBg: '#f3f4f6', optActiveBorder: '#f3f4f6', optActiveText: '#111827',
+  pillBg: 'rgba(255,255,255,0.06)', pillBorder: 'rgba(255,255,255,0.12)', pillText: '#9ca3af',
+  pillActiveBg: '#f3f4f6', pillActiveBorder: '#f3f4f6', pillActiveText: '#111827',
+  blobGrad: 'radial-gradient(circle at 33% 28%, #1e2535 0%, #131924 55%, #0d1117 100%)',
+  blobShadow: 'inset -10px -10px 28px rgba(0,0,0,0.6), inset 5px 5px 18px rgba(255,255,255,0.03), 20px 32px 80px rgba(0,0,0,0.5)',
+  toggleBg: 'rgba(255,255,255,0.1)', toggleIcon: '#9ca3af',
+  fileBg: 'rgba(255,255,255,0.05)', fileBorder: 'rgba(255,255,255,0.12)',
+};
+
+const ThemeCtx = createContext<{ T: Theme; dark: boolean }>({ T: LIGHT, dark: false });
+const useTheme = () => useContext(ThemeCtx);
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface IntakeAnswers {
-  targetRole: string;
-  targetCity: string;
-  seniority: string;
-  industry: string;
-  searchDuration: string;
-  applicationsCount: string;
-  channels: string[];
-  channelOther: string;
+  targetRole: string; targetCity: string;
+  seniority: string; industry: string;
+  searchDuration: string; applicationsCount: string;
+  channels: string[]; channelOther: string;
   responsePattern: string;
-  blockerOptions: string[];
-  blockerOther: string;
+  blockerOptions: string[]; blockerOther: string;
   perceivedBlocker: string;
 }
 
-// ── Constants ────────────────────────────────────────────────────────────────
+// ── Constants ─────────────────────────────────────────────────────────────────
 
 const SENIORITY_OPTIONS = ['Graduate', 'Mid-level', 'Senior', 'Lead', 'Executive'];
-const INDUSTRY_OPTIONS = [
-  'Tech', 'FinTech', 'Consulting', 'Marketing', 'Finance',
-  'Healthcare', 'Education', 'Government', 'Other',
-];
-const DURATION_OPTIONS = ['Less than a month', '1–3 months', '3–6 months', '6–12 months', 'Over a year'];
-const COUNT_OPTIONS = ['Under 10', '10–30', '30–60', '60–100', '100+'];
+const INDUSTRY_OPTIONS = ['Any', 'Tech', 'FinTech', 'Consulting', 'Marketing', 'Finance', 'Healthcare', 'Education', 'Government', 'Other'];
+const DURATION_OPTIONS = ['Less than a month', '1-3 months', '3-6 months', '6-12 months', 'Over a year'];
+const COUNT_OPTIONS = ['Under 10', '10-30', '30-60', '60-100', '100+'];
 const CHANNEL_OPTIONS = ['LinkedIn', 'Seek', 'Indeed', 'Recruiters', 'Direct applications', 'Referrals', 'Other'];
 const RESPONSE_OPTIONS = [
   { value: 'mostly_silence', label: 'Mostly silence', sub: 'Applications go in and nothing comes back' },
@@ -41,7 +93,7 @@ const RESPONSE_OPTIONS = [
 const BLOCKER_OPTIONS = [
   'Lack of Australian work experience',
   'My resume or cover letters',
-  'Experience gap — targeting roles above where I am',
+  'Experience gap - targeting roles above where I am',
   'Interview nerves or performance',
 ];
 const PROCESSING_LINES = [
@@ -51,176 +103,196 @@ const PROCESSING_LINES = [
   'Building your diagnosis...',
 ];
 
-// ── Design tokens ─────────────────────────────────────────────────────────────
+const STEP_LABELS = [
+  '',
+  'Your target is locked in.',
+  'Search history added.',
+  'Profile almost complete.',
+  'Ready to build your diagnosis.',
+];
 
-const GLASS_CARD: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.58)',
-  backdropFilter: 'blur(32px)',
-  WebkitBackdropFilter: 'blur(32px)',
-  border: '1px solid rgba(255,255,255,0.88)',
-  boxShadow: '0 8px 80px rgba(0,0,0,0.07), 0 1px 0 rgba(255,255,255,0.95) inset',
-  borderRadius: '28px',
-};
+const STEP_CTAS = ['', 'Lock in my target', 'Add my history', 'Complete my profile', 'Build my diagnosis'];
 
-const BLOB: React.CSSProperties = {
-  background: 'radial-gradient(circle at 33% 28%, #ffffff 0%, #dde1ec 55%, #c4c9d9 100%)',
-  boxShadow: [
-    'inset -10px -10px 28px rgba(0,0,0,0.07)',
-    'inset 5px 5px 18px rgba(255,255,255,0.95)',
-    '20px 32px 80px rgba(0,0,0,0.14)',
-    '4px 8px 20px rgba(0,0,0,0.06)',
-  ].join(', '),
-  borderRadius: '50%',
-};
-
-const INPUT: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.75)',
-  border: '1px solid rgba(0,0,0,0.09)',
-  borderRadius: '12px',
-  color: '#111827',
-  fontSize: '15px',
-  padding: '12px 16px',
-  width: '100%',
-  outline: 'none',
-  transition: 'box-shadow 0.2s, border-color 0.2s',
-};
-
-const LABEL: React.CSSProperties = {
-  display: 'block',
-  fontSize: '11px',
-  fontWeight: 700,
-  letterSpacing: '0.14em',
-  textTransform: 'uppercase',
-  color: '#9ca3af',
-  marginBottom: '8px',
-};
-
-const BTN_PRIMARY: React.CSSProperties = {
-  width: '100%',
-  padding: '15px 24px',
-  borderRadius: '16px',
-  background: '#111827',
-  color: '#ffffff',
-  fontWeight: 900,
-  fontSize: '16px',
-  border: 'none',
-  cursor: 'pointer',
-  transition: 'background 0.2s, transform 0.1s, box-shadow 0.2s',
-  boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
-  letterSpacing: '-0.01em',
-};
-
-// ── Background scene ──────────────────────────────────────────────────────────
+// ── Scene ─────────────────────────────────────────────────────────────────────
 
 function Scene() {
+  const { T, dark } = useTheme();
+  const blobStyle: React.CSSProperties = {
+    background: T.blobGrad,
+    boxShadow: T.blobShadow,
+    borderRadius: '50%',
+    position: 'fixed',
+    pointerEvents: 'none',
+  };
   return (
     <>
-      {/* Dot grid */}
-      <div
-        className="fixed inset-0 pointer-events-none"
-        style={{
-          backgroundColor: '#eceef4',
-          backgroundImage: 'radial-gradient(circle, #c0c4d0 1px, transparent 1px)',
-          backgroundSize: '22px 22px',
-        }}
-      />
-
-      {/* Blob — bottom left (large) */}
-      <motion.div
-        className="fixed pointer-events-none"
-        style={{ ...BLOB, width: 380, height: 380, bottom: -80, left: -80 }}
+      <div className="fixed inset-0 pointer-events-none" style={{
+        backgroundColor: T.bg,
+        backgroundImage: `radial-gradient(circle, ${T.dotColor} 1px, transparent 1px)`,
+        backgroundSize: '22px 22px',
+        transition: 'background-color 0.4s',
+      }} />
+      <motion.div style={{ ...blobStyle, width: 380, height: 380, bottom: -80, left: -80 }}
         animate={{ x: [0, 18, -8, 0], y: [0, -14, 8, 0], scale: [1, 1.02, 0.99, 1] }}
-        transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
-      />
-
-      {/* Blob — top right (medium) */}
-      <motion.div
-        className="fixed pointer-events-none"
-        style={{ ...BLOB, width: 280, height: 280, top: -60, right: -40 }}
+        transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }} />
+      <motion.div style={{ ...blobStyle, width: 280, height: 280, top: -60, right: -40 }}
         animate={{ x: [0, -12, 6, 0], y: [0, 16, -6, 0], scale: [1, 1.03, 0.98, 1] }}
-        transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut', delay: 1.5 }}
-      />
-
-      {/* Blob — center right (small) */}
-      <motion.div
-        className="fixed pointer-events-none"
-        style={{ ...BLOB, width: 180, height: 180, top: '42%', right: -50 }}
+        transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut', delay: 1.5 }} />
+      <motion.div style={{ ...blobStyle, width: 180, height: 180, top: '42%', right: -50 }}
         animate={{ x: [0, -8, 4, 0], y: [0, 12, -8, 0] }}
-        transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut', delay: 3 }}
-      />
-
-      {/* Blob — top left (small) */}
-      <motion.div
-        className="fixed pointer-events-none"
-        style={{ ...BLOB, width: 140, height: 140, top: '12%', left: '8%' }}
+        transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut', delay: 3 }} />
+      <motion.div style={{ ...blobStyle, width: 140, height: 140, top: '12%', left: '8%' }}
         animate={{ x: [0, 10, -5, 0], y: [0, -8, 6, 0] }}
-        transition={{ duration: 11, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
-      />
+        transition={{ duration: 11, repeat: Infinity, ease: 'easeInOut', delay: 2 }} />
     </>
   );
 }
 
-// ── Progress dots ─────────────────────────────────────────────────────────────
+// ── Dark mode toggle ──────────────────────────────────────────────────────────
 
-function DotProgress({ step, total }: { step: number; total: number }) {
+function ThemeToggle({ dark, onToggle }: { dark: boolean; onToggle: () => void }) {
+  const { T } = useTheme();
   return (
-    <div className="flex gap-2 items-center justify-center mb-8">
-      {Array.from({ length: total }).map((_, i) => (
+    <motion.button
+      onClick={onToggle}
+      whileHover={{ scale: 1.1 }}
+      whileTap={{ scale: 0.92 }}
+      style={{
+        position: 'fixed', top: 20, right: 20, zIndex: 100,
+        width: 40, height: 40, borderRadius: '50%', border: 'none',
+        background: T.toggleBg, color: T.toggleIcon,
+        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 18, transition: 'background 0.3s',
+        backdropFilter: 'blur(12px)',
+      }}
+      title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+    >
+      {dark ? '☀' : '☽'}
+    </motion.button>
+  );
+}
+
+// ── Profile progress header ───────────────────────────────────────────────────
+
+function ProfileProgress({ step, answers }: { step: number; answers: IntakeAnswers }) {
+  const { T } = useTheme();
+  const chips: string[] = [];
+  if (answers.targetRole) chips.push(answers.targetRole + (answers.targetCity ? `, ${answers.targetCity}` : ''));
+  if (answers.seniority) chips.push(answers.seniority);
+  if (answers.industry) chips.push(answers.industry);
+  if (answers.searchDuration) chips.push(answers.searchDuration);
+  if (answers.applicationsCount) chips.push(`${answers.applicationsCount} applications`);
+
+  return (
+    <div style={{ marginBottom: 28 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: T.textFaint }}>
+          Building your profile
+        </span>
+        <span style={{ fontSize: 11, color: T.textFaint, fontWeight: 600 }}>{step} / 4</span>
+      </div>
+      <div style={{ height: 4, background: T.progressBg, borderRadius: 99, overflow: 'hidden' }}>
         <motion.div
-          key={i}
-          animate={{
-            width: i === step ? 28 : 8,
-            backgroundColor: i < step ? '#d1d5db' : i === step ? '#111827' : '#e5e7eb',
-          }}
-          transition={{ duration: 0.3 }}
-          style={{ height: 7, borderRadius: 99 }}
+          style={{ height: '100%', background: T.progressFill, borderRadius: 99 }}
+          animate={{ width: `${(step / 4) * 100}%` }}
+          transition={{ duration: 0.6, ease: [0.25, 1, 0.5, 1] }}
         />
-      ))}
+      </div>
+      {chips.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}
+        >
+          {chips.map((chip, i) => (
+            <motion.span
+              key={i}
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: i * 0.05 }}
+              style={{ fontSize: 11, padding: '4px 10px', borderRadius: 99, background: T.chipBg, color: T.chipText, fontWeight: 600 }}
+            >
+              {chip}
+            </motion.span>
+          ))}
+        </motion.div>
+      )}
+      {step > 1 && (
+        <p style={{ fontSize: 11, color: T.textFaint, marginTop: 8, fontStyle: 'italic' }}>
+          {STEP_LABELS[step - 1]}
+        </p>
+      )}
     </div>
   );
 }
 
-// ── Input helpers ─────────────────────────────────────────────────────────────
+// ── Shared input helpers ──────────────────────────────────────────────────────
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <span style={LABEL}>{label}</span>
-      {children}
-    </div>
-  );
-}
-
-function TextInput({ placeholder, value, onChange }: {
+function TInput({ placeholder, value, onChange, multiline, rows }: {
   placeholder: string; value: string; onChange: (v: string) => void;
+  multiline?: boolean; rows?: number;
 }) {
+  const { T } = useTheme();
+  const base: React.CSSProperties = {
+    background: T.inputBg, border: `1px solid ${T.inputBorder}`,
+    borderRadius: 12, color: T.inputText, fontSize: 15,
+    padding: '12px 16px', width: '100%', outline: 'none',
+    transition: 'box-shadow 0.2s, border-color 0.2s',
+    fontFamily: 'inherit', resize: multiline ? 'none' : undefined,
+  };
+  const handlers = {
+    onFocus: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      e.target.style.boxShadow = `0 0 0 3px ${T.progressFill}22`;
+      e.target.style.borderColor = T.inputText + '33';
+    },
+    onBlur: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      e.target.style.boxShadow = 'none';
+      e.target.style.borderColor = T.inputBorder;
+    },
+  };
+  if (multiline) return (
+    <textarea style={base as React.CSSProperties} placeholder={placeholder} value={value}
+      onChange={e => onChange(e.target.value)} rows={rows ?? 3} {...handlers} />
+  );
   return (
-    <input
-      style={INPUT}
-      placeholder={placeholder}
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      onFocus={e => { e.target.style.boxShadow = '0 0 0 3px rgba(17,24,39,0.12)'; e.target.style.borderColor = 'rgba(0,0,0,0.2)'; }}
-      onBlur={e => { e.target.style.boxShadow = 'none'; e.target.style.borderColor = 'rgba(0,0,0,0.09)'; }}
-    />
+    <input style={base} placeholder={placeholder} value={value}
+      onChange={e => onChange(e.target.value)} {...handlers} />
   );
 }
 
-function Select({ value, onChange, options, placeholder }: {
-  value: string; onChange: (v: string) => void;
-  options: string[]; placeholder: string;
+function TSelect({ value, onChange, options, placeholder }: {
+  value: string; onChange: (v: string) => void; options: string[]; placeholder: string;
 }) {
+  const { T } = useTheme();
   return (
     <select
-      style={{ ...INPUT, appearance: 'none', cursor: 'pointer' }}
+      style={{
+        background: T.inputBg, border: `1px solid ${T.inputBorder}`,
+        borderRadius: 12, color: value ? T.inputText : T.textFaint,
+        fontSize: 15, padding: '12px 16px', width: '100%', outline: 'none',
+        appearance: 'none', cursor: 'pointer',
+        transition: 'box-shadow 0.2s, border-color 0.2s',
+        fontFamily: 'inherit',
+      }}
       value={value}
       onChange={e => onChange(e.target.value)}
-      onFocus={e => { e.target.style.boxShadow = '0 0 0 3px rgba(17,24,39,0.12)'; }}
-      onBlur={e => { e.target.style.boxShadow = 'none'; }}
     >
       <option value="" style={{ color: '#9ca3af' }}>{placeholder}</option>
       {options.map(o => <option key={o} value={o}>{o}</option>)}
     </select>
+  );
+}
+
+function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
+  const { T } = useTheme();
+  return (
+    <div>
+      <span style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: T.textFaint, marginBottom: 8 }}>
+        {label}
+      </span>
+      {children}
+      {hint && <p style={{ fontSize: 12, color: T.textFaint, marginTop: 6, lineHeight: 1.5 }}>{hint}</p>}
+    </div>
   );
 }
 
@@ -230,43 +302,44 @@ function FileDropZone({ label, subtext, required, file, onFile }: {
   label: string; subtext?: string; required?: boolean;
   file: File | null; onFile: (f: File | null) => void;
 }) {
+  const { T } = useTheme();
   const inputRef = useRef<HTMLInputElement>(null);
   return (
-    <div
+    <motion.div
       onClick={() => inputRef.current?.click()}
+      whileHover={{ scale: 1.01 }}
+      whileTap={{ scale: 0.99 }}
       style={{
-        border: `2px dashed ${file ? 'rgba(17,24,39,0.3)' : 'rgba(0,0,0,0.12)'}`,
-        borderRadius: 14,
-        padding: '18px 20px',
-        cursor: 'pointer',
-        background: file ? 'rgba(17,24,39,0.04)' : 'rgba(255,255,255,0.4)',
+        border: `2px dashed ${file ? T.progressFill + '55' : T.fileBorder}`,
+        borderRadius: 14, padding: '16px 18px', cursor: 'pointer',
+        background: file ? T.progressFill + '08' : T.fileBg,
         transition: 'all 0.2s',
       }}
     >
-      <input
-        ref={inputRef}
-        type="file"
+      <input ref={inputRef} type="file"
         accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        className="hidden"
-        onChange={e => onFile(e.target.files?.[0] ?? null)}
-      />
-      <div className="flex items-center gap-3">
-        <span style={{ fontSize: 20, color: file ? '#111827' : '#9ca3af' }}>{file ? '✓' : '↑'}</span>
-        <div>
-          <p style={{ fontSize: 14, fontWeight: 600, color: file ? '#111827' : '#6b7280' }}>
+        className="hidden" onChange={e => onFile(e.target.files?.[0] ?? null)} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+        <span style={{ fontSize: 18, color: file ? T.text : T.textFaint, flexShrink: 0 }}>{file ? '✓' : '↑'}</span>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <p style={{
+            fontSize: 13, fontWeight: 600, color: file ? T.text : T.textMuted,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
             {file ? file.name : label}
             {required && !file && <span style={{ color: '#6366f1', marginLeft: 4 }}>*</span>}
           </p>
-          {subtext && !file && <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>{subtext}</p>}
+          {subtext && !file && <p style={{ fontSize: 12, color: T.textFaint, marginTop: 2 }}>{subtext}</p>}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
 // ── Processing screen ─────────────────────────────────────────────────────────
 
 function ProcessingScreen({ failed, onRetry }: { failed: boolean; onRetry: () => void }) {
+  const { T } = useTheme();
   const [lineIndex, setLineIndex] = useState(0);
   useEffect(() => {
     if (failed) return;
@@ -275,46 +348,39 @@ function ProcessingScreen({ failed, onRetry }: { failed: boolean; onRetry: () =>
   }, [failed]);
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center px-6" style={{ backgroundColor: '#eceef4' }}>
-      <Scene />
-      <div style={{ ...GLASS_CARD, padding: '48px 40px', maxWidth: 420, width: '100%', textAlign: 'center', position: 'relative' }}>
+    <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{
+        background: T.card, border: `1px solid ${T.cardBorder}`,
+        boxShadow: T.cardShadow, borderRadius: 28,
+        backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)',
+        padding: '48px 40px', maxWidth: 420, width: '100%', textAlign: 'center',
+      }}>
         {failed ? (
           <>
-            <div style={{ fontSize: 36, marginBottom: 16 }}>⚠</div>
-            <h2 style={{ fontSize: 20, fontWeight: 800, color: '#111827', marginBottom: 10 }}>Something went wrong on our end</h2>
-            <p style={{ color: '#6b7280', fontSize: 14, lineHeight: 1.6, marginBottom: 24 }}>
-              Your documents were saved. Refresh and we'll pick up where we left off.
+            <div style={{ fontSize: 36, marginBottom: 16 }}>!</div>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: T.text, marginBottom: 10 }}>Something went wrong on our end</h2>
+            <p style={{ color: T.textMuted, fontSize: 14, lineHeight: 1.6, marginBottom: 24 }}>
+              Your documents were saved. Refresh and we will pick up where you left off.
             </p>
-            <button onClick={onRetry} style={{ ...BTN_PRIMARY, width: 'auto', padding: '12px 28px' }}>
+            <motion.button onClick={onRetry} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+              style={{ background: T.btnBg, color: T.btnText, padding: '12px 28px', borderRadius: 12, border: 'none', fontWeight: 700, cursor: 'pointer', fontSize: 14 }}>
               Try again
-            </button>
+            </motion.button>
           </>
         ) : (
           <>
             <motion.div
-              style={{
-                width: 44, height: 44,
-                borderRadius: '50%',
-                border: '3px solid rgba(0,0,0,0.08)',
-                borderTopColor: '#111827',
-                margin: '0 auto 28px',
-              }}
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1.1, repeat: Infinity, ease: 'linear' }}
-            />
+              style={{ width: 40, height: 40, borderRadius: '50%', border: `3px solid ${T.progressBg}`, borderTopColor: T.progressFill, margin: '0 auto 28px' }}
+              animate={{ rotate: 360 }} transition={{ duration: 1.1, repeat: Infinity, ease: 'linear' }} />
             <AnimatePresence mode="wait">
-              <motion.p
-                key={lineIndex}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
+              <motion.p key={lineIndex}
+                initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
                 transition={{ duration: 0.35 }}
-                style={{ color: '#374151', fontSize: 15, fontWeight: 500 }}
-              >
+                style={{ color: T.text, fontSize: 15, fontWeight: 500 }}>
                 {PROCESSING_LINES[lineIndex]}
               </motion.p>
             </AnimatePresence>
-            <p style={{ color: '#d1d5db', fontSize: 12, marginTop: 16 }}>This takes 30–60 seconds</p>
+            <p style={{ color: T.textFaint, fontSize: 12, marginTop: 16 }}>This takes 30-60 seconds</p>
           </>
         )}
       </div>
@@ -322,100 +388,93 @@ function ProcessingScreen({ failed, onRetry }: { failed: boolean; onRetry: () =>
   );
 }
 
-// ── Steps ─────────────────────────────────────────────────────────────────────
+// ── Step: Welcome ─────────────────────────────────────────────────────────────
 
 function StepWelcome({ onNext }: { onNext: () => void }) {
+  const { T } = useTheme();
   return (
     <div style={{ textAlign: 'center' }}>
-      <motion.span
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
+      <motion.span initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
         style={{
-          display: 'inline-block',
-          fontSize: 11, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase',
-          color: '#9ca3af', background: 'rgba(0,0,0,0.05)', borderRadius: 99,
-          padding: '6px 16px', marginBottom: 24,
-        }}
-      >
+          display: 'inline-block', fontSize: 11, fontWeight: 700, letterSpacing: '0.18em',
+          textTransform: 'uppercase', color: T.textFaint,
+          background: T.chipBg, borderRadius: 99, padding: '6px 16px', marginBottom: 28,
+        }}>
         Career diagnosis
       </motion.span>
 
-      <h1 style={{ fontSize: 'clamp(30px,5vw,46px)', fontWeight: 900, color: '#111827', lineHeight: 1.15, marginBottom: 20, letterSpacing: '-0.02em' }}>
-        Your job search isn't broken.{' '}
-        <span style={{ color: '#4b5563' }}>Your positioning is.</span>
+      <h1 style={{ fontSize: 'clamp(28px, 5vw, 44px)', fontWeight: 900, color: T.text, lineHeight: 1.12, marginBottom: 24, letterSpacing: '-0.025em' }}>
+        YOUR JOB SEARCH<br />
+        ISN'T BROKEN.
+        <br />
+        <span style={{ color: T.textMuted }}>YOUR POSITIONING IS.</span>
       </h1>
 
-      <p style={{ color: '#6b7280', fontSize: 16, lineHeight: 1.7, marginBottom: 12, maxWidth: 420, margin: '0 auto 12px' }}>
-        In the next few minutes, we're going to figure out exactly where things are breaking down — and build you a plan to fix it.
+      <p style={{ color: T.textMuted, fontSize: 15, lineHeight: 1.7, marginBottom: 10, maxWidth: 400, margin: '0 auto 10px' }}>
+        In the next few minutes, we will figure out exactly where things are breaking down and build you a plan to fix it.
       </p>
-      <p style={{ color: '#9ca3af', fontSize: 13, lineHeight: 1.6, marginBottom: 36 }}>
+      <p style={{ color: T.textFaint, fontSize: 13, lineHeight: 1.6, marginBottom: 36 }}>
         Answer honestly. The more specific you are, the more powerful what comes next.
       </p>
 
-      <motion.button
-        onClick={onNext}
-        style={BTN_PRIMARY}
-        whileHover={{ scale: 1.02, boxShadow: '0 8px 40px rgba(0,0,0,0.22)' }}
-        whileTap={{ scale: 0.98 }}
-      >
+      <motion.button onClick={onNext}
+        style={{ background: T.btnBg, color: T.btnText, padding: '15px 36px', borderRadius: 16, border: 'none', fontWeight: 900, fontSize: 16, cursor: 'pointer', boxShadow: T.btnShadow, letterSpacing: '-0.01em', width: '100%' }}
+        whileHover={{ scale: 1.02, boxShadow: '0 8px 40px rgba(0,0,0,0.25)' }}
+        whileTap={{ scale: 0.97 }}>
         Let's find out
       </motion.button>
     </div>
   );
 }
 
-function StepRole({ answers, onChange, onNext }: {
+// ── Step: Role ────────────────────────────────────────────────────────────────
+
+function StepRole({ answers, onChange, onNext, onBack }: {
   answers: IntakeAnswers;
   onChange: (k: keyof IntakeAnswers, v: string) => void;
-  onNext: () => void;
+  onNext: () => void; onBack: () => void;
 }) {
+  const { T } = useTheme();
   const valid = answers.targetRole.trim() && answers.targetCity.trim() && answers.seniority && answers.industry;
   return (
     <div>
-      <h2 style={{ fontSize: 26, fontWeight: 900, color: '#111827', marginBottom: 6, letterSpacing: '-0.02em' }}>
-        What role are you targeting — and where?
+      <ProfileProgress step={1} answers={answers} />
+      <h2 style={{ fontSize: 24, fontWeight: 900, color: T.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
+        What role are you targeting and where?
       </h2>
-      <p style={{ color: '#9ca3af', fontSize: 13, marginBottom: 28 }}>Be specific. This anchors everything we generate for you.</p>
+      <p style={{ color: T.textFaint, fontSize: 13, marginBottom: 24 }}>Be specific. This anchors everything we generate for you.</p>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-        <Field label="Role">
-          <TextInput placeholder="e.g. Senior Product Manager" value={answers.targetRole} onChange={v => onChange('targetRole', v)} />
-          <p style={{ color: '#c4c8d2', fontSize: 12, marginTop: 6 }}>
-            You can list more than one if your search is broad, though a specific focus tends to produce stronger results.
-          </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <Field label="Role" hint="You can list more than one if your search is broad, though a specific focus tends to produce stronger results.">
+          <TInput placeholder="e.g. Senior Product Manager" value={answers.targetRole} onChange={v => onChange('targetRole', v)} />
         </Field>
         <Field label="City">
-          <TextInput placeholder="e.g. Sydney" value={answers.targetCity} onChange={v => onChange('targetCity', v)} />
+          <TInput placeholder="e.g. Sydney" value={answers.targetCity} onChange={v => onChange('targetCity', v)} />
         </Field>
         <Field label="Seniority">
-          <Select value={answers.seniority} onChange={v => onChange('seniority', v)} options={SENIORITY_OPTIONS} placeholder="Select level" />
+          <TSelect value={answers.seniority} onChange={v => onChange('seniority', v)} options={SENIORITY_OPTIONS} placeholder="Select level" />
         </Field>
         <Field label="Industry">
-          <Select value={answers.industry} onChange={v => onChange('industry', v)} options={INDUSTRY_OPTIONS} placeholder="Select industry" />
+          <TSelect value={answers.industry} onChange={v => onChange('industry', v)} options={INDUSTRY_OPTIONS} placeholder="Select industry" />
         </Field>
       </div>
 
-      <div style={{ marginTop: 28 }}>
-        <motion.button
-          onClick={onNext}
-          disabled={!valid}
-          style={{ ...BTN_PRIMARY, opacity: valid ? 1 : 0.3, cursor: valid ? 'pointer' : 'not-allowed' }}
-          whileHover={valid ? { scale: 1.02, boxShadow: '0 8px 40px rgba(0,0,0,0.22)' } : {}}
-          whileTap={valid ? { scale: 0.98 } : {}}
-        >
-          Continue
-        </motion.button>
+      <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
+        <BackButton onBack={onBack} />
+        <PrimaryButton onClick={onNext} disabled={!valid} label={STEP_CTAS[1]} />
       </div>
     </div>
   );
 }
 
-function StepTimeline({ answers, onChange, onNext }: {
+// ── Step: Timeline ────────────────────────────────────────────────────────────
+
+function StepTimeline({ answers, onChange, onNext, onBack }: {
   answers: IntakeAnswers;
   onChange: (k: keyof IntakeAnswers, v: string | string[]) => void;
-  onNext: () => void;
+  onNext: () => void; onBack: () => void;
 }) {
+  const { T } = useTheme();
   const toggleChannel = (ch: string) => {
     const c = answers.channels;
     onChange('channels', c.includes(ch) ? c.filter(x => x !== ch) : [...c, ch]);
@@ -425,216 +484,256 @@ function StepTimeline({ answers, onChange, onNext }: {
 
   return (
     <div>
-      <h2 style={{ fontSize: 26, fontWeight: 900, color: '#111827', marginBottom: 28, letterSpacing: '-0.02em' }}>
-        How has your search been going?
+      <ProfileProgress step={2} answers={answers} />
+      <h2 style={{ fontSize: 24, fontWeight: 900, color: T.text, marginBottom: 24, letterSpacing: '-0.02em' }}>
+        Tell us about your search so far.
       </h2>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-        <Field label="How long searching">
-          <Select value={answers.searchDuration} onChange={v => onChange('searchDuration', v)} options={DURATION_OPTIONS} placeholder="Select duration" />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <Field label="How long have you been looking?">
+          <TSelect value={answers.searchDuration} onChange={v => onChange('searchDuration', v)} options={DURATION_OPTIONS} placeholder="Select duration" />
         </Field>
         <Field label="Applications sent">
-          <Select value={answers.applicationsCount} onChange={v => onChange('applicationsCount', v)} options={COUNT_OPTIONS} placeholder="Select range" />
+          <TSelect value={answers.applicationsCount} onChange={v => onChange('applicationsCount', v)} options={COUNT_OPTIONS} placeholder="Select range" />
         </Field>
         <Field label="Channels used">
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {CHANNEL_OPTIONS.map(ch => {
               const active = answers.channels.includes(ch);
               return (
-                <button
-                  key={ch}
-                  type="button"
-                  onClick={() => toggleChannel(ch)}
+                <motion.button key={ch} type="button" onClick={() => toggleChannel(ch)}
+                  whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
                   style={{
                     padding: '8px 16px', borderRadius: 99, fontSize: 13, fontWeight: 600,
-                    border: `1px solid ${active ? '#111827' : 'rgba(0,0,0,0.12)'}`,
-                    background: active ? '#111827' : 'rgba(255,255,255,0.6)',
-                    color: active ? '#ffffff' : '#6b7280',
+                    border: `1px solid ${active ? T.pillActiveBorder : T.pillBorder}`,
+                    background: active ? T.pillActiveBg : T.pillBg,
+                    color: active ? T.pillActiveText : T.pillText,
                     cursor: 'pointer', transition: 'all 0.15s',
-                  }}
-                >
+                  }}>
                   {ch}
-                </button>
+                </motion.button>
               );
             })}
           </div>
           {showOther && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ marginTop: 10 }}>
-              <input
-                style={{ ...INPUT }}
-                placeholder="Which other channels?"
-                value={answers.channelOther}
-                onChange={e => onChange('channelOther', e.target.value)}
-              />
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} style={{ marginTop: 10 }}>
+              <TInput placeholder="Which other channels?" value={answers.channelOther} onChange={v => onChange('channelOther', v)} />
             </motion.div>
           )}
         </Field>
       </div>
 
-      <div style={{ marginTop: 28 }}>
-        <motion.button
-          onClick={onNext}
-          disabled={!valid}
-          style={{ ...BTN_PRIMARY, opacity: valid ? 1 : 0.3, cursor: valid ? 'pointer' : 'not-allowed' }}
-          whileHover={valid ? { scale: 1.02, boxShadow: '0 8px 40px rgba(0,0,0,0.22)' } : {}}
-          whileTap={valid ? { scale: 0.98 } : {}}
-        >
-          Continue
-        </motion.button>
+      <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
+        <BackButton onBack={onBack} />
+        <PrimaryButton onClick={onNext} disabled={!valid} label={STEP_CTAS[2]} />
       </div>
     </div>
   );
 }
 
-function StepResponses({ answers, onChange, onNext }: {
+// ── Step: Responses ───────────────────────────────────────────────────────────
+
+function StepResponses({ answers, onChange, onNext, onBack }: {
   answers: IntakeAnswers;
   onChange: (k: keyof IntakeAnswers, v: string | string[]) => void;
-  onNext: () => void;
+  onNext: () => void; onBack: () => void;
 }) {
+  const { T } = useTheme();
   const toggleBlocker = (opt: string) => {
     const c = answers.blockerOptions;
     onChange('blockerOptions', c.includes(opt) ? c.filter(b => b !== opt) : [...c, opt]);
   };
   const valid = answers.responsePattern && answers.blockerOptions.length > 0;
 
-  const optionStyle = (selected: boolean): React.CSSProperties => ({
-    width: '100%', textAlign: 'left', padding: '14px 18px', borderRadius: 14,
-    border: `1px solid ${selected ? '#111827' : 'rgba(0,0,0,0.1)'}`,
-    background: selected ? '#111827' : 'rgba(255,255,255,0.55)',
-    color: selected ? '#ffffff' : '#374151',
-    cursor: 'pointer', transition: 'all 0.15s', display: 'block',
-  });
-
-  const checkStyle = (selected: boolean): React.CSSProperties => ({
-    width: 16, height: 16, borderRadius: 4, flexShrink: 0,
-    border: `1.5px solid ${selected ? '#111827' : 'rgba(0,0,0,0.2)'}`,
-    background: selected ? '#111827' : 'transparent',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    transition: 'all 0.15s',
+  const optStyle = (active: boolean): React.CSSProperties => ({
+    width: '100%', textAlign: 'left', padding: '13px 16px', borderRadius: 12,
+    border: `1px solid ${active ? T.optActiveBorder : T.optBorder}`,
+    background: active ? T.optActiveBg : T.optBg,
+    color: active ? T.optActiveText : T.optText,
+    cursor: 'pointer', transition: 'all 0.15s',
   });
 
   return (
     <div>
-      <div style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: 22, fontWeight: 900, color: '#111827', marginBottom: 4, letterSpacing: '-0.02em' }}>
+      <ProfileProgress step={3} answers={answers} />
+
+      <div style={{ marginBottom: 20 }}>
+        <h2 style={{ fontSize: 20, fontWeight: 900, color: T.text, marginBottom: 4, letterSpacing: '-0.02em' }}>
           What responses are you getting?
         </h2>
-        <p style={{ color: '#9ca3af', fontSize: 13, marginBottom: 12 }}>Pick whichever best describes your pattern.</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <p style={{ color: T.textFaint, fontSize: 13, marginBottom: 12 }}>Pick whichever best describes your pattern.</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
           {RESPONSE_OPTIONS.map(opt => (
-            <button key={opt.value} type="button" onClick={() => onChange('responsePattern', opt.value)} style={optionStyle(answers.responsePattern === opt.value)}>
+            <motion.button key={opt.value} type="button" onClick={() => onChange('responsePattern', opt.value)}
+              whileHover={{ x: 2 }} whileTap={{ scale: 0.99 }}
+              style={optStyle(answers.responsePattern === opt.value)}>
               <span style={{ fontWeight: 700, fontSize: 14, display: 'block' }}>{opt.label}</span>
               {opt.sub && <span style={{ fontSize: 12, opacity: 0.6 }}>{opt.sub}</span>}
-            </button>
+            </motion.button>
           ))}
         </div>
       </div>
 
       <div style={{ marginBottom: 8 }}>
-        <h2 style={{ fontSize: 22, fontWeight: 900, color: '#111827', marginBottom: 4, letterSpacing: '-0.02em' }}>
+        <h2 style={{ fontSize: 20, fontWeight: 900, color: T.text, marginBottom: 4, letterSpacing: '-0.02em' }}>
           What's your biggest blocker?
         </h2>
-        <p style={{ color: '#9ca3af', fontSize: 13, marginBottom: 12 }}>Select everything that applies.</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <p style={{ color: T.textFaint, fontSize: 13, marginBottom: 12 }}>Select everything that applies.</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
           {BLOCKER_OPTIONS.map(opt => {
             const sel = answers.blockerOptions.includes(opt);
             return (
-              <button key={opt} type="button" onClick={() => toggleBlocker(opt)}
-                style={{ ...optionStyle(sel), display: 'flex', alignItems: 'center', gap: 12 }}
-              >
-                <div style={checkStyle(sel)}>
-                  {sel && <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5l2.5 2.5L8.5 2" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                </div>
-                <span style={{ fontWeight: 600, fontSize: 14 }}>{opt}</span>
-              </button>
+              <motion.button key={opt} type="button" onClick={() => toggleBlocker(opt)}
+                whileHover={{ x: 2 }} whileTap={{ scale: 0.99 }}
+                style={{ ...optStyle(sel), display: 'flex', alignItems: 'center', gap: 12 }}>
+                <CheckBox checked={sel} />
+                <span style={{ fontWeight: 600, fontSize: 13 }}>{opt}</span>
+              </motion.button>
             );
           })}
-
-          {/* Other */}
           <div>
-            <button type="button" onClick={() => toggleBlocker('Other')}
-              style={{ ...optionStyle(answers.blockerOptions.includes('Other')), display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}
-            >
-              <div style={checkStyle(answers.blockerOptions.includes('Other'))}>
-                {answers.blockerOptions.includes('Other') && <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5l2.5 2.5L8.5 2" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-              </div>
-              <span style={{ fontWeight: 600, fontSize: 14 }}>Something else</span>
-            </button>
+            <motion.button type="button" onClick={() => toggleBlocker('Other')}
+              whileHover={{ x: 2 }} whileTap={{ scale: 0.99 }}
+              style={{ ...optStyle(answers.blockerOptions.includes('Other')), display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}>
+              <CheckBox checked={answers.blockerOptions.includes('Other')} />
+              <span style={{ fontWeight: 600, fontSize: 13 }}>Something else</span>
+            </motion.button>
             {answers.blockerOptions.includes('Other') && (
-              <motion.textarea
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                style={{ ...INPUT, resize: 'none', marginTop: 8 } as React.CSSProperties}
-                rows={2}
-                placeholder="Tell us what's getting in the way..."
-                value={answers.blockerOther}
-                onChange={e => onChange('blockerOther', e.target.value)}
-              />
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ marginTop: 8 }}>
+                <TInput placeholder="Tell us what's getting in the way..." value={answers.blockerOther} onChange={v => onChange('blockerOther', v)} multiline rows={2} />
+              </motion.div>
             )}
           </div>
         </div>
       </div>
 
-      <div style={{ marginTop: 24 }}>
-        <motion.button
-          onClick={onNext}
-          disabled={!valid}
-          style={{ ...BTN_PRIMARY, opacity: valid ? 1 : 0.3, cursor: valid ? 'pointer' : 'not-allowed' }}
-          whileHover={valid ? { scale: 1.02, boxShadow: '0 8px 40px rgba(0,0,0,0.22)' } : {}}
-          whileTap={valid ? { scale: 0.98 } : {}}
-        >
-          Continue
-        </motion.button>
+      <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+        <BackButton onBack={onBack} />
+        <PrimaryButton onClick={onNext} disabled={!valid} label={STEP_CTAS[3]} />
       </div>
     </div>
   );
 }
 
-function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, submitting }: {
+// ── Step: Files ───────────────────────────────────────────────────────────────
+
+function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, submitting, onBack }: {
   resume: File | null; setResume: (f: File | null) => void;
   cl1: File | null; setCl1: (f: File | null) => void;
   cl2: File | null; setCl2: (f: File | null) => void;
-  onSubmit: () => void; submitting: boolean;
+  onSubmit: () => void; submitting: boolean; onBack: () => void;
 }) {
+  const { T } = useTheme();
   return (
     <div>
-      <h2 style={{ fontSize: 26, fontWeight: 900, color: '#111827', marginBottom: 6, letterSpacing: '-0.02em' }}>
+      <ProfileProgress step={4} answers={{ targetRole: '', targetCity: '', seniority: '', industry: '', searchDuration: '', applicationsCount: '', channels: [], channelOther: '', responsePattern: '', blockerOptions: [], blockerOther: '', perceivedBlocker: '' }} />
+      <h2 style={{ fontSize: 24, fontWeight: 900, color: T.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
         Now show us what you've been sending out.
       </h2>
-      <p style={{ color: '#9ca3af', fontSize: 13, lineHeight: 1.6, marginBottom: 6 }}>
-        We're not judging the documents — we're using them to understand how you've been positioning yourself.
+      <p style={{ color: T.textMuted, fontSize: 13, lineHeight: 1.6, marginBottom: 6 }}>
+        We're not judging the documents. We're using them to understand how you've been positioning yourself.
       </p>
-      <p style={{ color: '#c4c8d2', fontSize: 12, marginBottom: 24 }}>PDF or Word accepted.</p>
+      <p style={{ color: T.textFaint, fontSize: 12, marginBottom: 20 }}>PDF or Word accepted.</p>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <FileDropZone label="Your resume" required file={resume} onFile={setResume} />
         <FileDropZone label="A recent cover letter" subtext="If you don't have one, that's useful information too." file={cl1} onFile={setCl1} />
-        <FileDropZone label="Another one if you have it" file={cl2} onFile={setCl2} />
+        <FileDropZone label="Another cover letter if you have it" file={cl2} onFile={setCl2} />
       </div>
 
-      <div style={{ marginTop: 28 }}>
-        <motion.button
+      <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
+        <BackButton onBack={onBack} disabled={submitting} />
+        <PrimaryButton
           onClick={onSubmit}
           disabled={!resume || submitting}
-          style={{ ...BTN_PRIMARY, opacity: resume && !submitting ? 1 : 0.3, cursor: resume && !submitting ? 'pointer' : 'not-allowed' }}
-          whileHover={resume && !submitting ? { scale: 1.02, boxShadow: '0 8px 40px rgba(0,0,0,0.22)' } : {}}
-          whileTap={resume && !submitting ? { scale: 0.98 } : {}}
-        >
-          {submitting ? 'Sending...' : 'Build my diagnosis'}
-        </motion.button>
+          label={submitting ? 'Sending...' : 'Build my diagnosis'}
+        />
       </div>
     </div>
   );
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
+// ── Shared button components ──────────────────────────────────────────────────
+
+function PrimaryButton({ onClick, disabled, label }: { onClick: () => void; disabled?: boolean; label: string }) {
+  const { T } = useTheme();
+  return (
+    <motion.button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        flex: 1, padding: '14px 20px', borderRadius: 14, border: 'none',
+        background: T.btnBg, color: T.btnText, fontWeight: 800, fontSize: 15,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.3 : 1, boxShadow: disabled ? 'none' : T.btnShadow,
+        transition: 'opacity 0.2s, box-shadow 0.2s', fontFamily: 'inherit',
+        letterSpacing: '-0.01em',
+      }}
+      whileHover={!disabled ? { scale: 1.02, boxShadow: '0 8px 40px rgba(0,0,0,0.25)' } : {}}
+      whileTap={!disabled ? { scale: 0.97 } : {}}
+    >
+      {label}
+    </motion.button>
+  );
+}
+
+function BackButton({ onBack, disabled }: { onBack: () => void; disabled?: boolean }) {
+  const { T } = useTheme();
+  return (
+    <motion.button
+      onClick={onBack}
+      disabled={disabled}
+      style={{
+        padding: '14px 16px', borderRadius: 14, border: `1px solid ${T.optBorder}`,
+        background: T.optBg, color: T.textMuted, fontWeight: 600, fontSize: 20,
+        cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.3 : 1,
+        transition: 'all 0.15s', fontFamily: 'inherit', flexShrink: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+      whileHover={!disabled ? { scale: 1.05 } : {}}
+      whileTap={!disabled ? { scale: 0.95 } : {}}
+    >
+      ←
+    </motion.button>
+  );
+}
+
+function CheckBox({ checked }: { checked: boolean }) {
+  const { T } = useTheme();
+  return (
+    <div style={{
+      width: 16, height: 16, borderRadius: 4, flexShrink: 0,
+      border: `1.5px solid ${checked ? T.optActiveBg : T.optBorder}`,
+      background: checked ? T.optActiveBg : 'transparent',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      transition: 'all 0.15s',
+    }}>
+      {checked && (
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+          <path d="M1.5 5l2.5 2.5L8.5 2" stroke={T.optActiveText} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      )}
+    </div>
+  );
+}
+
+// ── Main Component ────────────────────────────────────────────────────────────
 
 export function OnboardingIntake() {
   const queryClient = useQueryClient();
   const [step, setStep] = useState(0);
   const [failed, setFailed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [dark, setDark] = useState(() => localStorage.getItem('jobhub-theme') === 'dark');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const T = dark ? DARK : LIGHT;
+
+  const toggleDark = () => {
+    const next = !dark;
+    setDark(next);
+    localStorage.setItem('jobhub-theme', next ? 'dark' : 'light');
+  };
 
   useEffect(() => {
     api.get('/onboarding/report').then(({ data }) => {
@@ -663,12 +762,10 @@ export function OnboardingIntake() {
       try {
         const { data: report } = await api.get('/onboarding/report');
         if (report.status === 'COMPLETE') {
-          clearInterval(pollRef.current!);
-          pollRef.current = null;
+          clearInterval(pollRef.current!); pollRef.current = null;
           await queryClient.invalidateQueries({ queryKey: ['profile'] });
         } else if (report.status === 'FAILED') {
-          clearInterval(pollRef.current!);
-          pollRef.current = null;
+          clearInterval(pollRef.current!); pollRef.current = null;
           setFailed(true);
         }
       } catch {}
@@ -683,7 +780,6 @@ export function OnboardingIntake() {
     if (answers.blockerOptions.includes('Other') && answers.blockerOther.trim()) {
       blockerParts.push(answers.blockerOther.trim());
     }
-
     const finalAnswers = {
       ...answers,
       perceivedBlocker: blockerParts.join('; '),
@@ -699,7 +795,7 @@ export function OnboardingIntake() {
     if (cl2) formData.append('coverLetter2', cl2);
 
     try {
-      // No manual Content-Type — axios sets multipart boundary automatically
+      // No manual Content-Type - axios sets multipart boundary automatically
       await api.post('/onboarding/submit', formData, { timeout: 30000 });
       setStep(5);
       startPolling();
@@ -716,44 +812,59 @@ export function OnboardingIntake() {
     catch { setFailed(true); }
   };
 
-  if (step === 5) return <ProcessingScreen failed={failed} onRetry={handleRetry} />;
+  const goNext = () => setStep(s => s + 1);
+  const goBack = () => setStep(s => Math.max(0, s - 1));
 
   const STEPS = [
-    <StepWelcome key="welcome" onNext={() => setStep(1)} />,
-    <StepRole key="role" answers={answers} onChange={onChange} onNext={() => setStep(2)} />,
-    <StepTimeline key="timeline" answers={answers} onChange={onChange} onNext={() => setStep(3)} />,
-    <StepResponses key="responses" answers={answers} onChange={onChange} onNext={() => setStep(4)} />,
-    <StepFiles key="files" resume={resume} setResume={setResume} cl1={cl1} setCl1={setCl1} cl2={cl2} setCl2={setCl2} onSubmit={handleSubmit} submitting={submitting} />,
+    <StepWelcome key="welcome" onNext={goNext} />,
+    <StepRole key="role" answers={answers} onChange={onChange} onNext={goNext} onBack={goBack} />,
+    <StepTimeline key="timeline" answers={answers} onChange={onChange} onNext={goNext} onBack={goBack} />,
+    <StepResponses key="responses" answers={answers} onChange={onChange} onNext={goNext} onBack={goBack} />,
+    <StepFiles key="files" resume={resume} setResume={setResume} cl1={cl1} setCl1={setCl1} cl2={cl2} setCl2={setCl2} onSubmit={handleSubmit} submitting={submitting} onBack={goBack} />,
   ];
 
+  if (step === 5) {
+    return (
+      <ThemeCtx.Provider value={{ T, dark }}>
+        <div style={{ backgroundColor: T.bg, minHeight: '100vh', transition: 'background-color 0.4s' }}>
+          <Scene />
+          <ThemeToggle dark={dark} onToggle={toggleDark} />
+          <ProcessingScreen failed={failed} onRetry={handleRetry} />
+        </div>
+      </ThemeCtx.Provider>
+    );
+  }
+
   return (
-    <div className="min-h-screen overflow-x-hidden overflow-y-auto" style={{ backgroundColor: '#eceef4' }}>
-      <Scene />
+    <ThemeCtx.Provider value={{ T, dark }}>
+      <div style={{ backgroundColor: T.bg, minHeight: '100vh', overflowY: 'auto', overflowX: 'hidden', transition: 'background-color 0.4s' }}>
+        <Scene />
+        <ThemeToggle dark={dark} onToggle={toggleDark} />
 
-      <div className="relative min-h-screen flex items-center justify-center py-12 px-4">
-        <div style={{ width: '100%', maxWidth: 520 }}>
-          {step > 0 && <DotProgress step={step - 1} total={4} />}
-
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: [0.25, 1, 0.5, 1] }}
-            style={{ ...GLASS_CARD, padding: 'clamp(28px, 5vw, 48px)' }}
-          >
+        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 48, paddingBottom: 48, paddingLeft: 16, paddingRight: 16, minHeight: '100vh', justifyContent: 'center' }}>
+          <div style={{ width: '100%', maxWidth: 520 }}>
             <AnimatePresence mode="wait">
               <motion.div
                 key={step}
-                initial={{ opacity: 0, x: 32 }}
+                initial={{ opacity: 0, x: 30 }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -32 }}
-                transition={{ duration: 0.28, ease: [0.25, 1, 0.5, 1] }}
+                exit={{ opacity: 0, x: -30 }}
+                transition={{ duration: 0.26, ease: [0.25, 1, 0.5, 1] }}
               >
-                {STEPS[step]}
+                <div style={{
+                  background: T.card, border: `1px solid ${T.cardBorder}`,
+                  boxShadow: T.cardShadow, borderRadius: 28,
+                  backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)',
+                  padding: 'clamp(24px, 5vw, 44px)',
+                  transition: 'background 0.4s, border-color 0.4s',
+                }}>
+                  {STEPS[step]}
+                </div>
               </motion.div>
             </AnimatePresence>
-          </motion.div>
+          </div>
         </div>
       </div>
-    </div>
+    </ThemeCtx.Provider>
   );
 }
