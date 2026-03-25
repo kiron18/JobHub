@@ -57,14 +57,25 @@ router.post(
         ? await extractTextFromBuffer(cl2File.buffer, cl2File.mimetype, cl2File.originalname)
         : undefined;
 
-      const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
-      if (!profile) {
-        return res.status(404).json({ error: 'Profile not found — complete profile setup first' });
-      }
-
-      await prisma.candidateProfile.update({
+      // Upsert — new users have no profile row yet; create it on first onboarding
+      await prisma.candidateProfile.upsert({
         where: { userId },
-        data: {
+        create: {
+          userId,
+          targetRole: answers.targetRole,
+          targetCity: answers.targetCity,
+          seniority: answers.seniority,
+          industry: answers.industry,
+          searchDuration: answers.searchDuration,
+          applicationsCount: answers.applicationsCount,
+          channels: answers.channels,
+          responsePattern: answers.responsePattern,
+          perceivedBlocker: answers.perceivedBlocker,
+          resumeRawText: resumeText,
+          coverLetterRawText: coverLetterText1 ?? null,
+          coverLetterRawText2: coverLetterText2 ?? null,
+        },
+        update: {
           targetRole: answers.targetRole,
           targetCity: answers.targetCity,
           seniority: answers.seniority,

@@ -7,13 +7,15 @@ interface OnboardingGateProps {
 }
 
 export function OnboardingGate({ children }: OnboardingGateProps) {
-  const { data: profile, isLoading } = useQuery({
+  const { data: profile, isLoading, isError } = useQuery({
     queryKey: ['profile'],
     queryFn: async () => {
       const { data } = await api.get('/profile');
       return data;
     },
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 5,
+    retry: 1,          // fail fast — don't spin for 30s retrying a broken API URL
+    retryDelay: 1000,
   });
 
   if (isLoading) {
@@ -24,7 +26,8 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
     );
   }
 
-  if (!profile?.hasCompletedOnboarding) {
+  // API error or no profile row yet — show onboarding
+  if (isError || !profile?.hasCompletedOnboarding) {
     return <OnboardingIntake />;
   }
 
