@@ -85,7 +85,7 @@ const COUNT_OPTIONS = ['Under 10', '10-30', '30-60', '60-100', '100+'];
 const CHANNEL_OPTIONS = ['LinkedIn', 'Seek', 'Indeed', 'Recruiters', 'Direct applications', 'Referrals', 'Other'];
 const RESPONSE_OPTIONS = [
   { value: 'mostly_silence', label: 'Mostly silence', sub: 'Applications go in and nothing comes back' },
-  { value: 'mostly_rejections', label: 'Mostly rejections', sub: "Getting responses, but they're nos" },
+  { value: 'mostly_rejections', label: 'Mostly rejections', sub: 'Getting responses, but all rejections' },
   { value: 'interviews_stall', label: 'Interviews that stall', sub: 'Getting interviews but they go nowhere' },
   { value: 'no_offers', label: 'Interviews but no offers', sub: 'Getting far but not closing' },
   { value: 'mix', label: 'Mix of everything', sub: '' },
@@ -837,11 +837,11 @@ export function OnboardingIntake() {
 
   return (
     <ThemeCtx.Provider value={{ T, dark }}>
-      <div style={{ backgroundColor: T.bg, minHeight: '100vh', overflowY: 'auto', overflowX: 'hidden', transition: 'background-color 0.4s' }}>
+      <div style={{ backgroundColor: T.bg, height: '100dvh', overflowY: 'auto', overflowX: 'hidden', transition: 'background-color 0.4s' }}>
         <Scene />
         <ThemeToggle dark={dark} onToggle={toggleDark} />
 
-        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 48, paddingBottom: 48, paddingLeft: 16, paddingRight: 16, minHeight: '100vh', justifyContent: 'center' }}>
+        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 48, paddingBottom: 48, paddingLeft: 16, paddingRight: 16, minHeight: '100%', justifyContent: 'center' }}>
           <div style={{ width: '100%', maxWidth: 520 }}>
             <AnimatePresence mode="wait">
               <motion.div

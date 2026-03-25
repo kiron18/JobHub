@@ -36,11 +36,15 @@ export const prisma = new PrismaClient();
 const app = express();
 const PORT = process.env.PORT || 3002;
 
-app.use(cors({
+const corsOptions = {
     origin: process.env.ALLOWED_ORIGIN ? process.env.ALLOWED_ORIGIN.split(',') : '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: false,
+};
+// Explicit OPTIONS preflight handler — must be before all routes
+app.options('*', cors(corsOptions));
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 
 const isDev = process.env.NODE_ENV !== 'production';
