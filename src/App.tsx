@@ -13,6 +13,7 @@ import { ProfileModal } from './components/ProfileModal';
 import { ApplicationWorkspace } from './components/ApplicationWorkspace';
 import { ApplicationTracker } from './components/ApplicationTracker';
 import { AchievementBank } from './components/AchievementBank';
+import { OnboardingGate } from './components/OnboardingGate';
 
 // Auth & Context
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -227,16 +228,18 @@ function App() {
             {/* Protected Application Routes */}
             <Route path="/*" element={
               <ProtectedRoute>
-                <DashboardLayout>
-                  <Routes>
-                    <Route path="/" element={<Dashboard />} />
-                    <Route path="/tracker" element={<ApplicationTracker />} />
-                    <Route path="/application-workspace" element={<ApplicationWorkspace />} />
-                    <Route path="/workspace" element={<Workspace />} />
-                    {/* Fallback to dashboard */}
-                    <Route path="*" element={<Dashboard />} />
-                  </Routes>
-                </DashboardLayout>
+                <OnboardingGate>
+                  <DashboardLayout>
+                    <Routes>
+                      <Route path="/" element={<Dashboard />} />
+                      <Route path="/tracker" element={<ApplicationTracker />} />
+                      <Route path="/application-workspace" element={<ApplicationWorkspace />} />
+                      <Route path="/workspace" element={<Workspace />} />
+                      {/* Fallback to dashboard */}
+                      <Route path="*" element={<Dashboard />} />
+                    </Routes>
+                  </DashboardLayout>
+                </OnboardingGate>
               </ProtectedRoute>
             } />
           </Routes>
