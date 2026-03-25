@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../index';
 import { authenticate } from '../middleware/auth';
 import { callLLM } from '../services/llm';
-import { DOCUMENT_GENERATION_PROMPT_WITH_BLUEPRINT, DOCUMENT_GENERATION_PROMPT } from '../services/prompts';
+import { DOCUMENT_GENERATION_PROMPT_WITH_BLUEPRINT, DOCUMENT_GENERATION_PROMPT, buildSearchContextBlock } from '../services/prompts';
 import { generateBlueprint } from '../services/strategy';
 import { reviewDocument } from '../services/quality-gate';
 import fs from 'fs';
@@ -87,12 +87,15 @@ router.post('/:type', authenticate, async (req, res) => {
         let blueprintResult;
         let stage1Info: { cached: boolean; tokens?: { input: number; output: number; cost_usd: number } } = { cached: false };
 
+        // Build search context block from intake data (empty string if not onboarded)
+        const searchContext = buildSearchContextBlock(profile);
+
         // Only run Stage 1 if we have a real jobApplicationId to cache against
         const cacheKey = sanitizedJobAppId || `${userId}-${Date.now()}`;
         try {
             blueprintResult = await generateBlueprint(
                 cacheKey,
-                jobDescription,
+                searchContext + jobDescription,
                 profile,
                 selectedAchievements,
                 docType
