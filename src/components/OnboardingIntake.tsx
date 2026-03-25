@@ -61,7 +61,7 @@ const DARK: Theme = {
   fileBg: 'rgba(255,255,255,0.05)', fileBorder: 'rgba(255,255,255,0.12)',
 };
 
-const ThemeCtx = createContext<{ T: Theme; dark: boolean }>({ T: LIGHT, dark: false });
+const ThemeCtx = createContext<{ T: Theme }>({ T: LIGHT });
 const useTheme = () => useContext(ThemeCtx);
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -116,7 +116,7 @@ const STEP_CTAS = ['', 'Lock in my target', 'Add my history', 'Complete my profi
 // ── Scene ─────────────────────────────────────────────────────────────────────
 
 function Scene() {
-  const { T, dark } = useTheme();
+  const { T } = useTheme();
   const blobStyle: React.CSSProperties = {
     background: T.blobGrad,
     boxShadow: T.blobShadow,
@@ -825,7 +825,7 @@ export function OnboardingIntake() {
 
   if (step === 5) {
     return (
-      <ThemeCtx.Provider value={{ T, dark }}>
+      <ThemeCtx.Provider value={{ T }}>
         <div style={{ backgroundColor: T.bg, minHeight: '100vh', transition: 'background-color 0.4s' }}>
           <Scene />
           <ThemeToggle dark={dark} onToggle={toggleDark} />
@@ -836,7 +836,7 @@ export function OnboardingIntake() {
   }
 
   return (
-    <ThemeCtx.Provider value={{ T, dark }}>
+    <ThemeCtx.Provider value={{ T }}>
       <div style={{ backgroundColor: T.bg, height: '100dvh', overflowY: 'auto', overflowX: 'hidden', transition: 'background-color 0.4s' }}>
         <Scene />
         <ThemeToggle dark={dark} onToggle={toggleDark} />
