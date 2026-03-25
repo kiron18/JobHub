@@ -13,6 +13,7 @@ import profileRouter from './routes/profile';
 import documentsRouter from './routes/documents';
 import healthRouter from './routes/health';
 import authRouter from './routes/auth';
+import onboardingRouter from './routes/onboarding';
 
 dotenv.config();
 
@@ -83,6 +84,7 @@ app.use('/api/extract', extractRouter);
 app.use('/api/generate', generateRouter);
 app.use('/api', profileRouter);
 app.use('/api', documentsRouter);
+app.use('/api/onboarding', onboardingRouter);
 
 // Sentry error handler - must be before any other error handling middleware
 Sentry.setupExpressErrorHandler(app);
