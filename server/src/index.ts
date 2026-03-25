@@ -42,8 +42,6 @@ const corsOptions = {
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: false,
 };
-// Explicit OPTIONS preflight handler — must be before all routes
-app.options('*', cors(corsOptions));
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 
