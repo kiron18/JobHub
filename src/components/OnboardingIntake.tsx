@@ -18,7 +18,7 @@ interface IntakeAnswers {
   responsePattern: string;
   blockerOptions: string[];
   blockerOther: string;
-  perceivedBlocker: string; // derived at submit time
+  perceivedBlocker: string;
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -44,7 +44,6 @@ const BLOCKER_OPTIONS = [
   'Experience gap — targeting roles above where I am',
   'Interview nerves or performance',
 ];
-
 const PROCESSING_LINES = [
   'Reading your documents...',
   'Mapping where applications are likely dropping off...',
@@ -52,56 +51,182 @@ const PROCESSING_LINES = [
   'Building your diagnosis...',
 ];
 
-// ── Shared style primitives ──────────────────────────────────────────────────
+// ── Design tokens ─────────────────────────────────────────────────────────────
 
-const glassCard = `
-  relative rounded-2xl border border-white/10
-  bg-white/5 backdrop-blur-xl shadow-2xl shadow-black/60
-`;
+const GLASS_CARD: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.58)',
+  backdropFilter: 'blur(32px)',
+  WebkitBackdropFilter: 'blur(32px)',
+  border: '1px solid rgba(255,255,255,0.88)',
+  boxShadow: '0 8px 80px rgba(0,0,0,0.07), 0 1px 0 rgba(255,255,255,0.95) inset',
+  borderRadius: '28px',
+};
 
-const inputBase = `
-  w-full rounded-xl border border-white/10 bg-white/5
-  px-4 py-3 text-white placeholder-white/30
-  focus:outline-none focus:ring-2 focus:ring-violet-500/60
-  transition-all duration-200
-`;
+const BLOB: React.CSSProperties = {
+  background: 'radial-gradient(circle at 33% 28%, #ffffff 0%, #dde1ec 55%, #c4c9d9 100%)',
+  boxShadow: [
+    'inset -10px -10px 28px rgba(0,0,0,0.07)',
+    'inset 5px 5px 18px rgba(255,255,255,0.95)',
+    '20px 32px 80px rgba(0,0,0,0.14)',
+    '4px 8px 20px rgba(0,0,0,0.06)',
+  ].join(', '),
+  borderRadius: '50%',
+};
 
-const selectBase = `
-  w-full rounded-xl border border-white/10 bg-slate-900
-  px-4 py-3 text-white appearance-none
-  focus:outline-none focus:ring-2 focus:ring-violet-500/60
-  transition-all duration-200
-`;
+const INPUT: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.75)',
+  border: '1px solid rgba(0,0,0,0.09)',
+  borderRadius: '12px',
+  color: '#111827',
+  fontSize: '15px',
+  padding: '12px 16px',
+  width: '100%',
+  outline: 'none',
+  transition: 'box-shadow 0.2s, border-color 0.2s',
+};
 
-const labelText = 'block text-xs font-bold tracking-[0.15em] uppercase text-white/40 mb-2';
+const LABEL: React.CSSProperties = {
+  display: 'block',
+  fontSize: '11px',
+  fontWeight: 700,
+  letterSpacing: '0.14em',
+  textTransform: 'uppercase',
+  color: '#9ca3af',
+  marginBottom: '8px',
+};
 
-// ── Sub-components ───────────────────────────────────────────────────────────
+const BTN_PRIMARY: React.CSSProperties = {
+  width: '100%',
+  padding: '15px 24px',
+  borderRadius: '16px',
+  background: '#111827',
+  color: '#ffffff',
+  fontWeight: 900,
+  fontSize: '16px',
+  border: 'none',
+  cursor: 'pointer',
+  transition: 'background 0.2s, transform 0.1s, box-shadow 0.2s',
+  boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
+  letterSpacing: '-0.01em',
+};
+
+// ── Background scene ──────────────────────────────────────────────────────────
+
+function Scene() {
+  return (
+    <>
+      {/* Dot grid */}
+      <div
+        className="fixed inset-0 pointer-events-none"
+        style={{
+          backgroundColor: '#eceef4',
+          backgroundImage: 'radial-gradient(circle, #c0c4d0 1px, transparent 1px)',
+          backgroundSize: '22px 22px',
+        }}
+      />
+
+      {/* Blob — bottom left (large) */}
+      <motion.div
+        className="fixed pointer-events-none"
+        style={{ ...BLOB, width: 380, height: 380, bottom: -80, left: -80 }}
+        animate={{ x: [0, 18, -8, 0], y: [0, -14, 8, 0], scale: [1, 1.02, 0.99, 1] }}
+        transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
+      />
+
+      {/* Blob — top right (medium) */}
+      <motion.div
+        className="fixed pointer-events-none"
+        style={{ ...BLOB, width: 280, height: 280, top: -60, right: -40 }}
+        animate={{ x: [0, -12, 6, 0], y: [0, 16, -6, 0], scale: [1, 1.03, 0.98, 1] }}
+        transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut', delay: 1.5 }}
+      />
+
+      {/* Blob — center right (small) */}
+      <motion.div
+        className="fixed pointer-events-none"
+        style={{ ...BLOB, width: 180, height: 180, top: '42%', right: -50 }}
+        animate={{ x: [0, -8, 4, 0], y: [0, 12, -8, 0] }}
+        transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut', delay: 3 }}
+      />
+
+      {/* Blob — top left (small) */}
+      <motion.div
+        className="fixed pointer-events-none"
+        style={{ ...BLOB, width: 140, height: 140, top: '12%', left: '8%' }}
+        animate={{ x: [0, 10, -5, 0], y: [0, -8, 6, 0] }}
+        transition={{ duration: 11, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
+      />
+    </>
+  );
+}
+
+// ── Progress dots ─────────────────────────────────────────────────────────────
 
 function DotProgress({ step, total }: { step: number; total: number }) {
   return (
-    <div className="flex gap-2 items-center justify-center mb-10">
+    <div className="flex gap-2 items-center justify-center mb-8">
       {Array.from({ length: total }).map((_, i) => (
         <motion.div
           key={i}
           animate={{
             width: i === step ? 28 : 8,
-            backgroundColor: i < step
-              ? 'rgba(139,92,246,0.4)'
-              : i === step
-              ? '#8b5cf6'
-              : 'rgba(255,255,255,0.12)',
+            backgroundColor: i < step ? '#d1d5db' : i === step ? '#111827' : '#e5e7eb',
           }}
-          transition={{ duration: 0.35 }}
-          className="h-2 rounded-full"
+          transition={{ duration: 0.3 }}
+          style={{ height: 7, borderRadius: 99 }}
         />
       ))}
     </div>
   );
 }
 
-function FileDropZone({
-  label, subtext, required, file, onFile,
-}: {
+// ── Input helpers ─────────────────────────────────────────────────────────────
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <span style={LABEL}>{label}</span>
+      {children}
+    </div>
+  );
+}
+
+function TextInput({ placeholder, value, onChange }: {
+  placeholder: string; value: string; onChange: (v: string) => void;
+}) {
+  return (
+    <input
+      style={INPUT}
+      placeholder={placeholder}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      onFocus={e => { e.target.style.boxShadow = '0 0 0 3px rgba(17,24,39,0.12)'; e.target.style.borderColor = 'rgba(0,0,0,0.2)'; }}
+      onBlur={e => { e.target.style.boxShadow = 'none'; e.target.style.borderColor = 'rgba(0,0,0,0.09)'; }}
+    />
+  );
+}
+
+function Select({ value, onChange, options, placeholder }: {
+  value: string; onChange: (v: string) => void;
+  options: string[]; placeholder: string;
+}) {
+  return (
+    <select
+      style={{ ...INPUT, appearance: 'none', cursor: 'pointer' }}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      onFocus={e => { e.target.style.boxShadow = '0 0 0 3px rgba(17,24,39,0.12)'; }}
+      onBlur={e => { e.target.style.boxShadow = 'none'; }}
+    >
+      <option value="" style={{ color: '#9ca3af' }}>{placeholder}</option>
+      {options.map(o => <option key={o} value={o}>{o}</option>)}
+    </select>
+  );
+}
+
+// ── File drop zone ────────────────────────────────────────────────────────────
+
+function FileDropZone({ label, subtext, required, file, onFile }: {
   label: string; subtext?: string; required?: boolean;
   file: File | null; onFile: (f: File | null) => void;
 }) {
@@ -109,153 +234,133 @@ function FileDropZone({
   return (
     <div
       onClick={() => inputRef.current?.click()}
-      className={`
-        relative rounded-xl border-2 border-dashed cursor-pointer
-        px-6 py-5 transition-all duration-200
-        ${file
-          ? 'border-violet-500/60 bg-violet-500/10'
-          : 'border-white/15 bg-white/[0.03] hover:border-white/30 hover:bg-white/5'
-        }
-      `}
+      style={{
+        border: `2px dashed ${file ? 'rgba(17,24,39,0.3)' : 'rgba(0,0,0,0.12)'}`,
+        borderRadius: 14,
+        padding: '18px 20px',
+        cursor: 'pointer',
+        background: file ? 'rgba(17,24,39,0.04)' : 'rgba(255,255,255,0.4)',
+        transition: 'all 0.2s',
+      }}
     >
       <input
         ref={inputRef}
         type="file"
         accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         className="hidden"
-        onChange={(e) => onFile(e.target.files?.[0] ?? null)}
+        onChange={e => onFile(e.target.files?.[0] ?? null)}
       />
       <div className="flex items-center gap-3">
-        <div className={`text-2xl ${file ? 'text-violet-400' : 'text-white/30'}`}>
-          {file ? '✓' : '↑'}
-        </div>
+        <span style={{ fontSize: 20, color: file ? '#111827' : '#9ca3af' }}>{file ? '✓' : '↑'}</span>
         <div>
-          <p className="text-sm font-semibold text-white/80">
+          <p style={{ fontSize: 14, fontWeight: 600, color: file ? '#111827' : '#6b7280' }}>
             {file ? file.name : label}
-            {required && !file && <span className="text-violet-400 ml-1">*</span>}
+            {required && !file && <span style={{ color: '#6366f1', marginLeft: 4 }}>*</span>}
           </p>
-          {subtext && !file && <p className="text-xs text-white/40 mt-0.5">{subtext}</p>}
+          {subtext && !file && <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>{subtext}</p>}
         </div>
       </div>
     </div>
   );
 }
 
-// ── Processing Screen ────────────────────────────────────────────────────────
+// ── Processing screen ─────────────────────────────────────────────────────────
 
 function ProcessingScreen({ failed, onRetry }: { failed: boolean; onRetry: () => void }) {
   const [lineIndex, setLineIndex] = useState(0);
-
   useEffect(() => {
     if (failed) return;
-    const interval = setInterval(() => {
-      setLineIndex((i) => (i + 1) % PROCESSING_LINES.length);
-    }, 3000);
-    return () => clearInterval(interval);
+    const iv = setInterval(() => setLineIndex(i => (i + 1) % PROCESSING_LINES.length), 3000);
+    return () => clearInterval(iv);
   }, [failed]);
 
-  if (failed) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-[#060918] px-6">
-        <div className={`${glassCard} p-10 max-w-md w-full text-center`}>
-          <div className="text-4xl mb-4">⚠</div>
-          <h2 className="text-xl font-bold text-white mb-3">Something went wrong on our end</h2>
-          <p className="text-white/50 text-sm leading-relaxed mb-6">
-            Your documents were saved. Refresh and we'll pick up where we left off.
-          </p>
-          <button
-            onClick={onRetry}
-            className="px-6 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold transition-colors"
-          >
-            Try again
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-[#060918] px-6">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <motion.div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-violet-600/20 rounded-full blur-3xl"
-          animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
-          transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <motion.div
-          className="absolute top-1/3 left-1/3 w-64 h-64 bg-blue-600/15 rounded-full blur-3xl"
-          animate={{ scale: [1, 1.3, 1], opacity: [0.2, 0.5, 0.2] }}
-          transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-        />
-      </div>
-
-      <div className={`${glassCard} p-10 max-w-md w-full text-center relative`}>
-        <motion.div
-          className="w-12 h-12 border-4 border-violet-500/20 border-t-violet-500 rounded-full mx-auto mb-6"
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
-        />
-        <AnimatePresence mode="wait">
-          <motion.p
-            key={lineIndex}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.4 }}
-            className="text-white/70 text-base font-medium"
-          >
-            {PROCESSING_LINES[lineIndex]}
-          </motion.p>
-        </AnimatePresence>
-        <p className="text-white/25 text-xs mt-4">This takes 30–60 seconds</p>
+    <div className="fixed inset-0 flex items-center justify-center px-6" style={{ backgroundColor: '#eceef4' }}>
+      <Scene />
+      <div style={{ ...GLASS_CARD, padding: '48px 40px', maxWidth: 420, width: '100%', textAlign: 'center', position: 'relative' }}>
+        {failed ? (
+          <>
+            <div style={{ fontSize: 36, marginBottom: 16 }}>⚠</div>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: '#111827', marginBottom: 10 }}>Something went wrong on our end</h2>
+            <p style={{ color: '#6b7280', fontSize: 14, lineHeight: 1.6, marginBottom: 24 }}>
+              Your documents were saved. Refresh and we'll pick up where we left off.
+            </p>
+            <button onClick={onRetry} style={{ ...BTN_PRIMARY, width: 'auto', padding: '12px 28px' }}>
+              Try again
+            </button>
+          </>
+        ) : (
+          <>
+            <motion.div
+              style={{
+                width: 44, height: 44,
+                borderRadius: '50%',
+                border: '3px solid rgba(0,0,0,0.08)',
+                borderTopColor: '#111827',
+                margin: '0 auto 28px',
+              }}
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1.1, repeat: Infinity, ease: 'linear' }}
+            />
+            <AnimatePresence mode="wait">
+              <motion.p
+                key={lineIndex}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.35 }}
+                style={{ color: '#374151', fontSize: 15, fontWeight: 500 }}
+              >
+                {PROCESSING_LINES[lineIndex]}
+              </motion.p>
+            </AnimatePresence>
+            <p style={{ color: '#d1d5db', fontSize: 12, marginTop: 16 }}>This takes 30–60 seconds</p>
+          </>
+        )}
       </div>
     </div>
   );
 }
 
-// ── Step Components ──────────────────────────────────────────────────────────
+// ── Steps ─────────────────────────────────────────────────────────────────────
 
 function StepWelcome({ onNext }: { onNext: () => void }) {
   return (
-    <div className="max-w-xl w-full mx-auto px-6 flex flex-col items-center text-center">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.96 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.7, ease: 'easeOut' }}
+    <div style={{ textAlign: 'center' }}>
+      <motion.span
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        style={{
+          display: 'inline-block',
+          fontSize: 11, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase',
+          color: '#9ca3af', background: 'rgba(0,0,0,0.05)', borderRadius: 99,
+          padding: '6px 16px', marginBottom: 24,
+        }}
       >
-        <motion.div
-          className="inline-block text-xs font-bold tracking-[0.2em] uppercase text-violet-400/80 mb-6 px-4 py-2 rounded-full border border-violet-500/20 bg-violet-500/10"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          Your career diagnosis
-        </motion.div>
+        Career diagnosis
+      </motion.span>
 
-        <h1 className="text-4xl md:text-5xl font-black text-white leading-tight mb-6">
-          Your job search isn't broken.{' '}
-          <span className="bg-gradient-to-r from-violet-400 to-blue-400 bg-clip-text text-transparent">
-            Your positioning is.
-          </span>
-        </h1>
+      <h1 style={{ fontSize: 'clamp(30px,5vw,46px)', fontWeight: 900, color: '#111827', lineHeight: 1.15, marginBottom: 20, letterSpacing: '-0.02em' }}>
+        Your job search isn't broken.{' '}
+        <span style={{ color: '#4b5563' }}>Your positioning is.</span>
+      </h1>
 
-        <p className="text-white/55 text-lg leading-relaxed mb-4">
-          In the next few minutes, we're going to figure out exactly where things are breaking down — and build you a plan to fix it.
-        </p>
+      <p style={{ color: '#6b7280', fontSize: 16, lineHeight: 1.7, marginBottom: 12, maxWidth: 420, margin: '0 auto 12px' }}>
+        In the next few minutes, we're going to figure out exactly where things are breaking down — and build you a plan to fix it.
+      </p>
+      <p style={{ color: '#9ca3af', fontSize: 13, lineHeight: 1.6, marginBottom: 36 }}>
+        Answer honestly. The more specific you are, the more powerful what comes next.
+      </p>
 
-        <p className="text-white/30 text-sm leading-relaxed mb-10">
-          Answer honestly. The more specific you are, the more powerful what comes next.
-        </p>
-
-        <motion.button
-          onClick={onNext}
-          whileHover={{ scale: 1.03, boxShadow: '0 0 40px rgba(139,92,246,0.4)' }}
-          whileTap={{ scale: 0.97 }}
-          className="px-10 py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-blue-600 text-white font-black text-lg tracking-tight shadow-lg shadow-violet-600/30 transition-shadow"
-        >
-          Let's find out
-        </motion.button>
-      </motion.div>
+      <motion.button
+        onClick={onNext}
+        style={BTN_PRIMARY}
+        whileHover={{ scale: 1.02, boxShadow: '0 8px 40px rgba(0,0,0,0.22)' }}
+        whileTap={{ scale: 0.98 }}
+      >
+        Let's find out
+      </motion.button>
     </div>
   );
 }
@@ -266,67 +371,42 @@ function StepRole({ answers, onChange, onNext }: {
   onNext: () => void;
 }) {
   const valid = answers.targetRole.trim() && answers.targetCity.trim() && answers.seniority && answers.industry;
-
   return (
-    <div className="max-w-xl w-full mx-auto px-6">
-      <h2 className="text-3xl font-black text-white mb-2">What role are you targeting — and where?</h2>
-      <p className="text-white/35 text-sm mb-8">
-        Be specific. This anchors everything we generate for you.
-      </p>
+    <div>
+      <h2 style={{ fontSize: 26, fontWeight: 900, color: '#111827', marginBottom: 6, letterSpacing: '-0.02em' }}>
+        What role are you targeting — and where?
+      </h2>
+      <p style={{ color: '#9ca3af', fontSize: 13, marginBottom: 28 }}>Be specific. This anchors everything we generate for you.</p>
 
-      <div className="space-y-5">
-        <div>
-          <label className={labelText}>Role</label>
-          <input
-            className={inputBase}
-            placeholder="e.g. Senior Product Manager"
-            value={answers.targetRole}
-            onChange={e => onChange('targetRole', e.target.value)}
-          />
-          <p className="text-white/25 text-xs mt-1.5">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <Field label="Role">
+          <TextInput placeholder="e.g. Senior Product Manager" value={answers.targetRole} onChange={v => onChange('targetRole', v)} />
+          <p style={{ color: '#c4c8d2', fontSize: 12, marginTop: 6 }}>
             You can list more than one if your search is broad, though a specific focus tends to produce stronger results.
           </p>
-        </div>
-        <div>
-          <label className={labelText}>City</label>
-          <input
-            className={inputBase}
-            placeholder="e.g. Sydney"
-            value={answers.targetCity}
-            onChange={e => onChange('targetCity', e.target.value)}
-          />
-        </div>
-        <div>
-          <label className={labelText}>Seniority</label>
-          <select
-            className={selectBase}
-            value={answers.seniority}
-            onChange={e => onChange('seniority', e.target.value)}
-          >
-            <option value="" className="bg-slate-900 text-white/50">Select level</option>
-            {SENIORITY_OPTIONS.map(o => <option key={o} className="bg-slate-900 text-white">{o}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className={labelText}>Industry</label>
-          <select
-            className={selectBase}
-            value={answers.industry}
-            onChange={e => onChange('industry', e.target.value)}
-          >
-            <option value="" className="bg-slate-900 text-white/50">Select industry</option>
-            {INDUSTRY_OPTIONS.map(o => <option key={o} className="bg-slate-900 text-white">{o}</option>)}
-          </select>
-        </div>
+        </Field>
+        <Field label="City">
+          <TextInput placeholder="e.g. Sydney" value={answers.targetCity} onChange={v => onChange('targetCity', v)} />
+        </Field>
+        <Field label="Seniority">
+          <Select value={answers.seniority} onChange={v => onChange('seniority', v)} options={SENIORITY_OPTIONS} placeholder="Select level" />
+        </Field>
+        <Field label="Industry">
+          <Select value={answers.industry} onChange={v => onChange('industry', v)} options={INDUSTRY_OPTIONS} placeholder="Select industry" />
+        </Field>
       </div>
 
-      <button
-        onClick={onNext}
-        disabled={!valid}
-        className="mt-8 w-full py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-blue-600 disabled:opacity-30 disabled:cursor-not-allowed text-white font-black text-base transition-opacity"
-      >
-        Continue
-      </button>
+      <div style={{ marginTop: 28 }}>
+        <motion.button
+          onClick={onNext}
+          disabled={!valid}
+          style={{ ...BTN_PRIMARY, opacity: valid ? 1 : 0.3, cursor: valid ? 'pointer' : 'not-allowed' }}
+          whileHover={valid ? { scale: 1.02, boxShadow: '0 8px 40px rgba(0,0,0,0.22)' } : {}}
+          whileTap={valid ? { scale: 0.98 } : {}}
+        >
+          Continue
+        </motion.button>
+      </div>
     </div>
   );
 }
@@ -337,77 +417,71 @@ function StepTimeline({ answers, onChange, onNext }: {
   onNext: () => void;
 }) {
   const toggleChannel = (ch: string) => {
-    const current = answers.channels;
-    onChange('channels', current.includes(ch) ? current.filter(c => c !== ch) : [...current, ch]);
+    const c = answers.channels;
+    onChange('channels', c.includes(ch) ? c.filter(x => x !== ch) : [...c, ch]);
   };
   const valid = answers.searchDuration && answers.applicationsCount && answers.channels.length > 0;
-  const showOtherInput = answers.channels.includes('Other');
+  const showOther = answers.channels.includes('Other');
 
   return (
-    <div className="max-w-xl w-full mx-auto px-6">
-      <h2 className="text-3xl font-black text-white mb-8">How has your search been going?</h2>
+    <div>
+      <h2 style={{ fontSize: 26, fontWeight: 900, color: '#111827', marginBottom: 28, letterSpacing: '-0.02em' }}>
+        How has your search been going?
+      </h2>
 
-      <div className="space-y-5">
-        <div>
-          <label className={labelText}>How long searching</label>
-          <select
-            className={selectBase}
-            value={answers.searchDuration}
-            onChange={e => onChange('searchDuration', e.target.value)}
-          >
-            <option value="" className="bg-slate-900 text-white/50">Select duration</option>
-            {DURATION_OPTIONS.map(o => <option key={o} className="bg-slate-900 text-white">{o}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className={labelText}>Applications sent</label>
-          <select
-            className={selectBase}
-            value={answers.applicationsCount}
-            onChange={e => onChange('applicationsCount', e.target.value)}
-          >
-            <option value="" className="bg-slate-900 text-white/50">Select range</option>
-            {COUNT_OPTIONS.map(o => <option key={o} className="bg-slate-900 text-white">{o}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className={labelText}>Channels used</label>
-          <div className="flex flex-wrap gap-2">
-            {CHANNEL_OPTIONS.map(ch => (
-              <button
-                key={ch}
-                type="button"
-                onClick={() => toggleChannel(ch)}
-                className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
-                  answers.channels.includes(ch)
-                    ? 'bg-violet-600/30 border-violet-500/60 text-violet-300'
-                    : 'bg-white/5 border-white/10 text-white/50 hover:border-white/30'
-                }`}
-              >
-                {ch}
-              </button>
-            ))}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <Field label="How long searching">
+          <Select value={answers.searchDuration} onChange={v => onChange('searchDuration', v)} options={DURATION_OPTIONS} placeholder="Select duration" />
+        </Field>
+        <Field label="Applications sent">
+          <Select value={answers.applicationsCount} onChange={v => onChange('applicationsCount', v)} options={COUNT_OPTIONS} placeholder="Select range" />
+        </Field>
+        <Field label="Channels used">
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {CHANNEL_OPTIONS.map(ch => {
+              const active = answers.channels.includes(ch);
+              return (
+                <button
+                  key={ch}
+                  type="button"
+                  onClick={() => toggleChannel(ch)}
+                  style={{
+                    padding: '8px 16px', borderRadius: 99, fontSize: 13, fontWeight: 600,
+                    border: `1px solid ${active ? '#111827' : 'rgba(0,0,0,0.12)'}`,
+                    background: active ? '#111827' : 'rgba(255,255,255,0.6)',
+                    color: active ? '#ffffff' : '#6b7280',
+                    cursor: 'pointer', transition: 'all 0.15s',
+                  }}
+                >
+                  {ch}
+                </button>
+              );
+            })}
           </div>
-          {showOtherInput && (
-            <motion.input
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              className={`${inputBase} mt-3`}
-              placeholder="Which other channels?"
-              value={answers.channelOther}
-              onChange={e => onChange('channelOther', e.target.value)}
-            />
+          {showOther && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ marginTop: 10 }}>
+              <input
+                style={{ ...INPUT }}
+                placeholder="Which other channels?"
+                value={answers.channelOther}
+                onChange={e => onChange('channelOther', e.target.value)}
+              />
+            </motion.div>
           )}
-        </div>
+        </Field>
       </div>
 
-      <button
-        onClick={onNext}
-        disabled={!valid}
-        className="mt-8 w-full py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-blue-600 disabled:opacity-30 disabled:cursor-not-allowed text-white font-black text-base transition-opacity"
-      >
-        Continue
-      </button>
+      <div style={{ marginTop: 28 }}>
+        <motion.button
+          onClick={onNext}
+          disabled={!valid}
+          style={{ ...BTN_PRIMARY, opacity: valid ? 1 : 0.3, cursor: valid ? 'pointer' : 'not-allowed' }}
+          whileHover={valid ? { scale: 1.02, boxShadow: '0 8px 40px rgba(0,0,0,0.22)' } : {}}
+          whileTap={valid ? { scale: 0.98 } : {}}
+        >
+          Continue
+        </motion.button>
+      </div>
     </div>
   );
 }
@@ -418,86 +492,79 @@ function StepResponses({ answers, onChange, onNext }: {
   onNext: () => void;
 }) {
   const toggleBlocker = (opt: string) => {
-    const current = answers.blockerOptions;
-    onChange('blockerOptions', current.includes(opt) ? current.filter(b => b !== opt) : [...current, opt]);
+    const c = answers.blockerOptions;
+    onChange('blockerOptions', c.includes(opt) ? c.filter(b => b !== opt) : [...c, opt]);
   };
-
   const valid = answers.responsePattern && answers.blockerOptions.length > 0;
 
+  const optionStyle = (selected: boolean): React.CSSProperties => ({
+    width: '100%', textAlign: 'left', padding: '14px 18px', borderRadius: 14,
+    border: `1px solid ${selected ? '#111827' : 'rgba(0,0,0,0.1)'}`,
+    background: selected ? '#111827' : 'rgba(255,255,255,0.55)',
+    color: selected ? '#ffffff' : '#374151',
+    cursor: 'pointer', transition: 'all 0.15s', display: 'block',
+  });
+
+  const checkStyle = (selected: boolean): React.CSSProperties => ({
+    width: 16, height: 16, borderRadius: 4, flexShrink: 0,
+    border: `1.5px solid ${selected ? '#111827' : 'rgba(0,0,0,0.2)'}`,
+    background: selected ? '#111827' : 'transparent',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    transition: 'all 0.15s',
+  });
+
   return (
-    <div className="max-w-xl w-full mx-auto px-6 pb-4">
-      <div className="mb-8">
-        <h2 className="text-3xl font-black text-white mb-2">What responses are you getting?</h2>
-        <p className="text-white/35 text-sm mb-4">Pick whichever best describes your pattern.</p>
-        <div className="space-y-2">
+    <div>
+      <div style={{ marginBottom: 24 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 900, color: '#111827', marginBottom: 4, letterSpacing: '-0.02em' }}>
+          What responses are you getting?
+        </h2>
+        <p style={{ color: '#9ca3af', fontSize: 13, marginBottom: 12 }}>Pick whichever best describes your pattern.</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {RESPONSE_OPTIONS.map(opt => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => onChange('responsePattern', opt.value)}
-              className={`w-full text-left px-5 py-4 rounded-xl border transition-all ${
-                answers.responsePattern === opt.value
-                  ? 'bg-violet-600/20 border-violet-500/60 text-white'
-                  : 'bg-white/[0.03] border-white/10 text-white/60 hover:border-white/25'
-              }`}
-            >
-              <span className="font-bold block">{opt.label}</span>
-              {opt.sub && <span className="text-xs text-white/40">{opt.sub}</span>}
+            <button key={opt.value} type="button" onClick={() => onChange('responsePattern', opt.value)} style={optionStyle(answers.responsePattern === opt.value)}>
+              <span style={{ fontWeight: 700, fontSize: 14, display: 'block' }}>{opt.label}</span>
+              {opt.sub && <span style={{ fontSize: 12, opacity: 0.6 }}>{opt.sub}</span>}
             </button>
           ))}
         </div>
       </div>
 
-      <div className="mb-6">
-        <h2 className="text-2xl font-black text-white mb-1">What's your biggest blocker right now?</h2>
-        <p className="text-white/35 text-sm mb-4">Select everything that applies.</p>
-        <div className="space-y-2">
+      <div style={{ marginBottom: 8 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 900, color: '#111827', marginBottom: 4, letterSpacing: '-0.02em' }}>
+          What's your biggest blocker?
+        </h2>
+        <p style={{ color: '#9ca3af', fontSize: 13, marginBottom: 12 }}>Select everything that applies.</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {BLOCKER_OPTIONS.map(opt => {
-            const selected = answers.blockerOptions.includes(opt);
+            const sel = answers.blockerOptions.includes(opt);
             return (
-              <button
-                key={opt}
-                type="button"
-                onClick={() => toggleBlocker(opt)}
-                className={`w-full text-left px-5 py-4 rounded-xl border transition-all flex items-center gap-3 ${
-                  selected
-                    ? 'bg-violet-600/20 border-violet-500/60 text-white'
-                    : 'bg-white/[0.03] border-white/10 text-white/60 hover:border-white/25'
-                }`}
+              <button key={opt} type="button" onClick={() => toggleBlocker(opt)}
+                style={{ ...optionStyle(sel), display: 'flex', alignItems: 'center', gap: 12 }}
               >
-                <div className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-all ${
-                  selected ? 'bg-violet-600 border-violet-600' : 'border-white/30'
-                }`}>
-                  {selected && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 10 10"><path d="M1.5 5l2.5 2.5L8.5 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                <div style={checkStyle(sel)}>
+                  {sel && <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5l2.5 2.5L8.5 2" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                 </div>
-                <span className="font-medium text-sm">{opt}</span>
+                <span style={{ fontWeight: 600, fontSize: 14 }}>{opt}</span>
               </button>
             );
           })}
 
-          {/* Other option */}
+          {/* Other */}
           <div>
-            <button
-              type="button"
-              onClick={() => toggleBlocker('Other')}
-              className={`w-full text-left px-5 py-4 rounded-xl border transition-all flex items-center gap-3 ${
-                answers.blockerOptions.includes('Other')
-                  ? 'bg-violet-600/20 border-violet-500/60 text-white'
-                  : 'bg-white/[0.03] border-white/10 text-white/60 hover:border-white/25'
-              }`}
+            <button type="button" onClick={() => toggleBlocker('Other')}
+              style={{ ...optionStyle(answers.blockerOptions.includes('Other')), display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}
             >
-              <div className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-all ${
-                answers.blockerOptions.includes('Other') ? 'bg-violet-600 border-violet-600' : 'border-white/30'
-              }`}>
-                {answers.blockerOptions.includes('Other') && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 10 10"><path d="M1.5 5l2.5 2.5L8.5 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+              <div style={checkStyle(answers.blockerOptions.includes('Other'))}>
+                {answers.blockerOptions.includes('Other') && <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5l2.5 2.5L8.5 2" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
               </div>
-              <span className="font-medium text-sm">Something else</span>
+              <span style={{ fontWeight: 600, fontSize: 14 }}>Something else</span>
             </button>
             {answers.blockerOptions.includes('Other') && (
               <motion.textarea
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className={`${inputBase} resize-none mt-2`}
+                style={{ ...INPUT, resize: 'none', marginTop: 8 } as React.CSSProperties}
                 rows={2}
                 placeholder="Tell us what's getting in the way..."
                 value={answers.blockerOther}
@@ -508,58 +575,59 @@ function StepResponses({ answers, onChange, onNext }: {
         </div>
       </div>
 
-      <button
-        onClick={onNext}
-        disabled={!valid}
-        className="w-full py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-blue-600 disabled:opacity-30 disabled:cursor-not-allowed text-white font-black text-base transition-opacity"
-      >
-        Continue
-      </button>
+      <div style={{ marginTop: 24 }}>
+        <motion.button
+          onClick={onNext}
+          disabled={!valid}
+          style={{ ...BTN_PRIMARY, opacity: valid ? 1 : 0.3, cursor: valid ? 'pointer' : 'not-allowed' }}
+          whileHover={valid ? { scale: 1.02, boxShadow: '0 8px 40px rgba(0,0,0,0.22)' } : {}}
+          whileTap={valid ? { scale: 0.98 } : {}}
+        >
+          Continue
+        </motion.button>
+      </div>
     </div>
   );
 }
 
-function StepFiles({
-  resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, submitting,
-}: {
+function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, submitting }: {
   resume: File | null; setResume: (f: File | null) => void;
   cl1: File | null; setCl1: (f: File | null) => void;
   cl2: File | null; setCl2: (f: File | null) => void;
   onSubmit: () => void; submitting: boolean;
 }) {
   return (
-    <div className="max-w-xl w-full mx-auto px-6">
-      <h2 className="text-3xl font-black text-white mb-2">Now show us what you've been sending out.</h2>
-      <p className="text-white/40 text-sm mb-2">
-        We're not judging the documents. We're using them to understand how you've been positioning yourself — and where the gap is.
+    <div>
+      <h2 style={{ fontSize: 26, fontWeight: 900, color: '#111827', marginBottom: 6, letterSpacing: '-0.02em' }}>
+        Now show us what you've been sending out.
+      </h2>
+      <p style={{ color: '#9ca3af', fontSize: 13, lineHeight: 1.6, marginBottom: 6 }}>
+        We're not judging the documents — we're using them to understand how you've been positioning yourself.
       </p>
-      <p className="text-white/20 text-xs mb-8">PDF or Word accepted.</p>
+      <p style={{ color: '#c4c8d2', fontSize: 12, marginBottom: 24 }}>PDF or Word accepted.</p>
 
-      <div className="space-y-3">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <FileDropZone label="Your resume" required file={resume} onFile={setResume} />
-        <FileDropZone
-          label="A recent cover letter"
-          subtext="If you don't have one, that's useful information too."
-          file={cl1}
-          onFile={setCl1}
-        />
+        <FileDropZone label="A recent cover letter" subtext="If you don't have one, that's useful information too." file={cl1} onFile={setCl1} />
         <FileDropZone label="Another one if you have it" file={cl2} onFile={setCl2} />
       </div>
 
-      <motion.button
-        onClick={onSubmit}
-        disabled={!resume || submitting}
-        whileHover={resume && !submitting ? { scale: 1.02, boxShadow: '0 0 40px rgba(139,92,246,0.4)' } : {}}
-        whileTap={resume && !submitting ? { scale: 0.98 } : {}}
-        className="mt-8 w-full py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-blue-600 disabled:opacity-30 disabled:cursor-not-allowed text-white font-black text-lg tracking-tight shadow-lg shadow-violet-600/30 transition-shadow"
-      >
-        {submitting ? 'Sending...' : 'Build my diagnosis'}
-      </motion.button>
+      <div style={{ marginTop: 28 }}>
+        <motion.button
+          onClick={onSubmit}
+          disabled={!resume || submitting}
+          style={{ ...BTN_PRIMARY, opacity: resume && !submitting ? 1 : 0.3, cursor: resume && !submitting ? 'pointer' : 'not-allowed' }}
+          whileHover={resume && !submitting ? { scale: 1.02, boxShadow: '0 8px 40px rgba(0,0,0,0.22)' } : {}}
+          whileTap={resume && !submitting ? { scale: 0.98 } : {}}
+        >
+          {submitting ? 'Sending...' : 'Build my diagnosis'}
+        </motion.button>
+      </div>
     </div>
   );
 }
 
-// ── Main Component ────────────────────────────────────────────────────────────
+// ── Main ──────────────────────────────────────────────────────────────────────
 
 export function OnboardingIntake() {
   const queryClient = useQueryClient();
@@ -582,7 +650,6 @@ export function OnboardingIntake() {
     channelOther: '', responsePattern: '',
     blockerOptions: [], blockerOther: '', perceivedBlocker: '',
   });
-
   const [resume, setResume] = useState<File | null>(null);
   const [cl1, setCl1] = useState<File | null>(null);
   const [cl2, setCl2] = useState<File | null>(null);
@@ -612,20 +679,18 @@ export function OnboardingIntake() {
     if (!resume) return;
     setSubmitting(true);
 
-    // Build perceivedBlocker string from checkbox selections
     const blockerParts = answers.blockerOptions.filter(b => b !== 'Other');
     if (answers.blockerOptions.includes('Other') && answers.blockerOther.trim()) {
       blockerParts.push(answers.blockerOther.trim());
     }
-    const perceivedBlocker = blockerParts.join('; ');
 
-    const finalAnswers = { ...answers, perceivedBlocker };
-    if (answers.channels.includes('Other') && answers.channelOther.trim()) {
-      finalAnswers.channels = [
-        ...answers.channels.filter(c => c !== 'Other'),
-        `Other: ${answers.channelOther.trim()}`,
-      ];
-    }
+    const finalAnswers = {
+      ...answers,
+      perceivedBlocker: blockerParts.join('; '),
+      channels: answers.channels.includes('Other') && answers.channelOther.trim()
+        ? [...answers.channels.filter(c => c !== 'Other'), `Other: ${answers.channelOther.trim()}`]
+        : answers.channels,
+    };
 
     const formData = new FormData();
     formData.append('answers', JSON.stringify(finalAnswers));
@@ -634,7 +699,7 @@ export function OnboardingIntake() {
     if (cl2) formData.append('coverLetter2', cl2);
 
     try {
-      // Do NOT manually set Content-Type — axios sets it with the multipart boundary
+      // No manual Content-Type — axios sets multipart boundary automatically
       await api.post('/onboarding/submit', formData, { timeout: 30000 });
       setStep(5);
       startPolling();
@@ -647,57 +712,47 @@ export function OnboardingIntake() {
 
   const handleRetry = async () => {
     setFailed(false);
-    try {
-      await api.post('/onboarding/retry');
-      startPolling();
-    } catch {
-      setFailed(true);
-    }
+    try { await api.post('/onboarding/retry'); startPolling(); }
+    catch { setFailed(true); }
   };
 
-  if (step === 5) {
-    return <ProcessingScreen failed={failed} onRetry={handleRetry} />;
-  }
+  if (step === 5) return <ProcessingScreen failed={failed} onRetry={handleRetry} />;
 
   const STEPS = [
     <StepWelcome key="welcome" onNext={() => setStep(1)} />,
     <StepRole key="role" answers={answers} onChange={onChange} onNext={() => setStep(2)} />,
     <StepTimeline key="timeline" answers={answers} onChange={onChange} onNext={() => setStep(3)} />,
     <StepResponses key="responses" answers={answers} onChange={onChange} onNext={() => setStep(4)} />,
-    <StepFiles
-      key="files"
-      resume={resume} setResume={setResume}
-      cl1={cl1} setCl1={setCl1}
-      cl2={cl2} setCl2={setCl2}
-      onSubmit={handleSubmit}
-      submitting={submitting}
-    />,
+    <StepFiles key="files" resume={resume} setResume={setResume} cl1={cl1} setCl1={setCl1} cl2={cl2} setCl2={setCl2} onSubmit={handleSubmit} submitting={submitting} />,
   ];
 
   return (
-    <div className="min-h-screen bg-[#060918] flex flex-col items-center relative overflow-x-hidden overflow-y-auto py-12">
-      {/* Background atmosphere */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-violet-900/25 rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-blue-900/20 rounded-full blur-[100px]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-indigo-900/10 rounded-full blur-[80px]" />
-      </div>
+    <div className="min-h-screen overflow-x-hidden overflow-y-auto" style={{ backgroundColor: '#eceef4' }}>
+      <Scene />
 
-      <div className="relative w-full flex flex-col items-center justify-center min-h-full">
-        {step > 0 && <DotProgress step={step - 1} total={4} />}
+      <div className="relative min-h-screen flex items-center justify-center py-12 px-4">
+        <div style={{ width: '100%', maxWidth: 520 }}>
+          {step > 0 && <DotProgress step={step - 1} total={4} />}
 
-        <AnimatePresence mode="wait">
           <motion.div
-            key={step}
-            initial={{ opacity: 0, x: 40 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -40 }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className="w-full"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.25, 1, 0.5, 1] }}
+            style={{ ...GLASS_CARD, padding: 'clamp(28px, 5vw, 48px)' }}
           >
-            {STEPS[step]}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={step}
+                initial={{ opacity: 0, x: 32 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -32 }}
+                transition={{ duration: 0.28, ease: [0.25, 1, 0.5, 1] }}
+              >
+                {STEPS[step]}
+              </motion.div>
+            </AnimatePresence>
           </motion.div>
-        </AnimatePresence>
+        </div>
       </div>
     </div>
   );
