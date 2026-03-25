@@ -28,6 +28,20 @@ model CandidateProfile {
   resumeVersions       ResumeVersion[]
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt
+  hasCompletedOnboarding  Boolean   @default(false)
+  targetRole              String?
+  targetCity              String?
+  seniority               String?
+  industry                String?
+  searchDuration          String?
+  applicationsCount       String?
+  channels                Json?
+  responsePattern         String?
+  perceivedBlocker        String?
+  resumeRawText           String?
+  coverLetterRawText      String?
+  coverLetterRawText2     String?
+  diagnosticReport        DiagnosticReport?
 }
 
 model ResumeVersion {
@@ -164,4 +178,31 @@ enum DocumentType {
   RESUME
   COVER_LETTER
   STAR_RESPONSE
+}
+
+model DiagnosticReport {
+  id              String                    @id @default(uuid())
+  userId          String                    @unique
+  status          DiagnosticStatus          @default(PROCESSING)
+  intakeAnswers   Json
+  reportMarkdown  String?
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+  feedback        DiagnosticReportFeedback[]
+  candidateProfile CandidateProfile         @relation(fields: [userId], references: [userId])
+}
+
+enum DiagnosticStatus {
+  PROCESSING
+  COMPLETE
+  FAILED
+}
+
+model DiagnosticReportFeedback {
+  id             String           @id @default(uuid())
+  reportId       String
+  report         DiagnosticReport @relation(fields: [reportId], references: [id])
+  sectionKey     String
+  relevanceScore String
+  createdAt      DateTime         @default(now())
 }
