@@ -14,6 +14,7 @@ import { ApplicationWorkspace } from './components/ApplicationWorkspace';
 import { ApplicationTracker } from './components/ApplicationTracker';
 import { AchievementBank } from './components/AchievementBank';
 import { OnboardingGate } from './components/OnboardingGate';
+import { DiagnosticReport } from './components/DiagnosticReport';
 
 // Auth & Context
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -60,6 +61,7 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-10">
+      <DiagnosticReport />
       <header className="space-y-2">
         <h2 className="text-4xl font-extrabold tracking-tight italic text-white">{(() => { const h = new Date().getHours(); return h < 12 ? 'Good Morning' : h < 17 ? 'Good Afternoon' : 'Good Evening'; })()}, {profile?.name || 'Candidate'}</h2>
         <p className="text-xl text-slate-400 font-medium">Here's your job application intelligence overview.</p>
