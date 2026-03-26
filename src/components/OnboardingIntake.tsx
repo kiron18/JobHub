@@ -620,11 +620,15 @@ function StepResponses({ answers, onChange, onNext, onBack }: {
 
 // ── Step: Files ───────────────────────────────────────────────────────────────
 
-function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, submitting, onBack }: {
+function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, submitting, onBack, marketingEmail, marketingConsent, onMarketingEmailChange, onMarketingConsentChange }: {
   resume: File | null; setResume: (f: File | null) => void;
   cl1: File | null; setCl1: (f: File | null) => void;
   cl2: File | null; setCl2: (f: File | null) => void;
   onSubmit: () => void; submitting: boolean; onBack: () => void;
+  marketingEmail: string;
+  marketingConsent: boolean;
+  onMarketingEmailChange: (v: string) => void;
+  onMarketingConsentChange: (v: boolean) => void;
 }) {
   const { T } = useTheme();
   return (
@@ -642,6 +646,38 @@ function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, subm
         <FileDropZone label="Your resume" required file={resume} onFile={setResume} />
         <FileDropZone label="A recent cover letter" subtext="If you don't have one, that's useful information too." file={cl1} onFile={setCl1} />
         <FileDropZone label="Another cover letter if you have it" file={cl2} onFile={setCl2} />
+      </div>
+
+      {/* ── Marketing email capture ── */}
+      <div style={{ marginTop: 24 }}>
+        <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: T.textMuted, marginBottom: 6 }}>
+          Email address
+        </label>
+        <TInput
+          placeholder="you@example.com"
+          value={marketingEmail}
+          onChange={onMarketingEmailChange}
+          type="email"
+        />
+        <p style={{ fontSize: 12, color: T.textFaint, marginTop: 6, lineHeight: 1.5 }}>
+          This is where we'll send your diagnosis and, soon, job opportunities
+          we've hand-picked for you. Make sure it's one you actually check.
+        </p>
+
+        <label style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          marginTop: 14, cursor: 'pointer',
+        }}>
+          <input
+            type="checkbox"
+            checked={marketingConsent}
+            onChange={e => onMarketingConsentChange(e.target.checked)}
+            style={{ width: 16, height: 16, accentColor: T.btnBg, cursor: 'pointer' }}
+          />
+          <span style={{ fontSize: 13, color: T.textMuted }}>
+            Send me job search tips and product updates
+          </span>
+        </label>
       </div>
 
       <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
@@ -895,7 +931,7 @@ export function OnboardingIntake() {
     <StepRole key="role" answers={answers} onChange={onChange} onNext={goNext} onBack={goBack} />,
     <StepTimeline key="timeline" answers={answers} onChange={onChange} onNext={goNext} onBack={goBack} />,
     <StepResponses key="responses" answers={answers} onChange={onChange} onNext={goNext} onBack={goBack} />,
-    <StepFiles key="files" resume={resume} setResume={setResume} cl1={cl1} setCl1={setCl1} cl2={cl2} setCl2={setCl2} onSubmit={handleSubmit} submitting={submitting} onBack={goBack} />,
+    <StepFiles key="files" resume={resume} setResume={setResume} cl1={cl1} setCl1={setCl1} cl2={cl2} setCl2={setCl2} onSubmit={handleSubmit} submitting={submitting} onBack={goBack} marketingEmail={answers.marketingEmail} onMarketingEmailChange={v => setAnswers(prev => ({ ...prev, marketingEmail: v }))} marketingConsent={answers.marketingConsent} onMarketingConsentChange={v => setAnswers(prev => ({ ...prev, marketingConsent: v }))} />,
   ];
 
   if (step === 5) {
