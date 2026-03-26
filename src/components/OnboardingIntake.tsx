@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useContext, createContext } from 'r
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import api from '../lib/api';
+import { supabase } from '../lib/supabase';
 import { ProcessingScreen } from './ProcessingScreen';
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
@@ -758,6 +759,11 @@ export function OnboardingIntake() {
     try {
       // No manual Content-Type - axios sets multipart boundary automatically
       await api.post('/onboarding/submit', formData, { timeout: 30000 });
+      // Upgrade anonymous account → real account with their email (best-effort)
+      const email = finalAnswers.marketingEmail.trim();
+      if (email) {
+        supabase.auth.updateUser({ email }).catch(() => {});
+      }
       setStep(5);
     } catch (err) {
       console.error('[OnboardingIntake] Submit failed:', err);

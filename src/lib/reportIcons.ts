@@ -1,42 +1,68 @@
+import type { OrigamiIcon } from './reportSvgIcons';
 import {
-  Target,
-  FileText,
-  GitBranch,
-  Lightbulb,
-  Wrench,
-  Sparkles,
-  type LucideIcon,
-} from 'lucide-react';
+  TargetingIcon,
+  DocumentAuditIcon,
+  PipelineIcon,
+  HonestIcon,
+  FixIcon,
+  WhatJobHubDoesIcon,
+} from './reportSvgIcons';
+
+export type { OrigamiIcon };
 
 export interface SectionMeta {
-  icon: LucideIcon;
-  label: string;  // short display label used in cross-section CTAs
+  icon: OrigamiIcon;
+  label: string;
+  /** Primary accent colour for this section */
+  color: string;
+  /** Very subtle background tint (use as rgba / low-opacity fill) */
+  colorBg: string;
+  /** CSS grid column span: 1 = half-width, 2 = full-width */
+  span: 1 | 2;
 }
 
 export const SECTION_ICONS: Record<string, SectionMeta> = {
   targeting: {
-    icon: Target,
-    label: 'Targeting Assessment',
+    icon: TargetingIcon,
+    label: 'Targeting',
+    color: '#FBBF24',
+    colorBg: 'rgba(251,191,36,0.06)',
+    span: 1,
   },
   document_audit: {
-    icon: FileText,
+    icon: DocumentAuditIcon,
     label: 'Document Audit',
+    color: '#A78BFA',
+    colorBg: 'rgba(167,139,250,0.06)',
+    span: 1,
   },
   pipeline: {
-    icon: GitBranch,
-    label: 'Pipeline Diagnosis',
+    icon: PipelineIcon,
+    label: 'Pipeline',
+    color: '#34D399',
+    colorBg: 'rgba(52,211,153,0.06)',
+    span: 1,
   },
   honest: {
-    icon: Lightbulb,
-    label: 'The Honest Assessment',
+    icon: HonestIcon,
+    label: 'The Honest Truth',
+    color: '#FB7185',
+    colorBg: 'rgba(251,113,133,0.06)',
+    span: 1,
   },
   fix: {
-    icon: Wrench,
-    label: 'The 3-Step Fix',
+    icon: FixIcon,
+    label: 'Your 3-Step Fix',
+    color: '#2DD4BF',
+    colorBg: 'rgba(45,212,191,0.07)',
+    span: 2,
   },
   what_jobhub_does: {
-    icon: Sparkles,
+    icon: WhatJobHubDoesIcon,
     label: 'What JobHub Does For You',
+    color: '#FCD34D',
+    colorBg: 'rgba(252,211,77,0.07)',
+    span: 2,
   },
 };
 

@@ -55,17 +55,21 @@ export function ReportIsland({
   };
 
   return (
-    <div
+    <motion.div
       id={`report-island-${sectionKey}`}
+      layout
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
       style={{
-        background: 'rgba(255,255,255,0.05)',
-        border: '1px solid rgba(255,255,255,0.1)',
+        background: isOpen ? meta.colorBg : 'rgba(255,255,255,0.03)',
+        border: `1px solid ${isOpen ? meta.color + '30' : 'rgba(255,255,255,0.08)'}`,
         borderRadius: 20,
         overflow: 'hidden',
-        marginBottom: 16,
+        transition: 'background 0.3s, border-color 0.3s',
       }}
     >
-      {/* Header (always visible) */}
+      {/* Header */}
       <button
         onClick={handleToggle}
         style={{
@@ -80,31 +84,43 @@ export function ReportIsland({
           textAlign: 'left',
         }}
       >
-        {/* Icon with pulse when closed */}
+        {/* Origami icon — pulse when closed */}
         <motion.span
-          animate={isOpen ? {} : { scale: [1, 1.12, 1] }}
-          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+          animate={isOpen ? {} : { scale: [1, 1.10, 1] }}
+          transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
           style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            width: 40, height: 40,
-            borderRadius: 10,
-            background: 'rgba(255,255,255,0.08)',
+            width: 44,
+            height: 44,
+            borderRadius: 12,
+            background: isOpen ? meta.colorBg : 'rgba(255,255,255,0.06)',
             flexShrink: 0,
+            transition: 'background 0.3s',
           }}
         >
-          <Icon size={18} color="#9ca3af" />
+          <Icon size={28} />
         </motion.span>
 
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ fontSize: 15, fontWeight: 700, color: '#f3f4f6', margin: 0 }}>
+          <p style={{
+            fontSize: 15,
+            fontWeight: 700,
+            color: isOpen ? meta.color : '#f3f4f6',
+            margin: 0,
+            transition: 'color 0.3s',
+          }}>
             {meta.label}
           </p>
           {!isOpen && (
             <p style={{
-              fontSize: 13, color: '#6b7280', margin: '3px 0 0',
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              fontSize: 13,
+              color: '#6b7280',
+              margin: '3px 0 0',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
             }}>
               {teaser}
             </p>
@@ -114,7 +130,7 @@ export function ReportIsland({
         <motion.span
           animate={{ rotate: isOpen ? 180 : 0 }}
           transition={{ duration: 0.25 }}
-          style={{ flexShrink: 0, color: '#4b5563' }}
+          style={{ flexShrink: 0, color: isOpen ? meta.color : '#4b5563', transition: 'color 0.3s' }}
         >
           <ChevronDown size={18} />
         </motion.span>
@@ -132,10 +148,21 @@ export function ReportIsland({
             style={{ overflow: 'hidden' }}
           >
             <div style={{ padding: '0 24px 24px' }}>
+              {/* Accent rule */}
+              <div style={{
+                height: 2,
+                background: `linear-gradient(90deg, ${meta.color}60, transparent)`,
+                borderRadius: 99,
+                marginBottom: 20,
+              }} />
+
               {/* Problem text */}
               <p style={{
-                fontSize: 15, color: '#d1d5db', lineHeight: 1.7,
-                whiteSpace: 'pre-wrap', marginBottom: 20,
+                fontSize: 15,
+                color: '#d1d5db',
+                lineHeight: 1.75,
+                whiteSpace: 'pre-wrap',
+                marginBottom: 20,
               }}>
                 {problemText}
               </p>
@@ -145,15 +172,16 @@ export function ReportIsland({
                 <button
                   onClick={() => setShowFix(true)}
                   style={{
-                    background: 'rgba(255,255,255,0.08)',
-                    border: '1px solid rgba(255,255,255,0.15)',
+                    background: meta.colorBg,
+                    border: `1px solid ${meta.color}40`,
                     borderRadius: 12,
                     padding: '10px 20px',
                     fontSize: 14,
                     fontWeight: 700,
-                    color: '#f3f4f6',
+                    color: meta.color,
                     cursor: 'pointer',
                     marginBottom: 24,
+                    transition: 'background 0.15s',
                   }}
                 >
                   Show me the fix →
@@ -171,21 +199,23 @@ export function ReportIsland({
                     style={{ overflow: 'hidden' }}
                   >
                     <div style={{
-                      background: 'rgba(255,255,255,0.04)',
-                      border: '1px solid rgba(255,255,255,0.12)',
+                      background: meta.colorBg,
+                      border: `1px solid ${meta.color}30`,
                       borderRadius: 14,
                       padding: '18px 20px',
                       marginBottom: 24,
-                      boxShadow: '0 0 24px rgba(99,102,241,0.08)',
                     }}>
                       <p style={{
-                        fontSize: 12, fontWeight: 700, color: '#6b7280',
-                        letterSpacing: '0.08em', textTransform: 'uppercase',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: meta.color,
+                        letterSpacing: '0.1em',
+                        textTransform: 'uppercase',
                         marginBottom: 10,
                       }}>
                         Your fix
                       </p>
-                      <p style={{ fontSize: 15, color: '#d1d5db', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+                      <p style={{ fontSize: 15, color: '#e5e7eb', lineHeight: 1.75, whiteSpace: 'pre-wrap' }}>
                         {fixText}
                       </p>
                     </div>
@@ -205,9 +235,9 @@ export function ReportIsland({
                               borderRadius: 99,
                               fontSize: 13,
                               fontWeight: 600,
-                              border: `1px solid ${active ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.1)'}`,
-                              background: active ? 'rgba(255,255,255,0.15)' : 'transparent',
-                              color: active ? '#f3f4f6' : '#6b7280',
+                              border: `1px solid ${active ? meta.color + '80' : 'rgba(255,255,255,0.1)'}`,
+                              background: active ? meta.colorBg : 'transparent',
+                              color: active ? meta.color : '#6b7280',
                               cursor: feedback ? 'default' : 'pointer',
                               transition: 'all 0.15s',
                             }}
@@ -232,22 +262,25 @@ export function ReportIsland({
                       key={key}
                       onClick={() => onNavigate(key)}
                       style={{
-                        flex: 1, minWidth: 200,
-                        display: 'flex', flexDirection: 'column', gap: 4,
+                        flex: 1,
+                        minWidth: 180,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 4,
                         padding: '14px 16px',
-                        background: 'rgba(255,255,255,0.04)',
-                        border: '1px solid rgba(255,255,255,0.1)',
+                        background: 'rgba(255,255,255,0.03)',
+                        border: '1px solid rgba(255,255,255,0.08)',
                         borderRadius: 14,
                         textAlign: 'left',
                         cursor: 'pointer',
                         transition: 'background 0.15s',
                       }}
-                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
-                      onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.07)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
                     >
                       <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <DestIcon size={14} color="#6b7280" />
-                        <span style={{ fontSize: 13, fontWeight: 700, color: '#f3f4f6' }}>
+                        <DestIcon size={18} />
+                        <span style={{ fontSize: 13, fontWeight: 700, color: dest.color }}>
                           {dest.label}
                         </span>
                       </span>
@@ -260,6 +293,6 @@ export function ReportIsland({
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 }

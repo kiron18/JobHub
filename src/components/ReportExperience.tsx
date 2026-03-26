@@ -45,97 +45,146 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
   }
 
   return (
+    /* Full-screen overlay with its own scroll — bypasses body { overflow: hidden } */
     <div style={{
-      minHeight: '100dvh',
-      background: '#0d1117',
+      position: 'fixed',
+      inset: 0,
       overflowY: 'auto',
+      background: '#0d1117',
+      zIndex: 10,
     }}>
       {/* Blobs */}
       <div style={{ position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
         {[
-          { top: '-15%', left: '-10%', size: 500 },
-          { top: '50%',  right: '-8%', size: 420 },
-          { bottom: '-10%', left: '30%', size: 380 },
+          { top: '-15%',  left: '-10%',  size: 500, color: 'rgba(251,191,36,0.04)' },
+          { top: '50%',   right: '-8%',  size: 420, color: 'rgba(45,212,191,0.03)' },
+          { bottom: '-10%', left: '30%', size: 380, color: 'rgba(167,139,250,0.04)' },
         ].map((b, i) => (
           <div key={i} style={{
             position: 'absolute',
-            width: b.size, height: b.size,
+            width: b.size,
+            height: b.size,
             borderRadius: '50%',
-            background: 'radial-gradient(circle at 33% 28%, #1e2535 0%, #131924 55%, #0d1117 100%)',
-            boxShadow: 'inset -10px -10px 28px rgba(0,0,0,0.6), inset 5px 5px 18px rgba(255,255,255,0.03), 20px 32px 80px rgba(0,0,0,0.5)',
+            background: `radial-gradient(circle at 33% 28%, ${b.color} 0%, transparent 70%)`,
             ...b,
           }} />
         ))}
       </div>
 
       {/* Content */}
-      <div style={{ position: 'relative', zIndex: 1, maxWidth: 680, margin: '0 auto', padding: '60px 20px 80px' }}>
+      <div style={{ position: 'relative', zIndex: 1, maxWidth: 760, margin: '0 auto', padding: '60px 20px 100px' }}>
         {/* Header */}
-        <div style={{ marginBottom: 48, textAlign: 'center' }}>
-          <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#4b5563', marginBottom: 12 }}>
+        <motion.div
+          initial={{ opacity: 0, y: -16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          style={{ marginBottom: 48, textAlign: 'center' }}
+        >
+          <p style={{
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+            color: '#4b5563',
+            marginBottom: 12,
+          }}>
             Your diagnosis
           </p>
-          <h1 style={{ fontSize: 28, fontWeight: 800, color: '#f3f4f6', margin: 0, lineHeight: 1.3 }}>
+          <h1 style={{ fontSize: 30, fontWeight: 800, color: '#f3f4f6', margin: 0, lineHeight: 1.25 }}>
             Here's what's actually going on.
           </h1>
-          <p style={{ fontSize: 15, color: '#6b7280', marginTop: 12 }}>
-            Open each section to see your diagnosis, then unlock the fix.
+          <p style={{ fontSize: 15, color: '#6b7280', marginTop: 12, lineHeight: 1.6 }}>
+            Open each section to see your diagnosis — then unlock your fix.
           </p>
-        </div>
+        </motion.div>
 
-        {/* Islands */}
-        {sections.map(section => {
-          const meta = SECTION_ICONS[section.key];
-          if (!meta) return null;
-          const { problem, fix } = splitProblemFix(section.content);
-          return (
-            <ReportIsland
-              key={section.key}
-              sectionKey={section.key}
-              meta={meta}
-              problemText={problem}
-              fixText={fix}
-              reportId={reportId}
-              isOpen={!!openMap[section.key]}
-              onToggle={() => handleToggle(section.key)}
-              onNavigate={handleNavigate}
-            />
-          );
-        })}
+        {/* Masonry grid — span controlled per section in SECTION_ICONS */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: 16,
+        }}>
+          {sections.map((section, i) => {
+            const meta = SECTION_ICONS[section.key];
+            if (!meta) return null;
+            const { problem, fix } = splitProblemFix(section.content);
+            return (
+              <motion.div
+                key={section.key}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.07, duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
+                style={{ gridColumn: `span ${meta.span}` }}
+              >
+                <ReportIsland
+                  sectionKey={section.key}
+                  meta={meta}
+                  problemText={problem}
+                  fixText={fix}
+                  reportId={reportId}
+                  isOpen={!!openMap[section.key]}
+                  onToggle={() => handleToggle(section.key)}
+                  onNavigate={handleNavigate}
+                />
+              </motion.div>
+            );
+          })}
+        </div>
 
         {/* End-of-report CTA */}
         {sections.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
+            transition={{ delay: 0.5 }}
             style={{
               marginTop: 48,
-              padding: '40px 32px',
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.08)',
+              padding: '44px 36px',
+              background: 'rgba(252,211,77,0.04)',
+              border: '1px solid rgba(252,211,77,0.15)',
               borderRadius: 24,
               textAlign: 'center',
             }}
           >
-            <h2 style={{ fontSize: 22, fontWeight: 800, color: '#f3f4f6', marginBottom: 8 }}>
+            <p style={{
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              color: '#FCD34D',
+              marginBottom: 12,
+              opacity: 0.8,
+            }}>
+              You've got this
+            </p>
+            <h2 style={{ fontSize: 24, fontWeight: 800, color: '#f3f4f6', marginBottom: 8 }}>
               Your game plan is ready.
             </h2>
-            <p style={{ fontSize: 15, color: '#6b7280', marginBottom: 28 }}>
-              Time to put it to work.
+            <p style={{ fontSize: 15, color: '#6b7280', marginBottom: 32, lineHeight: 1.6 }}>
+              The market is hard right now — but most people are losing to fixable problems.<br />
+              You just found yours.
             </p>
             <button
               onClick={onDone}
               style={{
-                background: '#f3f4f6',
+                background: '#FCD34D',
                 color: '#111827',
                 border: 'none',
                 borderRadius: 14,
-                padding: '14px 36px',
+                padding: '14px 40px',
                 fontSize: 16,
                 fontWeight: 800,
                 cursor: 'pointer',
-                boxShadow: '0 4px 24px rgba(0,0,0,0.4)',
+                boxShadow: '0 4px 24px rgba(252,211,77,0.25)',
+                transition: 'transform 0.15s, box-shadow 0.15s',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 8px 32px rgba(252,211,77,0.35)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 24px rgba(252,211,77,0.25)';
               }}
             >
               Let's go →

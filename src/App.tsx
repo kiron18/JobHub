@@ -1,5 +1,6 @@
-import { BrowserRouter as Router, Routes, Route, NavLink, Navigate } from 'react-router-dom';
-import { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { supabase } from './lib/supabase';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { ChevronDown, X } from 'lucide-react';
@@ -257,25 +258,29 @@ const Workspace = () => {
   );
 };
 
-// Protected Route Guard
+// Protected Route Guard — silently creates an anonymous session for new visitors
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
-  
-  if (loading) {
+  const [signingIn, setSigningIn] = useState(false);
+
+  useEffect(() => {
+    if (!loading && !user && !signingIn) {
+      setSigningIn(true);
+      supabase.auth.signInAnonymously().finally(() => setSigningIn(false));
+    }
+  }, [loading, user]);
+
+  if (loading || signingIn || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
-          <p className="text-slate-400 font-medium animate-pulse">Initializing JobHub...</p>
+          <p className="text-slate-400 font-medium animate-pulse">Loading...</p>
         </div>
       </div>
     );
   }
-  
-  if (!user) {
-    return <Navigate to="/auth" replace />;
-  }
-  
+
   return <>{children}</>;
 };
 
