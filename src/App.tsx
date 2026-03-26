@@ -14,7 +14,8 @@ import { ApplicationWorkspace } from './components/ApplicationWorkspace';
 import { ApplicationTracker } from './components/ApplicationTracker';
 import { AchievementBank } from './components/AchievementBank';
 import { OnboardingGate } from './components/OnboardingGate';
-import { DiagnosticReport } from './components/DiagnosticReport';
+import { OnboardingIntake } from './components/OnboardingIntake';
+import { ReportExperience } from './components/ReportExperience';
 
 // Auth & Context
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -61,7 +62,6 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-10">
-      <DiagnosticReport />
       <header className="space-y-2">
         <h2 className="text-4xl font-extrabold tracking-tight italic text-white">{(() => { const h = new Date().getHours(); return h < 12 ? 'Good Morning' : h < 17 ? 'Good Afternoon' : 'Good Evening'; })()}, {profile?.name || 'Candidate'}</h2>
         <p className="text-xl text-slate-400 font-medium">Here's your job application intelligence overview.</p>
@@ -210,11 +210,48 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
   
   if (!user) {
-    return <AuthPage />;
+    return <OnboardingIntake />;
   }
   
   return <>{children}</>;
 };
+
+// --- Report or Dashboard wrapper (first visit shows full-screen report) ---
+
+function ReportOrDashboard() {
+  const [reportSeen, setReportSeen] = useState(
+    () => localStorage.getItem('jobhub_report_seen') === 'true'
+  );
+
+  function handleDone() {
+    localStorage.setItem('jobhub_report_seen', 'true');
+    localStorage.setItem('jobhub_tips_seen', 'false');
+    setReportSeen(true);
+  }
+
+  if (!reportSeen) {
+    return <ReportExperience onDone={handleDone} />;
+  }
+
+  return (
+    <motion.div
+      key="dashboard"
+      initial={{ opacity: 0, y: 40 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.25, 0, 0, 1] }}
+    >
+      <DashboardLayout>
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/tracker" element={<ApplicationTracker />} />
+          <Route path="/application-workspace" element={<ApplicationWorkspace />} />
+          <Route path="/workspace" element={<Workspace />} />
+          <Route path="*" element={<Dashboard />} />
+        </Routes>
+      </DashboardLayout>
+    </motion.div>
+  );
+}
 
 // --- Main App Component ---
 
@@ -231,16 +268,7 @@ function App() {
             <Route path="/*" element={
               <ProtectedRoute>
                 <OnboardingGate>
-                  <DashboardLayout>
-                    <Routes>
-                      <Route path="/" element={<Dashboard />} />
-                      <Route path="/tracker" element={<ApplicationTracker />} />
-                      <Route path="/application-workspace" element={<ApplicationWorkspace />} />
-                      <Route path="/workspace" element={<Workspace />} />
-                      {/* Fallback to dashboard */}
-                      <Route path="*" element={<Dashboard />} />
-                    </Routes>
-                  </DashboardLayout>
+                  <ReportOrDashboard />
                 </OnboardingGate>
               </ProtectedRoute>
             } />
