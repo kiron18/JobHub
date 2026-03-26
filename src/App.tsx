@@ -16,6 +16,7 @@ import { AchievementBank } from './components/AchievementBank';
 import { OnboardingGate } from './components/OnboardingGate';
 import { OnboardingIntake } from './components/OnboardingIntake';
 import { ReportExperience } from './components/ReportExperience';
+import { FirstVisitTip } from './components/FirstVisitTips';
 
 // Auth & Context
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -30,6 +31,8 @@ const queryClient = new QueryClient();
 
 // Dashboard View component
 const Dashboard = () => {
+  const [showReport, setShowReport] = useState(false);
+
   const { data: profile } = useQuery({
     queryKey: ['profile'],
     queryFn: async () => {
@@ -66,6 +69,67 @@ const Dashboard = () => {
         <h2 className="text-4xl font-extrabold tracking-tight italic text-white">{(() => { const h = new Date().getHours(); return h < 12 ? 'Good Morning' : h < 17 ? 'Good Afternoon' : 'Good Evening'; })()}, {profile?.name || 'Candidate'}</h2>
         <p className="text-xl text-slate-400 font-medium">Here's your job application intelligence overview.</p>
       </header>
+
+      {/* Collapsed report summary card */}
+      <div style={{
+        background: 'rgba(255,255,255,0.03)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: 16,
+        padding: '18px 24px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 24,
+      }}>
+        <div>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#6b7280', margin: 0 }}>Your Diagnosis</p>
+          <p style={{ fontSize: 12, color: '#4b5563', margin: '2px 0 0' }}>
+            {new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
+          </p>
+        </div>
+        <button
+          onClick={() => setShowReport(true)}
+          style={{
+            background: 'rgba(255,255,255,0.06)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 10,
+            padding: '8px 16px',
+            fontSize: 13,
+            fontWeight: 700,
+            color: '#d1d5db',
+            cursor: 'pointer',
+          }}
+        >
+          View again
+        </button>
+      </div>
+
+      {/* First-visit tips */}
+      <FirstVisitTip tips={[
+        { id: 'achievements', text: 'All your achievements are logged here — hit Manage to edit them' },
+        { id: 'matcher',      text: 'Paste a job description here to get matched and start applying' },
+      ]} />
+
+      {/* Return-visit report overlay */}
+      {showReport && (
+        <>
+          <button
+            onClick={() => setShowReport(false)}
+            style={{
+              position: 'fixed', top: 16, right: 20, zIndex: 52,
+              background: 'rgba(255,255,255,0.08)',
+              border: '1px solid rgba(255,255,255,0.15)',
+              borderRadius: 99, padding: '8px 16px',
+              fontSize: 13, fontWeight: 700, color: '#d1d5db', cursor: 'pointer',
+            }}
+          >
+            ← Back to dashboard
+          </button>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 50 }}>
+            <ReportExperience onDone={() => setShowReport(false)} />
+          </div>
+        </>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
