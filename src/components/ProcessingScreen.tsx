@@ -32,7 +32,7 @@ const BAR_DURATION_MS = 45_000;
 const POLL_INTERVAL_MS = 3_000;
 const MESSAGE_INTERVAL_MS = 8_000;
 
-export function ProcessingScreen({ theme: T, onComplete, onRetry }: ProcessingScreenProps) {
+export function ProcessingScreen({ isDark: _isDark, theme: T, onComplete, onRetry }: ProcessingScreenProps) {
   const queryClient = useQueryClient();
   const [barWidth, setBarWidth] = useState(100);
   const [msgIndex, setMsgIndex] = useState(0);
