@@ -19,7 +19,7 @@ type Feedback = 'spot_on' | 'partially' | 'missed';
 
 function extractTeaser(text: string): string {
   const sentence = text.split(/[.!?]/)[0]?.trim() ?? '';
-  return sentence.length > 120 ? sentence.slice(0, 117) + '...' : sentence;
+  return sentence.length > 100 ? sentence.slice(0, 97) + '...' : sentence;
 }
 
 export function ReportIsland({
@@ -37,16 +37,10 @@ export function ReportIsland({
     if (feedback || feedbackLoading) return;
     setFeedbackLoading(true);
     try {
-      await api.post(`/onboarding/report/${reportId}/feedback`, {
-        sectionKey,
-        relevanceScore: score,
-      });
+      await api.post(`/onboarding/report/${reportId}/feedback`, { sectionKey, relevanceScore: score });
       setFeedback(score);
-    } catch {
-      // silent — non-critical
-    } finally {
-      setFeedbackLoading(false);
-    }
+    } catch { /* silent */ }
+    finally { setFeedbackLoading(false); }
   }
 
   const handleToggle = () => {
@@ -55,173 +49,235 @@ export function ReportIsland({
   };
 
   return (
-    <motion.div
+    <div
       id={`report-island-${sectionKey}`}
-      layout
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
       style={{
-        background: isOpen ? meta.colorBg : 'rgba(255,255,255,0.03)',
-        border: `1px solid ${isOpen ? meta.color + '30' : 'rgba(255,255,255,0.08)'}`,
-        borderRadius: 20,
+        borderRadius: 18,
         overflow: 'hidden',
-        transition: 'background 0.3s, border-color 0.3s',
+        background: '#0d1117',
+        border: `1px solid ${isOpen ? meta.color + '28' : 'rgba(255,255,255,0.06)'}`,
+        transition: 'border-color 0.3s',
       }}
     >
-      {/* Header */}
-      <button
-        onClick={handleToggle}
-        style={{
-          width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 14,
-          padding: '20px 24px',
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          textAlign: 'left',
-        }}
-      >
-        {/* Origami icon — pulse when closed */}
-        <motion.span
-          animate={isOpen ? {} : { scale: [1, 1.10, 1] }}
-          transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 44,
-            height: 44,
-            borderRadius: 12,
-            background: isOpen ? meta.colorBg : 'rgba(255,255,255,0.06)',
-            flexShrink: 0,
-            transition: 'background 0.3s',
-          }}
-        >
-          <Icon size={28} />
-        </motion.span>
-
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{
-            fontSize: 15,
-            fontWeight: 700,
-            color: isOpen ? meta.color : '#f3f4f6',
-            margin: 0,
-            transition: 'color 0.3s',
-          }}>
-            {meta.label}
-          </p>
-          {!isOpen && (
-            <p style={{
-              fontSize: 13,
-              color: '#6b7280',
-              margin: '3px 0 0',
+      {/* ── COLLAPSED: full-bleed scene card ── */}
+      <AnimatePresence initial={false}>
+        {!isOpen && (
+          <motion.button
+            key="cover"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            onClick={handleToggle}
+            style={{
+              position: 'relative',
+              width: '100%',
+              height: meta.collapsedHeight,
+              display: 'block',
+              border: 'none',
+              padding: 0,
+              cursor: 'pointer',
               overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
+            }}
+          >
+            {/* Scene illustration — fills card */}
+            <motion.div
+              layoutId={`char-${sectionKey}`}
+              style={{ position: 'absolute', inset: 0 }}
+            >
+              <Icon style={{ width: '100%', height: '100%', display: 'block' }} />
+            </motion.div>
+
+            {/* Bottom gradient for text legibility */}
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'linear-gradient(to bottom, transparent 35%, rgba(4,4,8,0.55) 62%, rgba(4,4,8,0.92) 100%)',
+              pointerEvents: 'none',
+            }} />
+
+            {/* Expand hint — top right */}
+            <div style={{
+              position: 'absolute',
+              top: 14,
+              right: 14,
+              width: 28,
+              height: 28,
+              borderRadius: 99,
+              background: 'rgba(255,255,255,0.12)',
+              backdropFilter: 'blur(6px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}>
-              {teaser}
-            </p>
-          )}
-        </div>
+              <ChevronDown size={14} color="rgba(255,255,255,0.7)" />
+            </div>
 
-        <motion.span
-          animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={{ duration: 0.25 }}
-          style={{ flexShrink: 0, color: isOpen ? meta.color : '#4b5563', transition: 'color 0.3s' }}
-        >
-          <ChevronDown size={18} />
-        </motion.span>
-      </button>
+            {/* Text overlay — bottom of card */}
+            <div style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              padding: '0 20px 18px',
+              textAlign: 'left',
+            }}>
+              <p style={{
+                fontSize: 16,
+                fontWeight: 800,
+                color: meta.color,
+                margin: '0 0 5px',
+                letterSpacing: '-0.01em',
+              }}>
+                {meta.label}
+              </p>
+              {teaser && (
+                <p style={{
+                  fontSize: 12,
+                  color: 'rgba(255,255,255,0.60)',
+                  margin: 0,
+                  lineHeight: 1.5,
+                }}>
+                  {teaser}
+                </p>
+              )}
+            </div>
+          </motion.button>
+        )}
+      </AnimatePresence>
 
-      {/* Expanded content */}
+      {/* ── EXPANDED: small icon header + content ── */}
       <AnimatePresence initial={false}>
         {isOpen && (
           <motion.div
-            key="content"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: [0.25, 0, 0, 1] }}
-            style={{ overflow: 'hidden' }}
+            key="expanded"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
           >
-            <div style={{ padding: '0 24px 24px' }}>
-              {/* Accent rule */}
-              <div style={{
-                height: 2,
-                background: `linear-gradient(90deg, ${meta.color}60, transparent)`,
-                borderRadius: 99,
-                marginBottom: 20,
-              }} />
+            {/* Header row */}
+            <button
+              onClick={handleToggle}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: '16px 20px',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                textAlign: 'left',
+              }}
+            >
+              {/* Shrunk scene — morphs from full card via layoutId */}
+              <motion.div
+                layoutId={`char-${sectionKey}`}
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 12,
+                  overflow: 'hidden',
+                  flexShrink: 0,
+                }}
+              >
+                <Icon style={{ width: '100%', height: '100%', display: 'block' }} />
+              </motion.div>
 
-              {/* Problem text */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{
+                  fontSize: 14,
+                  fontWeight: 700,
+                  color: meta.color,
+                  margin: 0,
+                  letterSpacing: '-0.01em',
+                }}>
+                  {meta.label}
+                </p>
+              </div>
+
+              <motion.span
+                animate={{ rotate: 180 }}
+                style={{ color: meta.color + 'aa', flexShrink: 0 }}
+              >
+                <ChevronDown size={16} />
+              </motion.span>
+            </button>
+
+            {/* Accent rule */}
+            <div style={{
+              height: 1,
+              margin: '0 20px',
+              background: `linear-gradient(90deg, ${meta.color}50, transparent)`,
+            }} />
+
+            {/* Content */}
+            <div style={{ padding: '20px 20px 24px' }}>
               <p style={{
                 fontSize: 15,
                 color: '#d1d5db',
-                lineHeight: 1.75,
+                lineHeight: 1.78,
                 whiteSpace: 'pre-wrap',
                 marginBottom: 20,
               }}>
                 {problemText}
               </p>
 
-              {/* Show fix button */}
+              {/* Show fix */}
               {!showFix && (
                 <button
                   onClick={() => setShowFix(true)}
                   style={{
                     background: meta.colorBg,
-                    border: `1px solid ${meta.color}40`,
+                    border: `1px solid ${meta.color}38`,
                     borderRadius: 12,
                     padding: '10px 20px',
                     fontSize: 14,
                     fontWeight: 700,
                     color: meta.color,
                     cursor: 'pointer',
-                    marginBottom: 24,
-                    transition: 'background 0.15s',
+                    marginBottom: 20,
                   }}
                 >
                   Show me the fix →
                 </button>
               )}
 
-              {/* Fix reveal */}
               <AnimatePresence>
                 {showFix && (
                   <motion.div
                     key="fix"
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.25, ease: [0.25, 0, 0, 1] }}
                     style={{ overflow: 'hidden' }}
                   >
                     <div style={{
                       background: meta.colorBg,
-                      border: `1px solid ${meta.color}30`,
+                      border: `1px solid ${meta.color}28`,
                       borderRadius: 14,
                       padding: '18px 20px',
-                      marginBottom: 24,
+                      marginBottom: 20,
                     }}>
                       <p style={{
-                        fontSize: 11,
+                        fontSize: 10,
                         fontWeight: 700,
                         color: meta.color,
-                        letterSpacing: '0.1em',
+                        letterSpacing: '0.12em',
                         textTransform: 'uppercase',
                         marginBottom: 10,
                       }}>
                         Your fix
                       </p>
-                      <p style={{ fontSize: 15, color: '#e5e7eb', lineHeight: 1.75, whiteSpace: 'pre-wrap' }}>
+                      <p style={{ fontSize: 15, color: '#e5e7eb', lineHeight: 1.78, whiteSpace: 'pre-wrap' }}>
                         {fixText}
                       </p>
                     </div>
 
                     {/* Feedback pills */}
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 28 }}>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 24 }}>
                       {(['spot_on', 'partially', 'missed'] as Feedback[]).map(score => {
                         const labels = { spot_on: 'Spot on', partially: 'Partially', missed: 'Missed the mark' };
                         const active = feedback === score;
@@ -233,9 +289,9 @@ export function ReportIsland({
                             style={{
                               padding: '6px 14px',
                               borderRadius: 99,
-                              fontSize: 13,
+                              fontSize: 12,
                               fontWeight: 600,
-                              border: `1px solid ${active ? meta.color + '80' : 'rgba(255,255,255,0.1)'}`,
+                              border: `1px solid ${active ? meta.color + '70' : 'rgba(255,255,255,0.10)'}`,
                               background: active ? meta.colorBg : 'transparent',
                               color: active ? meta.color : '#6b7280',
                               cursor: feedback ? 'default' : 'pointer',
@@ -252,25 +308,24 @@ export function ReportIsland({
               </AnimatePresence>
 
               {/* Cross-section CTAs */}
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {links.map(({ key, why }) => {
                   const dest = SECTION_ICONS[key];
                   if (!dest) return null;
-                  const DestIcon = dest.icon;
                   return (
                     <button
                       key={key}
                       onClick={() => onNavigate(key)}
                       style={{
                         flex: 1,
-                        minWidth: 180,
+                        minWidth: 160,
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: 4,
-                        padding: '14px 16px',
+                        gap: 3,
+                        padding: '12px 14px',
                         background: 'rgba(255,255,255,0.03)',
-                        border: '1px solid rgba(255,255,255,0.08)',
-                        borderRadius: 14,
+                        border: '1px solid rgba(255,255,255,0.07)',
+                        borderRadius: 12,
                         textAlign: 'left',
                         cursor: 'pointer',
                         transition: 'background 0.15s',
@@ -278,13 +333,10 @@ export function ReportIsland({
                       onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.07)')}
                       onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
                     >
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <DestIcon size={18} />
-                        <span style={{ fontSize: 13, fontWeight: 700, color: dest.color }}>
-                          {dest.label}
-                        </span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: dest.color }}>
+                        {dest.label}
                       </span>
-                      <span style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>{why}</span>
+                      <span style={{ fontSize: 11, color: '#6b7280', lineHeight: 1.5 }}>{why}</span>
                     </button>
                   );
                 })}
@@ -293,6 +345,6 @@ export function ReportIsland({
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </div>
   );
 }

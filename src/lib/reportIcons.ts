@@ -13,11 +13,11 @@ export type { OrigamiIcon };
 export interface SectionMeta {
   icon: OrigamiIcon;
   label: string;
-  /** Primary accent colour for this section */
   color: string;
-  /** Very subtle background tint (use as rgba / low-opacity fill) */
   colorBg: string;
-  /** CSS grid column span: 1 = half-width, 2 = full-width */
+  /** px height of the collapsed card */
+  collapsedHeight: number;
+  /** CSS grid column span (masonry) */
   span: 1 | 2;
 }
 
@@ -26,35 +26,40 @@ export const SECTION_ICONS: Record<string, SectionMeta> = {
     icon: TargetingIcon,
     label: 'Targeting',
     color: '#FBBF24',
-    colorBg: 'rgba(251,191,36,0.06)',
+    colorBg: 'rgba(251,191,36,0.07)',
+    collapsedHeight: 230,
     span: 1,
   },
   document_audit: {
     icon: DocumentAuditIcon,
     label: 'Document Audit',
     color: '#A78BFA',
-    colorBg: 'rgba(167,139,250,0.06)',
+    colorBg: 'rgba(167,139,250,0.07)',
+    collapsedHeight: 210,
     span: 1,
   },
   pipeline: {
     icon: PipelineIcon,
     label: 'Pipeline',
     color: '#34D399',
-    colorBg: 'rgba(52,211,153,0.06)',
+    colorBg: 'rgba(52,211,153,0.07)',
+    collapsedHeight: 250,
     span: 1,
   },
   honest: {
     icon: HonestIcon,
     label: 'The Honest Truth',
     color: '#FB7185',
-    colorBg: 'rgba(251,113,133,0.06)',
+    colorBg: 'rgba(251,113,133,0.07)',
+    collapsedHeight: 220,
     span: 1,
   },
   fix: {
     icon: FixIcon,
     label: 'Your 3-Step Fix',
-    color: '#2DD4BF',
-    colorBg: 'rgba(45,212,191,0.07)',
+    color: '#5EEAD4',
+    colorBg: 'rgba(94,234,212,0.07)',
+    collapsedHeight: 220,
     span: 2,
   },
   what_jobhub_does: {
@@ -62,11 +67,11 @@ export const SECTION_ICONS: Record<string, SectionMeta> = {
     label: 'What JobHub Does For You',
     color: '#FCD34D',
     colorBg: 'rgba(252,211,77,0.07)',
+    collapsedHeight: 210,
     span: 2,
   },
 };
 
-/** Cross-section CTA wiring. Each section links to two others with a reason why. */
 export const SECTION_LINKS: Record<string, { key: string; why: string }[]> = {
   targeting: [
     { key: 'document_audit', why: 'Your targeting shapes what your resume needs to say' },
