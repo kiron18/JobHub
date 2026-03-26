@@ -10,7 +10,7 @@ export async function sendWelcomeEmail(to: string): Promise<void> {
     return;
   }
   await resend.emails.send({
-    from: 'JobHub <hello@jobhub.com.au>',
+    from: 'JobHub <onboarding@resend.dev>',
     to,
     subject: 'Your JobHub diagnosis is ready',
     text: [
