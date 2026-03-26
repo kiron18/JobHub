@@ -4,6 +4,7 @@ import { prisma } from '../index';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { extractTextFromBuffer } from '../services/pdf';
 import { generateDiagnosticReport, DiagnosticReportInput } from '../services/diagnosticReport';
+import { sendWelcomeEmail } from '../services/email';
 
 const router = Router();
 
@@ -74,6 +75,8 @@ router.post(
           resumeRawText: resumeText,
           coverLetterRawText: coverLetterText1 ?? null,
           coverLetterRawText2: coverLetterText2 ?? null,
+          marketingEmail: (answers as any).marketingEmail ?? null,
+          marketingConsent: (answers as any).marketingConsent ?? false,
         },
         update: {
           targetRole: answers.targetRole,
@@ -88,6 +91,8 @@ router.post(
           resumeRawText: resumeText,
           coverLetterRawText: coverLetterText1 ?? null,
           coverLetterRawText2: coverLetterText2 ?? null,
+          marketingEmail: (answers as any).marketingEmail ?? null,
+          marketingConsent: (answers as any).marketingConsent ?? false,
         },
       });
 
@@ -116,6 +121,14 @@ router.post(
             where: { userId },
             data: { hasCompletedOnboarding: true },
           });
+          const freshProfile = await prisma.candidateProfile.findUnique({ where: { userId } });
+          if ((answers as any).marketingConsent && freshProfile && !freshProfile.marketingEmailSent && (answers as any).marketingEmail) {
+            await sendWelcomeEmail((answers as any).marketingEmail);
+            await prisma.candidateProfile.update({
+              where: { userId },
+              data: { marketingEmailSent: true },
+            });
+          }
           console.log(`[Onboarding] Diagnostic complete for userId: ${userId}`);
         })
         .catch(async (err) => {
@@ -190,6 +203,14 @@ router.post('/retry', authenticate, async (req: AuthRequest, res: Response) => {
           where: { userId },
           data: { hasCompletedOnboarding: true },
         });
+        const freshProfile = await prisma.candidateProfile.findUnique({ where: { userId } });
+        if (answers.marketingConsent && freshProfile && !freshProfile.marketingEmailSent && answers.marketingEmail) {
+          await sendWelcomeEmail(answers.marketingEmail);
+          await prisma.candidateProfile.update({
+            where: { userId },
+            data: { marketingEmailSent: true },
+          });
+        }
       })
       .catch(async (err) => {
         console.error('[Onboarding] Retry failed:', err);
