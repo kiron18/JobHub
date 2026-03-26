@@ -72,7 +72,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
       </div>
 
       {/* Content */}
-      <div style={{ position: 'relative', zIndex: 1, maxWidth: 760, margin: '0 auto', padding: '60px 20px 100px' }}>
+      <div style={{ position: 'relative', zIndex: 1, maxWidth: 1100, margin: '0 auto', padding: '60px 24px 100px' }}>
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -16 }}
@@ -98,11 +98,10 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
           </p>
         </motion.div>
 
-        {/* Masonry grid — span controlled per section in SECTION_ICONS */}
+        {/* True CSS masonry — column-count lets items fill naturally by height */}
         <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gap: 16,
+          columnCount: 3,
+          columnGap: 14,
         }}>
           {sections.map((section, i) => {
             const meta = SECTION_ICONS[section.key];
@@ -114,7 +113,12 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.07, duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
-                style={{ gridColumn: `span ${meta.span}` }}
+                style={{
+                  breakInside: 'avoid',
+                  marginBottom: 14,
+                  /* span-2 sections break out to full width */
+                  ...(meta.span === 2 ? { columnSpan: 'all' } : {}),
+                }}
               >
                 <ReportIsland
                   sectionKey={section.key}

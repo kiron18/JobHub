@@ -703,7 +703,7 @@ function CheckBox({ checked }: { checked: boolean }) {
 export function OnboardingIntake() {
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
-  const [dark, setDark] = useState(() => localStorage.getItem('jobhub-theme') === 'dark');
+  const [dark, setDark] = useState(false); // default light; user can toggle to dark
 
   const T = dark ? DARK : LIGHT;
 
