@@ -42,6 +42,9 @@ model CandidateProfile {
   coverLetterRawText      String?
   coverLetterRawText2     String?
   diagnosticReport        DiagnosticReport?
+  marketingEmail      String?
+  marketingConsent    Boolean  @default(false)
+  marketingEmailSent  Boolean  @default(false)
 }
 
 model ResumeVersion {
