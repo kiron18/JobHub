@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect, useContext, createContext } from 'r
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import api from '../lib/api';
-import { supabase } from '../lib/supabase';
 import { ProcessingScreen } from './ProcessingScreen';
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
@@ -633,66 +632,6 @@ function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, subm
   );
 }
 
-// ── Step: Account ─────────────────────────────────────────────────────────────
-
-function StepAccount({ answers, email, setEmail, password, setPassword, authMode, setAuthMode, authError, onSubmit, submitting, onBack }: {
-  answers: IntakeAnswers;
-  email: string; setEmail: (v: string) => void;
-  password: string; setPassword: (v: string) => void;
-  authMode: 'signup' | 'signin'; setAuthMode: (m: 'signup' | 'signin') => void;
-  authError: string;
-  onSubmit: () => void; submitting: boolean; onBack: () => void;
-}) {
-  const { T } = useTheme();
-  const valid = email.includes('@') && password.length >= 8;
-
-  return (
-    <div>
-      <ProfileProgress step={4} answers={answers} />
-      <h2 style={{ fontSize: 24, fontWeight: 900, color: T.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
-        {authMode === 'signup' ? 'Save your diagnosis' : 'Welcome back'}
-      </h2>
-      <p style={{ color: T.textMuted, fontSize: 13, lineHeight: 1.6, marginBottom: 20 }}>
-        {authMode === 'signup'
-          ? 'Create a free account to receive your personalised career diagnosis and track your progress.'
-          : 'Sign in to link your diagnosis to your existing account.'}
-      </p>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <Field label="Email">
-          <TInput placeholder="you@example.com" value={email} onChange={setEmail} type="email" />
-        </Field>
-        <Field label="Password" hint={authMode === 'signup' ? 'At least 8 characters.' : undefined}>
-          <TInput placeholder="Password" value={password} onChange={setPassword} type="password" />
-        </Field>
-      </div>
-
-      {authError && (
-        <p style={{ fontSize: 13, color: '#ef4444', marginTop: 12, lineHeight: 1.5 }}>{authError}</p>
-      )}
-
-      <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-        <BackButton onBack={onBack} disabled={submitting} />
-        <PrimaryButton
-          onClick={onSubmit}
-          disabled={!valid || submitting}
-          label={submitting ? (authMode === 'signup' ? 'Creating account...' : 'Signing in...') : 'Build my diagnosis'}
-        />
-      </div>
-
-      <p style={{ textAlign: 'center', fontSize: 12, color: T.textFaint, marginTop: 16 }}>
-        {authMode === 'signup' ? 'Already have an account? ' : 'New here? '}
-        <button
-          type="button"
-          onClick={() => { setAuthMode(authMode === 'signup' ? 'signin' : 'signup'); }}
-          style={{ background: 'none', border: 'none', color: T.textMuted, fontWeight: 700, cursor: 'pointer', fontSize: 12, textDecoration: 'underline', fontFamily: 'inherit' }}
-        >
-          {authMode === 'signup' ? 'Sign in instead' : 'Create an account'}
-        </button>
-      </p>
-    </div>
-  );
-}
 
 // ── Shared button components ──────────────────────────────────────────────────
 
@@ -779,9 +718,6 @@ export function OnboardingIntake() {
     }).catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-
   const [answers, setAnswers] = useState<IntakeAnswers>({
     targetRole: '', targetCity: '', seniority: '', industry: '',
     searchDuration: '', applicationsCount: '', channels: [],
@@ -793,12 +729,6 @@ export function OnboardingIntake() {
   const [resume, setResume] = useState<File | null>(null);
   const [cl1, setCl1] = useState<File | null>(null);
   const [cl2, setCl2] = useState<File | null>(null);
-
-  useEffect(() => {
-    if (email) {
-      setAnswers(prev => ({ ...prev, marketingEmail: email }));
-    }
-  }, [email]);
 
   const onChange = (k: keyof IntakeAnswers, v: string | string[]) =>
     setAnswers(prev => ({ ...prev, [k]: v }));
