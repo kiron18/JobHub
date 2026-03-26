@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { useState } from 'react';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
@@ -14,7 +14,6 @@ import { ApplicationWorkspace } from './components/ApplicationWorkspace';
 import { ApplicationTracker } from './components/ApplicationTracker';
 import { AchievementBank } from './components/AchievementBank';
 import { OnboardingGate } from './components/OnboardingGate';
-import { OnboardingIntake } from './components/OnboardingIntake';
 import { ReportExperience } from './components/ReportExperience';
 import { FirstVisitTip } from './components/FirstVisitTips';
 
@@ -274,7 +273,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
   
   if (!user) {
-    return <OnboardingIntake />;
+    return <Navigate to="/auth" replace />;
   }
   
   return <>{children}</>;

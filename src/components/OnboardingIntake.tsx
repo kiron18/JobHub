@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect, useContext, createContext } from 'r
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import api from '../lib/api';
-import { supabase } from '../lib/supabase';
 import { ProcessingScreen } from './ProcessingScreen';
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
@@ -757,30 +756,12 @@ export function OnboardingIntake() {
     if (cl2) formData.append('coverLetter2', cl2);
 
     try {
-      // Sign up before submit — OnboardingIntake is only shown to unauthenticated users.
-      // Email confirmation is disabled in Supabase so signUp returns a session immediately.
-      const email = finalAnswers.marketingEmail.trim();
-      const { error: signUpError } = await supabase.auth.signUp({
-        email,
-        password: crypto.randomUUID(),
-      });
-      if (signUpError && !signUpError.message.includes('already registered')) {
-        throw new Error(signUpError.message);
-      }
-      // Verify a session exists before calling the protected endpoint
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error('Could not create your account. Please try again or log in at /auth.');
-        setSubmitting(false);
-        return;
-      }
-
       // No manual Content-Type - axios sets multipart boundary automatically
       await api.post('/onboarding/submit', formData, { timeout: 30000 });
       setStep(5);
     } catch (err) {
       console.error('[OnboardingIntake] Submit failed:', err);
-      toast.error('Something went wrong. Please try again.');
+      toast.error('Something went wrong uploading your files. Please try again.');
       setSubmitting(false);
     }
   };
