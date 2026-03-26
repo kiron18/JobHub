@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect, useContext, createContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import api from '../lib/api';
 import { supabase } from '../lib/supabase';
+import { ProcessingScreen } from './ProcessingScreen';
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 
@@ -99,13 +99,6 @@ const BLOCKER_OPTIONS = [
   'Experience gap - targeting roles above where I am',
   'Interview nerves or performance',
 ];
-const PROCESSING_LINES = [
-  'Reading your documents...',
-  'Mapping where applications are likely dropping off...',
-  'Cross-referencing your experience against your targets...',
-  'Building your diagnosis...',
-];
-
 const STEP_LABELS = [
   '',
   'Your target is locked in.',
@@ -336,58 +329,6 @@ function FileDropZone({ label, subtext, required, file, onFile }: {
         </div>
       </div>
     </motion.div>
-  );
-}
-
-// ── Processing screen ─────────────────────────────────────────────────────────
-
-function ProcessingScreen({ failed, onRetry }: { failed: boolean; onRetry: () => void }) {
-  const { T } = useTheme();
-  const [lineIndex, setLineIndex] = useState(0);
-  useEffect(() => {
-    if (failed) return;
-    const iv = setInterval(() => setLineIndex(i => (i + 1) % PROCESSING_LINES.length), 3000);
-    return () => clearInterval(iv);
-  }, [failed]);
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div style={{
-        background: T.card, border: `1px solid ${T.cardBorder}`,
-        boxShadow: T.cardShadow, borderRadius: 28,
-        backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)',
-        padding: '48px 40px', maxWidth: 420, width: '100%', textAlign: 'center',
-      }}>
-        {failed ? (
-          <>
-            <div style={{ fontSize: 36, marginBottom: 16 }}>!</div>
-            <h2 style={{ fontSize: 20, fontWeight: 800, color: T.text, marginBottom: 10 }}>Something went wrong on our end</h2>
-            <p style={{ color: T.textMuted, fontSize: 14, lineHeight: 1.6, marginBottom: 24 }}>
-              Your documents were saved. Refresh and we will pick up where you left off.
-            </p>
-            <motion.button onClick={onRetry} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-              style={{ background: T.btnBg, color: T.btnText, padding: '12px 28px', borderRadius: 12, border: 'none', fontWeight: 700, cursor: 'pointer', fontSize: 14 }}>
-              Try again
-            </motion.button>
-          </>
-        ) : (
-          <>
-            <motion.div
-              style={{ width: 40, height: 40, borderRadius: '50%', border: `3px solid ${T.progressBg}`, borderTopColor: T.progressFill, margin: '0 auto 28px' }}
-              animate={{ rotate: 360 }} transition={{ duration: 1.1, repeat: Infinity, ease: 'linear' }} />
-            <AnimatePresence mode="wait">
-              <motion.p key={lineIndex}
-                initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.35 }}
-                style={{ color: T.text, fontSize: 15, fontWeight: 500 }}>
-                {PROCESSING_LINES[lineIndex]}
-              </motion.p>
-            </AnimatePresence>
-            <p style={{ color: T.textFaint, fontSize: 12, marginTop: 16 }}>This takes 30-60 seconds</p>
-          </>
-        )}
-      </div>
-    </div>
   );
 }
 
@@ -820,12 +761,9 @@ function CheckBox({ checked }: { checked: boolean }) {
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export function OnboardingIntake() {
-  const queryClient = useQueryClient();
   const [step, setStep] = useState(0);
-  const [failed, setFailed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [dark, setDark] = useState(() => localStorage.getItem('jobhub-theme') === 'dark');
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const T = dark ? DARK : LIGHT;
 
@@ -837,10 +775,8 @@ export function OnboardingIntake() {
 
   useEffect(() => {
     api.get('/onboarding/report').then(({ data }) => {
-      if (data.status === 'PROCESSING') { setStep(5); startPolling(); }
-      else if (data.status === 'FAILED') { setStep(5); setFailed(true); }
+      if (data.status === 'PROCESSING' || data.status === 'FAILED') { setStep(5); }
     }).catch(() => {});
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [email, setEmail] = useState('');
@@ -866,22 +802,6 @@ export function OnboardingIntake() {
 
   const onChange = (k: keyof IntakeAnswers, v: string | string[]) =>
     setAnswers(prev => ({ ...prev, [k]: v }));
-
-  const startPolling = () => {
-    if (pollRef.current) clearInterval(pollRef.current);
-    pollRef.current = setInterval(async () => {
-      try {
-        const { data: report } = await api.get('/onboarding/report');
-        if (report.status === 'COMPLETE') {
-          clearInterval(pollRef.current!); pollRef.current = null;
-          await queryClient.invalidateQueries({ queryKey: ['profile'] });
-        } else if (report.status === 'FAILED') {
-          clearInterval(pollRef.current!); pollRef.current = null;
-          setFailed(true);
-        }
-      } catch {}
-    }, 3000);
-  };
 
   const handleSubmit = async () => {
     if (!resume) return;
@@ -909,7 +829,6 @@ export function OnboardingIntake() {
       // No manual Content-Type - axios sets multipart boundary automatically
       await api.post('/onboarding/submit', formData, { timeout: 30000 });
       setStep(5);
-      startPolling();
     } catch (err) {
       console.error('[OnboardingIntake] Submit failed:', err);
       toast.error('Something went wrong uploading your files. Please try again.');
@@ -918,9 +837,12 @@ export function OnboardingIntake() {
   };
 
   const handleRetry = async () => {
-    setFailed(false);
-    try { await api.post('/onboarding/retry'); startPolling(); }
-    catch { setFailed(true); }
+    try {
+      await api.post('/onboarding/retry');
+      setStep(5); // ensure we stay on processing screen
+    } catch {
+      toast.error('Retry failed. Please refresh and try again.');
+    }
   };
 
   const goNext = () => setStep(s => s + 1);
@@ -940,7 +862,15 @@ export function OnboardingIntake() {
         <div style={{ backgroundColor: T.bg, minHeight: '100vh', transition: 'background-color 0.4s' }}>
           <Scene />
           <ThemeToggle dark={dark} onToggle={toggleDark} />
-          <ProcessingScreen failed={failed} onRetry={handleRetry} />
+          <ProcessingScreen
+            isDark={dark}
+            theme={T}
+            onComplete={() => {
+              // ProcessingScreen has already invalidated the profile query.
+              // OnboardingGate will re-evaluate and render ReportOrDashboard.
+            }}
+            onRetry={handleRetry}
+          />
         </div>
       </ThemeCtx.Provider>
     );
