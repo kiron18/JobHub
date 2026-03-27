@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { Sun, Moon } from 'lucide-react';
@@ -6,11 +6,6 @@ import api from '../lib/api';
 import { parseReportSections, splitProblemFix } from '../lib/parseReport';
 import { SECTION_ICONS } from '../lib/reportIcons';
 import { ReportIsland } from './ReportIsland';
-
-// bricks.js has no TS types
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import Bricks from 'bricks.js';
 
 interface ReportExperienceProps {
   onDone: () => void;
@@ -63,9 +58,6 @@ function makeTheme(isDark: boolean) {
 export function ReportExperience({ onDone }: ReportExperienceProps) {
   const [isDark, setIsDark] = useState(false);
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
-  const masonryRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const bricksRef = useRef<any>(null);
 
   const theme = makeTheme(isDark);
 
@@ -80,42 +72,6 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
 
   const sections = parseReportSections(data?.reportMarkdown ?? '');
   const reportId = data?.reportId ?? '';
-
-  // Initialise bricks.js after sections render
-  useEffect(() => {
-    if (!masonryRef.current || sections.length === 0) return;
-
-    if (bricksRef.current) {
-      try { bricksRef.current.resize(false); } catch { /* ignore */ }
-      bricksRef.current = null;
-    }
-
-    const instance = Bricks({
-      container: masonryRef.current,
-      packed: 'data-packed',
-      sizes: [
-        { columns: 1, gutter: 14 },
-        { mq: '600px', columns: 2, gutter: 14 },
-        { mq: '900px', columns: 3, gutter: 14 },
-      ],
-      position: true,
-    });
-
-    instance.resize(true).pack();
-    bricksRef.current = instance;
-
-    return () => {
-      try { bricksRef.current?.resize(false); } catch { /* ignore */ }
-    };
-  }, [sections.length]);
-
-  // Re-pack after island open/close animation settles
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      try { bricksRef.current?.pack(); } catch { /* ignore */ }
-    }, 350);
-    return () => clearTimeout(timer);
-  }, [openMap]);
 
   function handleToggle(key: string) {
     setOpenMap(prev => ({ ...prev, [key]: !prev[key] }));
@@ -213,19 +169,14 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
           </p>
         </motion.div>
 
-        {/* Bricks.js masonry — position: relative lets bricks position children absolutely */}
-        <div ref={masonryRef} style={{ position: 'relative' }}>
-          {sections.map((section, i) => {
+        {/* CSS columns masonry — naturally responsive, no JS timing issues */}
+        <div style={{ columns: '280px 3', columnGap: 14 }}>
+          {sections.map((section) => {
             const meta = SECTION_ICONS[section.key];
             if (!meta) return null;
             const { problem, fix } = splitProblemFix(section.content);
             return (
-              <motion.div
-                key={section.key}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.07, duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
-              >
+              <div key={section.key} style={{ breakInside: 'avoid', marginBottom: 14 }}>
                 <ReportIsland
                   sectionKey={section.key}
                   meta={meta}
@@ -237,7 +188,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                   onNavigate={handleNavigate}
                   isDark={isDark}
                 />
-              </motion.div>
+              </div>
             );
           })}
         </div>
