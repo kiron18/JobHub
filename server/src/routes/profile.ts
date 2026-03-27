@@ -589,4 +589,55 @@ router.patch('/jobs/:id', authenticate, async (req, res) => {
     }
 });
 
+router.patch('/profile', authenticate, async (req, res) => {
+  const userId = (req as any).user.id;
+  const { name, phone, linkedin, location, professionalSummary } = req.body;
+  const data: Record<string, any> = {};
+  if (name !== undefined) data.name = name;
+  if (phone !== undefined) data.phone = phone;
+  if (linkedin !== undefined) data.linkedin = linkedin;
+  if (location !== undefined) data.location = location;
+  if (professionalSummary !== undefined) data.professionalSummary = professionalSummary;
+  try {
+    await prisma.candidateProfile.update({ where: { userId }, data });
+    return res.json({ success: true });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
+router.patch('/experience/:id', authenticate, async (req, res) => {
+  const { id } = req.params as any;
+  const userId = (req as any).user.id;
+  const { company, role, startDate, endDate, description } = req.body;
+  try {
+    const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
+    if (!profile) return res.status(404).json({ error: 'Profile not found' });
+    const exp = await prisma.experience.update({
+      where: { id, candidateProfileId: profile.id },
+      data: { company, role, startDate, endDate, description },
+    });
+    return res.json(exp);
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to update experience' });
+  }
+});
+
+router.patch('/education/:id', authenticate, async (req, res) => {
+  const { id } = req.params as any;
+  const userId = (req as any).user.id;
+  const { institution, degree, field, year } = req.body;
+  try {
+    const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
+    if (!profile) return res.status(404).json({ error: 'Profile not found' });
+    const edu = await prisma.education.update({
+      where: { id, candidateProfileId: profile.id },
+      data: { institution, degree, field, year },
+    });
+    return res.json(edu);
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to update education' });
+  }
+});
+
 export default router;

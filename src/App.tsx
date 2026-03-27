@@ -3,17 +3,16 @@ import { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
-import { ChevronDown, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Components
 import { DashboardLayout } from './layouts/DashboardLayout';
-import { ResumeImporter } from './components/ResumeImporter';
 import { MatchEngine } from './components/MatchEngine';
 import { ProfileModal } from './components/ProfileModal';
 import { ApplicationWorkspace } from './components/ApplicationWorkspace';
 import { ApplicationTracker } from './components/ApplicationTracker';
 import { AchievementBank } from './components/AchievementBank';
+import { ProfileBank } from './components/ProfileBank';
 import { OnboardingGate } from './components/OnboardingGate';
 import { ReportExperience } from './components/ReportExperience';
 import { FirstVisitTip } from './components/FirstVisitTips';
@@ -179,132 +178,9 @@ const Dashboard = () => {
   );
 };
 
-// Workspace Component
+// Workspace Component — now hosts ProfileBank
 const Workspace = () => {
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [coachDismissed, setCoachDismissed] = useState(
-    () => localStorage.getItem('jobhub_coach_dismissed') === 'true'
-  );
-
-  const { data: profile } = useQuery({
-    queryKey: ['profile'],
-    queryFn: async () => { const { data } = await api.get('/profile'); return data; },
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const { data: countData } = useQuery({
-    queryKey: ['achievements', 'count'],
-    queryFn: async () => { const { data } = await api.get('/achievements/count'); return data; },
-    refetchOnMount: true,
-    // Poll every 8s while bank is empty (picks up async auto-extract completing)
-    refetchInterval: (query) => (query.state.data?.count ?? 0) === 0 ? 8000 : false,
-  });
-
-  const achievementCount: number = countData?.count ?? 0;
-
-  // Macro coaching: derive from profile data
-  const blocker = profile?.perceivedBlocker ?? '';
-  const macroHint = (() => {
-    if (achievementCount === 0) return null;
-    if (blocker.toLowerCase().includes('cv') || blocker.toLowerCase().includes('resume')) {
-      return 'Your resume is identified as a key blocker. Review each achievement below and ensure every one has a specific metric — a %, $, or number. That is what makes the difference at shortlisting.';
-    }
-    if (blocker.toLowerCase().includes('interview')) {
-      return 'You are getting to interview but stalling. Your achievements need stronger "so what" framing. Each entry should answer: what was the business impact, not just what you did.';
-    }
-    if (achievementCount < 5) {
-      return 'You have fewer than 5 achievements in your bank. The more concrete evidence you have, the stronger every document we write for you. Add more by uploading a detailed resume below.';
-    }
-    return `You have ${achievementCount} achievements ready. Before applying to any role, review each one: does it have a number? Does it say what changed because of you? Strengthen the weakest ones first.`;
-  })();
-
-  return (
-    <div className="space-y-8 animate-in fade-in duration-700">
-      <header className="space-y-2">
-        <h2 className="text-4xl font-extrabold tracking-tight italic" style={{ color: 'inherit' }}>Achievement Bank</h2>
-        <p className="text-lg font-medium" style={{ color: '#9ca3af' }}>
-          Your career evidence — the raw material for every document we write.
-        </p>
-      </header>
-
-      {/* Macro coaching card */}
-      <AnimatePresence>
-        {macroHint && !coachDismissed && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            style={{
-              position: 'relative',
-              borderRadius: 14,
-              padding: '18px 20px',
-              background: 'linear-gradient(135deg, rgba(99,102,241,0.12), rgba(139,92,246,0.08))',
-              border: '1px solid rgba(99,102,241,0.25)',
-            }}
-          >
-            <button
-              onClick={() => { localStorage.setItem('jobhub_coach_dismissed', 'true'); setCoachDismissed(true); }}
-              style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280' }}
-            >
-              <X size={14} />
-            </button>
-            <p style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>Strategy advice</p>
-            <p style={{ fontSize: 14, color: '#c7d2fe', lineHeight: 1.65, paddingRight: 20 }}>{macroHint}</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Extracting achievements loading state */}
-      <AnimatePresence>
-        {achievementCount === 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 12,
-              padding: '14px 18px', borderRadius: 12,
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.07)',
-            }}
-          >
-            <div style={{ width: 16, height: 16, border: '2px solid rgba(99,102,241,0.3)', borderTopColor: '#6366f1', borderRadius: '50%', animation: 'spin 0.8s linear infinite', flexShrink: 0 }} />
-            <p style={{ fontSize: 13, color: '#6b7280', margin: 0 }}>
-              Extracting your achievements from your resume. This takes about 30 seconds.
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        {/* Achievement bank — main column */}
-        <div className="lg:col-span-2">
-          <AchievementBank />
-        </div>
-
-        {/* Sidebar: add more resume data */}
-        <div className="space-y-6">
-          <div className="glass-card p-6">
-            <p style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 12 }}>
-              Add more experience
-            </p>
-            <p style={{ fontSize: 13, color: '#9ca3af', marginBottom: 16, lineHeight: 1.6 }}>
-              Upload an updated resume or paste experience manually to grow your bank.
-            </p>
-            <ResumeImporter />
-          </div>
-          <button
-            onClick={() => setIsProfileOpen(true)}
-            className="w-full px-4 py-3 bg-brand-600/10 text-brand-400 border border-brand-600/20 rounded-xl text-xs font-black uppercase tracking-[0.15em] hover:bg-brand-600/20 transition-all cursor-pointer"
-          >
-            Edit Profile Details
-          </button>
-        </div>
-      </div>
-
-      <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
-    </div>
-  );
+  return <ProfileBank />;
 };
 
 // Protected Route Guard
