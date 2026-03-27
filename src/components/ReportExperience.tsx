@@ -190,14 +190,20 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
           </div>
         )}
 
-        {status === 'FAILED' && (
+        {(status === 'FAILED' || (status === 'COMPLETE' && sections.length === 0)) && (
           <div style={{ textAlign: 'center', padding: '60px 0' }}>
-            <p style={{ color: '#f87171', fontSize: 15, marginBottom: 16 }}>Report generation failed. Please try again.</p>
+            <p style={{ color: '#f87171', fontSize: 15, marginBottom: 8 }}>
+              {status === 'FAILED' ? 'Report generation failed.' : 'Your report couldn\'t be loaded.'}
+            </p>
+            <p style={{ color: theme.sub, fontSize: 13, marginBottom: 24 }}>Please try again — it only takes a minute.</p>
             <button
-              onClick={() => refetch()}
+              onClick={async () => {
+                await api.post('/onboarding/retry');
+                refetch();
+              }}
               style={{ background: '#FCD34D', color: '#111827', border: 'none', borderRadius: 10, padding: '10px 24px', fontWeight: 700, cursor: 'pointer' }}
             >
-              Retry
+              Regenerate report
             </button>
           </div>
         )}
