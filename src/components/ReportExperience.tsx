@@ -165,7 +165,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
             Here's what's actually going on.
           </h1>
           <p style={{ fontSize: 15, color: theme.sub, marginTop: 12, lineHeight: 1.6 }}>
-            Open each section to see your diagnosis — then unlock your fix.
+            Open each section to see your diagnosis. Then unlock your fix.
           </p>
         </motion.div>
 
@@ -223,7 +223,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
               Your game plan is ready.
             </h2>
             <p style={{ fontSize: 15, color: theme.ctaBody, marginBottom: 32, lineHeight: 1.6 }}>
-              The market is hard right now — but most people are losing to fixable problems.<br />
+              The market is hard right now, but most people are losing to fixable problems.<br />
               You just found yours.
             </p>
             <button

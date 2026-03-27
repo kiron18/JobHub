@@ -158,7 +158,7 @@ export const AuthPage: React.FC = () => {
                     <p style={{ fontSize: 13, color: '#64748b', lineHeight: 1.6, marginBottom: 24 }}>
                       We sent a login link to{' '}
                       <strong style={{ color: '#94a3b8' }}>{email || hintEmail}</strong>.
-                      Click it and you'll land straight on your dashboard — no password needed.
+                      Click it and you'll land straight on your dashboard. No password needed.
                     </p>
                     <button onClick={() => sendMagicLink(email || hintEmail)}
                       style={{ background: 'none', border: 'none', color: '#6366f1', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>

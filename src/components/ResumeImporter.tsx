@@ -212,7 +212,7 @@ export const ResumeImporter: React.FC = () => {
                             {saveState === 'idle' && "Save to Profile Bank"}
                             {saveState === 'saving' && "Saving..."}
                             {saveState === 'saved' && "Saved"}
-                            {saveState === 'error' && "Save Failed — Retry"}
+                            {saveState === 'error' && "Save Failed. Retry."}
                         </button>
                     </div>
                 </div>

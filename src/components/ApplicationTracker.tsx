@@ -193,7 +193,7 @@ const FollowUpNudge: React.FC<{ jobs: JobApplication[] }> = ({ jobs }) => {
                         Follow-up Reminder
                     </p>
                     <p className="text-xs text-amber-400/70 font-medium mt-0.5">
-                        These applications are 7+ days old with no update — time to reach out
+                        These applications are 7+ days old with no update. Time to reach out.
                     </p>
                 </div>
             </div>
@@ -291,7 +291,7 @@ const JobCard: React.FC<{ job: JobApplication; onStatusChange: (id: string, stat
             {showFollowUpAlert && (
                 <div className="px-5 py-2 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-2 text-amber-400 text-xs font-bold">
                     <Clock size={12} />
-                    {days} days since you applied — time to follow up
+                    {days} days since you applied. Time to follow up.
                 </div>
             )}
 

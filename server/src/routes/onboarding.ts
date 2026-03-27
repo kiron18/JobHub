@@ -5,6 +5,7 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 import { extractTextFromBuffer } from '../services/pdf';
 import { generateDiagnosticReport, DiagnosticReportInput } from '../services/diagnosticReport';
 import { sendWelcomeEmail } from '../services/email';
+import { autoExtractAchievements } from '../services/autoExtract';
 
 const router = Router();
 
@@ -63,6 +64,7 @@ router.post(
         where: { userId },
         create: {
           userId,
+          hasCompletedOnboarding: true,
           targetRole: answers.targetRole,
           targetCity: answers.targetCity,
           seniority: answers.seniority,
@@ -79,6 +81,7 @@ router.post(
           marketingConsent: (answers as any).marketingConsent ?? false,
         },
         update: {
+          hasCompletedOnboarding: true,
           targetRole: answers.targetRole,
           targetCity: answers.targetCity,
           seniority: answers.seniority,
@@ -95,6 +98,11 @@ router.post(
           marketingConsent: (answers as any).marketingConsent ?? false,
         },
       });
+
+      // Auto-populate Achievement Bank from resume — fire and forget
+      autoExtractAchievements(userId, resumeText).catch(err =>
+        console.error('[Onboarding] Auto-extract failed:', err)
+      );
 
       const report = await prisma.diagnosticReport.create({
         data: {

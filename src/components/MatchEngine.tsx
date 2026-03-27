@@ -119,13 +119,13 @@ const LowMatchWarning: React.FC<LowMatchWarningProps> = ({ result, onProceed, on
                                 className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/30"
                             >
                                 <ArrowLeft size={16} />
-                                Go Back — Find a Better Role
+                                Go Back. Find a Better Role.
                             </button>
                             <button
                                 onClick={onProceed}
                                 className="w-full py-2 rounded-xl text-slate-600 hover:text-slate-400 text-xs font-medium transition-colors"
                             >
-                                Proceed anyway — I understand the risk
+                                Proceed anyway. I understand the risk.
                             </button>
                         </div>
                     </div>
@@ -175,7 +175,7 @@ const TailorResumeModal: React.FC<TailorModalProps> = ({ onConfirm, onClose }) =
                     </div>
 
                     <p className="text-sm text-slate-400 leading-relaxed">
-                        We recommend maintaining a <span className="text-slate-200 font-semibold">single master resume</span> for all applications — it's easier to maintain and just as effective for most roles.
+                        We recommend maintaining a <span className="text-slate-200 font-semibold">single master resume</span> for all applications. It's easier to maintain and just as effective for most roles.
                     </p>
                     <p className="text-sm text-slate-400 leading-relaxed">
                         Tailoring creates a separate document for this job only. If you're sure, type the word below to confirm.

@@ -1,69 +1,14 @@
-import React, { useState, useRef, useEffect, useContext, createContext } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import api from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { ProcessingScreen } from './ProcessingScreen';
+import { useAppTheme } from '../contexts/ThemeContext';
 
-// ── Theme ─────────────────────────────────────────────────────────────────────
+// ── Local theme alias ─────────────────────────────────────────────────────────
 
-interface Theme {
-  bg: string; dotColor: string;
-  card: string; cardBorder: string; cardShadow: string;
-  text: string; textMuted: string; textFaint: string;
-  inputBg: string; inputBorder: string; inputText: string;
-  btnBg: string; btnText: string; btnShadow: string;
-  progressBg: string; progressFill: string;
-  chipBg: string; chipText: string;
-  optBg: string; optBorder: string; optText: string;
-  optActiveBg: string; optActiveBorder: string; optActiveText: string;
-  pillBg: string; pillBorder: string; pillText: string;
-  pillActiveBg: string; pillActiveBorder: string; pillActiveText: string;
-  blobGrad: string; blobShadow: string;
-  toggleBg: string; toggleIcon: string;
-  fileBg: string; fileBorder: string;
-}
-
-const LIGHT: Theme = {
-  bg: '#eceef4', dotColor: '#bfc4d1',
-  card: 'rgba(255,255,255,0.62)', cardBorder: 'rgba(255,255,255,0.9)',
-  cardShadow: '0 8px 80px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.95)',
-  text: '#111827', textMuted: '#6b7280', textFaint: '#9ca3af',
-  inputBg: 'rgba(255,255,255,0.78)', inputBorder: 'rgba(0,0,0,0.1)', inputText: '#111827',
-  btnBg: '#111827', btnText: '#ffffff', btnShadow: '0 4px 24px rgba(0,0,0,0.2)',
-  progressBg: 'rgba(0,0,0,0.08)', progressFill: '#111827',
-  chipBg: 'rgba(17,24,39,0.07)', chipText: '#374151',
-  optBg: 'rgba(255,255,255,0.55)', optBorder: 'rgba(0,0,0,0.1)', optText: '#374151',
-  optActiveBg: '#111827', optActiveBorder: '#111827', optActiveText: '#ffffff',
-  pillBg: 'rgba(255,255,255,0.6)', pillBorder: 'rgba(0,0,0,0.12)', pillText: '#6b7280',
-  pillActiveBg: '#111827', pillActiveBorder: '#111827', pillActiveText: '#ffffff',
-  blobGrad: 'radial-gradient(circle at 33% 28%, #ffffff 0%, #dde1ec 55%, #c4c9d9 100%)',
-  blobShadow: 'inset -10px -10px 28px rgba(0,0,0,0.07), inset 5px 5px 18px rgba(255,255,255,0.95), 20px 32px 80px rgba(0,0,0,0.14)',
-  toggleBg: 'rgba(0,0,0,0.08)', toggleIcon: '#6b7280',
-  fileBg: 'rgba(255,255,255,0.5)', fileBorder: 'rgba(0,0,0,0.12)',
-};
-
-const DARK: Theme = {
-  bg: '#0d1117', dotColor: '#1b2030',
-  card: 'rgba(255,255,255,0.05)', cardBorder: 'rgba(255,255,255,0.1)',
-  cardShadow: '0 8px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)',
-  text: '#f3f4f6', textMuted: '#9ca3af', textFaint: '#4b5563',
-  inputBg: 'rgba(255,255,255,0.07)', inputBorder: 'rgba(255,255,255,0.11)', inputText: '#f3f4f6',
-  btnBg: '#f3f4f6', btnText: '#111827', btnShadow: '0 4px 24px rgba(0,0,0,0.4)',
-  progressBg: 'rgba(255,255,255,0.1)', progressFill: '#f3f4f6',
-  chipBg: 'rgba(255,255,255,0.08)', chipText: '#d1d5db',
-  optBg: 'rgba(255,255,255,0.04)', optBorder: 'rgba(255,255,255,0.1)', optText: '#d1d5db',
-  optActiveBg: '#f3f4f6', optActiveBorder: '#f3f4f6', optActiveText: '#111827',
-  pillBg: 'rgba(255,255,255,0.06)', pillBorder: 'rgba(255,255,255,0.12)', pillText: '#9ca3af',
-  pillActiveBg: '#f3f4f6', pillActiveBorder: '#f3f4f6', pillActiveText: '#111827',
-  blobGrad: 'radial-gradient(circle at 33% 28%, #1e2535 0%, #131924 55%, #0d1117 100%)',
-  blobShadow: 'inset -10px -10px 28px rgba(0,0,0,0.6), inset 5px 5px 18px rgba(255,255,255,0.03), 20px 32px 80px rgba(0,0,0,0.5)',
-  toggleBg: 'rgba(255,255,255,0.1)', toggleIcon: '#9ca3af',
-  fileBg: 'rgba(255,255,255,0.05)', fileBorder: 'rgba(255,255,255,0.12)',
-};
-
-const ThemeCtx = createContext<{ T: Theme }>({ T: LIGHT });
-const useTheme = () => useContext(ThemeCtx);
+const useTheme = () => useAppTheme();
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -703,15 +648,7 @@ function CheckBox({ checked }: { checked: boolean }) {
 export function OnboardingIntake() {
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
-  const [dark, setDark] = useState(false); // default light; user can toggle to dark
-
-  const T = dark ? DARK : LIGHT;
-
-  const toggleDark = () => {
-    const next = !dark;
-    setDark(next);
-    localStorage.setItem('jobhub-theme', next ? 'dark' : 'light');
-  };
+  const { T, isDark, toggle: toggleDark } = useAppTheme();
 
   useEffect(() => {
     api.get('/onboarding/report').then(({ data }) => {
@@ -795,29 +732,26 @@ export function OnboardingIntake() {
 
   if (step === 5) {
     return (
-      <ThemeCtx.Provider value={{ T }}>
-        <div style={{ backgroundColor: T.bg, minHeight: '100vh', transition: 'background-color 0.4s' }}>
-          <Scene />
-          <ThemeToggle dark={dark} onToggle={toggleDark} />
-          <ProcessingScreen
-            isDark={dark}
-            theme={T}
-            onComplete={() => {
-              // ProcessingScreen has already invalidated the profile query.
-              // OnboardingGate will re-evaluate and render ReportOrDashboard.
-            }}
-            onRetry={handleRetry}
-          />
-        </div>
-      </ThemeCtx.Provider>
+      <div style={{ backgroundColor: T.bg, minHeight: '100vh', transition: 'background-color 0.4s' }}>
+        <Scene />
+        <ThemeToggle dark={isDark} onToggle={toggleDark} />
+        <ProcessingScreen
+          isDark={isDark}
+          theme={T}
+          onComplete={() => {
+            // ProcessingScreen has already invalidated the profile query.
+            // OnboardingGate will re-evaluate and render ReportOrDashboard.
+          }}
+          onRetry={handleRetry}
+        />
+      </div>
     );
   }
 
   return (
-    <ThemeCtx.Provider value={{ T }}>
-      <div style={{ backgroundColor: T.bg, height: '100dvh', overflowY: 'auto', overflowX: 'hidden', transition: 'background-color 0.4s' }}>
-        <Scene />
-        <ThemeToggle dark={dark} onToggle={toggleDark} />
+    <div style={{ backgroundColor: T.bg, height: '100dvh', overflowY: 'auto', overflowX: 'hidden', transition: 'background-color 0.4s' }}>
+      <Scene />
+      <ThemeToggle dark={isDark} onToggle={toggleDark} />
 
         <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 48, paddingBottom: 48, paddingLeft: 16, paddingRight: 16, minHeight: '100%', justifyContent: 'center' }}>
           <div style={{ width: '100%', maxWidth: 520 }}>
@@ -843,6 +777,6 @@ export function OnboardingIntake() {
           </div>
         </div>
       </div>
-    </ThemeCtx.Provider>
+    </div>
   );
 }

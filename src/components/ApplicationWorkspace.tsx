@@ -602,7 +602,7 @@ export const ApplicationWorkspace: React.FC = () => {
                                 {profile?.volunteering?.length === 0 && (
                                     <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-full text-[10px] font-bold text-amber-400">
                                         <PlusCircle size={10} />
-                                        Add volunteering to your profile — valued by Australian employers
+                                        Add volunteering to your profile. Valued by Australian employers.
                                     </div>
                                 )}
                             </div>
@@ -618,7 +618,7 @@ export const ApplicationWorkspace: React.FC = () => {
                                                     You've used all 10 of your free generations today.
                                                 </p>
                                                 <p className="text-amber-700 text-sm leading-relaxed">
-                                                    Come back tomorrow — your documents and achievements are all saved.
+                                                    Come back tomorrow. Your documents and achievements are all saved.
                                                 </p>
                                             </div>
                                         </div>

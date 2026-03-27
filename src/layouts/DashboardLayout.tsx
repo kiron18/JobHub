@@ -1,10 +1,13 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, FileText, Briefcase, LogOut, User } from 'lucide-react';
+import { LayoutDashboard, FileText, Briefcase, LogOut, User, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useAppTheme } from '../contexts/ThemeContext';
 
 export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { user, signOut } = useAuth();
+    const { T, isDark, toggle } = useAppTheme();
+
     const navItems = [
         { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/tracker', icon: Briefcase, label: 'Applications' },
@@ -12,12 +15,30 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
     ];
 
     return (
-        <div className="flex h-screen bg-[#0d1117] text-slate-100 overflow-hidden w-screen">
+        <div
+            className="flex h-screen overflow-hidden w-screen"
+            style={{
+                backgroundColor: T.bg,
+                backgroundImage: `radial-gradient(circle, ${T.dotColor} 1px, transparent 1px)`,
+                backgroundSize: '22px 22px',
+                transition: 'background-color 0.4s',
+                color: T.text,
+            }}
+        >
             {/* Sidebar */}
-            <aside className="w-64 border-r border-slate-800 flex flex-col p-6 flex-shrink-0">
+            <aside
+                className="w-64 flex flex-col p-6 flex-shrink-0"
+                style={{
+                    background: T.card,
+                    borderRight: `1px solid ${T.cardBorder}`,
+                    backdropFilter: 'blur(16px)',
+                    WebkitBackdropFilter: 'blur(16px)',
+                    transition: 'background 0.4s, border-color 0.4s',
+                }}
+            >
                 <div className="flex items-center gap-3 mb-10">
-                    <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center font-bold text-xl shadow-lg shadow-brand-600/20">J</div>
-                    <h1 className="text-2xl font-bold tracking-tight">JobReady</h1>
+                    <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center font-bold text-xl shadow-lg shadow-brand-600/20 text-white">J</div>
+                    <h1 className="text-2xl font-bold tracking-tight" style={{ color: T.text }}>JobReady</h1>
                 </div>
 
                 <nav className="flex-1 space-y-2">
@@ -29,9 +50,10 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                             className={({ isActive }) =>
                                 `flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive
                                     ? 'bg-brand-600/10 text-brand-400 border border-brand-600/20'
-                                    : 'text-slate-400 hover:bg-white/5 hover:text-slate-100'
+                                    : 'hover:bg-white/5'
                                 }`
                             }
+                            style={({ isActive }) => isActive ? {} : { color: T.textMuted }}
                         >
                             <item.icon size={20} />
                             <span className="font-medium">{item.label}</span>
@@ -39,32 +61,63 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                     ))}
                 </nav>
 
-                <div className="mt-auto space-y-4">
-                    <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
+                <div className="mt-auto space-y-3">
+                    <div
+                        className="p-4 rounded-2xl space-y-3"
+                        style={{
+                            background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
+                            border: `1px solid ${T.cardBorder}`,
+                        }}
+                    >
                         <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400">
+                            <div
+                                className="w-8 h-8 rounded-full flex items-center justify-center"
+                                style={{ background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)', color: T.textMuted }}
+                            >
                                 <User size={16} />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Account</p>
-                                <p className="text-sm font-medium text-slate-200 truncate">{user?.email}</p>
+                                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: T.textFaint }}>Account</p>
+                                <p className="text-sm font-medium truncate" style={{ color: T.textMuted }}>{user?.email}</p>
                             </div>
                         </div>
-                        <button 
-                            onClick={() => signOut()}
-                            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20"
-                        >
-                            <LogOut size={14} />
-                            Sign Out
-                        </button>
-                    </div>
 
+                        {/* Theme toggle + Sign Out row */}
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={toggle}
+                                title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                                className="flex items-center justify-center rounded-lg transition-all"
+                                style={{
+                                    width: 36,
+                                    height: 36,
+                                    background: T.toggleBg,
+                                    color: T.toggleIcon,
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    flexShrink: 0,
+                                }}
+                            >
+                                {isDark ? <Sun size={15} /> : <Moon size={15} />}
+                            </button>
+                            <button
+                                onClick={() => signOut()}
+                                className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all border border-transparent hover:border-red-500/20 hover:bg-red-500/10 hover:text-red-400"
+                                style={{ color: T.textFaint }}
+                            >
+                                <LogOut size={14} />
+                                Sign Out
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </aside>
 
-
             {/* Main Content */}
-            <main className="flex-1 overflow-y-auto p-10 bg-[#0d1117]">
+            <main
+                className="flex-1 overflow-y-auto p-10"
+                style={{ background: 'transparent' }}
+            >
                 <div className="max-w-5xl mx-auto">
                     {children}
                 </div>

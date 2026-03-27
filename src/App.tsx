@@ -20,6 +20,7 @@ import { FirstVisitTip } from './components/FirstVisitTips';
 
 // Auth & Context
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthPage } from './pages/AuthPage';
 
 // Lib
@@ -106,7 +107,7 @@ const Dashboard = () => {
 
       {/* First-visit tips */}
       <FirstVisitTip tips={[
-        { id: 'achievements', text: 'All your achievements are logged here — hit Manage to edit them' },
+        { id: 'achievements', text: 'All your achievements are logged here. Hit Manage to edit them.' },
         { id: 'matcher',      text: 'Paste a job description here to get matched and start applying' },
       ]} />
 
@@ -336,26 +337,28 @@ function ReportOrDashboard() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <Router>
-          <Routes>
-            {/* Public/Auth Routes */}
-            <Route path="/auth" element={<AuthPage />} />
-            
-            {/* Protected Application Routes */}
-            <Route path="/*" element={
-              <ProtectedRoute>
-                <OnboardingGate>
-                  <ReportOrDashboard />
-                </OnboardingGate>
-              </ProtectedRoute>
-            } />
-          </Routes>
-        </Router>
-        <Toaster richColors position="top-right" theme="dark" />
-      </AuthProvider>
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <Router>
+            <Routes>
+              {/* Public/Auth Routes */}
+              <Route path="/auth" element={<AuthPage />} />
+
+              {/* Protected Application Routes */}
+              <Route path="/*" element={
+                <ProtectedRoute>
+                  <OnboardingGate>
+                    <ReportOrDashboard />
+                  </OnboardingGate>
+                </ProtectedRoute>
+              } />
+            </Routes>
+          </Router>
+          <Toaster richColors position="top-right" theme="dark" />
+        </AuthProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }
 

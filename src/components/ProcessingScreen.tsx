@@ -19,16 +19,16 @@ interface ProcessingScreenProps {
 
 const MESSAGES = [
   "Righto, let's see what we're working with...",
-  "Digging through your resume — there's good stuff in here, trust.",
+  "Digging through your resume. There's good stuff in here, trust.",
   "Mapping out where you've been dropping off. We got you.",
   "This is the bit that actually changes things, hang tight...",
-  "Nearly there — your diagnosis is coming together nicely.",
+  "Nearly there. Your diagnosis is coming together nicely.",
   "Last bit of thinking... you're about to see exactly what's been holding you back.",
 ];
 const FALLBACK_MESSAGE = "Still cooking, won't be long...";
-const FAILED_MESSAGE   = "Something went sideways — but we've got your data.";
+const FAILED_MESSAGE   = "Something went sideways, but we've got your data.";
 
-const BAR_DURATION_MS = 45_000;
+const BAR_DURATION_MS = 30_000;
 const POLL_INTERVAL_MS = 3_000;
 const MESSAGE_INTERVAL_MS = 8_000;
 
