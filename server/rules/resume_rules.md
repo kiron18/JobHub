@@ -1,5 +1,5 @@
 # Standard Resume Rules — AI Engine Rule Base
-*Scope: Resumes only | Market: General | Audience: Global professionals*
+*Scope: Resumes only | Market: Australian | Audience: Australian professionals and skilled migrants in Australia*
 *Last Updated: March 2026*
 
 > This document is the primary instruction set the AI Engine reads before generating any resume. Follow every rule in sequence. Do not infer, invent, or fill gaps with placeholder content — if candidate data is missing, flag it explicitly and request it.
@@ -184,9 +184,9 @@ Cross-reference this section against the target job description. At least 60% of
 
 ## SECTION 7 — ENGLISH SPELLING REFERENCE
 
-Always apply consistent English spelling (Standard/US as default unless context suggests otherwise). Key differences:
+Always apply **Australian English** spelling. This is non-negotiable for the Australian market.
 
-| US English | Australian English |
+| US English (incorrect) | Australian English (correct) |
 |---|---|
 | organized | organised |
 | program | programme *(in academic/govt contexts)* |
@@ -197,8 +197,11 @@ Always apply consistent English spelling (Standard/US as default unless context 
 | license (verb) | licence (noun), license (verb) |
 | fulfill | fulfil |
 | recognize | recognise |
+| behavior | behaviour |
+| traveling | travelling |
+| skillful | skilful |
 
-When in doubt, default to standard professional spelling conventions.
+**Default is always Australian English.** Do not use US spelling under any circumstance.
 
 ---
 

@@ -1,5 +1,5 @@
 # Standard Cover Letter Rules — AI Engine Rule Base
-*Scope: Cover Letters only | Market: General | Audience: Global professionals*
+*Scope: Cover Letters only | Market: Australian | Audience: Australian employers and skilled migrants applying in Australia*
 *Last Updated: March 2026*
 
 > This document is the primary instruction set the AI Engine reads before generating any cover letter. Every rule applies unless a validated exception in Section 9 overrides it. Do not infer, fabricate, or pad content — if candidate data is missing, flag it explicitly with `[MISSING: ...]` and request it.
@@ -15,7 +15,7 @@ Before generating any cover letter, the AI must:
 3. **Cross-reference the candidate's Achievement Bank.** Select the 2–3 most relevant achievements to the specific JD. Do not use generic or weakly matched achievements.
 4. **Use only data the candidate has provided.** Never fabricate metrics, company names, or outcomes.
 5. **Flag missing data** with `[MISSING: ...]` rather than filling gaps. Example: `[MISSING: company research — ask candidate what they know or admire about this organisation]`
-6. **Apply standard English throughout.** Refer to Section 6 of the Resume Rules file for the spelling reference list.
+6. **Apply Australian English throughout.** Refer to Section 7 of the Resume Rules file for the spelling reference list. Default is always Australian spelling — never US English.
 7. **Visa status placement rule:** Work rights or visa information may be included in the cover letter **only** if strategically necessary for the specific role (e.g., the JD explicitly asks about work rights, or the role is tied to eligibility). If included, place it in a single, confident sentence in the closing paragraph. Never include it in the header, opening, or body paragraphs. Default: omit entirely unless flagged as necessary.
 8. **One page. Hard limit.** No exceptions regardless of experience level or role seniority.
 
