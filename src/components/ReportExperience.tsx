@@ -61,17 +61,23 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
 
   const theme = makeTheme(isDark);
 
-  const { data } = useQuery<ReportData>({
+  const { data, isLoading, refetch } = useQuery<ReportData>({
     queryKey: ['report'],
     queryFn: async () => {
       const res = await api.get<ReportData>('/onboarding/report');
       return res.data;
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === 'PROCESSING' ? 4000 : false;
+    },
   });
 
   const sections = parseReportSections(data?.reportMarkdown ?? '');
   const reportId = data?.reportId ?? '';
+  const status = data?.status;
 
   function handleToggle(key: string) {
     setOpenMap(prev => ({ ...prev, [key]: !prev[key] }));
@@ -168,6 +174,33 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
             Open each section to see your diagnosis. Then unlock your fix.
           </p>
         </motion.div>
+
+        {/* Loading / processing / error states */}
+        {(isLoading || status === 'PROCESSING') && sections.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '60px 0' }}>
+            <div style={{
+              width: 48, height: 48, borderRadius: '50%',
+              border: `3px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+              borderTopColor: '#FCD34D',
+              margin: '0 auto 20px',
+              animation: 'spin 1s linear infinite',
+            }} />
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+            <p style={{ color: theme.sub, fontSize: 14 }}>Your diagnosis is being written&hellip;</p>
+          </div>
+        )}
+
+        {status === 'FAILED' && (
+          <div style={{ textAlign: 'center', padding: '60px 0' }}>
+            <p style={{ color: '#f87171', fontSize: 15, marginBottom: 16 }}>Report generation failed. Please try again.</p>
+            <button
+              onClick={() => refetch()}
+              style={{ background: '#FCD34D', color: '#111827', border: 'none', borderRadius: 10, padding: '10px 24px', fontWeight: 700, cursor: 'pointer' }}
+            >
+              Retry
+            </button>
+          </div>
+        )}
 
         {/* CSS columns masonry — naturally responsive, no JS timing issues */}
         <div style={{ columns: '280px 3', columnGap: 14 }}>
