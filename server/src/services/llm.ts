@@ -58,7 +58,7 @@ export async function callLLM(prompt: string, jsonMode: boolean = true) {
                     'X-Title': 'JobDash',
                     'Content-Type': 'application/json',
                 },
-                timeout: 60000,
+                timeout: 120000,
             }
         );
 

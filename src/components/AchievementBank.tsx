@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, Edit2, Save, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, Loader2, AlertCircle, CheckCircle, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../lib/api';
 
@@ -27,6 +27,7 @@ export const AchievementBank: React.FC = () => {
   const [editForm, setEditForm] = useState<Partial<Achievement>>({});
   const [isCreating, setIsCreating] = useState(false);
   const [expandedHints, setExpandedHints] = useState<Set<string>>(new Set());
+  const [extracting, setExtracting] = useState(false);
 
   const { data: achievements, isLoading, error } = useQuery<Achievement[]>({
     queryKey: ['achievements'],
@@ -292,7 +293,45 @@ export const AchievementBank: React.FC = () => {
 
       {(!achievements || achievements.length === 0) && !isCreating && (
         <div style={{ padding: '40px 0', textAlign: 'center', color: '#4b5563' }}>
-          <p style={{ fontSize: 13 }}>No achievements yet. They will appear here once your resume is processed.</p>
+          <p style={{ fontSize: 13, marginBottom: 16 }}>No achievements found. Click below to extract them from your resume.</p>
+          <button
+            disabled={extracting}
+            onClick={async () => {
+              setExtracting(true);
+              try {
+                const { data } = await api.post('/onboarding/backfill-achievements');
+                if (data.status === 'started') {
+                  // Poll until achievements appear
+                  let attempts = 0;
+                  const poll = setInterval(async () => {
+                    attempts++;
+                    await queryClient.invalidateQueries({ queryKey: ['achievements'] });
+                    await queryClient.invalidateQueries({ queryKey: ['achievements', 'count'] });
+                    const res = await api.get('/achievements');
+                    if (res.data.length > 0 || attempts >= 20) {
+                      clearInterval(poll);
+                      setExtracting(false);
+                    }
+                  }, 5000);
+                } else {
+                  setExtracting(false);
+                }
+              } catch {
+                setExtracting(false);
+              }
+            }}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              padding: '10px 20px', borderRadius: 10,
+              border: '1px solid rgba(99,102,241,0.3)',
+              background: 'rgba(99,102,241,0.08)',
+              color: extracting ? '#6b7280' : '#818cf8',
+              fontSize: 13, fontWeight: 700, cursor: extracting ? 'default' : 'pointer',
+            }}
+          >
+            {extracting ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+            {extracting ? 'Extracting… this takes ~60 seconds' : 'Extract from resume'}
+          </button>
         </div>
       )}
     </div>
