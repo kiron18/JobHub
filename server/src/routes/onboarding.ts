@@ -6,6 +6,7 @@ import { extractTextFromBuffer } from '../services/pdf';
 import { generateDiagnosticReport, DiagnosticReportInput } from '../services/diagnosticReport';
 import { sendWelcomeEmail } from '../services/email';
 import { autoExtractAchievements } from '../services/autoExtract';
+import { autoExtractAchievements } from '../services/autoExtract';
 
 const router = Router();
 
@@ -261,5 +262,31 @@ router.post(
     }
   }
 );
+
+// ── POST /api/onboarding/backfill-achievements ────────────────────────────────
+// Triggers auto-extraction from stored resumeRawText for users who completed
+// onboarding before auto-extraction was introduced. Safe to call repeatedly —
+// skips if achievements already exist.
+router.post('/backfill-achievements', authenticate, async (req: AuthRequest, res: Response) => {
+  const userId = req.user!.id;
+  try {
+    const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
+    if (!profile?.resumeRawText) {
+      return res.json({ status: 'no_resume', message: 'No resume data found — upload via Profile & Achievements.' });
+    }
+    const existingCount = await prisma.achievement.count({ where: { userId } });
+    if (existingCount > 0) {
+      return res.json({ status: 'already_populated', count: existingCount });
+    }
+    // Fire async — response returns immediately
+    autoExtractAchievements(userId, profile.resumeRawText).catch(err =>
+      console.error('[Backfill] Auto-extract failed:', err)
+    );
+    return res.json({ status: 'started' });
+  } catch (error) {
+    console.error('[Onboarding] Backfill error:', error);
+    return res.status(500).json({ error: 'Failed to start backfill' });
+  }
+});
 
 export default router;

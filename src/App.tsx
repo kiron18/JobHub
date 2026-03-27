@@ -1,7 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, NavLink, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
-import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { ChevronDown, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -33,6 +33,7 @@ const queryClient = new QueryClient();
 // Dashboard View component
 const Dashboard = () => {
   const [showReport, setShowReport] = useState(false);
+  const queryClient = useQueryClient();
 
   const { data: profile } = useQuery({
     queryKey: ['profile'],
@@ -62,6 +63,23 @@ const Dashboard = () => {
   });
 
   const achievementCount = countData?.count ?? profile?.achievements?.length ?? 0;
+
+  // Backfill achievement bank for users who completed onboarding before
+  // auto-extraction was introduced. Runs once when count is 0 and profile exists.
+  useEffect(() => {
+    if (profile?.hasCompletedOnboarding && achievementCount === 0) {
+      api.post('/onboarding/backfill-achievements')
+        .then(({ data }) => {
+          if (data.status === 'started') {
+            // Poll briefly to pick up extracted achievements
+            setTimeout(() => {
+              queryClient.invalidateQueries({ queryKey: ['achievements', 'count'] });
+            }, 15_000);
+          }
+        })
+        .catch(() => {/* silent — backfill is best-effort */});
+    }
+  }, [profile?.hasCompletedOnboarding, achievementCount]);
   const applicationCount = jobs?.length || 0;
 
   return (
