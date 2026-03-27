@@ -1,10 +1,16 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
+import { Sun, Moon } from 'lucide-react';
 import api from '../lib/api';
 import { parseReportSections, splitProblemFix } from '../lib/parseReport';
 import { SECTION_ICONS } from '../lib/reportIcons';
 import { ReportIsland } from './ReportIsland';
+
+// bricks.js has no TS types
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import Bricks from 'bricks.js';
 
 interface ReportExperienceProps {
   onDone: () => void;
@@ -16,8 +22,52 @@ interface ReportData {
   reportMarkdown: string | null;
 }
 
+function makeTheme(isDark: boolean) {
+  return isDark ? {
+    bg: '#0d1117',
+    eyebrow: '#4b5563',
+    heading: '#f3f4f6',
+    sub: '#6b7280',
+    ctaBg: 'rgba(252,211,77,0.04)',
+    ctaBorder: 'rgba(252,211,77,0.15)',
+    ctaEyebrow: '#FCD34D',
+    ctaHeading: '#f3f4f6',
+    ctaBody: '#6b7280',
+    toggleBg: 'rgba(255,255,255,0.08)',
+    toggleColor: '#9ca3af',
+    blobs: [
+      'rgba(251,191,36,0.04)',
+      'rgba(45,212,191,0.03)',
+      'rgba(167,139,250,0.04)',
+    ],
+  } : {
+    bg: '#f5f4f0',
+    eyebrow: '#9ca3af',
+    heading: '#111827',
+    sub: '#6b7280',
+    ctaBg: 'rgba(252,211,77,0.10)',
+    ctaBorder: 'rgba(252,211,77,0.28)',
+    ctaEyebrow: '#b45309',
+    ctaHeading: '#111827',
+    ctaBody: '#6b7280',
+    toggleBg: 'rgba(0,0,0,0.07)',
+    toggleColor: '#6b7280',
+    blobs: [
+      'rgba(251,191,36,0.10)',
+      'rgba(45,212,191,0.08)',
+      'rgba(167,139,250,0.08)',
+    ],
+  };
+}
+
 export function ReportExperience({ onDone }: ReportExperienceProps) {
+  const [isDark, setIsDark] = useState(false);
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
+  const masonryRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const bricksRef = useRef<any>(null);
+
+  const theme = makeTheme(isDark);
 
   const { data } = useQuery<ReportData>({
     queryKey: ['report'],
@@ -30,6 +80,42 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
 
   const sections = parseReportSections(data?.reportMarkdown ?? '');
   const reportId = data?.reportId ?? '';
+
+  // Initialise bricks.js after sections render
+  useEffect(() => {
+    if (!masonryRef.current || sections.length === 0) return;
+
+    if (bricksRef.current) {
+      try { bricksRef.current.resize(false); } catch { /* ignore */ }
+      bricksRef.current = null;
+    }
+
+    const instance = Bricks({
+      container: masonryRef.current,
+      packed: 'data-packed',
+      sizes: [
+        { columns: 1, gutter: 14 },
+        { mq: '600px', columns: 2, gutter: 14 },
+        { mq: '900px', columns: 3, gutter: 14 },
+      ],
+      position: true,
+    });
+
+    instance.resize(true).pack();
+    bricksRef.current = instance;
+
+    return () => {
+      try { bricksRef.current?.resize(false); } catch { /* ignore */ }
+    };
+  }, [sections.length]);
+
+  // Re-pack after island open/close animation settles
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try { bricksRef.current?.pack(); } catch { /* ignore */ }
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [openMap]);
 
   function handleToggle(key: string) {
     setOpenMap(prev => ({ ...prev, [key]: !prev[key] }));
@@ -45,20 +131,20 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
   }
 
   return (
-    /* Full-screen overlay with its own scroll — bypasses body { overflow: hidden } */
     <div style={{
       position: 'fixed',
       inset: 0,
       overflowY: 'auto',
-      background: '#0d1117',
+      background: theme.bg,
       zIndex: 10,
+      transition: 'background 0.3s',
     }}>
-      {/* Blobs */}
+      {/* Ambient blobs */}
       <div style={{ position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
         {[
-          { top: '-15%',  left: '-10%',  size: 500, color: 'rgba(251,191,36,0.04)' },
-          { top: '50%',   right: '-8%',  size: 420, color: 'rgba(45,212,191,0.03)' },
-          { bottom: '-10%', left: '30%', size: 380, color: 'rgba(167,139,250,0.04)' },
+          { top: '-15%',  left: '-10%',  size: 500, color: theme.blobs[0] },
+          { top: '50%',   right: '-8%',  size: 420, color: theme.blobs[1] },
+          { bottom: '-10%', left: '30%', size: 380, color: theme.blobs[2] },
         ].map((b, i) => (
           <div key={i} style={{
             position: 'absolute',
@@ -71,8 +157,37 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
         ))}
       </div>
 
+      {/* Theme toggle — fixed top-right */}
+      <button
+        onClick={() => setIsDark(d => !d)}
+        aria-label="Toggle dark mode"
+        style={{
+          position: 'fixed',
+          top: 20,
+          right: 20,
+          zIndex: 20,
+          width: 40,
+          height: 40,
+          borderRadius: 99,
+          background: theme.toggleBg,
+          border: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          backdropFilter: 'blur(8px)',
+          transition: 'background 0.2s',
+        }}
+      >
+        {isDark
+          ? <Sun size={16} color={theme.toggleColor} />
+          : <Moon size={16} color={theme.toggleColor} />
+        }
+      </button>
+
       {/* Content */}
       <div style={{ position: 'relative', zIndex: 1, maxWidth: 1100, margin: '0 auto', padding: '60px 24px 100px' }}>
+
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -16 }}
@@ -85,24 +200,21 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
             fontWeight: 700,
             letterSpacing: '0.14em',
             textTransform: 'uppercase',
-            color: '#4b5563',
+            color: theme.eyebrow,
             marginBottom: 12,
           }}>
             Your diagnosis
           </p>
-          <h1 style={{ fontSize: 30, fontWeight: 800, color: '#f3f4f6', margin: 0, lineHeight: 1.25 }}>
+          <h1 style={{ fontSize: 30, fontWeight: 800, color: theme.heading, margin: 0, lineHeight: 1.25 }}>
             Here's what's actually going on.
           </h1>
-          <p style={{ fontSize: 15, color: '#6b7280', marginTop: 12, lineHeight: 1.6 }}>
+          <p style={{ fontSize: 15, color: theme.sub, marginTop: 12, lineHeight: 1.6 }}>
             Open each section to see your diagnosis — then unlock your fix.
           </p>
         </motion.div>
 
-        {/* True CSS masonry — column-count lets items fill naturally by height */}
-        <div style={{
-          columnCount: 3,
-          columnGap: 14,
-        }}>
+        {/* Bricks.js masonry — position: relative lets bricks position children absolutely */}
+        <div ref={masonryRef} style={{ position: 'relative' }}>
           {sections.map((section, i) => {
             const meta = SECTION_ICONS[section.key];
             if (!meta) return null;
@@ -113,12 +225,6 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.07, duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
-                style={{
-                  breakInside: 'avoid',
-                  marginBottom: 14,
-                  /* span-2 sections break out to full width */
-                  ...(meta.span === 2 ? { columnSpan: 'all' } : {}),
-                }}
               >
                 <ReportIsland
                   sectionKey={section.key}
@@ -129,6 +235,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                   isOpen={!!openMap[section.key]}
                   onToggle={() => handleToggle(section.key)}
                   onNavigate={handleNavigate}
+                  isDark={isDark}
                 />
               </motion.div>
             );
@@ -144,8 +251,8 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
             style={{
               marginTop: 48,
               padding: '44px 36px',
-              background: 'rgba(252,211,77,0.04)',
-              border: '1px solid rgba(252,211,77,0.15)',
+              background: theme.ctaBg,
+              border: `1px solid ${theme.ctaBorder}`,
               borderRadius: 24,
               textAlign: 'center',
             }}
@@ -155,16 +262,16 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
               fontWeight: 700,
               letterSpacing: '0.12em',
               textTransform: 'uppercase',
-              color: '#FCD34D',
+              color: theme.ctaEyebrow,
               marginBottom: 12,
               opacity: 0.8,
             }}>
               You've got this
             </p>
-            <h2 style={{ fontSize: 24, fontWeight: 800, color: '#f3f4f6', marginBottom: 8 }}>
+            <h2 style={{ fontSize: 24, fontWeight: 800, color: theme.ctaHeading, marginBottom: 8 }}>
               Your game plan is ready.
             </h2>
-            <p style={{ fontSize: 15, color: '#6b7280', marginBottom: 32, lineHeight: 1.6 }}>
+            <p style={{ fontSize: 15, color: theme.ctaBody, marginBottom: 32, lineHeight: 1.6 }}>
               The market is hard right now — but most people are losing to fixable problems.<br />
               You just found yours.
             </p>

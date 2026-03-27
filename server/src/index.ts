@@ -36,8 +36,23 @@ export const prisma = new PrismaClient();
 const app = express();
 const PORT = process.env.PORT || 3002;
 
+const staticOrigins = process.env.ALLOWED_ORIGIN
+  ? process.env.ALLOWED_ORIGIN.split(',').map(o => o.trim())
+  : [];
+
 const corsOptions = {
-    origin: process.env.ALLOWED_ORIGIN ? process.env.ALLOWED_ORIGIN.split(',') : '*',
+    origin: (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) => {
+      // Allow server-to-server / curl (no Origin header)
+      if (!origin) return cb(null, true);
+      // Explicit allowlist from env
+      if (staticOrigins.includes(origin)) return cb(null, true);
+      // Allow any Vercel preview deployment
+      if (/^https:\/\/[a-z0-9-]+-[a-z0-9]+-[a-z0-9]+\.vercel\.app$/.test(origin)) return cb(null, true);
+      if (/^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(origin)) return cb(null, true);
+      // Allow localhost in any form
+      if (/^https?:\/\/localhost(:\d+)?$/.test(origin)) return cb(null, true);
+      cb(new Error(`CORS: origin not allowed — ${origin}`));
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: false,

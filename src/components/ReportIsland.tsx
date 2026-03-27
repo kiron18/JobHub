@@ -13,6 +13,7 @@ export interface ReportIslandProps {
   isOpen: boolean;
   onToggle: () => void;
   onNavigate: (key: string) => void;
+  isDark: boolean;
 }
 
 type Feedback = 'spot_on' | 'partially' | 'missed';
@@ -24,7 +25,7 @@ function extractTeaser(text: string): string {
 
 export function ReportIsland({
   sectionKey, meta, problemText, fixText, reportId,
-  isOpen, onToggle, onNavigate,
+  isOpen, onToggle, onNavigate, isDark,
 }: ReportIslandProps) {
   const [showFix, setShowFix] = useState(false);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
@@ -32,6 +33,23 @@ export function ReportIsland({
   const Icon = meta.icon;
   const teaser = extractTeaser(problemText);
   const links = SECTION_LINKS[sectionKey] ?? [];
+
+  // Theme tokens derived from isDark
+  const cardBg         = isDark ? '#0d1117'                    : '#ffffff';
+  const borderClosed   = isDark ? 'rgba(255,255,255,0.06)'     : 'rgba(0,0,0,0.07)';
+  const gradientMid    = isDark ? 'rgba(4,4,8,0.55)'           : 'rgba(245,244,240,0.5)';
+  const gradientBottom = isDark ? 'rgba(4,4,8,0.92)'           : 'rgba(245,244,240,0.97)';
+  const hintBg         = isDark ? 'rgba(255,255,255,0.12)'     : 'rgba(0,0,0,0.08)';
+  const hintColor      = isDark ? 'rgba(255,255,255,0.7)'      : 'rgba(0,0,0,0.45)';
+  const teaserColor    = isDark ? 'rgba(255,255,255,0.60)'     : 'rgba(0,0,0,0.45)';
+  const problemColor   = isDark ? '#d1d5db'                    : '#374151';
+  const fixBodyColor   = isDark ? '#e5e7eb'                    : '#1f2937';
+  const pillBorder     = isDark ? 'rgba(255,255,255,0.10)'     : 'rgba(0,0,0,0.10)';
+  const pillInactive   = isDark ? '#6b7280'                    : '#9ca3af';
+  const ctaItemBg      = isDark ? 'rgba(255,255,255,0.03)'     : 'rgba(0,0,0,0.02)';
+  const ctaItemBorder  = isDark ? 'rgba(255,255,255,0.07)'     : 'rgba(0,0,0,0.07)';
+  const ctaItemHover   = isDark ? 'rgba(255,255,255,0.07)'     : 'rgba(0,0,0,0.05)';
+  const ctaSubColor    = isDark ? '#6b7280'                    : '#9ca3af';
 
   async function submitFeedback(score: Feedback) {
     if (feedback || feedbackLoading) return;
@@ -54,9 +72,10 @@ export function ReportIsland({
       style={{
         borderRadius: 18,
         overflow: 'hidden',
-        background: '#0d1117',
-        border: `1px solid ${isOpen ? meta.color + '28' : 'rgba(255,255,255,0.06)'}`,
-        transition: 'border-color 0.3s',
+        background: cardBg,
+        border: `1px solid ${isOpen ? meta.color + '28' : borderClosed}`,
+        transition: 'border-color 0.3s, background 0.3s',
+        boxShadow: isDark ? 'none' : '0 1px 4px rgba(0,0,0,0.06)',
       }}
     >
       {/* ── COLLAPSED: full-bleed scene card ── */}
@@ -80,7 +99,7 @@ export function ReportIsland({
               overflow: 'hidden',
             }}
           >
-            {/* Scene illustration — fills card */}
+            {/* Scene illustration */}
             <motion.div
               layoutId={`char-${sectionKey}`}
               style={{ position: 'absolute', inset: 0 }}
@@ -92,7 +111,7 @@ export function ReportIsland({
             <div style={{
               position: 'absolute',
               inset: 0,
-              background: 'linear-gradient(to bottom, transparent 35%, rgba(4,4,8,0.55) 62%, rgba(4,4,8,0.92) 100%)',
+              background: `linear-gradient(to bottom, transparent 35%, ${gradientMid} 62%, ${gradientBottom} 100%)`,
               pointerEvents: 'none',
             }} />
 
@@ -104,13 +123,13 @@ export function ReportIsland({
               width: 28,
               height: 28,
               borderRadius: 99,
-              background: 'rgba(255,255,255,0.12)',
+              background: hintBg,
               backdropFilter: 'blur(6px)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
             }}>
-              <ChevronDown size={14} color="rgba(255,255,255,0.7)" />
+              <ChevronDown size={14} color={hintColor} />
             </div>
 
             {/* Text overlay — bottom of card */}
@@ -134,7 +153,7 @@ export function ReportIsland({
               {teaser && (
                 <p style={{
                   fontSize: 12,
-                  color: 'rgba(255,255,255,0.60)',
+                  color: teaserColor,
                   margin: 0,
                   lineHeight: 1.5,
                 }}>
@@ -216,7 +235,7 @@ export function ReportIsland({
             <div style={{ padding: '20px 20px 24px' }}>
               <p style={{
                 fontSize: 15,
-                color: '#d1d5db',
+                color: problemColor,
                 lineHeight: 1.78,
                 whiteSpace: 'pre-wrap',
                 marginBottom: 20,
@@ -271,7 +290,7 @@ export function ReportIsland({
                       }}>
                         Your fix
                       </p>
-                      <p style={{ fontSize: 15, color: '#e5e7eb', lineHeight: 1.78, whiteSpace: 'pre-wrap' }}>
+                      <p style={{ fontSize: 15, color: fixBodyColor, lineHeight: 1.78, whiteSpace: 'pre-wrap' }}>
                         {fixText}
                       </p>
                     </div>
@@ -291,9 +310,9 @@ export function ReportIsland({
                               borderRadius: 99,
                               fontSize: 12,
                               fontWeight: 600,
-                              border: `1px solid ${active ? meta.color + '70' : 'rgba(255,255,255,0.10)'}`,
+                              border: `1px solid ${active ? meta.color + '70' : pillBorder}`,
                               background: active ? meta.colorBg : 'transparent',
-                              color: active ? meta.color : '#6b7280',
+                              color: active ? meta.color : pillInactive,
                               cursor: feedback ? 'default' : 'pointer',
                               transition: 'all 0.15s',
                             }}
@@ -323,20 +342,20 @@ export function ReportIsland({
                         flexDirection: 'column',
                         gap: 3,
                         padding: '12px 14px',
-                        background: 'rgba(255,255,255,0.03)',
-                        border: '1px solid rgba(255,255,255,0.07)',
+                        background: ctaItemBg,
+                        border: `1px solid ${ctaItemBorder}`,
                         borderRadius: 12,
                         textAlign: 'left',
                         cursor: 'pointer',
                         transition: 'background 0.15s',
                       }}
-                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.07)')}
-                      onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
+                      onMouseEnter={e => (e.currentTarget.style.background = ctaItemHover)}
+                      onMouseLeave={e => (e.currentTarget.style.background = ctaItemBg)}
                     >
                       <span style={{ fontSize: 12, fontWeight: 700, color: dest.color }}>
                         {dest.label}
                       </span>
-                      <span style={{ fontSize: 11, color: '#6b7280', lineHeight: 1.5 }}>{why}</span>
+                      <span style={{ fontSize: 11, color: ctaSubColor, lineHeight: 1.5 }}>{why}</span>
                     </button>
                   );
                 })}
