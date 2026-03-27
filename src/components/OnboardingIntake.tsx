@@ -777,6 +777,5 @@ export function OnboardingIntake() {
           </div>
         </div>
       </div>
-    </div>
   );
 }

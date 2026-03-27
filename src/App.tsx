@@ -3,15 +3,13 @@ import { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 // Components
 import { DashboardLayout } from './layouts/DashboardLayout';
 import { MatchEngine } from './components/MatchEngine';
-import { ProfileModal } from './components/ProfileModal';
 import { ApplicationWorkspace } from './components/ApplicationWorkspace';
 import { ApplicationTracker } from './components/ApplicationTracker';
-import { AchievementBank } from './components/AchievementBank';
 import { ProfileBank } from './components/ProfileBank';
 import { OnboardingGate } from './components/OnboardingGate';
 import { ReportExperience } from './components/ReportExperience';
