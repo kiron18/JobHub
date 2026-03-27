@@ -6,7 +6,6 @@ import { extractTextFromBuffer } from '../services/pdf';
 import { generateDiagnosticReport, DiagnosticReportInput } from '../services/diagnosticReport';
 import { sendWelcomeEmail } from '../services/email';
 import { autoExtractAchievements } from '../services/autoExtract';
-import { autoExtractAchievements } from '../services/autoExtract';
 
 const router = Router();
 
