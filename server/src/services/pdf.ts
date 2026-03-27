@@ -2,8 +2,8 @@ import mammoth from 'mammoth';
 
 export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
     try {
-        // Dynamic import prevents server crash on environments missing browser globals (Node 18)
-        const pdfModule = await import('pdf-parse');
+        // Import the internal module directly to bypass pdf-parse's test-fixture loading on require
+        const pdfModule = await import('pdf-parse/lib/pdf-parse.js' as any);
         const pdfParse = (pdfModule as any).default || pdfModule;
         const data = await pdfParse(buffer);
         return data.text;

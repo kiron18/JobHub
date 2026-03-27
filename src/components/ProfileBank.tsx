@@ -961,7 +961,7 @@ export const ProfileBank: React.FC = () => {
             Profile Bank
           </h2>
           <p style={{ fontSize: 14, color: isDark ? '#9ca3af' : '#6b7280', marginTop: 4 }}>
-            Your living resume — edit any section inline, coaching hints appear as you go.
+            Your achievement bank — the source of truth for every resume and cover letter JobHub generates. Complete it once, use it forever.
           </p>
         </div>
 
