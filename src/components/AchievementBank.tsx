@@ -1,240 +1,300 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { 
-    Trophy, 
-    Plus, 
-    Trash2, 
-    Edit2, 
-    Save, 
-    Loader2
-} from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../lib/api';
 
 interface Achievement {
-    id: string;
-    title: string;
-    description: string;
-    metric?: string;
-    metricType?: string;
+  id: string;
+  title: string;
+  description: string;
+  metric?: string | null;
+  metricType?: string | null;
+  coachingTips?: string | null;
+}
+
+// Derives a micro coaching hint from achievement data alone (no extra API call needed)
+function getMicroHint(a: Achievement): string | null {
+  if (a.coachingTips) return a.coachingTips;
+  if (!a.metric) return 'Add a specific number, %, or $ to show the scale of impact.';
+  if (a.description && a.description.length < 60) return 'Expand the context: what was at stake, what you specifically did, and what changed as a result?';
+  return null;
 }
 
 export const AchievementBank: React.FC = () => {
-    const queryClient = useQueryClient();
-    const [editingId, setEditingId] = useState<string | null>(null);
-    const [editForm, setEditForm] = useState<Partial<Achievement>>({});
-    const [isCreating, setIsCreating] = useState(false);
+  const queryClient = useQueryClient();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<Partial<Achievement>>({});
+  const [isCreating, setIsCreating] = useState(false);
+  const [expandedHints, setExpandedHints] = useState<Set<string>>(new Set());
 
-    // Fetch achievements with caching to prevent frequent resyncs
-    const { data: achievements, isLoading, error } = useQuery<Achievement[]>({
-        queryKey: ['achievements'],
-        queryFn: async () => {
-            const { data } = await api.get('/achievements');
-            return data;
-        },
-        staleTime: 10 * 60 * 1000, // 10 minutes
-        gcTime: 30 * 60 * 1000,    // 30 minutes
-    });
+  const { data: achievements, isLoading, error } = useQuery<Achievement[]>({
+    queryKey: ['achievements'],
+    queryFn: async () => {
+      const { data } = await api.get('/achievements');
+      return data;
+    },
+    staleTime: 0,
+    refetchOnMount: true,
+  });
 
-    // Mutations
-    const updateMutation = useMutation({
-        mutationFn: async (achievement: Achievement) => {
-            await api.patch(`/achievements/${achievement.id}`, achievement);
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['achievements'] });
-            setEditingId(null);
-        }
-    });
+  const updateMutation = useMutation({
+    mutationFn: async (achievement: Achievement) => {
+      await api.patch(`/achievements/${achievement.id}`, achievement);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['achievements'] });
+      queryClient.invalidateQueries({ queryKey: ['achievements', 'count'] });
+      setEditingId(null);
+    },
+  });
 
-    const deleteMutation = useMutation({
-        mutationFn: async (id: string) => {
-            await api.delete(`/achievements/${id}`);
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['achievements'] });
-        }
-    });
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/achievements/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['achievements'] });
+      queryClient.invalidateQueries({ queryKey: ['achievements', 'count'] });
+    },
+  });
 
-    const createMutation = useMutation({
-        mutationFn: async (achievement: Partial<Achievement>) => {
-            await api.post('/achievements', achievement);
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['achievements'] });
-            setIsCreating(false);
-            setEditForm({});
-        }
-    });
+  const createMutation = useMutation({
+    mutationFn: async (achievement: Partial<Achievement>) => {
+      await api.post('/achievements', achievement);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['achievements'] });
+      queryClient.invalidateQueries({ queryKey: ['achievements', 'count'] });
+      setIsCreating(false);
+      setEditForm({});
+    },
+  });
 
-    const handleEdit = (achievement: Achievement) => {
-        setEditingId(achievement.id);
-        setEditForm(achievement);
-    };
-
-    const handleSave = () => {
-        if (editingId && editingId !== 'new') {
-            updateMutation.mutate(editForm as Achievement);
-        } else {
-            createMutation.mutate(editForm);
-        }
-    };
-
-    if (isLoading) {
-        return (
-            <div className="flex items-center justify-center p-8 space-y-2">
-                <Loader2 className="w-4 h-4 text-brand-500 animate-spin" />
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest animate-pulse ml-2">Syncing...</p>
-            </div>
-        );
+  const handleSave = () => {
+    if (editingId && editingId !== 'new') {
+      updateMutation.mutate(editForm as Achievement);
+    } else {
+      createMutation.mutate(editForm);
     }
+  };
 
-    if (error) {
-        return (
-            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-center">
-                <p className="text-xs text-red-400 font-bold uppercase tracking-widest leading-relaxed">
-                    Sync Error <br/> <span className="opacity-50 font-medium text-[8px]">Check API connection</span>
-                </p>
-            </div>
-        );
-    }
+  const toggleHint = (id: string) => {
+    setExpandedHints(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
+  if (isLoading) {
     return (
-        <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <header className="flex items-center justify-between px-1">
-                <div className="flex items-center gap-2">
-                    <Trophy size={14} className="text-brand-500" />
-                    <h2 className="text-sm font-black text-white uppercase tracking-wider">Bank</h2>
-                </div>
-                
-                <button 
-                    onClick={() => setIsCreating(true)}
-                    className="p-1 hover:bg-white/5 text-slate-500 hover:text-brand-500 rounded transition-colors"
-                >
-                    <Plus size={14} />
-                </button>
-            </header>
-
-            <div className="p-2 space-y-2">
-                <div className="grid grid-cols-1 gap-2 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
-                    <AnimatePresence mode="popLayout">
-                        {isCreating && (
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.95 }}
-                                className="achievement-pill border-brand-500/50 bg-brand-500/5 ring-1 ring-brand-500/20 p-3 space-y-3"
-                            >
-                                <div className="space-y-2">
-                                    <input 
-                                        className="w-full bg-slate-900/50 border border-slate-700/50 rounded-lg px-2 py-1 text-sm text-white font-bold focus:ring-1 focus:ring-brand-500 placeholder:text-slate-600"
-                                        placeholder="Title (e.g. Lead Gen)"
-                                        value={editForm.title || ''}
-                                        onChange={e => setEditForm({...editForm, title: e.target.value})}
-                                        autoFocus
-                                    />
-                                    <textarea 
-                                        className="w-full bg-slate-900/50 border border-slate-700/50 rounded-lg px-2 py-1 text-xs text-slate-300 focus:ring-1 focus:ring-brand-500 placeholder:text-slate-600 resize-none h-16"
-                                        placeholder="Description..."
-                                        value={editForm.description || ''}
-                                        onChange={e => setEditForm({...editForm, description: e.target.value})}
-                                    />
-                                </div>
-                                <div className="flex items-center justify-end gap-2">
-                                    <button 
-                                        onClick={() => setIsCreating(false)}
-                                        className="px-3 py-1 text-xs font-bold text-slate-500 hover:text-white"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button 
-                                        onClick={handleSave}
-                                        className="flex items-center gap-1.5 px-3 py-1 bg-brand-600 hover:bg-brand-500 text-white rounded-lg transition-all text-xs font-bold shadow-lg shadow-brand-500/20"
-                                    >
-                                        <Save size={12} />
-                                        Save
-                                    </button>
-                                </div>
-                            </motion.div>
-                        )}
-
-                        {achievements?.map((achievement) => (
-                            <motion.div
-                                key={achievement.id}
-                                layout
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0, scale: 0.95 }}
-                                className={`achievement-pill p-3 group ${editingId === achievement.id ? 'border-brand-500/50 bg-brand-500/5' : ''}`}
-                            >
-                                {editingId === achievement.id ? (
-                                    <div className="space-y-3 w-full">
-                                        <div className="space-y-2">
-                                            <input 
-                                                className="w-full bg-slate-950/50 border border-slate-700/50 rounded-lg px-2 py-1 text-sm text-white font-bold focus:ring-1 focus:ring-brand-500"
-                                                value={editForm.title || ''}
-                                                onChange={e => setEditForm({...editForm, title: e.target.value})}
-                                            />
-                                            <textarea 
-                                                className="w-full bg-slate-950/50 border border-slate-700/50 rounded-lg px-2 py-1 text-xs text-slate-300 focus:ring-1 focus:ring-brand-500 resize-none h-16"
-                                                value={editForm.description || ''}
-                                                onChange={e => setEditForm({...editForm, description: e.target.value})}
-                                            />
-                                        </div>
-                                        <div className="flex items-center justify-end gap-2">
-                                            <button 
-                                                onClick={() => setEditingId(null)}
-                                                className="px-3 py-1 text-xs font-bold text-slate-500 hover:text-white"
-                                            >
-                                                Cancel
-                                            </button>
-                                            <button 
-                                                onClick={handleSave}
-                                                className="flex items-center gap-1.5 px-3 py-1 bg-brand-600 hover:bg-brand-500 text-white rounded-lg transition-all text-xs font-bold shadow-lg"
-                                            >
-                                                <Save size={12} />
-                                                Save
-                                            </button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="flex flex-col gap-2 w-full">
-                                        <div className="flex items-start justify-between">
-                                            <h4 className="font-bold text-slate-100 group-hover:text-brand-400 transition-colors text-sm">{achievement.title}</h4>
-                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button 
-                                                    onClick={() => handleEdit(achievement)}
-                                                    className="p-1 hover:bg-white/5 text-slate-500 hover:text-brand-500 rounded transition-colors"
-                                                >
-                                                    <Edit2 size={14} />
-                                                </button>
-                                                <button 
-                                                    onClick={() => deleteMutation.mutate(achievement.id)}
-                                                    className="p-1 hover:bg-white/5 text-slate-500 hover:text-red-400 rounded transition-colors"
-                                                >
-                                                    <Trash2 size={14} />
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <p className="text-xs text-slate-400 font-medium leading-relaxed group-hover:text-slate-300 transition-colors">
-                                            {achievement.description}
-                                        </p>
-                                    </div>
-                                )}
-                            </motion.div>
-                        ))}
-                    </AnimatePresence>
-                </div>
-
-                {(!achievements || achievements.length === 0) && !isCreating && (
-                    <div className="py-12 text-center space-y-3">
-                        <div className="w-12 h-12 bg-slate-800/50 rounded-full flex items-center justify-center mx-auto text-slate-600">
-                            <Trophy size={24} />
-                        </div>
-                        <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Empty Bank</p>
-                    </div>
-                )}
-            </div>
-        </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '32px 0', color: '#6b7280' }}>
+        <Loader2 size={16} className="animate-spin" />
+        <span style={{ fontSize: 13 }}>Loading achievements...</span>
+      </div>
     );
+  }
+
+  if (error) {
+    return (
+      <div style={{ padding: 16, borderRadius: 12, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171', fontSize: 13 }}>
+        Could not load achievements. Check your connection.
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+        <p style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          {achievements?.length ?? 0} achievement{achievements?.length !== 1 ? 's' : ''}
+        </p>
+        <button
+          onClick={() => { setIsCreating(true); setEditForm({}); }}
+          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 8, border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.08)', color: '#818cf8', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+        >
+          <Plus size={12} /> Add
+        </button>
+      </div>
+
+      {/* Create form */}
+      <AnimatePresence>
+        {isCreating && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            style={{ borderRadius: 14, padding: 16, border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.06)', display: 'flex', flexDirection: 'column', gap: 10 }}
+          >
+            <input
+              autoFocus
+              placeholder="Title — e.g. Reduced costs by 22% through supplier renegotiation"
+              value={editForm.title ?? ''}
+              onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
+              style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: '#f3f4f6', fontSize: 13, fontWeight: 600, boxSizing: 'border-box' }}
+            />
+            <textarea
+              placeholder="Describe the situation, your action, and the outcome..."
+              rows={3}
+              value={editForm.description ?? ''}
+              onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
+              style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: '#d1d5db', fontSize: 12, resize: 'vertical', boxSizing: 'border-box' }}
+            />
+            <input
+              placeholder="Metric — e.g. 22%, $1.2M, 40 people"
+              value={editForm.metric ?? ''}
+              onChange={e => setEditForm(f => ({ ...f, metric: e.target.value }))}
+              style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: '#f3f4f6', fontSize: 12, boxSizing: 'border-box' }}
+            />
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setIsCreating(false)} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'transparent', color: '#6b7280', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+              <button
+                onClick={handleSave}
+                disabled={createMutation.isPending}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 16px', borderRadius: 8, border: 'none', background: '#6366f1', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+              >
+                <Save size={12} /> Save
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Achievement list */}
+      <AnimatePresence mode="popLayout">
+        {achievements?.map(achievement => {
+          const hint = getMicroHint(achievement);
+          const hintOpen = expandedHints.has(achievement.id);
+          const isEditing = editingId === achievement.id;
+          const hasMetric = !!achievement.metric;
+
+          return (
+            <motion.div
+              key={achievement.id}
+              layout
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0, scale: 0.97 }}
+              style={{
+                borderRadius: 14,
+                border: `1px solid ${isEditing ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.07)'}`,
+                background: isEditing ? 'rgba(99,102,241,0.05)' : 'rgba(255,255,255,0.02)',
+                overflow: 'hidden',
+              }}
+            >
+              {isEditing ? (
+                <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <input
+                    autoFocus
+                    value={editForm.title ?? ''}
+                    onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: '#f3f4f6', fontSize: 13, fontWeight: 600, boxSizing: 'border-box' }}
+                  />
+                  <textarea
+                    rows={3}
+                    value={editForm.description ?? ''}
+                    onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: '#d1d5db', fontSize: 12, resize: 'vertical', boxSizing: 'border-box' }}
+                  />
+                  <input
+                    placeholder="Metric (e.g. 22%, $1.2M)"
+                    value={editForm.metric ?? ''}
+                    onChange={e => setEditForm(f => ({ ...f, metric: e.target.value }))}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: '#f3f4f6', fontSize: 12, boxSizing: 'border-box' }}
+                  />
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    <button onClick={() => setEditingId(null)} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'transparent', color: '#6b7280', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                    <button
+                      onClick={handleSave}
+                      disabled={updateMutation.isPending}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 16px', borderRadius: 8, border: 'none', background: '#6366f1', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      <Save size={12} /> Save
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div style={{ padding: '14px 16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                          {hasMetric
+                            ? <CheckCircle size={12} color="#10b981" style={{ flexShrink: 0 }} />
+                            : <AlertCircle size={12} color="#f59e0b" style={{ flexShrink: 0 }} />
+                          }
+                          <p style={{ fontSize: 13, fontWeight: 700, color: '#f3f4f6', margin: 0, lineHeight: 1.4 }}>{achievement.title}</p>
+                        </div>
+                        <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 0 20px', lineHeight: 1.55 }}>{achievement.description}</p>
+                        {achievement.metric && (
+                          <span style={{ display: 'inline-block', marginTop: 8, marginLeft: 20, fontSize: 11, fontWeight: 700, color: '#34d399', background: 'rgba(16,185,129,0.1)', padding: '2px 8px', borderRadius: 99, border: '1px solid rgba(16,185,129,0.2)' }}>
+                            {achievement.metric}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                        <button
+                          onClick={() => { setEditingId(achievement.id); setEditForm(achievement); }}
+                          style={{ padding: 6, borderRadius: 7, border: 'none', background: 'transparent', color: '#6b7280', cursor: 'pointer' }}
+                          title="Edit"
+                        >
+                          <Edit2 size={13} />
+                        </button>
+                        <button
+                          onClick={() => deleteMutation.mutate(achievement.id)}
+                          style={{ padding: 6, borderRadius: 7, border: 'none', background: 'transparent', color: '#6b7280', cursor: 'pointer' }}
+                          title="Delete"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Micro coaching hint */}
+                  {hint && (
+                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', background: hasMetric ? 'transparent' : 'rgba(245,158,11,0.04)' }}>
+                      <button
+                        onClick={() => toggleHint(achievement.id)}
+                        style={{ width: '100%', padding: '8px 16px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left' }}
+                      >
+                        <span style={{ fontSize: 11, fontWeight: 700, color: hasMetric ? '#6b7280' : '#d97706', letterSpacing: '0.05em' }}>
+                          {hasMetric ? 'Coaching tip' : 'Needs attention'}
+                        </span>
+                        <span style={{ fontSize: 10, color: '#6b7280' }}>{hintOpen ? '▲' : '▼'}</span>
+                      </button>
+                      <AnimatePresence>
+                        {hintOpen && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.18 }}
+                            style={{ overflow: 'hidden' }}
+                          >
+                            <p style={{ fontSize: 12, color: hasMetric ? '#9ca3af' : '#fcd34d', padding: '0 16px 12px', lineHeight: 1.6, margin: 0 }}>
+                              {hint}
+                            </p>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )}
+                </>
+              )}
+            </motion.div>
+          );
+        })}
+      </AnimatePresence>
+
+      {(!achievements || achievements.length === 0) && !isCreating && (
+        <div style={{ padding: '40px 0', textAlign: 'center', color: '#4b5563' }}>
+          <p style={{ fontSize: 13 }}>No achievements yet. They will appear here once your resume is processed.</p>
+        </div>
+      )}
+    </div>
+  );
 };

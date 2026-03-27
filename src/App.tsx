@@ -182,93 +182,123 @@ const Dashboard = () => {
 // Workspace Component
 const Workspace = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [isBannerDismissed, setIsBannerDismissed] = useState(
-    () => localStorage.getItem('jobhub_onboarding_dismissed') === 'true'
+  const [coachDismissed, setCoachDismissed] = useState(
+    () => localStorage.getItem('jobhub_coach_dismissed') === 'true'
   );
+
+  const { data: profile } = useQuery({
+    queryKey: ['profile'],
+    queryFn: async () => { const { data } = await api.get('/profile'); return data; },
+    staleTime: 5 * 60 * 1000,
+  });
 
   const { data: countData } = useQuery({
     queryKey: ['achievements', 'count'],
-    queryFn: async () => {
-      const { data } = await api.get('/achievements/count');
-      return data;
-    },
-    refetchOnMount: true
+    queryFn: async () => { const { data } = await api.get('/achievements/count'); return data; },
+    refetchOnMount: true,
+    // Poll every 8s while bank is empty (picks up async auto-extract completing)
+    refetchInterval: (query) => (query.state.data?.count ?? 0) === 0 ? 8000 : false,
   });
 
   const achievementCount: number = countData?.count ?? 0;
-  const showBanner = !isBannerDismissed && achievementCount === 0;
 
-  const dismissBanner = () => {
-    localStorage.setItem('jobhub_onboarding_dismissed', 'true');
-    setIsBannerDismissed(true);
-  };
+  // Macro coaching: derive from profile data
+  const blocker = profile?.perceivedBlocker ?? '';
+  const macroHint = (() => {
+    if (achievementCount === 0) return null;
+    if (blocker.toLowerCase().includes('cv') || blocker.toLowerCase().includes('resume')) {
+      return 'Your resume is identified as a key blocker. Review each achievement below and ensure every one has a specific metric — a %, $, or number. That is what makes the difference at shortlisting.';
+    }
+    if (blocker.toLowerCase().includes('interview')) {
+      return 'You are getting to interview but stalling. Your achievements need stronger "so what" framing. Each entry should answer: what was the business impact, not just what you did.';
+    }
+    if (achievementCount < 5) {
+      return 'You have fewer than 5 achievements in your bank. The more concrete evidence you have, the stronger every document we write for you. Add more by uploading a detailed resume below.';
+    }
+    return `You have ${achievementCount} achievements ready. Before applying to any role, review each one: does it have a number? Does it say what changed because of you? Strengthen the weakest ones first.`;
+  })();
 
   return (
-    <div className="space-y-12 animate-in fade-in duration-700">
-      <header className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-             {/* Alpha V2 removed */}
-          </div>
-          <button
-            id="achievements-pill-btn"
-            onClick={() => setIsProfileOpen(true)}
-            className="px-5 py-2 bg-brand-600/10 text-brand-400 border border-brand-600/20 rounded-full text-[10px] font-black uppercase tracking-[0.2em] hover:bg-brand-600/20 transition-all cursor-pointer shadow-lg shadow-brand-600/5 active:scale-95"
-          >
-            Achievements
-          </button>
-        </div>
-        <h2 className="text-5xl font-black tracking-tighter text-white">Profile Workspace</h2>
-        <p className="text-xl text-slate-400 font-medium max-w-2xl">
-          Build your career profile through intelligent extraction and achievement management.
+    <div className="space-y-8 animate-in fade-in duration-700">
+      <header className="space-y-2">
+        <h2 className="text-4xl font-extrabold tracking-tight italic" style={{ color: 'inherit' }}>Achievement Bank</h2>
+        <p className="text-lg font-medium" style={{ color: '#9ca3af' }}>
+          Your career evidence — the raw material for every document we write.
         </p>
       </header>
 
+      {/* Macro coaching card */}
+      <AnimatePresence>
+        {macroHint && !coachDismissed && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            style={{
+              position: 'relative',
+              borderRadius: 14,
+              padding: '18px 20px',
+              background: 'linear-gradient(135deg, rgba(99,102,241,0.12), rgba(139,92,246,0.08))',
+              border: '1px solid rgba(99,102,241,0.25)',
+            }}
+          >
+            <button
+              onClick={() => { localStorage.setItem('jobhub_coach_dismissed', 'true'); setCoachDismissed(true); }}
+              style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280' }}
+            >
+              <X size={14} />
+            </button>
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>Strategy advice</p>
+            <p style={{ fontSize: 14, color: '#c7d2fe', lineHeight: 1.65, paddingRight: 20 }}>{macroHint}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Extracting achievements loading state */}
+      <AnimatePresence>
+        {achievementCount === 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '14px 18px', borderRadius: 12,
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.07)',
+            }}
+          >
+            <div style={{ width: 16, height: 16, border: '2px solid rgba(99,102,241,0.3)', borderTopColor: '#6366f1', borderRadius: '50%', animation: 'spin 0.8s linear infinite', flexShrink: 0 }} />
+            <p style={{ fontSize: 13, color: '#6b7280', margin: 0 }}>
+              Extracting your achievements from your resume. This takes about 30 seconds.
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        <div className="lg:col-span-2 space-y-6">
-          <AnimatePresence>
-            {showBanner && (
-              <motion.div
-                initial={{ opacity: 0, y: -12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.3 }}
-                className="relative rounded-xl p-6 bg-gradient-to-br from-indigo-950/60 to-purple-950/60 border border-indigo-800/30"
-                role="banner"
-                aria-label="Onboarding welcome message"
-              >
-                <button
-                  onClick={dismissBanner}
-                  aria-label="Dismiss welcome banner"
-                  className="absolute top-4 right-4 p-1 rounded-md text-slate-400 hover:text-slate-200 hover:bg-white/10 transition-colors"
-                >
-                  <X size={16} />
-                </button>
-                <div className="space-y-2 pr-8">
-                  <h3 className="text-xl font-black text-white tracking-tight">
-                    Let's build your career story
-                  </h3>
-                  <p className="text-slate-300 text-sm leading-relaxed max-w-lg">
-                    Upload your resume and our AI will find the achievements hidden in your experience.
-                    The more detail you give us, the more powerfully we can write for you.
-                  </p>
-                </div>
-                <div className="mt-5 flex justify-center">
-                  <motion.div
-                    animate={{ y: [0, 6, 0] }}
-                    transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
-                    aria-hidden="true"
-                  >
-                    <ChevronDown size={22} className="text-indigo-400/70" />
-                  </motion.div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-          <ResumeImporter />
-        </div>
-        <div className="glass-card p-6">
+        {/* Achievement bank — main column */}
+        <div className="lg:col-span-2">
           <AchievementBank />
+        </div>
+
+        {/* Sidebar: add more resume data */}
+        <div className="space-y-6">
+          <div className="glass-card p-6">
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 12 }}>
+              Add more experience
+            </p>
+            <p style={{ fontSize: 13, color: '#9ca3af', marginBottom: 16, lineHeight: 1.6 }}>
+              Upload an updated resume or paste experience manually to grow your bank.
+            </p>
+            <ResumeImporter />
+          </div>
+          <button
+            onClick={() => setIsProfileOpen(true)}
+            className="w-full px-4 py-3 bg-brand-600/10 text-brand-400 border border-brand-600/20 rounded-xl text-xs font-black uppercase tracking-[0.15em] hover:bg-brand-600/20 transition-all cursor-pointer"
+          >
+            Edit Profile Details
+          </button>
         </div>
       </div>
 
@@ -317,6 +347,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 // --- Report or Dashboard wrapper (first visit shows full-screen report) ---
 
 function ReportOrDashboard() {
+  const navigate = useNavigate();
   const [reportSeen, setReportSeen] = useState(
     () => localStorage.getItem('jobhub_report_seen') === 'true'
   );
@@ -325,6 +356,8 @@ function ReportOrDashboard() {
     localStorage.setItem('jobhub_report_seen', 'true');
     localStorage.setItem('jobhub_tips_seen', 'false');
     setReportSeen(true);
+    // First-time users go straight to achievement bank to review and improve their profile
+    navigate('/workspace', { replace: true });
   }
 
   if (!reportSeen) {
