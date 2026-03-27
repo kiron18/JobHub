@@ -66,15 +66,15 @@ interface ThemeContextValue {
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
-  T: DARK,
-  isDark: true,
+  T: LIGHT,
+  isDark: false,
   toggle: () => {},
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [isDark, setIsDark] = useState<boolean>(() => {
     const stored = localStorage.getItem('jobhub_dark_mode');
-    if (stored === null) return true; // default: dark
+    if (stored === null) return false; // default: light
     return stored === 'true';
   });
 
