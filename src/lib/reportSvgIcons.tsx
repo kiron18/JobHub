@@ -1,193 +1,228 @@
-import type { CSSProperties } from 'react';
+import React from 'react';
 
-export type OrigamiIcon = React.FC<{ style?: CSSProperties }>;
-
-// Helper — wraps an SVG string in a div; CSS scoping via unique SVG id
-function makeSvgIcon(html: string): OrigamiIcon {
-  return function SvgIcon({ style }) {
-    return (
-      <div
-        style={{ ...style, lineHeight: 0, overflow: 'hidden' }}
-        // eslint-disable-next-line react/no-danger
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
-    );
-  };
+export interface SceneIconProps {
+  style?: React.CSSProperties;
+  isDark: boolean;
 }
 
-// ── 1. Targeting (amber) — commander figure, clothing recolored to amber/gold ──
-const TARGETING_SVG = `<svg id="svg-targeting" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
-<defs><style>
-#svg-targeting .cls-1,#svg-targeting .cls-16{fill:#2b2b2b;}
-#svg-targeting .cls-1{opacity:0.1;}
-#svg-targeting .cls-2{fill:#c3987b;}
-#svg-targeting .cls-3{fill:#8b6651;}
-#svg-targeting .cls-4{fill:#92400e;}
-#svg-targeting .cls-5{fill:#d97706;}
-#svg-targeting .cls-6{fill:#b45309;}
-#svg-targeting .cls-7{fill:#9da1a2;}
-#svg-targeting .cls-8{fill:#dfbda5;}
-#svg-targeting .cls-9{fill:#474747;}
-#svg-targeting .cls-10{fill:#4f5253;}
-#svg-targeting .cls-11{fill:#fff;}
-#svg-targeting .cls-12{fill:#e8cab6;}
-#svg-targeting .cls-13{fill:#fbbf24;}
-#svg-targeting .cls-14{fill:#6f7173;}
-#svg-targeting .cls-15{fill:#fde68a;}
-</style></defs>
-<rect width="400" height="400" fill="#160e04"/>
-<polygon class="cls-1" points="73.47 382.44 168.77 371.86 284.16 385.46 155.24 400 73.47 382.44"/><polygon class="cls-2" points="146.96 335.5 140.05 361.2 130.98 370.13 126.52 364.44 123.85 327.15 126.95 303.98 146.96 335.5"/><polygon class="cls-3" points="129.04 320.75 149.05 327.44 146.96 335.5 123.85 327.15 129.04 320.75"/><polygon class="cls-2" points="190.15 288.28 191.37 327.87 189.93 354.8 181.15 367.32 175.18 357.53 169.06 335.5 190.15 288.28"/><polygon class="cls-3" points="175.9 316.07 191.37 327.87 169.06 335.5 166.83 327.59 175.9 316.07"/><polygon class="cls-4" points="101.11 312.9 153.8 300.95 211.24 314.34 196.99 264.75 166.9 230.12 118.96 274.39 115 278.14 101.11 312.9"/><polygon class="cls-5" points="149.05 327.44 119.54 273.96 126.01 258.05 167.33 223.14 194.61 257.26 191.37 327.87 149.05 327.44"/><polygon class="cls-6" points="123.85 327.15 119.54 273.96 126.01 258.05 167.33 223.14 176.11 251.86 149.05 327.44 123.85 327.15"/><polygon class="cls-3" points="311.38 192.15 302.15 198.86 295.2 195 295.2 185.75 311.38 192.15"/><polygon class="cls-2" points="283.55 174.84 310.57 171.84 311.38 192.15 282.82 187.78 283.55 174.84"/><polygon class="cls-7" points="286.06 193.52 370.99 135.85 374.87 141.51 289.45 198.86 286.06 193.52"/><polygon class="cls-8" points="280.96 177.59 305.63 182.68 303.04 188.59 279.91 189.48 280.96 177.59"/><polygon class="cls-5" points="284.95 170.31 262.13 172.9 254 182.4 256.59 193.34 282.14 198.67 284.95 170.31"/><polygon class="cls-6" points="114.14 192.33 98.66 199.89 92.69 237.4 115 251.07 124.14 246.97 126.37 236.1 127.89 214.58 111.55 179.52 114.14 192.33"/><polygon class="cls-6" points="100.97 185.06 98.66 199.89 121.77 211.34 126.81 206.37 121.62 169.66 102.62 174.27 100.97 185.06"/><polygon class="cls-6" points="92.69 237.4 115 251.07 124.14 246.97 126.37 236.1 92.69 237.4"/><polygon class="cls-9" points="21.57 126.47 52.38 168.22 61.02 168.51 68.86 142.52 64.33 132.3 21.57 126.47"/><polygon class="cls-10" points="185.25 96.45 87 178.73 52.38 168.22 91.03 52.04 185.25 96.45"/><polygon class="cls-9" points="185.25 96.45 174.1 133.67 87 178.73 132.06 71.41 185.25 96.45"/><polygon class="cls-9" points="197.42 22.96 222.9 56.94 201.95 109.2 181.29 20.95 197.42 22.96"/><polygon class="cls-9" points="198.35 18.28 222.9 56.94 181.29 20.95 198.35 18.28"/><polygon class="cls-2" points="139.33 173.04 94.34 67.88 120.04 49.59 146.75 81.41 175.47 148.43 165.68 194.06 139.33 173.04"/><polygon class="cls-8" points="193.17 31.17 208.5 145.04 145.95 156.2 118.89 49.95 193.17 31.17"/><polygon class="cls-11" points="170.14 134.6 160.21 131 170.71 127.84 178.49 129.42 186.98 128.27 190.01 128.7 176.04 135.04 170.14 134.6"/><polygon class="cls-3" points="175.11 150.8 165.68 194.28 139.12 156.92 175.11 150.8"/><polygon class="cls-9" points="112.48 62.12 129.83 93 124.93 97.32 128.39 138.92 131.77 155.55 82.25 78.24 112.48 62.12"/><polygon class="cls-8" points="124.93 97.32 110.11 101.71 118.02 121.5 131.13 116.11 124.93 97.32"/><polygon class="cls-3" points="122.27 102.72 115.07 104.8 123.71 110.13 122.27 102.72"/><polygon class="cls-6" points="125.94 113.44 129.61 124.6 123.71 126.4 120.83 115.1 125.94 113.44"/><polygon class="cls-12" points="175.61 80.19 182.81 110.85 171.79 112.51 167.26 81.27 175.61 80.19"/><polygon class="cls-3" points="176.69 117.55 182.81 110.85 171.79 112.51 176.69 117.55"/><polygon class="cls-2" points="146.31 84.07 167.26 81.27 171.79 112.51 146.31 84.07"/><polygon class="cls-2" points="181.22 103.94 191.81 76.23 175.61 80.19 181.22 103.94"/><polygon class="cls-9" points="143.58 77.31 161.79 82 137.75 84.87 143.58 77.31"/><polygon class="cls-6" points="190.01 128.7 175.97 124.09 160.21 131 190.01 128.7"/><polygon class="cls-13" points="175.18 138.35 190.01 128.7 176.11 132.44 160.21 131 175.18 138.35"/><polygon class="cls-9" points="196.48 74.79 175.61 80.19 192.24 67.59 196.48 74.79"/><polygon class="cls-10" points="207.64 29.8 129.83 93 71.02 74.79 91.03 52.04 188.85 0 207.64 29.8"/><polygon class="cls-9" points="71.02 74.79 85.92 47.8 188.85 0 71.02 74.79"/><polygon class="cls-14" points="223.76 30.09 129.83 93 188.85 0 223.76 30.09"/><polygon class="cls-6" points="183.46 178.94 193.6 176.43 198.07 170.81 227.87 171.82 244.21 187.15 227 201.04 188.35 210.69 183.46 178.94"/><polygon class="cls-6" points="227.87 171.82 262.13 172.9 256.59 193.34 227 201.04 227.87 171.82"/><polygon class="cls-5" points="113.85 179.88 121.62 169.66 125.44 168.22 145.09 179.45 166.11 189.53 173.16 202.27 166.97 235.59 152.5 252.73 119.82 276.69 126.37 236.1 113.85 179.88"/><polygon class="cls-13" points="152.5 252.73 101.11 312.9 99.6 271.37 126.37 236.1 152.5 252.73"/><polygon class="cls-13" points="194.25 237.61 202.53 270.14 176.11 251.86 184.75 267.27 166.97 235.59 166.11 189.53 183.53 176.64 179.5 168.36 195.04 172.25 197.78 176.79 194.25 237.61"/><polygon class="cls-15" points="194.25 237.61 215.56 282.24 211.24 314.34 184.75 267.27 176.11 251.86 194.25 237.61"/><polygon class="cls-6" points="173.74 156.13 179.5 168.36 183.02 173.47 183.53 176.64 176.19 187.66 166.11 189.53 173.74 156.13"/><polygon class="cls-6" points="125.44 168.22 131.56 155.05 166.11 189.53 140.27 189.46 125.44 168.22"/><polygon class="cls-13" points="125.44 168.22 102.62 174.19 100.97 184.99 100.97 185.06 130.41 175.27 125.44 168.22"/><polygon class="cls-15" points="179.5 168.36 198.07 170.81 197.78 176.79 183.53 176.64 182.16 173.76 179.5 168.36"/><polygon class="cls-15" points="176.11 251.86 152.5 252.73 166.97 235.59 176.11 251.86"/><polygon class="cls-10" points="370.99 135.85 373.58 131.8 379.48 140.05 374.87 141.51 370.99 135.85"/><polygon class="cls-10" points="283.39 194.65 286.06 193.52 289.45 198.86 287.76 201.04 283.39 194.65"/><polygon class="cls-15" points="161.43 208.75 166.47 203.78 170.64 208.89 166.54 214 161.43 208.75"/><polygon class="cls-15" points="161.79 227.17 166.75 222.42 171.07 227.46 166.97 232.28 161.79 227.17"/><path class="cls-16" d="M188.7,81.14a4.61,4.61,0,1,0,0,9.22,4.61,4.61,0,1,0,0-9.22Z"/><path class="cls-16" d="M153.94,87.13a4.61,4.61,0,1,0,0,9.22,4.61,4.61,0,1,0,0-9.22Z"/><polygon class="cls-6" points="179.57 386.11 175.32 386.04 172.51 369.05 175.18 357.53 185.25 364.3 183.09 371.06 179.57 386.11"/><polygon class="cls-6" points="126.52 364.44 119.9 378.98 124.79 391.65 126.52 364.44"/><polygon class="cls-8" points="140.05 361.2 145.09 371.13 138.47 379.41 125.08 382 126.52 364.44 140.05 361.2"/><polygon class="cls-5" points="125.08 382 145.09 371.13 147.54 375.53 143.29 382 124.79 386.54 125.08 382"/><polygon class="cls-5" points="124.79 386.54 147.54 375.53 154.59 386.54 143.43 388.63 124.79 386.54"/><polygon class="cls-8" points="189.93 354.58 201.45 367.03 195.48 373.51 186.41 376.75 175.18 357.53 189.93 354.58"/><polygon class="cls-5" points="186.41 376.75 201.45 367.03 204.98 370.49 199.58 376.53 188.78 379.85 186.41 376.75"/><polygon class="cls-5" points="188.78 380.85 204.98 370.49 215.85 380.85 201.52 383.01 188.78 380.85"/><polygon class="cls-6" points="124.79 386.54 124.79 391.65 154.59 391.65 154.59 386.54 124.79 386.54"/><polygon class="cls-6" points="183.09 371.06 180.86 373.15 181.8 375.31 192.38 386.32 215.85 386.32 215.85 380.85 196.34 380.85 183.09 371.06"/>
-</svg>`;
+export type SceneIcon = (props: SceneIconProps) => React.JSX.Element;
 
-export const TargetingIcon = makeSvgIcon(TARGETING_SVG);
+// ─── TARGETING ──────────────────────────────────────────────────────────────
+// Radar: concentric rings, crosshair, single highlighted blip
+export function TargetingIcon({ style, isDark }: SceneIconProps): React.JSX.Element {
+  const bg = isDark ? '#130e00' : '#fffef5';
+  const ac = '#FBBF24';
+  const s  = (o: number) => `rgba(251,191,36,${o})`;
 
-// ── 2. Document Audit (violet) — architect figure, clothing recolored to violet ─
-const DOCUMENT_AUDIT_SVG = `<svg id="svg-docaudit" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
-<defs><style>
-#svg-docaudit .cls-1,#svg-docaudit .cls-10,#svg-docaudit .cls-11,#svg-docaudit .cls-12,#svg-docaudit .cls-13,#svg-docaudit .cls-15,#svg-docaudit .cls-17,#svg-docaudit .cls-18,#svg-docaudit .cls-19,#svg-docaudit .cls-2,#svg-docaudit .cls-20,#svg-docaudit .cls-21,#svg-docaudit .cls-22,#svg-docaudit .cls-3,#svg-docaudit .cls-4,#svg-docaudit .cls-5,#svg-docaudit .cls-6,#svg-docaudit .cls-7,#svg-docaudit .cls-8,#svg-docaudit .cls-9{fill-rule:evenodd;}
-#svg-docaudit .cls-1,#svg-docaudit .cls-9{opacity:0.1;}
-#svg-docaudit .cls-2{fill:#4f5253;}
-#svg-docaudit .cls-3{fill:#858686;}
-#svg-docaudit .cls-4{fill:#6d28d9;}
-#svg-docaudit .cls-5{fill:#4c1d95;}
-#svg-docaudit .cls-6{fill:#7c3aed;}
-#svg-docaudit .cls-16,#svg-docaudit .cls-7{fill:#5b21b6;}
-#svg-docaudit .cls-8{fill:#c4c4c4;}
-#svg-docaudit .cls-23,#svg-docaudit .cls-9{fill:#2b2b2b;}
-#svg-docaudit .cls-10{fill:#cececd;}
-#svg-docaudit .cls-11{fill:#9da1a2;}
-#svg-docaudit .cls-12{fill:#ececeb;}
-#svg-docaudit .cls-13{fill:#8b5cf6;}
-#svg-docaudit .cls-14,#svg-docaudit .cls-15{fill:#7c3aed;}
-#svg-docaudit .cls-17{fill:#a78bfa;}
-#svg-docaudit .cls-18{fill:#dfbda5;}
-#svg-docaudit .cls-19{fill:#c3987b;}
-#svg-docaudit .cls-20{fill:#8b6651;}
-#svg-docaudit .cls-21{fill:#e8cab6;}
-#svg-docaudit .cls-22{fill:#c4b5fd;}
-</style></defs>
-<rect width="400" height="400" fill="#0a0714"/>
-<polygon class="cls-1" points="364.98 380.28 324.44 363.91 149.54 359.68 38 383.94 137.87 400 364.98 380.28"/><polygon class="cls-2" points="283.03 348.79 285.21 371.26 300.64 371.2 301.25 350.55 283.03 348.79"/><polygon class="cls-2" points="177.29 348.79 179.47 371.26 194.9 371.2 198.93 350.55 177.29 348.79"/><polygon class="cls-3" points="181.21 378.27 184.15 346.76 154.73 350.17 156.48 379.78 181.21 378.27"/><polygon class="cls-4" points="86.44 258.35 96.77 186.96 73.76 173.55 54.59 225.02 86.44 258.35"/><polygon class="cls-5" points="54.59 225.02 89.38 223.96 92.83 244.66 86.08 266.71 54.59 225.02"/><polygon class="cls-4" points="202.17 185.5 216.11 230.92 213.27 248.78 193.49 266.03 177.95 215.95 182.68 171.96 202.17 185.5"/><polygon class="cls-6" points="202.74 209.24 193.49 266.03 232.03 250.7 220.58 211.07 213.1 205.83 202.74 209.24"/><polygon class="cls-6" points="145.48 195.7 164.92 167.66 187.49 174.85 193.49 266.03 137.86 272.37 86.08 266.71 92.41 188.43 104.33 178.98 110.09 163.02 145.48 195.7"/><polygon class="cls-7" points="167.07 185.45 202.74 187.34 199.36 175.88 166.7 171.56 167.07 185.45"/><polygon class="cls-3" points="323.59 379.78 324.44 350.74 297.2 346.76 297.72 379.78 323.59 379.78"/><polygon class="cls-3" points="324.44 354.15 324.72 339.65 245.76 307.3 155.68 333.05 156.37 354.15 324.44 354.15"/><polygon class="cls-8" points="316.76 339.65 161.55 334.81 247.64 315.61 316.76 339.65"/><polygon class="cls-1" points="249.52 331.92 157.27 359.99 162.78 349.23 206.58 333.76 249.52 331.92"/><polygon class="cls-9" points="249.52 323.93 249.52 331.92 324.38 352.69 324.72 339.65 249.52 323.93"/><polygon class="cls-10" points="162.78 349.23 249.52 331.92 253.88 321.78 248.13 311.35 165.52 320.65 162.78 349.23"/><polygon class="cls-11" points="247.64 315.61 165.52 320.65 170.63 281.05 194.61 287.06 244.08 299.52 248.13 308.27 247.64 315.61"/><polygon class="cls-8" points="244.08 299.52 247.64 315.61 280.08 319.18 317.46 310.06 328.54 281.05 244.08 299.52"/><polygon class="cls-12" points="247.64 315.61 249.52 331.92 347.06 342.56 317.46 310.06 247.64 315.61"/><polygon class="cls-1" points="317.46 310.06 304.3 319.83 284.75 312.66 317.46 310.06"/><polygon class="cls-13" points="300.01 280.85 280.08 291.65 301.72 302.45 300.01 280.85"/><rect class="cls-14" x="300.01" y="280.85" width="4.29" height="34.86"/><polygon class="cls-1" points="275.49 319.18 260.53 326.79 248.13 319.83 275.49 319.18"/><polygon class="cls-13" points="260.53 287.81 244.08 299.52 262.24 309.41 260.53 287.81"/><rect class="cls-14" x="260.53" y="287.81" width="4.29" height="34.86"/><polygon class="cls-1" points="237.15 309.59 222.09 314.76 205.08 301.74 237.15 309.59"/><polygon class="cls-13" points="222.35 275.78 203.99 289.44 224.06 297.38 222.35 275.78"/><rect class="cls-14" x="222.35" y="275.78" width="4.29" height="34.86"/><polygon class="cls-4" points="194.61 287.06 137.87 309.37 137.87 341.59 151.88 348.48 171.64 331.92 194.61 287.06"/><polygon class="cls-5" points="171.64 331.92 137.87 341.59 133.85 365.05 146.31 365.05 157.27 359.99 171.64 331.92"/><polygon class="cls-6" points="137.87 341.59 142.45 314.87 123.55 297.94 85.44 281.05 96.35 336.25 118.15 350.17 137.87 341.59"/><polygon class="cls-5" points="194.61 287.06 142.45 314.87 85.44 281.05 146.31 281.02 194.61 287.06"/><polygon class="cls-4" points="96.35 336.25 137.87 341.59 133.85 365.05 118.15 369.13 102.61 367.93 96.35 336.25"/><polygon class="cls-15" points="132.93 378.27 152.75 380.06 181.21 378.27 157.27 359.99 133.85 365.05 132.93 378.27"/><rect class="cls-16" x="132.93" y="378.27" width="48.28" height="6.8"/><polygon class="cls-13" points="133.85 365.05 143.04 385.08 121.33 387.16 99.62 385.08 102.61 367.93 133.85 365.05"/><rect class="cls-16" x="99.62" y="385.08" width="43.41" height="6.8"/><polygon class="cls-4" points="167.9 236.65 174.02 266.15 112.06 266.54 117.49 244.66 129.7 210.37 145.48 195.7 159.16 210.37 167.9 236.65"/><polygon class="cls-7" points="125.49 177.24 83.11 191.58 73.76 173.55 113.5 161.89 125.49 177.24"/><polygon class="cls-17" points="113.5 161.89 117.49 244.66 145.48 195.7 113.5 161.89"/><polygon class="cls-17" points="145.48 195.7 167.9 236.65 166.7 171.56 145.48 195.7"/><polygon class="cls-17" points="147.87 219.95 151.88 227.29 144.53 232.3 139.19 224.62 147.87 219.95"/><polygon class="cls-17" points="147.54 242.65 140.19 247.32 145.87 254.67 152.21 249.99 147.54 242.65"/><polygon class="cls-7" points="86.08 266.71 131.06 266.42 146.2 270.22 161.55 266.23 193.49 266.03 194.61 287.06 160.51 285.18 149.11 282.93 131.17 283.57 85.44 281.05 86.08 266.71"/><path class="cls-17" d="M161.55,266.23l-30.49.19.11,17.15,29.34,1.61,1-18.95Zm-7.67,12.82H137.52l.34-6.68,16.35-.67Z"/><polygon class="cls-1" points="145.48 195.7 188.66 175.21 166.7 171.56 145.48 195.7"/><polygon class="cls-7" points="99 113.43 109.99 110.48 127.79 123.97 116.48 134.62 87.48 137.47 99 113.43"/><polygon class="cls-18" points="237.15 72.57 231.66 98.7 206.71 178.68 166.7 171.56 145.48 195.7 121.13 155.75 131.66 112.43 138.73 109.46 142.79 88.97 141.3 58.1 175.95 40.59 208.74 59.55 215.57 41.87 237.15 72.57"/><polygon class="cls-19" points="142.56 58.6 162.52 96.68 157.89 173.23 145.48 195.7 113.5 161.89 116.48 134.62 119.15 128.75 119.12 122.89 107.64 121.35 107.82 94.48 125.2 94.41 131.66 109.92 137.22 110.46 141.79 89.22 142.56 58.6"/><polygon class="cls-19" points="221.07 107.22 162.52 96.68 177.95 112.75 185.99 139.76 221.07 107.22"/><polygon class="cls-20" points="159.16 152.25 187.89 161.9 208.49 159.69 189.15 149.6 159.16 152.25"/><polygon class="cls-15" points="159.16 152.25 185.99 139.76 197.88 142.01 208.49 159.69 159.16 152.25"/><polygon class="cls-21" points="194.61 102.46 185.99 139.76 197.88 142.01 203.99 104.15 194.61 102.46"/><polygon class="cls-15" points="162.52 96.68 221.07 107.22 222.94 99.64 166.43 92.82 162.52 96.68"/><polygon class="cls-7" points="197.89 141.95 190.84 145.55 185.99 139.76 197.89 141.95"/><polygon class="cls-20" points="112.52 100.16 121.28 100.41 123.42 117.73 112.52 100.16"/><polygon class="cls-20" points="166.7 171.56 138.52 166.52 145.48 195.7 166.7 171.56"/><polygon class="cls-20" points="119.12 122.89 126.68 123.97 116.48 134.62 119.12 122.89"/><polygon class="cls-22" points="235.14 72.32 242 61.17 256.5 51.58 231.66 98.7 235.14 72.32"/><polygon class="cls-13" points="142.56 58.6 122.28 46.71 89.23 36.56 95.45 85.46 123.61 89.55 146.81 89.22 142.56 58.6"/><polygon class="cls-15" points="235.14 72.32 215.68 48.39 204.02 37.42 192.08 19.37 256.5 51.58 235.14 72.32"/><polygon class="cls-15" points="142.56 58.6 177.95 45.85 157.57 28.57 131.02 18.22 89.23 36.56 142.56 58.6"/><polygon class="cls-13" points="192.08 19.37 153.34 0 131.02 18.22 177.95 45.85 211.25 65.07 215.68 48.39 192.08 19.37"/><polygon class="cls-15" points="146.81 89.22 95.45 85.46 99 113.43 107.64 121.35 108.95 95.61 125.2 96.68 129.38 113.94 139.23 112.47 146.81 89.22"/><circle class="cls-23" cx="210.47" cy="120.1" r="4.59"/><circle class="cls-23" cx="178.14" cy="113.89" r="4.59"/><polygon class="cls-20" points="195.89 201.7 202.74 209.24 209.29 210.12 216.11 188.54 196 191.58 195.89 201.7"/><polygon class="cls-19" points="232.71 187.03 220.58 211.07 202.74 209.24 216.11 188.54 220.58 183.63 232.71 187.03"/><polygon class="cls-21" points="193.49 176.33 209.87 168.55 232.71 187.03 216.11 188.54 202.17 185.5 193.49 176.33"/><polygon class="cls-18" points="216.11 188.54 202.74 195.93 188.26 186.57 193.49 176.33 216.11 188.54"/>
-</svg>`;
+  return (
+    <svg viewBox="0 0 400 240" preserveAspectRatio="xMidYMid slice"
+         style={{ width: '100%', height: '100%', display: 'block', ...style }}>
+      <rect width="400" height="240" fill={bg} />
+      <line x1="200" y1="0"   x2="200" y2="240" stroke={s(0.07)} strokeWidth="1" />
+      <line x1="0"   y1="178" x2="400" y2="178" stroke={s(0.07)} strokeWidth="1" />
+      <circle cx="200" cy="178" r="196" fill="none" stroke={s(0.05)} strokeWidth="1" />
+      <circle cx="200" cy="178" r="140" fill="none" stroke={s(0.09)} strokeWidth="1" />
+      <circle cx="200" cy="178" r="92"  fill="none" stroke={s(0.14)} strokeWidth="1.5" />
+      <circle cx="200" cy="178" r="50"  fill="none" stroke={s(0.22)} strokeWidth="1.5" />
+      <line x1="200" y1="178" x2="276" y2="86" stroke={ac} strokeWidth="1.5" opacity="0.32" />
+      <circle cx="276" cy="86" r="28" fill={s(isDark ? 0.10 : 0.12)} />
+      <circle cx="276" cy="86" r="18" fill="none" stroke={s(0.30)} strokeWidth="1.5" />
+      <circle cx="276" cy="86" r="28" fill="none" stroke={s(0.14)} strokeWidth="1" />
+      <circle cx="276" cy="86" r="9" fill={ac} />
+      <circle cx="143" cy="128" r="5" fill={s(0.32)} />
+      <circle cx="200" cy="178" r="3" fill={s(0.30)} />
+    </svg>
+  );
+}
 
-export const DocumentAuditIcon = makeSvgIcon(DOCUMENT_AUDIT_SVG);
+// ─── DOCUMENT AUDIT ─────────────────────────────────────────────────────────
+// Document with page-fold + magnifying glass, two highlight lines
+export function DocumentAuditIcon({ style, isDark }: SceneIconProps): React.JSX.Element {
+  const bg      = isDark ? '#100c1a' : '#faf8ff';
+  const ac      = '#A78BFA';
+  const s       = (o: number) => `rgba(167,139,250,${o})`;
+  const docFill = isDark ? s(0.05)  : 'rgba(255,255,255,0.95)';
+  const docStrk = isDark ? s(0.18)  : s(0.28);
+  const lineC   = isDark ? s(0.09)  : 'rgba(110,90,180,0.10)';
+  const hiLine  = isDark ? s(0.60)  : s(0.68);
+  const hiBlock = isDark ? s(0.12)  : s(0.16);
+  const lensFill= isDark ? 'rgba(16,12,26,0.50)' : 'rgba(255,255,255,0.55)';
+  const lensGl  = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.72)';
 
-// ── 3. Pipeline (emerald) — protagonist figure, clothing recolored to emerald ──
-const PIPELINE_SVG = `<svg id="svg-pipeline" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
-<defs><style>
-#svg-pipeline .cls-1,#svg-pipeline .cls-12{fill:#2b2b2b;}
-#svg-pipeline .cls-1{opacity:0.1;}
-#svg-pipeline .cls-2{fill:#064e3b;}
-#svg-pipeline .cls-3{fill:#059669;}
-#svg-pipeline .cls-4{fill:#10b981;}
-#svg-pipeline .cls-5{fill:#047857;}
-#svg-pipeline .cls-6{fill:#6ee7b7;}
-#svg-pipeline .cls-7{fill:#a7f3d0;}
-#svg-pipeline .cls-8{fill:#064e3b;}
-#svg-pipeline .cls-9{fill:#059669;}
-#svg-pipeline .cls-10{fill:#34d399;}
-#svg-pipeline .cls-11{fill:#047857;}
-#svg-pipeline .cls-13{fill:#dfbda5;}
-#svg-pipeline .cls-14{fill:#c3987b;}
-#svg-pipeline .cls-15,#svg-pipeline .cls-20{fill:#8b6651;}
-#svg-pipeline .cls-16{fill:#e8cab6;}
-#svg-pipeline .cls-17{fill:#474747;}
-#svg-pipeline .cls-18{fill:#4f5253;}
-#svg-pipeline .cls-19{fill:#6f7173;}
-#svg-pipeline .cls-20{stroke:#8b6651;stroke-miterlimit:10;stroke-width:4px;}
-#svg-pipeline .cls-21{fill:#c4c4c4;}
-#svg-pipeline .cls-22{fill:#dddddc;}
-#svg-pipeline .cls-23{fill:#9da1a2;}
-</style></defs>
-<rect width="400" height="400" fill="#04150d"/>
-<polygon class="cls-1" points="328.3 385.28 301.9 380.34 195.38 362.64 95.34 380.11 68.54 388.58 239.35 400 328.3 385.28"/><polygon class="cls-2" points="278.05 348.71 273.94 237.58 267.62 199.88 209.84 176.38 135.37 217.32 108.12 362.64 133.42 384.67 279.06 385.05 301.94 380.11 278.05 348.71"/><polygon class="cls-3" points="255.91 331.8 223.37 345.05 228.19 368.98 244.94 368.98 255.91 359.47 255.91 331.8"/><polygon class="cls-4" points="255.91 359.47 276.73 380.11 256.61 384.67 227.69 380.11 228.19 368.98 255.91 359.47"/><polygon class="cls-3" points="276.73 389.33 227.69 389.33 227.69 380.11 269.05 380.11 285.3 373.99 276.73 389.33"/><polygon class="cls-5" points="255.91 331.8 226.07 357.27 223.37 345.05 239.64 331.8 255.91 331.8"/><polygon class="cls-6" points="140.38 106.72 106.64 129.95 104.45 157.56 127.53 198.58 286.31 184.41 281.42 122.77 264.59 112.57 140.38 106.72"/><polygon class="cls-7" points="264.59 112.57 140.38 106.72 106.64 129.95 104.45 157.56 123.83 144.22 267.62 132.27 281.42 122.77 264.59 112.57"/><polygon class="cls-3" points="180.52 346.63 175.41 366.98 158.65 368.98 143.62 362.64 146.18 339.07 180.52 346.63"/><polygon class="cls-4" points="143.62 362.64 133.42 384.67 176.11 384.67 175.41 366.98 143.62 362.64"/><polygon class="cls-3" points="176.11 392.33 133.42 392.33 133.42 384.67 154.76 378.11 176.11 384.67 176.11 392.33"/><polygon class="cls-5" points="146.18 339.07 177.85 357.27 180.52 346.63 169.99 337.29 146.18 339.07"/><polygon class="cls-8" points="205.03 254.6 180.52 331.8 206.18 352.28 255.91 331.8 255.77 256.62 236.32 247.97 205.03 254.6"/><polygon class="cls-9" points="153.18 272.82 146.18 339.07 206.18 352.28 205.03 254.6 153.18 272.82"/><polygon class="cls-8" points="255.77 155.36 267.62 132.27 309.99 196.02 254.44 217.65 250.21 205.39 255.77 155.36"/><polygon class="cls-8" points="150.24 134.64 188.84 154.86 223.87 181.87 205.03 254.6 154.42 254.6 154.42 237.58 133.42 183.38 150.24 134.64"/><polygon class="cls-9" points="209.84 176.38 204.99 237.58 205.03 254.6 255.77 254.6 255.91 230.83 267.62 132.27 242.87 129.95 241.99 140.24 241.99 140.24 231.47 139.75 225.94 163.53 209.84 176.38"/><polygon class="cls-8" points="135.37 217.32 118.82 199.73 95.34 380.11 112.13 369.1 120.75 353.53 135.37 217.32"/><polygon class="cls-9" points="133.42 384.67 95.34 380.11 120.75 353.53 133.42 384.67"/><polygon class="cls-10" points="154.42 254.6 255.77 254.6 255.77 273.64 153.18 272.82 154.42 254.6"/><polygon class="cls-11" points="118.82 199.73 123.83 144.22 154.15 132.36 162.79 131.09 153.1 165.66 156.57 206.78 118.82 199.73"/><polygon class="cls-5" points="209.39 167.16 223.37 152.65 231.47 139.75 246.21 141.89 244.92 163.66 209.84 176.38 201.52 168.94 209.39 167.16"/><polygon class="cls-4" points="209.39 167.16 209.84 176.38 153.1 165.66 150.24 134.64 162.79 131.09 177.01 146.52 209.39 167.16"/><polygon class="cls-12" points="159.02 132.27 155.75 77.43 148.96 63.32 136.11 69.25 133.42 140.47 159.02 132.27"/><polygon class="cls-12" points="263.76 62.6 267.62 132.27 247.19 130.5 243.92 55.78 263.76 62.6"/><polygon class="cls-13" points="246.21 141.89 180.52 138.8 161.92 125.51 153.1 24.64 255.79 20.22 246.21 141.89"/><polygon class="cls-14" points="236.32 141.43 169.11 132.59 161.03 34.47 148.96 15.25 159.52 138.08 161.92 153.36 209.39 167.16 234.09 155.01 236.32 141.43"/><polygon class="cls-15" points="199.2 100.45 208.83 107.05 218.47 100.45 199.2 100.45"/><polygon class="cls-14" points="169.07 75.17 189.22 81.36 199.2 100.45 204.88 69.61 176.18 67.01 169.07 75.17"/><polygon class="cls-14" points="218.47 100.45 232.79 81.36 248.59 75.17 241.49 70.7 228.45 69.25 212.78 69.61 212.78 88.73 218.47 100.45"/><polygon class="cls-16" points="218.47 100.45 208.83 102.88 199.2 100.45 204.88 69.61 212.78 69.61 218.47 100.45"/><polygon class="cls-17" points="212.78 69.61 241.49 70.7 248.59 75.17 241.49 63.32 212.78 69.61"/><polygon class="cls-17" points="204.88 69.61 176.18 70.7 169.07 75.17 176.18 63.32 204.88 69.61"/><polygon class="cls-15" points="212.11 159.36 236.32 141.43 159.52 138.08 212.11 159.36"/><polygon class="cls-18" points="136.11 69.25 138.15 18.11 159.52 12.78 176.29 0 233.56 0 246.21 15.25 268.07 24.64 263.76 62.6 252.3 64.58 254.94 28.95 210.62 43.46 162.68 21.88 154.58 83.73 136.11 69.25"/><polygon class="cls-19" points="210.62 43.46 176.29 0 138.15 18.11 161.03 34.47 210.62 43.46"/><polygon class="cls-14" points="167.09 107.97 248.51 112.7 246.21 141.89 169.07 138.5 167.09 107.97"/><polygon class="cls-17" points="233.56 0 210.62 43.46 254.56 34.13 268.07 24.64 233.56 0"/><polygon class="cls-15" points="181.38 116.86 188.84 116 180.52 124.08 181.38 116.86"/><polyline class="cls-20" points="183.91 119.37 187.78 123.24 210.86 123.24"/><polygon class="cls-15" points="167.09 107.97 156.57 103.75 159.52 138.08 169.07 138.5 167.09 107.97"/><circle class="cls-12" cx="228.45" cy="81.36" r="4.88"/><circle class="cls-12" cx="184.68" cy="81.36" r="4.88"/><rect class="cls-21" x="233.16" y="159.61" width="11.01" height="225.87"/><circle class="cls-22" cx="238.66" cy="158.93" r="10.24"/><polygon class="cls-21" points="220.61 389.41 238.26 397.55 248.9 380.11 244.16 227.86 220.61 227.99 220.61 389.41"/><polygon class="cls-23" points="255.91 227.99 238.66 227.99 238.26 397.55 255.91 389.41 255.91 227.99"/><polygon class="cls-22" points="273.94 237.58 284.46 225.45 273.94 214.93 263.97 224.9 246.21 224.9 238.66 217.34 231.11 224.9 214.96 224.9 204.99 214.93 192.87 225.45 204.99 237.58 210.85 230.83 231.11 230.83 238.66 238.38 246.21 230.83 268.08 230.83 273.94 237.58"/><polygon class="cls-4" points="118.82 199.73 154.42 237.58 213.53 227.73 215.54 209.9 207.8 202.15 118.82 199.73"/><polygon class="cls-13" points="213.53 227.73 207.8 202.15 232.91 194.59 213.53 227.73"/><polygon class="cls-4" points="309.99 196.02 259.35 201.89 250.21 212.26 256.61 224.9 281.73 228.49 309.99 196.02"/><polygon class="cls-13" points="232.91 194.59 228.42 211.16 230.53 224.9 256.61 224.9 259.35 201.89 232.91 194.59"/><polygon class="cls-14" points="232.91 194.59 230.53 224.9 213.53 227.73 216.6 208.52 232.91 194.59"/>
-</svg>`;
+  return (
+    <svg viewBox="0 0 400 240" preserveAspectRatio="xMidYMid slice"
+         style={{ width: '100%', height: '100%', display: 'block', ...style }}>
+      <rect width="400" height="240" fill={bg} />
+      <rect x="86" y="24" width="162" height="207" rx="7"
+            fill={isDark ? 'rgba(0,0,0,0.30)' : 'rgba(0,0,0,0.04)'} />
+      <rect x="82" y="20" width="162" height="207" rx="7"
+            fill={docFill} stroke={docStrk} strokeWidth="1.5" />
+      <path d="M 216 20 L 244 48 L 216 48 Z" fill={isDark ? s(0.14) : s(0.10)} />
+      <path d="M 216 20 L 244 48" fill="none" stroke={docStrk} strokeWidth="1" />
+      <rect x="100" y="38" width="84" height="7" rx="2" fill={s(isDark ? 0.50 : 0.55)} />
+      <rect x="100" y="50" width="54" height="4" rx="2" fill={s(isDark ? 0.22 : 0.26)} />
+      <rect x="100" y="66"  width="126" height="4" rx="2" fill={lineC} />
+      <rect x="100" y="76"  width="108" height="4" rx="2" fill={lineC} />
+      <rect x="96"  y="88"  width="134" height="14" rx="3" fill={hiBlock} />
+      <rect x="100" y="92"  width="116" height="4"  rx="2" fill={hiLine} />
+      <rect x="100" y="112" width="126" height="4" rx="2" fill={lineC} />
+      <rect x="100" y="122" width="92"  height="4" rx="2" fill={lineC} />
+      <rect x="96"  y="134" width="134" height="14" rx="3" fill={hiBlock} />
+      <rect x="100" y="138" width="102" height="4"  rx="2" fill={hiLine} />
+      <rect x="100" y="158" width="126" height="4" rx="2" fill={lineC} />
+      <rect x="100" y="168" width="70"  height="4" rx="2" fill={lineC} />
+      <rect x="100" y="178" width="110" height="4" rx="2" fill={lineC} />
+      <circle cx="302" cy="106" r="52" fill="none" stroke={ac} strokeWidth="3" />
+      <circle cx="302" cy="106" r="48" fill={lensFill} />
+      <line x1="338" y1="142" x2="366" y2="170" stroke={ac} strokeWidth="5" strokeLinecap="round" />
+      <circle cx="288" cy="91" r="9" fill="none" stroke={lensGl} strokeWidth="2" />
+    </svg>
+  );
+}
 
-export const PipelineIcon = makeSvgIcon(PIPELINE_SVG);
+// ─── PIPELINE ────────────────────────────────────────────────────────────────
+// Funnel: many candidates in, three narrowing tiers, one output drop
+export function PipelineIcon({ style, isDark }: SceneIconProps): React.JSX.Element {
+  const bg      = isDark ? '#001a0f' : '#f0fdf9';
+  const ac      = '#34D399';
+  const s       = (o: number) => `rgba(52,211,153,${o})`;
+  const entries = [50, 100, 152, 200, 248, 300, 350];
 
-// ── 4. Honest (rose) — mediator figure, clothing recolored to rose/red ─────────
-const HONEST_SVG = `<svg id="svg-honest" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
-<defs><style>
-#svg-honest .cls-1{fill:#be123c;}
-#svg-honest .cls-2{fill:#e11d48;}
-#svg-honest .cls-3{fill:#dfbda5;}
-#svg-honest .cls-16,#svg-honest .cls-4{fill:#2b2b2b;}
-#svg-honest .cls-4{opacity:0.1;}
-#svg-honest .cls-5{fill:#fda4af;}
-#svg-honest .cls-6{fill:#fecdd3;}
-#svg-honest .cls-7{fill:#fb7185;}
-#svg-honest .cls-8{fill:#c3987b;}
-#svg-honest .cls-9{fill:#8b6651;}
-#svg-honest .cls-10{fill:#e8cab6;}
-#svg-honest .cls-11{fill:#f43f5e;}
-#svg-honest .cls-12{fill:#9f1239;}
-#svg-honest .cls-13{fill:#be123c;}
-#svg-honest .cls-14{fill:#e11d48;}
-#svg-honest .cls-15{fill:#881337;}
-</style></defs>
-<rect width="400" height="400" fill="#170509"/>
-<polygon class="cls-1" points="233.89 248.88 205.94 242.4 182.67 233.68 172.09 250.39 156.74 266.96 166.68 277.26 172.37 290.15 157.68 294.26 131.17 295.92 138.16 299.88 140.68 304.56 163.44 323.79 191.46 350.88 195.78 352.82 201.47 359.95 202.56 349.37 206.81 341.15 221.21 286.41 233.89 248.88"/><polygon class="cls-2" points="275.67 200.04 257.95 207.89 232.23 212.5 229.35 198.67 230.94 184.34 218.91 186.43 208.46 184.7 200.32 184.91 190.6 183.19 175.11 179.73 157.53 168.63 151.2 185.63 135.35 214.59 140.75 225.18 147.23 252.7 150.98 225.4 157.68 208.32 162.58 204.94 171.37 204.51 177.92 215.67 179.43 225.04 182.17 228.78 182.67 233.68 205.72 238.94 233.89 248.88 256.15 227.77 281.29 208.61 277.04 204.87 275.67 200.04"/><polygon class="cls-3" points="264.29 22.12 258.38 21.18 254.78 17.51 236.92 10.59 220.06 0 193.77 11.1 170.57 16.43 166.54 32.35 157.53 51.08 155.88 56.41 152.92 60.59 152.56 84.36 148.89 128.37 142.12 140.61 130.67 154.59 145.36 160.13 157.53 168.63 172.81 177.28 190.6 183.19 202.84 185.56 208.46 184.7 223.09 186.07 230.94 184.34 238 182.18 246.28 184.05 238.07 171.73 230.14 154.23 237.56 137.73 248.15 122.39 264.36 114.68 283.74 108.2 269.55 71.39 259.68 31.7 260.47 26.08 264.29 22.12"/><polygon class="cls-4" points="272.79 390.02 191.9 376.59 93.57 386.89 169.71 400 272.79 390.02"/><polygon class="cls-3" points="248.15 122.39 283.74 108.2 259.68 31.7 250.31 26.95 240.73 22.34 226.18 16.72 215.23 33.14 213 31.99 208.53 41.21 229.64 128.94 248.15 122.39"/><polygon class="cls-5" points="259.75 31.7 254.78 17.51 220.06 0 217.83 16.93 226.18 16.72 240.73 22.34 250.31 26.95 259.75 31.7"/><polygon class="cls-6" points="220.06 0 170.57 16.43 157.53 51.08 152.92 60.59 166.83 55.76 180.66 51.15 194.49 46.25 208.61 41.35 215.23 33.14 226.18 16.72 220.06 0"/><polygon class="cls-7" points="208.61 41.35 194.85 46.18 180.66 51.15 166.83 55.76 152.92 60.59 148.89 128.37 204.07 50.86 208.61 41.35"/><polygon class="cls-8" points="241.38 51.44 248.59 71.03 261.62 47.69 241.38 51.44"/><polygon class="cls-8" points="236.56 52.3 219.34 65.05 233.96 66.92 247.36 82.63 236.56 52.3"/><polygon class="cls-8" points="208.61 41.35 229.64 128.94 226.62 132.19 218.62 133.27 213 126.28 209.04 116.27 206.66 89.9 208.61 41.35"/><polygon class="cls-9" points="252.33 81.11 251.11 86.37 247.36 82.63 252.33 81.11"/><polygon class="cls-7" points="236.56 52.3 220.42 59.43 219.34 65.05 236.56 52.3"/><polygon class="cls-7" points="241.38 51.44 260.04 44.66 261.62 47.69 241.38 51.44"/><polygon class="cls-9" points="218.62 133.27 230.14 154.23 248.15 122.39 229.64 128.94 218.62 133.27"/><polygon class="cls-10" points="236.56 52.3 247.36 82.63 252.33 81.11 241.38 51.44 236.56 52.3"/><polygon class="cls-5" points="204.07 50.86 190.6 183.19 208.46 184.7 209.04 116.27 208.53 41.21 204.07 50.86"/><polygon class="cls-6" points="201.62 74.27 157.53 168.63 130.67 154.59 148.89 128.37 204.07 50.86 201.62 74.27"/><polygon class="cls-6" points="209.04 116.27 230.14 154.23 246.28 184.05 208.46 184.7 209.04 116.27"/><polygon class="cls-7" points="201.62 74.27 157.53 168.63 190.6 183.19 194.34 145.94 200.75 117.56 201.62 74.27"/><polygon class="cls-11" points="268.83 89.54 254.2 99.7 235.19 100.2 255.72 105.32 268.83 89.54"/><polygon class="cls-12" points="268.83 89.54 262.85 91.7 254.56 93.07 249.23 94.87 242.97 98.47 235.19 100.2 254.2 99.7 268.83 89.54"/><polygon class="cls-13" points="264.29 22.12 254.78 17.51 250.1 27.02 259.75 31.7 264.29 22.12"/><polygon class="cls-14" points="250.31 26.95 240.73 22.34 236.12 31.84 245.78 36.53 250.31 26.95"/><polygon class="cls-13" points="236.48 31.7 226.83 27.02 222.29 36.6 231.8 41.21 236.48 31.7"/><polygon class="cls-14" points="222.51 36.6 213 31.99 208.32 41.57 217.9 46.18 222.51 36.6"/><polygon class="cls-13" points="208.61 41.35 199.03 36.67 194.49 46.25 204.07 50.86 208.61 41.35"/><polygon class="cls-14" points="194.85 46.18 185.34 41.5 180.66 51.15 190.31 55.69 194.85 46.18"/><polygon class="cls-13" points="181.02 50.86 171.37 46.25 166.83 55.76 176.41 60.44 181.02 50.86"/><polygon class="cls-14" points="167.12 55.69 157.53 51.08 152.92 60.59 162.43 65.27 167.12 55.69"/><polygon class="cls-12" points="208.68 69.44 201.62 74.27 199.96 91.13 208.82 85.15 208.68 69.44"/><polygon class="cls-11" points="208.82 85.15 199.96 91.13 198.74 103.37 208.89 97.75 208.82 85.15"/><polygon class="cls-12" points="208.89 97.75 198.74 103.37 197.3 116.99 208.97 110.5 208.89 97.75"/><polygon class="cls-11" points="208.97 110.5 197.3 116.99 195.78 132.04 208.97 124.48 208.97 110.5"/><polygon class="cls-12" points="208.97 124.48 195.78 132.04 194.34 145.94 208.89 137.88 208.97 124.48"/><polygon class="cls-15" points="230.94 184.34 233.89 248.88 190.6 183.19 208.46 184.7 230.94 184.34"/><polygon class="cls-11" points="232.23 212.5 275.67 200.04 279.77 203.79 281.29 208.61 233.89 248.88 232.23 212.5"/><polygon class="cls-3" points="275.67 200.04 282.51 192.98 291.23 199.47 300.74 184.05 303.33 184.05 298.86 204.65 281.29 208.61 275.67 200.04"/><polygon class="cls-9" points="279.05 196.44 298.86 204.65 302.68 195.36 303.33 184.05 300.74 184.05 294.47 191.9 291.23 199.47 287.12 194.57 282.51 192.98 279.05 196.44"/><polygon class="cls-12" points="157.53 168.63 179.43 225.04 192.76 229.14 219.92 227.77 190.6 183.19 157.53 168.63"/><polygon class="cls-11" points="219.92 227.77 179.43 225.04 182.67 233.68 201.84 247.44 233.89 248.88 219.92 227.77"/><polygon class="cls-15" points="157.53 168.63 135.35 214.59 171.37 204.51 157.53 168.63"/><polygon class="cls-11" points="157.68 208.32 147.23 252.7 139.5 240.66 140.32 230.52 135.35 214.59 157.68 208.32"/><polygon class="cls-3" points="147.23 252.7 138.2 253.63 127.46 250.55 140.33 230.51 147.23 252.7"/><polygon class="cls-14" points="182.67 233.68 156.74 266.96 190.74 272.65 233.89 248.88 182.67 233.68"/><polygon class="cls-1" points="156.74 266.96 172.37 290.15 164.16 314.36 206.81 341.15 233.89 248.88 156.74 266.96"/><polygon class="cls-13" points="172.37 290.15 131.17 295.92 135.42 301.97 140.68 304.56 192.11 351.38 194.49 354.33 201.47 359.95 206.81 341.15 172.37 290.15"/><polygon class="cls-3" points="131.17 295.92 117.99 291.16 110.86 330.42 140.68 304.56 131.17 295.92"/><polygon class="cls-8" points="119.36 323.07 122.24 339.71 110.86 330.42 119.36 323.07"/><polygon class="cls-3" points="192.11 351.38 176.98 362.62 191.9 391.87 201.47 359.95 192.11 351.38"/><polygon class="cls-8" points="191.9 391.87 208.89 391.5 194.85 381.92 191.9 391.87"/><polygon class="cls-9" points="131.17 295.92 134.27 310.18 140.68 304.56 131.17 295.92"/><polygon class="cls-9" points="201.47 359.95 188.44 354.19 191.46 350.88 201.47 359.95"/><polygon class="cls-8" points="138.2 253.63 119.31 237.99 116.14 250.37 124.49 255.12 138.2 253.63"/><polygon class="cls-1" points="336.14 29.43 320.8 2.06 314.03 27.34 336.14 29.43"/><polygon class="cls-14" points="314.03 27.34 289.39 21.07 304.3 47.58 314.03 27.34"/><polygon class="cls-15" points="335.78 39.23 314.03 27.34 316.98 35.34 322.09 40.74 335.78 39.23"/><polygon class="cls-11" points="314.03 27.34 313.38 51.98 322.09 40.74 314.03 27.34"/><polygon class="cls-1" points="99.8 31.91 115.07 4.47 121.92 29.75 99.8 31.91"/><polygon class="cls-14" points="121.92 29.75 146.55 23.49 131.57 49.99 121.92 29.75"/><polygon class="cls-15" points="100.16 41.57 121.92 29.75 117.81 39.05 113.78 43.15 100.16 41.57"/><polygon class="cls-11" points="121.92 29.75 122.56 54.39 113.78 43.15 121.92 29.75"/><polygon class="cls-1" points="98.04 183.83 92.99 152.79 77.94 174.25 98.04 183.83"/><polygon class="cls-14" points="77.94 174.25 56.98 159.85 61.95 189.96 77.94 174.25"/><polygon class="cls-15" points="94.36 192.76 77.94 174.25 78.59 183.04 80.96 189.6 94.36 192.76"/><polygon class="cls-11" points="77.94 174.25 68.94 197.09 80.96 189.6 77.94 174.25"/><polygon class="cls-12" points="312.41 184.05 297.13 184.05 297.13 168.85 312.41 168.85 312.41 184.05"/><polygon class="cls-15" points="306.86 204.94 307.15 223.52 303.4 223.52 303.69 204.94 306.86 204.94"/><polygon class="cls-7" points="304.84 168.85 306.36 150.7 285.18 156.39 297.13 168.85 304.84 168.85"/><polygon class="cls-7" points="297.13 172.16 277.18 163.01 270.05 181.02 297.13 177.85 297.13 172.16"/><polygon class="cls-7" points="297.13 181.02 273.87 186.35 291.23 199.47 300.74 184.05 297.13 184.05 297.13 181.02"/><polygon class="cls-7" points="303.33 184.05 298.86 204.65 317.16 204.94 308.73 184.05 303.33 184.05"/><polygon class="cls-7" points="312.41 184.05 326.45 202.63 338.19 191.25 312.41 179.73 312.41 184.05"/><polygon class="cls-7" points="312.41 177.28 339.63 183.76 342.37 168.42 312.41 173.75 312.41 177.28"/><polygon class="cls-7" points="312.41 171.23 335.6 159.05 319.83 149.47 307.22 168.85 312.41 168.85 312.41 171.23"/><polygon class="cls-6" points="304.84 168.85 297.13 176.49 304.84 184.05 312.41 176.49 304.84 168.85"/><path class="cls-16" d="M256.8,56.62a4,4,0,0,0-4,4,4,4,0,0,0,4,4,4.09,4.09,0,0,0,4.1-4A4,4,0,0,0,256.8,56.62Z"/><path class="cls-16" d="M230.29,66.2a4.16,4.16,0,0,0-4.11,4.11,4.09,4.09,0,0,0,4.11,4,4,4,0,0,0,4-4A4.09,4.09,0,0,0,230.29,66.2Z"/>
-</svg>`;
+  return (
+    <svg viewBox="0 0 400 240" preserveAspectRatio="xMidYMid slice"
+         style={{ width: '100%', height: '100%', display: 'block', ...style }}>
+      <rect width="400" height="240" fill={bg} />
+      {entries.map((x, i) => (
+        <React.Fragment key={i}>
+          <line x1={x} y1="30" x2="200" y2="68" stroke={s(i < 5 ? 0.18 : 0.08)} strokeWidth="1" />
+          <circle cx={x} cy="24" r={i < 5 ? 5 : 4} fill={s(i < 5 ? 0.48 : 0.18)} />
+        </React.Fragment>
+      ))}
+      <path d="M 50 58 L 350 58 L 268 118 L 132 118 Z"
+            fill={s(isDark ? 0.06 : 0.08)} stroke={s(isDark ? 0.18 : 0.22)}
+            strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M 132 118 L 268 118 L 242 166 L 158 166 Z"
+            fill={s(isDark ? 0.10 : 0.13)} stroke={s(isDark ? 0.24 : 0.28)}
+            strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M 158 166 L 242 166 L 222 210 L 178 210 Z"
+            fill={s(isDark ? 0.16 : 0.20)} stroke={ac}
+            strokeWidth="2" strokeLinejoin="round" />
+      <line x1="200" y1="210" x2="200" y2="226" stroke={ac} strokeWidth="2.5" />
+      <circle cx="200" cy="234" r="8" fill={ac} />
+    </svg>
+  );
+}
 
-export const HonestIcon = makeSvgIcon(HONEST_SVG);
+// ─── THE HONEST TRUTH ────────────────────────────────────────────────────────
+// Standing mirror with soft reflection — the truth, clearly seen
+export function HonestIcon({ style, isDark }: SceneIconProps): React.JSX.Element {
+  const bg      = isDark ? '#1a060c' : '#fff5f7';
+  const ac      = '#FB7185';
+  const s       = (o: number) => `rgba(251,113,133,${o})`;
+  const mirrorF = isDark ? s(0.06)  : 'rgba(255,255,255,0.78)';
+  const reflF   = isDark ? s(0.10)  : s(0.12);
+  const reflS   = isDark ? s(0.28)  : s(0.32);
+  const glareC  = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.72)';
+  const arcC    = isDark ? s(0.28)  : s(0.34);
 
-// ── 5. Fix (teal/cyan) — defender figure, already teal; shifted to bright cyan ─
-const FIX_SVG = `<svg id="svg-fix" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
-<defs><style>
-#svg-fix .cls-1,#svg-fix .cls-10,#svg-fix .cls-11,#svg-fix .cls-12,#svg-fix .cls-13,#svg-fix .cls-14,#svg-fix .cls-15,#svg-fix .cls-16,#svg-fix .cls-17,#svg-fix .cls-18,#svg-fix .cls-2,#svg-fix .cls-3,#svg-fix .cls-4,#svg-fix .cls-5,#svg-fix .cls-6,#svg-fix .cls-7,#svg-fix .cls-8,#svg-fix .cls-9{fill-rule:evenodd;}
-#svg-fix .cls-1{opacity:0.1;}
-#svg-fix .cls-2{fill:#c3987b;}
-#svg-fix .cls-3{fill:#0e7490;}
-#svg-fix .cls-4{fill:#8b6651;}
-#svg-fix .cls-5{fill:#22d3ee;}
-#svg-fix .cls-6{fill:#67e8f9;}
-#svg-fix .cls-7{fill:#0891b2;}
-#svg-fix .cls-15,#svg-fix .cls-8{fill:#2b2b2b;}
-#svg-fix .cls-8{opacity:0.2;}
-#svg-fix .cls-9{fill:#dfbda5;}
-#svg-fix .cls-10{fill:#fff;}
-#svg-fix .cls-11{fill:#4f5253;}
-#svg-fix .cls-12{fill:#a5f3fc;}
-#svg-fix .cls-13{fill:#0891b2;}
-#svg-fix .cls-14{fill:#e8cab6;}
-#svg-fix .cls-16{fill:#6f7173;}
-#svg-fix .cls-17{fill:#155e75;}
-#svg-fix .cls-18{fill:#06b6d4;}
-</style></defs>
-<rect width="400" height="400" fill="#041318"/>
-<polygon class="cls-1" points="110.6 392.44 205.69 377.17 285.24 391.5 212.06 400.11 110.6 392.44"/><polygon class="cls-2" points="205.65 341.36 220.9 366.51 229.25 368.12 233.14 364.44 231.25 344.04 205.65 341.36"/><polygon class="cls-2" points="190.72 339.88 188.08 368.14 177.52 371.63 175.16 366.87 165.69 337.31 190.72 339.88"/><polygon class="cls-3" points="233.14 364.44 244.7 375.11 233.58 387.46 220.05 385.58 220.9 366.51 233.14 364.44"/><polygon class="cls-3" points="188.08 368.14 195.99 389.08 182.08 391.16 168.3 389.08 175.16 366.87 188.08 368.14"/><polygon class="cls-4" points="231.25 344.04 210.59 349.5 205.65 341.36 218.45 340.14 231.25 344.04"/><polygon class="cls-4" points="165.69 337.31 190.04 347.14 190.72 339.88 178.74 337.31 165.69 337.31"/><polygon class="cls-5" points="158.25 174.02 127.92 238.35 153.26 224.13 169.93 215.96 158.25 174.02"/><polygon class="cls-5" points="211.82 165.79 222.07 170.39 256.32 220.95 231.25 209.09 211.82 196.63 211.82 165.79"/><polygon class="cls-6" points="211.82 165.79 200.35 195.08 184.22 201.98 200.7 189.61 179.24 163.38 158.25 174.02 165.37 213.78 156.33 240.85 143.55 268.54 175.69 268.54 211.82 262.08 221.5 248.88 231.25 209.09 211.82 165.79"/><polygon class="cls-7" points="165.37 213.78 156.33 240.85 187.4 240.7 221.22 246.13 230.55 218.75 231.25 209.09 165.37 213.78"/><polygon class="cls-7" points="211.82 262.08 193.12 295.85 161.76 325.29 143.55 268.54 211.82 262.08"/><polygon class="cls-5" points="211.82 262.08 219.9 275.63 228.74 318.5 228.74 340.14 165.69 337.31 161.76 325.29 211.82 262.08"/><polygon class="cls-7" points="165.69 337.31 228.74 318.5 231.25 344.04 165.69 337.31"/><polygon class="cls-8" points="153.37 247.28 156.33 240.85 196.51 240.7 221.5 248.88 211.82 262.08 153.37 247.28"/><polygon class="cls-7" points="211.82 262.08 228.74 318.5 221.5 248.88 211.82 262.08"/><polygon class="cls-9" points="165.37 213.78 194.71 232.17 196.51 237.84 194.71 244.23 127.92 238.35 165.37 213.78"/><polygon class="cls-4" points="229.42 238.35 221.5 248.88 194.71 244.23 216.56 235.59 229.42 238.35"/><polygon class="cls-10" points="211.82 165.79 175.69 164.93 175.69 206.72 200.35 195.08 227.68 201.13 211.82 165.79"/><polygon class="cls-11" points="248.98 58.36 271.05 72.44 253.68 95.96 248.98 77.16 248.98 58.36"/><polygon class="cls-6" points="148.97 58.36 140.25 51.67 129.72 33.07 203.7 0.11 210.17 19.77 211.17 35.06 178.4 52.67 148.97 58.36"/><polygon class="cls-12" points="203.7 0.11 255 21.5 248.98 58.36 227.05 49.09 211.17 35.06 203.7 0.11"/><polygon class="cls-7" points="129.72 33.07 134.23 77.16 144.44 68.39 148.97 58.36 129.72 33.07"/><polygon class="cls-3" points="205.22 7.2 202.26 8.41 203.86 16.87 196.76 19.71 197.83 25.32 205.2 22.53 206.88 30.27 209.92 29.24 210.17 19.77 205.22 7.2"/><polygon class="cls-13" points="205.22 7.2 208.71 8.92 210.39 16.14 217.61 19.6 217.51 24.64 211.6 22 213.24 30.3 209.92 29.24 205.22 7.2"/><polygon class="cls-9" points="248.98 58.36 259.95 146.17 216.56 153.15 200.35 195.08 165.59 146.25 141.24 122.82 157.92 113.64 162.21 118.47 178.16 78.88 192.48 70.27 210.17 62.41 248.98 58.36"/><polygon class="cls-2" points="178.16 78.88 188.91 158.26 216.56 153.15 207.87 161.42 210.17 169.69 200.35 195.08 157.63 142.69 154.55 135.88 150.09 133.44 136.68 117 153.37 102.88 161.04 120.21 166.72 103.88 178.16 78.88"/><polygon class="cls-2" points="241.71 81.29 225.7 103.37 217.97 113.67 194.89 88.82 241.71 81.29"/><polygon class="cls-14" points="213.91 85.69 217.97 113.67 227.05 112.42 222.82 84.23 213.91 85.69"/><polygon class="cls-4" points="227.05 112.42 223.1 118.47 217.97 113.67 227.05 112.42"/><polygon class="cls-4" points="216.56 153.15 210.17 169.69 180.64 158.34 216.56 153.15"/><polygon class="cls-4" points="160.8 126.72 157.63 142.69 150.09 133.45 160.8 126.72"/><polygon class="cls-4" points="157.3 124.03 151.43 113.85 143.55 118.47 157.3 124.03"/><polygon class="cls-11" points="207.87 70.27 213.01 52.67 211.17 35.06 148.97 58.36 119.43 95.76 149.3 88.82 178.16 78.88 191.06 75.14 207.87 70.27"/><polygon class="cls-15" points="178.16 78.88 162.04 122.21 153.37 107.83 136.68 117 119.43 95.76 178.16 78.88"/><polygon class="cls-16" points="211.17 35.06 248.98 58.36 207.87 70.27 211.17 35.06"/><polygon class="cls-11" points="213.91 85.69 212.97 79.5 194.89 88.82 213.91 85.69"/><polygon class="cls-11" points="222.82 84.23 241.71 81.29 222.13 78.25 222.82 84.23"/><polygon class="cls-17" points="214.84 130.25 224.11 124.47 234.25 127.15 225.19 132.56 214.84 130.25"/><polygon class="cls-18" points="187.34 380.99 177.09 380.99 168.3 389.08 168.3 392.38 195.99 392.38 195.99 389.08 187.34 380.99"/><polygon class="cls-9" points="231.25 209.09 226.88 225.22 229.42 238.35 254.76 232.46 256.32 220.95 231.25 209.09"/><polygon class="cls-2" points="229.42 238.35 221.5 248.88 218.45 239.21 229.42 238.35"/><polygon class="cls-2" points="194.71 232.17 213.01 220.95 217.97 227.88 218.45 239.21 194.71 244.23 194.71 232.17"/><polygon class="cls-14" points="213.01 220.95 226.88 225.22 229.42 238.35 218.45 239.21 213.01 220.95"/><polygon class="cls-18" points="244.7 375.11 229.8 385.58 220.05 385.58 220.05 388.76 259.61 388.76 259.61 381.58 244.7 375.11"/><polygon class="cls-5" points="207.04 129.26 226.23 137.41 240.69 124.03 225.19 131.56 207.04 129.26"/><path class="cls-15" d="M210.78,99.6a4.28,4.28,0,1,1-4.28-4.27A4.28,4.28,0,0,1,210.78,99.6Z"/><path class="cls-15" d="M237.42,95.33a4.28,4.28,0,1,1-4.27-4.28A4.27,4.27,0,0,1,237.42,95.33Z"/>
-</svg>`;
+  return (
+    <svg viewBox="0 0 400 240" preserveAspectRatio="xMidYMid slice"
+         style={{ width: '100%', height: '100%', display: 'block', ...style }}>
+      <rect width="400" height="240" fill={bg} />
+      <ellipse cx="200" cy="148" rx="128" ry="96" fill={s(isDark ? 0.06 : 0.07)} />
+      <ellipse cx="204" cy="124" rx="62"  ry="80"
+               fill={isDark ? 'rgba(0,0,0,0.30)' : 'rgba(0,0,0,0.04)'} />
+      <ellipse cx="200" cy="120" rx="60" ry="78" fill={mirrorF} stroke={ac} strokeWidth="2.5" />
+      <ellipse cx="200" cy="116" rx="36" ry="48" fill={reflF}   stroke={reflS} strokeWidth="1.5" />
+      <ellipse cx="184" cy="94"  rx="9"  ry="14" fill="none"    stroke={glareC} strokeWidth="2" />
+      <path d="M 154 78 Q 200 46 246 78" fill="none" stroke={arcC} strokeWidth="2" />
+      <line x1="200" y1="198" x2="200" y2="218" stroke={ac} strokeWidth="3.5" strokeLinecap="round" />
+      <line x1="172" y1="218" x2="228" y2="218" stroke={ac} strokeWidth="3.5" strokeLinecap="round" />
+    </svg>
+  );
+}
 
-export const FixIcon = makeSvgIcon(FIX_SVG);
+// ─── YOUR 3-STEP FIX ────────────────────────────────────────────────────────
+// Three ascending steps with dashed path and upward arrow
+export function FixIcon({ style, isDark }: SceneIconProps): React.JSX.Element {
+  const bg = isDark ? '#001716' : '#f0fffe';
+  const ac = '#5EEAD4';
+  const s  = (o: number) => `rgba(94,234,212,${o})`;
 
-// ── 6. What JobHub Does (gold) — campaigner figure, clothing recolored to gold ─
-const WHAT_JOBHUB_SVG = `<svg id="svg-jobhub" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
-<defs><style>
-#svg-jobhub .cls-1,#svg-jobhub .cls-10,#svg-jobhub .cls-11,#svg-jobhub .cls-12,#svg-jobhub .cls-13,#svg-jobhub .cls-14,#svg-jobhub .cls-15,#svg-jobhub .cls-16,#svg-jobhub .cls-17,#svg-jobhub .cls-18,#svg-jobhub .cls-19,#svg-jobhub .cls-2,#svg-jobhub .cls-20,#svg-jobhub .cls-21,#svg-jobhub .cls-3,#svg-jobhub .cls-4,#svg-jobhub .cls-5,#svg-jobhub .cls-6,#svg-jobhub .cls-7,#svg-jobhub .cls-8,#svg-jobhub .cls-9{fill-rule:evenodd;}
-#svg-jobhub .cls-1{opacity:0.1;}
-#svg-jobhub .cls-2{fill:#4f5253;}
-#svg-jobhub .cls-3{opacity:0.2;}
-#svg-jobhub .cls-4{fill:#6f7173;}
-#svg-jobhub .cls-5{fill:#d97706;}
-#svg-jobhub .cls-6{fill:#b45309;}
-#svg-jobhub .cls-7{fill:#92400e;}
-#svg-jobhub .cls-8{fill:#dfbda5;}
-#svg-jobhub .cls-9{fill:#c3987b;}
-#svg-jobhub .cls-10{fill:#c4c4c4;}
-#svg-jobhub .cls-11{fill:#9da1a2;}
-#svg-jobhub .cls-12{fill:#ca8a04;}
-#svg-jobhub .cls-13{fill:#474747;}
-#svg-jobhub .cls-14{fill:#78350f;}
-#svg-jobhub .cls-15{fill:#fcd34d;}
-#svg-jobhub .cls-16{fill:#8b6651;}
-#svg-jobhub .cls-17{fill:#e8cab6;}
-#svg-jobhub .cls-18{fill:#fff;}
-#svg-jobhub .cls-19{fill:#713f12;}
-#svg-jobhub .cls-20{fill:#fde68a;}
-#svg-jobhub .cls-21{fill:#2b2b2b;}
-</style></defs>
-<rect width="400" height="400" fill="#150e00"/>
-<polygon class="cls-1" points="331.21 385.08 194.18 374.46 73.24 386.32 194.46 400 331.21 385.08"/><polygon class="cls-2" points="158.97 376.09 132.91 386.3 128.38 376.22 132.05 359.43 140.1 356.41 152.09 360.2 158.97 376.09"/><polygon class="cls-2" points="257.87 362.62 247.58 381.29 227.28 370.76 225.59 359.14 243.91 350.63 257.87 362.62"/><polygon class="cls-3" points="244.65 351.26 227.28 370.76 225.59 359.14 231.58 352.69 244.65 351.26"/><polygon class="cls-3" points="132.05 359.43 142.58 356.41 152.09 360.2 129.87 369.4 132.05 359.43"/><polygon class="cls-4" points="244.57 378.29 227.28 370.76 228.57 384.8 283.19 385.26 282.89 370.15 257.87 362.62 244.57 378.29"/><polygon class="cls-4" points="169.26 391.88 168.97 375.62 144.96 373.09 134.58 383.67 128.38 376.22 127.68 391.88 169.26 391.88"/><polygon class="cls-5" points="230.54 259.36 254.73 332.62 237.18 348.6 217.14 346.68 208.16 319.5 191.21 308.46 167.43 346.68 152.09 356.41 126.86 344.78 127.11 271.56 140.34 235.5 230.54 259.36"/><polygon class="cls-6" points="223.51 264.88 248.96 337.01 239.35 341.89 211.09 278.24 223.51 264.88"/><polygon class="cls-6" points="205.74 294.9 229.03 345.55 217.14 346.68 191.21 308.46 193.15 277.95 205.74 294.9"/><polygon class="cls-6" points="177.17 297.32 158.31 348.64 148.27 347.6 164.12 279.01 177.17 297.32"/><polygon class="cls-6" points="154.54 265.55 140.58 348.98 131.85 345.25 135.04 282.8 154.54 265.55"/><polygon class="cls-7" points="254.73 332.62 217.14 346.68 225.59 359.14 259.49 347.04 254.73 332.62"/><polygon class="cls-7" points="167.43 346.68 126.86 344.78 126.81 359.14 158.77 360.6 167.43 346.68"/><polygon class="cls-7" points="205.74 294.9 191.21 308.46 177.17 297.32 193.15 270.95 205.74 294.9"/><polygon class="cls-8" points="288.33 186.02 296.71 163.59 309.93 168.22 321.76 179.02 298.18 199.99 288.33 186.02"/><polygon class="cls-9" points="302.05 178.62 293.93 156.27 286.87 156.41 288.33 186.02 294.83 193.28 302.05 178.62"/><polygon class="cls-9" points="296.71 163.59 317.4 142.05 330.5 154.3 321.76 179.02 296.71 163.59"/><polygon class="cls-2" points="76.39 236.7 116.01 263.5 126.81 241.88 76.39 236.7"/><polygon class="cls-10" points="89.52 130.09 175.07 130.85 161.19 148.66 128.52 149.96 89.52 130.09"/><polygon class="cls-4" points="129.25 143.36 89.52 130.09 86.06 158.25 85.86 179.65 81.35 196.45 76.39 236.7 141.39 246.02 129.25 143.36"/><polygon class="cls-2" points="163.19 139.15 129.25 143.36 127.61 158.23 121.99 243.75 181.96 230.64 163.19 139.15"/><polygon class="cls-11" points="86.06 158.25 96 164.54 110.35 167.1 104.39 207.24 81.35 196.45 83.54 178.69 86.6 171.22 86.06 158.25"/><polygon class="cls-10" points="110.35 167.1 83.54 178.69 86.06 158.25 110.35 167.1"/><polygon class="cls-12" points="218.09 165.4 232.24 209.74 230.54 259.36 205.74 294.9 193.15 277.95 177.17 297.32 148.21 256.66 126.81 253.32 130.68 212.39 161.19 148.66 218.09 165.4"/><polygon class="cls-2" points="196.06 208.22 178.62 255.68 193.15 266.82 208.65 256.16 196.06 208.22"/><polygon class="cls-13" points="208.65 256.16 178.62 255.68 193.15 277.95 208.65 256.16"/><polygon class="cls-13" points="211.34 191.37 196.06 208.22 181.58 189.23 197.51 186.43 211.34 191.37"/><polygon class="cls-14" points="139.39 204.22 139.39 173.94 127.61 158.23 98.48 224.93 118.94 223.88 130.68 217.4 139.39 204.22"/><polygon class="cls-6" points="228.5 163.19 249.81 181.66 245.23 194.5 232.24 209.74 228.5 163.19"/><polygon class="cls-15" points="249.81 181.66 277.86 204.41 272.77 214.98 246.34 219.64 232.24 209.74 249.81 181.66"/><polygon class="cls-12" points="246.34 219.64 288.38 185.56 310.19 208.22 270.22 236.26 246.34 219.64"/><polygon class="cls-15" points="197.51 186.43 182.58 160.12 161.19 148.66 157.17 206.24 197.51 186.43"/><polygon class="cls-15" points="228.5 163.19 203.59 168.47 197.51 186.43 232.24 209.74 228.5 163.19"/><polygon class="cls-6" points="161.19 148.66 127.61 158.23 139.39 204.22 161.19 148.66"/><polygon class="cls-14" points="224.14 141.88 208.16 154.73 208.16 178.69 228.5 163.19 224.14 141.88"/><polygon class="cls-14" points="167.5 118.69 161.19 148.66 179.92 168.14 178.62 143.82 167.5 118.69"/><polygon class="cls-7" points="130.68 125.9 167.5 118.69 169.49 108.08 163.12 96.36 148.41 105.7 130.68 125.9"/><polygon class="cls-6" points="287.18 55.13 271.79 87.67 266.88 128.47 277.05 121.16 286.31 118.94 295.81 114.28 294.35 62.95 293.26 56.47 287.18 55.13"/><polygon class="cls-15" points="277.17 86.67 286.31 118.94 266.88 128.47 269.63 115.91 276.38 112.47 273.88 103.18 277.17 86.67"/><polygon class="cls-8" points="287.18 55.13 261.43 148.18 224.14 141.88 205.09 171.48 197.51 186.43 189.63 160.28 163.12 96.36 211.53 52.25 262.39 28.09 287.18 55.13"/><polygon class="cls-16" points="252.62 32.73 287.4 55.37 275.13 36.38 262.39 24.09 253.99 26.48 252.62 32.73"/><polygon class="cls-9" points="243.42 97.26 237 68.29 229.47 53.75 248.84 53.27 249.34 62 243.42 97.26"/><polygon class="cls-9" points="257.58 63.51 262.39 56.17 278.86 64.41 253.35 87 257.58 63.51"/><polygon class="cls-16" points="251.24 98.75 246.15 103.45 243.42 97.26 251.24 98.75"/><polygon class="cls-9" points="211.53 52.25 193.76 135.48 208.89 148.18 216.15 160.28 208.16 178.69 197.51 186.43 179.92 168.14 167.5 118.69 169.49 108.08 163.12 96.36 211.53 52.25"/><polygon class="cls-17" points="257.58 63.51 251.24 98.75 243.42 97.26 249.34 62 257.58 63.51"/><polygon class="cls-16" points="211.53 52.25 193.82 81.33 176.27 92.55 194.6 99.75 167.5 118.69 163.12 96.36 180.77 77.13 211.53 52.25"/><polygon class="cls-6" points="262.39 56.17 273.53 54.24 278.86 64.41 262.39 56.17"/><polygon class="cls-6" points="248.84 53.27 240.6 47.94 229.47 53.75 248.84 53.27"/><polygon class="cls-12" points="264.7 117.67 240.38 132.65 217.63 109.37 264.7 117.67"/><polygon class="cls-18" points="258.64 118.08 243.42 118.61 223.53 111.65 236.55 123.68 245.82 125.24 258.64 118.08"/><polygon class="cls-19" points="264.7 117.67 244.76 111.13 217.63 109.37 243.42 119.34 264.7 117.67"/><polygon class="cls-15" points="193.29 68.87 194.6 99.75 155.53 103.27 165.17 92.57 186.37 91.52 184.96 74.54 193.29 68.87"/><polygon class="cls-16" points="224.14 141.88 180.32 132.65 216.15 160.28 224.14 141.88"/><polygon class="cls-6" points="211.53 52.25 155.53 71.59 117.61 96.85 130.68 125.9 211.53 52.25"/><polygon class="cls-6" points="208.16 42.01 173.78 0 114.22 53.75 208.16 42.01"/><polygon class="cls-6" points="114.22 53.75 89.52 77 117.61 96.85 119.94 71.59 114.22 53.75"/><polygon class="cls-20" points="262.39 28.09 262.39 19.58 251.26 0.49 173.78 0 198.47 39.16 262.39 28.09"/><polygon class="cls-5" points="262.39 28.09 294.35 62.95 311.79 41.65 251.26 0.49 262.39 28.09"/><polygon class="cls-5" points="262.39 28.09 117.61 96.85 114.22 53.75 262.39 28.09"/><polygon class="cls-9" points="148.21 256.66 154.54 265.55 135.04 282.8 127.11 271.56 131.85 258.63 148.21 256.66"/><polygon class="cls-15" points="98.48 224.93 121.48 275.53 148.21 256.66 130.68 217.4 98.48 224.93"/><path class="cls-21" d="M272.49,78a5,5,0,1,1-5-5A5,5,0,0,1,272.49,78Z"/><path class="cls-21" d="M240,70.7a5,5,0,1,1-5-5A5,5,0,0,1,240,70.7Z"/>
-</svg>`;
+  return (
+    <svg viewBox="0 0 400 240" preserveAspectRatio="xMidYMid slice"
+         style={{ width: '100%', height: '100%', display: 'block', ...style }}>
+      <rect width="400" height="240" fill={bg} />
+      <line x1="55" y1="208" x2="345" y2="208" stroke={s(isDark ? 0.12 : 0.15)} strokeWidth="1.5" />
+      <path d="M 109 171 Q 153 140 197 119 Q 241 98 285 64"
+            fill="none" stroke={s(isDark ? 0.20 : 0.25)} strokeWidth="1.5" strokeDasharray="5 3" />
+      {/* Step 1 */}
+      <rect x="65" y="172" width="88" height="36" rx="5"
+            fill={s(isDark ? 0.10 : 0.13)} stroke={s(isDark ? 0.22 : 0.28)} strokeWidth="1.5" />
+      <circle cx="109" cy="190" r="10" fill={s(isDark ? 0.38 : 0.42)} />
+      {/* Step 2 */}
+      <rect x="153" y="120" width="88" height="88" rx="5"
+            fill={s(isDark ? 0.16 : 0.20)} stroke={s(isDark ? 0.30 : 0.36)} strokeWidth="1.5" />
+      <circle cx="197" cy="160" r="10" fill={s(isDark ? 0.56 : 0.62)} />
+      {/* Step 3 */}
+      <rect x="241" y="65" width="88" height="143" rx="5"
+            fill={s(isDark ? 0.22 : 0.28)} stroke={ac} strokeWidth="2" />
+      <circle cx="285" cy="136" r="10" fill={ac} />
+      {/* Arrow */}
+      <line x1="285" y1="64" x2="285" y2="26" stroke={s(isDark ? 0.45 : 0.52)} strokeWidth="2" />
+      <polygon points="285,18 278,30 292,30" fill={s(isDark ? 0.45 : 0.52)} />
+    </svg>
+  );
+}
 
-export const WhatJobHubDoesIcon = makeSvgIcon(WHAT_JOBHUB_SVG);
+// ─── WHAT JOBHUB DOES FOR YOU ────────────────────────────────────────────────
+// Compass: outer ring, cardinal ticks, diamond needle pointing NE
+export function WhatJobHubDoesIcon({ style, isDark }: SceneIconProps): React.JSX.Element {
+  const bg = isDark ? '#141000' : '#fffef0';
+  const ac = '#FCD34D';
+  const s  = (o: number) => `rgba(252,211,77,${o})`;
+  const cx = 200, cy = 125, R = 92;
+
+  const mkTick = (deg: number, r1: number, r2: number) => {
+    const a = (deg - 90) * Math.PI / 180;
+    return { x1: cx + r1 * Math.cos(a), y1: cy + r1 * Math.sin(a),
+             x2: cx + r2 * Math.cos(a), y2: cy + r2 * Math.sin(a) };
+  };
+
+  // NE needle — 45° clockwise from north; unit vec = (sin45, -cos45) = (0.7071, -0.7071)
+  const tipX  = cx + 72 * 0.7071;
+  const tipY  = cy - 72 * 0.7071;
+  const tailX = cx - 50 * 0.7071;
+  const tailY = cy + 50 * 0.7071;
+  const W = 7;
+  // Perpendicular unit (90° CW from NE) = (cos45, sin45) = (0.7071, 0.7071)
+  const s1x = cx + W * 0.7071, s1y = cy + W * 0.7071;
+  const s2x = cx - W * 0.7071, s2y = cy - W * 0.7071;
+
+  return (
+    <svg viewBox="0 0 400 240" preserveAspectRatio="xMidYMid slice"
+         style={{ width: '100%', height: '100%', display: 'block', ...style }}>
+      <rect width="400" height="240" fill={bg} />
+      <circle cx={cx} cy={cy} r={R + 9} fill="none" stroke={s(isDark ? 0.16 : 0.20)} strokeWidth="1" />
+      <circle cx={cx} cy={cy} r={R}     fill={s(isDark ? 0.05 : 0.06)} stroke={s(isDark ? 0.14 : 0.17)} strokeWidth="1.5" />
+      <circle cx={cx} cy={cy} r={R - 14} fill="none" stroke={s(isDark ? 0.08 : 0.10)} strokeWidth="1" />
+      {[0, 90, 180, 270].map(d => {
+        const t = mkTick(d, R - 18, R);
+        return <line key={d} x1={t.x1} y1={t.y1} x2={t.x2} y2={t.y2}
+                     stroke={s(isDark ? 0.40 : 0.48)} strokeWidth="2.5" />;
+      })}
+      {[45, 135, 225, 315].map(d => {
+        const t = mkTick(d, R - 10, R);
+        return <line key={d} x1={t.x1} y1={t.y1} x2={t.x2} y2={t.y2}
+                     stroke={s(isDark ? 0.18 : 0.22)} strokeWidth="1.5" />;
+      })}
+      {/* Needle NE half (accent) */}
+      <polygon points={`${tipX},${tipY} ${s1x},${s1y} ${cx},${cy} ${s2x},${s2y}`} fill={ac} />
+      {/* Needle SW half (muted) */}
+      <polygon points={`${s1x},${s1y} ${tailX},${tailY} ${s2x},${s2y} ${cx},${cy}`}
+               fill={s(isDark ? 0.26 : 0.30)} />
+      <circle cx={cx} cy={cy} r="9" fill={bg} stroke={ac} strokeWidth="2" />
+      <circle cx={cx} cy={cy} r="4" fill={ac} />
+    </svg>
+  );
+}

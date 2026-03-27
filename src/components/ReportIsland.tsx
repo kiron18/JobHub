@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
-import { type SectionMeta, SECTION_LINKS, SECTION_ICONS } from '../lib/reportIcons';
+import { type SectionMeta, type SceneIcon, SECTION_LINKS, SECTION_ICONS } from '../lib/reportIcons';
 import api from '../lib/api';
 
 export interface ReportIslandProps {
@@ -18,9 +18,19 @@ export interface ReportIslandProps {
 
 type Feedback = 'spot_on' | 'partially' | 'missed';
 
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*([^*]+)\*\*/g, '$1')  // **bold**
+    .replace(/\*([^*]+)\*/g, '$1')       // *italic*
+    .replace(/^#{1,6}\s+/gm, '')         // ### headings
+    .replace(/^[-*+]\s+/gm, '')          // - list items
+    .trim();
+}
+
 function extractTeaser(text: string): string {
-  const sentence = text.split(/[.!?]/)[0]?.trim() ?? '';
-  return sentence.length > 100 ? sentence.slice(0, 97) + '...' : sentence;
+  const clean = stripMarkdown(text);
+  const sentence = clean.split(/[.!?]/)[0]?.trim() ?? '';
+  return sentence.length > 110 ? sentence.slice(0, 107) + '...' : sentence;
 }
 
 export function ReportIsland({
@@ -30,7 +40,7 @@ export function ReportIsland({
   const [showFix, setShowFix] = useState(false);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
-  const Icon = meta.icon;
+  const Icon = meta.icon as SceneIcon;
   const teaser = extractTeaser(problemText);
   const links = SECTION_LINKS[sectionKey] ?? [];
 
@@ -104,7 +114,7 @@ export function ReportIsland({
               layoutId={`char-${sectionKey}`}
               style={{ position: 'absolute', inset: 0 }}
             >
-              <Icon style={{ width: '100%', height: '100%', display: 'block' }} />
+              <Icon style={{ width: '100%', height: '100%', display: 'block' }} isDark={isDark} />
             </motion.div>
 
             {/* Bottom gradient for text legibility */}
@@ -201,7 +211,7 @@ export function ReportIsland({
                   flexShrink: 0,
                 }}
               >
-                <Icon style={{ width: '100%', height: '100%', display: 'block' }} />
+                <Icon style={{ width: '100%', height: '100%', display: 'block' }} isDark={isDark} />
               </motion.div>
 
               <div style={{ flex: 1, minWidth: 0 }}>

@@ -1,4 +1,4 @@
-import type { OrigamiIcon } from './reportSvgIcons';
+import type { SceneIcon } from './reportSvgIcons';
 import {
   TargetingIcon,
   DocumentAuditIcon,
@@ -8,17 +8,15 @@ import {
   WhatJobHubDoesIcon,
 } from './reportSvgIcons';
 
-export type { OrigamiIcon };
+export type { SceneIcon };
 
 export interface SectionMeta {
-  icon: OrigamiIcon;
+  icon: SceneIcon;
   label: string;
   color: string;
   colorBg: string;
-  /** px height of the collapsed card */
+  /** px height of the collapsed card — uniform across all sections */
   collapsedHeight: number;
-  /** CSS grid column span (masonry) */
-  span: 1 | 2;
 }
 
 export const SECTION_ICONS: Record<string, SectionMeta> = {
@@ -27,24 +25,21 @@ export const SECTION_ICONS: Record<string, SectionMeta> = {
     label: 'Targeting',
     color: '#FBBF24',
     colorBg: 'rgba(251,191,36,0.07)',
-    collapsedHeight: 230,
-    span: 1,
+    collapsedHeight: 220,
   },
   document_audit: {
     icon: DocumentAuditIcon,
     label: 'Document Audit',
     color: '#A78BFA',
     colorBg: 'rgba(167,139,250,0.07)',
-    collapsedHeight: 210,
-    span: 1,
+    collapsedHeight: 220,
   },
   pipeline: {
     icon: PipelineIcon,
     label: 'Pipeline',
     color: '#34D399',
     colorBg: 'rgba(52,211,153,0.07)',
-    collapsedHeight: 250,
-    span: 1,
+    collapsedHeight: 220,
   },
   honest: {
     icon: HonestIcon,
@@ -52,7 +47,6 @@ export const SECTION_ICONS: Record<string, SectionMeta> = {
     color: '#FB7185',
     colorBg: 'rgba(251,113,133,0.07)',
     collapsedHeight: 220,
-    span: 1,
   },
   fix: {
     icon: FixIcon,
@@ -60,15 +54,13 @@ export const SECTION_ICONS: Record<string, SectionMeta> = {
     color: '#5EEAD4',
     colorBg: 'rgba(94,234,212,0.07)',
     collapsedHeight: 220,
-    span: 2,
   },
   what_jobhub_does: {
     icon: WhatJobHubDoesIcon,
     label: 'What JobHub Does For You',
     color: '#FCD34D',
     colorBg: 'rgba(252,211,77,0.07)',
-    collapsedHeight: 210,
-    span: 2,
+    collapsedHeight: 220,
   },
 };
 
