@@ -4,6 +4,53 @@ import { ChevronDown } from 'lucide-react';
 import { type SectionMeta, type SceneIcon, SECTION_LINKS, SECTION_ICONS } from '../lib/reportIcons';
 import api from '../lib/api';
 
+// Renders markdown text into React elements — handles **bold**, *italic*, and paragraph breaks.
+// No external dependency. Deliberately minimal: only what the diagnostic report uses.
+function MarkdownBody({ text, color, fontSize = 15, lineHeight = 1.78 }: {
+  text: string;
+  color: string;
+  fontSize?: number;
+  lineHeight?: number;
+}) {
+  const paragraphs = text.split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
+
+  function renderInline(raw: string): React.ReactNode[] {
+    const parts: React.ReactNode[] = [];
+    const regex = /\*\*([^*]+)\*\*|\*([^*]+)\*/g;
+    let last = 0;
+    let match;
+    let i = 0;
+    while ((match = regex.exec(raw)) !== null) {
+      if (match.index > last) {
+        parts.push(<span key={i++}>{raw.slice(last, match.index)}</span>);
+      }
+      if (match[1] !== undefined) {
+        parts.push(<strong key={i++} style={{ fontWeight: 700, color: 'inherit' }}>{match[1]}</strong>);
+      } else if (match[2] !== undefined) {
+        parts.push(<em key={i++}>{match[2]}</em>);
+      }
+      last = match.index + match[0].length;
+    }
+    if (last < raw.length) parts.push(<span key={i++}>{raw.slice(last)}</span>);
+    return parts;
+  }
+
+  return (
+    <>
+      {paragraphs.map((para, idx) => (
+        <p key={idx} style={{
+          fontSize,
+          color,
+          lineHeight,
+          margin: idx < paragraphs.length - 1 ? '0 0 14px' : 0,
+        }}>
+          {renderInline(para)}
+        </p>
+      ))}
+    </>
+  );
+}
+
 export interface ReportIslandProps {
   sectionKey: string;
   meta: SectionMeta;
@@ -52,7 +99,7 @@ export function ReportIsland({
   const hintBg         = isDark ? 'rgba(255,255,255,0.12)'     : 'rgba(0,0,0,0.08)';
   const hintColor      = isDark ? 'rgba(255,255,255,0.7)'      : 'rgba(0,0,0,0.45)';
   const teaserColor    = isDark ? 'rgba(255,255,255,0.60)'     : 'rgba(0,0,0,0.45)';
-  const problemColor   = isDark ? '#d1d5db'                    : '#374151';
+  const problemColor   = isDark ? '#e5e7eb'                    : '#374151';
   const fixBodyColor   = isDark ? '#e5e7eb'                    : '#1f2937';
   const pillBorder     = isDark ? 'rgba(255,255,255,0.10)'     : 'rgba(0,0,0,0.10)';
   const pillInactive   = isDark ? '#6b7280'                    : '#9ca3af';
@@ -243,15 +290,9 @@ export function ReportIsland({
 
             {/* Content */}
             <div style={{ padding: '20px 20px 24px' }}>
-              <p style={{
-                fontSize: 15,
-                color: problemColor,
-                lineHeight: 1.78,
-                whiteSpace: 'pre-wrap',
-                marginBottom: 20,
-              }}>
-                {problemText}
-              </p>
+              <div style={{ marginBottom: 20 }}>
+                <MarkdownBody text={problemText} color={problemColor} />
+              </div>
 
               {/* Show fix */}
               {!showFix && (
@@ -300,9 +341,7 @@ export function ReportIsland({
                       }}>
                         Your fix
                       </p>
-                      <p style={{ fontSize: 15, color: fixBodyColor, lineHeight: 1.78, whiteSpace: 'pre-wrap' }}>
-                        {fixText}
-                      </p>
+                      <MarkdownBody text={fixText} color={fixBodyColor} />
                     </div>
 
                     {/* Feedback pills */}
