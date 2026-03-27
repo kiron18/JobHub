@@ -763,6 +763,7 @@ export function OnboardingIntake() {
       const email = finalAnswers.marketingEmail.trim();
       if (email) {
         supabase.auth.updateUser({ email }).catch(() => {});
+        localStorage.setItem('jobhub_auth_email', email);
       }
       setStep(5);
     } catch (err) {

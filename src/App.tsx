@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, NavLink, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
@@ -258,13 +258,24 @@ const Workspace = () => {
   );
 };
 
-// Protected Route Guard — silently creates an anonymous session for new visitors
+// Protected Route Guard
+// - Returning users (have jobhub_auth_email in localStorage) → redirect to /auth to log in
+// - New visitors (no stored email) → create anonymous session and start onboarding
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
+  const navigate = useNavigate();
   const [signingIn, setSigningIn] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user && !signingIn) {
+    if (loading || user) return;
+    if (signingIn) return;
+
+    const savedEmail = localStorage.getItem('jobhub_auth_email');
+    if (savedEmail) {
+      // Returning user — send to auth page with email pre-filled
+      navigate(`/auth?email=${encodeURIComponent(savedEmail)}`, { replace: true });
+    } else {
+      // New visitor — create anonymous session
       setSigningIn(true);
       supabase.auth.signInAnonymously().finally(() => setSigningIn(false));
     }
