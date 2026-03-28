@@ -34,13 +34,17 @@ export const AuthPage: React.FC = () => {
     if (!t) { toast.error('Enter your email first'); return; }
     setLoading(true);
     try {
+      const redirectTo = window.location.origin;
       const { error } = await supabase.auth.signInWithOtp({
         email: t,
-        options: { shouldCreateUser: false },
+        options: { shouldCreateUser: false, emailRedirectTo: redirectTo },
       });
       if (error) {
         // No account yet — create one via OTP
-        const { error: e2 } = await supabase.auth.signInWithOtp({ email: t });
+        const { error: e2 } = await supabase.auth.signInWithOtp({
+          email: t,
+          options: { emailRedirectTo: redirectTo },
+        });
         if (e2) throw e2;
       }
       setMagicSent(true);
