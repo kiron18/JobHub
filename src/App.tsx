@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from './lib/supabase';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 // Components
 import { DashboardLayout } from './layouts/DashboardLayout';
@@ -242,65 +242,27 @@ function ReportOrDashboard() {
   const [reportSeen, setReportSeen] = useState(
     () => localStorage.getItem('jobhub_report_seen') === 'true'
   );
-  const [beaming, setBeaming] = useState(false);
-  const [fromBeam, setFromBeam] = useState(false);
 
   function handleDone() {
-    console.log('[ReportOrDashboard] handleDone — starting beam, will set reportSeen=true in 550ms');
-    setBeaming(true);
-    setTimeout(() => {
-      localStorage.setItem('jobhub_report_seen', 'true');
-      localStorage.setItem('jobhub_tips_seen', 'false');
-      console.log('[ReportOrDashboard] handleDone — localStorage set, navigating to /workspace');
-      setFromBeam(true);
-      setReportSeen(true);
-      navigate('/workspace', { replace: true });
-      // Fade beam out after dashboard has mounted underneath it
-      setTimeout(() => setBeaming(false), 100);
-    }, 550);
+    console.log('[ReportOrDashboard] handleDone — marking report seen, navigating to /workspace');
+    localStorage.setItem('jobhub_report_seen', 'true');
+    localStorage.setItem('jobhub_tips_seen', 'false');
+    setReportSeen(true);
+    navigate('/workspace', { replace: true });
   }
 
-  console.log('[ReportOrDashboard] render — reportSeen:', reportSeen, '| beaming:', beaming, '| fromBeam:', fromBeam);
+  console.log('[ReportOrDashboard] render — reportSeen:', reportSeen);
 
   return (
     <>
-      {/* Beam overlay lives outside the reportSeen conditional so it persists across the state change */}
-      <AnimatePresence>
-        {beaming && (
-          <motion.div
-            key="beam"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.55 }}
-            style={{
-              position: 'fixed', inset: 0, zIndex: 100,
-              background: 'radial-gradient(ellipse at 50% 40%, rgba(252,211,77,0.6) 0%, white 60%)',
-              pointerEvents: 'none',
-            }}
-          />
-        )}
-      </AnimatePresence>
-
       {!reportSeen ? (
-        // BUG FIX: Do NOT use filter or scale on this wrapper — those CSS properties create
-        // a new stacking context, which breaks position:fixed inside ReportExperience.
-        // opacity alone is safe and does not create a stacking context.
-        <motion.div
-          animate={{ opacity: beaming ? 0 : 1 }}
-          transition={{ duration: 0.5, ease: [0.4, 0, 1, 1] }}
-        >
-          <ReportExperience onDone={handleDone} />
-        </motion.div>
+        <ReportExperience onDone={handleDone} />
       ) : (
         <motion.div
           key="dashboard"
-          // fromBeam: skip entry animation — beam covers it and fades out to reveal it
-          // normal load: fade in. NO filter/scale — those create CSS stacking contexts
-          // that break any position:fixed descendants (modals, overlays, report panel).
-          initial={fromBeam ? false : { opacity: 0 }}
+          initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.4, ease: [0, 0, 0.2, 1] }}
+          transition={{ duration: 0.3, ease: [0, 0, 0.2, 1] }}
         >
           <DashboardLayout>
             <Routes>

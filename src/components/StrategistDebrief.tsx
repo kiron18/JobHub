@@ -58,7 +58,7 @@ export const StrategistDebrief: React.FC<Props> = ({ blueprint, rankedAchievemen
                     <span className={`px-2 py-0.5 text-[9px] font-black uppercase tracking-widest rounded-full border ${sectorStyle}`}>
                         {blueprint.sector.replace('_', ' ')}
                     </span>
-                    <span className="text-[9px] text-slate-500 font-medium">See what Claude decided and why</span>
+                    <span className="text-[9px] text-slate-500 font-medium">See the strategic reasoning behind this</span>
                 </div>
                 <div className="text-slate-500 group-hover:text-slate-300 transition-colors">
                     {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
