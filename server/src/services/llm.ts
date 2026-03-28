@@ -86,6 +86,7 @@ export async function callClaude(
             OPENROUTER_URL,
             {
                 model: CLAUDE_MODEL,
+                temperature: 0,
                 messages: [
                     {
                         role: 'system',
