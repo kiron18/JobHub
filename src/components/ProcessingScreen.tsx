@@ -72,13 +72,20 @@ export function ProcessingScreen({ isDark: _isDark, theme: T, email, onComplete,
     pollRef.current = setInterval(async () => {
       try {
         const { data } = await api.get<{ status: string }>('/onboarding/report');
+        console.log('[ProcessingScreen] poll response — status:', data.status);
         if (data.status === 'COMPLETE') {
           clearInterval(pollRef.current!);
           clearInterval(msgRef.current!);
           clearInterval(barRef.current!);
           setBarWidth(0);
+          // BUG FIX: Clear reportSeen BEFORE invalidating queries. If we clear it after,
+          // the profile refetch can complete and mount ReportOrDashboard while the flag
+          // still says 'true', causing it to show the Dashboard instead of the Report.
+          console.log('[ProcessingScreen] COMPLETE — clearing reportSeen BEFORE invalidating queries');
+          localStorage.removeItem('jobhub_report_seen');
           await queryClient.invalidateQueries({ queryKey: ['profile'] });
           await queryClient.invalidateQueries({ queryKey: ['report'] });
+          console.log('[ProcessingScreen] queries invalidated — calling onComplete in 500ms');
           setTimeout(() => {
             setStatus('done');
             onComplete();

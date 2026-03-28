@@ -61,6 +61,9 @@ const Dashboard = () => {
 
   const achievementCount = countData?.count ?? profile?.achievements?.length ?? 0;
 
+  console.log('[Dashboard] profile:', { userId: profile?.userId, hasCompleted: profile?.hasCompletedOnboarding, achievementsLength: profile?.achievements?.length });
+  console.log('[Dashboard] achievementCount from /achievements/count:', countData?.count, '| fallback:', profile?.achievements?.length, '| final:', achievementCount);
+
   // Backfill achievement bank for users who completed onboarding before
   // auto-extraction was introduced. Runs once when count is 0 and profile exists.
   useEffect(() => {
@@ -243,10 +246,12 @@ function ReportOrDashboard() {
   const [fromBeam, setFromBeam] = useState(false);
 
   function handleDone() {
+    console.log('[ReportOrDashboard] handleDone — starting beam, will set reportSeen=true in 550ms');
     setBeaming(true);
     setTimeout(() => {
       localStorage.setItem('jobhub_report_seen', 'true');
       localStorage.setItem('jobhub_tips_seen', 'false');
+      console.log('[ReportOrDashboard] handleDone — localStorage set, navigating to /workspace');
       setFromBeam(true);
       setReportSeen(true);
       navigate('/workspace', { replace: true });
@@ -254,6 +259,8 @@ function ReportOrDashboard() {
       setTimeout(() => setBeaming(false), 100);
     }, 550);
   }
+
+  console.log('[ReportOrDashboard] render — reportSeen:', reportSeen, '| beaming:', beaming, '| fromBeam:', fromBeam);
 
   return (
     <>
@@ -276,8 +283,11 @@ function ReportOrDashboard() {
       </AnimatePresence>
 
       {!reportSeen ? (
+        // BUG FIX: Do NOT use filter or scale on this wrapper — those CSS properties create
+        // a new stacking context, which breaks position:fixed inside ReportExperience.
+        // opacity alone is safe and does not create a stacking context.
         <motion.div
-          animate={beaming ? { filter: 'blur(8px)', scale: 1.04, opacity: 0 } : { filter: 'blur(0px)', scale: 1, opacity: 1 }}
+          animate={{ opacity: beaming ? 0 : 1 }}
           transition={{ duration: 0.5, ease: [0.4, 0, 1, 1] }}
         >
           <ReportExperience onDone={handleDone} />

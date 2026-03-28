@@ -743,9 +743,9 @@ export function OnboardingIntake() {
           theme={T}
           email={answers.marketingEmail.trim()}
           onComplete={() => {
-            // Clear reportSeen so this new report is always shown in full,
-            // even if the user has seen a previous report on this device.
-            localStorage.removeItem('jobhub_report_seen');
+            // reportSeen is cleared by ProcessingScreen before invalidateQueries fires,
+            // so by the time we get here the flag is already gone.
+            console.log('[OnboardingIntake] onComplete called — ProcessingScreen already cleared reportSeen');
           }}
           onRetry={handleRetry}
         />
