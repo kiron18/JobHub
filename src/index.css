@@ -93,10 +93,10 @@ body {
 }
 
 .custom-scrollbar-light::-webkit-scrollbar-thumb {
-  background: #e2e8f0;
+  background: var(--color-brand-400);
   border-radius: 10px;
 }
 
 .custom-scrollbar-light::-webkit-scrollbar-thumb:hover {
-  background: #cbd5e1;
+  background: var(--color-brand-500);
 }

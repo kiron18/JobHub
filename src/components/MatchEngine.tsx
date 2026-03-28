@@ -1,25 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Target, Loader2, Zap, AlertTriangle, FileText, Mail, List, X, AlertCircle, XCircle, TrendingDown, ArrowLeft } from 'lucide-react';
+import { Target, Loader2, Zap, AlertTriangle, FileText, Mail, List, XCircle, TrendingDown, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../lib/api';
-
-const CONFIRM_WORDS = [
-    'MAGNIFICENT',
-    'INDEPENDENT',
-    'COMFORTABLE',
-    'OUTSTANDING',
-    'TRANSPARENT',
-    'SUBSTANTIAL',
-    'ACKNOWLEDGE',
-    'ACCOMMODATE',
-    'FURTHERMORE',
-    'RESPONSIBLE',
-];
-
-function pickWord(): string {
-    return CONFIRM_WORDS[Math.floor(Math.random() * CONFIRM_WORDS.length)];
-}
+import { useAppTheme } from '../contexts/ThemeContext';
 
 interface AnalysisResult {
     matchScore: number;
@@ -135,89 +119,9 @@ const LowMatchWarning: React.FC<LowMatchWarningProps> = ({ result, onProceed, on
     );
 };
 
-interface TailorModalProps {
-    onConfirm: () => void;
-    onClose: () => void;
-}
-
-const TailorResumeModal: React.FC<TailorModalProps> = ({ onConfirm, onClose }) => {
-    const [word] = useState(pickWord);
-    const [input, setInput] = useState('');
-    const isMatch = input.trim().toUpperCase() === word;
-
-    return (
-        <AnimatePresence>
-            <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-6"
-                onClick={onClose}
-            >
-                <motion.div
-                    initial={{ scale: 0.95, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.95, opacity: 0 }}
-                    transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                    onClick={e => e.stopPropagation()}
-                    className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-8 space-y-6"
-                >
-                    <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-400">
-                                <AlertCircle size={20} />
-                            </div>
-                            <h2 className="text-lg font-bold text-slate-100">Tailor a Custom Resume?</h2>
-                        </div>
-                        <button onClick={onClose} className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-500 transition-colors">
-                            <X size={18} />
-                        </button>
-                    </div>
-
-                    <p className="text-sm text-slate-400 leading-relaxed">
-                        We recommend maintaining a <span className="text-slate-200 font-semibold">single master resume</span> for all applications. It's easier to maintain and just as effective for most roles.
-                    </p>
-                    <p className="text-sm text-slate-400 leading-relaxed">
-                        Tailoring creates a separate document for this job only. If you're sure, type the word below to confirm.
-                    </p>
-
-                    <div className="p-4 bg-slate-800/60 rounded-xl text-center">
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Type this word to confirm</p>
-                        <p className="text-2xl font-black tracking-widest text-amber-400 select-none">{word}</p>
-                    </div>
-
-                    <input
-                        type="text"
-                        value={input}
-                        onChange={e => setInput(e.target.value.toUpperCase())}
-                        placeholder="Type here..."
-                        autoFocus
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 font-bold tracking-widest text-center uppercase outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all placeholder:normal-case placeholder:tracking-normal placeholder:font-normal placeholder:text-slate-600"
-                    />
-
-                    <div className="flex gap-3">
-                        <button
-                            onClick={onClose}
-                            className="flex-1 py-3 rounded-xl border border-slate-700 text-slate-400 font-bold text-sm hover:bg-slate-800 transition-all"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            onClick={onConfirm}
-                            disabled={!isMatch}
-                            className="flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-30 disabled:cursor-not-allowed text-slate-900 font-black text-sm transition-all"
-                        >
-                            Tailor Resume
-                        </button>
-                    </div>
-                </motion.div>
-            </motion.div>
-        </AnimatePresence>
-    );
-};
-
 export const MatchEngine: React.FC = () => {
     const navigate = useNavigate();
+    const { T } = useAppTheme();
     const [jobDescription, setJobDescription] = useState(() => {
         return localStorage.getItem('jobhub_current_jd') || '';
     });
@@ -232,7 +136,6 @@ export const MatchEngine: React.FC = () => {
         }
     });
     const [error, setError] = useState<string | null>(null);
-    const [showTailorModal, setShowTailorModal] = useState(false);
     const [showLowMatchWarning, setShowLowMatchWarning] = useState(false);
     const [pendingNavType, setPendingNavType] = useState<'resume' | 'cover-letter' | 'selection-criteria' | null>(null);
 
@@ -258,20 +161,6 @@ export const MatchEngine: React.FC = () => {
             });
         }
         setPendingNavType(null);
-    };
-
-    const handleTailorResumeClick = () => {
-        if (!result) return;
-        if ((result.matchScore || 0) < LOW_MATCH_THRESHOLD) {
-            setPendingNavType('resume');
-            setShowLowMatchWarning(true);
-            return;
-        }
-        setShowTailorModal(true);
-    };
-    const handleTailorConfirm = () => {
-        setShowTailorModal(false);
-        navigateTo('resume');
     };
 
     const handleAnalyze = async () => {
@@ -314,13 +203,6 @@ export const MatchEngine: React.FC = () => {
                     onClose={() => { setShowLowMatchWarning(false); setPendingNavType(null); }}
                 />
             )}
-            {showTailorModal && (
-                <TailorResumeModal
-                    onConfirm={handleTailorConfirm}
-                    onClose={() => setShowTailorModal(false)}
-                />
-            )}
-
             <div className="space-y-6">
                 <div className="glass-card p-6 space-y-4">
                     <div className="flex items-center justify-between border-b border-slate-800 pb-4">
@@ -344,7 +226,7 @@ export const MatchEngine: React.FC = () => {
                         <textarea
                             placeholder="Paste Job Description here..."
                             className="w-full h-80 rounded-xl p-4 focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none transition-all resize-none text-base leading-relaxed"
-                            style={{ background: 'var(--input-bg, rgba(255,255,255,0.06))', border: '1px solid var(--input-border, rgba(255,255,255,0.1))', color: 'var(--input-text, #e2e8f0)' }}
+                            style={{ background: T.inputBg, border: `1px solid ${T.inputBorder}`, color: T.inputText }}
                             value={jobDescription}
                             onChange={(e) => {
                                 setJobDescription(e.target.value);
@@ -401,15 +283,6 @@ export const MatchEngine: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => navigateTo('cover-letter')}
-                                    className="flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold rounded-lg transition-all active:scale-95 shadow-lg shadow-brand-600/20"
-                                >
-                                    <Mail size={14} />
-                                    Write Cover Letter
-                                </button>
-                            </div>
                         </div>
                     )}
 
@@ -425,14 +298,14 @@ export const MatchEngine: React.FC = () => {
                 {result && (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-in slide-in-from-top-4 duration-500">
                         <button
-                            onClick={handleTailorResumeClick}
+                            onClick={() => navigateTo('resume')}
                             className="glass-card p-4 flex flex-col items-center gap-3 hover:border-amber-500/50 transition-all group"
                         >
                             <div className="w-10 h-10 bg-amber-500/10 text-amber-500 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
                                 <FileText size={20} />
                             </div>
-                            <span className="text-sm font-bold text-slate-200">Tailor a Custom Resume</span>
-                            <span className="text-[9px] font-bold text-amber-500/70 uppercase tracking-wider">Confirmation required</span>
+                            <span className="text-sm font-bold" style={{ color: T.text }}>Custom Resume</span>
+                            <span className="text-[9px] font-bold text-amber-500/70 uppercase tracking-wider">Tailored for this role</span>
                         </button>
                         <button
                             onClick={() => navigateTo('cover-letter')}
@@ -441,19 +314,19 @@ export const MatchEngine: React.FC = () => {
                             <div className="w-10 h-10 bg-blue-500/10 text-blue-500 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
                                 <Mail size={20} />
                             </div>
-                            <span className="text-sm font-bold text-slate-200">Tailor Cover Letter</span>
+                            <span className="text-sm font-bold" style={{ color: T.text }}>Cover Letter</span>
+                            <span className="text-[9px] font-bold text-blue-500/70 uppercase tracking-wider">Tailored for this role</span>
                         </button>
-                        {result.requiresSelectionCriteria && (
-                            <button
-                                onClick={() => navigateTo('selection-criteria')}
-                                className="glass-card p-4 flex flex-col items-center gap-3 hover:border-brand-500/50 transition-all group"
-                            >
-                                <div className="w-10 h-10 bg-purple-500/10 text-purple-500 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
-                                    <List size={20} />
-                                </div>
-                                <span className="text-sm font-bold text-slate-200">Selection Criteria</span>
-                            </button>
-                        )}
+                        <button
+                            onClick={() => navigateTo('selection-criteria')}
+                            className="glass-card p-4 flex flex-col items-center gap-3 hover:border-purple-500/50 transition-all group"
+                        >
+                            <div className="w-10 h-10 bg-purple-500/10 text-purple-500 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <List size={20} />
+                            </div>
+                            <span className="text-sm font-bold" style={{ color: T.text }}>Selection Criteria</span>
+                            <span className="text-[9px] font-bold text-purple-500/70 uppercase tracking-wider">Tailored for this role</span>
+                        </button>
                     </div>
                 )}
             </div>

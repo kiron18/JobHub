@@ -66,7 +66,7 @@ export function HuePicker({ isDark }: { isDark: boolean }) {
 
       {open && (
         <div style={{
-          position: 'absolute', bottom: 48, right: 0,
+          position: 'absolute', bottom: 48, right: -100,
           width: 200, borderRadius: 16, padding: '16px',
           background: bgColor, border: `1px solid ${borderColor}`,
           backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
@@ -100,18 +100,33 @@ export function HuePicker({ isDark }: { isDark: boolean }) {
           <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: labelColor, marginBottom: 8 }}>
             Fine-tune
           </p>
-          <div style={{ position: 'relative' }}>
+          <div style={{ position: 'relative', height: 20, display: 'flex', alignItems: 'center' }}>
+            {/* Rainbow track */}
             <div style={{
+              position: 'absolute', left: 0, right: 0,
               height: 10, borderRadius: 99,
               background: 'linear-gradient(to right, oklch(58% 0.21 0), oklch(58% 0.21 60), oklch(58% 0.21 120), oklch(58% 0.21 180), oklch(58% 0.21 240), oklch(58% 0.21 300), oklch(58% 0.21 360))',
-              marginBottom: 4,
             }} />
+            {/* Visible thumb */}
+            <div style={{
+              position: 'absolute',
+              left: `${(hue / 360) * 100}%`,
+              transform: 'translateX(-50%)',
+              width: 18, height: 18,
+              borderRadius: '50%',
+              background: `oklch(58% 0.21 ${hue})`,
+              border: '2.5px solid white',
+              boxShadow: '0 1px 6px rgba(0,0,0,0.35)',
+              pointerEvents: 'none',
+            }} />
+            {/* Invisible interaction overlay */}
             <input
               type="range" min={0} max={360} value={hue}
               onChange={e => setAndPersist(Number(e.target.value))}
               style={{
-                position: 'absolute', top: 0, left: 0, width: '100%',
-                height: 10, opacity: 0, cursor: 'pointer', margin: 0,
+                position: 'absolute', left: 0, width: '100%',
+                height: '100%', opacity: 0, cursor: 'pointer', margin: 0,
+                WebkitAppearance: 'none',
               }}
             />
           </div>

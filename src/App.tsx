@@ -296,9 +296,10 @@ function ReportOrDashboard() {
         <motion.div
           key="dashboard"
           // fromBeam: skip entry animation — beam covers it and fades out to reveal it
-          // normal load: fade in from blur
-          initial={fromBeam ? false : { opacity: 0, filter: 'blur(4px)', scale: 0.98 }}
-          animate={{ opacity: 1, filter: 'blur(0px)', scale: 1 }}
+          // normal load: fade in. NO filter/scale — those create CSS stacking contexts
+          // that break any position:fixed descendants (modals, overlays, report panel).
+          initial={fromBeam ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
           transition={{ duration: 0.4, ease: [0, 0, 0.2, 1] }}
         >
           <DashboardLayout>
