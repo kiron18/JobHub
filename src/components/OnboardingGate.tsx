@@ -1,5 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../lib/api';
+import { useAuth } from '../contexts/AuthContext';
 import { OnboardingIntake } from './OnboardingIntake';
 
 interface OnboardingGateProps {
@@ -7,6 +9,10 @@ interface OnboardingGateProps {
 }
 
 export function OnboardingGate({ children }: OnboardingGateProps) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [claiming, setClaiming] = useState(false);
+
   const { data: profile, isLoading, isError } = useQuery({
     queryKey: ['profile'],
     queryFn: async () => {
@@ -14,11 +20,38 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
       return data;
     },
     staleTime: 1000 * 60 * 5,
-    retry: 1,          // fail fast — don't spin for 30s retrying a broken API URL
+    retry: 1,
     retryDelay: 1000,
   });
 
-  if (isLoading) {
+  // When a returning user logs in via magic link they get a new userId.
+  // Attempt to claim their previous profile (matched by email) before
+  // falling through to onboarding.
+  useEffect(() => {
+    if (isLoading || claiming) return;
+    if (profile?.hasCompletedOnboarding) return;
+    if (!user?.email) return;
+
+    let cancelled = false;
+    async function tryClaim() {
+      setClaiming(true);
+      try {
+        const { data } = await api.post('/profile/claim');
+        if (!cancelled && data.status === 'claimed') {
+          await queryClient.invalidateQueries({ queryKey: ['profile'] });
+          await queryClient.invalidateQueries({ queryKey: ['report'] });
+        }
+      } catch {
+        // claim failed — fall through to onboarding
+      } finally {
+        if (!cancelled) setClaiming(false);
+      }
+    }
+    tryClaim();
+    return () => { cancelled = true; };
+  }, [isLoading, profile?.hasCompletedOnboarding, user?.email]);
+
+  if (isLoading || claiming) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950">
         <div className="w-12 h-12 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
