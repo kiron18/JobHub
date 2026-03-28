@@ -656,15 +656,19 @@ router.post('/profile/claim', authenticate, async (req: any, res: any) => {
   try {
     const existing = await prisma.candidateProfile.findUnique({ where: { userId } });
 
-    // If a complete profile exists (has achievements + report), nothing to do
     if (existing) {
-      const [achievementCount, report] = await Promise.all([
-        prisma.achievement.count({ where: { userId } }),
-        prisma.diagnosticReport.findUnique({ where: { userId } }),
-      ]);
-      const isComplete = achievementCount > 0 && report?.status === 'COMPLETE';
-      if (isComplete) return res.json({ status: 'already_complete' });
-      // else: zombie profile — fall through to find a better one
+      // Never touch a profile that has an active or complete report — it's real data.
+      const report = await prisma.diagnosticReport.findUnique({ where: { userId } });
+      if (report?.status === 'PROCESSING' || report?.status === 'COMPLETE') {
+        return res.json({ status: 'already_complete' });
+      }
+
+      // A zombie profile has hasCompletedOnboarding:true but no report AND no resume text.
+      // If resumeRawText exists the profile is real but mid-extraction — don't touch it.
+      if (existing.resumeRawText) {
+        return res.json({ status: 'already_exists' });
+      }
+      // else: zombie (no resume, no report) — fall through to find a better profile
     }
 
     // Find a richer profile for this email under a different userId
@@ -681,8 +685,7 @@ router.post('/profile/claim', authenticate, async (req: any, res: any) => {
     const oldUserId = orphaned.userId;
 
     await prisma.$transaction(async (tx) => {
-      // If the current userId has a zombie profile, delete it first so we can
-      // reassign the orphaned profile (userId is @unique on CandidateProfile)
+      // Delete zombie rows first so the orphaned profile can take the userId slot
       if (existing) {
         await tx.diagnosticReport.deleteMany({ where: { userId } });
         await tx.achievement.deleteMany({ where: { userId } });

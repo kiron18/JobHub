@@ -19,8 +19,7 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
       const { data } = await api.get('/profile');
       return data;
     },
-    staleTime: 0,          // always fetch fresh — userId can change between sessions
-    refetchOnMount: true,
+    staleTime: 30_000,     // 30s — fresh enough without mid-onboarding refetch loops
     retry: 1,
     retryDelay: 1000,
   });
@@ -31,11 +30,9 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
   useEffect(() => {
     if (isLoading || claiming) return;
     if (!user?.email) return;
-    // Skip only when profile is genuinely complete (has achievements).
-    // A profile with hasCompletedOnboarding but 0 achievements is a "zombie"
-    // from an old broken session — we still need to claim a richer profile.
-    const hasAchievements = (profile?.achievements?.length ?? 0) > 0;
-    if (profile?.hasCompletedOnboarding && hasAchievements) return;
+    // Only claim when there is definitively no profile for this userId.
+    // The server handles zombie detection; the client just needs the trigger.
+    if (profile?.hasCompletedOnboarding) return;
 
     let cancelled = false;
     async function tryClaim() {
@@ -61,9 +58,7 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
     return () => { cancelled = true; };
   }, [isLoading, profile?.hasCompletedOnboarding, user?.email]);
 
-  // Only block on the spinner when we have no profile at all.
-  // If there's already a (zombie) profile, let it render while claim runs silently.
-  if (isLoading || (claiming && !profile?.hasCompletedOnboarding)) {
+  if (isLoading || claiming) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950">
         <div className="w-12 h-12 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />

@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, NavLink, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from './lib/supabase';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
@@ -187,7 +187,21 @@ const Workspace = () => {
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [signingIn, setSigningIn] = useState(false);
+  const prevUserIdRef = useRef<string | null>(null);
+
+  // When the Supabase userId changes (magic-link login → new session), the old
+  // ['profile'] cache belongs to a different user — clear it immediately so
+  // OnboardingGate always fetches fresh data for the new userId.
+  useEffect(() => {
+    const newId = user?.id ?? null;
+    if (prevUserIdRef.current !== null && prevUserIdRef.current !== newId) {
+      queryClient.removeQueries({ queryKey: ['profile'] });
+      queryClient.removeQueries({ queryKey: ['report'] });
+    }
+    prevUserIdRef.current = newId;
+  }, [user?.id]);
 
   useEffect(() => {
     if (loading || user) return;
