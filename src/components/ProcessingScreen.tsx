@@ -78,6 +78,7 @@ export function ProcessingScreen({ isDark: _isDark, theme: T, email, onComplete,
           clearInterval(barRef.current!);
           setBarWidth(0);
           await queryClient.invalidateQueries({ queryKey: ['profile'] });
+          await queryClient.invalidateQueries({ queryKey: ['report'] });
           setTimeout(() => {
             setStatus('done');
             onComplete();
