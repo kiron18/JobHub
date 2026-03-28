@@ -39,6 +39,7 @@ export async function callLLM(prompt: string, jsonMode: boolean = true) {
             OPENROUTER_URL,
             {
                 model: 'meta-llama/llama-3.3-70b-instruct',
+                max_tokens: 8192,
                 messages: [
                     {
                         role: 'system',

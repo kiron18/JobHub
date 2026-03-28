@@ -66,7 +66,7 @@ export function HuePicker({ isDark }: { isDark: boolean }) {
 
       {open && (
         <div style={{
-          position: 'absolute', top: 48, right: 0,
+          position: 'absolute', bottom: 48, right: 0,
           width: 200, borderRadius: 16, padding: '16px',
           background: bgColor, border: `1px solid ${borderColor}`,
           backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
