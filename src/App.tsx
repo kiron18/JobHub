@@ -226,64 +226,69 @@ function ReportOrDashboard() {
     () => localStorage.getItem('jobhub_report_seen') === 'true'
   );
   const [beaming, setBeaming] = useState(false);
+  const [fromBeam, setFromBeam] = useState(false);
 
   function handleDone() {
     setBeaming(true);
-    // Short beam delay then transition
     setTimeout(() => {
       localStorage.setItem('jobhub_report_seen', 'true');
       localStorage.setItem('jobhub_tips_seen', 'false');
+      setFromBeam(true);
       setReportSeen(true);
       navigate('/workspace', { replace: true });
+      // Fade beam out after dashboard has mounted underneath it
+      setTimeout(() => setBeaming(false), 100);
     }, 550);
   }
 
-  if (!reportSeen) {
-    return (
-      <>
-        <AnimatePresence>
-          {beaming && (
-            <motion.div
-              key="beam"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.55 }}
-              style={{
-                position: 'fixed', inset: 0, zIndex: 100,
-                background: 'radial-gradient(ellipse at 50% 40%, rgba(252,211,77,0.6) 0%, white 60%)',
-                pointerEvents: 'none',
-              }}
-            />
-          )}
-        </AnimatePresence>
+  return (
+    <>
+      {/* Beam overlay lives outside the reportSeen conditional so it persists across the state change */}
+      <AnimatePresence>
+        {beaming && (
+          <motion.div
+            key="beam"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.55 }}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 100,
+              background: 'radial-gradient(ellipse at 50% 40%, rgba(252,211,77,0.6) 0%, white 60%)',
+              pointerEvents: 'none',
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {!reportSeen ? (
         <motion.div
           animate={beaming ? { filter: 'blur(8px)', scale: 1.04, opacity: 0 } : { filter: 'blur(0px)', scale: 1, opacity: 1 }}
           transition={{ duration: 0.5, ease: [0.4, 0, 1, 1] }}
         >
           <ReportExperience onDone={handleDone} />
         </motion.div>
-      </>
-    );
-  }
-
-  return (
-    <motion.div
-      key="dashboard"
-      initial={{ opacity: 0, filter: 'blur(4px)', scale: 0.98 }}
-      animate={{ opacity: 1, filter: 'blur(0px)', scale: 1 }}
-      transition={{ duration: 0.4, ease: [0, 0, 0.2, 1] }}
-    >
-      <DashboardLayout>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/tracker" element={<ApplicationTracker />} />
-          <Route path="/application-workspace" element={<ApplicationWorkspace />} />
-          <Route path="/workspace" element={<Workspace />} />
-          <Route path="*" element={<Dashboard />} />
-        </Routes>
-      </DashboardLayout>
-    </motion.div>
+      ) : (
+        <motion.div
+          key="dashboard"
+          // fromBeam: skip entry animation — beam covers it and fades out to reveal it
+          // normal load: fade in from blur
+          initial={fromBeam ? false : { opacity: 0, filter: 'blur(4px)', scale: 0.98 }}
+          animate={{ opacity: 1, filter: 'blur(0px)', scale: 1 }}
+          transition={{ duration: 0.4, ease: [0, 0, 0.2, 1] }}
+        >
+          <DashboardLayout>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/tracker" element={<ApplicationTracker />} />
+              <Route path="/application-workspace" element={<ApplicationWorkspace />} />
+              <Route path="/workspace" element={<Workspace />} />
+              <Route path="*" element={<Dashboard />} />
+            </Routes>
+          </DashboardLayout>
+        </motion.div>
+      )}
+    </>
   );
 }
 

@@ -104,10 +104,16 @@ router.post(
         console.error('[Onboarding] Auto-extract failed:', err)
       );
 
-      const report = await prisma.diagnosticReport.create({
-        data: {
+      const report = await prisma.diagnosticReport.upsert({
+        where: { userId },
+        create: {
           userId,
           status: 'PROCESSING',
+          intakeAnswers: answers as any,
+        },
+        update: {
+          status: 'PROCESSING',
+          reportMarkdown: null,
           intakeAnswers: answers as any,
         },
       });

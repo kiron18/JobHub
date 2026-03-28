@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { Sun, Moon, ChevronDown } from 'lucide-react';
@@ -109,7 +109,9 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
 
   const theme = makeTheme(isDark);
 
-  const { data, isLoading, refetch } = useQuery<ReportData>({
+  const [processingMs, setProcessingMs] = useState(0);
+
+  const { data, isLoading, isError, refetch } = useQuery<ReportData>({
     queryKey: ['report'],
     queryFn: async () => {
       const res = await api.get<ReportData>('/onboarding/report');
@@ -122,6 +124,13 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
       return status === 'PROCESSING' ? 4000 : false;
     },
   });
+
+  // Track how long we've been in PROCESSING so we can show "Regenerate" if stuck
+  useEffect(() => {
+    if (data?.status !== 'PROCESSING') { setProcessingMs(0); return; }
+    const t = setInterval(() => setProcessingMs(ms => ms + 4000), 4000);
+    return () => clearInterval(t);
+  }, [data?.status]);
 
   const sections = parseReportSections(data?.reportMarkdown ?? '');
   const status = data?.status;
@@ -185,8 +194,10 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
           </p>
         </motion.div>
 
-        {/* Loading state */}
-        {(isLoading || status === 'PROCESSING') && sections.length === 0 && (
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+
+        {/* Loading / processing state */}
+        {(isLoading || status === 'PROCESSING') && sections.length === 0 && processingMs < 60000 && (
           <div style={{ textAlign: 'center', padding: '60px 0' }}>
             <div style={{
               width: 48, height: 48, borderRadius: '50%',
@@ -194,16 +205,45 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
               borderTopColor: '#FCD34D', margin: '0 auto 20px',
               animation: 'spin 1s linear infinite',
             }} />
-            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
             <p style={{ color: theme.sub, fontSize: 14 }}>Your diagnosis is being written…</p>
           </div>
         )}
 
-        {/* Error / empty state */}
-        {(status === 'FAILED' || (status === 'COMPLETE' && sections.length === 0)) && (
+        {/* Stuck in PROCESSING too long — offer regenerate */}
+        {status === 'PROCESSING' && sections.length === 0 && processingMs >= 60000 && (
+          <div style={{ textAlign: 'center', padding: '60px 0' }}>
+            <p style={{ color: theme.sub, fontSize: 15, marginBottom: 8 }}>This is taking longer than expected.</p>
+            <p style={{ color: theme.sub, fontSize: 13, marginBottom: 24 }}>Generation may have timed out — regenerating is safe and only takes a minute.</p>
+            <button
+              onClick={async () => { await api.post('/onboarding/retry'); setProcessingMs(0); refetch(); }}
+              style={{ background: '#FCD34D', color: '#111827', border: 'none', borderRadius: 10, padding: '10px 24px', fontWeight: 700, cursor: 'pointer' }}
+            >
+              Regenerate report
+            </button>
+          </div>
+        )}
+
+        {/* API error — report not found or server error */}
+        {(isError || (!isLoading && !data)) && (
+          <div style={{ textAlign: 'center', padding: '60px 0' }}>
+            <p style={{ color: '#f87171', fontSize: 15, marginBottom: 8 }}>Couldn't load your report.</p>
+            <p style={{ color: theme.sub, fontSize: 13, marginBottom: 24 }}>
+              This can happen if your session changed. Try regenerating — your intake answers are saved.
+            </p>
+            <button
+              onClick={async () => { await api.post('/onboarding/retry'); refetch(); }}
+              style={{ background: '#FCD34D', color: '#111827', border: 'none', borderRadius: 10, padding: '10px 24px', fontWeight: 700, cursor: 'pointer' }}
+            >
+              Generate report
+            </button>
+          </div>
+        )}
+
+        {/* FAILED or COMPLETE with empty sections */}
+        {!isError && data && (status === 'FAILED' || (status === 'COMPLETE' && sections.length === 0)) && (
           <div style={{ textAlign: 'center', padding: '60px 0' }}>
             <p style={{ color: '#f87171', fontSize: 15, marginBottom: 8 }}>
-              {status === 'FAILED' ? 'Report generation failed.' : 'Your report couldn\'t be loaded.'}
+              {status === 'FAILED' ? 'Report generation failed.' : 'Your report couldn\'t be parsed.'}
             </p>
             <p style={{ color: theme.sub, fontSize: 13, marginBottom: 24 }}>Please try again — it only takes a minute.</p>
             <button

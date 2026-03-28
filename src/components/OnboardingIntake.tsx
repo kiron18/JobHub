@@ -662,7 +662,7 @@ export function OnboardingIntake() {
     channelOther: '', responsePattern: '',
     blockerOptions: [], blockerOther: '', perceivedBlocker: '',
     marketingEmail: '',
-    marketingConsent: true,
+    marketingConsent: false,
   });
   const [resume, setResume] = useState<File | null>(null);
   const [cl1, setCl1] = useState<File | null>(null);

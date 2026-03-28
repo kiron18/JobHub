@@ -78,7 +78,8 @@ export async function autoExtractAchievements(userId: string, resumeText: string
       // 5. Save extracted profile fields — only non-null values, do NOT overwrite onboarding fields
       const scalarUpdate: Record<string, any> = {};
       if (profile.name)                scalarUpdate.name                = profile.name;
-      if (profile.email)               scalarUpdate.email               = profile.email;
+      // email intentionally excluded — already captured during onboarding;
+      // writing it here risks a P2002 unique constraint violation
       if (profile.location)            scalarUpdate.location            = profile.location;
       if (profile.phone)               scalarUpdate.phone               = profile.phone;
       if (profile.linkedin)            scalarUpdate.linkedin            = profile.linkedin;
