@@ -87,6 +87,7 @@ export async function callClaude(
             {
                 model: CLAUDE_MODEL,
                 temperature: 0,
+                max_tokens: 8192,
                 messages: [
                     {
                         role: 'system',

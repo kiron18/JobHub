@@ -743,8 +743,9 @@ export function OnboardingIntake() {
           theme={T}
           email={answers.marketingEmail.trim()}
           onComplete={() => {
-            // ProcessingScreen has already invalidated the profile query.
-            // OnboardingGate will re-evaluate and render ReportOrDashboard.
+            // Clear reportSeen so this new report is always shown in full,
+            // even if the user has seen a previous report on this device.
+            localStorage.removeItem('jobhub_report_seen');
           }}
           onRetry={handleRetry}
         />

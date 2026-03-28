@@ -19,7 +19,8 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
       const { data } = await api.get('/profile');
       return data;
     },
-    staleTime: 1000 * 60 * 5,
+    staleTime: 0,          // always fetch fresh — userId can change between sessions
+    refetchOnMount: true,
     retry: 1,
     retryDelay: 1000,
   });
@@ -37,7 +38,12 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
       setClaiming(true);
       try {
         const { data } = await api.post('/profile/claim');
-        if (!cancelled && data.status === 'claimed') {
+        // 'claimed' = migrated from old userId; 'already_exists' = profile already on
+        // this userId but cache may be stale null from the anonymous session — invalidate either way
+        if (!cancelled && (data.status === 'claimed' || data.status === 'already_exists')) {
+          // Clear the "report seen" flag so a returning user always sees their
+          // report on first login from a new device/session.
+          localStorage.removeItem('jobhub_report_seen');
           await queryClient.invalidateQueries({ queryKey: ['profile'] });
           await queryClient.invalidateQueries({ queryKey: ['report'] });
         }
