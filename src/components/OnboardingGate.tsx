@@ -30,8 +30,12 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
   // falling through to onboarding.
   useEffect(() => {
     if (isLoading || claiming) return;
-    if (profile?.hasCompletedOnboarding) return;
     if (!user?.email) return;
+    // Skip only when profile is genuinely complete (has achievements).
+    // A profile with hasCompletedOnboarding but 0 achievements is a "zombie"
+    // from an old broken session — we still need to claim a richer profile.
+    const hasAchievements = (profile?.achievements?.length ?? 0) > 0;
+    if (profile?.hasCompletedOnboarding && hasAchievements) return;
 
     let cancelled = false;
     async function tryClaim() {
@@ -57,7 +61,9 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
     return () => { cancelled = true; };
   }, [isLoading, profile?.hasCompletedOnboarding, user?.email]);
 
-  if (isLoading || claiming) {
+  // Only block on the spinner when we have no profile at all.
+  // If there's already a (zombie) profile, let it render while claim runs silently.
+  if (isLoading || (claiming && !profile?.hasCompletedOnboarding)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950">
         <div className="w-12 h-12 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />

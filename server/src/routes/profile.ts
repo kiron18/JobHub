@@ -641,11 +641,12 @@ router.patch('/education/:id', authenticate, async (req, res) => {
 });
 
 // ── POST /api/profile/claim ───────────────────────────────────────────────────
-// Returning user fix: when a user signs in via magic link and has no profile,
-// their data may be stored under an anonymous userId (from a previous session
-// where updateUser({email}) failed). This endpoint finds that orphaned profile
-// by matching the user's Supabase email and reassigns all userId references to
-// the current authenticated userId — no re-onboarding needed.
+// Returning user fix: finds a richer profile for this email and migrates it to
+// the current userId. Handles two cases:
+//   1. No profile for current userId (normal magic-link case)
+//   2. "Zombie" profile — hasCompletedOnboarding but 0 achievements + no report
+//      (created in an old session before auto-extract was fixed). In this case
+//      we replace it with the richer profile so the user gets their real data.
 router.post('/profile/claim', authenticate, async (req: any, res: any) => {
   const userId: string = req.user.id;
   const userEmail: string | undefined = req.user.email;
@@ -653,16 +654,26 @@ router.post('/profile/claim', authenticate, async (req: any, res: any) => {
   if (!userEmail) return res.json({ status: 'no_email' });
 
   try {
-    // Already has a profile — nothing to claim
     const existing = await prisma.candidateProfile.findUnique({ where: { userId } });
-    if (existing) return res.json({ status: 'already_exists' });
 
-    // Find orphaned profile by marketing email or profile email
+    // If a complete profile exists (has achievements + report), nothing to do
+    if (existing) {
+      const [achievementCount, report] = await Promise.all([
+        prisma.achievement.count({ where: { userId } }),
+        prisma.diagnosticReport.findUnique({ where: { userId } }),
+      ]);
+      const isComplete = achievementCount > 0 && report?.status === 'COMPLETE';
+      if (isComplete) return res.json({ status: 'already_complete' });
+      // else: zombie profile — fall through to find a better one
+    }
+
+    // Find a richer profile for this email under a different userId
     const orphaned = await prisma.candidateProfile.findFirst({
       where: {
         OR: [{ marketingEmail: userEmail }, { email: userEmail }],
         NOT: { userId },
       },
+      orderBy: { updatedAt: 'desc' },
     });
 
     if (!orphaned) return res.json({ status: 'not_found' });
@@ -670,26 +681,23 @@ router.post('/profile/claim', authenticate, async (req: any, res: any) => {
     const oldUserId = orphaned.userId;
 
     await prisma.$transaction(async (tx) => {
-      // Reassign profile (clear email to avoid @unique conflict if needed)
-      await tx.candidateProfile.update({
-        where: { id: orphaned.id },
-        data: { userId },
-      });
+      // If the current userId has a zombie profile, delete it first so we can
+      // reassign the orphaned profile (userId is @unique on CandidateProfile)
+      if (existing) {
+        await tx.diagnosticReport.deleteMany({ where: { userId } });
+        await tx.achievement.deleteMany({ where: { userId } });
+        await tx.candidateProfile.delete({ where: { userId } });
+      }
 
-      // Reassign all child records that store userId directly
+      await tx.candidateProfile.update({ where: { id: orphaned.id }, data: { userId } });
       await tx.achievement.updateMany({ where: { userId: oldUserId }, data: { userId } });
       await tx.jobApplication.updateMany({ where: { userId: oldUserId }, data: { userId } });
       await tx.document.updateMany({ where: { userId: oldUserId }, data: { userId } });
       await tx.resumeVersion.updateMany({ where: { userId: oldUserId }, data: { userId } });
-
-      // DiagnosticReport has userId @unique — only update if no report exists for new userId
-      const existingReport = await tx.diagnosticReport.findUnique({ where: { userId } });
-      if (!existingReport) {
-        await tx.diagnosticReport.updateMany({ where: { userId: oldUserId }, data: { userId } });
-      }
+      await tx.diagnosticReport.updateMany({ where: { userId: oldUserId }, data: { userId } });
     }, { timeout: 15000 });
 
-    console.log(`[ProfileClaim] Reassigned profile from ${oldUserId} → ${userId} for ${userEmail}`);
+    console.log(`[ProfileClaim] Migrated profile from ${oldUserId} → ${userId} (${userEmail})`);
     return res.json({ status: 'claimed' });
   } catch (error) {
     console.error('[ProfileClaim] Error:', error);
