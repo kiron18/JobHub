@@ -34,7 +34,14 @@ async function getRuleBase(type: string) {
 router.post('/:type', authenticate, async (req, res) => {
     const type = req.params.type as string;
     const userId = (req as any).user.id as string;
-    const { jobDescription, selectedAchievementIds, analysisContext, jobApplicationId } = req.body;
+    const {
+        jobDescription,
+        selectedAchievementIds,
+        analysisContext,
+        jobApplicationId,
+        companyResearch,      // { salutation, highlights, companySize, hiringManager }
+        selectionCriteriaText // raw pasted SC text for selection-criteria tab
+    } = req.body;
 
     if (!jobDescription) {
         return res.status(400).json({ error: 'Job description is required' });
@@ -108,6 +115,13 @@ router.post('/:type', authenticate, async (req, res) => {
         }
 
         // ── STAGE 2: Document Execution (Llama) ────────────────────────────────
+        // If Serper company research was provided, override the blueprint's
+        // employerInsight so the cover letter uses real data, not a MISSING flag.
+        if (blueprintResult && companyResearch?.highlights?.length > 0) {
+            blueprintResult.blueprint.employerInsight =
+                companyResearch.highlights.join(' — ');
+        }
+
         const prompt = blueprintResult
             ? DOCUMENT_GENERATION_PROMPT_WITH_BLUEPRINT(
                 docType,
@@ -116,7 +130,9 @@ router.post('/:type', authenticate, async (req, res) => {
                 selectedAchievements,
                 ruleBase,
                 blueprintResult.blueprint,
-                analysisContext
+                analysisContext,
+                companyResearch,
+                selectionCriteriaText
             )
             : DOCUMENT_GENERATION_PROMPT(
                 docType,
@@ -124,7 +140,9 @@ router.post('/:type', authenticate, async (req, res) => {
                 profile,
                 selectedAchievements,
                 ruleBase,
-                analysisContext
+                analysisContext,
+                companyResearch,
+                selectionCriteriaText
             );
 
         console.log(`[Generation] Stage 2: calling Llama for ${type}...`);

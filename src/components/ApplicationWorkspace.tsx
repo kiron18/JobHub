@@ -19,6 +19,8 @@ import { Toaster, toast } from 'sonner';
 import { AchievementSelector } from './AchievementSelector';
 import { MissingFlag } from './MissingFlag';
 import { StrategistDebrief } from './StrategistDebrief';
+import { CompanyResearchPanel, CompanyResearch } from './CompanyResearchPanel';
+import { CriteriaInputPanel } from './CriteriaInputPanel';
 
 interface WorkspaceState {
     jobDescription: string;
@@ -159,6 +161,8 @@ export const ApplicationWorkspace: React.FC = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [isConfirmingRegen, setIsConfirmingRegen] = useState(false);
     const [rateLimitError, setRateLimitError] = useState(false);
+    const [companyResearch, setCompanyResearch] = useState<CompanyResearch | null>(null);
+    const [selectionCriteriaText, setSelectionCriteriaText] = useState('');
 
     useEffect(() => {
         // Fetch existing documents if we have a jobApplicationId but NO document contents for the current tab
@@ -350,7 +354,11 @@ export const ApplicationWorkspace: React.FC = () => {
                 analysisContext: {
                     tone: state.analysisTone,
                     competencies: state.coreCompetencies
-                }
+                },
+                // Company research context for cover letters (hiring manager, highlights)
+                companyResearch: type === 'cover-letter' ? companyResearch : null,
+                // Pasted selection criteria for SC responses
+                selectionCriteriaText: type === 'selection-criteria' ? selectionCriteriaText : null,
             }, { signal: controller.signal });
             
             setState(prev => ({
@@ -412,22 +420,33 @@ export const ApplicationWorkspace: React.FC = () => {
         const hasDoc = !!state.documents[state.activeTab];
         const hasDocId = !!state.documentIds[state.activeTab];
 
-        if (state.jobDescription && !hasDoc && !hasDocId && !state.isGenerating && !state.hasFailed[state.activeTab]) {
+        // For SC, don't auto-generate until the user has pasted criteria
+        const scReady = state.activeTab !== 'selection-criteria' || selectionCriteriaText.trim().length > 20;
+
+        if (state.jobDescription && !hasDoc && !hasDocId && !state.isGenerating && !state.hasFailed[state.activeTab] && scReady) {
             console.log('Triggering generation for:', state.activeTab);
             handleGenerate(state.activeTab);
         }
-    }, [state.activeTab, state.jobDescription, state.documents, state.documentIds, state.isGenerating, state.hasFailed]);
+    }, [state.activeTab, state.jobDescription, state.documents, state.documentIds, state.isGenerating, state.hasFailed, selectionCriteriaText]);
 
 
     const handleBack = () => navigate('/');
 
     // CommonMark collapses consecutive lines into one <p> unless separated by a blank line.
-    // The LLM doesn't reliably add blank lines between skill category lines, so enforce it here.
-    const normaliseMarkdown = (md: string): string =>
-        md.replace(
+    // Enforce double line-breaks between skill categories and between cover letter paragraphs.
+    const normaliseMarkdown = (md: string): string => {
+        let out = md;
+        // Skill category lines
+        out = out.replace(
             /([^\n])\n(\*\*(Technical Skills|Industry Knowledge|Soft Skills):\*\*)/g,
             '$1\n\n$2'
         );
+        // Cover letter: single newlines between paragraphs of plain text → double newline
+        if (state.activeTab === 'cover-letter') {
+            out = out.replace(/([.!?])\n([A-Z])/g, '$1\n\n$2');
+        }
+        return out;
+    };
 
     return (
         <div className="fixed inset-0 bg-slate-950 z-50 flex flex-col overflow-hidden text-slate-200">
@@ -452,7 +471,6 @@ export const ApplicationWorkspace: React.FC = () => {
 
                 <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
                     {(['resume', 'cover-letter', 'selection-criteria'] as const)
-                        .filter(tab => tab !== 'selection-criteria' || state.requiresSelectionCriteria)
                         .map(tab => (
                         <button
                             key={tab}
@@ -526,8 +544,40 @@ export const ApplicationWorkspace: React.FC = () => {
             )}
 
             <main className="flex-1 flex overflow-hidden">
-                <aside className="w-1/3 border-r border-slate-800 bg-slate-900/20 flex flex-col">
-                    <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+                <aside className="w-1/3 border-r border-slate-800 bg-slate-900/20 flex flex-col overflow-hidden">
+                    {/* Cover letter: research panel */}
+                    {state.activeTab === 'cover-letter' && state.metadata?.company && (
+                        <div className="p-4 border-b border-slate-800 shrink-0 overflow-y-auto max-h-[45%] custom-scrollbar">
+                            <CompanyResearchPanel
+                                company={state.metadata.company}
+                                role={state.metadata.role || ''}
+                                research={companyResearch}
+                                onResearchUpdate={setCompanyResearch}
+                            />
+                        </div>
+                    )}
+
+                    {/* SC tab: criteria input panel */}
+                    {state.activeTab === 'selection-criteria' && (
+                        <div className="p-4 border-b border-slate-800 shrink-0 overflow-y-auto max-h-[55%] custom-scrollbar">
+                            <CriteriaInputPanel
+                                criteriaText={selectionCriteriaText}
+                                onChange={setSelectionCriteriaText}
+                                company={state.metadata?.company}
+                            />
+                            {selectionCriteriaText.trim().length > 20 && !state.documents['selection-criteria'] && !state.isGenerating && (
+                                <button
+                                    onClick={() => handleGenerate('selection-criteria')}
+                                    className="w-full mt-2 py-2.5 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+                                >
+                                    <List size={14} />
+                                    Generate SC Responses
+                                </button>
+                            )}
+                        </div>
+                    )}
+
+                    <div className="p-4 border-b border-slate-800 flex items-center justify-between shrink-0">
                         <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Job Description</span>
                     </div>
                     <div className="flex-1 overflow-y-auto p-6 text-sm text-slate-400 leading-relaxed custom-scrollbar whitespace-pre-wrap">

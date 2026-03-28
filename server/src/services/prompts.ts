@@ -427,7 +427,9 @@ export const DOCUMENT_GENERATION_PROMPT_WITH_BLUEPRINT = (
     selectedAchievements: any[],
     ruleBase: string,
     blueprint: StrategyBlueprint,
-    analysisContext?: { tone?: string; competencies?: string[] }
+    analysisContext?: { tone?: string; competencies?: string[] },
+    companyResearch?: { salutation?: string; highlights?: string[]; companySize?: string; hiringManager?: string } | null,
+    selectionCriteriaText?: string | null
 ): string => {
     // Build the proof point lookup for inline rendering
     const proofPointMap = new Map(
@@ -559,7 +561,11 @@ ${type === 'COVER_LETTER' ? `METRICS RULE (mandatory): You MUST include at least
 4. ${type === 'STAR_RESPONSE'
         ? 'STAR FORMAT: Situation (10-15%) → Task (10-15%) → Action (40-50%) → Result (20-25%). Flowing prose. First person active voice. Do NOT use Situation/Task/Action/Result as subheadings.'
         : type === 'COVER_LETTER'
-            ? 'COVER LETTER FORMAT: No headers or subheadings. 3-5 paragraphs. Open with the DIRECTOR\'S BRIEF hook. Evidence paragraphs follow. Company connection paragraph last (omit if employerInsight has MISSING flag). Proactive CTA in closing.'
+            ? `COVER LETTER FORMAT: No headers or subheadings. 3-5 paragraphs separated by a blank line.
+   SALUTATION: ${companyResearch?.salutation ?? 'Dear Hiring Manager,'}
+   Open with the DIRECTOR'S BRIEF hook immediately after the salutation.
+   Evidence paragraphs follow. Company connection paragraph last (omit if employerInsight has MISSING flag). Proactive CTA in closing.
+   SIGN-OFF: End with "Yours sincerely," (if named salutation) or "Yours faithfully," (if "Dear Hiring Manager") followed by a blank line and then the candidate's full name: ${profile.name}`
             : 'SPECIALIST POSITIONING: Every bullet demonstrates domain expertise. Cut generic filler. Quality over quantity — 3 sharp bullets beat 6 weak ones.'}
 
 ${type === 'RESUME' ? `5. FORMATTING:
@@ -575,6 +581,17 @@ ${type === 'RESUME' ? `5. FORMATTING:
    - Omit any skill category entirely if no data exists for it.
    - Omit any section entirely if no candidate data exists for it.
    - Minimise vertical whitespace — target 1-2 pages.` : ''}
+
+${selectionCriteriaText ? `
+==============================================================
+SELECTION CRITERIA TO ADDRESS
+==============================================================
+The candidate has provided the following selection criteria. Parse each criterion and generate a separate STAR response for each, headed with the criterion text. Address them in the order listed. Do not skip any criterion.
+
+${selectionCriteriaText}
+
+IMPORTANT: Generate ALL criteria listed above. Each response is a separate headed section.
+` : ''}
 
 CONSTRAINTS:
 - Do NOT use bold ** within bullet points unless highlighting a metric.
@@ -595,7 +612,9 @@ export const DOCUMENT_GENERATION_PROMPT = (
     profile: any,
     selectedAchievements: any[],
     ruleBase: string,
-    analysisContext?: { tone?: string, competencies?: string[] }
+    analysisContext?: { tone?: string, competencies?: string[] },
+    companyResearch?: { salutation?: string; highlights?: string[]; companySize?: string } | null,
+    selectionCriteriaText?: string | null
 ) => `
 You are a career coach generating a ${type}.
 
@@ -650,7 +669,10 @@ Generate the ${type} as high-impact Markdown.
 4. ${type === 'STAR_RESPONSE'
     ? `STAR FORMAT REQUIRED: Each criterion response must follow Situation (10-15%) → Task (10-15%) → Action (40-50%) → Result (20-25%). Do NOT label these components as subheadings. Write in flowing prose, first person, active voice.`
     : type === 'COVER_LETTER'
-    ? `COVER LETTER FORMAT: No headers or subheadings. 3-4 paragraphs. Opening: why this specific role and company. Body: evidence from achievements. Closing: next step.`
+    ? `COVER LETTER FORMAT: No headers or subheadings. 3-4 paragraphs separated by a blank line.
+   SALUTATION: ${companyResearch?.salutation ?? 'Dear Hiring Manager,'}
+   Opening: hook tied to this specific role and company. Body: evidence from achievements. Closing: proactive CTA.
+   SIGN-OFF: End with "Yours sincerely," (if named salutation) or "Yours faithfully," followed by a blank line then the candidate's full name: ${profile.name}`
     : `SPECIALIST POSITIONING: Present the candidate as a deep specialist in their field. Cut generic filler. Every bullet must demonstrate domain expertise. Quality over quantity — 3 sharp bullets beat 6 weak ones.`}
 
 5. ${type === 'RESUME' ? `FORMATTING:
@@ -666,6 +688,13 @@ Generate the ${type} as high-impact Markdown.
    - Omit any skill category entirely if no data exists for it
    - Omit any section entirely if no candidate data exists for it
    - Minimise vertical whitespace — target 1–2 pages` : ''}
+
+${selectionCriteriaText ? `
+SELECTION CRITERIA TO ADDRESS:
+The candidate has provided the following criteria. Parse and address each one separately as a headed STAR response. Address ALL criteria in the order listed.
+
+${selectionCriteriaText}
+` : ''}
 
 CONSTRAINTS:
 - Do NOT use bold ** within bullet points unless highlighting a metric.
