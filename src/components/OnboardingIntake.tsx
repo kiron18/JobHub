@@ -700,10 +700,10 @@ export function OnboardingIntake() {
       const email = finalAnswers.marketingEmail.trim();
       if (email) {
         localStorage.setItem('jobhub_auth_email', email);
-        supabase.auth.updateUser({ email }).catch(() => {
-          // Email already registered — send a magic link so they can reclaim their account next visit
-          supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } }).catch(() => {});
-        });
+        // Upgrade anonymous session to real account. If email already exists we do nothing —
+        // signInWithOtp was previously used as a fallback but it invalidates the anonymous session,
+        // which causes all subsequent API calls to use a new userId and lose the report.
+        supabase.auth.updateUser({ email }).catch(() => {});
       }
       setStep(5);
     } catch (err) {
