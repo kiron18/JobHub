@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Components
 import { DashboardLayout } from './layouts/DashboardLayout';
@@ -88,8 +88,8 @@ const Dashboard = () => {
 
       {/* Collapsed report summary card */}
       <div style={{
-        background: 'rgba(255,255,255,0.03)',
-        border: '1px solid rgba(255,255,255,0.08)',
+        background: 'rgba(252,211,77,0.05)',
+        border: '1px solid rgba(252,211,77,0.15)',
         borderRadius: 16,
         padding: '18px 24px',
         display: 'flex',
@@ -98,25 +98,25 @@ const Dashboard = () => {
         marginBottom: 24,
       }}>
         <div>
-          <p style={{ fontSize: 13, fontWeight: 700, color: '#6b7280', margin: 0 }}>Your Diagnosis</p>
-          <p style={{ fontSize: 12, color: '#4b5563', margin: '2px 0 0' }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#d97706', margin: 0 }}>Your Diagnosis</p>
+          <p style={{ fontSize: 12, color: '#92400e', margin: '2px 0 0' }}>
             {new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
         </div>
         <button
           onClick={() => setShowReport(true)}
           style={{
-            background: 'rgba(255,255,255,0.06)',
-            border: '1px solid rgba(255,255,255,0.1)',
+            background: 'rgba(252,211,77,0.12)',
+            border: '1px solid rgba(252,211,77,0.3)',
             borderRadius: 10,
-            padding: '8px 16px',
+            padding: '8px 18px',
             fontSize: 13,
             fontWeight: 700,
-            color: '#d1d5db',
+            color: '#92400e',
             cursor: 'pointer',
           }}
         >
-          View again
+          View report →
         </button>
       </div>
 
@@ -132,7 +132,7 @@ const Dashboard = () => {
           <button
             onClick={() => setShowReport(false)}
             style={{
-              position: 'fixed', top: 16, right: 20, zIndex: 52,
+              position: 'fixed', top: 16, left: 20, zIndex: 52,
               background: 'rgba(255,255,255,0.08)',
               border: '1px solid rgba(255,255,255,0.15)',
               borderRadius: 99, padding: '8px 16px',
@@ -225,25 +225,54 @@ function ReportOrDashboard() {
   const [reportSeen, setReportSeen] = useState(
     () => localStorage.getItem('jobhub_report_seen') === 'true'
   );
+  const [beaming, setBeaming] = useState(false);
 
   function handleDone() {
-    localStorage.setItem('jobhub_report_seen', 'true');
-    localStorage.setItem('jobhub_tips_seen', 'false');
-    setReportSeen(true);
-    // First-time users go straight to achievement bank to review and improve their profile
-    navigate('/workspace', { replace: true });
+    setBeaming(true);
+    // Short beam delay then transition
+    setTimeout(() => {
+      localStorage.setItem('jobhub_report_seen', 'true');
+      localStorage.setItem('jobhub_tips_seen', 'false');
+      setReportSeen(true);
+      navigate('/workspace', { replace: true });
+    }, 550);
   }
 
   if (!reportSeen) {
-    return <ReportExperience onDone={handleDone} />;
+    return (
+      <>
+        <AnimatePresence>
+          {beaming && (
+            <motion.div
+              key="beam"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.55 }}
+              style={{
+                position: 'fixed', inset: 0, zIndex: 100,
+                background: 'radial-gradient(ellipse at 50% 40%, rgba(252,211,77,0.6) 0%, white 60%)',
+                pointerEvents: 'none',
+              }}
+            />
+          )}
+        </AnimatePresence>
+        <motion.div
+          animate={beaming ? { filter: 'blur(8px)', scale: 1.04, opacity: 0 } : { filter: 'blur(0px)', scale: 1, opacity: 1 }}
+          transition={{ duration: 0.5, ease: [0.4, 0, 1, 1] }}
+        >
+          <ReportExperience onDone={handleDone} />
+        </motion.div>
+      </>
+    );
   }
 
   return (
     <motion.div
       key="dashboard"
-      initial={{ opacity: 0, y: 40 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: [0.25, 0, 0, 1] }}
+      initial={{ opacity: 0, filter: 'blur(4px)', scale: 0.98 }}
+      animate={{ opacity: 1, filter: 'blur(0px)', scale: 1 }}
+      transition={{ duration: 0.4, ease: [0, 0, 0.2, 1] }}
     >
       <DashboardLayout>
         <Routes>

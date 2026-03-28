@@ -328,7 +328,7 @@ export const MatchEngine: React.FC = () => {
                             <div className="w-10 h-10 bg-brand-600/10 rounded-xl flex items-center justify-center text-brand-500">
                                 <Target size={20} />
                             </div>
-                            <h3 className="text-xl font-bold text-slate-100">Job Match Analysis</h3>
+                            <h3 className="text-xl font-bold" style={{ color: 'var(--text-main, #f1f5f9)' }}>Job Match Analysis</h3>
                         </div>
                         {(jobDescription || result) && (
                             <button
@@ -343,7 +343,8 @@ export const MatchEngine: React.FC = () => {
                     <div className="relative group">
                         <textarea
                             placeholder="Paste Job Description here..."
-                            className="w-full h-80 bg-slate-900/40 border border-slate-800 rounded-xl p-4 text-slate-300 focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none transition-all resize-none text-base leading-relaxed"
+                            className="w-full h-80 rounded-xl p-4 focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none transition-all resize-none text-base leading-relaxed"
+                            style={{ background: 'var(--input-bg, rgba(255,255,255,0.06))', border: '1px solid var(--input-border, rgba(255,255,255,0.1))', color: 'var(--input-text, #e2e8f0)' }}
                             value={jobDescription}
                             onChange={(e) => {
                                 setJobDescription(e.target.value);

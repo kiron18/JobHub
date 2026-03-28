@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, FileText, Briefcase, LogOut, User, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppTheme } from '../contexts/ThemeContext';
+import { HuePicker } from '../components/HuePicker';
 
 export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { user, signOut } = useAuth();
@@ -82,7 +83,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                             </div>
                         </div>
 
-                        {/* Theme toggle + Sign Out row */}
+                        {/* Theme toggle + Hue + Sign Out row */}
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={toggle}
@@ -100,6 +101,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                             >
                                 {isDark ? <Sun size={15} /> : <Moon size={15} />}
                             </button>
+                            <HuePicker isDark={isDark} />
                             <button
                                 onClick={() => signOut()}
                                 className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all border border-transparent hover:border-red-500/20 hover:bg-red-500/10 hover:text-red-400"

@@ -95,6 +95,7 @@ QA Test Complete — Full Findings Report
   The three actionable code fixes are live. You can re-import your real resume at
   http://localhost:5174/workspace to restore your profile — the last test run overwrote it   
   with Vishukanth's resume.
+  
 
 ✻ Worked for 1h 8m 36s
 

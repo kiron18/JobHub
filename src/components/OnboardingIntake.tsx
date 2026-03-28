@@ -696,11 +696,14 @@ export function OnboardingIntake() {
     try {
       // No manual Content-Type - axios sets multipart boundary automatically
       await api.post('/onboarding/submit', formData, { timeout: 30000 });
-      // Upgrade anonymous account → real account with their email (best-effort)
+      // Upgrade anonymous account → real account with their email
       const email = finalAnswers.marketingEmail.trim();
       if (email) {
-        supabase.auth.updateUser({ email }).catch(() => {});
         localStorage.setItem('jobhub_auth_email', email);
+        supabase.auth.updateUser({ email }).catch(() => {
+          // Email already registered — send a magic link so they can reclaim their account next visit
+          supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } }).catch(() => {});
+        });
       }
       setStep(5);
     } catch (err) {
@@ -738,6 +741,7 @@ export function OnboardingIntake() {
         <ProcessingScreen
           isDark={isDark}
           theme={T}
+          email={answers.marketingEmail.trim()}
           onComplete={() => {
             // ProcessingScreen has already invalidated the profile query.
             // OnboardingGate will re-evaluate and render ReportOrDashboard.

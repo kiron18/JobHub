@@ -13,6 +13,7 @@ interface Theme {
 interface ProcessingScreenProps {
   isDark: boolean;
   theme: Theme;
+  email?: string;
   onComplete: () => void;
   onRetry: () => void;
 }
@@ -32,7 +33,7 @@ const BAR_DURATION_MS = 30_000;
 const POLL_INTERVAL_MS = 3_000;
 const MESSAGE_INTERVAL_MS = 8_000;
 
-export function ProcessingScreen({ isDark: _isDark, theme: T, onComplete, onRetry }: ProcessingScreenProps) {
+export function ProcessingScreen({ isDark: _isDark, theme: T, email, onComplete, onRetry }: ProcessingScreenProps) {
   const queryClient = useQueryClient();
   const [barWidth, setBarWidth] = useState(100);
   const [msgIndex, setMsgIndex] = useState(0);
@@ -139,18 +140,35 @@ export function ProcessingScreen({ isDark: _isDark, theme: T, onComplete, onRetr
 
         {/* Message */}
         {status === 'processing' && (
-          <p style={{
-            fontSize: 16,
-            fontWeight: 500,
-            color: T.text,
-            lineHeight: 1.6,
-            textAlign: 'center',
-            opacity: msgVisible ? 1 : 0,
-            transition: 'opacity 0.3s ease',
-            minHeight: 52,
-          }}>
-            {currentMessage}
-          </p>
+          <>
+            <p style={{
+              fontSize: 16,
+              fontWeight: 500,
+              color: T.text,
+              lineHeight: 1.6,
+              textAlign: 'center',
+              opacity: msgVisible ? 1 : 0,
+              transition: 'opacity 0.3s ease',
+              minHeight: 52,
+            }}>
+              {currentMessage}
+            </p>
+            {email && (
+              <p style={{
+                fontSize: 12,
+                color: T.textMuted,
+                textAlign: 'center',
+                marginTop: 20,
+                padding: '10px 14px',
+                borderRadius: 10,
+                background: 'rgba(99,102,241,0.07)',
+                border: '1px solid rgba(99,102,241,0.15)',
+                lineHeight: 1.6,
+              }}>
+                📧 Check <strong style={{ color: T.text }}>{email}</strong> for a confirmation link — click it to secure your account and access it from any device.
+              </p>
+            )}
+          </>
         )}
 
         {status === 'failed' && (
