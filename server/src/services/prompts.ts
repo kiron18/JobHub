@@ -469,7 +469,7 @@ export const DOCUMENT_GENERATION_PROMPT_WITH_BLUEPRINT = (
     employerFramework?: string | null,
     routeType?: string | null
 ): string => {
-    const isAcademicDoc = routeType === 'teaching-philosophy' || routeType === 'research-statement';
+    const isAcademicDoc = routeType === 'teaching-philosophy' || routeType === 'research-statement' || routeType === 'offer-negotiation';
     // Build the proof point lookup for inline rendering
     const proofPointMap = new Map(
         blueprint.proofPoints.map(pp => [pp.achievementId, pp])
@@ -676,7 +676,7 @@ export const DOCUMENT_GENERATION_PROMPT = (
     employerFramework?: string | null,
     routeType?: string | null
 ) => {
-    const isAcademicDoc = routeType === 'teaching-philosophy' || routeType === 'research-statement';
+    const isAcademicDoc = routeType === 'teaching-philosophy' || routeType === 'research-statement' || routeType === 'offer-negotiation';
     return `
 You are a career coach generating a ${type}.
 

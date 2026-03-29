@@ -356,6 +356,9 @@ const JobCard: React.FC<{
     const [thankYouOpen, setThankYouOpen] = useState(false);
     const [notesValue, setNotesValue] = useState(job.notes || '');
     const [notesSaving, setNotesSaving] = useState(false);
+    const [negotiationGuide, setNegotiationGuide] = useState<string | null>(null);
+    const [generatingNegotiation, setGeneratingNegotiation] = useState(false);
+    const [negotiationOpen, setNegotiationOpen] = useState(false);
 
     const days = daysSinceApplied(job.dateApplied);
     const showFollowUpAlert = job.status === 'APPLIED' && days !== null && days >= 7;
@@ -394,6 +397,25 @@ const JobCard: React.FC<{
             await onNotesChange(job.id, notesValue);
         } finally {
             setNotesSaving(false);
+        }
+    };
+
+    const handleGenerateNegotiation = async () => {
+        if (generatingNegotiation || negotiationGuide) { setNegotiationOpen(true); return; }
+        setGeneratingNegotiation(true);
+        setNegotiationOpen(true);
+        try {
+            const { data } = await api.post('/generate/offer-negotiation', {
+                jobDescription: job.description || `${job.title} at ${job.company}`,
+                selectedAchievementIds: [],
+                analysisContext: { tone: 'professional', competencies: [] },
+            });
+            setNegotiationGuide(data.content);
+        } catch {
+            toast.error('Could not generate negotiation guide.');
+            setNegotiationOpen(false);
+        } finally {
+            setGeneratingNegotiation(false);
         }
     };
 
@@ -557,6 +579,59 @@ const JobCard: React.FC<{
                                                         <p className="text-xs text-amber-400/60 text-center py-2">Generating personalised email…</p>
                                                     ) : thankYouEmail ? (
                                                         <pre className="text-xs text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">{thankYouEmail}</pre>
+                                                    ) : null}
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                            )}
+
+                            {/* Offer negotiation guide */}
+                            {job.status === 'OFFER' && (
+                                <div className="border border-emerald-500/20 rounded-xl overflow-hidden bg-emerald-500/5">
+                                    <button
+                                        onClick={handleGenerateNegotiation}
+                                        className="w-full px-4 py-3 flex items-center justify-between hover:bg-emerald-500/10 transition-colors"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <Trophy size={13} className="text-emerald-400" />
+                                            <span className="text-xs font-bold text-emerald-400">Negotiation Guide</span>
+                                            {!negotiationGuide && !generatingNegotiation && (
+                                                <span className="text-[9px] font-bold text-emerald-400/50 uppercase tracking-wider flex items-center gap-1">
+                                                    <Sparkles size={9} /> AI-personalised
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {generatingNegotiation && <Loader2 size={12} className="animate-spin text-emerald-400" />}
+                                            {negotiationGuide && !generatingNegotiation && (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(negotiationGuide); toast.success('Copied'); }}
+                                                    className="text-[9px] font-bold text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded hover:bg-emerald-500/20 transition-colors uppercase tracking-wider"
+                                                >
+                                                    Copy
+                                                </button>
+                                            )}
+                                            {negotiationOpen ? <ChevronUp size={12} className="text-emerald-400/60" /> : <ChevronDown size={12} className="text-emerald-400/60" />}
+                                        </div>
+                                    </button>
+                                    <AnimatePresence>
+                                        {negotiationOpen && (
+                                            <motion.div
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: 'auto', opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                transition={{ duration: 0.2 }}
+                                                className="overflow-hidden border-t border-emerald-500/15"
+                                            >
+                                                <div className="p-4">
+                                                    {generatingNegotiation ? (
+                                                        <p className="text-xs text-emerald-400/60 text-center py-2">Generating personalised negotiation guide…</p>
+                                                    ) : negotiationGuide ? (
+                                                        <div className="prose prose-invert prose-xs max-w-none text-slate-300">
+                                                            <ReactMarkdown>{negotiationGuide}</ReactMarkdown>
+                                                        </div>
                                                     ) : null}
                                                 </div>
                                             </motion.div>
