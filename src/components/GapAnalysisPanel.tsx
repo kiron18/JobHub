@@ -1,7 +1,14 @@
 import { useState } from 'react';
-import { TrendingUp, AlertTriangle, CheckCircle, ChevronDown, ChevronUp, Zap, Loader2 } from 'lucide-react';
+import { TrendingUp, AlertTriangle, CheckCircle, ChevronDown, ChevronUp, Zap, Loader2, Lightbulb } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../lib/api';
+
+interface AchievementSuggestion {
+    title: string;
+    prompt: string;
+    example: string;
+    why: string;
+}
 
 interface GapResult {
     overallFit: 'STRONG' | 'MODERATE' | 'WEAK';
@@ -28,6 +35,23 @@ export function GapAnalysisPanel({ jobDescription, keywords }: GapAnalysisPanelP
     const [loading, setLoading] = useState(false);
     const [open, setOpen] = useState(false);
     const [hasRun, setHasRun] = useState(false);
+    const [suggestions, setSuggestions] = useState<AchievementSuggestion[]>([]);
+    const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+    const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+
+    const loadSuggestions = async () => {
+        if (loadingSuggestions || suggestions.length > 0) { setSuggestionsOpen(true); return; }
+        setLoadingSuggestions(true);
+        setSuggestionsOpen(true);
+        try {
+            const { data } = await api.post('/analyze/achievement-suggestions', { jobDescription });
+            setSuggestions(data.suggestions || []);
+        } catch {
+            // silent
+        } finally {
+            setLoadingSuggestions(false);
+        }
+    };
 
     const run = async () => {
         if (loading) return;
@@ -167,6 +191,45 @@ export function GapAnalysisPanel({ jobDescription, keywords }: GapAnalysisPanelP
                                             </ul>
                                         </div>
                                     )}
+
+                                    {/* Achievement suggestions */}
+                                    <div className="pt-1 border-t border-slate-800">
+                                        <button
+                                            onClick={loadSuggestions}
+                                            className="w-full flex items-center justify-between py-2 text-[10px] font-bold text-brand-400 hover:text-brand-300 transition-colors"
+                                        >
+                                            <span className="flex items-center gap-1.5">
+                                                <Lightbulb size={10} />
+                                                Achievement suggestions for this role
+                                            </span>
+                                            {loadingSuggestions ? <Loader2 size={10} className="animate-spin" /> : (suggestionsOpen ? <ChevronUp size={10} /> : <ChevronDown size={10} />)}
+                                        </button>
+                                        <AnimatePresence>
+                                            {suggestionsOpen && (
+                                                <motion.div
+                                                    initial={{ height: 0, opacity: 0 }}
+                                                    animate={{ height: 'auto', opacity: 1 }}
+                                                    exit={{ height: 0, opacity: 0 }}
+                                                    className="overflow-hidden"
+                                                >
+                                                    {loadingSuggestions ? (
+                                                        <p className="text-[10px] text-slate-500 py-2 text-center">Loading suggestions…</p>
+                                                    ) : (
+                                                        <div className="space-y-2 pb-1">
+                                                            {suggestions.map((s, i) => (
+                                                                <div key={i} className="p-2.5 bg-brand-600/5 border border-brand-600/15 rounded-lg">
+                                                                    <p className="text-[10px] font-bold text-brand-300">{s.title}</p>
+                                                                    <p className="text-[10px] text-slate-400 mt-0.5 italic">"{s.prompt}"</p>
+                                                                    <p className="text-[10px] text-slate-500 mt-0.5 leading-snug">{s.why}</p>
+                                                                    <p className="text-[9px] text-slate-600 mt-1 leading-snug">e.g. {s.example}</p>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
 
                                     <button
                                         onClick={run}

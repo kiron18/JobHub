@@ -261,4 +261,70 @@ Rules:
     }
 });
 
+/**
+ * POST /api/analyze/achievement-suggestions
+ * Given a job description and existing achievements, returns 3-5 specific
+ * achievement types the candidate should add to boost their profile for this role.
+ *
+ * Body: { jobDescription: string }
+ * Returns: { suggestions: Array<{ title, prompt, example, why }> }
+ */
+router.post('/achievement-suggestions', authenticate, async (req: any, res: any) => {
+    try {
+        const userId = req.user.id;
+        const { jobDescription } = req.body as { jobDescription?: string };
+
+        if (!jobDescription || jobDescription.length < 50) {
+            return res.status(400).json({ error: 'Job description required.' });
+        }
+
+        const profile = await prisma.candidateProfile.findUnique({
+            where: { userId },
+            include: { achievements: { select: { title: true, metric: true, metricType: true } } }
+        });
+
+        if (!profile) return res.status(404).json({ error: 'Profile not found.' });
+
+        const existingTitles = profile.achievements.map((a: any) => a.title).join(', ') || 'none';
+
+        const prompt = `You are a career coach helping an Australian job seeker strengthen their achievement bank for a specific role.
+
+JOB DESCRIPTION (first 1500 chars):
+${jobDescription.slice(0, 1500)}
+
+EXISTING ACHIEVEMENTS (titles only):
+${existingTitles}
+
+Generate 4 specific achievement suggestions — types of evidence the candidate should add to their bank for this role. Each suggestion should be a concrete achievement type that:
+1. Directly addresses a requirement in the JD
+2. Is NOT already covered by existing achievements
+3. Can be documented with a measurable outcome
+
+Return JSON:
+{
+  "suggestions": [
+    {
+      "title": "Short label for the achievement type (e.g. 'Cost Reduction Project')",
+      "prompt": "One-sentence question to help them recall an example (e.g. 'When did you reduce costs or improve efficiency in a process?')",
+      "example": "Example of what a strong achievement of this type looks like (1 sentence with a metric)",
+      "why": "Why this type of achievement is relevant to this specific role (1 sentence)"
+    }
+  ]
+}
+
+Return ONLY valid JSON. Generate exactly 4 suggestions.`;
+
+        const raw = await callLLM(prompt, true);
+        const result = parseLLMJson(raw);
+
+        return res.json({
+            suggestions: Array.isArray(result.suggestions) ? result.suggestions.slice(0, 5) : [],
+        });
+
+    } catch (err: any) {
+        console.error('[Achievement Suggestions] Error:', err.message);
+        res.status(500).json({ error: 'Failed to generate suggestions.' });
+    }
+});
+
 export default router;

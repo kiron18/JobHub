@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
-import { searchSerper, snippetsToText } from '../services/serper';
+import { searchSerper, scrapeUrl, snippetsToText } from '../services/serper';
 import { callLLM } from '../services/llm';
 
 const router = Router();
@@ -159,6 +159,73 @@ Return ONLY valid JSON.
     } catch (err: any) {
         console.error('[research] employer-framework error:', err.message);
         return res.status(500).json({ error: 'Framework research failed' });
+    }
+});
+
+/**
+ * POST /api/research/job-url
+ * Scrapes a job listing URL (Seek, LinkedIn, company career page) and extracts
+ * the clean job description text using the Serper scraper.
+ *
+ * Body: { url: string }
+ * Returns: { jobDescription: string, title: string | null, company: string | null }
+ */
+router.post('/job-url', authenticate, async (req, res) => {
+    const { url } = req.body as { url?: string };
+
+    if (!url || !url.startsWith('http')) {
+        return res.status(400).json({ error: 'A valid URL is required.' });
+    }
+
+    // Basic allowlist — only permit known job board domains to prevent abuse
+    const allowedDomains = ['seek.com.au', 'linkedin.com', 'indeed.com', 'jora.com', 'apsjobs.gov.au', 'careers.', 'jobs.', 'ats.', 'lever.co', 'greenhouse.io', 'workday.com', 'smartrecruiters.com'];
+    const isAllowed = allowedDomains.some(d => url.includes(d));
+    if (!isAllowed) {
+        return res.status(400).json({ error: 'URL must be from a job board or career site.' });
+    }
+
+    try {
+        const rawText = await scrapeUrl(url);
+
+        if (!rawText || rawText.length < 100) {
+            return res.status(422).json({ error: 'Could not extract content from this URL. Try copying the job description manually.' });
+        }
+
+        // Use LLM to extract clean job description from scraped text
+        const prompt = `Extract the job description from this scraped web page text. Return ONLY the relevant job posting content (role overview, responsibilities, requirements, about company). Remove navigation, headers, footers, cookie notices, and any non-job content.
+
+Also extract the job title and company name if visible.
+
+SCRAPED TEXT:
+${rawText}
+
+Return JSON:
+{
+  "jobDescription": "clean job description text",
+  "title": "Job Title or null",
+  "company": "Company Name or null"
+}
+
+Return ONLY valid JSON.`;
+
+        const raw = await callLLM(prompt, true);
+        let parsed: any = { jobDescription: rawText, title: null, company: null };
+        try {
+            parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
+        } catch {
+            // Fall back to raw text if LLM fails
+            parsed.jobDescription = rawText.slice(0, 4000);
+        }
+
+        return res.json({
+            jobDescription: parsed.jobDescription || rawText.slice(0, 4000),
+            title: parsed.title || null,
+            company: parsed.company || null,
+        });
+
+    } catch (err: any) {
+        console.error('[research] job-url error:', err.message);
+        return res.status(500).json({ error: 'URL extraction failed. Please paste the job description manually.' });
     }
 });
 

@@ -45,3 +45,32 @@ export async function searchSerper(query: string, num = 5): Promise<SerperResult
 export function snippetsToText(results: SerperResult[]): string {
     return results.map(r => `- ${r.title}: ${r.snippet}`).join('\n');
 }
+
+/**
+ * Scrape a URL and return its full text content via Serper Scraper API.
+ * Useful for extracting job descriptions from Seek, LinkedIn, company career pages.
+ */
+export async function scrapeUrl(url: string): Promise<string> {
+    if (!SERPER_API_KEY) {
+        console.warn('[serper] SERPER_API_KEY not set — cannot scrape URL');
+        return '';
+    }
+    try {
+        const { data } = await axios.post(
+            'https://scraper.serper.dev',
+            { url },
+            {
+                headers: {
+                    'X-API-KEY': SERPER_API_KEY,
+                    'Content-Type': 'application/json',
+                },
+                timeout: 15000,
+            }
+        );
+        // Serper scraper returns { text: "...", ... }
+        return (data.text || '').slice(0, 8000); // cap at 8k chars
+    } catch (err: any) {
+        console.warn('[serper] URL scrape failed:', err.message);
+        return '';
+    }
+}

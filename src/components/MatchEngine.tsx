@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Target, Loader2, Zap, AlertTriangle, FileText, Mail, List, XCircle, TrendingDown, ArrowLeft } from 'lucide-react';
+import { Target, Loader2, Zap, AlertTriangle, FileText, Mail, List, XCircle, TrendingDown, ArrowLeft, Link, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../lib/api';
 import { useAppTheme } from '../contexts/ThemeContext';
@@ -126,6 +126,9 @@ export const MatchEngine: React.FC = () => {
         return localStorage.getItem('jobhub_current_jd') || '';
     });
     const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [urlInput, setUrlInput] = useState('');
+    const [urlLoading, setUrlLoading] = useState(false);
+    const [urlError, setUrlError] = useState<string | null>(null);
     const [result, setResult] = useState<AnalysisResult | null>(() => {
         try {
             const saved = localStorage.getItem('jobhub_current_analysis');
@@ -190,8 +193,30 @@ export const MatchEngine: React.FC = () => {
         setJobDescription('');
         setResult(null);
         setError(null);
+        setUrlInput('');
+        setUrlError(null);
         localStorage.removeItem('jobhub_current_jd');
         localStorage.removeItem('jobhub_current_analysis');
+    };
+
+    const handleUrlImport = async () => {
+        if (!urlInput.trim() || urlLoading) return;
+        setUrlLoading(true);
+        setUrlError(null);
+        try {
+            const { data } = await api.post('/research/job-url', { url: urlInput.trim() });
+            if (data.jobDescription) {
+                setJobDescription(data.jobDescription);
+                localStorage.setItem('jobhub_current_jd', data.jobDescription);
+                setUrlInput('');
+            } else {
+                setUrlError('No job description found at this URL.');
+            }
+        } catch (err: any) {
+            setUrlError(err.response?.data?.error || 'Could not import from this URL. Paste the description manually.');
+        } finally {
+            setUrlLoading(false);
+        }
     };
 
     return (
@@ -219,6 +244,39 @@ export const MatchEngine: React.FC = () => {
                             >
                                 Reset
                             </button>
+                        )}
+                    </div>
+
+                    {/* URL import */}
+                    <div className="space-y-1.5">
+                        <div className="flex gap-2">
+                            <div className="flex-1 flex items-center gap-2 bg-slate-800/60 border border-slate-700 rounded-xl px-3 py-2">
+                                <Link size={13} className="text-slate-500 shrink-0" />
+                                <input
+                                    type="url"
+                                    value={urlInput}
+                                    onChange={e => { setUrlInput(e.target.value); setUrlError(null); }}
+                                    onKeyDown={e => { if (e.key === 'Enter') handleUrlImport(); }}
+                                    placeholder="Paste a Seek, LinkedIn, or career page URL to auto-import…"
+                                    className="flex-1 bg-transparent text-xs text-slate-300 outline-none placeholder:text-slate-600"
+                                />
+                                {urlInput && (
+                                    <button onClick={() => { setUrlInput(''); setUrlError(null); }} className="text-slate-600 hover:text-slate-400">
+                                        <X size={12} />
+                                    </button>
+                                )}
+                            </div>
+                            <button
+                                onClick={handleUrlImport}
+                                disabled={!urlInput.trim() || urlLoading}
+                                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-slate-200 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5"
+                            >
+                                {urlLoading ? <Loader2 size={12} className="animate-spin" /> : <Link size={12} />}
+                                Import
+                            </button>
+                        </div>
+                        {urlError && (
+                            <p className="text-[10px] text-red-400 pl-1">{urlError}</p>
                         )}
                     </div>
 
