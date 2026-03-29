@@ -24,6 +24,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import api from '../lib/api';
+import { exportDocx } from '../lib/exportDocx';
 
 type ApplicationStatus = 'SAVED' | 'APPLIED' | 'INTERVIEW' | 'REJECTED' | 'OFFER';
 
@@ -106,6 +107,20 @@ const DocumentViewerModal: React.FC<{
         toast.success('Copied to clipboard');
     };
 
+    const handleDownload = async () => {
+        const docTypeMap: Record<Document['type'], 'resume' | 'cover-letter' | 'selection-criteria'> = {
+            RESUME: 'resume',
+            COVER_LETTER: 'cover-letter',
+            STAR_RESPONSE: 'selection-criteria',
+        };
+        try {
+            await exportDocx(doc.content, docTypeMap[doc.type], company, jobTitle);
+            toast.success('Downloaded as .docx');
+        } catch {
+            toast.error('Download failed — copy the content instead.');
+        }
+    };
+
     const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
         if (e.target === e.currentTarget) onClose();
     };
@@ -136,6 +151,14 @@ const DocumentViewerModal: React.FC<{
                         </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
+                        <button
+                            onClick={handleDownload}
+                            aria-label="Download as Word document"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider text-emerald-400 border border-emerald-700/50 hover:border-emerald-600 hover:bg-emerald-500/10 transition-colors"
+                        >
+                            <FileText size={11} />
+                            .docx
+                        </button>
                         <button
                             onClick={handleCopy}
                             aria-label="Copy document content to clipboard"
