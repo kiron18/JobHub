@@ -208,6 +208,9 @@ export const ApplicationWorkspace: React.FC = () => {
     const [generatingAcademic, setGeneratingAcademic] = useState<'teaching-philosophy' | 'research-statement' | null>(null);
     const [academicViewerType, setAcademicViewerType] = useState<'teaching-philosophy' | 'research-statement' | null>(null);
 
+    // Cover letter tone preference
+    const [coverLetterTone, setCoverLetterTone] = useState<'professional' | 'warm' | 'concise'>('professional');
+
     // Auto-detect employer framework when SC tab is first activated
     useEffect(() => {
         if (state.activeTab !== 'selection-criteria') return;
@@ -411,7 +414,13 @@ export const ApplicationWorkspace: React.FC = () => {
                 regenerate,
                 jobApplicationId: state.jobApplicationId,
                 analysisContext: {
-                    tone: state.analysisTone,
+                    tone: type === 'cover-letter'
+                        ? (coverLetterTone === 'warm'
+                            ? 'Warm, genuine, values-driven. Conversational but professional.'
+                            : coverLetterTone === 'concise'
+                            ? 'Extremely concise and direct. Minimal words, maximum impact. Results-focused.'
+                            : state.analysisTone || 'Professional, polished, direct.')
+                        : state.analysisTone,
                     competencies: state.coreCompetencies
                 },
                 // Company research context for cover letters (hiring manager, highlights)
@@ -641,15 +650,39 @@ export const ApplicationWorkspace: React.FC = () => {
 
             <main className="flex-1 flex overflow-hidden">
                 <aside className="w-1/3 border-r border-slate-800 bg-slate-900/20 flex flex-col overflow-hidden">
-                    {/* Cover letter: research panel */}
-                    {state.activeTab === 'cover-letter' && state.metadata?.company && (
-                        <div className="p-4 border-b border-slate-800 shrink-0 overflow-y-auto max-h-[45%] custom-scrollbar">
-                            <CompanyResearchPanel
-                                company={state.metadata.company}
-                                role={state.metadata.role || ''}
-                                research={companyResearch}
-                                onResearchUpdate={setCompanyResearch}
-                            />
+                    {/* Cover letter: tone selector + research panel */}
+                    {state.activeTab === 'cover-letter' && (
+                        <div className="p-4 border-b border-slate-800 shrink-0 overflow-y-auto max-h-[55%] custom-scrollbar">
+                            {/* Tone selector */}
+                            <div className="rounded-xl border border-slate-700/50 bg-slate-900/60 overflow-hidden mb-4">
+                                <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-800 bg-slate-900/40">
+                                    <Mail size={13} className="text-brand-400" />
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tone</span>
+                                </div>
+                                <div className="flex p-2 gap-1.5">
+                                    {(['professional', 'warm', 'concise'] as const).map(t => (
+                                        <button
+                                            key={t}
+                                            onClick={() => setCoverLetterTone(t)}
+                                            className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border ${
+                                                coverLetterTone === t
+                                                    ? 'bg-brand-600 border-brand-500 text-white shadow-lg shadow-brand-600/20'
+                                                    : 'border-slate-700 text-slate-500 hover:text-slate-300 hover:border-slate-600'
+                                            }`}
+                                        >
+                                            {t}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            {state.metadata?.company && (
+                                <CompanyResearchPanel
+                                    company={state.metadata.company}
+                                    role={state.metadata.role || ''}
+                                    research={companyResearch}
+                                    onResearchUpdate={setCompanyResearch}
+                                />
+                            )}
                         </div>
                     )}
 

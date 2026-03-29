@@ -701,7 +701,7 @@ export const ApplicationTracker: React.FC = () => {
             {!isLoading && <FollowUpNudge jobs={jobs} />}
 
             {/* Stats row */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                 <div className="glass-card p-5 flex flex-col gap-2">
                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Total</p>
                     <p className="text-4xl font-black text-white tabular-nums">{counts.ALL}</p>
@@ -713,6 +713,23 @@ export const ApplicationTracker: React.FC = () => {
                 <div className="glass-card p-5 flex flex-col gap-2">
                     <p className="text-[10px] font-black text-amber-400 uppercase tracking-wider">Interviews</p>
                     <p className="text-4xl font-black text-amber-400 tabular-nums">{counts.INTERVIEW}</p>
+                    {counts.APPLIED > 0 && (
+                        <p className="text-[9px] text-slate-500 font-bold">
+                            {Math.round((counts.INTERVIEW / Math.max(counts.APPLIED + counts.INTERVIEW, 1)) * 100)}% rate
+                        </p>
+                    )}
+                </div>
+                <div className="glass-card p-5 flex flex-col gap-2">
+                    <p className="text-[10px] font-black text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+                        <Trophy size={10} />
+                        Offers
+                    </p>
+                    <p className={`text-4xl font-black tabular-nums ${counts.OFFER > 0 ? 'text-emerald-400' : 'text-slate-500'}`}>{counts.OFFER}</p>
+                    {counts.INTERVIEW > 0 && counts.OFFER > 0 && (
+                        <p className="text-[9px] text-slate-500 font-bold">
+                            {Math.round((counts.OFFER / counts.INTERVIEW) * 100)}% close rate
+                        </p>
+                    )}
                 </div>
                 <div className={`glass-card p-5 flex flex-col gap-2 ${followUpDue > 0 ? 'border-amber-500/30' : ''}`}>
                     <p className="text-[10px] font-black text-amber-400 uppercase tracking-wider flex items-center gap-1">
