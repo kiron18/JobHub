@@ -375,6 +375,8 @@ const JobCard: React.FC<{
     const [rejectionResponse, setRejectionResponse] = useState<string | null>(null);
     const [generatingRejection, setGeneratingRejection] = useState(false);
     const [rejectionOpen, setRejectionOpen] = useState(false);
+    const [actionItems, setActionItems] = useState<Array<{ text: string; type: string; urgency: string }>>([]);
+    const [extractingActions, setExtractingActions] = useState(false);
 
     const days = daysSinceApplied(job.dateApplied);
     const showFollowUpAlert = job.status === 'APPLIED' && days !== null && days >= 7;
@@ -413,6 +415,24 @@ const JobCard: React.FC<{
             await onNotesChange(job.id, notesValue);
         } finally {
             setNotesSaving(false);
+        }
+    };
+
+    const handleExtractActions = async () => {
+        if (extractingActions || notesValue.trim().length < 20) return;
+        setExtractingActions(true);
+        try {
+            const { data } = await api.post('/analyze/notes-actions', {
+                notes: notesValue,
+                jobTitle: job.title,
+                company: job.company,
+                status: job.status,
+            });
+            setActionItems(data.actions || []);
+        } catch {
+            // silent
+        } finally {
+            setExtractingActions(false);
         }
     };
 
@@ -856,7 +876,19 @@ const JobCard: React.FC<{
                             <div>
                                 <div className="flex items-center justify-between mb-1.5">
                                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Notes</p>
-                                    {notesSaving && <span className="text-[9px] text-slate-600 font-bold">Saving…</span>}
+                                    <div className="flex items-center gap-2">
+                                        {notesSaving && <span className="text-[9px] text-slate-600 font-bold">Saving…</span>}
+                                        {notesValue.trim().length >= 20 && (
+                                            <button
+                                                onClick={handleExtractActions}
+                                                disabled={extractingActions}
+                                                className="flex items-center gap-1 text-[9px] font-bold text-brand-400 hover:text-brand-300 transition-colors disabled:opacity-50"
+                                            >
+                                                {extractingActions ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
+                                                Extract Actions
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                                 <textarea
                                     value={notesValue}
@@ -866,6 +898,28 @@ const JobCard: React.FC<{
                                     rows={3}
                                     className="w-full bg-slate-800/60 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-300 outline-none focus:border-brand-500 transition-colors resize-none leading-relaxed placeholder:text-slate-600"
                                 />
+                                {/* Action items extracted from notes */}
+                                <AnimatePresence>
+                                    {actionItems.length > 0 && (
+                                        <motion.div
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: 'auto' }}
+                                            exit={{ opacity: 0, height: 0 }}
+                                            className="mt-2 space-y-1.5 overflow-hidden"
+                                        >
+                                            <p className="text-[9px] font-black text-brand-400 uppercase tracking-wider">Action Items</p>
+                                            {actionItems.map((item, i) => {
+                                                const urgencyColor = item.urgency === 'high' ? 'text-red-400 border-red-500/20 bg-red-500/5' : item.urgency === 'medium' ? 'text-amber-400 border-amber-500/20 bg-amber-500/5' : 'text-slate-400 border-slate-700 bg-slate-800/40';
+                                                return (
+                                                    <div key={i} className={`flex items-start gap-2 px-2.5 py-2 rounded-lg border text-xs ${urgencyColor}`}>
+                                                        <span className="font-black text-[10px] mt-0.5 shrink-0">{i + 1}</span>
+                                                        <span className="leading-relaxed">{item.text}</span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
 
                             {/* Delete */}
