@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, Copy, CheckCircle, Loader2, MessageSquare } from 'lucide-react';
+import { ChevronDown, Copy, CheckCircle, Loader2, MessageSquare, Play, ChevronLeft, ChevronRight, Eye, RotateCcw } from 'lucide-react';
 import api from '../lib/api';
 
 interface InterviewQuestion {
@@ -27,6 +27,9 @@ export function InterviewQuestionsPanel({ jobDescription }: InterviewQuestionsPa
   const [loaded, setLoaded] = useState(false);
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+  const [practiceMode, setPracticeMode] = useState(false);
+  const [practiceIdx, setPracticeIdx] = useState(0);
+  const [revealed, setRevealed] = useState(false);
 
   const load = async () => {
     if (loading || !jobDescription) return;
@@ -79,22 +82,130 @@ export function InterviewQuestionsPanel({ jobDescription }: InterviewQuestionsPa
           </button>
         )}
         {loaded && (
-          <button
-            onClick={load}
-            disabled={loading}
-            style={{
-              fontSize: 9, color: '#4b5563', background: 'none', border: 'none',
-              cursor: 'pointer', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
-            }}
-          >
-            {loading ? 'Loading…' : 'Refresh'}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              onClick={() => { setPracticeMode(m => !m); setPracticeIdx(0); setRevealed(false); }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                fontSize: 9, color: practiceMode ? '#818cf8' : '#4b5563',
+                background: practiceMode ? 'rgba(99,102,241,0.12)' : 'none',
+                border: practiceMode ? '1px solid rgba(99,102,241,0.3)' : '1px solid transparent',
+                borderRadius: 5, padding: '3px 7px',
+                cursor: 'pointer', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', transition: 'all 0.12s',
+              }}
+            >
+              <Play size={8} />
+              {practiceMode ? 'List' : 'Practice'}
+            </button>
+            <button
+              onClick={load}
+              disabled={loading}
+              style={{ fontSize: 9, color: '#4b5563', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}
+            >
+              {loading ? 'Loading…' : 'Refresh'}
+            </button>
+          </div>
         )}
       </div>
 
-      {/* Question list */}
+      {/* Practice Mode — flashcard-style */}
       <AnimatePresence>
-        {questions.map((q, idx) => {
+        {practiceMode && questions.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 6 }}
+            style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
+          >
+            {/* Progress */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 9, color: '#4b5563', fontWeight: 700 }}>{practiceIdx + 1} / {questions.length}</span>
+              <div style={{ flex: 1, height: 3, borderRadius: 99, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${((practiceIdx + 1) / questions.length) * 100}%`, background: '#818cf8', borderRadius: 99, transition: 'width 0.3s ease' }} />
+              </div>
+            </div>
+
+            {/* Card */}
+            <div style={{
+              borderRadius: 12, padding: '16px',
+              border: '1px solid rgba(99,102,241,0.25)',
+              background: 'rgba(99,102,241,0.06)',
+              minHeight: 80,
+            }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: '#e2e8f0', lineHeight: 1.55, margin: 0 }}>
+                {questions[practiceIdx].question}
+              </p>
+
+              {/* Reveal talking points */}
+              <AnimatePresence>
+                {revealed && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                    style={{ overflow: 'hidden', marginTop: 12 }}
+                  >
+                    <p style={{ fontSize: 9, fontWeight: 800, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 6px' }}>Talking Points</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      {questions[practiceIdx].talkingPoints.map((pt, i) => (
+                        <div key={i} style={{ display: 'flex', gap: 7, alignItems: 'flex-start' }}>
+                          <span style={{
+                            flexShrink: 0, width: 14, height: 14, borderRadius: '50%',
+                            background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)',
+                            color: '#818cf8', fontSize: 8, fontWeight: 900,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            {i + 1}
+                          </span>
+                          <p style={{ fontSize: 11, color: '#c7d2fe', margin: 0, lineHeight: 1.5 }}>{pt}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Controls */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button
+                onClick={() => { setPracticeIdx(i => Math.max(0, i - 1)); setRevealed(false); }}
+                disabled={practiceIdx === 0}
+                style={{ padding: '5px 8px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)', color: '#6b7280', cursor: practiceIdx === 0 ? 'default' : 'pointer', opacity: practiceIdx === 0 ? 0.4 : 1 }}
+              >
+                <ChevronLeft size={12} />
+              </button>
+              {!revealed ? (
+                <button
+                  onClick={() => setRevealed(true)}
+                  style={{ flex: 1, padding: '5px 10px', borderRadius: 6, border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.08)', color: '#818cf8', fontSize: 10, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}
+                >
+                  <Eye size={10} /> Reveal Answer
+                </button>
+              ) : (
+                <button
+                  onClick={() => { setRevealed(false); }}
+                  style={{ flex: 1, padding: '5px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)', color: '#6b7280', fontSize: 10, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}
+                >
+                  <RotateCcw size={10} /> Hide
+                </button>
+              )}
+              <button
+                onClick={() => { setPracticeIdx(i => Math.min(questions.length - 1, i + 1)); setRevealed(false); }}
+                disabled={practiceIdx === questions.length - 1}
+                style={{ padding: '5px 8px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)', color: '#6b7280', cursor: practiceIdx === questions.length - 1 ? 'default' : 'pointer', opacity: practiceIdx === questions.length - 1 ? 0.4 : 1 }}
+              >
+                <ChevronRight size={12} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Question list — hidden in practice mode */}
+      <AnimatePresence>
+        {!practiceMode && questions.map((q, idx) => {
           const cfg = TYPE_CONFIG[q.type] || TYPE_CONFIG.behavioral;
           const isOpen = expandedIdx === idx;
           return (
