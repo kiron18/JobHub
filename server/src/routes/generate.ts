@@ -24,6 +24,7 @@ async function getRuleBase(type: string) {
         if (type === 'cover-letter') fileName = 'cover_letter_rules.md';
         if (type === 'selection-criteria') fileName = 'selection_criteria_rules.md';
         if (type === 'interview-prep') fileName = 'interview_prep_rules.md';
+        if (type === 'followup-email') fileName = 'followup_email_rules.md';
 
         const filePath = path.join(__dirname, '..', '..', 'rules', fileName);
         return fs.readFileSync(filePath, 'utf-8');
@@ -89,7 +90,7 @@ router.post('/:type', authenticate, async (req, res) => {
         );
 
         const ruleBase = await getRuleBase(type);
-        const docType = type === 'selection-criteria' || type === 'interview-prep' ? 'STAR_RESPONSE' : (type === 'cover-letter' ? 'COVER_LETTER' : 'RESUME');
+        const docType = type === 'selection-criteria' || type === 'interview-prep' || type === 'followup-email' ? 'STAR_RESPONSE' : (type === 'cover-letter' ? 'COVER_LETTER' : 'RESUME');
         const sanitizedJobAppId = jobApplicationId === 'temp-id' ? null : (jobApplicationId || null);
 
         // ── STAGE 1: Strategic Blueprint (Claude) ──────────────────────────────

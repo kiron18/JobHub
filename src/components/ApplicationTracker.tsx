@@ -15,7 +15,10 @@ import {
     ChevronUp,
     Star,
     Bell,
-    Trash2
+    Trash2,
+    Mail,
+    Loader2,
+    Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -268,9 +271,31 @@ const FollowUpNudge: React.FC<{ jobs: JobApplication[] }> = ({ jobs }) => {
 const JobCard: React.FC<{ job: JobApplication; onStatusChange: (id: string, status: ApplicationStatus, dateApplied?: string) => void; onDelete: (id: string) => void }> = ({ job, onStatusChange, onDelete }) => {
     const [expanded, setExpanded] = useState(false);
     const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
+    const [thankYouEmail, setThankYouEmail] = useState<string | null>(null);
+    const [generatingEmail, setGeneratingEmail] = useState(false);
+    const [thankYouOpen, setThankYouOpen] = useState(false);
 
     const days = daysSinceApplied(job.dateApplied);
     const showFollowUpAlert = job.status === 'APPLIED' && days !== null && days >= 7;
+
+    const handleGenerateThankYou = async () => {
+        if (generatingEmail || thankYouEmail) { setThankYouOpen(true); return; }
+        setGeneratingEmail(true);
+        setThankYouOpen(true);
+        try {
+            const { data } = await api.post('/generate/followup-email', {
+                jobDescription: job.description || `${job.title} at ${job.company}`,
+                selectedAchievementIds: [],
+                analysisContext: { tone: 'professional', competencies: [] },
+            });
+            setThankYouEmail(data.content);
+        } catch (err) {
+            toast.error('Could not generate email — try again.');
+            setThankYouOpen(false);
+        } finally {
+            setGeneratingEmail(false);
+        }
+    };
 
     const config = STATUS_CONFIG[job.status];
     const StatusIcon = config.icon;
@@ -394,6 +419,57 @@ const JobCard: React.FC<{ job: JobApplication; onStatusChange: (id: string, stat
                                             </button>
                                         ))}
                                     </div>
+                                </div>
+                            )}
+
+                            {/* Post-interview thank-you email generator */}
+                            {job.status === 'INTERVIEW' && (
+                                <div className="border border-amber-500/20 rounded-xl overflow-hidden bg-amber-500/5">
+                                    <button
+                                        onClick={handleGenerateThankYou}
+                                        className="w-full px-4 py-3 flex items-center justify-between hover:bg-amber-500/10 transition-colors"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <Mail size={13} className="text-amber-400" />
+                                            <span className="text-xs font-bold text-amber-400">Thank-you email</span>
+                                            {!thankYouEmail && !generatingEmail && (
+                                                <span className="text-[9px] font-bold text-amber-400/50 uppercase tracking-wider flex items-center gap-1">
+                                                    <Sparkles size={9} /> AI-personalised
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {generatingEmail && <Loader2 size={12} className="animate-spin text-amber-400" />}
+                                            {thankYouEmail && !generatingEmail && (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(thankYouEmail); toast.success('Copied'); }}
+                                                    className="text-[9px] font-bold text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded hover:bg-amber-500/20 transition-colors uppercase tracking-wider"
+                                                >
+                                                    Copy
+                                                </button>
+                                            )}
+                                            {thankYouOpen ? <ChevronUp size={12} className="text-amber-400/60" /> : <ChevronDown size={12} className="text-amber-400/60" />}
+                                        </div>
+                                    </button>
+                                    <AnimatePresence>
+                                        {thankYouOpen && (
+                                            <motion.div
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: 'auto', opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                transition={{ duration: 0.2 }}
+                                                className="overflow-hidden border-t border-amber-500/15"
+                                            >
+                                                <div className="p-4">
+                                                    {generatingEmail ? (
+                                                        <p className="text-xs text-amber-400/60 text-center py-2">Generating personalised email…</p>
+                                                    ) : thankYouEmail ? (
+                                                        <pre className="text-xs text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">{thankYouEmail}</pre>
+                                                    ) : null}
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
                                 </div>
                             )}
 
