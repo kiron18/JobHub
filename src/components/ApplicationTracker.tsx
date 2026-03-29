@@ -369,6 +369,9 @@ const JobCard: React.FC<{
     const [generatingNegotiation, setGeneratingNegotiation] = useState(false);
     const [negotiationOpen, setNegotiationOpen] = useState(false);
     const [priorityMenuOpen, setPriorityMenuOpen] = useState(false);
+    const [coldOutreach, setColdOutreach] = useState<string | null>(null);
+    const [generatingOutreach, setGeneratingOutreach] = useState(false);
+    const [outreachOpen, setOutreachOpen] = useState(false);
 
     const days = daysSinceApplied(job.dateApplied);
     const showFollowUpAlert = job.status === 'APPLIED' && days !== null && days >= 7;
@@ -407,6 +410,25 @@ const JobCard: React.FC<{
             await onNotesChange(job.id, notesValue);
         } finally {
             setNotesSaving(false);
+        }
+    };
+
+    const handleGenerateColdOutreach = async () => {
+        if (coldOutreach) { setOutreachOpen(true); return; }
+        setGeneratingOutreach(true);
+        setOutreachOpen(true);
+        try {
+            const { data } = await api.post('/generate/cold-outreach', {
+                jobDescription: job.description || `${job.title} at ${job.company}`,
+                selectedAchievementIds: [],
+                analysisContext: { tone: 'professional', competencies: [] },
+            });
+            setColdOutreach(data.content);
+        } catch {
+            toast.error('Could not generate outreach — try again.');
+            setOutreachOpen(false);
+        } finally {
+            setGeneratingOutreach(false);
         }
     };
 
@@ -693,6 +715,59 @@ const JobCard: React.FC<{
                                                     ) : negotiationGuide ? (
                                                         <div className="prose prose-invert prose-xs max-w-none text-slate-300">
                                                             <ReactMarkdown>{negotiationGuide}</ReactMarkdown>
+                                                        </div>
+                                                    ) : null}
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                            )}
+
+                            {/* Cold outreach generator — SAVED jobs only */}
+                            {job.status === 'SAVED' && (
+                                <div className="border border-sky-500/20 rounded-xl overflow-hidden bg-sky-500/5">
+                                    <button
+                                        onClick={handleGenerateColdOutreach}
+                                        className="w-full px-4 py-3 flex items-center justify-between hover:bg-sky-500/10 transition-colors"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <Mail size={13} className="text-sky-400" />
+                                            <span className="text-xs font-bold text-sky-400">Cold Outreach Message</span>
+                                            {!coldOutreach && !generatingOutreach && (
+                                                <span className="text-[9px] font-bold text-sky-400/50 uppercase tracking-wider flex items-center gap-1">
+                                                    <Sparkles size={9} /> LinkedIn DM + Email
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {generatingOutreach && <Loader2 size={12} className="animate-spin text-sky-400" />}
+                                            {coldOutreach && !generatingOutreach && (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(coldOutreach); toast.success('Copied'); }}
+                                                    className="text-[9px] font-bold text-sky-400 border border-sky-500/30 px-2 py-0.5 rounded hover:bg-sky-500/20 transition-colors uppercase tracking-wider"
+                                                >
+                                                    Copy
+                                                </button>
+                                            )}
+                                            {outreachOpen ? <ChevronUp size={12} className="text-sky-400/60" /> : <ChevronDown size={12} className="text-sky-400/60" />}
+                                        </div>
+                                    </button>
+                                    <AnimatePresence>
+                                        {outreachOpen && (
+                                            <motion.div
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: 'auto', opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                transition={{ duration: 0.2 }}
+                                                className="overflow-hidden border-t border-sky-500/15"
+                                            >
+                                                <div className="p-4">
+                                                    {generatingOutreach ? (
+                                                        <p className="text-xs text-sky-400/60 text-center py-2">Generating outreach messages…</p>
+                                                    ) : coldOutreach ? (
+                                                        <div className="prose prose-invert prose-xs max-w-none text-slate-300">
+                                                            <ReactMarkdown>{coldOutreach}</ReactMarkdown>
                                                         </div>
                                                     ) : null}
                                                 </div>
