@@ -877,20 +877,53 @@ export const ApplicationWorkspace: React.FC = () => {
                 <section className="flex-1 bg-slate-950 flex flex-col relative overflow-hidden">
                     <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/10 shrink-0">
                         <div className="flex bg-slate-900/60 p-1 rounded-lg border border-slate-800">
-                            <button 
+                            <button
                                 onClick={() => setIsEditing(false)}
                                 className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all flex items-center gap-2 ${!isEditing ? 'bg-brand-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
                             >
                                 Preview
                             </button>
-                            <button 
+                            <button
                                 onClick={() => setIsEditing(true)}
                                 className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all flex items-center gap-2 ${isEditing ? 'bg-brand-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
                             >
                                 Edit Inline
                             </button>
                         </div>
-                        
+
+                        {/* Word count + ATS coverage indicator */}
+                        {state.documents[state.activeTab] && (() => {
+                            const content = state.documents[state.activeTab];
+                            const wordCount = content.trim().split(/\s+/).length;
+                            const charCount = content.length;
+                            const isOverLimit = state.activeTab === 'selection-criteria' && wordCount > 2500;
+
+                            // ATS keyword coverage for resume tab
+                            let atsLabel: string | null = null;
+                            let atsColor = 'text-slate-500';
+                            if (state.activeTab === 'resume' && state.keywords && state.keywords.length > 0) {
+                                const contentLower = content.toLowerCase();
+                                const found = state.keywords.filter(k => contentLower.includes(k.toLowerCase())).length;
+                                const pct = Math.round((found / state.keywords.length) * 100);
+                                atsLabel = `${pct}% ATS coverage`;
+                                atsColor = pct >= 70 ? 'text-emerald-400' : pct >= 50 ? 'text-amber-400' : 'text-red-400';
+                            }
+
+                            return (
+                                <div className="flex items-center gap-3">
+                                    <span className={`text-[9px] font-bold uppercase tracking-wider ${isOverLimit ? 'text-amber-400' : 'text-slate-600'}`}>
+                                        {wordCount.toLocaleString()} words
+                                        {isOverLimit && ' · check limit'}
+                                    </span>
+                                    {atsLabel && (
+                                        <span className={`text-[9px] font-bold uppercase tracking-wider ${atsColor}`}>
+                                            {atsLabel}
+                                        </span>
+                                    )}
+                                </div>
+                            );
+                        })()}
+
                         <div className="relative">
                             <button 
                                 onClick={() => setIsConfirmingRegen(!isConfirmingRegen)}
