@@ -27,6 +27,7 @@ import api from '../lib/api';
 import { exportDocx } from '../lib/exportDocx';
 
 type ApplicationStatus = 'SAVED' | 'APPLIED' | 'INTERVIEW' | 'REJECTED' | 'OFFER';
+type JobPriority = 'DREAM' | 'TARGET' | 'BACKUP' | null;
 
 interface Document {
     id: string;
@@ -44,9 +45,16 @@ interface JobApplication {
     status: ApplicationStatus;
     dateApplied: string | null;
     notes: string | null;
+    priority: JobPriority;
     documents: Document[];
     createdAt: string;
 }
+
+const PRIORITY_CONFIG: Record<NonNullable<JobPriority>, { label: string; dot: string; border: string; bg: string; text: string }> = {
+    DREAM:  { label: 'Dream',  dot: '#f59e0b', border: 'rgba(245,158,11,0.35)', bg: 'rgba(245,158,11,0.08)', text: '#fbbf24' },
+    TARGET: { label: 'Target', dot: '#818cf8', border: 'rgba(99,102,241,0.35)', bg: 'rgba(99,102,241,0.08)',  text: '#a5b4fc' },
+    BACKUP: { label: 'Backup', dot: '#6b7280', border: 'rgba(107,114,128,0.3)', bg: 'rgba(107,114,128,0.07)', text: '#9ca3af' },
+};
 
 const STATUS_CONFIG: Record<ApplicationStatus, { label: string; color: string; icon: React.FC<any> }> = {
     SAVED: { label: 'Saved', color: 'text-slate-400 bg-slate-800 border-slate-700', icon: Star },
@@ -348,7 +356,8 @@ const JobCard: React.FC<{
     onStatusChange: (id: string, status: ApplicationStatus, dateApplied?: string) => void;
     onDelete: (id: string) => void;
     onNotesChange: (id: string, notes: string) => void;
-}> = ({ job, onStatusChange, onDelete, onNotesChange }) => {
+    onPriorityChange: (id: string, priority: JobPriority) => void;
+}> = ({ job, onStatusChange, onDelete, onNotesChange, onPriorityChange }) => {
     const [expanded, setExpanded] = useState(false);
     const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
     const [thankYouEmail, setThankYouEmail] = useState<string | null>(null);
@@ -359,6 +368,7 @@ const JobCard: React.FC<{
     const [negotiationGuide, setNegotiationGuide] = useState<string | null>(null);
     const [generatingNegotiation, setGeneratingNegotiation] = useState(false);
     const [negotiationOpen, setNegotiationOpen] = useState(false);
+    const [priorityMenuOpen, setPriorityMenuOpen] = useState(false);
 
     const days = daysSinceApplied(job.dateApplied);
     const showFollowUpAlert = job.status === 'APPLIED' && days !== null && days >= 7;
@@ -437,11 +447,63 @@ const JobCard: React.FC<{
             <div className="p-5">
                 <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${config.color}`}>
                                 <StatusIcon size={10} />
                                 {config.label}
                             </span>
+                            {/* Priority badge — click to cycle */}
+                            <div className="relative">
+                                <button
+                                    onClick={() => setPriorityMenuOpen(o => !o)}
+                                    style={job.priority ? {
+                                        background: PRIORITY_CONFIG[job.priority].bg,
+                                        border: `1px solid ${PRIORITY_CONFIG[job.priority].border}`,
+                                        color: PRIORITY_CONFIG[job.priority].text,
+                                    } : {
+                                        background: 'rgba(255,255,255,0.04)',
+                                        border: '1px dashed rgba(255,255,255,0.12)',
+                                        color: '#4b5563',
+                                    }}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold cursor-pointer transition-all"
+                                >
+                                    {job.priority ? (
+                                        <><span style={{ width: 5, height: 5, borderRadius: '50%', background: PRIORITY_CONFIG[job.priority].dot, display: 'inline-block' }} />{PRIORITY_CONFIG[job.priority].label}</>
+                                    ) : <span>Set priority</span>}
+                                </button>
+                                <AnimatePresence>
+                                    {priorityMenuOpen && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 4 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: 4 }}
+                                            transition={{ duration: 0.12 }}
+                                            className="absolute left-0 top-full mt-1 z-20 bg-slate-900 border border-slate-700 rounded-xl overflow-hidden shadow-2xl"
+                                            style={{ minWidth: 110 }}
+                                        >
+                                            {(['DREAM', 'TARGET', 'BACKUP'] as const).map(p => (
+                                                <button
+                                                    key={p}
+                                                    onClick={() => { onPriorityChange(job.id, p); setPriorityMenuOpen(false); }}
+                                                    className="w-full flex items-center gap-2 px-3 py-2 text-[11px] font-bold hover:bg-slate-800 transition-colors text-left"
+                                                    style={{ color: PRIORITY_CONFIG[p].text }}
+                                                >
+                                                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: PRIORITY_CONFIG[p].dot, display: 'inline-block', flexShrink: 0 }} />
+                                                    {PRIORITY_CONFIG[p].label}
+                                                </button>
+                                            ))}
+                                            {job.priority && (
+                                                <button
+                                                    onClick={() => { onPriorityChange(job.id, null); setPriorityMenuOpen(false); }}
+                                                    className="w-full flex items-center gap-2 px-3 py-2 text-[11px] font-bold hover:bg-slate-800 transition-colors text-left text-slate-500"
+                                                >
+                                                    Clear
+                                                </button>
+                                            )}
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
                             {days !== null && job.status !== 'REJECTED' && (
                                 <span className="text-[10px] text-slate-500 font-bold">
                                     {days}d ago
@@ -748,6 +810,23 @@ export const ApplicationTracker: React.FC = () => {
         await updateNotesMutation.mutateAsync({ id, notes });
     };
 
+    const updatePriorityMutation = useMutation({
+        mutationFn: async ({ id, priority }: { id: string; priority: JobPriority }) => {
+            const { data } = await api.patch(`/jobs/${id}`, { priority });
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['jobs'] });
+        },
+        onError: () => {
+            toast.error('Failed to update priority');
+        }
+    });
+
+    const handlePriorityChange = (id: string, priority: JobPriority) => {
+        updatePriorityMutation.mutate({ id, priority });
+    };
+
     const filteredJobs = filterStatus === 'ALL'
         ? jobs
         : jobs.filter(j => j.status === filterStatus);
@@ -872,6 +951,7 @@ export const ApplicationTracker: React.FC = () => {
                             onStatusChange={handleStatusChange}
                             onDelete={handleDelete}
                             onNotesChange={handleNotesChange}
+                            onPriorityChange={handlePriorityChange}
                         />
                     ))}
                 </div>

@@ -152,6 +152,7 @@ model JobApplication {
   dateApplied    DateTime?
   status         ApplicationStatus @default(SAVED)
   notes          String?           // Free-text candidate notes (interview details, contacts, etc.)
+  priority       JobPriority?      // User-set priority: DREAM, TARGET, BACKUP
   documents      Document[]
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
@@ -182,6 +183,12 @@ enum DocumentType {
   RESUME
   COVER_LETTER
   STAR_RESPONSE
+}
+
+enum JobPriority {
+  DREAM
+  TARGET
+  BACKUP
 }
 
 model DiagnosticReport {
