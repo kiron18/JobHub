@@ -114,6 +114,20 @@ router.post('/tracker/finalize', authenticate, async (req, res) => {
     }
 });
 
+router.delete('/documents/:id', authenticate, async (req, res) => {
+    const { id } = req.params as any;
+    const userId = (req as any).user.id;
+    try {
+        await prisma.document.delete({
+            where: { id: id as string, userId: userId as string }
+        });
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Delete Document Error:', error);
+        res.status(500).json({ error: 'Failed to delete document' });
+    }
+});
+
 router.patch('/documents/:id', authenticate, async (req, res) => {
     const { id } = req.params as any;
     const { content } = req.body as any;
