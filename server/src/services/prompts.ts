@@ -462,7 +462,7 @@ export const DOCUMENT_GENERATION_PROMPT_WITH_BLUEPRINT = (
     selectedAchievements: any[],
     ruleBase: string,
     blueprint: StrategyBlueprint,
-    analysisContext?: { tone?: string; competencies?: string[] },
+    analysisContext?: { tone?: string; competencies?: string[]; regenerateFeedback?: string },
     companyResearch?: { salutation?: string; highlights?: string[]; companySize?: string; hiringManager?: string } | null,
     selectionCriteriaText?: string | null,
     perCriterionAchievements?: CriterionAchievementMap[] | null,
@@ -656,7 +656,16 @@ CONSTRAINTS:
 - Output ONLY the Markdown content. Nothing before it, nothing after it.
 - Do NOT fabricate any data not present in CANDIDATE DATA above.
 - The DIRECTOR'S BRIEF takes precedence. Where the brief specifies framing, use it. Where it specifies the opening hook, use it. Do not substitute your own interpretation.
-`;
+${analysisContext?.regenerateFeedback ? `
+==============================================================
+USER IMPROVEMENT REQUEST (HIGHEST PRIORITY — apply this)
+==============================================================
+The user has requested the following specific changes to this regeneration:
+"${analysisContext.regenerateFeedback}"
+
+Apply this feedback directly and deliberately. This overrides default choices where there is a conflict.
+==============================================================
+` : ''}`;
 };
 
 // =============================================================================
@@ -669,7 +678,7 @@ export const DOCUMENT_GENERATION_PROMPT = (
     profile: any,
     selectedAchievements: any[],
     ruleBase: string,
-    analysisContext?: { tone?: string, competencies?: string[] },
+    analysisContext?: { tone?: string; competencies?: string[]; regenerateFeedback?: string },
     companyResearch?: { salutation?: string; highlights?: string[]; companySize?: string } | null,
     selectionCriteriaText?: string | null,
     perCriterionAchievements?: CriterionAchievementMap[] | null,
@@ -775,5 +784,14 @@ CONSTRAINTS:
 - Do NOT include any meta-talk or pleasantries (e.g., "Here is your resume...").
 - Output ONLY the Markdown content.
 - Do NOT fabricate any data not present in CANDIDATE DATA above.
-`;
+${analysisContext?.regenerateFeedback ? `
+==============================================================
+USER IMPROVEMENT REQUEST (HIGHEST PRIORITY — apply this)
+==============================================================
+The user has requested the following specific changes to this regeneration:
+"${analysisContext.regenerateFeedback}"
+
+Apply this feedback directly and deliberately. This overrides default choices where there is a conflict.
+==============================================================
+` : ''}`;
 };

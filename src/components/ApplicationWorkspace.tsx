@@ -201,6 +201,7 @@ export const ApplicationWorkspace: React.FC = () => {
 
     const [isEditing, setIsEditing] = useState(false);
     const [isConfirmingRegen, setIsConfirmingRegen] = useState(false);
+    const [regenerateFeedback, setRegenerateFeedback] = useState('');
     const [rateLimitError, setRateLimitError] = useState(false);
     const [companyResearch, setCompanyResearch] = useState<CompanyResearch | null>(null);
     const [selectionCriteriaText, setSelectionCriteriaText] = useState('');
@@ -437,7 +438,8 @@ export const ApplicationWorkspace: React.FC = () => {
                             ? 'Extremely concise and direct. Minimal words, maximum impact. Results-focused.'
                             : state.analysisTone || 'Professional, polished, direct.')
                         : state.analysisTone,
-                    competencies: state.coreCompetencies
+                    competencies: state.coreCompetencies,
+                    regenerateFeedback: regenerate && regenerateFeedback.trim() ? regenerateFeedback.trim() : undefined,
                 },
                 // Company research context for cover letters (hiring manager, highlights)
                 companyResearch: type === 'cover-letter' ? companyResearch : null,
@@ -467,6 +469,7 @@ export const ApplicationWorkspace: React.FC = () => {
             }));
             setIsConfirmingRegen(false);
             setIsEditing(false);
+            setRegenerateFeedback('');
         } catch (err: any) {
             if (err.name === 'CanceledError' || err.name === 'AbortError') {
                 console.log('Generation cancelled by user');
@@ -1094,22 +1097,32 @@ export const ApplicationWorkspace: React.FC = () => {
                             
                             <AnimatePresence>
                                 {isConfirmingRegen && (
-                                    <motion.div 
+                                    <motion.div
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         exit={{ opacity: 0, y: 10 }}
-                                        className="absolute right-0 top-full mt-2 w-48 bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-2xl z-20"
+                                        className="absolute right-0 top-full mt-2 w-64 bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-2xl z-20"
                                     >
-                                        <p className="text-[10px] text-slate-400 font-bold mb-3">Replace current draft?</p>
+                                        <p className="text-[10px] text-slate-400 font-bold mb-2">What should change? (optional)</p>
+                                        <textarea
+                                            value={regenerateFeedback}
+                                            onChange={e => setRegenerateFeedback(e.target.value)}
+                                            placeholder="e.g. Make it more concise · Emphasise leadership · Warmer tone"
+                                            rows={2}
+                                            className="w-full text-[11px] px-2 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-300 placeholder:text-slate-600 resize-none focus:outline-none focus:border-brand-500 mb-2.5"
+                                        />
                                         <div className="flex gap-2">
-                                            <button 
-                                                onClick={() => handleGenerate(state.activeTab, true)}
+                                            <button
+                                                onClick={() => {
+                                                    handleGenerate(state.activeTab, true);
+                                                    setIsConfirmingRegen(false);
+                                                }}
                                                 className="flex-1 py-1 bg-brand-600 text-white text-[10px] font-bold rounded hover:bg-brand-500"
                                             >
-                                                Confirm
+                                                Regenerate
                                             </button>
-                                            <button 
-                                                onClick={() => setIsConfirmingRegen(false)}
+                                            <button
+                                                onClick={() => { setIsConfirmingRegen(false); setRegenerateFeedback(''); }}
                                                 className="flex-1 py-1 bg-slate-800 text-slate-300 text-[10px] font-bold rounded hover:bg-slate-700"
                                             >
                                                 Cancel
