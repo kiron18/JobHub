@@ -372,6 +372,9 @@ const JobCard: React.FC<{
     const [coldOutreach, setColdOutreach] = useState<string | null>(null);
     const [generatingOutreach, setGeneratingOutreach] = useState(false);
     const [outreachOpen, setOutreachOpen] = useState(false);
+    const [rejectionResponse, setRejectionResponse] = useState<string | null>(null);
+    const [generatingRejection, setGeneratingRejection] = useState(false);
+    const [rejectionOpen, setRejectionOpen] = useState(false);
 
     const days = daysSinceApplied(job.dateApplied);
     const showFollowUpAlert = job.status === 'APPLIED' && days !== null && days >= 7;
@@ -429,6 +432,25 @@ const JobCard: React.FC<{
             setOutreachOpen(false);
         } finally {
             setGeneratingOutreach(false);
+        }
+    };
+
+    const handleGenerateRejectionResponse = async () => {
+        if (rejectionResponse) { setRejectionOpen(true); return; }
+        setGeneratingRejection(true);
+        setRejectionOpen(true);
+        try {
+            const { data } = await api.post('/generate/rejection-response', {
+                jobDescription: job.description || `${job.title} at ${job.company}`,
+                selectedAchievementIds: [],
+                analysisContext: { tone: 'professional', competencies: [] },
+            });
+            setRejectionResponse(data.content);
+        } catch {
+            toast.error('Could not generate response — try again.');
+            setRejectionOpen(false);
+        } finally {
+            setGeneratingRejection(false);
         }
     };
 
@@ -715,6 +737,59 @@ const JobCard: React.FC<{
                                                     ) : negotiationGuide ? (
                                                         <div className="prose prose-invert prose-xs max-w-none text-slate-300">
                                                             <ReactMarkdown>{negotiationGuide}</ReactMarkdown>
+                                                        </div>
+                                                    ) : null}
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                            )}
+
+                            {/* Rejection response — REJECTED jobs only */}
+                            {job.status === 'REJECTED' && (
+                                <div className="border border-slate-600/30 rounded-xl overflow-hidden bg-slate-800/20">
+                                    <button
+                                        onClick={handleGenerateRejectionResponse}
+                                        className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-700/20 transition-colors"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <Mail size={13} className="text-slate-400" />
+                                            <span className="text-xs font-bold text-slate-400">Rejection Response</span>
+                                            {!rejectionResponse && !generatingRejection && (
+                                                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                                                    <Sparkles size={9} /> Keep door open
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {generatingRejection && <Loader2 size={12} className="animate-spin text-slate-400" />}
+                                            {rejectionResponse && !generatingRejection && (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(rejectionResponse); toast.success('Copied'); }}
+                                                    className="text-[9px] font-bold text-slate-400 border border-slate-600/50 px-2 py-0.5 rounded hover:bg-slate-700 transition-colors uppercase tracking-wider"
+                                                >
+                                                    Copy
+                                                </button>
+                                            )}
+                                            {rejectionOpen ? <ChevronUp size={12} className="text-slate-500" /> : <ChevronDown size={12} className="text-slate-500" />}
+                                        </div>
+                                    </button>
+                                    <AnimatePresence>
+                                        {rejectionOpen && (
+                                            <motion.div
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: 'auto', opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                transition={{ duration: 0.2 }}
+                                                className="overflow-hidden border-t border-slate-700/30"
+                                            >
+                                                <div className="p-4">
+                                                    {generatingRejection ? (
+                                                        <p className="text-xs text-slate-500 text-center py-2">Generating graceful response…</p>
+                                                    ) : rejectionResponse ? (
+                                                        <div className="prose prose-invert prose-xs max-w-none text-slate-300">
+                                                            <ReactMarkdown>{rejectionResponse}</ReactMarkdown>
                                                         </div>
                                                     ) : null}
                                                 </div>
