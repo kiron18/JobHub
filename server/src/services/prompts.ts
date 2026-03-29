@@ -420,6 +420,25 @@ Return valid JSON only. No preamble. No markdown fences.
  * - analysisContext tone/competencies are preserved for backward compatibility
  *   but blueprint.toneBlueprint takes precedence when present.
  */
+// Inline import type to avoid circular deps — generation.ts exports this
+interface CriterionAchievementMap {
+    criterion: string;
+    criterionIndex: number;
+    achievements: Array<{ id: string; title: string; description: string; metric: string | null; relevanceScore: number }>;
+}
+
+function buildPerCriterionBlock(maps: CriterionAchievementMap[]): string {
+    if (maps.length === 0) return '';
+    return maps.map(cm => {
+        const achBlock = cm.achievements.length > 0
+            ? cm.achievements.map(a =>
+                `    - [${a.relevanceScore}% match] ${a.title}: ${a.description} (Metric: ${a.metric ?? 'none'})`
+              ).join('\n')
+            : '    - (No strong matches — draw on all available experience)';
+        return `Criterion ${cm.criterionIndex}: ${cm.criterion}\n${achBlock}`;
+    }).join('\n\n');
+}
+
 export const DOCUMENT_GENERATION_PROMPT_WITH_BLUEPRINT = (
     type: 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE',
     jd: string,
@@ -429,7 +448,8 @@ export const DOCUMENT_GENERATION_PROMPT_WITH_BLUEPRINT = (
     blueprint: StrategyBlueprint,
     analysisContext?: { tone?: string; competencies?: string[] },
     companyResearch?: { salutation?: string; highlights?: string[]; companySize?: string; hiringManager?: string } | null,
-    selectionCriteriaText?: string | null
+    selectionCriteriaText?: string | null,
+    perCriterionAchievements?: CriterionAchievementMap[] | null
 ): string => {
     // Build the proof point lookup for inline rendering
     const proofPointMap = new Map(
@@ -586,9 +606,21 @@ ${selectionCriteriaText ? `
 ==============================================================
 SELECTION CRITERIA TO ADDRESS
 ==============================================================
-The candidate has provided the following selection criteria. Parse each criterion and generate a separate STAR response for each, headed with the criterion text. Address them in the order listed. Do not skip any criterion.
+The candidate has provided the following selection criteria. Generate a separate STAR response for each criterion, headed with the criterion text. Address them in the order listed. Do not skip any criterion.
+
+STAR ALLOCATION: Situation (10-15%) → Task (10-15%) → Action (60-70%) → Result (15-20%).
+Write in flowing prose, first person, active voice. Do NOT label STAR components as subheadings.
+Target 250-400 words per criterion unless the role specifies a different limit.
 
 ${selectionCriteriaText}
+
+${perCriterionAchievements && perCriterionAchievements.length > 0 ? `
+--------------------------------------------------------------
+TARGETED EVIDENCE — use these pre-matched achievements first for each criterion.
+These were retrieved via semantic search specifically for each criterion above.
+--------------------------------------------------------------
+${buildPerCriterionBlock(perCriterionAchievements)}
+` : ''}
 
 IMPORTANT: Generate ALL criteria listed above. Each response is a separate headed section.
 ` : ''}
@@ -614,7 +646,8 @@ export const DOCUMENT_GENERATION_PROMPT = (
     ruleBase: string,
     analysisContext?: { tone?: string, competencies?: string[] },
     companyResearch?: { salutation?: string; highlights?: string[]; companySize?: string } | null,
-    selectionCriteriaText?: string | null
+    selectionCriteriaText?: string | null,
+    perCriterionAchievements?: CriterionAchievementMap[] | null
 ) => `
 You are a career coach generating a ${type}.
 
@@ -691,9 +724,17 @@ Generate the ${type} as high-impact Markdown.
 
 ${selectionCriteriaText ? `
 SELECTION CRITERIA TO ADDRESS:
-The candidate has provided the following criteria. Parse and address each one separately as a headed STAR response. Address ALL criteria in the order listed.
+The candidate has provided the following criteria. Generate a separate STAR response for each, headed with the criterion text. Address ALL criteria in the order listed.
+
+STAR ALLOCATION: Situation (10-15%) → Task (10-15%) → Action (60-70%) → Result (15-20%).
+Write in flowing prose, first person, active voice. Target 250-400 words per criterion.
 
 ${selectionCriteriaText}
+
+${perCriterionAchievements && perCriterionAchievements.length > 0 ? `
+TARGETED EVIDENCE per criterion (semantic search pre-matched):
+${buildPerCriterionBlock(perCriterionAchievements)}
+` : ''}
 ` : ''}
 
 CONSTRAINTS:

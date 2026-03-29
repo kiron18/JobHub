@@ -4,6 +4,7 @@ import { authenticate } from '../middleware/auth';
 import { callLLM } from '../services/llm';
 import { DOCUMENT_GENERATION_PROMPT_WITH_BLUEPRINT, DOCUMENT_GENERATION_PROMPT, buildSearchContextBlock } from '../services/prompts';
 import { generateBlueprint } from '../services/strategy';
+import { buildPerCriterionAchievements } from '../services/generation';
 import { reviewDocument } from '../services/quality-gate';
 import fs from 'fs';
 import path from 'path';
@@ -122,6 +123,18 @@ router.post('/:type', authenticate, async (req, res) => {
                 companyResearch.highlights.join(' — ');
         }
 
+        // For SC generation: run per-criterion Pinecone retrieval so the prompt
+        // gets targeted evidence for each criterion, not just a global top-N.
+        let perCriterionAchievements = null;
+        if (docType === 'STAR_RESPONSE' && selectionCriteriaText?.trim()) {
+            try {
+                perCriterionAchievements = await buildPerCriterionAchievements(userId, selectionCriteriaText);
+                console.log(`[Generation] Per-criterion retrieval: ${perCriterionAchievements.length} criteria mapped`);
+            } catch (pcErr: any) {
+                console.warn('[Generation] Per-criterion retrieval failed, using global achievements:', pcErr.message);
+            }
+        }
+
         const prompt = blueprintResult
             ? DOCUMENT_GENERATION_PROMPT_WITH_BLUEPRINT(
                 docType,
@@ -132,7 +145,8 @@ router.post('/:type', authenticate, async (req, res) => {
                 blueprintResult.blueprint,
                 analysisContext,
                 companyResearch,
-                selectionCriteriaText
+                selectionCriteriaText,
+                perCriterionAchievements
             )
             : DOCUMENT_GENERATION_PROMPT(
                 docType,
@@ -142,7 +156,8 @@ router.post('/:type', authenticate, async (req, res) => {
                 ruleBase,
                 analysisContext,
                 companyResearch,
-                selectionCriteriaText
+                selectionCriteriaText,
+                perCriterionAchievements
             );
 
         console.log(`[Generation] Stage 2: calling Llama for ${type}...`);
