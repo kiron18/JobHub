@@ -29,6 +29,8 @@ import { CompanyResearchPanel, CompanyResearch } from './CompanyResearchPanel';
 import { CriteriaInputPanel } from './CriteriaInputPanel';
 import { GapAnalysisPanel } from './GapAnalysisPanel';
 import { SalaryInsightPanel } from './SalaryInsightPanel';
+import { InterviewQuestionsPanel } from './InterviewQuestionsPanel';
+import { JDSummaryBar } from './JDSummaryBar';
 import { exportDocx, DocType } from '../lib/exportDocx';
 
 interface WorkspaceState {
@@ -735,9 +737,9 @@ export const ApplicationWorkspace: React.FC = () => {
                         </div>
                     )}
 
-                    {/* Interview prep tab: context panel */}
+                    {/* Interview prep tab: context panel + question extractor */}
                     {state.activeTab === 'interview-prep' && (
-                        <div className="p-4 border-b border-slate-800 shrink-0">
+                        <div className="p-4 border-b border-slate-800 shrink-0 overflow-y-auto max-h-[65%] custom-scrollbar space-y-4">
                             <div className="rounded-xl border border-slate-700/50 bg-slate-900/60 overflow-hidden">
                                 <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-800 bg-slate-900/40">
                                     <ChevronRight size={13} className="text-amber-400" />
@@ -761,6 +763,10 @@ export const ApplicationWorkspace: React.FC = () => {
                                         </button>
                                     )}
                                 </div>
+                            </div>
+                            {/* Quick question extractor */}
+                            <div className="rounded-xl border border-brand-500/20 bg-brand-500/5 overflow-hidden p-4">
+                                <InterviewQuestionsPanel jobDescription={state.jobDescription} />
                             </div>
                         </div>
                     )}
@@ -878,10 +884,15 @@ export const ApplicationWorkspace: React.FC = () => {
                         </div>
                     )}
 
-                    <div className="p-4 border-b border-slate-800 flex items-center justify-between shrink-0">
-                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Job Description</span>
-                        {state.keywords && state.keywords.length > 0 && (
-                            <span className="text-[9px] font-bold text-brand-400/70 uppercase tracking-wider">{state.keywords.length} keywords</span>
+                    <div className="px-4 pt-4 border-b border-slate-800 shrink-0">
+                        <div className="flex items-center justify-between mb-0.5">
+                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Job Description</span>
+                            {state.keywords && state.keywords.length > 0 && (
+                                <span className="text-[9px] font-bold text-brand-400/70 uppercase tracking-wider">{state.keywords.length} keywords</span>
+                            )}
+                        </div>
+                        {state.jobDescription && (
+                            <JDSummaryBar jobDescription={state.jobDescription} />
                         )}
                     </div>
                     <div className="flex-1 overflow-y-auto p-6 text-sm text-slate-400 leading-relaxed custom-scrollbar">

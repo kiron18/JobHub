@@ -394,4 +394,115 @@ Return ONLY valid JSON.`;
     }
 });
 
+/**
+ * POST /api/analyze/interview-questions
+ * Extracts the top 8 likely interview questions for a role, with STAR talking points.
+ *
+ * Body: { jobDescription: string }
+ * Returns: { questions: Array<{ question, type, talkingPoints, why }> }
+ */
+router.post('/interview-questions', authenticate, async (req: any, res: any) => {
+    try {
+        const userId = req.user.id;
+        const { jobDescription } = req.body as { jobDescription?: string };
+
+        if (!jobDescription || jobDescription.length < 50) {
+            return res.status(400).json({ error: 'Job description required.' });
+        }
+
+        // Get profile achievements for context
+        const profile = await prisma.candidateProfile.findUnique({
+            where: { userId },
+            include: { achievements: { select: { title: true, metric: true } } }
+        });
+        const achievementTitles = profile?.achievements.slice(0, 12).map((a: any) => a.title).join('; ') || 'none';
+
+        const prompt = `You are an expert career coach preparing an Australian job seeker for an interview.
+
+JOB DESCRIPTION (first 2000 chars):
+${jobDescription.slice(0, 2000)}
+
+CANDIDATE'S ACHIEVEMENT BANK (titles):
+${achievementTitles}
+
+Generate exactly 8 interview questions the hiring manager is most likely to ask for this specific role. Mix the question types:
+- behavioral (past experience: "Tell me about a time when...")
+- situational (hypothetical: "What would you do if...")
+- role-specific (technical/domain knowledge)
+- motivation (why this role/company)
+
+For each question, provide 2-3 STAR-structured talking points the candidate should hit in their answer, drawing on the role requirements.
+
+Return JSON:
+{
+  "questions": [
+    {
+      "question": "Exact question the interviewer might ask",
+      "type": "behavioral" | "situational" | "role-specific" | "motivation",
+      "talkingPoints": ["Point 1 — what to cover", "Point 2 — what to cover", "Point 3 — what to cover"],
+      "why": "One sentence explaining why interviewers ask this for this role"
+    }
+  ]
+}
+
+Return ONLY valid JSON. Generate exactly 8 questions. Order: 2 behavioral, 2 situational, 2 role-specific, 1 motivation, 1 wildcard.`;
+
+        const raw = await callLLM(prompt, true);
+        const result = parseLLMJson(raw);
+
+        return res.json({
+            questions: Array.isArray(result.questions) ? result.questions.slice(0, 8) : [],
+        });
+
+    } catch (err: any) {
+        console.error('[Interview Questions] Error:', err.message);
+        res.status(500).json({ error: 'Failed to extract interview questions.' });
+    }
+});
+
+/**
+ * POST /api/analyze/jd-summary
+ * Parses a job description and returns structured metadata.
+ *
+ * Body: { jobDescription: string }
+ * Returns: { roleType, experienceYears, keySkills, arrangement, employmentType, salaryMentioned, closingDate? }
+ */
+router.post('/jd-summary', authenticate, async (req: any, res: any) => {
+    try {
+        const { jobDescription } = req.body as { jobDescription?: string };
+
+        if (!jobDescription || jobDescription.length < 50) {
+            return res.status(400).json({ error: 'Job description required.' });
+        }
+
+        const prompt = `Parse this job description and extract structured metadata. Be precise — only extract information that is explicitly stated.
+
+JOB DESCRIPTION:
+${jobDescription.slice(0, 3000)}
+
+Return JSON:
+{
+  "roleType": "Individual Contributor | Manager | Senior Manager | Executive | Team Lead | Specialist | Graduate/Entry Level",
+  "experienceYears": "e.g. '3-5 years' or '5+ years' or null if not stated",
+  "keySkills": ["up to 8 most critical skills/tools explicitly required"],
+  "arrangement": "On-site | Hybrid | Remote | Flexible | null",
+  "employmentType": "Full-time | Part-time | Contract | Casual | Fixed-term | null",
+  "salaryMentioned": "exact salary/range text from JD or null",
+  "closingDate": "application closing date if mentioned, or null",
+  "securityClearance": "clearance level required or null"
+}
+
+Return ONLY valid JSON. Use null for anything not explicitly in the JD — do not infer.`;
+
+        const raw = await callLLM(prompt, true);
+        const result = parseLLMJson(raw);
+
+        return res.json(result);
+
+    } catch (err: any) {
+        console.error('[JD Summary] Error:', err.message);
+        res.status(500).json({ error: 'Failed to parse job description.' });
+    }
+});
+
 export default router;
