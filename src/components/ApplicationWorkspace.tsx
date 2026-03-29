@@ -21,6 +21,7 @@ import { MissingFlag } from './MissingFlag';
 import { StrategistDebrief } from './StrategistDebrief';
 import { CompanyResearchPanel, CompanyResearch } from './CompanyResearchPanel';
 import { CriteriaInputPanel } from './CriteriaInputPanel';
+import { exportDocx, DocType } from '../lib/exportDocx';
 
 interface WorkspaceState {
     jobDescription: string;
@@ -241,15 +242,23 @@ export const ApplicationWorkspace: React.FC = () => {
         }
     };    
     
-    const executeDownload = (content: string) => {
-        const companyName = state.metadata?.company?.replace(/\s+/g, '_') || 'document';
-        const filename = `${state.activeTab}-${companyName}`;
+    const executeDownload = async (content: string) => {
+        const candidateName = profile?.name || '';
+        const jobTitle = state.metadata?.role || state.metadata?.company || '';
 
-        const articleEl = document.getElementById('resume-preview-content');
-        if (articleEl) {
-            const printWindow = window.open('', '_blank', 'width=900,height=1100');
-            if (printWindow) {
-                printWindow.document.write(`<!DOCTYPE html>
+        try {
+            await exportDocx(content, state.activeTab as DocType, candidateName, jobTitle);
+            toast.success('Downloaded as Word document (.docx)');
+        } catch (docxError) {
+            console.warn('[Download] DOCX export failed, falling back to print:', docxError);
+            // Fallback: print-to-PDF
+            const companyName = state.metadata?.company?.replace(/\s+/g, '_') || 'document';
+            const filename = `${state.activeTab}-${companyName}`;
+            const articleEl = document.getElementById('resume-preview-content');
+            if (articleEl) {
+                const printWindow = window.open('', '_blank', 'width=900,height=1100');
+                if (printWindow) {
+                    printWindow.document.write(`<!DOCTYPE html>
 <html><head>
   <meta charset="utf-8">
   <title>${filename}</title>
@@ -265,31 +274,18 @@ export const ApplicationWorkspace: React.FC = () => {
     strong { font-weight: 700; }
     em { font-style: italic; color: inherit; }
     hr { border: none; border-top: 1px solid #ccc; margin: 6px 0; }
-    /* Skill category lines: bold label always block-level, content wraps with hanging indent */
-    p:has(> strong:first-child) { padding-left: 0; }
     [data-missing-flag] { background: #fef3c7; padding: 1px 5px; border-radius: 3px; font-size: 9pt; font-weight: 700; }
     @media print { @page { margin: 12mm 15mm; } body { padding: 0; } }
   </style>
 </head><body>${articleEl.innerHTML}</body></html>`);
-                printWindow.document.close();
-                setTimeout(() => { printWindow.focus(); printWindow.print(); }, 300);
-                return;
+                    printWindow.document.close();
+                    setTimeout(() => { printWindow.focus(); printWindow.print(); }, 300);
+                }
             }
         }
-
-        // Fallback: markdown download
-        const blob = new Blob([content], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = `${filename}.md`;
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
     };
 
-    const handleDownload = () => {
+    const handleDownload = async () => {
         const content = state.documents[state.activeTab];
         if (!content) return;
 
@@ -308,7 +304,7 @@ export const ApplicationWorkspace: React.FC = () => {
             });
         }
 
-        executeDownload(content);
+        await executeDownload(content);
     };
 
     // Auto-save logic
@@ -523,7 +519,7 @@ export const ApplicationWorkspace: React.FC = () => {
                         className="flex items-center gap-2 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-emerald-600/20"
                     >
                         <Download size={14} />
-                        Download
+                        Export .docx
                     </button>
                 </div>
             </header>

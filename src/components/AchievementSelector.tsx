@@ -14,6 +14,8 @@ interface Achievement {
     description: string;
     tier: 'STRONG' | 'MODERATE' | 'WEAK';
     category?: string;
+    matchedKeywords?: string[];
+    relevanceScore?: number;
 }
 
 interface AchievementSelectorProps {
@@ -120,7 +122,7 @@ export const AchievementSelector: React.FC<AchievementSelectorProps> = ({
                                             {selectedIds.includes(achievement.id) && <CheckCircle2 size={12} strokeWidth={3} />}
                                         </div>
                                         <div className="flex-1">
-                                            <div className="flex items-center gap-2 mb-1">
+                                            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                                                 <span className={`text-[8px] px-1.5 py-0.5 rounded font-black tracking-tighter ${
                                                     achievement.tier === 'STRONG' ? 'bg-emerald-500/20 text-emerald-400' :
                                                     achievement.tier === 'MODERATE' ? 'bg-amber-500/20 text-amber-400' :
@@ -128,6 +130,11 @@ export const AchievementSelector: React.FC<AchievementSelectorProps> = ({
                                                 }`}>
                                                     {achievement.tier}
                                                 </span>
+                                                {achievement.relevanceScore !== undefined && (
+                                                    <span className="text-[8px] font-bold text-slate-500">
+                                                        {achievement.relevanceScore}% match
+                                                    </span>
+                                                )}
                                                 {achievement.category && (
                                                     <span className="text-[8px] font-extrabold text-slate-500 uppercase flex items-center gap-1 opacity-50">
                                                         <Hash size={8} />
@@ -135,9 +142,19 @@ export const AchievementSelector: React.FC<AchievementSelectorProps> = ({
                                                     </span>
                                                 )}
                                             </div>
-                                            <p className="text-xs leading-relaxed text-slate-300">
+                                            <p className="text-xs leading-relaxed text-slate-300 mb-2">
                                                 {achievement.description}
                                             </p>
+                                            {achievement.matchedKeywords && achievement.matchedKeywords.length > 0 && (
+                                                <div className="flex flex-wrap gap-1">
+                                                    <span className="text-[8px] font-bold text-slate-600 uppercase tracking-wider self-center">matched:</span>
+                                                    {achievement.matchedKeywords.slice(0, 5).map(kw => (
+                                                        <span key={kw} className="text-[9px] px-1.5 py-0.5 rounded bg-brand-600/10 text-brand-400 border border-brand-600/20 font-semibold">
+                                                            {kw}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </motion.div>

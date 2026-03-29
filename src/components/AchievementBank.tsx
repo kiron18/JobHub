@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, Edit2, Save, Loader2, AlertCircle, CheckCircle, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, Loader2, AlertCircle, CheckCircle, RefreshCw, TrendingUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../lib/api';
 
@@ -10,15 +10,53 @@ interface Achievement {
   description: string;
   metric?: string | null;
   metricType?: string | null;
+  skills?: string | null;
   coachingTips?: string | null;
 }
 
-// Derives a micro coaching hint from achievement data alone (no extra API call needed)
+// Client-side quality scoring — no extra API calls
+// Max 5 points: metric(2) + long description(1) + skills(1) + substantive title(1)
+function getQualityScore(a: Achievement): {
+  score: number;
+  label: 'STRONG' | 'GOOD' | 'WEAK';
+  missing: string[];
+} {
+  let score = 0;
+  const missing: string[] = [];
+
+  if (a.metric) {
+    score += 2;
+  } else {
+    missing.push('Add a metric (%, $, number)');
+  }
+
+  if (a.description && a.description.length > 100) {
+    score += 1;
+  } else {
+    missing.push('Expand the description (situation → action → outcome)');
+  }
+
+  if (a.skills && a.skills.trim().length > 0) {
+    score += 1;
+  } else {
+    missing.push('Tag relevant skills');
+  }
+
+  if (a.title && a.title.length > 20) {
+    score += 1;
+  } else {
+    missing.push('Make the title more specific');
+  }
+
+  const label = score >= 4 ? 'STRONG' : score >= 2 ? 'GOOD' : 'WEAK';
+  return { score, label, missing };
+}
+
+// Derives a coaching hint from achievement data — quality score takes priority
 function getMicroHint(a: Achievement): string | null {
   if (a.coachingTips) return a.coachingTips;
-  if (!a.metric) return 'Add a specific number, %, or $ to show the scale of impact.';
-  if (a.description && a.description.length < 60) return 'Expand the context: what was at stake, what you specifically did, and what changed as a result?';
-  return null;
+  const { missing } = getQualityScore(a);
+  return missing.length > 0 ? missing[0] : null;
 }
 
 export const AchievementBank: React.FC = () => {
@@ -106,13 +144,45 @@ export const AchievementBank: React.FC = () => {
     );
   }
 
+  // Completeness metrics
+  const total = achievements?.length ?? 0;
+  const strongCount = achievements?.filter(a => getQualityScore(a).label === 'STRONG').length ?? 0;
+  const weakCount = achievements?.filter(a => getQualityScore(a).label === 'WEAK').length ?? 0;
+  const strongPct = total > 0 ? Math.round((strongCount / total) * 100) : 0;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-        <p style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-          {achievements?.length ?? 0} achievement{achievements?.length !== 1 ? 's' : ''}
-        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>
+              {total} achievement{total !== 1 ? 's' : ''}
+            </p>
+            {total > 0 && (
+              <>
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#10b981' }}>
+                  {strongCount} strong
+                </span>
+                {weakCount > 0 && (
+                  <span style={{ fontSize: 10, fontWeight: 700, color: '#f59e0b' }}>
+                    {weakCount} need work
+                  </span>
+                )}
+              </>
+            )}
+          </div>
+          {total > 0 && (
+            <div style={{ width: 160, height: 3, borderRadius: 99, background: 'rgba(255,255,255,0.07)', overflow: 'hidden' }}>
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${strongPct}%` }}
+                transition={{ duration: 0.6, ease: [0.25, 1, 0.5, 1] }}
+                style={{ height: '100%', borderRadius: 99, background: strongPct >= 60 ? '#10b981' : strongPct >= 30 ? '#f59e0b' : '#ef4444' }}
+              />
+            </div>
+          )}
+        </div>
         <button
           onClick={() => { setIsCreating(true); setEditForm({}); }}
           style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 8, border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.08)', color: '#818cf8', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
@@ -171,6 +241,7 @@ export const AchievementBank: React.FC = () => {
           const hintOpen = expandedHints.has(achievement.id);
           const isEditing = editingId === achievement.id;
           const hasMetric = !!achievement.metric;
+          const quality = getQualityScore(achievement);
 
           return (
             <motion.div
@@ -222,16 +293,31 @@ export const AchievementBank: React.FC = () => {
                   <div style={{ padding: '14px 16px' }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                          {hasMetric
-                            ? <CheckCircle size={12} color="#10b981" style={{ flexShrink: 0 }} />
-                            : <AlertCircle size={12} color="#f59e0b" style={{ flexShrink: 0 }} />
-                          }
+                        {/* Quality badge + title row */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 3,
+                            fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase',
+                            padding: '2px 7px', borderRadius: 99, flexShrink: 0,
+                            background: quality.label === 'STRONG' ? 'rgba(16,185,129,0.12)' : quality.label === 'GOOD' ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.10)',
+                            color: quality.label === 'STRONG' ? '#34d399' : quality.label === 'GOOD' ? '#fbbf24' : '#f87171',
+                            border: `1px solid ${quality.label === 'STRONG' ? 'rgba(16,185,129,0.25)' : quality.label === 'GOOD' ? 'rgba(245,158,11,0.25)' : 'rgba(239,68,68,0.2)'}`,
+                          }}>
+                            {[1,2,3,4,5].map(n => (
+                              <span key={n} style={{
+                                width: 4, height: 4, borderRadius: '50%', display: 'inline-block',
+                                background: n <= quality.score
+                                  ? (quality.label === 'STRONG' ? '#34d399' : quality.label === 'GOOD' ? '#fbbf24' : '#f87171')
+                                  : 'rgba(255,255,255,0.12)',
+                              }} />
+                            ))}
+                            <span style={{ marginLeft: 2 }}>{quality.label}</span>
+                          </span>
                           <p style={{ fontSize: 13, fontWeight: 700, color: '#f3f4f6', margin: 0, lineHeight: 1.4 }}>{achievement.title}</p>
                         </div>
-                        <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 0 20px', lineHeight: 1.55 }}>{achievement.description}</p>
+                        <p style={{ fontSize: 12, color: '#9ca3af', margin: 0, lineHeight: 1.55 }}>{achievement.description}</p>
                         {achievement.metric && (
-                          <span style={{ display: 'inline-block', marginTop: 8, marginLeft: 20, fontSize: 11, fontWeight: 700, color: '#34d399', background: 'rgba(16,185,129,0.1)', padding: '2px 8px', borderRadius: 99, border: '1px solid rgba(16,185,129,0.2)' }}>
+                          <span style={{ display: 'inline-block', marginTop: 8, fontSize: 11, fontWeight: 700, color: '#34d399', background: 'rgba(16,185,129,0.1)', padding: '2px 8px', borderRadius: 99, border: '1px solid rgba(16,185,129,0.2)' }}>
                             {achievement.metric}
                           </span>
                         )}
@@ -255,17 +341,21 @@ export const AchievementBank: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Micro coaching hint */}
-                  {hint && (
-                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', background: hasMetric ? 'transparent' : 'rgba(245,158,11,0.04)' }}>
+                  {/* Coaching section — shown when not STRONG */}
+                  {quality.label !== 'STRONG' && quality.missing.length > 0 && (
+                    <div style={{
+                      borderTop: '1px solid rgba(255,255,255,0.05)',
+                      background: quality.label === 'WEAK' ? 'rgba(239,68,68,0.04)' : 'rgba(245,158,11,0.03)',
+                    }}>
                       <button
                         onClick={() => toggleHint(achievement.id)}
                         style={{ width: '100%', padding: '8px 16px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left' }}
                       >
-                        <span style={{ fontSize: 11, fontWeight: 700, color: hasMetric ? '#6b7280' : '#d97706', letterSpacing: '0.05em' }}>
-                          {hasMetric ? 'Coaching tip' : 'Needs attention'}
+                        <TrendingUp size={10} color={quality.label === 'WEAK' ? '#f87171' : '#fbbf24'} />
+                        <span style={{ fontSize: 10, fontWeight: 700, color: quality.label === 'WEAK' ? '#f87171' : '#d97706', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                          {quality.missing.length} improvement{quality.missing.length !== 1 ? 's' : ''} to reach Strong
                         </span>
-                        <span style={{ fontSize: 10, color: '#6b7280' }}>{hintOpen ? '▲' : '▼'}</span>
+                        <span style={{ fontSize: 10, color: '#4b5563', marginLeft: 'auto' }}>{hintOpen ? '▲' : '▼'}</span>
                       </button>
                       <AnimatePresence>
                         {hintOpen && (
@@ -276,9 +366,14 @@ export const AchievementBank: React.FC = () => {
                             transition={{ duration: 0.18 }}
                             style={{ overflow: 'hidden' }}
                           >
-                            <p style={{ fontSize: 12, color: hasMetric ? '#9ca3af' : '#fcd34d', padding: '0 16px 12px', lineHeight: 1.6, margin: 0 }}>
-                              {hint}
-                            </p>
+                            <ul style={{ margin: 0, padding: '0 16px 12px 16px', listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 5 }}>
+                              {quality.missing.map((tip, i) => (
+                                <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                                  <span style={{ color: quality.label === 'WEAK' ? '#f87171' : '#fbbf24', fontSize: 10, marginTop: 2, flexShrink: 0 }}>→</span>
+                                  <span style={{ fontSize: 11, color: '#9ca3af', lineHeight: 1.5 }}>{tip}</span>
+                                </li>
+                              ))}
+                            </ul>
                           </motion.div>
                         )}
                       </AnimatePresence>
