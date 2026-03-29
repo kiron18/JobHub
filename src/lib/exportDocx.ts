@@ -26,7 +26,7 @@ import {
 } from 'docx';
 import { saveAs } from 'file-saver';
 
-export type DocType = 'resume' | 'cover-letter' | 'selection-criteria' | 'interview-prep';
+export type DocType = 'resume' | 'cover-letter' | 'selection-criteria' | 'interview-prep' | 'teaching-philosophy' | 'research-statement';
 
 // APS spec: Arial 11pt, single-spaced, 25mm margins
 // Resume / Cover Letter: Calibri 11pt, 1.15 line spacing
@@ -35,6 +35,8 @@ const FONTS: Record<DocType, string> = {
     'cover-letter': 'Calibri',
     'selection-criteria': 'Arial',
     'interview-prep': 'Calibri',
+    'teaching-philosophy': 'Calibri',
+    'research-statement': 'Calibri',
 };
 
 const FONT_SIZES: Record<DocType, number> = {
@@ -42,6 +44,8 @@ const FONT_SIZES: Record<DocType, number> = {
     'cover-letter': 22,
     'selection-criteria': 22,
     'interview-prep': 22,
+    'teaching-philosophy': 22,
+    'research-statement': 22,
 };
 
 interface ParsedLine {
@@ -201,6 +205,8 @@ export async function exportDocx(
         'cover-letter': 'Cover Letter',
         'selection-criteria': 'Statement Addressing Selection Criteria',
         'interview-prep': 'Interview Preparation',
+        'teaching-philosophy': 'Teaching Philosophy Statement',
+        'research-statement': 'Research Statement',
     };
 
     const doc = new Document({

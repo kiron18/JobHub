@@ -190,6 +190,8 @@ const DocumentViewerModal: React.FC<{
 
 const FollowUpNudge: React.FC<{ jobs: JobApplication[] }> = ({ jobs }) => {
     const [expandedId, setExpandedId] = useState<string | null>(null);
+    const [aiEmails, setAiEmails] = useState<Record<string, string>>({});
+    const [generatingFor, setGeneratingFor] = useState<string | null>(null);
 
     const dueJobs = jobs.filter(j => {
         const days = daysSinceApplied(j.dateApplied);
@@ -198,12 +200,36 @@ const FollowUpNudge: React.FC<{ jobs: JobApplication[] }> = ({ jobs }) => {
 
     if (dueJobs.length === 0) return null;
 
-    const handleCopy = (job: JobApplication, e: React.MouseEvent) => {
+    const handleCopyStatic = (job: JobApplication, e: React.MouseEvent) => {
         e.stopPropagation();
-        navigator.clipboard.writeText(buildFollowUpEmail(job));
+        navigator.clipboard.writeText(aiEmails[job.id] || buildFollowUpEmail(job));
         toast.success('Copied to clipboard', {
-            description: 'Remember to replace [Hiring Manager\'s Name] and [Your Name] before sending.'
+            description: aiEmails[job.id]
+                ? 'AI-personalised email copied.'
+                : 'Remember to replace [Hiring Manager\'s Name] and [Your Name] before sending.'
         });
+    };
+
+    const handleGenerateAI = async (job: JobApplication, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (generatingFor === job.id || aiEmails[job.id]) {
+            setExpandedId(job.id);
+            return;
+        }
+        setGeneratingFor(job.id);
+        setExpandedId(job.id);
+        try {
+            const { data } = await api.post('/generate/followup-email', {
+                jobDescription: job.description || `${job.title} at ${job.company}`,
+                selectedAchievementIds: [],
+                analysisContext: { tone: 'professional', competencies: [] },
+            });
+            setAiEmails(prev => ({ ...prev, [job.id]: data.content }));
+        } catch {
+            toast.error('Could not generate AI email — using template instead.');
+        } finally {
+            setGeneratingFor(null);
+        }
     };
 
     const toggleExpand = (id: string) => {
@@ -219,7 +245,7 @@ const FollowUpNudge: React.FC<{ jobs: JobApplication[] }> = ({ jobs }) => {
                         Follow-up Reminder
                     </p>
                     <p className="text-xs text-amber-400/70 font-medium mt-0.5">
-                        These applications are 7+ days old with no update. Time to reach out.
+                        These applications are 7+ days old. Time to reach out — click to generate an AI email.
                     </p>
                 </div>
             </div>
@@ -228,6 +254,9 @@ const FollowUpNudge: React.FC<{ jobs: JobApplication[] }> = ({ jobs }) => {
                 {dueJobs.map(job => {
                     const days = daysSinceApplied(job.dateApplied) as number;
                     const isOpen = expandedId === job.id;
+                    const isGenerating = generatingFor === job.id;
+                    const hasAI = !!aiEmails[job.id];
+                    const emailContent = aiEmails[job.id] || buildFollowUpEmail(job);
 
                     return (
                         <div key={job.id}>
@@ -244,18 +273,34 @@ const FollowUpNudge: React.FC<{ jobs: JobApplication[] }> = ({ jobs }) => {
                                         </p>
                                     </div>
                                     <span className="text-[10px] font-black text-amber-400/80 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded shrink-0">
-                                        {days} days elapsed
+                                        {days}d ago
                                     </span>
+                                    {hasAI && (
+                                        <span className="text-[9px] font-bold text-brand-400 bg-brand-600/10 border border-brand-600/20 px-1.5 py-0.5 rounded flex items-center gap-0.5 shrink-0">
+                                            <Sparkles size={8} /> AI
+                                        </span>
+                                    )}
                                 </div>
 
                                 <div className="flex items-center gap-2 shrink-0">
+                                    {!hasAI && (
+                                        <button
+                                            onClick={(e) => handleGenerateAI(job, e)}
+                                            disabled={isGenerating}
+                                            aria-label={`Generate AI follow-up email for ${job.title}`}
+                                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black text-brand-400 border border-brand-600/30 hover:bg-brand-600/10 transition-colors uppercase tracking-wider disabled:opacity-50"
+                                        >
+                                            {isGenerating ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
+                                            AI Email
+                                        </button>
+                                    )}
                                     <button
-                                        onClick={(e) => handleCopy(job, e)}
+                                        onClick={(e) => handleCopyStatic(job, e)}
                                         aria-label={`Copy follow-up email for ${job.title}`}
                                         className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black text-amber-400 border border-amber-500/30 hover:bg-amber-500/20 hover:text-amber-300 transition-colors uppercase tracking-wider"
                                     >
                                         <Copy size={10} />
-                                        Copy Email
+                                        Copy
                                     </button>
                                     {isOpen ? (
                                         <ChevronUp size={14} className="text-amber-400/60" />
@@ -276,9 +321,15 @@ const FollowUpNudge: React.FC<{ jobs: JobApplication[] }> = ({ jobs }) => {
                                         className="overflow-hidden"
                                     >
                                         <div className="px-5 pb-4">
-                                            <pre className="text-xs text-slate-300 whitespace-pre-wrap font-mono leading-relaxed p-4 bg-slate-900/60 border border-amber-500/15 rounded-xl">
-                                                {buildFollowUpEmail(job)}
-                                            </pre>
+                                            {isGenerating ? (
+                                                <div className="p-4 text-center">
+                                                    <p className="text-xs text-amber-400/60">Generating personalised follow-up email…</p>
+                                                </div>
+                                            ) : (
+                                                <pre className={`text-xs text-slate-300 whitespace-pre-wrap font-mono leading-relaxed p-4 rounded-xl border ${hasAI ? 'bg-brand-600/5 border-brand-600/20' : 'bg-slate-900/60 border-amber-500/15'}`}>
+                                                    {emailContent}
+                                                </pre>
+                                            )}
                                         </div>
                                     </motion.div>
                                 )}

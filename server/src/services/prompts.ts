@@ -466,8 +466,10 @@ export const DOCUMENT_GENERATION_PROMPT_WITH_BLUEPRINT = (
     companyResearch?: { salutation?: string; highlights?: string[]; companySize?: string; hiringManager?: string } | null,
     selectionCriteriaText?: string | null,
     perCriterionAchievements?: CriterionAchievementMap[] | null,
-    employerFramework?: string | null
+    employerFramework?: string | null,
+    routeType?: string | null
 ): string => {
+    const isAcademicDoc = routeType === 'teaching-philosophy' || routeType === 'research-statement';
     // Build the proof point lookup for inline rendering
     const proofPointMap = new Map(
         blueprint.proofPoints.map(pp => [pp.achievementId, pp])
@@ -595,7 +597,9 @@ ${type === 'COVER_LETTER' ? `METRICS RULE (mandatory): You MUST include at least
    IMPORTANT: If you use a number NOT found in the selected achievements (i.e., inferred from experience context), immediately follow the sentence with [VERIFY: brief description of what to confirm] so the candidate can check accuracy before sending.
    NEVER write a cover letter with zero numerical references — it reads as unsubstantiated assertion and weakens the application.` : ''}
 
-4. ${type === 'STAR_RESPONSE'
+4. ${isAcademicDoc
+        ? 'ACADEMIC DOCUMENT FORMAT: Follow the specific format and structure rules in the FORMATTING RULES section above exactly. Do NOT apply STAR framework. Write as first-person narrative prose as specified.'
+        : type === 'STAR_RESPONSE'
         ? 'STAR FORMAT: Situation (10-15%) → Task (10-15%) → Action (40-50%) → Result (20-25%). Flowing prose. First person active voice. Do NOT use Situation/Task/Action/Result as subheadings.'
         : type === 'COVER_LETTER'
             ? `COVER LETTER FORMAT: No headers or subheadings. 3-5 paragraphs separated by a blank line.
@@ -669,8 +673,11 @@ export const DOCUMENT_GENERATION_PROMPT = (
     companyResearch?: { salutation?: string; highlights?: string[]; companySize?: string } | null,
     selectionCriteriaText?: string | null,
     perCriterionAchievements?: CriterionAchievementMap[] | null,
-    employerFramework?: string | null
-) => `
+    employerFramework?: string | null,
+    routeType?: string | null
+) => {
+    const isAcademicDoc = routeType === 'teaching-philosophy' || routeType === 'research-statement';
+    return `
 You are a career coach generating a ${type}.
 
 CRITICAL RULES FOR ${type}:
@@ -721,7 +728,9 @@ Generate the ${type} as high-impact Markdown.
     ? `Map each selected achievement to the most relevant selection criterion. Build each STAR response around the achievement evidence.`
     : `Map each selected achievement to the most impactful bullet point under the relevant experience entry.`}
 
-4. ${type === 'STAR_RESPONSE'
+4. ${isAcademicDoc
+    ? 'ACADEMIC DOCUMENT FORMAT: Follow the specific format and structure rules in the FORMATTING RULES section above exactly. Do NOT apply STAR framework. Write as first-person narrative prose as specified.'
+    : type === 'STAR_RESPONSE'
     ? `STAR FORMAT REQUIRED: Each criterion response must follow Situation (10-15%) → Task (10-15%) → Action (40-50%) → Result (20-25%). Do NOT label these components as subheadings. Write in flowing prose, first person, active voice.`
     : type === 'COVER_LETTER'
     ? `COVER LETTER FORMAT: No headers or subheadings. 3-4 paragraphs separated by a blank line.
@@ -767,3 +776,4 @@ CONSTRAINTS:
 - Output ONLY the Markdown content.
 - Do NOT fabricate any data not present in CANDIDATE DATA above.
 `;
+};

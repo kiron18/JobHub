@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
     ChevronLeft,
+    ChevronRight,
     FileText,
     Download,
     Database,
@@ -10,7 +11,10 @@ import {
     List,
     RefreshCcw,
     PlusCircle,
-    AlertCircle
+    AlertCircle,
+    BookOpen,
+    FlaskConical,
+    TrendingUp
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../lib/api';
@@ -21,6 +25,7 @@ import { MissingFlag } from './MissingFlag';
 import { StrategistDebrief } from './StrategistDebrief';
 import { CompanyResearchPanel, CompanyResearch } from './CompanyResearchPanel';
 import { CriteriaInputPanel } from './CriteriaInputPanel';
+import { GapAnalysisPanel } from './GapAnalysisPanel';
 import { exportDocx, DocType } from '../lib/exportDocx';
 
 interface WorkspaceState {
@@ -41,6 +46,7 @@ interface WorkspaceState {
         'selection-criteria': string | null;
         'interview-prep': string | null;
     };
+    keywords?: string[];
     saveStatus: 'unsaved' | 'saving' | 'saved';
     isGenerating: boolean;
     hasFailed: {
@@ -138,6 +144,7 @@ export const ApplicationWorkspace: React.FC = () => {
             jobApplicationId: currentAnalysis.jobApplicationId,
             requiresSelectionCriteria: currentAnalysis.requiresSelectionCriteria,
             matchScore: currentAnalysis.matchScore,
+            keywords: currentAnalysis.keywords || [],
             blueprint: null
         } as any;
     });
@@ -156,7 +163,8 @@ export const ApplicationWorkspace: React.FC = () => {
             analysisTone: state.analysisTone,
             coreCompetencies: state.coreCompetencies,
             jobApplicationId: state.jobApplicationId,
-            matchScore: state.matchScore
+            matchScore: state.matchScore,
+            keywords: state.keywords
         };
         localStorage.setItem('jobhub_current_analysis', JSON.stringify(currentAnalysis));
     }, [state.jobDescription, state.activeTab, state.documents, state.documentIds, state.metadata, state.jobApplicationId]);
@@ -168,6 +176,14 @@ export const ApplicationWorkspace: React.FC = () => {
     const [companyResearch, setCompanyResearch] = useState<CompanyResearch | null>(null);
     const [selectionCriteriaText, setSelectionCriteriaText] = useState('');
     const [employerFramework, setEmployerFramework] = useState<string | null>(null);
+
+    // Academic documents — generated on demand, stored separately (not in main documents map)
+    const [academicDocs, setAcademicDocs] = useState<{ 'teaching-philosophy': string; 'research-statement': string }>({
+        'teaching-philosophy': '',
+        'research-statement': '',
+    });
+    const [generatingAcademic, setGeneratingAcademic] = useState<'teaching-philosophy' | 'research-statement' | null>(null);
+    const [academicViewerType, setAcademicViewerType] = useState<'teaching-philosophy' | 'research-statement' | null>(null);
 
     // Auto-detect employer framework when SC tab is first activated
     useEffect(() => {
@@ -453,6 +469,27 @@ export const ApplicationWorkspace: React.FC = () => {
     }, [state.activeTab, state.jobDescription, state.documents, state.documentIds, state.isGenerating, state.hasFailed, selectionCriteriaText]);
 
 
+    const handleGenerateAcademic = async (docType: 'teaching-philosophy' | 'research-statement') => {
+        if (generatingAcademic) return;
+        setGeneratingAcademic(docType);
+        setAcademicViewerType(docType);
+        try {
+            const { data } = await api.post(`/generate/${docType}`, {
+                jobDescription: state.jobDescription,
+                selectedAchievementIds: state.selectedAchievementIds,
+                jobApplicationId: state.jobApplicationId,
+                analysisContext: { tone: state.analysisTone, competencies: state.coreCompetencies },
+                employerFramework,
+            });
+            setAcademicDocs(prev => ({ ...prev, [docType]: data.content }));
+            toast.success(`${docType === 'teaching-philosophy' ? 'Teaching Philosophy' : 'Research Statement'} generated`);
+        } catch {
+            toast.error('Generation failed — try again.');
+        } finally {
+            setGeneratingAcademic(null);
+        }
+    };
+
     const handleBack = () => navigate('/');
 
     // CommonMark collapses consecutive lines into one <p> unless separated by a blank line.
@@ -490,6 +527,18 @@ export const ApplicationWorkspace: React.FC = () => {
                             {state.metadata?.company || 'Drafting Workspace'}
                         </p>
                     </div>
+                    {state.matchScore !== undefined && state.matchScore > 0 && (
+                        <div className="flex items-center gap-1.5 ml-2">
+                            <div className={`relative w-8 h-8 flex items-center justify-center rounded-full border-2 text-[9px] font-black ${
+                                state.matchScore >= 70 ? 'border-emerald-500 text-emerald-400 bg-emerald-500/10'
+                                : state.matchScore >= 50 ? 'border-amber-500 text-amber-400 bg-amber-500/10'
+                                : 'border-red-500 text-red-400 bg-red-500/10'
+                            }`}>
+                                {state.matchScore}
+                            </div>
+                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">match</span>
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
@@ -632,12 +681,127 @@ export const ApplicationWorkspace: React.FC = () => {
                         </div>
                     )}
 
+                    {/* Academic Toolkit — shown for university framework */}
+                    {(employerFramework === 'university_academic' || employerFramework === 'university_professional') && (
+                        <div className="p-4 border-b border-slate-800 shrink-0">
+                            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 overflow-hidden">
+                                <div className="flex items-center gap-2 px-4 py-3 border-b border-amber-500/15 bg-amber-500/5">
+                                    <BookOpen size={13} className="text-amber-400" />
+                                    <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest">Academic Toolkit</span>
+                                </div>
+                                <div className="p-4 space-y-2">
+                                    <p className="text-[10px] text-slate-400 leading-relaxed">
+                                        University positions typically require academic-specific documents beyond the standard application set.
+                                    </p>
+                                    <button
+                                        onClick={() => handleGenerateAcademic('teaching-philosophy')}
+                                        disabled={!!generatingAcademic}
+                                        className="w-full py-2 bg-amber-600/20 hover:bg-amber-600/30 disabled:opacity-50 text-amber-300 text-[11px] font-bold rounded-lg border border-amber-500/30 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        {generatingAcademic === 'teaching-philosophy' ? (
+                                            <RefreshCcw size={11} className="animate-spin" />
+                                        ) : <BookOpen size={11} />}
+                                        {academicDocs['teaching-philosophy'] ? 'Regenerate' : 'Generate'} Teaching Philosophy
+                                    </button>
+                                    <button
+                                        onClick={() => handleGenerateAcademic('research-statement')}
+                                        disabled={!!generatingAcademic}
+                                        className="w-full py-2 bg-amber-600/20 hover:bg-amber-600/30 disabled:opacity-50 text-amber-300 text-[11px] font-bold rounded-lg border border-amber-500/30 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        {generatingAcademic === 'research-statement' ? (
+                                            <RefreshCcw size={11} className="animate-spin" />
+                                        ) : <FlaskConical size={11} />}
+                                        {academicDocs['research-statement'] ? 'Regenerate' : 'Generate'} Research Statement
+                                    </button>
+                                    {(academicDocs['teaching-philosophy'] || academicDocs['research-statement']) && (
+                                        <div className="flex gap-2 pt-1">
+                                            {academicDocs['teaching-philosophy'] && (
+                                                <button
+                                                    onClick={() => setAcademicViewerType('teaching-philosophy')}
+                                                    className="flex-1 py-1.5 text-[10px] font-bold text-slate-300 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition-colors"
+                                                >
+                                                    View Teaching Phil.
+                                                </button>
+                                            )}
+                                            {academicDocs['research-statement'] && (
+                                                <button
+                                                    onClick={() => setAcademicViewerType('research-statement')}
+                                                    className="flex-1 py-1.5 text-[10px] font-bold text-slate-300 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition-colors"
+                                                >
+                                                    View Research Stmt.
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Gap Analysis Panel — shown after first document generates */}
+                    {(state.documents.resume || state.documents['cover-letter'] || state.documents['selection-criteria']) && !state.isGenerating && (
+                        <div className="p-4 border-b border-slate-800 shrink-0">
+                            <GapAnalysisPanel
+                                jobDescription={state.jobDescription}
+                                keywords={state.keywords}
+                            />
+                        </div>
+                    )}
+
                     <div className="p-4 border-b border-slate-800 flex items-center justify-between shrink-0">
                         <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Job Description</span>
                     </div>
                     <div className="flex-1 overflow-y-auto p-6 text-sm text-slate-400 leading-relaxed custom-scrollbar whitespace-pre-wrap">
                         {state.jobDescription}
                     </div>
+
+                    {/* Academic document viewer modal */}
+                    <AnimatePresence>
+                        {academicViewerType && (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="absolute inset-0 bg-slate-950/95 z-20 flex flex-col overflow-hidden"
+                            >
+                                <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-800 shrink-0">
+                                    <div className="flex items-center gap-2">
+                                        {academicViewerType === 'teaching-philosophy' ? <BookOpen size={14} className="text-amber-400" /> : <FlaskConical size={14} className="text-amber-400" />}
+                                        <span className="text-sm font-bold text-slate-200">
+                                            {academicViewerType === 'teaching-philosophy' ? 'Teaching Philosophy Statement' : 'Research Statement'}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={async () => {
+                                                const content = academicDocs[academicViewerType];
+                                                if (content) {
+                                                    await exportDocx(content, academicViewerType as DocType, profile?.name || '', state.metadata?.role);
+                                                    toast.success('Downloaded as .docx');
+                                                }
+                                            }}
+                                            className="text-[10px] font-black text-emerald-400 border border-emerald-700/50 px-3 py-1.5 rounded-lg hover:bg-emerald-500/10 transition-colors uppercase tracking-wider"
+                                        >
+                                            Export .docx
+                                        </button>
+                                        <button
+                                            onClick={() => setAcademicViewerType(null)}
+                                            className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 transition-colors"
+                                        >
+                                            <ChevronLeft size={16} />
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                                    <div className="max-w-2xl mx-auto bg-white text-slate-900 rounded-sm p-10 shadow-2xl">
+                                        <article className="prose prose-slate max-w-none">
+                                            <ReactMarkdown>{academicDocs[academicViewerType] || ''}</ReactMarkdown>
+                                        </article>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </aside>
 
                 <section className="flex-1 bg-slate-950 flex flex-col relative overflow-hidden">

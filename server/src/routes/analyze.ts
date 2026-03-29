@@ -169,4 +169,96 @@ router.post('/job', authenticate, async (req: any, res: any) => {
     }
 });
 
+/**
+ * POST /api/analyze/gap
+ * Compares a job description against the user's profile + achievements.
+ * Returns missing skills, strength areas, and quick-win suggestions.
+ *
+ * Body: { jobDescription: string, keywords?: string[] }
+ * Returns: { overallFit, missingKeywords, skillGaps, strengthAreas, quickWins }
+ */
+router.post('/gap', authenticate, async (req: any, res: any) => {
+    try {
+        const userId = req.user.id;
+        const { jobDescription, keywords } = req.body as { jobDescription?: string; keywords?: string[] };
+
+        if (!jobDescription || jobDescription.length < 50) {
+            return res.status(400).json({ error: 'Job description required (min 50 chars).' });
+        }
+
+        const profile = await prisma.candidateProfile.findUnique({
+            where: { userId },
+            include: { achievements: true }
+        });
+
+        if (!profile) return res.status(404).json({ error: 'Profile not found.' });
+
+        let parsedSkills = { technical: [], industryKnowledge: [], softSkills: [] };
+        try {
+            parsedSkills = typeof profile.skills === 'string' ? JSON.parse(profile.skills) : (profile.skills || parsedSkills);
+        } catch {}
+
+        const profileAchievements = profile.achievements
+            .map((a: any) => `- ${a.title}: ${a.description}${a.metric ? ` (${a.metric})` : ''}`)
+            .join('\n') || 'No achievements recorded.';
+
+        const allProfileSkills = [
+            ...(parsedSkills.technical || []),
+            ...(parsedSkills.industryKnowledge || []),
+            ...(parsedSkills.softSkills || []),
+        ].join(', ') || 'Not specified';
+
+        const keywordHint = keywords?.length ? `\nKnown JD keywords: ${keywords.join(', ')}` : '';
+
+        const prompt = `You are a career coach analysing a candidate's readiness for a specific job. Return ONLY valid JSON.
+
+JOB DESCRIPTION:
+${jobDescription.slice(0, 2000)}${keywordHint}
+
+CANDIDATE PROFILE:
+Skills: ${allProfileSkills}
+Experience summary: ${profile.professionalSummary || 'Not provided'}
+
+ACHIEVEMENTS:
+${profileAchievements}
+
+Analyse the gap between what the JD needs and what the candidate has. Be specific and actionable.
+
+Return this exact JSON:
+{
+  "overallFit": "STRONG" | "MODERATE" | "WEAK",
+  "missingKeywords": ["keyword1", "keyword2"],
+  "skillGaps": [
+    { "gap": "specific missing skill or experience", "suggestion": "concrete action to address it" }
+  ],
+  "strengthAreas": ["area1", "area2"],
+  "quickWins": ["specific achievement or profile addition that would boost this application"],
+  "profileReadiness": number
+}
+
+Rules:
+- missingKeywords: exact terms from JD not present in achievements or skills (max 8)
+- skillGaps: 2-4 genuine gaps, not nitpicks (focus on requirements, not nice-to-haves)
+- strengthAreas: 2-4 areas where the candidate genuinely fits
+- quickWins: 2-3 specific, actionable additions (e.g. "Add the $2M budget you managed in your PM role")
+- profileReadiness: 0-100 score of how complete the profile is relative to this JD`;
+
+        const raw = await callLLM(prompt, true);
+        const result = parseLLMJson(raw);
+
+        res.json({
+            overallFit: result.overallFit || 'MODERATE',
+            missingKeywords: result.missingKeywords || [],
+            skillGaps: result.skillGaps || [],
+            strengthAreas: result.strengthAreas || [],
+            quickWins: result.quickWins || [],
+            profileReadiness: result.profileReadiness ?? 50,
+        });
+
+    } catch (err: any) {
+        console.error('[Gap Analysis] Error:', err.message);
+        res.status(500).json({ error: 'Gap analysis failed.' });
+    }
+});
+
 export default router;
