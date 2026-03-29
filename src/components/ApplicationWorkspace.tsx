@@ -16,7 +16,9 @@ import {
     FlaskConical,
     TrendingUp,
     Linkedin,
-    Loader2
+    Loader2,
+    Copy,
+    CheckCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../lib/api';
@@ -219,6 +221,11 @@ export const ApplicationWorkspace: React.FC = () => {
     const [linkedInDoc, setLinkedInDoc] = useState('');
     const [generatingLinkedIn, setGeneratingLinkedIn] = useState(false);
     const [linkedInViewerOpen, setLinkedInViewerOpen] = useState(false);
+
+    // Email cover letter modal
+    const [emailVersion, setEmailVersion] = useState<{ emailSubject: string; emailBody: string } | null>(null);
+    const [generatingEmail, setGeneratingEmail] = useState(false);
+    const [copiedEmailField, setCopiedEmailField] = useState<'subject' | 'body' | null>(null);
 
     // Auto-detect employer framework when SC tab is first activated
     useEffect(() => {
@@ -550,6 +557,32 @@ export const ApplicationWorkspace: React.FC = () => {
         } finally {
             setGeneratingLinkedIn(false);
         }
+    };
+
+    const handleGetEmailVersion = async () => {
+        const coverLetterContent = state.documents['cover-letter'];
+        if (!coverLetterContent || generatingEmail) return;
+        setGeneratingEmail(true);
+        try {
+            const { data } = await api.post('/analyze/email-cover-letter', {
+                coverLetterContent,
+                role: state.metadata?.role,
+                company: state.metadata?.company,
+                candidateName: profile?.name,
+            });
+            setEmailVersion(data);
+        } catch {
+            toast.error('Could not generate email version — try again.');
+        } finally {
+            setGeneratingEmail(false);
+        }
+    };
+
+    const copyEmailField = async (field: 'subject' | 'body') => {
+        if (!emailVersion) return;
+        await navigator.clipboard.writeText(field === 'subject' ? emailVersion.emailSubject : emailVersion.emailBody);
+        setCopiedEmailField(field);
+        setTimeout(() => setCopiedEmailField(null), 1800);
     };
 
     const handleBack = () => navigate('/');
@@ -1038,8 +1071,20 @@ export const ApplicationWorkspace: React.FC = () => {
                             );
                         })()}
 
+                        {/* Email version button — only for cover letter */}
+                        {state.activeTab === 'cover-letter' && state.documents['cover-letter'] && (
+                            <button
+                                onClick={handleGetEmailVersion}
+                                disabled={generatingEmail}
+                                className="flex items-center gap-2 px-3 py-1 bg-sky-600/10 text-sky-400 text-xs font-bold rounded-md hover:bg-sky-600/20 transition-all border border-sky-600/20 disabled:opacity-50"
+                            >
+                                {generatingEmail ? <Loader2 size={12} className="animate-spin" /> : <Mail size={12} />}
+                                Email Version
+                            </button>
+                        )}
+
                         <div className="relative">
-                            <button 
+                            <button
                                 onClick={() => setIsConfirmingRegen(!isConfirmingRegen)}
                                 className="flex items-center gap-2 px-3 py-1 bg-brand-600/10 text-brand-400 text-xs font-bold rounded-md hover:bg-brand-600/20 transition-all border border-brand-600/20"
                             >
@@ -1196,6 +1241,58 @@ export const ApplicationWorkspace: React.FC = () => {
                             />
                         )}
                     </div>
+
+                    {/* Email Version Modal */}
+                    <AnimatePresence>
+                        {emailVersion && (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="absolute inset-0 bg-slate-950/95 z-30 flex flex-col overflow-hidden"
+                            >
+                                <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-800 shrink-0">
+                                    <div className="flex items-center gap-2">
+                                        <Mail size={14} className="text-sky-400" />
+                                        <span className="text-sm font-bold text-slate-200">Email Application Version</span>
+                                    </div>
+                                    <button onClick={() => setEmailVersion(null)} className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 transition-colors">
+                                        <ChevronLeft size={16} />
+                                    </button>
+                                </div>
+                                <div className="flex-1 overflow-y-auto p-6 custom-scrollbar space-y-5">
+                                    {/* Subject line */}
+                                    <div className="rounded-xl border border-slate-700/50 bg-slate-900/60 overflow-hidden">
+                                        <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-800 bg-slate-900/40">
+                                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Subject Line</span>
+                                            <button
+                                                onClick={() => copyEmailField('subject')}
+                                                className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-colors flex items-center gap-1.5 ${copiedEmailField === 'subject' ? 'text-emerald-400 border-emerald-700/40 bg-emerald-500/10' : 'text-slate-400 border-slate-700 hover:text-slate-200 hover:border-slate-600'}`}
+                                            >
+                                                {copiedEmailField === 'subject' ? <CheckCircle size={10} /> : <Copy size={10} />}
+                                                {copiedEmailField === 'subject' ? 'Copied' : 'Copy'}
+                                            </button>
+                                        </div>
+                                        <p className="px-4 py-3 text-sm text-slate-200 font-medium select-all">{emailVersion.emailSubject}</p>
+                                    </div>
+                                    {/* Email body */}
+                                    <div className="rounded-xl border border-slate-700/50 bg-slate-900/60 overflow-hidden">
+                                        <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-800 bg-slate-900/40">
+                                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Email Body</span>
+                                            <button
+                                                onClick={() => copyEmailField('body')}
+                                                className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-colors flex items-center gap-1.5 ${copiedEmailField === 'body' ? 'text-emerald-400 border-emerald-700/40 bg-emerald-500/10' : 'text-slate-400 border-slate-700 hover:text-slate-200 hover:border-slate-600'}`}
+                                            >
+                                                {copiedEmailField === 'body' ? <CheckCircle size={10} /> : <Copy size={10} />}
+                                                {copiedEmailField === 'body' ? 'Copied' : 'Copy'}
+                                            </button>
+                                        </div>
+                                        <p className="px-4 py-4 text-sm text-slate-300 leading-relaxed whitespace-pre-wrap select-all">{emailVersion.emailBody}</p>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </section>
             </main>
 

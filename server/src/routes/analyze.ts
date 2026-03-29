@@ -505,4 +505,68 @@ Return ONLY valid JSON. Use null for anything not explicitly in the JD — do no
     }
 });
 
+/**
+ * POST /api/analyze/email-cover-letter
+ * Condenses a full cover letter into an email-appropriate body + subject line.
+ *
+ * Body: { coverLetterContent: string, role?: string, company?: string, candidateName?: string }
+ * Returns: { emailSubject, emailBody }
+ */
+router.post('/email-cover-letter', authenticate, async (req: any, res: any) => {
+    try {
+        const { coverLetterContent, role, company, candidateName } = req.body as {
+            coverLetterContent?: string;
+            role?: string;
+            company?: string;
+            candidateName?: string;
+        };
+
+        if (!coverLetterContent || coverLetterContent.length < 100) {
+            return res.status(400).json({ error: 'Cover letter content required.' });
+        }
+
+        const prompt = `You are helping an Australian job seeker convert a formal cover letter into a concise email application.
+
+COVER LETTER:
+${coverLetterContent.slice(0, 3000)}
+
+ROLE: ${role || 'the advertised position'}
+COMPANY: ${company || 'the organisation'}
+CANDIDATE NAME: ${candidateName || 'the candidate'}
+
+Generate:
+1. A professional email subject line (format: "Application — [Role] | [Name]" or "Expression of Interest — [Role]" for unadvertised)
+2. A condensed email body (maximum 150 words) that:
+   - Opens with a direct statement of purpose (no "I am writing to...")
+   - Hits the 2-3 strongest points from the original cover letter
+   - References the attachment ("Please find my resume and cover letter attached")
+   - Closes with a clear call to action
+   - Australian English, no waffling
+
+Return JSON:
+{
+  "emailSubject": "Subject line text",
+  "emailBody": "Full email body text (plain text, no markdown formatting — this goes in an email client)"
+}
+
+Return ONLY valid JSON.`;
+
+        const raw = await callLLM(prompt, true);
+        const result = parseLLMJson(raw);
+
+        if (!result.emailSubject || !result.emailBody) {
+            return res.status(500).json({ error: 'Email generation failed.' });
+        }
+
+        return res.json({
+            emailSubject: result.emailSubject,
+            emailBody: result.emailBody,
+        });
+
+    } catch (err: any) {
+        console.error('[Email Cover Letter] Error:', err.message);
+        res.status(500).json({ error: 'Failed to generate email version.' });
+    }
+});
+
 export default router;
