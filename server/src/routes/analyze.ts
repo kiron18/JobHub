@@ -766,6 +766,60 @@ Return ONLY valid JSON.`;
     }
 });
 
+// ── Cover Letter Personalisation Score ──────────────────────────────────────
+// Evaluate how well a cover letter is personalised to the company and role.
+router.post('/cover-letter-personalisation', authenticate, async (req: any, res: any) => {
+    try {
+        const { document, jobDescription, company } = req.body;
+        if (!document || !jobDescription) {
+            return res.status(400).json({ error: 'document and jobDescription are required.' });
+        }
+
+        const prompt = `You are an expert Australian hiring consultant. Evaluate how well this cover letter is personalised to the specific company and role.
+
+COMPANY: ${company || 'Unknown'}
+JOB DESCRIPTION:
+${jobDescription.slice(0, 2000)}
+
+COVER LETTER:
+${document.slice(0, 3000)}
+
+Evaluate personalisation across 4 dimensions:
+
+1. **Company Specificity** — Does it mention the company by name, reference their products/values/culture, or show evidence of research? Generic letters score 0.
+2. **Role Alignment** — Does it mirror the job's specific language, required skills, and responsibilities? Generic "I am a great fit" scores 0.
+3. **Narrative Hook** — Does the opening feel written for this employer, or is it a boilerplate opener?
+4. **Value Proposition** — Is the candidate's unique value clearly tied to what THIS role needs?
+
+Return JSON exactly:
+{
+  "score": <integer 0-100>,
+  "dimensions": [
+    { "name": "Company Specificity", "score": <0-25>, "note": "<one specific observation>" },
+    { "name": "Role Alignment",      "score": <0-25>, "note": "<one specific observation>" },
+    { "name": "Narrative Hook",      "score": <0-25>, "note": "<one specific observation>" },
+    { "name": "Value Proposition",   "score": <0-25>, "note": "<one specific observation>" }
+  ],
+  "topFix": "<The single most important personalisation change to make — be specific about what to add>"
+}
+
+Return ONLY valid JSON.`;
+
+        const raw = await callLLM(prompt, true);
+        const result = parseLLMJson(raw);
+
+        return res.json({
+            score: typeof result.score === 'number' ? Math.min(100, Math.max(0, result.score)) : 50,
+            dimensions: Array.isArray(result.dimensions) ? result.dimensions.slice(0, 4) : [],
+            topFix: result.topFix || '',
+        });
+
+    } catch (err: any) {
+        console.error('[Cover Letter Personalisation] Error:', err.message);
+        res.status(500).json({ error: 'Failed to analyse personalisation.' });
+    }
+});
+
 // ── Resume Score ──────────────────────────────────────────────────────────────
 // Score a generated resume across multiple quality dimensions.
 router.post('/resume-score', authenticate, async (req: any, res: any) => {

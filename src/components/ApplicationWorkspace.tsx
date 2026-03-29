@@ -36,6 +36,7 @@ import { JDSummaryBar } from './JDSummaryBar';
 import { ATSCoveragePanel } from './ATSCoveragePanel';
 import { ToneRewritePanel } from './ToneRewritePanel';
 import { ResumeScorecardPanel } from './ResumeScorecardPanel';
+import { CoverLetterPersonalisationPanel } from './CoverLetterPersonalisationPanel';
 import { exportDocx, DocType } from '../lib/exportDocx';
 
 interface WorkspaceState {
@@ -940,6 +941,17 @@ export const ApplicationWorkspace: React.FC = () => {
                             <ResumeScorecardPanel
                                 document={state.documents.resume}
                                 jobDescription={state.jobDescription}
+                            />
+                        </div>
+                    )}
+
+                    {/* Cover Letter Personalisation — shown when cover letter is generated */}
+                    {state.documents['cover-letter'] && !state.isGenerating && (
+                        <div className="p-4 border-b border-slate-800 shrink-0">
+                            <CoverLetterPersonalisationPanel
+                                document={state.documents['cover-letter']}
+                                jobDescription={state.jobDescription}
+                                company={state.metadata?.company}
                             />
                         </div>
                     )}
