@@ -827,6 +827,8 @@ const JobCard: React.FC<{
 export const ApplicationTracker: React.FC = () => {
     const queryClient = useQueryClient();
     const [filterStatus, setFilterStatus] = useState<ApplicationStatus | 'ALL'>('ALL');
+    const [showAddForm, setShowAddForm] = useState(false);
+    const [addForm, setAddForm] = useState({ title: '', company: '', status: 'SAVED' as ApplicationStatus, dateApplied: '', notes: '' });
 
     const { data: jobs = [], isLoading } = useQuery<JobApplication[]>({
         queryKey: ['jobs'],
@@ -902,6 +904,34 @@ export const ApplicationTracker: React.FC = () => {
         updatePriorityMutation.mutate({ id, priority });
     };
 
+    const createJobMutation = useMutation({
+        mutationFn: async (form: typeof addForm) => {
+            const { data } = await api.post('/jobs', {
+                title: form.title,
+                company: form.company,
+                description: `${form.title} at ${form.company} — manually added.`,
+                status: form.status,
+                dateApplied: form.dateApplied || null,
+                notes: form.notes || null,
+            });
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['jobs'] });
+            setShowAddForm(false);
+            setAddForm({ title: '', company: '', status: 'SAVED', dateApplied: '', notes: '' });
+            toast.success('Application added');
+        },
+        onError: () => {
+            toast.error('Failed to add application');
+        }
+    });
+
+    const handleAddJob = () => {
+        if (!addForm.title.trim() || !addForm.company.trim()) return;
+        createJobMutation.mutate(addForm);
+    };
+
     const filteredJobs = filterStatus === 'ALL'
         ? jobs
         : jobs.filter(j => j.status === filterStatus);
@@ -967,6 +997,98 @@ export const ApplicationTracker: React.FC = () => {
                     </p>
                     <p className={`text-4xl font-black tabular-nums ${followUpDue > 0 ? 'text-amber-400' : 'text-slate-500'}`}>{followUpDue}</p>
                 </div>
+            </div>
+
+            {/* Add Job Manually */}
+            <div>
+                <button
+                    onClick={() => setShowAddForm(s => !s)}
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl border border-slate-700 transition-all"
+                >
+                    <Briefcase size={13} />
+                    Add Application Manually
+                </button>
+                <AnimatePresence>
+                    {showAddForm && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.18 }}
+                            className="overflow-hidden"
+                        >
+                            <div className="mt-3 p-5 glass-card space-y-3">
+                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Track an application from outside JobHub</p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Job Title *</label>
+                                        <input
+                                            value={addForm.title}
+                                            onChange={e => setAddForm(f => ({ ...f, title: e.target.value }))}
+                                            placeholder="e.g. Senior Product Manager"
+                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-brand-500 transition-colors"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Company *</label>
+                                        <input
+                                            value={addForm.company}
+                                            onChange={e => setAddForm(f => ({ ...f, company: e.target.value }))}
+                                            placeholder="e.g. Atlassian"
+                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-brand-500 transition-colors"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Status</label>
+                                        <select
+                                            value={addForm.status}
+                                            onChange={e => setAddForm(f => ({ ...f, status: e.target.value as ApplicationStatus }))}
+                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-brand-500 transition-colors"
+                                        >
+                                            {STATUS_FLOW.map(s => (
+                                                <option key={s} value={s}>{STATUS_CONFIG[s].label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Date Applied</label>
+                                        <input
+                                            type="date"
+                                            value={addForm.dateApplied}
+                                            onChange={e => setAddForm(f => ({ ...f, dateApplied: e.target.value }))}
+                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-brand-500 transition-colors"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Notes (optional)</label>
+                                    <input
+                                        value={addForm.notes}
+                                        onChange={e => setAddForm(f => ({ ...f, notes: e.target.value }))}
+                                        placeholder="Recruiter name, application portal, role details…"
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-brand-500 transition-colors"
+                                    />
+                                </div>
+                                <div className="flex gap-2 pt-1">
+                                    <button
+                                        onClick={handleAddJob}
+                                        disabled={!addForm.title.trim() || !addForm.company.trim() || createJobMutation.isPending}
+                                        className="flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-all"
+                                    >
+                                        {createJobMutation.isPending ? <Loader2 size={13} className="animate-spin" /> : <Briefcase size={13} />}
+                                        Add Application
+                                    </button>
+                                    <button
+                                        onClick={() => { setShowAddForm(false); setAddForm({ title: '', company: '', status: 'SAVED', dateApplied: '', notes: '' }); }}
+                                        className="px-4 py-2 bg-slate-800 text-slate-400 text-xs font-bold rounded-lg hover:bg-slate-700 transition-all"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
 
             {/* Filters */}

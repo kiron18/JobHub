@@ -549,6 +549,38 @@ router.get('/jobs', authenticate, async (req, res) => {
     }
 });
 
+router.post('/jobs', authenticate, async (req, res) => {
+    const userId = (req as any).user.id;
+    const { title, company, description, status, dateApplied, notes } = req.body;
+
+    if (!title || !company) {
+        return res.status(400).json({ error: 'Title and company are required.' });
+    }
+
+    try {
+        const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
+        if (!profile) return res.status(404).json({ error: 'Profile not found.' });
+
+        const job = await prisma.jobApplication.create({
+            data: {
+                title: title.trim(),
+                company: company.trim(),
+                description: description || `${title} at ${company}`,
+                status: status || 'SAVED',
+                dateApplied: dateApplied ? new Date(dateApplied) : null,
+                notes: notes || null,
+                userId,
+                candidateProfileId: profile.id,
+            },
+            include: { documents: true }
+        });
+        res.status(201).json(job);
+    } catch (error) {
+        console.error('Create Job Error:', error);
+        res.status(500).json({ error: 'Failed to create job application' });
+    }
+});
+
 router.delete('/jobs/:id', authenticate, async (req, res) => {
     const { id } = req.params as any;
     const userId = (req as any).user.id;
