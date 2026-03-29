@@ -42,8 +42,9 @@ router.post('/:type', authenticate, async (req, res) => {
         selectedAchievementIds,
         analysisContext,
         jobApplicationId,
-        companyResearch,      // { salutation, highlights, companySize, hiringManager }
-        selectionCriteriaText // raw pasted SC text for selection-criteria tab
+        companyResearch,       // { salutation, highlights, companySize, hiringManager }
+        selectionCriteriaText, // raw pasted SC text for selection-criteria tab
+        employerFramework,     // e.g. 'aps_ils', 'qld_lc4q', 'university_academic'
     } = req.body;
 
     if (!jobDescription) {
@@ -148,7 +149,8 @@ router.post('/:type', authenticate, async (req, res) => {
                 analysisContext,
                 companyResearch,
                 selectionCriteriaText,
-                perCriterionAchievements
+                perCriterionAchievements,
+                employerFramework
             )
             : DOCUMENT_GENERATION_PROMPT(
                 docType,
@@ -159,7 +161,8 @@ router.post('/:type', authenticate, async (req, res) => {
                 analysisContext,
                 companyResearch,
                 selectionCriteriaText,
-                perCriterionAchievements
+                perCriterionAchievements,
+                employerFramework
             );
 
         console.log(`[Generation] Stage 2: calling Llama for ${type}...`);

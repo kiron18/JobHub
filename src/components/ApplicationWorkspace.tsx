@@ -167,6 +167,27 @@ export const ApplicationWorkspace: React.FC = () => {
     const [rateLimitError, setRateLimitError] = useState(false);
     const [companyResearch, setCompanyResearch] = useState<CompanyResearch | null>(null);
     const [selectionCriteriaText, setSelectionCriteriaText] = useState('');
+    const [employerFramework, setEmployerFramework] = useState<string | null>(null);
+
+    // Auto-detect employer framework when SC tab is first activated
+    useEffect(() => {
+        if (state.activeTab !== 'selection-criteria') return;
+        if (employerFramework) return;
+        if (!state.metadata?.company && !state.jobDescription) return;
+
+        const detect = async () => {
+            try {
+                const { data } = await api.post('/research/employer-framework', {
+                    company: state.metadata?.company || '',
+                    jobDescription: state.jobDescription.slice(0, 800),
+                });
+                if (data.framework) setEmployerFramework(data.framework);
+            } catch {
+                // Silent — framework label is optional UI decoration
+            }
+        };
+        detect();
+    }, [state.activeTab, state.metadata?.company]);
 
     useEffect(() => {
         // Fetch existing documents if we have a jobApplicationId but NO document contents for the current tab
@@ -358,6 +379,8 @@ export const ApplicationWorkspace: React.FC = () => {
                 companyResearch: type === 'cover-letter' ? companyResearch : null,
                 // Pasted selection criteria for SC responses
                 selectionCriteriaText: type === 'selection-criteria' ? selectionCriteriaText : null,
+                // Employer framework hint for SC (APS ILS, QLD LC4Q, etc.)
+                employerFramework: type === 'selection-criteria' ? employerFramework : null,
             }, { signal: controller.signal });
             
             setState(prev => ({
@@ -565,6 +588,7 @@ export const ApplicationWorkspace: React.FC = () => {
                                 criteriaText={selectionCriteriaText}
                                 onChange={setSelectionCriteriaText}
                                 company={state.metadata?.company}
+                                employerFramework={employerFramework}
                             />
                             {selectionCriteriaText.trim().length > 20 && !state.documents['selection-criteria'] && !state.isGenerating && (
                                 <button

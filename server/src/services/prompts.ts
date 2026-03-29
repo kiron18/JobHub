@@ -439,6 +439,22 @@ function buildPerCriterionBlock(maps: CriterionAchievementMap[]): string {
     }).join('\n\n');
 }
 
+const FRAMEWORK_INSTRUCTIONS: Record<string, string> = {
+    aps_ils: `FRAMEWORK: Australian Public Service — Integrated Leadership System (ILS).
+Use ILS cluster language where appropriate: "Shapes Strategic Thinking", "Achieves Results", "Cultivates Productive Working Relationships", "Exemplifies Personal Drive and Integrity", "Communicates with Influence".
+Match language to APS band level evident in the JD (APS 3-6: operational specificity; EL1-2: strategic framing).`,
+    qld_lc4q: `FRAMEWORK: Queensland Government — Leadership Competencies for Queensland (LC4Q).
+Reference the three domains: Vision (leads strategically, leads change), Results (delivers results, drives accountability), Accountability (fosters healthy and inclusive workplaces, demonstrates sound governance).`,
+    nsw_capability: `FRAMEWORK: NSW Public Sector Capability Framework.
+Align responses to the five capability groups: Personal Attributes, Relationships, Results, Business Enablers, People Management.`,
+    vic_vpsc: `FRAMEWORK: Victorian Public Sector Commission (VPSC) Values and Behaviours framework.
+Reference VPSC values: Responsiveness, Integrity, Impartiality, Accountability, Respect, Leadership, Human Rights.`,
+    university_academic: `FRAMEWORK: Australian University Academic appointment.
+Structure responses against academic criteria: Teaching excellence, Research quality/impact, Community engagement, Leadership/service. Avoid STAR for teaching philosophy — use reflective first-person narrative instead.`,
+    university_professional: `FRAMEWORK: Australian University Professional Staff (HEW scale).
+Apply HEW level-appropriate language. Focus on operational delivery, service quality, and technical/professional expertise relevant to the HEW band.`,
+};
+
 export const DOCUMENT_GENERATION_PROMPT_WITH_BLUEPRINT = (
     type: 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE',
     jd: string,
@@ -449,7 +465,8 @@ export const DOCUMENT_GENERATION_PROMPT_WITH_BLUEPRINT = (
     analysisContext?: { tone?: string; competencies?: string[] },
     companyResearch?: { salutation?: string; highlights?: string[]; companySize?: string; hiringManager?: string } | null,
     selectionCriteriaText?: string | null,
-    perCriterionAchievements?: CriterionAchievementMap[] | null
+    perCriterionAchievements?: CriterionAchievementMap[] | null,
+    employerFramework?: string | null
 ): string => {
     // Build the proof point lookup for inline rendering
     const proofPointMap = new Map(
@@ -612,6 +629,10 @@ STAR ALLOCATION: Situation (10-15%) → Task (10-15%) → Action (60-70%) → Re
 Write in flowing prose, first person, active voice. Do NOT label STAR components as subheadings.
 Target 250-400 words per criterion unless the role specifies a different limit.
 
+${employerFramework && FRAMEWORK_INSTRUCTIONS[employerFramework] ? `
+${FRAMEWORK_INSTRUCTIONS[employerFramework]}
+` : ''}
+
 ${selectionCriteriaText}
 
 ${perCriterionAchievements && perCriterionAchievements.length > 0 ? `
@@ -647,7 +668,8 @@ export const DOCUMENT_GENERATION_PROMPT = (
     analysisContext?: { tone?: string, competencies?: string[] },
     companyResearch?: { salutation?: string; highlights?: string[]; companySize?: string } | null,
     selectionCriteriaText?: string | null,
-    perCriterionAchievements?: CriterionAchievementMap[] | null
+    perCriterionAchievements?: CriterionAchievementMap[] | null,
+    employerFramework?: string | null
 ) => `
 You are a career coach generating a ${type}.
 
@@ -728,6 +750,8 @@ The candidate has provided the following criteria. Generate a separate STAR resp
 
 STAR ALLOCATION: Situation (10-15%) → Task (10-15%) → Action (60-70%) → Result (15-20%).
 Write in flowing prose, first person, active voice. Target 250-400 words per criterion.
+
+${employerFramework && FRAMEWORK_INSTRUCTIONS[employerFramework] ? FRAMEWORK_INSTRUCTIONS[employerFramework] + '\n' : ''}
 
 ${selectionCriteriaText}
 
