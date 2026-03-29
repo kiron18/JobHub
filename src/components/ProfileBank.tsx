@@ -10,6 +10,7 @@ import {
 import { toast } from 'sonner';
 import api from '../lib/api';
 import { useAppTheme } from '../contexts/ThemeContext';
+import { ProfileAdvisorPanel } from './ProfileAdvisorPanel';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -805,9 +806,10 @@ const VolunteeringIsland: React.FC<VolunteeringIslandProps> = ({ volunteering, i
 interface CompletionSidebarProps {
   completion: ProfileData['completion'];
   isDark: boolean;
+  targetRole?: string;
 }
 
-const CompletionSidebar: React.FC<CompletionSidebarProps> = ({ completion, isDark }) => {
+const CompletionSidebar: React.FC<CompletionSidebarProps> = ({ completion, isDark, targetRole }) => {
   const navigate = useNavigate();
   const { score, isReady, missingFields } = completion;
 
@@ -885,6 +887,11 @@ const CompletionSidebar: React.FC<CompletionSidebarProps> = ({ completion, isDar
           </div>
         </div>
       )}
+
+      {/* Profile Advisor */}
+      <div style={{ borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`, paddingTop: 16 }}>
+        <ProfileAdvisorPanel targetRole={targetRole} />
+      </div>
 
       {/* CTA */}
       <div style={{ position: 'relative' }}>
@@ -979,7 +986,7 @@ export const ProfileBank: React.FC = () => {
           </div>
 
           {/* Sidebar */}
-          <CompletionSidebar completion={profile.completion} isDark={isDark} />
+          <CompletionSidebar completion={profile.completion} isDark={isDark} targetRole={profile.targetRole} />
         </div>
       </div>
     </div>

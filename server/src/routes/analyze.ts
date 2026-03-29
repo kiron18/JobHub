@@ -569,4 +569,92 @@ Return ONLY valid JSON.`;
     }
 });
 
+/**
+ * POST /api/analyze/profile-advisor
+ * Analyses the user's profile and returns specific, prioritised improvements.
+ *
+ * Body: { targetRole?: string }
+ * Returns: { overallGrade, improvements: Array<{ area, issue, fix, impact, priority }> }
+ */
+router.post('/profile-advisor', authenticate, async (req: any, res: any) => {
+    try {
+        const userId = req.user.id;
+        const { targetRole } = req.body as { targetRole?: string };
+
+        const profile = await prisma.candidateProfile.findUnique({
+            where: { userId },
+            include: {
+                achievements: { select: { id: true, title: true, metric: true, description: true } },
+                experience: { select: { role: true, company: true, startDate: true, endDate: true, isCurrent: true, description: true } },
+                education: { select: { institution: true, degree: true } },
+                certifications: { select: { name: true } },
+            }
+        });
+
+        if (!profile) return res.status(404).json({ error: 'Profile not found.' });
+
+        const achievementSummary = profile.achievements.slice(0, 10).map((a: any) => {
+            const hasMetric = !!a.metric;
+            const descLen = a.description?.length ?? 0;
+            return `- "${a.title}" (metric: ${hasMetric ? a.metric : 'MISSING'}, desc: ${descLen} chars)`;
+        }).join('\n') || 'No achievements.';
+
+        const experienceSummary = profile.experience.slice(0, 5).map((e: any) =>
+            `- ${e.role} at ${e.company} (${e.startDate}–${e.isCurrent ? 'Present' : e.endDate ?? '?'}): ${e.description ? e.description.length + ' chars' : 'NO DESCRIPTION'}`
+        ).join('\n') || 'No experience.';
+
+        const prompt = `You are a career coach reviewing an Australian job seeker's profile database for generation quality.
+
+TARGET ROLE: ${targetRole || profile.targetRole || 'Not specified'}
+
+PROFILE SUMMARY:
+Name: ${profile.name || 'MISSING'}
+Email: ${profile.email || 'MISSING'}
+Location: ${profile.location || 'MISSING'}
+Professional Summary: ${profile.professionalSummary ? profile.professionalSummary.length + ' chars' : 'MISSING'}
+Skills: ${profile.skills ? 'Present' : 'MISSING'}
+
+EXPERIENCE ENTRIES (${profile.experience.length}):
+${experienceSummary}
+
+EDUCATION ENTRIES: ${profile.education.length}
+CERTIFICATIONS: ${profile.certifications.length}
+
+ACHIEVEMENTS (${profile.achievements.length}):
+${achievementSummary}
+
+Identify the top 5 most impactful improvements this person should make to their profile to get better AI-generated documents. Be specific — "add metrics to your achievements" is too generic; "achievement 'Led the product redesign' has no metric — add the impact (e.g. conversion rate improvement, user adoption %, revenue impact)" is good.
+
+Return JSON:
+{
+  "overallGrade": "A" | "B" | "C" | "D",
+  "summary": "One sentence assessment of the profile's current generation quality",
+  "improvements": [
+    {
+      "area": "Category (e.g. Achievements, Experience, Summary, Skills)",
+      "issue": "What's specifically wrong or missing",
+      "fix": "Exactly what they should add or change (be specific)",
+      "impact": "Which document types this will improve (e.g. 'Resume + Cover Letter')",
+      "priority": 1 to 5 (1 = most urgent)
+    }
+  ]
+}
+
+Return ONLY valid JSON. Generate exactly 5 improvements, ordered by priority (1 first).`;
+
+        const raw = await callLLM(prompt, true);
+        const result = parseLLMJson(raw);
+
+        return res.json({
+            overallGrade: result.overallGrade || 'C',
+            summary: result.summary || '',
+            improvements: Array.isArray(result.improvements) ? result.improvements.slice(0, 5) : [],
+        });
+
+    } catch (err: any) {
+        console.error('[Profile Advisor] Error:', err.message);
+        res.status(500).json({ error: 'Failed to analyse profile.' });
+    }
+});
+
 export default router;
