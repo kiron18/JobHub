@@ -327,4 +327,71 @@ Return ONLY valid JSON. Generate exactly 4 suggestions.`;
     }
 });
 
+/**
+ * POST /api/analyze/polish-achievement
+ * Takes a rough achievement and returns a polished STAR-format version.
+ *
+ * Body: { title, description, metric?, skills? }
+ * Returns: { polishedTitle, polishedDescription, suggestedMetric?, reasoning }
+ */
+router.post('/polish-achievement', authenticate, async (req: any, res: any) => {
+    try {
+        const { title, description, metric, skills } = req.body as {
+            title?: string;
+            description?: string;
+            metric?: string;
+            skills?: string;
+        };
+
+        if (!description || description.length < 10) {
+            return res.status(400).json({ error: 'Description required.' });
+        }
+
+        const prompt = `You are a professional resume writer helping an Australian job seeker polish a career achievement into a compelling, metrics-rich STAR-format bullet for their achievement bank.
+
+CURRENT ACHIEVEMENT:
+Title: ${title || '(none)'}
+Description: ${description}
+Metric: ${metric || '(none provided)'}
+Skills: ${skills || '(none tagged)'}
+
+Your task: rewrite this achievement to be strong, specific, and quantified. Follow these rules:
+1. Situation → Action → Result structure in the description
+2. Start the title with a strong verb and include the impact (e.g. "Reduced customer onboarding time by 40%")
+3. If a metric is mentioned in the description, extract and standardise it (%, $, count, time saved)
+4. If NO metric is mentioned, suggest a realistic metric placeholder the user should fill in (e.g. "[X]% improvement")
+5. Australian English spelling
+6. Keep description under 150 words — tight and punchy
+7. Do NOT fabricate specifics that aren't hinted at in the original
+
+Return JSON:
+{
+  "polishedTitle": "Strong verb + quantified impact title",
+  "polishedDescription": "Concise STAR-format description under 150 words",
+  "suggestedMetric": "Extracted or suggested metric string, or null if can't determine",
+  "reasoning": "One sentence explaining what you changed and why"
+}
+
+Return ONLY valid JSON.`;
+
+        const raw = await callLLM(prompt, true);
+        const result = parseLLMJson(raw);
+
+        if (!result.polishedTitle || !result.polishedDescription) {
+            return res.status(500).json({ error: 'Polish failed — unexpected LLM response.' });
+        }
+
+        return res.json({
+            polishedTitle: result.polishedTitle,
+            polishedDescription: result.polishedDescription,
+            suggestedMetric: result.suggestedMetric || null,
+            reasoning: result.reasoning || '',
+        });
+
+    } catch (err: any) {
+        console.error('[Polish Achievement] Error:', err.message);
+        res.status(500).json({ error: 'Failed to polish achievement.' });
+    }
+});
+
 export default router;

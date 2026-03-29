@@ -14,7 +14,9 @@ import {
     AlertCircle,
     BookOpen,
     FlaskConical,
-    TrendingUp
+    TrendingUp,
+    Linkedin,
+    Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../lib/api';
@@ -210,6 +212,11 @@ export const ApplicationWorkspace: React.FC = () => {
 
     // Cover letter tone preference
     const [coverLetterTone, setCoverLetterTone] = useState<'professional' | 'warm' | 'concise'>('professional');
+
+    // LinkedIn Profile Generator — standalone, stored separately
+    const [linkedInDoc, setLinkedInDoc] = useState('');
+    const [generatingLinkedIn, setGeneratingLinkedIn] = useState(false);
+    const [linkedInViewerOpen, setLinkedInViewerOpen] = useState(false);
 
     // Auto-detect employer framework when SC tab is first activated
     useEffect(() => {
@@ -522,6 +529,27 @@ export const ApplicationWorkspace: React.FC = () => {
         }
     };
 
+    const handleGenerateLinkedIn = async () => {
+        if (generatingLinkedIn || !state.jobDescription) return;
+        setGeneratingLinkedIn(true);
+        try {
+            const { data } = await api.post('/generate/linkedin-profile', {
+                jobDescription: state.jobDescription,
+                selectedAchievementIds: state.selectedAchievementIds,
+                jobApplicationId: state.jobApplicationId,
+                analysisContext: { tone: state.analysisTone, competencies: state.coreCompetencies },
+                employerFramework,
+            });
+            setLinkedInDoc(data.content);
+            setLinkedInViewerOpen(true);
+            toast.success('LinkedIn profile sections generated');
+        } catch {
+            toast.error('Generation failed — try again.');
+        } finally {
+            setGeneratingLinkedIn(false);
+        }
+    };
+
     const handleBack = () => navigate('/');
 
     // CommonMark collapses consecutive lines into one <p> unless separated by a blank line.
@@ -794,6 +822,41 @@ export const ApplicationWorkspace: React.FC = () => {
                         </div>
                     )}
 
+                    {/* LinkedIn Profile Generator — always available when JD is loaded */}
+                    {state.jobDescription && (
+                        <div className="p-4 border-b border-slate-800 shrink-0">
+                            <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 overflow-hidden">
+                                <div className="flex items-center gap-2 px-4 py-3 border-b border-sky-500/10 bg-sky-500/5">
+                                    <Linkedin size={13} className="text-sky-400" />
+                                    <span className="text-[10px] font-black text-sky-400 uppercase tracking-widest">LinkedIn Optimiser</span>
+                                </div>
+                                <div className="p-4">
+                                    <p className="text-[10px] text-slate-400 leading-relaxed mb-3">
+                                        Generate a headline, About section, and 10 featured skills tailored to this role.
+                                    </p>
+                                    <button
+                                        onClick={handleGenerateLinkedIn}
+                                        disabled={generatingLinkedIn}
+                                        className="w-full py-2 bg-sky-600/20 hover:bg-sky-600/30 disabled:opacity-50 text-sky-300 text-[11px] font-bold rounded-lg border border-sky-500/30 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        {generatingLinkedIn ? (
+                                            <Loader2 size={11} className="animate-spin" />
+                                        ) : <Linkedin size={11} />}
+                                        {linkedInDoc ? 'Regenerate' : 'Generate'} LinkedIn Sections
+                                    </button>
+                                    {linkedInDoc && (
+                                        <button
+                                            onClick={() => setLinkedInViewerOpen(true)}
+                                            className="w-full mt-1.5 py-1.5 text-[10px] font-bold text-slate-300 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition-colors"
+                                        >
+                                            View / Copy
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Salary Insight Panel */}
                     {state.metadata?.role && (
                         <div className="p-4 border-b border-slate-800 shrink-0">
@@ -824,6 +887,46 @@ export const ApplicationWorkspace: React.FC = () => {
                     <div className="flex-1 overflow-y-auto p-6 text-sm text-slate-400 leading-relaxed custom-scrollbar">
                         <HighlightedJD text={state.jobDescription} keywords={state.keywords || []} />
                     </div>
+
+                    {/* LinkedIn viewer modal */}
+                    <AnimatePresence>
+                        {linkedInViewerOpen && linkedInDoc && (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="absolute inset-0 bg-slate-950/95 z-20 flex flex-col overflow-hidden"
+                            >
+                                <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-800 shrink-0">
+                                    <div className="flex items-center gap-2">
+                                        <Linkedin size={14} className="text-sky-400" />
+                                        <span className="text-sm font-bold text-slate-200">LinkedIn Profile Sections</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => { navigator.clipboard.writeText(linkedInDoc); toast.success('Copied to clipboard'); }}
+                                            className="text-[10px] font-black text-sky-400 border border-sky-700/50 px-3 py-1.5 rounded-lg hover:bg-sky-500/10 transition-colors uppercase tracking-wider"
+                                        >
+                                            Copy All
+                                        </button>
+                                        <button
+                                            onClick={() => setLinkedInViewerOpen(false)}
+                                            className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 transition-colors"
+                                        >
+                                            <ChevronLeft size={16} />
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                                    <div className="max-w-2xl mx-auto bg-white text-slate-900 rounded-sm p-10 shadow-2xl">
+                                        <article className="prose prose-slate max-w-none">
+                                            <ReactMarkdown>{linkedInDoc}</ReactMarkdown>
+                                        </article>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
                     {/* Academic document viewer modal */}
                     <AnimatePresence>

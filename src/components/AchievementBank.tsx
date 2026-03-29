@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, Edit2, Save, Loader2, AlertCircle, CheckCircle, RefreshCw, TrendingUp } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, Loader2, AlertCircle, CheckCircle, RefreshCw, TrendingUp, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../lib/api';
 
@@ -66,6 +66,8 @@ export const AchievementBank: React.FC = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [expandedHints, setExpandedHints] = useState<Set<string>>(new Set());
   const [extracting, setExtracting] = useState(false);
+  const [polishingId, setPolishingId] = useState<string | null>(null);
+  const [polishReasoning, setPolishReasoning] = useState<string | null>(null);
 
   const { data: achievements, isLoading, error } = useQuery<Achievement[]>({
     queryKey: ['achievements'],
@@ -115,6 +117,30 @@ export const AchievementBank: React.FC = () => {
       updateMutation.mutate(editForm as Achievement);
     } else {
       createMutation.mutate(editForm);
+    }
+  };
+
+  const handlePolish = async (id: string) => {
+    setPolishingId(id);
+    setPolishReasoning(null);
+    try {
+      const { data } = await api.post('/analyze/polish-achievement', {
+        title: editForm.title,
+        description: editForm.description,
+        metric: editForm.metric,
+        skills: editForm.skills,
+      });
+      setEditForm(f => ({
+        ...f,
+        title: data.polishedTitle || f.title,
+        description: data.polishedDescription || f.description,
+        metric: data.suggestedMetric || f.metric,
+      }));
+      setPolishReasoning(data.reasoning || null);
+    } catch {
+      // silently fail — user still has the original
+    } finally {
+      setPolishingId(null);
     }
   };
 
@@ -277,15 +303,35 @@ export const AchievementBank: React.FC = () => {
                     onChange={e => setEditForm(f => ({ ...f, metric: e.target.value }))}
                     style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: '#f3f4f6', fontSize: 12, boxSizing: 'border-box' }}
                   />
-                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                    <button onClick={() => setEditingId(null)} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'transparent', color: '#6b7280', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                  {polishingId === achievement.id && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#818cf8' }}>
+                      <Loader2 size={11} className="animate-spin" /> Polishing with AI...
+                    </div>
+                  )}
+                  {polishReasoning && editingId === achievement.id && (
+                    <div style={{ fontSize: 11, color: '#6ee7b7', background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.15)', borderRadius: 8, padding: '6px 10px', lineHeight: 1.5 }}>
+                      {polishReasoning}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center' }}>
                     <button
-                      onClick={handleSave}
-                      disabled={updateMutation.isPending}
-                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 16px', borderRadius: 8, border: 'none', background: '#6366f1', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                      onClick={() => handlePolish(achievement.id)}
+                      disabled={polishingId === achievement.id}
+                      title="Rewrite as a polished STAR bullet with metrics"
+                      style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 7, border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.07)', color: '#818cf8', fontSize: 11, fontWeight: 700, cursor: 'pointer', opacity: polishingId === achievement.id ? 0.5 : 1 }}
                     >
-                      <Save size={12} /> Save
+                      <Sparkles size={11} /> Polish with AI
                     </button>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={() => { setEditingId(null); setPolishReasoning(null); }} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'transparent', color: '#6b7280', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                      <button
+                        onClick={handleSave}
+                        disabled={updateMutation.isPending}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 16px', borderRadius: 8, border: 'none', background: '#6366f1', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        <Save size={12} /> Save
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : (

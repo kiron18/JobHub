@@ -28,6 +28,7 @@ async function getRuleBase(type: string) {
         if (type === 'teaching-philosophy') fileName = 'teaching_philosophy_rules.md';
         if (type === 'research-statement') fileName = 'research_statement_rules.md';
         if (type === 'offer-negotiation') fileName = 'offer_negotiation_rules.md';
+        if (type === 'linkedin-profile') fileName = 'linkedin_profile_rules.md';
 
         const filePath = path.join(__dirname, '..', '..', 'rules', fileName);
         return fs.readFileSync(filePath, 'utf-8');
@@ -94,7 +95,7 @@ router.post('/:type', authenticate, async (req, res) => {
         );
 
         const ruleBase = await getRuleBase(type);
-        const docType = type === 'selection-criteria' || type === 'interview-prep' || type === 'followup-email' || type === 'teaching-philosophy' || type === 'research-statement' || type === 'offer-negotiation' ? 'STAR_RESPONSE' : (type === 'cover-letter' ? 'COVER_LETTER' : 'RESUME');
+        const docType = type === 'selection-criteria' || type === 'interview-prep' || type === 'followup-email' || type === 'teaching-philosophy' || type === 'research-statement' || type === 'offer-negotiation' || type === 'linkedin-profile' ? 'STAR_RESPONSE' : (type === 'cover-letter' ? 'COVER_LETTER' : 'RESUME');
         const sanitizedJobAppId = jobApplicationId === 'temp-id' ? null : (jobApplicationId || null);
 
         // ── STAGE 1: Strategic Blueprint (Claude) ──────────────────────────────
