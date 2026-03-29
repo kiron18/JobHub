@@ -235,7 +235,7 @@ export const MatchEngine: React.FC = () => {
                             <div className="w-10 h-10 bg-brand-600/10 rounded-xl flex items-center justify-center text-brand-500">
                                 <Target size={20} />
                             </div>
-                            <h3 className="text-xl font-bold" style={{ color: 'var(--text-main, #f1f5f9)' }}>Job Match Analysis</h3>
+                            <h3 className="text-xl font-bold" style={{ color: T.text }}>Job Match Analysis</h3>
                         </div>
                         {(jobDescription || result) && (
                             <button
@@ -250,18 +250,22 @@ export const MatchEngine: React.FC = () => {
                     {/* URL import */}
                     <div className="space-y-1.5">
                         <div className="flex gap-2">
-                            <div className="flex-1 flex items-center gap-2 bg-slate-800/60 border border-slate-700 rounded-xl px-3 py-2">
-                                <Link size={13} className="text-slate-500 shrink-0" />
+                            <div
+                                className="flex-1 flex items-center gap-2 rounded-xl px-3 py-2"
+                                style={{ background: T.inputBg, border: `1px solid ${T.inputBorder}` }}
+                            >
+                                <Link size={13} style={{ color: T.textMuted, flexShrink: 0 }} />
                                 <input
                                     type="url"
                                     value={urlInput}
                                     onChange={e => { setUrlInput(e.target.value); setUrlError(null); }}
                                     onKeyDown={e => { if (e.key === 'Enter') handleUrlImport(); }}
                                     placeholder="Paste a Seek, LinkedIn, or career page URL to auto-import…"
-                                    className="flex-1 bg-transparent text-xs text-slate-300 outline-none placeholder:text-slate-600"
+                                    className="flex-1 bg-transparent text-xs outline-none"
+                                    style={{ color: T.inputText }}
                                 />
                                 {urlInput && (
-                                    <button onClick={() => { setUrlInput(''); setUrlError(null); }} className="text-slate-600 hover:text-slate-400">
+                                    <button onClick={() => { setUrlInput(''); setUrlError(null); }} style={{ color: T.textMuted }}>
                                         <X size={12} />
                                     </button>
                                 )}
@@ -269,7 +273,8 @@ export const MatchEngine: React.FC = () => {
                             <button
                                 onClick={handleUrlImport}
                                 disabled={!urlInput.trim() || urlLoading}
-                                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-slate-200 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5"
+                                className="px-4 py-2 disabled:opacity-40 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5"
+                                style={{ background: T.btnBg, color: T.btnText }}
                             >
                                 {urlLoading ? <Loader2 size={12} className="animate-spin" /> : <Link size={12} />}
                                 Import
