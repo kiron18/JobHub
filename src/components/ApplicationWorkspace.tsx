@@ -26,6 +26,7 @@ import { StrategistDebrief } from './StrategistDebrief';
 import { CompanyResearchPanel, CompanyResearch } from './CompanyResearchPanel';
 import { CriteriaInputPanel } from './CriteriaInputPanel';
 import { GapAnalysisPanel } from './GapAnalysisPanel';
+import { SalaryInsightPanel } from './SalaryInsightPanel';
 import { exportDocx, DocType } from '../lib/exportDocx';
 
 interface WorkspaceState {
@@ -68,6 +69,28 @@ interface WorkspaceState {
 }
 
 import { ProfileCompletion } from './ProfileCompletion';
+
+/** Renders job description text with keyword terms highlighted */
+const HighlightedJD: React.FC<{ text: string; keywords: string[] }> = ({ text, keywords }) => {
+    if (!keywords.length) return <span className="whitespace-pre-wrap">{text}</span>;
+
+    // Build a regex from keywords, sorted longest-first to avoid partial-match issues
+    const escaped = [...keywords]
+        .sort((a, b) => b.length - a.length)
+        .map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    const pattern = new RegExp(`(${escaped.join('|')})`, 'gi');
+
+    const parts = text.split(pattern);
+    return (
+        <span className="whitespace-pre-wrap">
+            {parts.map((part, i) =>
+                keywords.some(k => k.toLowerCase() === part.toLowerCase())
+                    ? <mark key={i} className="bg-brand-600/20 text-brand-300 rounded px-0.5">{part}</mark>
+                    : part
+            )}
+        </span>
+    );
+};
 
 // Inline amber pill for [VERIFY: ...] tags produced by the LLM.
 const VerifyTag: React.FC<{ description: string }> = ({ description }) => {
@@ -738,6 +761,17 @@ export const ApplicationWorkspace: React.FC = () => {
                         </div>
                     )}
 
+                    {/* Salary Insight Panel */}
+                    {state.metadata?.role && (
+                        <div className="p-4 border-b border-slate-800 shrink-0">
+                            <SalaryInsightPanel
+                                role={state.metadata.role}
+                                company={state.metadata.company}
+                                location="Australia"
+                            />
+                        </div>
+                    )}
+
                     {/* Gap Analysis Panel — shown after first document generates */}
                     {(state.documents.resume || state.documents['cover-letter'] || state.documents['selection-criteria']) && !state.isGenerating && (
                         <div className="p-4 border-b border-slate-800 shrink-0">
@@ -750,9 +784,12 @@ export const ApplicationWorkspace: React.FC = () => {
 
                     <div className="p-4 border-b border-slate-800 flex items-center justify-between shrink-0">
                         <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Job Description</span>
+                        {state.keywords && state.keywords.length > 0 && (
+                            <span className="text-[9px] font-bold text-brand-400/70 uppercase tracking-wider">{state.keywords.length} keywords</span>
+                        )}
                     </div>
-                    <div className="flex-1 overflow-y-auto p-6 text-sm text-slate-400 leading-relaxed custom-scrollbar whitespace-pre-wrap">
-                        {state.jobDescription}
+                    <div className="flex-1 overflow-y-auto p-6 text-sm text-slate-400 leading-relaxed custom-scrollbar">
+                        <HighlightedJD text={state.jobDescription} keywords={state.keywords || []} />
                     </div>
 
                     {/* Academic document viewer modal */}

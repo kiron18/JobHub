@@ -162,4 +162,64 @@ Return ONLY valid JSON.
     }
 });
 
+/**
+ * POST /api/research/salary
+ * Looks up salary range for a role in a given city using Serper web search.
+ *
+ * Body: { role: string, company?: string, location?: string }
+ * Returns: { min, max, currency, source, formatted }
+ */
+router.post('/salary', authenticate, async (req, res) => {
+    const { role, company, location } = req.body as { role?: string; company?: string; location?: string };
+
+    if (!role || role.length < 2) {
+        return res.status(400).json({ error: 'role is required' });
+    }
+
+    const city = location || 'Australia';
+
+    try {
+        const query = `"${role}" salary${company ? ` "${company}"` : ''} ${city} 2024 2025 AUD OR "$"`;
+        const results = await searchSerper(query, 6);
+        const snippets = snippetsToText(results);
+
+        if (!snippets) {
+            return res.json({ min: null, max: null, currency: 'AUD', formatted: 'No salary data found', source: null });
+        }
+
+        const prompt = `Extract salary range from these web search results for the role: "${role}" in ${city}.
+
+SEARCH RESULTS:
+${snippets}
+
+Return JSON:
+{
+  "min": number | null,      // lower bound in AUD (no commas, no symbols)
+  "max": number | null,      // upper bound in AUD
+  "currency": "AUD",
+  "period": "annual" | "hourly" | "daily",
+  "formatted": string,       // human-readable e.g. "$90,000 – $115,000 per year"
+  "context": string,          // 1 sentence: seniority level or conditions this range applies to
+  "source": string | null    // website name if identifiable (e.g. "Seek", "Glassdoor")
+}
+
+If no reliable salary data found, return { "min": null, "max": null, "formatted": "No salary data found" }.
+Return ONLY valid JSON.`;
+
+        const raw = await callLLM(prompt, true);
+        let parsed: any = { min: null, max: null, formatted: 'No salary data found' };
+        try {
+            parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
+        } catch {
+            console.warn('[research] salary LLM non-JSON:', raw.slice(0, 100));
+        }
+
+        return res.json(parsed);
+
+    } catch (err: any) {
+        console.error('[research] salary error:', err.message);
+        return res.status(500).json({ error: 'Salary lookup failed' });
+    }
+});
+
 export default router;
