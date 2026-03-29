@@ -43,6 +43,7 @@ interface JobApplication {
     description: string;
     status: ApplicationStatus;
     dateApplied: string | null;
+    notes: string | null;
     documents: Document[];
     createdAt: string;
 }
@@ -342,12 +343,19 @@ const FollowUpNudge: React.FC<{ jobs: JobApplication[] }> = ({ jobs }) => {
     );
 };
 
-const JobCard: React.FC<{ job: JobApplication; onStatusChange: (id: string, status: ApplicationStatus, dateApplied?: string) => void; onDelete: (id: string) => void }> = ({ job, onStatusChange, onDelete }) => {
+const JobCard: React.FC<{
+    job: JobApplication;
+    onStatusChange: (id: string, status: ApplicationStatus, dateApplied?: string) => void;
+    onDelete: (id: string) => void;
+    onNotesChange: (id: string, notes: string) => void;
+}> = ({ job, onStatusChange, onDelete, onNotesChange }) => {
     const [expanded, setExpanded] = useState(false);
     const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
     const [thankYouEmail, setThankYouEmail] = useState<string | null>(null);
     const [generatingEmail, setGeneratingEmail] = useState(false);
     const [thankYouOpen, setThankYouOpen] = useState(false);
+    const [notesValue, setNotesValue] = useState(job.notes || '');
+    const [notesSaving, setNotesSaving] = useState(false);
 
     const days = daysSinceApplied(job.dateApplied);
     const showFollowUpAlert = job.status === 'APPLIED' && days !== null && days >= 7;
@@ -377,6 +385,16 @@ const JobCard: React.FC<{ job: JobApplication; onStatusChange: (id: string, stat
     const handleStatusSelect = (status: ApplicationStatus) => {
         const dateApplied = status === 'APPLIED' && !job.dateApplied ? new Date().toISOString() : undefined;
         onStatusChange(job.id, status, dateApplied);
+    };
+
+    const handleNotesSave = async () => {
+        if (notesValue === (job.notes || '')) return;
+        setNotesSaving(true);
+        try {
+            await onNotesChange(job.id, notesValue);
+        } finally {
+            setNotesSaving(false);
+        }
     };
 
     return (
@@ -547,6 +565,22 @@ const JobCard: React.FC<{ job: JobApplication; onStatusChange: (id: string, stat
                                 </div>
                             )}
 
+                            {/* Notes */}
+                            <div>
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Notes</p>
+                                    {notesSaving && <span className="text-[9px] text-slate-600 font-bold">Saving…</span>}
+                                </div>
+                                <textarea
+                                    value={notesValue}
+                                    onChange={e => setNotesValue(e.target.value)}
+                                    onBlur={handleNotesSave}
+                                    placeholder="Interview details, contact names, talking points, salary discussed…"
+                                    rows={3}
+                                    className="w-full bg-slate-800/60 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-300 outline-none focus:border-brand-500 transition-colors resize-none leading-relaxed placeholder:text-slate-600"
+                                />
+                            </div>
+
                             {/* Delete */}
                             <div className="pt-2 border-t border-slate-800">
                                 <button
@@ -604,6 +638,16 @@ export const ApplicationTracker: React.FC = () => {
         }
     });
 
+    const updateNotesMutation = useMutation({
+        mutationFn: async ({ id, notes }: { id: string; notes: string }) => {
+            const { data } = await api.patch(`/jobs/${id}`, { notes });
+            return data;
+        },
+        onError: () => {
+            toast.error('Failed to save notes');
+        }
+    });
+
     const deleteJobMutation = useMutation({
         mutationFn: async (id: string) => {
             await api.delete(`/jobs/${id}`);
@@ -623,6 +667,10 @@ export const ApplicationTracker: React.FC = () => {
 
     const handleDelete = (id: string) => {
         deleteJobMutation.mutate(id);
+    };
+
+    const handleNotesChange = async (id: string, notes: string) => {
+        await updateNotesMutation.mutateAsync({ id, notes });
     };
 
     const filteredJobs = filterStatus === 'ALL'
@@ -731,6 +779,7 @@ export const ApplicationTracker: React.FC = () => {
                             job={job}
                             onStatusChange={handleStatusChange}
                             onDelete={handleDelete}
+                            onNotesChange={handleNotesChange}
                         />
                     ))}
                 </div>

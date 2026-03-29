@@ -151,6 +151,7 @@ model JobApplication {
   description    String
   dateApplied    DateTime?
   status         ApplicationStatus @default(SAVED)
+  notes          String?           // Free-text candidate notes (interview details, contacts, etc.)
   documents      Document[]
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt

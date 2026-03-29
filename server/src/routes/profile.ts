@@ -568,7 +568,7 @@ router.delete('/jobs/:id', authenticate, async (req, res) => {
 router.patch('/jobs/:id', authenticate, async (req, res) => {
     const { id } = req.params as any;
     const userId = (req as any).user.id;
-    const { status, dateApplied } = req.body;
+    const { status, dateApplied, notes } = req.body;
 
     try {
         const job = await prisma.jobApplication.update({
@@ -578,7 +578,8 @@ router.patch('/jobs/:id', authenticate, async (req, res) => {
             },
             data: {
                 ...(status && { status }),
-                ...(dateApplied !== undefined && { dateApplied: dateApplied ? new Date(dateApplied) : null })
+                ...(dateApplied !== undefined && { dateApplied: dateApplied ? new Date(dateApplied) : null }),
+                ...(notes !== undefined && { notes }),
             },
             include: { documents: true }
         });
