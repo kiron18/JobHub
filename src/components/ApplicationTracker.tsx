@@ -44,6 +44,7 @@ interface JobApplication {
     description: string;
     status: ApplicationStatus;
     dateApplied: string | null;
+    closingDate: string | null;
     notes: string | null;
     priority: JobPriority;
     documents: Document[];
@@ -573,6 +574,16 @@ const JobCard: React.FC<{
                                     {days}d ago
                                 </span>
                             )}
+                            {job.closingDate && job.status === 'SAVED' && (() => {
+                                const dLeft = Math.ceil((new Date(job.closingDate).getTime() - Date.now()) / 86_400_000);
+                                if (dLeft > 14) return null;
+                                const badgeColor = dLeft <= 2 ? 'text-red-400 bg-red-500/10 border-red-500/20' : dLeft <= 7 ? 'text-amber-400 bg-amber-500/10 border-amber-500/20' : 'text-slate-500 bg-slate-800 border-slate-700';
+                                return (
+                                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border ${badgeColor}`}>
+                                        {dLeft <= 0 ? 'Closed' : dLeft === 1 ? 'Due tomorrow' : `${dLeft}d left`}
+                                    </span>
+                                );
+                            })()}
                         </div>
                         <h3 className="font-bold text-slate-100 text-base truncate">{job.title}</h3>
                         <p className="text-sm text-slate-400 font-medium">{job.company}</p>
@@ -642,6 +653,33 @@ const JobCard: React.FC<{
                                     </span>
                                 </div>
                             )}
+
+                            {/* Closing date */}
+                            <div className="flex items-center gap-2">
+                                <Clock size={12} className="text-slate-500 shrink-0" />
+                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">Deadline:</span>
+                                <input
+                                    type="date"
+                                    defaultValue={job.closingDate ? new Date(job.closingDate).toISOString().slice(0, 10) : ''}
+                                    onBlur={async e => {
+                                        const val = e.target.value || null;
+                                        await api.patch(`/jobs/${job.id}`, { closingDate: val });
+                                    }}
+                                    className="flex-1 bg-transparent border-none text-xs text-slate-400 outline-none focus:text-slate-200 transition-colors cursor-pointer"
+                                    style={{ colorScheme: 'dark' }}
+                                />
+                                {job.closingDate && (() => {
+                                    const daysLeft = Math.ceil((new Date(job.closingDate).getTime() - Date.now()) / 86_400_000);
+                                    const color = daysLeft <= 2 ? 'text-red-400 bg-red-500/10 border-red-500/20' : daysLeft <= 7 ? 'text-amber-400 bg-amber-500/10 border-amber-500/20' : 'text-slate-500 bg-slate-800 border-slate-700';
+                                    return daysLeft >= 0 ? (
+                                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border ${color}`}>
+                                            {daysLeft === 0 ? 'Today!' : `${daysLeft}d left`}
+                                        </span>
+                                    ) : (
+                                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded border text-slate-600 bg-slate-800 border-slate-700">Closed</span>
+                                    );
+                                })()}
+                            </div>
 
                             {/* Documents */}
                             {job.documents.length > 0 && (
@@ -956,7 +994,7 @@ const JobCard: React.FC<{
 export const ApplicationTracker: React.FC = () => {
     const queryClient = useQueryClient();
     const [filterStatus, setFilterStatus] = useState<ApplicationStatus | 'ALL'>('ALL');
-    const [sortBy, setSortBy] = useState<'recent' | 'priority' | 'company'>('recent');
+    const [sortBy, setSortBy] = useState<'recent' | 'priority' | 'company' | 'deadline'>('recent');
     const [showAddForm, setShowAddForm] = useState(false);
     const [addForm, setAddForm] = useState({ title: '', company: '', status: 'SAVED' as ApplicationStatus, dateApplied: '', notes: '' });
 
@@ -1072,6 +1110,11 @@ export const ApplicationTracker: React.FC = () => {
         }
         if (sortBy === 'company') {
             return (a.company || '').localeCompare(b.company || '');
+        }
+        if (sortBy === 'deadline') {
+            const da = a.closingDate ? new Date(a.closingDate).getTime() : Infinity;
+            const db = b.closingDate ? new Date(b.closingDate).getTime() : Infinity;
+            return da - db;
         }
         // default: recent
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
@@ -1321,7 +1364,7 @@ export const ApplicationTracker: React.FC = () => {
                 {/* Sort */}
                 <div className="ml-auto flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-lg px-1 py-0.5">
                     <span className="text-[9px] font-bold text-slate-600 uppercase tracking-wider px-1">Sort</span>
-                    {(['recent', 'priority', 'company'] as const).map(s => (
+                    {(['recent', 'priority', 'deadline', 'company'] as const).map(s => (
                         <button
                             key={s}
                             onClick={() => setSortBy(s)}
@@ -1329,7 +1372,7 @@ export const ApplicationTracker: React.FC = () => {
                                 sortBy === s ? 'bg-slate-700 text-slate-200' : 'text-slate-600 hover:text-slate-400'
                             }`}
                         >
-                            {s === 'recent' ? 'Newest' : s === 'priority' ? 'Priority' : 'A–Z'}
+                            {s === 'recent' ? 'Newest' : s === 'priority' ? 'Priority' : s === 'deadline' ? 'Deadline' : 'A–Z'}
                         </button>
                     ))}
                 </div>

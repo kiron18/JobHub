@@ -551,7 +551,7 @@ router.get('/jobs', authenticate, async (req, res) => {
 
 router.post('/jobs', authenticate, async (req, res) => {
     const userId = (req as any).user.id;
-    const { title, company, description, status, dateApplied, notes } = req.body;
+    const { title, company, description, status, dateApplied, notes, closingDate } = req.body;
 
     if (!title || !company) {
         return res.status(400).json({ error: 'Title and company are required.' });
@@ -569,6 +569,7 @@ router.post('/jobs', authenticate, async (req, res) => {
                 status: status || 'SAVED',
                 dateApplied: dateApplied ? new Date(dateApplied) : null,
                 notes: notes || null,
+                closingDate: closingDate ? new Date(closingDate) : null,
                 userId,
                 candidateProfileId: profile.id,
             },
@@ -600,7 +601,7 @@ router.delete('/jobs/:id', authenticate, async (req, res) => {
 router.patch('/jobs/:id', authenticate, async (req, res) => {
     const { id } = req.params as any;
     const userId = (req as any).user.id;
-    const { status, dateApplied, notes, priority } = req.body;
+    const { status, dateApplied, notes, priority, closingDate } = req.body;
 
     try {
         const job = await prisma.jobApplication.update({
@@ -613,6 +614,7 @@ router.patch('/jobs/:id', authenticate, async (req, res) => {
                 ...(dateApplied !== undefined && { dateApplied: dateApplied ? new Date(dateApplied) : null }),
                 ...(notes !== undefined && { notes }),
                 ...(priority !== undefined && { priority: priority || null }),
+                ...(closingDate !== undefined && { closingDate: closingDate ? new Date(closingDate) : null }),
             },
             include: { documents: true }
         });
