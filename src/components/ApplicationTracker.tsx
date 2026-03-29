@@ -902,6 +902,7 @@ const JobCard: React.FC<{
 export const ApplicationTracker: React.FC = () => {
     const queryClient = useQueryClient();
     const [filterStatus, setFilterStatus] = useState<ApplicationStatus | 'ALL'>('ALL');
+    const [sortBy, setSortBy] = useState<'recent' | 'priority' | 'company'>('recent');
     const [showAddForm, setShowAddForm] = useState(false);
     const [addForm, setAddForm] = useState({ title: '', company: '', status: 'SAVED' as ApplicationStatus, dateApplied: '', notes: '' });
 
@@ -1007,9 +1008,20 @@ export const ApplicationTracker: React.FC = () => {
         createJobMutation.mutate(addForm);
     };
 
-    const filteredJobs = filterStatus === 'ALL'
-        ? jobs
-        : jobs.filter(j => j.status === filterStatus);
+    const PRIORITY_ORDER: Record<string, number> = { DREAM: 0, TARGET: 1, BACKUP: 2 };
+
+    const filteredJobs = [...(filterStatus === 'ALL' ? jobs : jobs.filter(j => j.status === filterStatus))].sort((a, b) => {
+        if (sortBy === 'priority') {
+            const pa = a.priority ? (PRIORITY_ORDER[a.priority] ?? 3) : 3;
+            const pb = b.priority ? (PRIORITY_ORDER[b.priority] ?? 3) : 3;
+            if (pa !== pb) return pa - pb;
+        }
+        if (sortBy === 'company') {
+            return (a.company || '').localeCompare(b.company || '');
+        }
+        // default: recent
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
 
     const counts = {
         ALL: jobs.length,
@@ -1166,8 +1178,8 @@ export const ApplicationTracker: React.FC = () => {
                 </AnimatePresence>
             </div>
 
-            {/* Filters */}
-            <div className="flex flex-wrap gap-2">
+            {/* Filters + Sort */}
+            <div className="flex flex-wrap items-center gap-2">
                 {(['ALL', ...STATUS_FLOW] as const).map(status => {
                     const count = counts[status];
                     const config = status === 'ALL' ? null : STATUS_CONFIG[status];
@@ -1187,6 +1199,21 @@ export const ApplicationTracker: React.FC = () => {
                         </button>
                     );
                 })}
+                {/* Sort */}
+                <div className="ml-auto flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-lg px-1 py-0.5">
+                    <span className="text-[9px] font-bold text-slate-600 uppercase tracking-wider px-1">Sort</span>
+                    {(['recent', 'priority', 'company'] as const).map(s => (
+                        <button
+                            key={s}
+                            onClick={() => setSortBy(s)}
+                            className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all ${
+                                sortBy === s ? 'bg-slate-700 text-slate-200' : 'text-slate-600 hover:text-slate-400'
+                            }`}
+                        >
+                            {s === 'recent' ? 'Newest' : s === 'priority' ? 'Priority' : 'A–Z'}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             {/* Job list */}
