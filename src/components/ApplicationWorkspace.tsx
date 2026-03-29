@@ -33,6 +33,7 @@ import { GapAnalysisPanel } from './GapAnalysisPanel';
 import { SalaryInsightPanel } from './SalaryInsightPanel';
 import { InterviewQuestionsPanel } from './InterviewQuestionsPanel';
 import { JDSummaryBar } from './JDSummaryBar';
+import { ATSCoveragePanel } from './ATSCoveragePanel';
 import { exportDocx, DocType } from '../lib/exportDocx';
 
 interface WorkspaceState {
@@ -916,6 +917,17 @@ export const ApplicationWorkspace: React.FC = () => {
                             <GapAnalysisPanel
                                 jobDescription={state.jobDescription}
                                 keywords={state.keywords}
+                            />
+                        </div>
+                    )}
+
+                    {/* ATS Coverage Panel — shown when resume or cover-letter is ready */}
+                    {(state.documents.resume || state.documents['cover-letter']) && !state.isGenerating && (
+                        <div className="p-4 border-b border-slate-800 shrink-0">
+                            <ATSCoveragePanel
+                                document={state.documents[state.activeTab as 'resume' | 'cover-letter'] || state.documents.resume || state.documents['cover-letter']}
+                                jobDescription={state.jobDescription}
+                                docType={state.activeTab}
                             />
                         </div>
                     )}

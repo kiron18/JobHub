@@ -657,4 +657,114 @@ Return ONLY valid JSON. Generate exactly 5 improvements, ordered by priority (1 
     }
 });
 
+// ── ATS Coverage ──────────────────────────────────────────────────────────────
+// Analyse a generated document against the JD to surface keyword gaps.
+router.post('/ats-coverage', authenticate, async (req: any, res: any) => {
+    try {
+        const { document, jobDescription, docType } = req.body;
+        if (!document || !jobDescription) {
+            return res.status(400).json({ error: 'document and jobDescription are required.' });
+        }
+
+        const prompt = `You are an ATS (Applicant Tracking System) keyword expert for Australian employers.
+
+DOCUMENT TYPE: ${docType || 'resume'}
+
+JOB DESCRIPTION:
+${jobDescription.slice(0, 3000)}
+
+SUBMITTED DOCUMENT:
+${document.slice(0, 4000)}
+
+Task: Identify the most important ATS keywords from the job description and check whether they appear (verbatim or semantically equivalent) in the submitted document.
+
+Focus on:
+- Job title variants and role keywords
+- Required technical skills, tools, frameworks, platforms
+- Certifications, qualifications, degrees mentioned
+- Key action verbs that appear in the JD
+- Industry-specific terminology
+- Soft skills that are explicitly called out (not generic ones)
+
+Exclude: company name, salary details, location, generic filler words.
+
+Return JSON exactly:
+{
+  "score": <integer 0-100 representing % of key terms covered>,
+  "matched": [<terms found in document — max 12>],
+  "missing": [<important terms NOT found — max 10, prioritised by importance>],
+  "quickFixes": [<2-3 specific sentence-level suggestions to add missing terms naturally>]
+}
+
+Return ONLY valid JSON.`;
+
+        const raw = await callLLM(prompt, true);
+        const result = parseLLMJson(raw);
+
+        return res.json({
+            score: typeof result.score === 'number' ? Math.min(100, Math.max(0, result.score)) : 50,
+            matched: Array.isArray(result.matched) ? result.matched.slice(0, 12) : [],
+            missing: Array.isArray(result.missing) ? result.missing.slice(0, 10) : [],
+            quickFixes: Array.isArray(result.quickFixes) ? result.quickFixes.slice(0, 3) : [],
+        });
+
+    } catch (err: any) {
+        console.error('[ATS Coverage] Error:', err.message);
+        res.status(500).json({ error: 'Failed to analyse ATS coverage.' });
+    }
+});
+
+// ── Tone Rewrite ───────────────────────────────────────────────────────────────
+// Rewrite a paragraph in a target tone without changing substance.
+router.post('/tone-rewrite', authenticate, async (req: any, res: any) => {
+    try {
+        const { text, tone, context } = req.body;
+        if (!text || !tone) {
+            return res.status(400).json({ error: 'text and tone are required.' });
+        }
+
+        const toneDescriptions: Record<string, string> = {
+            confident: 'authoritative and self-assured, using strong active verbs, avoiding hedging language like "helped" or "assisted"',
+            concise: 'tight and direct — cut every unnecessary word, no filler phrases, max impact per word',
+            formal: 'professional Australian business register, suitable for government or corporate roles',
+            warm: 'approachable and personable while remaining professional, slight conversational tone',
+            technical: 'precise technical language appropriate for a specialist or engineering audience',
+        };
+
+        const toneDesc = toneDescriptions[tone] || tone;
+
+        const prompt = `You are an expert Australian professional copywriter.
+
+CONTEXT: ${context || 'Professional job application document'}
+
+REQUESTED TONE: ${toneDesc}
+
+ORIGINAL TEXT:
+${text}
+
+Rewrite this text in the requested tone. Keep all factual content, achievements, and claims intact — only change the voice, word choice, and sentence structure.
+
+Return JSON exactly:
+{
+  "rewritten": "<rewritten text>",
+  "changes": "<one sentence describing the key changes made>"
+}
+
+Return ONLY valid JSON.`;
+
+        const raw = await callLLM(prompt, true);
+        const result = parseLLMJson(raw);
+
+        return res.json({
+            rewritten: result.rewritten || text,
+            changes: result.changes || '',
+        });
+
+    } catch (err: any) {
+        console.error('[Tone Rewrite] Error:', err.message);
+        res.status(500).json({ error: 'Failed to rewrite tone.' });
+    }
+});
+
 export default router;
+

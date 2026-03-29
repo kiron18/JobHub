@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, Edit2, Save, Loader2, AlertCircle, CheckCircle, RefreshCw, TrendingUp, Sparkles } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, Loader2, AlertCircle, CheckCircle, RefreshCw, TrendingUp, Sparkles, Search, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../lib/api';
 
@@ -68,6 +68,8 @@ export const AchievementBank: React.FC = () => {
   const [extracting, setExtracting] = useState(false);
   const [polishingId, setPolishingId] = useState<string | null>(null);
   const [polishReasoning, setPolishReasoning] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [qualityFilter, setQualityFilter] = useState<'ALL' | 'STRONG' | 'GOOD' | 'WEAK'>('ALL');
 
   const { data: achievements, isLoading, error } = useQuery<Achievement[]>({
     queryKey: ['achievements'],
@@ -176,6 +178,25 @@ export const AchievementBank: React.FC = () => {
   const weakCount = achievements?.filter(a => getQualityScore(a).label === 'WEAK').length ?? 0;
   const strongPct = total > 0 ? Math.round((strongCount / total) * 100) : 0;
 
+  // Filtered + searched list
+  const filteredAchievements = useMemo(() => {
+    if (!achievements) return [];
+    let list = achievements;
+    if (qualityFilter !== 'ALL') {
+      list = list.filter(a => getQualityScore(a).label === qualityFilter);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(a =>
+        a.title.toLowerCase().includes(q) ||
+        a.description?.toLowerCase().includes(q) ||
+        a.skills?.toLowerCase().includes(q) ||
+        a.metric?.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [achievements, qualityFilter, searchQuery]);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* Header */}
@@ -216,6 +237,54 @@ export const AchievementBank: React.FC = () => {
           <Plus size={12} /> Add
         </button>
       </div>
+
+      {/* Search + Quality Filter bar — only shown when there are achievements */}
+      {total > 0 && (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {/* Search */}
+          <div style={{ flex: 1, position: 'relative' }}>
+            <Search size={11} style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: '#4b5563', pointerEvents: 'none' }} />
+            <input
+              type="text"
+              placeholder="Search achievements…"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              style={{
+                width: '100%', padding: '6px 28px 6px 26px', boxSizing: 'border-box',
+                borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)',
+                background: 'rgba(255,255,255,0.04)', color: '#e2e8f0',
+                fontSize: 11, fontWeight: 500, outline: 'none',
+              }}
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: '#6b7280' }}
+              >
+                <X size={10} />
+              </button>
+            )}
+          </div>
+          {/* Quality filter pills */}
+          <div style={{ display: 'flex', gap: 3 }}>
+            {(['ALL', 'STRONG', 'GOOD', 'WEAK'] as const).map(f => (
+              <button
+                key={f}
+                onClick={() => setQualityFilter(f)}
+                style={{
+                  padding: '4px 8px', borderRadius: 6, fontSize: 9, fontWeight: 800,
+                  textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer',
+                  border: qualityFilter === f ? '1px solid rgba(99,102,241,0.5)' : '1px solid rgba(255,255,255,0.07)',
+                  background: qualityFilter === f ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.03)',
+                  color: qualityFilter === f ? '#818cf8' : '#4b5563',
+                }}
+              >
+                {f === 'ALL' ? 'All' : f === 'STRONG' ? '✦ Strong' : f === 'GOOD' ? 'Good' : '△ Weak'}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Create form */}
       <AnimatePresence>
@@ -262,7 +331,7 @@ export const AchievementBank: React.FC = () => {
 
       {/* Achievement list */}
       <AnimatePresence mode="popLayout">
-        {achievements?.map(achievement => {
+        {filteredAchievements.map(achievement => {
           const hint = getMicroHint(achievement);
           const hintOpen = expandedHints.has(achievement.id);
           const isEditing = editingId === achievement.id;
@@ -431,6 +500,12 @@ export const AchievementBank: React.FC = () => {
           );
         })}
       </AnimatePresence>
+
+      {filteredAchievements.length === 0 && achievements && achievements.length > 0 && !isCreating && (
+        <div style={{ padding: '20px 0', textAlign: 'center', color: '#4b5563' }}>
+          <p style={{ fontSize: 12, margin: 0 }}>No achievements match your search.</p>
+        </div>
+      )}
 
       {(!achievements || achievements.length === 0) && !isCreating && (
         <div style={{ padding: '40px 0', textAlign: 'center', color: '#4b5563' }}>
