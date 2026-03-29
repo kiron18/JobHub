@@ -28,16 +28,18 @@ interface WorkspaceState {
     rankedAchievements: any[];
     selectedAchievementIds: string[];
     isDrawerOpen: boolean;
-    activeTab: 'resume' | 'cover-letter' | 'selection-criteria';
+    activeTab: 'resume' | 'cover-letter' | 'selection-criteria' | 'interview-prep';
     documents: {
         resume: string;
         'cover-letter': string;
         'selection-criteria': string;
+        'interview-prep': string;
     };
     documentIds: {
         resume: string | null;
         'cover-letter': string | null;
         'selection-criteria': string | null;
+        'interview-prep': string | null;
     };
     saveStatus: 'unsaved' | 'saving' | 'saved';
     isGenerating: boolean;
@@ -45,6 +47,7 @@ interface WorkspaceState {
         resume: boolean;
         'cover-letter': boolean;
         'selection-criteria': boolean;
+        'interview-prep': boolean;
     };
     metadata?: {
         company: string;
@@ -103,9 +106,9 @@ export const ApplicationWorkspace: React.FC = () => {
         const savedAnalysis = savedAnalysisStr ? JSON.parse(savedAnalysisStr) : null;
         const savedActiveTab = localStorage.getItem('jobhub_current_tab') as any;
         const savedDocsStr = localStorage.getItem('jobhub_current_docs');
-        const savedDocs = savedDocsStr ? JSON.parse(savedDocsStr) : { resume: '', 'cover-letter': '', 'selection-criteria': '' };
+        const savedDocs = savedDocsStr ? JSON.parse(savedDocsStr) : { resume: '', 'cover-letter': '', 'selection-criteria': '', 'interview-prep': '' };
         const savedDocIdsStr = localStorage.getItem('jobhub_current_docids');
-        const savedDocIds = savedDocIdsStr ? JSON.parse(savedDocIdsStr) : { resume: null, 'cover-letter': null, 'selection-criteria': null };
+        const savedDocIds = savedDocIdsStr ? JSON.parse(savedDocIdsStr) : { resume: null, 'cover-letter': null, 'selection-criteria': null, 'interview-prep': null };
 
         // Priority 1: Location State (Navigation from MatchEngine)
         // Priority 2: LocalStorage (Page Refresh)
@@ -124,11 +127,11 @@ export const ApplicationWorkspace: React.FC = () => {
                 .map((a: any) => a.id),
             isDrawerOpen: false,
             activeTab: currentTab,
-            documents: useStoredDocs ? savedDocs : { resume: '', 'cover-letter': '', 'selection-criteria': '' },
-            documentIds: useStoredDocs ? savedDocIds : { resume: null, 'cover-letter': null, 'selection-criteria': null },
+            documents: useStoredDocs ? savedDocs : { resume: '', 'cover-letter': '', 'selection-criteria': '', 'interview-prep': '' },
+            documentIds: useStoredDocs ? savedDocIds : { resume: null, 'cover-letter': null, 'selection-criteria': null, 'interview-prep': null },
             saveStatus: 'saved',
             isGenerating: false,
-            hasFailed: { resume: false, 'cover-letter': false, 'selection-criteria': false },
+            hasFailed: { resume: false, 'cover-letter': false, 'selection-criteria': false, 'interview-prep': false },
             metadata: currentAnalysis.extractedMetadata,
             analysisTone: currentAnalysis.analysisTone,
             coreCompetencies: currentAnalysis.coreCompetencies,
@@ -417,6 +420,7 @@ export const ApplicationWorkspace: React.FC = () => {
         const hasDocId = !!state.documentIds[state.activeTab];
 
         // For SC, don't auto-generate until the user has pasted criteria
+        // For interview-prep, auto-generate is fine (just needs the JD)
         const scReady = state.activeTab !== 'selection-criteria' || selectionCriteriaText.trim().length > 20;
 
         if (state.jobDescription && !hasDoc && !hasDocId && !state.isGenerating && !state.hasFailed[state.activeTab] && scReady) {
@@ -466,21 +470,22 @@ export const ApplicationWorkspace: React.FC = () => {
                 </div>
 
                 <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
-                    {(['resume', 'cover-letter', 'selection-criteria'] as const)
+                    {(['resume', 'cover-letter', 'selection-criteria', 'interview-prep'] as const)
                         .map(tab => (
                         <button
                             key={tab}
                             onClick={() => setState(prev => ({ ...prev, activeTab: tab }))}
                             className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
-                                state.activeTab === tab 
-                                    ? 'bg-brand-600 text-white shadow-lg' 
+                                state.activeTab === tab
+                                    ? 'bg-brand-600 text-white shadow-lg'
                                     : 'text-slate-500 hover:text-slate-300'
                             }`}
                         >
                             {tab === 'resume' && <FileText size={14} />}
                             {tab === 'cover-letter' && <Mail size={14} />}
                             {tab === 'selection-criteria' && <List size={14} />}
-                            <span className="capitalize">{tab.replace('-', ' ')}</span>
+                            {tab === 'interview-prep' && <ChevronRight size={14} />}
+                            <span>{tab === 'interview-prep' ? 'Interview Prep' : tab === 'selection-criteria' ? 'Selection Criteria' : tab === 'cover-letter' ? 'Cover Letter' : 'Resume'}</span>
                         </button>
                     ))}
                 </div>
@@ -570,6 +575,36 @@ export const ApplicationWorkspace: React.FC = () => {
                                     Generate SC Responses
                                 </button>
                             )}
+                        </div>
+                    )}
+
+                    {/* Interview prep tab: context panel */}
+                    {state.activeTab === 'interview-prep' && (
+                        <div className="p-4 border-b border-slate-800 shrink-0">
+                            <div className="rounded-xl border border-slate-700/50 bg-slate-900/60 overflow-hidden">
+                                <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-800 bg-slate-900/40">
+                                    <ChevronRight size={13} className="text-amber-400" />
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Interview Prep</span>
+                                </div>
+                                <div className="p-4">
+                                    <div className="flex items-start gap-2.5 p-3 bg-amber-500/5 rounded-lg border border-amber-500/15">
+                                        <AlertCircle size={12} className="text-amber-400 mt-0.5 shrink-0" />
+                                        <p className="text-[10px] text-slate-400 leading-relaxed">
+                                            Generates likely interview questions for this role with STAR answer frameworks built from your achievement bank. Use it to prepare, not to script.
+                                            {state.metadata?.company && ` Tailored for ${state.metadata.company}.`}
+                                        </p>
+                                    </div>
+                                    {!state.documents['interview-prep'] && !state.isGenerating && (
+                                        <button
+                                            onClick={() => handleGenerate('interview-prep')}
+                                            className="w-full mt-3 py-2.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <ChevronRight size={14} />
+                                            Generate Interview Prep
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     )}
 
