@@ -34,6 +34,7 @@ import { SalaryInsightPanel } from './SalaryInsightPanel';
 import { InterviewQuestionsPanel } from './InterviewQuestionsPanel';
 import { JDSummaryBar } from './JDSummaryBar';
 import { ATSCoveragePanel } from './ATSCoveragePanel';
+import { ToneRewritePanel } from './ToneRewritePanel';
 import { exportDocx, DocType } from '../lib/exportDocx';
 
 interface WorkspaceState {
@@ -927,6 +928,16 @@ export const ApplicationWorkspace: React.FC = () => {
                             <ATSCoveragePanel
                                 document={state.documents[state.activeTab as 'resume' | 'cover-letter'] || state.documents.resume || state.documents['cover-letter']}
                                 jobDescription={state.jobDescription}
+                                docType={state.activeTab}
+                            />
+                        </div>
+                    )}
+
+                    {/* Tone Rewrite Panel — shown when any document is ready */}
+                    {Object.values(state.documents).some(Boolean) && !state.isGenerating && (
+                        <div className="p-4 border-b border-slate-800 shrink-0">
+                            <ToneRewritePanel
+                                document={state.documents[state.activeTab as keyof typeof state.documents] || ''}
                                 docType={state.activeTab}
                             />
                         </div>
