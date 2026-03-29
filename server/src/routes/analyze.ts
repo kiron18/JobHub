@@ -766,5 +766,105 @@ Return ONLY valid JSON.`;
     }
 });
 
+// ── Resume Score ──────────────────────────────────────────────────────────────
+// Score a generated resume across multiple quality dimensions.
+router.post('/resume-score', authenticate, async (req: any, res: any) => {
+    try {
+        const { document, jobDescription } = req.body;
+        if (!document) {
+            return res.status(400).json({ error: 'document is required.' });
+        }
+
+        const prompt = `You are an expert Australian resume coach and ATS specialist.
+
+RESUME:
+${document.slice(0, 5000)}
+
+${jobDescription ? `JOB DESCRIPTION:\n${jobDescription.slice(0, 2000)}` : ''}
+
+Score this resume across these 5 dimensions (0-20 points each, total out of 100):
+
+1. **Impact & Metrics** — Do achievements use quantified outcomes? Are results specific (%, $, numbers)?
+2. **Relevance** — ${jobDescription ? 'How well does content align with the job description?' : 'Does content reflect a focused professional narrative?'}
+3. **ATS Compatibility** — Are keywords naturally embedded? Does formatting avoid ATS traps (tables, headers as graphics)?
+4. **Clarity & Brevity** — Is language concise and direct? No clichés, no filler phrases?
+5. **Structure & Completeness** — Does the resume have all expected sections? Is the hierarchy clear?
+
+Return JSON exactly:
+{
+  "total": <integer 0-100>,
+  "dimensions": [
+    { "name": "Impact & Metrics",       "score": <0-20>, "feedback": "<one specific observation>" },
+    { "name": "Relevance",              "score": <0-20>, "feedback": "<one specific observation>" },
+    { "name": "ATS Compatibility",      "score": <0-20>, "feedback": "<one specific observation>" },
+    { "name": "Clarity & Brevity",      "score": <0-20>, "feedback": "<one specific observation>" },
+    { "name": "Structure & Completeness","score": <0-20>, "feedback": "<one specific observation>" }
+  ],
+  "topFix": "<The single most important thing to fix — be specific>"
+}
+
+Return ONLY valid JSON.`;
+
+        const raw = await callLLM(prompt, true);
+        const result = parseLLMJson(raw);
+
+        return res.json({
+            total: typeof result.total === 'number' ? Math.min(100, Math.max(0, result.total)) : 60,
+            dimensions: Array.isArray(result.dimensions) ? result.dimensions.slice(0, 5) : [],
+            topFix: result.topFix || '',
+        });
+
+    } catch (err: any) {
+        console.error('[Resume Score] Error:', err.message);
+        res.status(500).json({ error: 'Failed to score resume.' });
+    }
+});
+
+// ── Notes Action Items ─────────────────────────────────────────────────────────
+// Extract follow-up actions from job application notes.
+router.post('/notes-actions', authenticate, async (req: any, res: any) => {
+    try {
+        const { notes, jobTitle, company, status } = req.body;
+        if (!notes || notes.trim().length < 20) {
+            return res.status(400).json({ error: 'notes must be at least 20 characters.' });
+        }
+
+        const prompt = `You are a job search coach. Extract actionable follow-up items from these job application notes.
+
+JOB: ${jobTitle || 'Unknown'} at ${company || 'Unknown'}
+STATUS: ${status || 'Unknown'}
+
+NOTES:
+${notes}
+
+Extract 2-4 specific action items from these notes. Each item should be something the candidate needs to DO before or during their next step in this application.
+
+Return JSON exactly:
+{
+  "actions": [
+    {
+      "text": "<clear, specific action to take>",
+      "type": "follow-up" | "prepare" | "research" | "deadline",
+      "urgency": "high" | "medium" | "low"
+    }
+  ]
+}
+
+Return ONLY valid JSON with 2-4 actions. If no actionable items exist, return { "actions": [] }.`;
+
+        const raw = await callLLM(prompt, true);
+        const result = parseLLMJson(raw);
+
+        return res.json({
+            actions: Array.isArray(result.actions) ? result.actions.slice(0, 4) : [],
+        });
+
+    } catch (err: any) {
+        console.error('[Notes Actions] Error:', err.message);
+        res.status(500).json({ error: 'Failed to extract actions.' });
+    }
+});
+
 export default router;
+
 

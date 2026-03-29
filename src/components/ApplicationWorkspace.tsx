@@ -35,6 +35,7 @@ import { InterviewQuestionsPanel } from './InterviewQuestionsPanel';
 import { JDSummaryBar } from './JDSummaryBar';
 import { ATSCoveragePanel } from './ATSCoveragePanel';
 import { ToneRewritePanel } from './ToneRewritePanel';
+import { ResumeScorecardPanel } from './ResumeScorecardPanel';
 import { exportDocx, DocType } from '../lib/exportDocx';
 
 interface WorkspaceState {
@@ -929,6 +930,16 @@ export const ApplicationWorkspace: React.FC = () => {
                                 document={state.documents[state.activeTab as 'resume' | 'cover-letter'] || state.documents.resume || state.documents['cover-letter']}
                                 jobDescription={state.jobDescription}
                                 docType={state.activeTab}
+                            />
+                        </div>
+                    )}
+
+                    {/* Resume Scorecard — shown when resume is generated */}
+                    {state.documents.resume && !state.isGenerating && (
+                        <div className="p-4 border-b border-slate-800 shrink-0">
+                            <ResumeScorecardPanel
+                                document={state.documents.resume}
+                                jobDescription={state.jobDescription}
                             />
                         </div>
                     )}
