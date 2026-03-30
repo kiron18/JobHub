@@ -8,6 +8,8 @@ import path from 'path';
 // Routers
 import extractRouter from './routes/extract';
 import analyzeRouter from './routes/analyze';
+import aiToolsRouter from './routes/ai-tools';
+import documentQaRouter from './routes/document-qa';
 import generateRouter from './routes/generate';
 import profileRouter from './routes/profile';
 import documentsRouter from './routes/documents';
@@ -15,6 +17,7 @@ import healthRouter from './routes/health';
 import authRouter from './routes/auth';
 import onboardingRouter from './routes/onboarding';
 import researchRouter from './routes/research';
+import { analyzeRateLimit } from './middleware/analyzeRateLimit';
 
 dotenv.config();
 
@@ -62,34 +65,34 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 
 const isDev = process.env.NODE_ENV !== 'production';
-const logFile = isDev ? path.join(__dirname, '../server.log') : null;
 
-const log = (msg: string) => {
-  const entry = `${new Date().toISOString()} - ${msg}\n`;
-  if (logFile) {
-    try { fs.appendFileSync(logFile, entry); } catch {}
-  }
-};
+// In dev only: mirror console output to a local log file for easy tailing.
+// In production Railway captures stdout natively; no file needed.
+if (isDev) {
+  const logFile = path.join(__dirname, '../server.log');
+  const originalLog = console.log.bind(console);
+  const originalErr = console.error.bind(console);
 
-// Redirect console to file
-const originalConsoleLog = console.log;
-const originalConsoleError = console.error;
+  const fileAppend = (msg: string) => {
+    try { fs.appendFileSync(logFile, `${new Date().toISOString()} ${msg}\n`); } catch {}
+  };
 
-console.log = (...args: any[]) => {
-    log(`[LOG] ${args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' ')}`);
-    originalConsoleLog(...args);
-};
+  console.log = (...args: any[]) => {
+    fileAppend(`[LOG] ${args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' ')}`);
+    originalLog(...args);
+  };
 
-console.error = (...args: any[]) => {
-    log(`[ERROR] ${args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' ')}`);
-    originalConsoleError(...args);
-};
+  console.error = (...args: any[]) => {
+    fileAppend(`[ERR] ${args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' ')}`);
+    originalErr(...args);
+  };
+}
 
+// Request timing log (stdout only — works in both envs)
 app.use((req, res, next) => {
     const start = Date.now();
     res.on('finish', () => {
-        const duration = Date.now() - start;
-        log(`${req.method} ${req.url} - Status: ${res.statusCode} (${duration}ms)`);
+        console.log(`${req.method} ${req.url} ${res.statusCode} ${Date.now() - start}ms`);
     });
     next();
 });
@@ -98,6 +101,8 @@ app.use((req, res, next) => {
 app.use('/api/health', healthRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/analyze', analyzeRouter);
+app.use('/api/analyze', aiToolsRouter);
+app.use('/api/analyze', documentQaRouter);
 app.use('/api/extract', extractRouter);
 app.use('/api/generate', generateRouter);
 app.use('/api', profileRouter);
