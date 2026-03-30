@@ -162,14 +162,27 @@ model JobApplication {
 model Document {
   id             String           @id @default(uuid())
   userId         String           // Supabase Auth UID
-  title          String?          // Add title
+  title          String?
   jobApplicationId String?
   jobApplication JobApplication?   @relation(fields: [jobApplicationId], references: [id])
   type           DocumentType
   content        String
   templateConfig Json?            // Section order, font styles, etc.
+  feedback       DocumentFeedback[]
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
+}
+
+model DocumentFeedback {
+  id           String       @id @default(uuid())
+  documentId   String
+  document     Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId       String
+  rating       Int          // 1–5
+  documentType DocumentType // mirrors document.type — for aggregate filtering without joins
+  weakSection  String?      // per-type enum: see route handler for valid values
+  freeText     String?
+  createdAt    DateTime     @default(now())
 }
 
 enum ApplicationStatus {

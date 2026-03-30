@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import api from '../lib/api';
 import { exportDocx, DocType } from '../lib/exportDocx';
+import { exportPdf } from '../lib/exportPdf';
 
 interface Document {
     id: string;
@@ -76,6 +77,15 @@ const DocCard: React.FC<DocCardProps> = ({ doc, onDelete, deleting }) => {
         }
     };
 
+    const handleDownloadPdf = async () => {
+        try {
+            await exportPdf(doc.content, DOC_TYPE_MAP[doc.type] as any, '', '');
+            toast.success('Downloaded as PDF');
+        } catch {
+            toast.error('PDF download failed — try .docx instead.');
+        }
+    };
+
     const preview = doc.content.slice(0, 120).replace(/\n+/g, ' ').trim();
 
     return (
@@ -116,6 +126,13 @@ const DocCard: React.FC<DocCardProps> = ({ doc, onDelete, deleting }) => {
                         className="p-1.5 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-slate-800 transition-all"
                     >
                         {copied ? <CheckCircle size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                    </button>
+                    <button
+                        onClick={handleDownloadPdf}
+                        title="Download as PDF"
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all"
+                    >
+                        <FileText size={14} />
                     </button>
                     <button
                         onClick={handleDownload}

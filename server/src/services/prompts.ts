@@ -561,7 +561,15 @@ Education: ${JSON.stringify(profile.education || [])}
 Certifications: ${JSON.stringify(profile.certifications || [])}
 Volunteering: ${JSON.stringify(profile.volunteering || [])}
 Languages: ${JSON.stringify(profile.languages || [])}
+${profile.coverLetterRawText ? `
+==============================================================
+VOICE REFERENCE
+==============================================================
+The candidate has uploaded a previous cover letter. Match their vocabulary level, sentence rhythm, and formality register. Preserve their natural writing style — do NOT homogenise into generic AI output.
 
+SAMPLE (first 600 chars):
+${profile.coverLetterRawText.slice(0, 600)}
+` : ''}
 JOB DESCRIPTION:
 ${jd}
 
@@ -708,7 +716,10 @@ Education: ${JSON.stringify(profile.education || [])}
 Certifications: ${JSON.stringify(profile.certifications || [])}
 Volunteering: ${JSON.stringify(profile.volunteering || [])}
 Languages: ${JSON.stringify(profile.languages || [])}
-
+${profile.coverLetterRawText ? `
+VOICE REFERENCE — match vocabulary level, sentence rhythm, and formality register from this sample. Preserve the candidate's natural style:
+"${profile.coverLetterRawText.slice(0, 600)}"
+` : ''}
 SELECTED ACHIEVEMENTS (Use ONLY these for evidence):
 ${selectedAchievements.length > 0
     ? selectedAchievements.map(a => `- [${a.title}] ${a.description} (Metric: ${a.metric})`).join('\n')

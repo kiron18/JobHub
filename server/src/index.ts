@@ -11,12 +11,13 @@ import analyzeRouter from './routes/analyze';
 import aiToolsRouter from './routes/ai-tools';
 import documentQaRouter from './routes/document-qa';
 import generateRouter from './routes/generate';
-import profileRouter from './routes/profile';
+import profileRouter from './routes/profile/index';
 import documentsRouter from './routes/documents';
 import healthRouter from './routes/health';
 import authRouter from './routes/auth';
 import onboardingRouter from './routes/onboarding';
 import researchRouter from './routes/research';
+import feedbackRouter from './routes/feedback';
 import { analyzeRateLimit } from './middleware/analyzeRateLimit';
 
 dotenv.config();
@@ -109,6 +110,7 @@ app.use('/api', profileRouter);
 app.use('/api', documentsRouter);
 app.use('/api/onboarding', onboardingRouter);
 app.use('/api/research', researchRouter);
+app.use('/api/feedback', feedbackRouter);
 
 // Sentry error handler - must be before any other error handling middleware
 Sentry.setupExpressErrorHandler(app);

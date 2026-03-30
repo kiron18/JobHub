@@ -37,7 +37,9 @@ import { ATSCoveragePanel } from './ATSCoveragePanel';
 import { ToneRewritePanel } from './ToneRewritePanel';
 import { ResumeScorecardPanel } from './ResumeScorecardPanel';
 import { CoverLetterPersonalisationPanel } from './CoverLetterPersonalisationPanel';
+import { FeedbackBar } from './FeedbackBar';
 import { exportDocx, DocType } from '../lib/exportDocx';
+import { exportPdf } from '../lib/exportPdf';
 
 interface WorkspaceState {
     jobDescription: string;
@@ -207,6 +209,7 @@ export const ApplicationWorkspace: React.FC = () => {
     const [isConfirmingRegen, setIsConfirmingRegen] = useState(false);
     const [regenerateFeedback, setRegenerateFeedback] = useState('');
     const [rateLimitError, setRateLimitError] = useState(false);
+    const [exportingPdf, setExportingPdf] = useState(false);
     const [companyResearch, setCompanyResearch] = useState<CompanyResearch | null>(null);
     const [selectionCriteriaText, setSelectionCriteriaText] = useState('');
     const [employerFramework, setEmployerFramework] = useState<string | null>(null);
@@ -369,6 +372,23 @@ export const ApplicationWorkspace: React.FC = () => {
                     setTimeout(() => { printWindow.focus(); printWindow.print(); }, 300);
                 }
             }
+        }
+    };
+
+    const handleDownloadPdf = async () => {
+        const content = state.documents[state.activeTab];
+        if (!content) return;
+        setExportingPdf(true);
+        try {
+            const candidateName = profile?.name || '';
+            const jobTitle = state.metadata?.role || state.metadata?.company || '';
+            await exportPdf(content, state.activeTab as DocType, candidateName, jobTitle);
+            toast.success('Downloaded as PDF');
+        } catch (err) {
+            console.error('[PDF Export] failed:', err);
+            toast.error('PDF export failed — try .docx instead');
+        } finally {
+            setExportingPdf(false);
         }
     };
 
@@ -660,6 +680,9 @@ export const ApplicationWorkspace: React.FC = () => {
                             {tab === 'selection-criteria' && <List size={14} />}
                             {tab === 'interview-prep' && <ChevronRight size={14} />}
                             <span>{tab === 'interview-prep' ? 'Interview Prep' : tab === 'selection-criteria' ? 'Selection Criteria' : tab === 'cover-letter' ? 'Cover Letter' : 'Resume'}</span>
+                            {tab === 'selection-criteria' && state.requiresSelectionCriteria && (
+                                <span className="inline-flex items-center justify-center w-1.5 h-1.5 rounded-full bg-amber-400" title="This job requires selection criteria" />
+                            )}
                         </button>
                     ))}
                 </div>
@@ -693,12 +716,20 @@ export const ApplicationWorkspace: React.FC = () => {
                         <Database size={14} />
                         Edit Selections
                     </button>
-                    <button 
+                    <button
                         onClick={handleDownload}
                         className="flex items-center gap-2 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-emerald-600/20"
                     >
                         <Download size={14} />
                         Export .docx
+                    </button>
+                    <button
+                        onClick={handleDownloadPdf}
+                        disabled={exportingPdf}
+                        className="flex items-center gap-2 px-4 py-1.5 bg-rose-700 hover:bg-rose-600 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-rose-700/20"
+                    >
+                        {exportingPdf ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
+                        Export .pdf
                     </button>
                 </div>
             </header>
@@ -759,6 +790,14 @@ export const ApplicationWorkspace: React.FC = () => {
                     {/* SC tab: criteria input panel */}
                     {state.activeTab === 'selection-criteria' && (
                         <div className="p-4 border-b border-slate-800 shrink-0 overflow-y-auto max-h-[55%] custom-scrollbar">
+                            {state.requiresSelectionCriteria && !selectionCriteriaText.trim() && (
+                                <div className="mb-3 flex items-start gap-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3.5 py-2.5">
+                                    <AlertCircle size={13} className="text-amber-400 mt-0.5 shrink-0" />
+                                    <p className="text-xs text-amber-300 leading-relaxed">
+                                        This job requires selection criteria responses. Paste the criteria below to generate targeted STAR responses for each criterion.
+                                    </p>
+                                </div>
+                            )}
                             <CriteriaInputPanel
                                 criteriaText={selectionCriteriaText}
                                 onChange={setSelectionCriteriaText}
@@ -1292,6 +1331,14 @@ export const ApplicationWorkspace: React.FC = () => {
                                 )}
                             </div>
                         </div>
+                        {/* Feedback bar — shown once document is generated */}
+                        {state.documentIds[state.activeTab] && !state.isGenerating && (
+                            <FeedbackBar
+                                key={state.documentIds[state.activeTab]!}
+                                documentId={state.documentIds[state.activeTab]!}
+                                docTab={state.activeTab as any}
+                            />
+                        )}
                         {state.blueprint && !state.isGenerating && (
                             <StrategistDebrief
                                 blueprint={state.blueprint}
