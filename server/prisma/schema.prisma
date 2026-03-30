@@ -155,6 +155,7 @@ model JobApplication {
   priority       JobPriority?      // User-set priority: DREAM, TARGET, BACKUP
   closingDate    DateTime?         // Application deadline
   documents      Document[]
+  blueprintJson  Json?      // Cached Stage 1 blueprint — persists across deploys
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 }

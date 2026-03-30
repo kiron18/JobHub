@@ -4,6 +4,7 @@ import { authenticate } from '../middleware/auth';
 import { callLLM } from '../services/llm';
 import { DOCUMENT_GENERATION_PROMPT_WITH_BLUEPRINT, DOCUMENT_GENERATION_PROMPT, buildSearchContextBlock } from '../services/prompts';
 import { generateBlueprint } from '../services/strategy';
+import { setCachedBlueprint } from '../services/blueprint-cache';
 import { buildPerCriterionAchievements } from '../services/generation';
 import { reviewDocument } from '../services/quality-gate';
 import fs from 'fs';
@@ -107,6 +108,18 @@ router.post('/:type', authenticate, async (req, res) => {
         // Build search context block from intake data (empty string if not onboarded)
         const searchContext = buildSearchContextBlock(profile);
 
+        // ── DB blueprint cache (L2) — pre-populate in-memory cache before Stage 1 ──
+        if (sanitizedJobAppId) {
+            const jobApp = await prisma.jobApplication.findUnique({
+                where: { id: sanitizedJobAppId },
+                select: { blueprintJson: true }
+            });
+            if (jobApp?.blueprintJson) {
+                setCachedBlueprint(sanitizedJobAppId, jobApp.blueprintJson as any);
+                console.log(`[Generation] DB blueprint cache hit for ${sanitizedJobAppId}`);
+            }
+        }
+
         // Only run Stage 1 if we have a real jobApplicationId to cache against
         const cacheKey = sanitizedJobAppId || `${userId}-${Date.now()}`;
         try {
@@ -119,6 +132,14 @@ router.post('/:type', authenticate, async (req, res) => {
             );
             stage1Info = { cached: blueprintResult.cached, tokens: blueprintResult.tokens };
             console.log(`[Generation] Stage 1 complete. Cached: ${blueprintResult.cached}`);
+
+            // Persist fresh blueprint to DB so it survives server restarts
+            if (!blueprintResult.cached && sanitizedJobAppId) {
+                prisma.jobApplication.update({
+                    where: { id: sanitizedJobAppId },
+                    data: { blueprintJson: blueprintResult.blueprint as any }
+                }).catch(err => console.error('[Generation] Failed to persist blueprint to DB:', err));
+            }
         } catch (blueprintError: any) {
             console.error('[Generation] Stage 1 failed — falling back to standard prompt:', blueprintError.message);
             blueprintResult = null;
