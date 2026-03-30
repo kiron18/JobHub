@@ -12,6 +12,7 @@ import { ApplicationWorkspace } from './components/ApplicationWorkspace';
 import { ApplicationTracker } from './components/ApplicationTracker';
 import { ProfileBank } from './components/ProfileBank';
 import { DocumentLibrary } from './components/DocumentLibrary';
+import { EmailTemplatesLibrary } from './components/EmailTemplatesLibrary';
 import { OnboardingGate } from './components/OnboardingGate';
 import { ReportExperience } from './components/ReportExperience';
 import { FirstVisitTip } from './components/FirstVisitTips';
@@ -331,6 +332,7 @@ function ReportOrDashboard() {
               <Route path="/application-workspace" element={<ApplicationWorkspace />} />
               <Route path="/workspace" element={<Workspace />} />
               <Route path="/documents" element={<DocumentLibrary />} />
+              <Route path="/email-templates" element={<EmailTemplatesLibrary />} />
               <Route path="*" element={<Dashboard />} />
             </Routes>
           </DashboardLayout>
