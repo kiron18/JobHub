@@ -1,13 +1,11 @@
 import { Router } from 'express';
-import { prisma } from '../index';
-import { authenticate } from '../middleware/auth';
-import { indexAchievement, deleteAchievement } from '../services/vector';
-import fs from 'fs';
-import path from 'path';
+import { prisma } from '../../index';
+import { authenticate } from '../../middleware/auth';
+import { indexAchievement } from '../../services/vector';
 
 const router = Router();
 
-// --- Profile Routes ---
+// GET /api/profile
 router.get('/profile', authenticate, async (req, res) => {
     try {
         const userId = (req as any).user.id;
@@ -52,6 +50,7 @@ router.get('/profile', authenticate, async (req, res) => {
     }
 });
 
+// GET /api/profile/resumes
 router.get('/profile/resumes', authenticate, async (req, res) => {
     const userId = (req as any).user.id;
     try {
@@ -70,6 +69,7 @@ router.get('/profile/resumes', authenticate, async (req, res) => {
     }
 });
 
+// DELETE /api/profile/resumes/:id
 router.delete('/profile/resumes/:id', authenticate, async (req, res) => {
     const userId = (req as any).user.id;
     const { id } = req.params as any;
@@ -88,6 +88,7 @@ router.delete('/profile/resumes/:id', authenticate, async (req, res) => {
     }
 });
 
+// POST /api/profile
 router.post('/profile', authenticate, async (req, res) => {
     try {
         const userId = (req as any).user.id;
@@ -392,239 +393,7 @@ router.post('/profile', authenticate, async (req, res) => {
     }
 });
 
-// --- Achievement Routes ---
-router.get('/achievements', authenticate, async (req, res) => {
-    const userId = (req as any).user.id;
-    console.log(`Handling GET /api/achievements for user: ${userId}`);
-    try {
-        console.log('Querying profile...');
-        const profile = await prisma.candidateProfile.findUnique({
-            where: { userId }
-        });
-
-        if (!profile) {
-            console.log('Profile not found for user - returning empty achievements');
-            return res.json([]);
-        }
-
-        console.log('Querying achievements...');
-        const achievements = await prisma.achievement.findMany({
-            where: {
-                candidateProfile: { userId }
-            },
-            orderBy: { createdAt: 'desc' }
-        });
-        console.log(`Found ${achievements.length} achievements`);
-        res.json(achievements);
-    } catch (error) {
-        console.error(`Error fetching achievements: ${error instanceof Error ? error.message : String(error)}`);
-        res.status(500).json({ error: 'Failed to fetch achievements' });
-    }
-});
-
-router.post('/achievements', authenticate, async (req, res) => {
-    const { title, description, metric, metricType, skills } = req.body;
-    const userId = (req as any).user.id;
-
-    try {
-        const profile = await prisma.candidateProfile.findUnique({
-            where: { userId }
-        });
-
-        if (!profile) return res.status(404).json({ error: 'Profile not found' });
-
-        const achievement = await prisma.achievement.create({
-            data: {
-                candidateProfileId: profile.id,
-                userId,
-                title,
-                description,
-                skills: Array.isArray(skills) ? skills.join(', ') : (skills || ''),
-                metric: metric || null,
-                metricType: metricType || null,
-                isStaged: true
-            }
-        });
-
-        // Index in Pinecone with userId namespace
-        await indexAchievement(
-            userId,
-            achievement.id,
-            `${achievement.title}: ${achievement.description}`,
-            {
-                metric: achievement.metric,
-                metricType: achievement.metricType,
-                skills: achievement.skills
-            }
-        );
-
-        res.json(achievement);
-    } catch (error) {
-        console.error('Create Achievement Error:', error);
-        res.status(500).json({ error: 'Failed to create achievement' });
-    }
-});
-
-router.get('/achievements/count', authenticate, async (req, res) => {
-    const userId = (req as any).user.id;
-    try {
-        const count = await prisma.achievement.count({
-            where: { candidateProfile: { userId } }
-        });
-        res.json({ count });
-    } catch (error) {
-        console.error('Failed to fetch achievement count:', error);
-        res.status(500).json({ error: 'Failed to fetch achievement count' });
-    }
-});
-
-router.patch('/achievements/:id', authenticate, async (req, res) => {
-    const { id } = req.params as any;
-    const { title, description, metric, metricType, skills } = req.body as any;
-    const userId = (req as any).user.id;
-
-    try {
-        const achievement = await prisma.achievement.update({
-            where: {
-                id,
-                candidateProfile: { userId }
-            },
-            data: {
-                title,
-                description,
-                metric,
-                metricType,
-                skills: (Array.isArray(skills) ? skills.join(', ') : (skills as string | undefined))
-            }
-        });
-
-        await indexAchievement(
-            userId,
-            achievement.id,
-            `${achievement.title}: ${achievement.description}`,
-            {
-                metric: achievement.metric,
-                metricType: achievement.metricType,
-                skills: achievement.skills
-            }
-        );
-
-        res.json(achievement);
-    } catch (error) {
-        console.error('Update Achievement Error:', error);
-        res.status(500).json({ error: 'Failed to update achievement' });
-    }
-});
-
-router.delete('/achievements/:id', authenticate, async (req, res) => {
-    const { id } = req.params as any;
-    const userId = (req as any).user.id;
-
-    try {
-        await prisma.achievement.delete({
-            where: {
-                id: id as string,
-                candidateProfile: { userId }
-            }
-        });
-        await deleteAchievement(userId, id as string);
-        res.json({ success: true });
-    } catch (error) {
-        console.error('Delete Achievement Error:', error);
-        res.status(500).json({ error: 'Failed to delete achievement' });
-    }
-});
-
-router.get('/jobs', authenticate, async (req, res) => {
-    const userId = (req as any).user.id;
-    try {
-        const jobs = await prisma.jobApplication.findMany({
-            where: { candidateProfile: { userId } },
-            orderBy: { createdAt: 'desc' },
-            include: { documents: true }
-        });
-        res.json(jobs);
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to fetch jobs' });
-    }
-});
-
-router.post('/jobs', authenticate, async (req, res) => {
-    const userId = (req as any).user.id;
-    const { title, company, description, status, dateApplied, notes, closingDate } = req.body;
-
-    if (!title || !company) {
-        return res.status(400).json({ error: 'Title and company are required.' });
-    }
-
-    try {
-        const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
-        if (!profile) return res.status(404).json({ error: 'Profile not found.' });
-
-        const job = await prisma.jobApplication.create({
-            data: {
-                title: title.trim(),
-                company: company.trim(),
-                description: description || `${title} at ${company}`,
-                status: status || 'SAVED',
-                dateApplied: dateApplied ? new Date(dateApplied) : null,
-                notes: notes || null,
-                closingDate: closingDate ? new Date(closingDate) : null,
-                userId,
-                candidateProfileId: profile.id,
-            },
-            include: { documents: true }
-        });
-        res.status(201).json(job);
-    } catch (error) {
-        console.error('Create Job Error:', error);
-        res.status(500).json({ error: 'Failed to create job application' });
-    }
-});
-
-router.delete('/jobs/:id', authenticate, async (req, res) => {
-    const { id } = req.params as any;
-    const userId = (req as any).user.id;
-    try {
-        // Delete linked documents first, then the job
-        await prisma.document.deleteMany({ where: { jobApplicationId: id, userId } });
-        await prisma.jobApplication.delete({
-            where: { id, candidateProfile: { userId } }
-        });
-        res.json({ success: true });
-    } catch (error) {
-        console.error('Delete Job Error:', error);
-        res.status(500).json({ error: 'Failed to delete job application' });
-    }
-});
-
-router.patch('/jobs/:id', authenticate, async (req, res) => {
-    const { id } = req.params as any;
-    const userId = (req as any).user.id;
-    const { status, dateApplied, notes, priority, closingDate } = req.body;
-
-    try {
-        const job = await prisma.jobApplication.update({
-            where: {
-                id,
-                candidateProfile: { userId }
-            },
-            data: {
-                ...(status && { status }),
-                ...(dateApplied !== undefined && { dateApplied: dateApplied ? new Date(dateApplied) : null }),
-                ...(notes !== undefined && { notes }),
-                ...(priority !== undefined && { priority: priority || null }),
-                ...(closingDate !== undefined && { closingDate: closingDate ? new Date(closingDate) : null }),
-            },
-            include: { documents: true }
-        });
-        res.json(job);
-    } catch (error) {
-        console.error('Update Job Error:', error);
-        res.status(500).json({ error: 'Failed to update job application' });
-    }
-});
-
+// PATCH /api/profile
 router.patch('/profile', authenticate, async (req, res) => {
   const userId = (req as any).user.id;
   const { name, phone, linkedin, location, professionalSummary } = req.body;
@@ -642,47 +411,7 @@ router.patch('/profile', authenticate, async (req, res) => {
   }
 });
 
-router.patch('/experience/:id', authenticate, async (req, res) => {
-  const { id } = req.params as any;
-  const userId = (req as any).user.id;
-  const { company, role, startDate, endDate, description } = req.body;
-  try {
-    const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
-    if (!profile) return res.status(404).json({ error: 'Profile not found' });
-    const exp = await prisma.experience.update({
-      where: { id, candidateProfileId: profile.id },
-      data: { company, role, startDate, endDate, description },
-    });
-    return res.json(exp);
-  } catch (error) {
-    return res.status(500).json({ error: 'Failed to update experience' });
-  }
-});
-
-router.patch('/education/:id', authenticate, async (req, res) => {
-  const { id } = req.params as any;
-  const userId = (req as any).user.id;
-  const { institution, degree, field, year } = req.body;
-  try {
-    const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
-    if (!profile) return res.status(404).json({ error: 'Profile not found' });
-    const edu = await prisma.education.update({
-      where: { id, candidateProfileId: profile.id },
-      data: { institution, degree, field, year },
-    });
-    return res.json(edu);
-  } catch (error) {
-    return res.status(500).json({ error: 'Failed to update education' });
-  }
-});
-
-// ── POST /api/profile/claim ───────────────────────────────────────────────────
-// Returning user fix: finds a richer profile for this email and migrates it to
-// the current userId. Handles two cases:
-//   1. No profile for current userId (normal magic-link case)
-//   2. "Zombie" profile — hasCompletedOnboarding but 0 achievements + no report
-//      (created in an old session before auto-extract was fixed). In this case
-//      we replace it with the richer profile so the user gets their real data.
+// POST /api/profile/claim
 router.post('/profile/claim', authenticate, async (req: any, res: any) => {
   const userId: string = req.user.id;
   const userEmail: string | undefined = req.user.email;
