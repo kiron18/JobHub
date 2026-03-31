@@ -3,3 +3,7 @@ node_modules
 .env
 
 /generated/prisma
+
+# SQLite dev databases (project uses PostgreSQL in all environments)
+*.db
+*.db-journal
