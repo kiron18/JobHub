@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { List, ChevronDown, ChevronUp, Info } from 'lucide-react';
+import { List, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface CriteriaInputPanelProps {
     criteriaText: string;
@@ -63,14 +63,22 @@ export function CriteriaInputPanel({ criteriaText, onChange, company, employerFr
             </div>
 
             <div className="p-4 space-y-3">
-                {/* Info callout */}
-                <div className="flex items-start gap-2.5 p-3 bg-blue-500/5 rounded-lg border border-blue-500/15">
-                    <Info size={12} className="text-blue-400 mt-0.5 shrink-0" />
-                    <p className="text-[10px] text-slate-400 leading-relaxed">
-                        Paste the selection criteria from the job ad, position description, or candidate information pack (CIP).
-                        {company && ` For ${company} roles, this is often attached separately to the listing.`}
-                        {' '}The system will generate a STAR response for each criterion using your achievement bank.
-                    </p>
+                {/* Instructions */}
+                <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/30 space-y-2">
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">How to find your selection criteria</p>
+                    <ol className="space-y-1.5">
+                        {[
+                            'Go back to the job listing',
+                            'Look for any attached Position Description or Application Pack PDF',
+                            'Find the selection criteria section',
+                            'Copy and paste it below',
+                        ].map((step, i) => (
+                            <li key={i} className="flex items-start gap-2">
+                                <span className="text-[10px] font-black text-purple-400 shrink-0 mt-0.5">{i + 1}.</span>
+                                <span className="text-[11px] text-slate-400 leading-snug">{step}</span>
+                            </li>
+                        ))}
+                    </ol>
                 </div>
 
                 {/* Textarea */}
