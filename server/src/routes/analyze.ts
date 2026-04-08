@@ -106,7 +106,7 @@ router.post('/job', async (req: any, res: any) => {
         // --- Dimensional scoring (server-side composite) ---
         let dimensions: DimensionScores | undefined;
         let overallGrade: string | undefined;
-        let computedMatchScore: number = analysis.matchScore || 50;
+        let computedMatchScore: number = analysis.matchScore ?? 50;
 
         if (analysis.dimensions && typeof analysis.dimensions === 'object') {
             try {
@@ -165,7 +165,7 @@ router.post('/job', async (req: any, res: any) => {
         }
 
         res.json({
-            jobApplicationId: jobApplication?.id || 'temp-id',
+            jobApplicationId: jobApplication?.id ?? null,
             matchScore: computedMatchScore,
             overallGrade: overallGrade ?? null,
             dimensions: dimensions ?? null,

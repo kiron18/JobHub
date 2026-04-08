@@ -211,7 +211,7 @@ describe('POST /api/analyze/job — dimensional scoring', () => {
     });
     (prisma.jobApplication.create as any).mockResolvedValue({ id: 'job-1' });
 
-    (callLLM as any).mockResolvedValue(JSON.stringify({
+    (callLLM as any).mockResolvedValueOnce(JSON.stringify({
       matchScore: 80,
       keywords: ['TypeScript'],
       analysisTone: 'Tech',
