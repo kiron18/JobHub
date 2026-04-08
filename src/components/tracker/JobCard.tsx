@@ -541,6 +541,21 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onStatusChange, onDelete,
                                     )}
                                 </AnimatePresence>
                             </div>
+                            {/* Grade badge */}
+                            {job.overallGrade && (
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black border ${
+                                    job.overallGrade === 'A' ? 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' :
+                                    job.overallGrade === 'B' ? 'text-brand-400 bg-brand-400/10 border-brand-400/20' :
+                                    job.overallGrade === 'C' ? 'text-amber-400 bg-amber-400/10 border-amber-400/20' :
+                                    job.overallGrade === 'D' ? 'text-orange-400 bg-orange-400/10 border-orange-400/20' :
+                                                               'text-red-400 bg-red-400/10 border-red-400/20'
+                                }`}>
+                                    {job.overallGrade}
+                                    {job.matchScore != null && (
+                                        <span className="opacity-60 font-bold">{job.matchScore}</span>
+                                    )}
+                                </span>
+                            )}
                             {days !== null && job.status !== 'REJECTED' && (
                                 <span className="text-[10px] text-slate-500 font-bold">
                                     {days}d ago
