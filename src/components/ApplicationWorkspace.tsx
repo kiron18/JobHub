@@ -40,6 +40,8 @@ import { CoverLetterPersonalisationPanel } from './CoverLetterPersonalisationPan
 import { FeedbackBar } from './FeedbackBar';
 import { exportDocx, DocType } from '../lib/exportDocx';
 import { exportPdf } from '../lib/exportPdf';
+import { DimensionsIsland } from './DimensionsIsland';
+import type { DimensionScores, AustralianFlags } from './DimensionsIsland';
 
 interface WorkspaceState {
     jobDescription: string;
@@ -77,6 +79,15 @@ interface WorkspaceState {
     jobApplicationId?: string;
     requiresSelectionCriteria?: boolean;
     matchScore?: number;
+    overallGrade?: string | null;
+    dimensions?: Record<string, { score: number; grade: string; note: string }> | null;
+    matchedIdentityCard?: string | null;
+    australianFlags?: {
+        apsLevel: string | null;
+        requiresCitizenship: boolean;
+        securityClearanceRequired: 'none' | 'baseline' | 'nv1' | 'nv2' | 'pv';
+        salaryType: 'base' | 'trp' | 'unknown';
+    } | null;
     blueprint?: any | null;
 }
 
@@ -179,6 +190,10 @@ export const ApplicationWorkspace: React.FC = () => {
             jobApplicationId: currentAnalysis.jobApplicationId,
             requiresSelectionCriteria: currentAnalysis.requiresSelectionCriteria,
             matchScore: currentAnalysis.matchScore,
+            overallGrade: currentAnalysis.overallGrade ?? null,
+            dimensions: currentAnalysis.dimensions ?? null,
+            matchedIdentityCard: currentAnalysis.matchedIdentityCard ?? null,
+            australianFlags: currentAnalysis.australianFlags ?? null,
             keywords: currentAnalysis.keywords || [],
             blueprint: null
         } as any;
@@ -658,7 +673,7 @@ export const ApplicationWorkspace: React.FC = () => {
                             }`}>
                                 {state.matchScore}
                             </div>
-                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">match</span>
+                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">match{state.overallGrade ? ` — ${state.overallGrade}` : ''}</span>
                         </div>
                     )}
                 </div>
@@ -1220,6 +1235,22 @@ export const ApplicationWorkspace: React.FC = () => {
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center bg-slate-900/10 custom-scrollbar">
+                        {state.dimensions && state.overallGrade && (
+                            <div className="w-full max-w-3xl">
+                                <DimensionsIsland
+                                    dimensions={state.dimensions as DimensionScores}
+                                    overallGrade={state.overallGrade}
+                                    matchScore={state.matchScore ?? 0}
+                                    matchedIdentityCard={state.matchedIdentityCard ?? null}
+                                    australianFlags={(state.australianFlags ?? {
+                                        apsLevel: null,
+                                        requiresCitizenship: false,
+                                        securityClearanceRequired: 'none',
+                                        salaryType: 'unknown',
+                                    }) as AustralianFlags}
+                                />
+                            </div>
+                        )}
                         {state.activeTab === 'resume' && !state.isGenerating && (profile?.certifications?.length === 0 || profile?.volunteering?.length === 0) && (
                             <div className="w-full max-w-3xl mb-3 flex gap-2 flex-wrap">
                                 {profile?.certifications?.length === 0 && (
