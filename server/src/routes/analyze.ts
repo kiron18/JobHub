@@ -14,6 +14,8 @@ import { callLLM } from '../services/llm';
 import { searchAchievements } from '../services/vector';
 import { JOB_ANALYSIS_PROMPT } from '../services/prompts';
 import { parseLLMJson } from '../utils/parseLLMResponse';
+import { addGrades, computeComposite } from '../services/compositeScoring';
+import type { DimensionScores } from '../services/compositeScoring';
 
 const router = Router();
 
@@ -49,7 +51,7 @@ router.post('/job', async (req: any, res: any) => {
         const profile = await prisma.candidateProfile.findUnique({
             where: { userId } as any,
             include: { achievements: true }
-        });
+        }) as any;
 
         if (!profile) {
             return res.status(404).json({ error: 'Please set up your profile first.' });
@@ -76,10 +78,14 @@ router.post('/job', async (req: any, res: any) => {
             }).join('\n---\n')
             : 'No achievements found in the bank.';
 
+        const identityCards: Array<{ label: string; summary: string }> =
+            Array.isArray(profile.identityCards) ? profile.identityCards : [];
+
         const analysisPrompt = JOB_ANALYSIS_PROMPT(
             jobDescription,
             { ...profile, skills: parsedSkills },
-            achievementsText
+            achievementsText,
+            identityCards
         );
 
         let analysisRaw;
@@ -96,6 +102,30 @@ router.post('/job', async (req: any, res: any) => {
         } catch {
             return res.status(500).json({ error: 'Failed to process AI analysis results. Please retry.' });
         }
+
+        // --- Dimensional scoring (server-side composite) ---
+        let dimensions: DimensionScores | undefined;
+        let overallGrade: string | undefined;
+        let computedMatchScore: number = analysis.matchScore || 50;
+
+        if (analysis.dimensions && typeof analysis.dimensions === 'object') {
+            try {
+                dimensions = addGrades(analysis.dimensions);
+                const composite = computeComposite(dimensions);
+                overallGrade = composite.overallGrade;
+                computedMatchScore = composite.matchScore;
+            } catch (err: any) {
+                console.error('[Analyze] Composite scoring failed:', err.message);
+            }
+        }
+
+        const australianFlags = analysis.australianFlags ?? {
+            apsLevel: null,
+            requiresCitizenship: false,
+            securityClearanceRequired: 'none',
+            salaryType: 'unknown',
+        };
+        const matchedIdentityCard: string | null = analysis.matchedIdentityCard ?? null;
 
         let finalRanked = [];
         try {
@@ -118,7 +148,17 @@ router.post('/job', async (req: any, res: any) => {
         let jobApplication;
         try {
             jobApplication = await prisma.jobApplication.create({
-                data: { userId, candidateProfileId: profile.id, title: role, company, description: jobDescription }
+                data: {
+                    userId,
+                    candidateProfileId: profile.id,
+                    title: role,
+                    company,
+                    description: jobDescription,
+                    dimensions: dimensions as any ?? undefined,
+                    overallGrade: overallGrade ?? undefined,
+                    matchedIdentityCard: matchedIdentityCard ?? undefined,
+                    australianFlags: australianFlags as any,
+                }
             });
         } catch (err: any) {
             console.error('Database Save Failed (JobApplication):', err.message);
@@ -126,7 +166,11 @@ router.post('/job', async (req: any, res: any) => {
 
         res.json({
             jobApplicationId: jobApplication?.id || 'temp-id',
-            matchScore: analysis.matchScore || 50,
+            matchScore: computedMatchScore,
+            overallGrade: overallGrade ?? null,
+            dimensions: dimensions ?? null,
+            matchedIdentityCard,
+            australianFlags,
             keywords: analysis.keywords || [],
             analysisTone: analysis.analysisTone || 'Professional',
             requiresSelectionCriteria: !!analysis.requiresSelectionCriteria,

@@ -200,3 +200,79 @@ describe('POST /api/analyze/achievement-suggestions', () => {
     expect(res.body.suggestions[0].title).toBe('Team leadership');
   });
 });
+
+describe('POST /api/analyze/job — dimensional scoring', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('returns dimensions, overallGrade, matchedIdentityCard, australianFlags', async () => {
+    (prisma.candidateProfile.findUnique as any).mockResolvedValue({
+      ...mockProfile,
+      identityCards: [{ label: 'Platform Engineer', summary: 'Builds scalable systems.' }],
+    });
+    (prisma.jobApplication.create as any).mockResolvedValue({ id: 'job-1' });
+
+    (callLLM as any).mockResolvedValue(JSON.stringify({
+      matchScore: 80,
+      keywords: ['TypeScript'],
+      analysisTone: 'Tech',
+      requiresSelectionCriteria: false,
+      coreCompetencies: ['Engineering'],
+      extractedMetadata: { company: 'Acme', role: 'Senior Engineer' },
+      rankedAchievements: [],
+      dimensions: {
+        roleMatch:           { score: 5, note: 'Strong match' },
+        skillsAlignment:     { score: 4, note: 'Good alignment' },
+        seniorityFit:        { score: 4, note: 'Appropriate level' },
+        compensation:        { score: 3, note: 'Market rate' },
+        interviewLikelihood: { score: 4, note: 'Likely callback' },
+        geographicFit:       { score: 5, note: 'Melbourne, hybrid' },
+        companyStage:        { score: 4, note: 'Enterprise' },
+        marketFit:           { score: 4, note: 'Growing sector' },
+        growthTrajectory:    { score: 3, note: 'Lateral move' },
+        timelineAlignment:   { score: 5, note: 'Immediate start available' },
+      },
+      matchedIdentityCard: 'Platform Engineer',
+      australianFlags: {
+        apsLevel: null,
+        requiresCitizenship: false,
+        securityClearanceRequired: 'none',
+        salaryType: 'base',
+      },
+    }));
+
+    const res = await request(app)
+      .post('/api/analyze/job')
+      .send({ jobDescription: VALID_JD });
+
+    expect(res.status).toBe(200);
+    expect(res.body.dimensions).toBeDefined();
+    expect(res.body.dimensions.roleMatch.grade).toBe('A');
+    expect(res.body.overallGrade).toBeDefined();
+    expect(res.body.matchedIdentityCard).toBe('Platform Engineer');
+    expect(res.body.australianFlags).toBeDefined();
+    expect(res.body.australianFlags.securityClearanceRequired).toBe('none');
+  });
+
+  it('does not crash when dimensions are missing from LLM response', async () => {
+    (prisma.candidateProfile.findUnique as any).mockResolvedValue({ ...mockProfile, identityCards: null });
+    (prisma.jobApplication.create as any).mockResolvedValue({ id: 'job-2' });
+
+    (callLLM as any).mockResolvedValue(JSON.stringify({
+      matchScore: 60,
+      keywords: [],
+      analysisTone: 'Generic',
+      requiresSelectionCriteria: false,
+      coreCompetencies: [],
+      extractedMetadata: { company: 'Co', role: 'Role' },
+      rankedAchievements: [],
+      // dimensions intentionally absent
+    }));
+
+    const res = await request(app)
+      .post('/api/analyze/job')
+      .send({ jobDescription: VALID_JD });
+
+    expect(res.status).toBe(200);
+    expect(res.body.matchScore).toBeDefined();
+  });
+});
