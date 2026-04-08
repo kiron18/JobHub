@@ -23,6 +23,8 @@ export interface JobApplication {
     priority: JobPriority;
     documents: TrackerDocument[];
     createdAt: string;
+    matchScore?: number;     // 0–100 weighted composite from 10-dimension scoring
+    overallGrade?: string;   // "A" | "B" | "C" | "D" | "F"
 }
 
 export const PRIORITY_CONFIG: Record<NonNullable<JobPriority>, { label: string; dot: string; border: string; bg: string; text: string }> = {

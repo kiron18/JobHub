@@ -29,7 +29,8 @@ function daysSinceApplied(dateApplied: string | null): number | null {
 export const ApplicationTracker: React.FC = () => {
     const queryClient = useQueryClient();
     const [filterStatus, setFilterStatus] = useState<ApplicationStatus | 'ALL'>('ALL');
-    const [sortBy, setSortBy] = useState<SortBy>('recent');
+    const [sortBy, setSortBy] = useState<SortBy>('match');
+    const [gradeFilter, setGradeFilter] = useState<'ALL' | 'AB' | 'C' | 'DF'>('ALL');
     const [showAddForm, setShowAddForm] = useState(false);
     const [addForm, setAddForm] = useState({ title: '', company: '', status: 'SAVED' as ApplicationStatus, dateApplied: '', notes: '' });
 
@@ -135,7 +136,19 @@ export const ApplicationTracker: React.FC = () => {
         createJobMutation.mutate(addForm);
     };
 
-    const filteredJobs = [...(filterStatus === 'ALL' ? jobs : jobs.filter(j => j.status === filterStatus))].sort((a, b) => {
+    const statusFiltered = filterStatus === 'ALL' ? jobs : jobs.filter(j => j.status === filterStatus);
+
+    const gradeFiltered = gradeFilter === 'ALL' ? statusFiltered
+        : gradeFilter === 'AB' ? statusFiltered.filter(j => j.overallGrade === 'A' || j.overallGrade === 'B')
+        : gradeFilter === 'C'  ? statusFiltered.filter(j => j.overallGrade === 'C')
+        : statusFiltered.filter(j => j.overallGrade === 'D' || j.overallGrade === 'F');
+
+    const filteredJobs = [...gradeFiltered].sort((a, b) => {
+        if (sortBy === 'match') {
+            const aScore = a.matchScore ?? -1;
+            const bScore = b.matchScore ?? -1;
+            return bScore - aScore;
+        }
         if (sortBy === 'priority') {
             const pa = a.priority ? (PRIORITY_ORDER[a.priority] ?? 3) : 3;
             const pb = b.priority ? (PRIORITY_ORDER[b.priority] ?? 3) : 3;
@@ -149,7 +162,6 @@ export const ApplicationTracker: React.FC = () => {
             const db = b.closingDate ? new Date(b.closingDate).getTime() : Infinity;
             return da - db;
         }
-        // default: recent
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
@@ -335,6 +347,29 @@ export const ApplicationTracker: React.FC = () => {
                     );
                 })}
                 <SortControls sortBy={sortBy} onSortChange={setSortBy} />
+            </div>
+
+            {/* Grade filter */}
+            <div className="flex items-center gap-1.5">
+                <span className="text-[9px] font-bold text-slate-600 uppercase tracking-wider">Grade</span>
+                {([
+                    { key: 'ALL', label: 'All' },
+                    { key: 'AB',  label: 'A – B' },
+                    { key: 'C',   label: 'C' },
+                    { key: 'DF',  label: 'D – F' },
+                ] as const).map(({ key, label }) => (
+                    <button
+                        key={key}
+                        onClick={() => setGradeFilter(key)}
+                        className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border transition-all ${
+                            gradeFilter === key
+                                ? 'bg-slate-700 border-slate-600 text-slate-200'
+                                : 'bg-slate-900 border-slate-800 text-slate-500 hover:border-slate-700 hover:text-slate-400'
+                        }`}
+                    >
+                        {label}
+                    </button>
+                ))}
             </div>
 
             {/* Job list */}
