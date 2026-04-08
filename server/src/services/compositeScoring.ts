@@ -17,7 +17,7 @@ export interface DimensionScores {
   timelineAlignment: DimensionScore;
 }
 
-const WEIGHTS: Record<keyof DimensionScores, number> = {
+export const WEIGHTS: Record<keyof DimensionScores, number> = {
   roleMatch:           0.15,
   skillsAlignment:     0.15,
   seniorityFit:        0.10,
@@ -38,11 +38,24 @@ export function scoreToGrade(score: number): string {
   return 'F';
 }
 
-/** Adds a `grade` field to each dimension score object returned by the LLM. */
+const DIMENSION_KEYS: Array<keyof DimensionScores> = [
+  'roleMatch', 'skillsAlignment', 'seniorityFit', 'compensation',
+  'interviewLikelihood', 'geographicFit', 'companyStage', 'marketFit',
+  'growthTrajectory', 'timelineAlignment',
+];
+
+/** Adds a `grade` field to each dimension score object returned by the LLM.
+ *  Missing keys are filled with score 1 (F) to avoid downstream undefined errors. */
 export function addGrades(raw: Record<string, { score: number; note: string }>): DimensionScores {
   const result: any = {};
-  for (const [key, val] of Object.entries(raw)) {
-    result[key] = { score: val.score, grade: scoreToGrade(val.score), note: val.note };
+  for (const key of DIMENSION_KEYS) {
+    const val = raw[key];
+    if (val && typeof val.score === 'number') {
+      result[key] = { score: val.score, grade: scoreToGrade(val.score), note: val.note ?? '' };
+    } else {
+      console.warn(`[compositeScoring] Missing dimension "${key}" in LLM response — defaulting to score 1`);
+      result[key] = { score: 1, grade: 'F', note: 'Missing from LLM response' };
+    }
   }
   return result as DimensionScores;
 }

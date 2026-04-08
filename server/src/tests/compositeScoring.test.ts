@@ -54,22 +54,20 @@ describe('computeComposite', () => {
   it('caps overallGrade at C when roleMatch is D (score 2)', () => {
     const dims = makeDimensions({ roleMatch: 2, skillsAlignment: 5 });
     const { overallGrade } = computeComposite(dims);
-    expect(['C', 'D', 'F']).toContain(overallGrade);
-    expect(overallGrade).not.toBe('A');
-    expect(overallGrade).not.toBe('B');
+    expect(overallGrade).toBe('C');
   });
 
   it('caps overallGrade at C when skillsAlignment is D (score 2)', () => {
     const dims = makeDimensions({ roleMatch: 5, skillsAlignment: 2 });
     const { overallGrade } = computeComposite(dims);
-    expect(['C', 'D', 'F']).toContain(overallGrade);
+    expect(overallGrade).toBe('C');
   });
 
   it('does NOT cap when both gate-pass scores are >= 3', () => {
     const dims = makeDimensions({ roleMatch: 5, skillsAlignment: 5 });
     const { overallGrade } = computeComposite(dims);
     // mixed scores (3s and 4s and 5s) should give B range
-    expect(['A', 'B']).toContain(overallGrade);
+    expect(overallGrade).toBe('B');
   });
 });
 
@@ -78,5 +76,30 @@ describe('addGrades', () => {
     const raw = { roleMatch: { score: 4, note: 'good' } } as any;
     const result = addGrades(raw);
     expect(result.roleMatch.grade).toBe('B');
+  });
+});
+
+describe('scoreToGrade — exact boundary values', () => {
+  it('maps exactly 4.5 to A', () => expect(scoreToGrade(4.5)).toBe('A'));
+  it('maps exactly 3.5 to B', () => expect(scoreToGrade(3.5)).toBe('B'));
+  it('maps exactly 2.5 to C', () => expect(scoreToGrade(2.5)).toBe('C'));
+  it('maps exactly 1.5 to D', () => expect(scoreToGrade(1.5)).toBe('D'));
+});
+
+describe('computeComposite — gate-pass with score 1', () => {
+  it('caps overallGrade at C when roleMatch is F (score 1)', () => {
+    const dims = makeDimensions({ roleMatch: 1, skillsAlignment: 5 });
+    const { overallGrade } = computeComposite(dims);
+    expect(overallGrade).toBe('C');
+  });
+});
+
+describe('addGrades — missing dimension safety', () => {
+  it('fills missing dimensions with score 1 and grade F', () => {
+    const raw = { roleMatch: { score: 4, note: 'good' } } as any;
+    const result = addGrades(raw);
+    expect(result.roleMatch.grade).toBe('B');
+    expect(result.skillsAlignment.grade).toBe('F'); // missing → default
+    expect(result.skillsAlignment.score).toBe(1);
   });
 });
