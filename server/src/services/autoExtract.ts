@@ -5,6 +5,7 @@ import { callLLM } from './llm';
 import { STAGE_1_PROMPT, STAGE_2_PROMPT } from './prompts';
 import { prisma } from '../index';
 import { parseLLMJson } from '../utils/parseLLMResponse';
+import { deriveIdentityCards } from './identityDerivation';
 
 export async function autoExtractAchievements(userId: string, resumeText: string): Promise<void> {
   try {
@@ -169,6 +170,11 @@ export async function autoExtractAchievements(userId: string, resumeText: string
         }
       }
     }, { timeout: 30000 });
+
+    // Stage 3 — Identity Derivation (fire-and-forget, does not block onboarding)
+    deriveIdentityCards(userId).catch(err => {
+      console.error('[AutoExtract] Stage 3 (identity derivation) failed:', err);
+    });
 
     console.log(`[AutoExtract] Completed for userId: ${userId}`);
   } catch (err) {

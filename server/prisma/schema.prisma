@@ -45,6 +45,9 @@ model CandidateProfile {
   marketingEmail      String?
   marketingConsent    Boolean  @default(false)
   marketingEmailSent  Boolean  @default(false)
+  identityCards                Json?
+  identityCardsUpdatedAt       DateTime?
+  achievementCountAtDerivation Int?
 }
 
 model ResumeVersion {
@@ -156,6 +159,10 @@ model JobApplication {
   closingDate    DateTime?         // Application deadline
   documents      Document[]
   blueprintJson  Json?      // Cached Stage 1 blueprint — persists across deploys
+  dimensions          Json?
+  overallGrade        String?
+  matchedIdentityCard String?   // identity card label string — denormalised from CandidateProfile.identityCards
+  australianFlags     Json?
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 }

@@ -120,6 +120,15 @@ router.post('/:type', authenticate, async (req, res) => {
             }
         }
 
+        // Resolve identity card for this application's matched identity
+        const matchedCardLabel: string | null = analysisContext?.matchedIdentityCard ?? null;
+        let resolvedIdentityCard: any = null;
+        if (matchedCardLabel && Array.isArray((profile as any)?.identityCards)) {
+            resolvedIdentityCard = (profile as any).identityCards.find(
+                (c: any) => c.label === matchedCardLabel
+            ) ?? null;
+        }
+
         // Only run Stage 1 if we have a real jobApplicationId to cache against
         const cacheKey = sanitizedJobAppId || `${userId}-${Date.now()}`;
         try {
@@ -128,7 +137,8 @@ router.post('/:type', authenticate, async (req, res) => {
                 searchContext + jobDescription,
                 profile,
                 selectedAchievements,
-                docType
+                docType,
+                resolvedIdentityCard
             );
             stage1Info = { cached: blueprintResult.cached, tokens: blueprintResult.tokens };
             console.log(`[Generation] Stage 1 complete. Cached: ${blueprintResult.cached}`);

@@ -54,7 +54,8 @@ export const STRATEGY_BLUEPRINT_PROMPT = (
     jd: string,
     profile: any,
     selectedAchievements: any[],
-    docType: 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE'
+    docType: 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE',
+    identityCard?: { label: string; summary: string; tone: string; keyStrengths: string[] } | null
 ): string => {
     // Lean candidate snapshot — avoids sending full experience/education JSON
     const candidateSnapshot = {
@@ -64,6 +65,7 @@ export const STRATEGY_BLUEPRINT_PROMPT = (
             ...(profile.skills?.technical?.slice(0, 8) ?? []),
             ...(profile.skills?.industryKnowledge?.slice(0, 4) ?? []),
         ],
+        identityCard: identityCard ?? null,
     };
 
     const achievementSummary = selectedAchievements.map(a => ({
@@ -79,6 +81,8 @@ export const STRATEGY_BLUEPRINT_PROMPT = (
 
 CANDIDATE SNAPSHOT:
 ${JSON.stringify(candidateSnapshot, null, 2)}
+
+${identityCard ? `IDENTITY CONTEXT: This candidate's primary professional identity for this role is "${identityCard.label}". Tone: ${identityCard.tone}. Let this shape your toneBlueprint and messagingAngles.` : ''}
 
 AVAILABLE ACHIEVEMENTS (use "id" values in proofPoints.achievementId):
 ${JSON.stringify(achievementSummary, null, 2)}

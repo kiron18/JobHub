@@ -938,6 +938,21 @@ export const ProfileBank: React.FC = () => {
     staleTime: 60_000,
   });
 
+  const queryClient = useQueryClient();
+  const [regenerating, setRegenerating] = useState(false);
+
+  const handleRegenerateIdentity = async () => {
+    setRegenerating(true);
+    try {
+      await api.post('/profile/regenerate-identity');
+      await queryClient.invalidateQueries({ queryKey: ['profile'] });
+    } catch (err) {
+      console.error('[ProfileBank] Regenerate identity failed:', err);
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
   const pageBg = isDark ? '#0d1117' : '#f0ede8';
   const textMain = isDark ? '#f3f4f6' : '#111827';
 
@@ -976,6 +991,45 @@ export const ProfileBank: React.FC = () => {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 24, alignItems: 'start' }}>
           {/* Main column */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Identity Cards */}
+            {Array.isArray((profile as any)?.identityCards) && (profile as any).identityCards.length > 0 && (
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-slate-500">Professional Identity</h3>
+                  <button
+                    onClick={handleRegenerateIdentity}
+                    disabled={regenerating}
+                    className="text-[10px] font-bold text-slate-500 hover:text-brand-400 transition-colors disabled:opacity-40"
+                  >
+                    {regenerating ? 'Regenerating...' : 'Regenerate'}
+                  </button>
+                </div>
+                <div className="grid gap-3">
+                  {(profile as any).identityCards.map((card: any, i: number) => (
+                    <div key={`${card.label ?? ''}-${i}`} className="border border-slate-700/50 rounded-xl bg-slate-900/60 p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <h4 className="text-sm font-bold text-white">{card.label}</h4>
+                        {card.evidenceBasis === 'limited' && (
+                          <span className="text-[9px] font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full ml-2 shrink-0">
+                            Limited data
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-400 mb-3">{card.summary}</p>
+                      {Array.isArray(card.keyStrengths) && card.keyStrengths.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {card.keyStrengths.map((s: string) => (
+                            <span key={s} className="text-[10px] font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full">
+                              {s}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <PersonalDetailsIsland profile={profile} isDark={isDark} />
             <SummaryIsland profile={profile} isDark={isDark} />
             <ExperienceIsland experience={profile.experience} achievements={profile.achievements} isDark={isDark} />

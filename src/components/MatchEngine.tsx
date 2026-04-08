@@ -20,6 +20,15 @@ interface AnalysisResult {
     };
     evidenceWarning?: string;
     requiresSelectionCriteria?: boolean;
+    overallGrade?: string;
+    dimensions?: Record<string, { score: number; grade: string; note: string }>;
+    matchedIdentityCard?: string | null;
+    australianFlags?: {
+        apsLevel: string | null;
+        requiresCitizenship: boolean;
+        securityClearanceRequired: 'none' | 'baseline' | 'nv1' | 'nv2' | 'pv';
+        salaryType: 'base' | 'trp' | 'unknown';
+    };
 }
 
 interface LowMatchWarningProps {
