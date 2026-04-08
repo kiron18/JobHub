@@ -4,6 +4,7 @@ export interface IdentityCard {
   keyStrengths: string[];
   tone: string;
   achievementThemes: string[];
+  evidenceBasis: 'full' | 'limited';
 }
 
 export const IDENTITY_DERIVATION_PROMPT = (
@@ -11,7 +12,6 @@ export const IDENTITY_DERIVATION_PROMPT = (
     name: string | null;
     professionalSummary: string | null;
     targetRole: string | null;
-    targetCity: string | null;
     seniority: string | null;
     industry: string | null;
     perceivedBlocker: string | null;
@@ -30,6 +30,7 @@ Professional Summary: ${profile.professionalSummary || 'Not provided'}
 Target Role: ${profile.targetRole || 'Not specified'}
 Seniority: ${profile.seniority || 'Not specified'}
 Industry: ${profile.industry || 'Not specified'}
+${profile.perceivedBlocker ? `Perceived Career Blocker: ${profile.perceivedBlocker}` : ''}
 
 WORK HISTORY:
 ${experiences.map(e => `- ${e.role} at ${e.company} (${e.startDate}–${e.endDate || 'present'})`).join('\n') || 'Not provided'}
@@ -46,7 +47,7 @@ Derive 2–3 identity cards based strictly on evidence from the data above.
 
 Rules:
 - Each card must be distinct — different facets of who this person is.
-- If fewer than 5 achievements exist, return only 1 card and note limited evidence in the summary.
+- If fewer than 5 achievements exist, return only 1 card, note limited evidence in the summary, and set evidenceBasis to 'limited'. Otherwise set evidenceBasis to 'full'.
 - Labels must be specific (NOT "Experienced Professional" or "Results-Driven Leader").
 - Australian English spelling throughout.
 - Do NOT invent patterns not evidenced by the data.
@@ -60,7 +61,8 @@ Return ONLY valid JSON. No preamble.
       "summary": "2-3 sentences. Who they are, what they do, how they do it. Evidence-grounded.",
       "keyStrengths": ["strength1", "strength2", "strength3"],
       "tone": "How they naturally write and speak — e.g. 'direct, metric-heavy, systems-thinking'",
-      "achievementThemes": ["theme1", "theme2", "theme3"]
+      "achievementThemes": ["theme1", "theme2", "theme3"],
+      "evidenceBasis": "full | limited"
     }
   ]
 }
