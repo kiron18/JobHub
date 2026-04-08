@@ -1,22 +1,18 @@
 import React, { useState } from 'react';
 import {
     FileText,
-    ChevronRight,
     Clock,
     X,
-    Send,
     Trophy,
     Calendar,
     Copy,
     ChevronDown,
     ChevronUp,
-    Star,
     Bell,
     Trash2,
     Mail,
     Loader2,
     Sparkles,
-    XCircle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';

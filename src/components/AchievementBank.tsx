@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, Edit2, Save, Loader2, AlertCircle, CheckCircle, RefreshCw, TrendingUp, Sparkles, Search, X } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, Loader2, RefreshCw, TrendingUp, Sparkles, Search, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../lib/api';
 
@@ -52,12 +52,6 @@ function getQualityScore(a: Achievement): {
   return { score, label, missing };
 }
 
-// Derives a coaching hint from achievement data — quality score takes priority
-function getMicroHint(a: Achievement): string | null {
-  if (a.coachingTips) return a.coachingTips;
-  const { missing } = getQualityScore(a);
-  return missing.length > 0 ? missing[0] : null;
-}
 
 export const AchievementBank: React.FC = () => {
   const queryClient = useQueryClient();
@@ -332,10 +326,8 @@ export const AchievementBank: React.FC = () => {
       {/* Achievement list */}
       <AnimatePresence mode="popLayout">
         {filteredAchievements.map(achievement => {
-          const hint = getMicroHint(achievement);
           const hintOpen = expandedHints.has(achievement.id);
           const isEditing = editingId === achievement.id;
-          const hasMetric = !!achievement.metric;
           const quality = getQualityScore(achievement);
 
           return (

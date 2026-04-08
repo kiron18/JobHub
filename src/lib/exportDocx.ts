@@ -14,13 +14,7 @@ import {
     AlignmentType,
     BorderStyle,
     convertInchesToTwip,
-    Table,
-    TableRow,
-    TableCell,
-    WidthType,
-    ShadingType,
     PageNumber,
-    NumberFormat,
     Footer,
     Header,
 } from 'docx';

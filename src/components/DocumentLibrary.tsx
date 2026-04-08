@@ -5,7 +5,8 @@ import { FileText, Trash2, Download, Copy, Search, X, Loader2, Clock, CheckCircl
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import api from '../lib/api';
-import { exportDocx, DocType } from '../lib/exportDocx';
+import { exportDocx } from '../lib/exportDocx';
+import type { DocType } from '../lib/exportDocx';
 import { exportPdf } from '../lib/exportPdf';
 
 interface Document {

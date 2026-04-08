@@ -72,6 +72,7 @@ interface ProfileData {
   location: string | null;
   professionalSummary: string | null;
   skills: string | null;
+  targetRole?: string | null;
   experience: Experience[];
   education: Education[];
   certifications: Certification[];
@@ -1040,7 +1041,7 @@ export const ProfileBank: React.FC = () => {
           </div>
 
           {/* Sidebar */}
-          <CompletionSidebar completion={profile.completion} isDark={isDark} targetRole={profile.targetRole} />
+          <CompletionSidebar completion={profile.completion} isDark={isDark} targetRole={profile.targetRole ?? undefined} />
         </div>
       </div>
     </div>

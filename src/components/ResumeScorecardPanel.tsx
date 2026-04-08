@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, BarChart2, Zap } from 'lucide-react';
 import api from '../lib/api';

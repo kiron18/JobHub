@@ -33,7 +33,7 @@ const FRAMEWORK_LABELS: Record<string, { label: string; color: string }> = {
     general: { label: 'General Criteria', color: 'text-slate-400' },
 };
 
-export function CriteriaInputPanel({ criteriaText, onChange, company, employerFramework }: CriteriaInputPanelProps) {
+export function CriteriaInputPanel({ criteriaText, onChange, employerFramework }: CriteriaInputPanelProps) {
     const [showPreview, setShowPreview] = useState(false);
     const parsed = parseCriteria(criteriaText);
     const framework = employerFramework ? FRAMEWORK_LABELS[employerFramework] : null;

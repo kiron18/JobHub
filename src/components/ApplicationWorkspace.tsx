@@ -14,7 +14,6 @@ import {
     AlertCircle,
     BookOpen,
     FlaskConical,
-    TrendingUp,
     Linkedin,
     Loader2,
     Copy,
@@ -27,7 +26,8 @@ import { Toaster, toast } from 'sonner';
 import { AchievementSelector } from './AchievementSelector';
 import { MissingFlag } from './MissingFlag';
 import { StrategistDebrief } from './StrategistDebrief';
-import { CompanyResearchPanel, CompanyResearch } from './CompanyResearchPanel';
+import { CompanyResearchPanel } from './CompanyResearchPanel';
+import type { CompanyResearch } from './CompanyResearchPanel';
 import { CriteriaInputPanel } from './CriteriaInputPanel';
 import { GapAnalysisPanel } from './GapAnalysisPanel';
 import { SalaryInsightPanel } from './SalaryInsightPanel';
@@ -38,7 +38,8 @@ import { ToneRewritePanel } from './ToneRewritePanel';
 import { ResumeScorecardPanel } from './ResumeScorecardPanel';
 import { CoverLetterPersonalisationPanel } from './CoverLetterPersonalisationPanel';
 import { FeedbackBar } from './FeedbackBar';
-import { exportDocx, DocType } from '../lib/exportDocx';
+import { exportDocx } from '../lib/exportDocx';
+import type { DocType } from '../lib/exportDocx';
 import { exportPdf } from '../lib/exportPdf';
 import { DimensionsIsland } from './DimensionsIsland';
 import type { DimensionScores, AustralianFlags } from './DimensionsIsland';
@@ -1145,7 +1146,6 @@ export const ApplicationWorkspace: React.FC = () => {
                         {state.documents[state.activeTab] && (() => {
                             const content = state.documents[state.activeTab];
                             const wordCount = content.trim().split(/\s+/).length;
-                            const charCount = content.length;
                             const isOverLimit = state.activeTab === 'selection-criteria' && wordCount > 2500;
 
                             // ATS keyword coverage for resume tab
@@ -1238,7 +1238,7 @@ export const ApplicationWorkspace: React.FC = () => {
                         {state.dimensions && state.overallGrade && (
                             <div className="w-full max-w-3xl">
                                 <DimensionsIsland
-                                    dimensions={state.dimensions as DimensionScores}
+                                    dimensions={state.dimensions as unknown as DimensionScores}
                                     overallGrade={state.overallGrade}
                                     matchScore={state.matchScore ?? 0}
                                     matchedIdentityCard={state.matchedIdentityCard ?? null}
