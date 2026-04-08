@@ -2,7 +2,7 @@
 NODE_VERSION = "20"
 
 [phases.build]
-cmds = ["npx prisma generate"]
+cmds = ["npx prisma generate", "npx prisma migrate deploy"]
 
 [start]
 cmd = "npx tsx src/index.ts"
