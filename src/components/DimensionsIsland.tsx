@@ -127,6 +127,7 @@ export const DimensionsIsland: React.FC<DimensionsIslandProps> = ({
       {/* Header — always visible */}
       <button
         onClick={() => setExpanded(prev => !prev)}
+        aria-expanded={expanded}
         className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-slate-800/40 transition-colors"
       >
         <div className="flex items-center gap-3">

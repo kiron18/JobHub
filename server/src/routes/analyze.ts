@@ -11,6 +11,7 @@ import { prisma } from '../index';
 import { authenticate } from '../middleware/auth';
 import { analyzeRateLimit } from '../middleware/analyzeRateLimit';
 import { callLLM } from '../services/llm';
+import { callLLMWithRetry } from '../utils/callLLMWithRetry';
 import { searchAchievements } from '../services/vector';
 import { JOB_ANALYSIS_PROMPT } from '../services/prompts';
 import { parseLLMJson } from '../utils/parseLLMResponse';
@@ -21,22 +22,6 @@ const router = Router();
 
 // Apply rate limit AFTER authenticate has populated req.user
 router.use(authenticate, analyzeRateLimit);
-
-async function callLLMWithRetry(
-  prompt: string, isJson: boolean, maxRetries = 3
-): Promise<string> {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await callLLM(prompt, isJson);
-    } catch (error) {
-      if (attempt === maxRetries) throw error;
-      const delay = Math.pow(2, attempt) * 1000;
-      console.log(`[LLM Retry] Attempt ${attempt} failed. Retrying in ${delay}ms`);
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-  }
-  throw new Error('All LLM retries exhausted');
-}
 
 router.post('/job', async (req: any, res: any) => {
     try {

@@ -938,12 +938,14 @@ export const ProfileBank: React.FC = () => {
     staleTime: 60_000,
   });
 
+  const queryClient = useQueryClient();
   const [regenerating, setRegenerating] = useState(false);
 
   const handleRegenerateIdentity = async () => {
     setRegenerating(true);
     try {
       await api.post('/profile/regenerate-identity');
+      await queryClient.invalidateQueries({ queryKey: ['profile'] });
     } catch (err) {
       console.error('[ProfileBank] Regenerate identity failed:', err);
     } finally {
@@ -1003,8 +1005,8 @@ export const ProfileBank: React.FC = () => {
                   </button>
                 </div>
                 <div className="grid gap-3">
-                  {(profile as any).identityCards.map((card: any) => (
-                    <div key={card.label} className="border border-slate-700/50 rounded-xl bg-slate-900/60 p-4">
+                  {(profile as any).identityCards.map((card: any, i: number) => (
+                    <div key={`${card.label ?? ''}-${i}`} className="border border-slate-700/50 rounded-xl bg-slate-900/60 p-4">
                       <div className="flex items-start justify-between mb-2">
                         <h4 className="text-sm font-bold text-white">{card.label}</h4>
                         {card.evidenceBasis === 'limited' && (

@@ -1,4 +1,4 @@
-import { callLLM } from './llm';
+import { callLLMWithRetry } from '../utils/callLLMWithRetry';
 import { IDENTITY_DERIVATION_PROMPT, IdentityCard } from './prompts/identity';
 import { prisma } from '../index';
 import { parseLLMJson } from '../utils/parseLLMResponse';
@@ -49,7 +49,7 @@ export async function deriveIdentityCards(userId: string): Promise<void> {
     );
 
     console.log(`[IdentityDerivation] Running Stage 3 for userId: ${userId}`);
-    const raw = await callLLM(prompt, true);
+    const raw = await callLLMWithRetry(prompt, true);
 
     let parsed: { identityCards: IdentityCard[] };
     try {
