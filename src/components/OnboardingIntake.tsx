@@ -925,7 +925,7 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
         setSubmitting(false);
         return;
       }
-      setAnswers(pendingAnswers as IntakeAnswers);
+      setAnswers(pendingAnswers as unknown as IntakeAnswers);
 
       // Fetch the authenticated user's email to populate the confirmation screen
       let userEmail = '';
