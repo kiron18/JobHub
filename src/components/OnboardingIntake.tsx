@@ -911,7 +911,7 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
       const { data } = await supabase.auth.getSession();
       userEmail = data.session?.user?.email ?? '';
     } catch {}
-    doSubmit({ ...buildFinalAnswers(answers), marketingEmail: userEmail }, resume, cl1, cl2);
+    await doSubmit({ ...buildFinalAnswers(answers), marketingEmail: userEmail }, resume, cl1, cl2);
   };
 
   useEffect(() => {
@@ -926,8 +926,16 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
         return;
       }
       setAnswers(pendingAnswers as IntakeAnswers);
+
+      // Fetch the authenticated user's email to populate the confirmation screen
+      let userEmail = '';
+      try {
+        const { data } = await supabase.auth.getSession();
+        userEmail = data.session?.user?.email ?? '';
+      } catch {}
+
       await doSubmit(
-        pendingAnswers as ReturnType<typeof buildFinalAnswers>,
+        { ...(pendingAnswers as ReturnType<typeof buildFinalAnswers>), marketingEmail: userEmail },
         pendingFiles.resume,
         pendingFiles.cl1,
         pendingFiles.cl2
@@ -940,7 +948,7 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
   const handleRetry = async () => {
     try {
       await api.post('/onboarding/retry');
-      setStep(6); // ← was 5, fix to 6
+      setStep(6);
     } catch {
       toast.error('Retry failed. Please refresh and try again.');
     }
