@@ -45,6 +45,7 @@ model CandidateProfile {
   marketingEmail      String?
   marketingConsent    Boolean  @default(false)
   marketingEmailSent  Boolean  @default(false)
+  visaStatus          String?
   identityCards                Json?
   identityCardsUpdatedAt       DateTime?
   achievementCountAtDerivation Int?
