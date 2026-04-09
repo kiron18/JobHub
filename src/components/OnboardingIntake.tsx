@@ -721,10 +721,12 @@ function StepAuth({ answers, resume, cl1, cl2, onAuthSuccess, submitting, onBack
       });
       if (error) {
         clearPendingAnswers();
+        clearPendingFilesFromIDB().catch(() => {});
         toast.error(error.message || 'Google sign-in failed');
       }
     } catch (err: any) {
       clearPendingAnswers();
+      clearPendingFilesFromIDB().catch(() => {});
       toast.error(err.message || 'Google sign-in failed');
     }
   }
@@ -890,6 +892,7 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
       await api.post('/onboarding/submit', formData, { timeout: 30000 });
       clearPendingAnswers();
       clearPendingFilesFromIDB().catch(() => {});
+      setSubmitting(false);
       setStep(6);
     } catch (err) {
       console.error('[OnboardingIntake] Submit failed:', err);
@@ -898,9 +901,17 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
     }
   };
 
-  const handleAuthSuccess = () => {
-    if (!resume) return;
-    doSubmit(buildFinalAnswers(answers), resume, cl1, cl2);
+  const handleAuthSuccess = async () => {
+    if (!resume) {
+      toast.error('Resume is missing — please go back and re-upload it.');
+      return;
+    }
+    let userEmail = '';
+    try {
+      const { data } = await supabase.auth.getSession();
+      userEmail = data.session?.user?.email ?? '';
+    } catch {}
+    doSubmit({ ...buildFinalAnswers(answers), marketingEmail: userEmail }, resume, cl1, cl2);
   };
 
   useEffect(() => {
@@ -929,7 +940,7 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
   const handleRetry = async () => {
     try {
       await api.post('/onboarding/retry');
-      setStep(5); // ensure we stay on processing screen
+      setStep(6); // ← was 5, fix to 6
     } catch {
       toast.error('Retry failed. Please refresh and try again.');
     }
@@ -966,30 +977,32 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
     />,
   ];
 
+  const SignOutBtn = user ? (
+    <motion.button
+      onClick={async () => { await signOut(); navigate('/auth', { replace: true }); }}
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+      style={{
+        position: 'fixed', top: 20, left: 20, zIndex: 100,
+        padding: '8px 14px', borderRadius: 10, border: 'none',
+        background: T.toggleBg, color: T.textMuted,
+        cursor: 'pointer', display: 'flex', alignItems: 'center',
+        justifyContent: 'center', gap: 6, fontSize: 12, fontWeight: 600,
+        backdropFilter: 'blur(12px)',
+      }}
+      title="Sign out"
+    >
+      <LogOut size={14} />
+      Sign out
+    </motion.button>
+  ) : null;
+
   if (step === 6 || (resumeMode && submitting)) {
     return (
       <div style={{ backgroundColor: T.bg, minHeight: '100vh', transition: 'background-color 0.4s' }}>
         <Scene />
         <ThemeToggle dark={isDark} onToggle={toggleDark} />
-        {user && (
-          <motion.button
-            onClick={async () => { await signOut(); navigate('/auth', { replace: true }); }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            style={{
-              position: 'fixed', top: 20, left: 20, zIndex: 100,
-              padding: '8px 14px', borderRadius: 10, border: 'none',
-              background: T.toggleBg, color: T.textMuted,
-              cursor: 'pointer', display: 'flex', alignItems: 'center',
-              justifyContent: 'center', gap: 6, fontSize: 12, fontWeight: 600,
-              backdropFilter: 'blur(12px)',
-            }}
-            title="Sign out"
-          >
-            <LogOut size={14} />
-            Sign out
-          </motion.button>
-        )}
+        {SignOutBtn}
         <ProcessingScreen
           isDark={isDark}
           theme={T}
@@ -1009,25 +1022,7 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
     <div style={{ backgroundColor: T.bg, height: '100dvh', overflowY: 'auto', overflowX: 'hidden', transition: 'background-color 0.4s' }}>
       <Scene />
       <ThemeToggle dark={isDark} onToggle={toggleDark} />
-      {user && (
-        <motion.button
-          onClick={async () => { await signOut(); navigate('/auth', { replace: true }); }}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          style={{
-            position: 'fixed', top: 20, left: 20, zIndex: 100,
-            padding: '8px 14px', borderRadius: 10, border: 'none',
-            background: T.toggleBg, color: T.textMuted,
-            cursor: 'pointer', display: 'flex', alignItems: 'center',
-            justifyContent: 'center', gap: 6, fontSize: 12, fontWeight: 600,
-            backdropFilter: 'blur(12px)',
-          }}
-          title="Sign out"
-        >
-          <LogOut size={14} />
-          Sign out
-        </motion.button>
-      )}
+      {SignOutBtn}
 
         <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 48, paddingBottom: 48, paddingLeft: 16, paddingRight: 16, minHeight: '100%', justifyContent: 'center' }}>
           <div style={{ width: '100%', maxWidth: 520 }}>
