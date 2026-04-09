@@ -113,8 +113,8 @@ router.post('/job', async (req: any, res: any) => {
 
         const citizenshipWarning: boolean =
             australianFlags.requiresCitizenship === true &&
-            (profile as any).visaStatus !== null &&
-            (profile as any).visaStatus !== 'Australian Citizen';
+            profile.visaStatus !== null &&
+            profile.visaStatus !== 'Australian Citizen';
 
         const matchedIdentityCard: string | null = analysis.matchedIdentityCard ?? null;
 
