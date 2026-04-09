@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
+import { hasPendingOnboarding } from '../lib/pendingOnboarding';
 import { OnboardingIntake } from './OnboardingIntake';
 
 interface OnboardingGateProps {
@@ -86,9 +87,12 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
     );
   }
 
-  // API error or no profile row yet — show onboarding
+  // API error or no profile row yet — show onboarding.
+  // If the user is authenticated AND has pending onboarding data in localStorage
+  // (placed there before a Google OAuth redirect), resume mode auto-submits.
   if (isError || !profile?.hasCompletedOnboarding) {
-    return <OnboardingIntake />;
+    const resumeMode = !!user && hasPendingOnboarding();
+    return <OnboardingIntake resumeMode={resumeMode} />;
   }
 
   return <>{children}</>;
