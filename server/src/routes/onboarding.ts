@@ -79,6 +79,7 @@ router.post(
           coverLetterRawText2: coverLetterText2 ?? null,
           marketingEmail: (answers as any).marketingEmail ?? null,
           marketingConsent: (answers as any).marketingConsent ?? false,
+          visaStatus: (answers as any).visaStatus ?? null,
         },
         update: {
           hasCompletedOnboarding: true,
@@ -96,6 +97,7 @@ router.post(
           coverLetterRawText2: coverLetterText2 ?? null,
           marketingEmail: (answers as any).marketingEmail ?? null,
           marketingConsent: (answers as any).marketingConsent ?? false,
+          visaStatus: (answers as any).visaStatus ?? null,
         },
       });
 
