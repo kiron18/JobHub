@@ -23,6 +23,7 @@ interface AnalysisResult {
     overallGrade?: string;
     dimensions?: Record<string, { score: number; grade: string; note: string }>;
     matchedIdentityCard?: string | null;
+    citizenshipWarning?: boolean;
     australianFlags?: {
         apsLevel: string | null;
         requiresCitizenship: boolean;
@@ -128,6 +129,71 @@ const LowMatchWarning: React.FC<LowMatchWarningProps> = ({ result, onProceed, on
     );
 };
 
+interface CitizenshipWarningProps {
+    onClose: () => void;
+    onProceed: () => void;
+}
+
+const CitizenshipWarning: React.FC<CitizenshipWarningProps> = ({ onClose, onProceed }) => {
+    return (
+        <AnimatePresence>
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-6"
+                onClick={onClose}
+            >
+                <motion.div
+                    initial={{ scale: 0.92, opacity: 0, y: 20 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    exit={{ scale: 0.92, opacity: 0, y: 20 }}
+                    transition={{ type: 'spring', damping: 22, stiffness: 280 }}
+                    onClick={e => e.stopPropagation()}
+                    className="w-full max-w-lg bg-slate-900 border-2 border-amber-500/40 rounded-2xl shadow-2xl shadow-amber-900/30 overflow-hidden"
+                >
+                    {/* Amber gradient header */}
+                    <div className="bg-gradient-to-br from-amber-950/80 to-slate-900 p-8 pb-6 border-b border-amber-500/20">
+                        <div className="flex items-center gap-4 mb-4">
+                            <div className="w-14 h-14 bg-amber-500/15 rounded-2xl flex items-center justify-center shrink-0">
+                                <AlertTriangle size={28} className="text-amber-400" />
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-black text-amber-300">This role requires Australian citizenship.</h2>
+                                <p className="text-sm text-amber-400/70 mt-0.5">Hard boundary — not a preference</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="p-8 space-y-5">
+                        <p className="text-sm text-slate-300 leading-relaxed">
+                            Citizenship requirements are hard boundaries. Regardless of your qualifications or experience,
+                            applications from non-citizens are rejected at the screening stage. Your time is better spent
+                            on roles open to your visa status.
+                        </p>
+
+                        <div className="flex flex-col gap-2 pt-1">
+                            <button
+                                onClick={onClose}
+                                className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/30"
+                            >
+                                <ArrowLeft size={16} />
+                                Find a better role
+                            </button>
+                            <button
+                                onClick={onProceed}
+                                className="w-full py-2 rounded-xl text-slate-600 hover:text-slate-400 text-xs font-medium transition-colors"
+                            >
+                                Proceed anyway — I understand
+                            </button>
+                        </div>
+                    </div>
+                </motion.div>
+            </motion.div>
+        </AnimatePresence>
+    );
+};
+
 export const MatchEngine: React.FC = () => {
     const navigate = useNavigate();
     const { T } = useAppTheme();
@@ -149,6 +215,7 @@ export const MatchEngine: React.FC = () => {
     });
     const [error, setError] = useState<string | null>(null);
     const [showLowMatchWarning, setShowLowMatchWarning] = useState(false);
+    const [showCitizenshipWarning, setShowCitizenshipWarning] = useState(false);
     const [pendingNavType, setPendingNavType] = useState<'resume' | 'cover-letter' | 'selection-criteria' | null>(null);
 
     const LOW_MATCH_THRESHOLD = 40;
@@ -185,6 +252,9 @@ export const MatchEngine: React.FC = () => {
             const { data } = await api.post('/analyze/job', { jobDescription });
             setResult(data);
             localStorage.setItem('jobhub_current_analysis', JSON.stringify(data));
+            if (data.citizenshipWarning) {
+                setShowCitizenshipWarning(true);
+            }
         } catch (err: any) {
             console.error('Analysis failed:', err);
             const serverError = err.response?.data?.error;
@@ -230,6 +300,12 @@ export const MatchEngine: React.FC = () => {
 
     return (
         <>
+            {showCitizenshipWarning && (
+                <CitizenshipWarning
+                    onClose={() => setShowCitizenshipWarning(false)}
+                    onProceed={() => setShowCitizenshipWarning(false)}
+                />
+            )}
             {showLowMatchWarning && result && (
                 <LowMatchWarning
                     result={result}
