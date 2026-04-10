@@ -22,6 +22,10 @@ export const HeadshotGenerator: React.FC<Props> = ({ initialHeadshotUrl, onSaved
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
+    if (f.size > 10 * 1024 * 1024) {
+      toast.error('Photo must be under 10 MB');
+      return;
+    }
     setFile(f);
     setResult(null);
     const reader = new FileReader();

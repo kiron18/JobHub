@@ -20,7 +20,8 @@ export const BannerCopyPicker: React.FC<Props> = ({
 }) => {
   const { T } = useAppTheme();
   const wordCount = config.mainMessage.trim().split(/\s+/).filter(Boolean).length;
-  const overWords = wordCount > 15;
+  const softWarning = wordCount > 12 && wordCount <= 15;
+  const hardWarning = wordCount > 15;
 
   return (
     <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: 24, marginBottom: 16 }}>
@@ -55,14 +56,16 @@ export const BannerCopyPicker: React.FC<Props> = ({
       {/* Editable text fields */}
       <div style={{ marginBottom: 12 }}>
         <label style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, display: 'block', marginBottom: 6 }}>
-          Main Message {overWords && <span style={{ color: '#f87171' }}>({wordCount} words — keep under 12)</span>}
+          Main Message{' '}
+          {hardWarning && <span style={{ color: '#f87171' }}>({wordCount} words — aim for 5–12)</span>}
+          {softWarning && <span style={{ color: '#f59e0b' }}>({wordCount} words — ideal is under 12)</span>}
         </label>
         <input
           value={config.mainMessage}
           onChange={e => onConfigChange({ ...config, mainMessage: e.target.value })}
           style={{
             width: '100%', padding: '10px 12px', borderRadius: 8, fontSize: 14,
-            background: 'rgba(255,255,255,0.04)', border: `1px solid ${overWords ? '#f87171' : T.cardBorder}`,
+            background: 'rgba(255,255,255,0.04)', border: `1px solid ${hardWarning ? '#f87171' : T.cardBorder}`,
             color: T.text, outline: 'none', boxSizing: 'border-box',
           }}
         />

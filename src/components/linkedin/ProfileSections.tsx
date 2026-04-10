@@ -39,6 +39,9 @@ export const ProfileSections: React.FC<Props> = ({
             color: T.text, outline: 'none', boxSizing: 'border-box',
           }}
         />
+        <p style={{ fontSize: 12, color: T.textFaint, margin: '6px 0 0', lineHeight: 1.5 }}>
+          Adding a target role sharpens the output. Leave blank for a general profile.
+        </p>
       </div>
 
       {/* Generate All */}
