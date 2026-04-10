@@ -46,4 +46,183 @@ export function checkHeadshotRateLimit(
   return { allowed: usedToday < limit, usedToday };
 }
 
+router.post('/generate', authenticate, async (req: AuthRequest, res) => {
+  const userId = req.user!.id;
+  const { targetRole } = req.body as { targetRole?: string };
+
+  try {
+    const [profile, diagnostic] = await Promise.all([
+      prisma.candidateProfile.findUnique({
+        where: { userId },
+        include: {
+          experience: { orderBy: { startDate: 'desc' }, take: 3 },
+          achievements: { take: 15 },
+          education: true,
+        },
+      }),
+      prisma.diagnosticReport.findUnique({
+        where: { userId },
+        select: { reportMarkdown: true },
+      }),
+    ]);
+
+    if (!profile) return res.status(404).json({ error: 'Profile not found' });
+
+    const rules = readRules('linkedin_hub_profile_rules.md');
+
+    const prompt = `${rules}
+
+## Candidate Profile
+Name: ${profile.name ?? 'Not provided'}
+Title/Seniority: ${profile.seniority ?? ''} ${profile.targetRole ?? ''}
+Location: ${profile.location ?? 'Not provided'}
+Industry: ${profile.industry ?? 'Not provided'}
+Skills: ${profile.skills ?? 'Not provided'}
+
+## Work Experience
+${profile.experience
+  .map(e => `${e.role} at ${e.company} (${e.startDate} – ${e.endDate ?? 'Present'})\n${e.description ?? ''}`)
+  .join('\n\n')}
+
+## Top Achievements
+${profile.achievements
+  .slice(0, 10)
+  .map(a => `• ${a.title}: ${a.description}${a.metric ? ` [${a.metric}]` : ''}`)
+  .join('\n')}
+
+## Education
+${profile.education.map(e => `${e.degree} — ${e.institution}${e.year ? ` (${e.year})` : ''}`).join('\n')}
+
+## Diagnostic Report (first 3000 chars)
+${diagnostic?.reportMarkdown?.substring(0, 3000) ?? 'Not available'}
+
+${targetRole ? `## Target Role\nThe candidate is targeting: ${targetRole}` : ''}
+
+Return ONLY valid JSON matching the schema in the rules above.`;
+
+    const { content } = await callClaude(prompt, true);
+    return res.json(JSON.parse(content));
+  } catch (err: any) {
+    console.error('[LinkedIn /generate]', err.message);
+    return res.status(500).json({ error: 'Generation failed' });
+  }
+});
+
+router.post('/outreach', authenticate, async (req: AuthRequest, res) => {
+  const userId = req.user!.id;
+  const { targetFirstName, targetCompany, targetTopicOrPost, specificQuestion } =
+    req.body as {
+      targetFirstName: string;
+      targetCompany: string;
+      targetTopicOrPost: string;
+      specificQuestion?: string;
+    };
+
+  try {
+    const profile = await prisma.candidateProfile.findUnique({
+      where: { userId },
+      select: { name: true, targetRole: true, seniority: true, industry: true, location: true, skills: true },
+    });
+
+    if (!profile) return res.status(404).json({ error: 'Profile not found' });
+
+    const rules = readRules('linkedin_outreach_rules.md');
+
+    const prompt = `${rules}
+
+## Candidate Info (pre-fill into templates)
+Name: ${profile.name ?? 'the candidate'}
+Background: ${[profile.seniority, profile.industry].filter(Boolean).join(' ')} professional
+Targeting: ${profile.targetRole ?? 'roles in their field'}
+Location: ${profile.location ?? 'Australia'}
+Key Skills: ${profile.skills ?? 'Not provided'}
+
+## Target Person Details
+First Name: ${targetFirstName}
+Company: ${targetCompany}
+What they work on / posted about: ${targetTopicOrPost}
+${specificQuestion ? `Specific question candidate wants to ask: ${specificQuestion}` : ''}
+
+Return ONLY valid JSON matching the schema in the rules above.`;
+
+    const { content } = await callClaude(prompt, true);
+    return res.json(JSON.parse(content));
+  } catch (err: any) {
+    console.error('[LinkedIn /outreach]', err.message);
+    return res.status(500).json({ error: 'Generation failed' });
+  }
+});
+
+router.post('/headshot', authenticate, upload.single('image'), async (req: AuthRequest, res) => {
+  const userId = req.user!.id;
+  if (!req.file) return res.status(400).json({ error: 'No image provided' });
+
+  try {
+    const profile = await prisma.candidateProfile.findUnique({
+      where: { userId },
+      select: { headshotGenerationsToday: true, headshotGenerationsDate: true },
+    });
+    if (!profile) return res.status(404).json({ error: 'Profile not found' });
+
+    const { allowed, usedToday } = checkHeadshotRateLimit(
+      profile.headshotGenerationsToday,
+      profile.headshotGenerationsDate,
+      MAX_DAILY_HEADSHOTS
+    );
+
+    if (!allowed) {
+      return res.status(429).json({
+        error: 'Daily headshot limit reached',
+        remainingToday: 0,
+        limit: MAX_DAILY_HEADSHOTS,
+      });
+    }
+
+    const base64 = req.file.buffer.toString('base64');
+    const dataUrl = `data:${req.file.mimetype};base64,${base64}`;
+
+    const result = await fal.subscribe('fal-ai/photomaker', {
+      input: {
+        images_data_url: [dataUrl],
+        prompt: HEADSHOT_PROMPT,
+        style: 'Photographic',
+        negative_prompt: 'cartoon, illustration, anime, unrealistic, blurry, low quality',
+        num_images: 1,
+      } as any,
+    });
+
+    const imageUrl: string =
+      (result as any)?.data?.images?.[0]?.url ?? (result as any)?.images?.[0]?.url;
+    if (!imageUrl) throw new Error('No image returned from fal.ai');
+
+    const newUsed = usedToday + 1;
+    await prisma.candidateProfile.update({
+      where: { userId },
+      data: { headshotGenerationsToday: newUsed, headshotGenerationsDate: new Date() },
+    });
+
+    return res.json({
+      imageUrl,
+      usedToday: newUsed,
+      limit: MAX_DAILY_HEADSHOTS,
+      remainingToday: MAX_DAILY_HEADSHOTS - newUsed,
+    });
+  } catch (err: any) {
+    console.error('[LinkedIn /headshot]', err.message);
+    return res.status(500).json({ error: 'Headshot generation failed' });
+  }
+});
+
+router.post('/headshot/save', authenticate, async (req: AuthRequest, res) => {
+  const userId = req.user!.id;
+  const { imageUrl } = req.body as { imageUrl: string };
+  if (!imageUrl) return res.status(400).json({ error: 'imageUrl required' });
+  try {
+    await prisma.candidateProfile.update({ where: { userId }, data: { headshotUrl: imageUrl } });
+    return res.json({ ok: true });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to save headshot' });
+  }
+});
+
 export default router;
