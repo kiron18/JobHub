@@ -9,6 +9,7 @@ interface OnboardingGateProps {
 }
 
 const PENDING_KEY = 'jobhub_pending_onboarding';
+const RESTORED_KEY = 'jobhub_restored_onboarding';
 
 export function savePendingOnboarding(answers: Record<string, any>) {
   localStorage.setItem(PENDING_KEY, JSON.stringify(answers));
@@ -59,7 +60,7 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
     const pending = loadPendingOnboarding();
     if (pending && user && !profile?.hasCompletedOnboarding) {
       clearPendingOnboarding();
-      localStorage.setItem('jobhub_restored_onboarding', JSON.stringify(pending));
+      localStorage.setItem(RESTORED_KEY, JSON.stringify(pending));
     }
 
     if (isLoading || claiming) return;
