@@ -25,10 +25,11 @@ export const ProfileSections: React.FC<Props> = ({
     <div>
       {/* Target role input */}
       <div style={{ marginBottom: 20 }}>
-        <label style={{ display: 'block', fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.textFaint, marginBottom: 8 }}>
+        <label htmlFor="targetRole" style={{ display: 'block', fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.textFaint, marginBottom: 8 }}>
           Target Role (optional — sharpens output)
         </label>
         <input
+          id="targetRole"
           type="text"
           value={targetRole}
           onChange={e => onTargetRoleChange(e.target.value)}

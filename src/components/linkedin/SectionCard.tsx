@@ -49,6 +49,7 @@ export const SectionCard: React.FC<Props> = ({
           )}
           {onRegenerate && (
             <button
+              aria-label={`Regenerate ${label}`}
               onClick={onRegenerate}
               disabled={regenerating}
               title="Regenerate this section"

@@ -111,6 +111,7 @@ export const OutreachTemplates: React.FC = () => {
   const [specificQuestion, setSpecificQuestion] = useState('');
   const [generating, setGenerating] = useState(false);
   const [outreach, setOutreach] = useState<OutreachData | null>(null);
+  const [genId, setGenId] = useState(0);
   const [showPlaybook, setShowPlaybook] = useState(false);
 
   async function handleGenerate() {
@@ -122,6 +123,7 @@ export const OutreachTemplates: React.FC = () => {
         specificQuestion: specificQuestion || undefined,
       });
       setOutreach(data);
+      setGenId(g => g + 1);
     } catch {
       toast.error('Generation failed — try again.');
     } finally {
@@ -181,17 +183,18 @@ export const OutreachTemplates: React.FC = () => {
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
           <div>
-            <label style={labelStyle}>First Name</label>
-            <input value={targetFirstName} onChange={e => setTargetFirstName(e.target.value)} placeholder="Sarah" style={inputStyle(T)} />
+            <label htmlFor="outFirstName" style={labelStyle}>First Name</label>
+            <input id="outFirstName" value={targetFirstName} onChange={e => setTargetFirstName(e.target.value)} placeholder="Sarah" style={inputStyle(T)} />
           </div>
           <div>
-            <label style={labelStyle}>Company</label>
-            <input value={targetCompany} onChange={e => setTargetCompany(e.target.value)} placeholder="Atlassian" style={inputStyle(T)} />
+            <label htmlFor="outCompany" style={labelStyle}>Company</label>
+            <input id="outCompany" value={targetCompany} onChange={e => setTargetCompany(e.target.value)} placeholder="Atlassian" style={inputStyle(T)} />
           </div>
         </div>
         <div style={{ marginBottom: 14 }}>
-          <label style={labelStyle}>What they work on / posted about</label>
+          <label htmlFor="outTopic" style={labelStyle}>What they work on / posted about</label>
           <input
+            id="outTopic"
             value={targetTopicOrPost}
             onChange={e => setTargetTopicOrPost(e.target.value)}
             placeholder="e.g. scaling engineering teams in fast-growth startups"
@@ -199,8 +202,9 @@ export const OutreachTemplates: React.FC = () => {
           />
         </div>
         <div style={{ marginBottom: 20 }}>
-          <label style={labelStyle}>A specific question you want to ask (optional)</label>
+          <label htmlFor="outQuestion" style={labelStyle}>A specific question you want to ask (optional)</label>
           <input
+            id="outQuestion"
             value={specificQuestion}
             onChange={e => setSpecificQuestion(e.target.value)}
             placeholder="e.g. What does your team look for when hiring graduates without AU work experience?"
@@ -245,23 +249,27 @@ export const OutreachTemplates: React.FC = () => {
       {outreach && (
         <>
           <TemplateCard
+            key={`${genId}-connectionNote`}
             label={TEMPLATE_LABELS.connectionNote}
             content={outreach.connectionNote}
             tip={COACHING_TIPS.connectionNote}
             charLimit={300}
           />
           <TemplateCard
+            key={`${genId}-firstMessage`}
             label={TEMPLATE_LABELS.firstMessage}
             content={outreach.firstMessage}
             tip={COACHING_TIPS.firstMessage}
           />
           <TemplateCard
+            key={`${genId}-afterCallFollowUp`}
             label={TEMPLATE_LABELS.afterCallFollowUp}
             content={outreach.afterCallFollowUp}
             tip={COACHING_TIPS.afterCallFollowUp}
             editableNote="Fill in [THEIR_POINT] with something specific they actually said."
           />
           <TemplateCard
+            key={`${genId}-directAsk`}
             label={TEMPLATE_LABELS.directAsk}
             content={outreach.directAsk}
             tip={COACHING_TIPS.directAsk}

@@ -55,12 +55,13 @@ export const BannerCopyPicker: React.FC<Props> = ({
 
       {/* Editable text fields */}
       <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, display: 'block', marginBottom: 6 }}>
+        <label htmlFor="bannerMain" style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, display: 'block', marginBottom: 6 }}>
           Main Message{' '}
           {hardWarning && <span style={{ color: '#f87171' }}>({wordCount} words — aim for 5–12)</span>}
           {softWarning && <span style={{ color: '#f59e0b' }}>({wordCount} words — ideal is under 12)</span>}
         </label>
         <input
+          id="bannerMain"
           value={config.mainMessage}
           onChange={e => onConfigChange({ ...config, mainMessage: e.target.value })}
           style={{
@@ -71,10 +72,11 @@ export const BannerCopyPicker: React.FC<Props> = ({
         />
       </div>
       <div style={{ marginBottom: 20 }}>
-        <label style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, display: 'block', marginBottom: 6 }}>
+        <label htmlFor="bannerSub" style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, display: 'block', marginBottom: 6 }}>
           Sub-line (optional — proof element e.g. "Forbes · 3,000+ helped")
         </label>
         <input
+          id="bannerSub"
           value={config.subLine}
           onChange={e => onConfigChange({ ...config, subLine: e.target.value })}
           style={{

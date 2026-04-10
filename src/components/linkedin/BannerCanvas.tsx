@@ -66,6 +66,7 @@ export const BannerCanvas: React.FC<Props> = ({ config, onConfigChange, onClose 
             {exporting ? 'Exporting…' : 'Download PNG'}
           </button>
           <button
+            aria-label="Close banner editor"
             onClick={onClose}
             style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: 6 }}
           >

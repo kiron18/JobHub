@@ -26,6 +26,11 @@ export const HeadshotGenerator: React.FC<Props> = ({ initialHeadshotUrl, onSaved
       toast.error('Photo must be under 10 MB');
       return;
     }
+    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!ALLOWED_TYPES.includes(f.type)) {
+      toast.error('Only JPG, PNG, and WebP files are accepted');
+      return;
+    }
     setFile(f);
     setResult(null);
     const reader = new FileReader();
@@ -89,6 +94,15 @@ export const HeadshotGenerator: React.FC<Props> = ({ initialHeadshotUrl, onSaved
       <div style={{ display: 'flex', gap: 20 }}>
         {/* Upload zone */}
         <div
+          role="button"
+          tabIndex={0}
+          aria-label="Upload photo"
+          onKeyDown={e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              inputRef.current?.click();
+            }
+          }}
           onClick={() => inputRef.current?.click()}
           style={{
             width: 140, height: 140, borderRadius: 12, flexShrink: 0,

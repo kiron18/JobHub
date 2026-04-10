@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useAppTheme } from '../contexts/ThemeContext';
 import api from '../lib/api';
@@ -33,6 +33,10 @@ export const LinkedInPage: React.FC = () => {
   const [bannerEditorOpen, setBannerEditorOpen] = useState(false);
   const [headshotUrl, setHeadshotUrl] = useState<string | null>(profile?.headshotUrl ?? null);
 
+  useEffect(() => {
+    if (profile?.headshotUrl) setHeadshotUrl(profile.headshotUrl);
+  }, [profile?.headshotUrl]);
+
   async function handleGenerateAll() {
     if (generating) return;
     setGenerating(true);
@@ -63,7 +67,8 @@ export const LinkedInPage: React.FC = () => {
       const { data } = await api.post<LinkedInProfileData>('/linkedin/generate', {
         targetRole: targetRole.trim() || undefined,
       });
-      setProfileData(prev => prev ? { ...prev, [section]: (data as any)[section] } : data);
+      const key = section as keyof LinkedInProfileData;
+      setProfileData(prev => prev ? { ...prev, [key]: data[key] } : data);
     } catch {
       toast.error('Regeneration failed — try again.');
     } finally {
