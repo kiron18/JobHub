@@ -8,6 +8,25 @@ interface OnboardingGateProps {
   children: React.ReactNode;
 }
 
+const PENDING_KEY = 'jobhub_pending_onboarding';
+
+export function savePendingOnboarding(answers: Record<string, any>) {
+  localStorage.setItem(PENDING_KEY, JSON.stringify(answers));
+}
+
+export function loadPendingOnboarding(): Record<string, any> | null {
+  try {
+    const raw = localStorage.getItem(PENDING_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearPendingOnboarding() {
+  localStorage.removeItem(PENDING_KEY);
+}
+
 export function OnboardingGate({ children }: OnboardingGateProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -35,6 +54,14 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
   // falling through to onboarding.
   useEffect(() => {
     console.log('[OnboardingGate] claim effect — isLoading:', isLoading, '| claiming:', claiming, '| claimFired:', claimFiredRef.current, '| email:', user?.email, '| hasCompletedOnboarding:', profile?.hasCompletedOnboarding);
+
+    // Detect post-Google-OAuth redirect and restore pending onboarding answers
+    const pending = loadPendingOnboarding();
+    if (pending && user && !profile?.hasCompletedOnboarding) {
+      clearPendingOnboarding();
+      localStorage.setItem('jobhub_restored_onboarding', JSON.stringify(pending));
+    }
+
     if (isLoading || claiming) return;
     if (!user?.email) return;
     // Only claim when there is definitively no profile for this userId.
