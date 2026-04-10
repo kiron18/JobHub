@@ -31,6 +31,7 @@ function readRules(fileName: string): string {
   try {
     return fs.readFileSync(path.join(__dirname, '../../rules', fileName), 'utf-8');
   } catch {
+    console.warn(`[linkedin] Rules file not found: ${fileName}`);
     return '';
   }
 }
