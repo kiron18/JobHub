@@ -47,6 +47,9 @@ model CandidateProfile {
   marketingEmailSent  Boolean  @default(false)
   identityCards                Json?
   identityCardsUpdatedAt       DateTime?
+  headshotUrl               String?
+  headshotGenerationsToday  Int       @default(0)
+  headshotGenerationsDate   DateTime?
   achievementCountAtDerivation Int?
 }
 
