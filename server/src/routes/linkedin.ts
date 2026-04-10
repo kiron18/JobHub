@@ -119,6 +119,10 @@ router.post('/outreach', authenticate, async (req: AuthRequest, res) => {
       specificQuestion?: string;
     };
 
+  if (!targetFirstName || !targetCompany || !targetTopicOrPost) {
+    return res.status(400).json({ error: 'targetFirstName, targetCompany, and targetTopicOrPost are required' });
+  }
+
   try {
     const profile = await prisma.candidateProfile.findUnique({
       where: { userId },
@@ -192,8 +196,7 @@ router.post('/headshot', authenticate, upload.single('image'), async (req: AuthR
       } as any,
     });
 
-    const imageUrl: string =
-      (result as any)?.data?.images?.[0]?.url ?? (result as any)?.images?.[0]?.url;
+    const imageUrl = (result as any).data?.images?.[0]?.url as string | undefined;
     if (!imageUrl) throw new Error('No image returned from fal.ai');
 
     const newUsed = usedToday + 1;
