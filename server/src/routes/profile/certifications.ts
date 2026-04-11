@@ -21,7 +21,7 @@ router.post('/certifications', authenticate, async (req, res) => {
 });
 
 router.patch('/certifications/:id', authenticate, async (req, res) => {
-  const { id } = req.params as any;
+  const { id } = req.params;
   const userId = (req as any).user.id;
   const { name, issuingBody, year } = req.body;
   try {
@@ -32,20 +32,22 @@ router.patch('/certifications/:id', authenticate, async (req, res) => {
       data: { ...(name && { name }), ...(issuingBody && { issuingBody }), ...(year !== undefined && { year: year || null }) },
     });
     return res.json(cert);
-  } catch {
+  } catch (err: any) {
+    if (err?.code === 'P2025') return res.status(404).json({ error: 'Record not found' });
     return res.status(500).json({ error: 'Failed to update certification' });
   }
 });
 
 router.delete('/certifications/:id', authenticate, async (req, res) => {
-  const { id } = req.params as any;
+  const { id } = req.params;
   const userId = (req as any).user.id;
   try {
     const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
     if (!profile) return res.status(404).json({ error: 'Profile not found' });
     await prisma.certification.delete({ where: { id, candidateProfileId: profile.id } });
     return res.json({ ok: true });
-  } catch {
+  } catch (err: any) {
+    if (err?.code === 'P2025') return res.status(404).json({ error: 'Record not found' });
     return res.status(500).json({ error: 'Failed to delete certification' });
   }
 });

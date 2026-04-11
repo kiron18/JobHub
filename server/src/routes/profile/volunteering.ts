@@ -21,7 +21,7 @@ router.post('/volunteering', authenticate, async (req, res) => {
 });
 
 router.patch('/volunteering/:id', authenticate, async (req, res) => {
-  const { id } = req.params as any;
+  const { id } = req.params;
   const userId = (req as any).user.id;
   const { organization, role, description } = req.body;
   try {
@@ -32,20 +32,22 @@ router.patch('/volunteering/:id', authenticate, async (req, res) => {
       data: { ...(organization && { organization }), ...(role && { role }), ...(description !== undefined && { description: description || null }) },
     });
     return res.json(vol);
-  } catch {
+  } catch (err: any) {
+    if (err?.code === 'P2025') return res.status(404).json({ error: 'Record not found' });
     return res.status(500).json({ error: 'Failed to update volunteering' });
   }
 });
 
 router.delete('/volunteering/:id', authenticate, async (req, res) => {
-  const { id } = req.params as any;
+  const { id } = req.params;
   const userId = (req as any).user.id;
   try {
     const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
     if (!profile) return res.status(404).json({ error: 'Profile not found' });
     await prisma.volunteering.delete({ where: { id, candidateProfileId: profile.id } });
     return res.json({ ok: true });
-  } catch {
+  } catch (err: any) {
+    if (err?.code === 'P2025') return res.status(404).json({ error: 'Record not found' });
     return res.status(500).json({ error: 'Failed to delete volunteering' });
   }
 });

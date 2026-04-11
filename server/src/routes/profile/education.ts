@@ -6,7 +6,7 @@ const router = Router();
 
 // PATCH /api/education/:id
 router.patch('/education/:id', authenticate, async (req, res) => {
-  const { id } = req.params as any;
+  const { id } = req.params;
   const userId = (req as any).user.id;
   const { institution, degree, field, year } = req.body;
   try {
@@ -41,14 +41,15 @@ router.post('/education', authenticate, async (req, res) => {
 
 // DELETE /api/education/:id
 router.delete('/education/:id', authenticate, async (req, res) => {
-  const { id } = req.params as any;
+  const { id } = req.params;
   const userId = (req as any).user.id;
   try {
     const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
     if (!profile) return res.status(404).json({ error: 'Profile not found' });
     await prisma.education.delete({ where: { id, candidateProfileId: profile.id } });
     return res.json({ ok: true });
-  } catch {
+  } catch (err: any) {
+    if (err?.code === 'P2025') return res.status(404).json({ error: 'Record not found' });
     return res.status(500).json({ error: 'Failed to delete education' });
   }
 });
