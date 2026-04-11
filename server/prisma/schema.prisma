@@ -8,191 +8,212 @@ datasource db {
 }
 
 model CandidateProfile {
-  id                   String       @id @default(uuid())
-  userId               String       @unique // Supabase Auth UID
-  name                 String?
-  email                String?      @unique
-  phone                String?
-  linkedin             String?
-  location             String?
-  professionalSummary  String?
-  skills               String?      // JSON blob: { technical: [], industry: [], soft: [] }
-  experience           Experience[]
-  education            Education[]
-  volunteering         Volunteering[]
-  certifications       Certification[]
-  languages            Language[]
-  coachingAlerts       Json?        // List of { type, field, message, color }
-  achievements         Achievement[]
-  jobApplications      JobApplication[]
-  resumeVersions       ResumeVersion[]
-  createdAt            DateTime     @default(now())
-  updatedAt            DateTime     @updatedAt
-  hasCompletedOnboarding  Boolean   @default(false)
-  targetRole              String?
-  targetCity              String?
-  seniority               String?
-  industry                String?
-  searchDuration          String?
-  applicationsCount       String?
-  channels                Json?
-  responsePattern         String?
-  perceivedBlocker        String?
-  resumeRawText           String?
-  coverLetterRawText      String?
-  coverLetterRawText2     String?
-  diagnosticReport        DiagnosticReport?
-  marketingEmail      String?
-  marketingConsent    Boolean  @default(false)
-  marketingEmailSent  Boolean  @default(false)
+  id                           String            @id @default(uuid())
+  userId                       String            @unique
+  name                         String?
+  email                        String?           @unique
+  phone                        String?
+  linkedin                     String?
+  location                     String?
+  professionalSummary          String?
+  skills                       String?
+  coachingAlerts               Json?
+  createdAt                    DateTime          @default(now())
+  updatedAt                    DateTime          @updatedAt
+  applicationsCount            String?
+  channels                     Json?
+  coverLetterRawText           String?
+  coverLetterRawText2          String?
+  hasCompletedOnboarding       Boolean           @default(false)
+  industry                     String?
+  perceivedBlocker             String?
+  responsePattern              String?
+  resumeRawText                String?
+  searchDuration               String?
+  seniority                    String?
+  targetCity                   String?
+  targetRole                   String?
+  marketingConsent             Boolean           @default(false)
+  marketingEmail               String?
+  marketingEmailSent           Boolean           @default(false)
+  achievementCountAtDerivation Int?
   identityCards                Json?
   identityCardsUpdatedAt       DateTime?
-  achievementCountAtDerivation Int?
-  profileAdvisorCallsToday  Int       @default(0)
-  profileAdvisorCallsDate   DateTime?
+  profileAdvisorCallsToday     Int               @default(0)
+  profileAdvisorCallsDate      DateTime?
+  achievements                 Achievement[]
+  certifications               Certification[]
+  diagnosticReport             DiagnosticReport?
+  education                    Education[]
+  experience                   Experience[]
+  jobApplications              JobApplication[]
+  languages                    Language[]
+  resumeVersions               ResumeVersion[]
+  volunteering                 Volunteering[]
 }
 
 model ResumeVersion {
   id                 String           @id @default(cuid())
   userId             String
   candidateProfileId String
-  label              String           // e.g. "Social Media Manager", "Performance Marketing"
-  rawText            String?          // the original resume text that was imported
+  label              String
+  rawText            String?
   createdAt          DateTime         @default(now())
   candidateProfile   CandidateProfile @relation(fields: [candidateProfileId], references: [id], onDelete: Cascade)
 }
 
 model Experience {
-  id                String           @id @default(uuid())
+  id                 String           @id @default(uuid())
   candidateProfileId String
-  candidateProfile  CandidateProfile  @relation(fields: [candidateProfileId], references: [id])
-  company           String
-  role              String
-  startDate         String
-  endDate           String?
-  isCurrent         Boolean           @default(false)
-  description       String?           // Original bullet points
-  coachingTips      String?           // AI suggestions for CAR method
-  achievements      Achievement[]
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  company            String
+  role               String
+  startDate          String
+  endDate            String?
+  isCurrent          Boolean          @default(false)
+  description        String?
+  coachingTips       String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  achievements       Achievement[]
+  candidateProfile   CandidateProfile @relation(fields: [candidateProfileId], references: [id])
 }
 
 model Education {
-  id                String           @id @default(uuid())
+  id                 String           @id @default(uuid())
   candidateProfileId String
-  candidateProfile  CandidateProfile  @relation(fields: [candidateProfileId], references: [id])
-  institution       String
-  degree            String
-  field             String?
-  startDate         String?
-  endDate           String?
-  year              String?
-  location          String?
-  coachingTips      String?
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  institution        String
+  degree             String
+  field              String?
+  startDate          String?
+  endDate            String?
+  year               String?
+  location           String?
+  coachingTips       String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  candidateProfile   CandidateProfile @relation(fields: [candidateProfileId], references: [id])
 }
 
 model Volunteering {
-  id                String           @id @default(uuid())
+  id                 String           @id @default(uuid())
   candidateProfileId String
-  candidateProfile  CandidateProfile  @relation(fields: [candidateProfileId], references: [id])
-  organization      String
-  role              String
-  description       String?
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  organization       String
+  role               String
+  description        String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  candidateProfile   CandidateProfile @relation(fields: [candidateProfileId], references: [id])
 }
 
 model Certification {
-  id                String           @id @default(uuid())
+  id                 String           @id @default(uuid())
   candidateProfileId String
-  candidateProfile  CandidateProfile  @relation(fields: [candidateProfileId], references: [id])
-  name              String
-  issuingBody       String
-  year              String?
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  name               String
+  issuingBody        String
+  year               String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  candidateProfile   CandidateProfile @relation(fields: [candidateProfileId], references: [id])
 }
 
 model Language {
-  id                String           @id @default(uuid())
+  id                 String           @id @default(uuid())
   candidateProfileId String
-  candidateProfile  CandidateProfile  @relation(fields: [candidateProfileId], references: [id])
-  name              String
-  proficiency       String
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  name               String
+  proficiency        String
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  candidateProfile   CandidateProfile @relation(fields: [candidateProfileId], references: [id])
 }
 
 model Achievement {
   id                 String           @id @default(uuid())
-  userId             String           // Supabase Auth UID for direct querying/RLS
-  candidateProfileId  String
-  candidateProfile    CandidateProfile  @relation(fields: [candidateProfileId], references: [id])
+  userId             String
+  candidateProfileId String
   experienceId       String?
-  experience         Experience?       @relation(fields: [experienceId], references: [id])
   title              String
   description        String
   metric             String?
-  metricType         String?           // e.g. "Revenue", "Efficiency", "Scale", "Team"
-  industry           String?           // e.g. "FinTech", "Retail", "Healthcare"
+  metricType         String?
+  industry           String?
   skills             String?
   tags               String?
-  isStaged           Boolean           @default(false)
+  isStaged           Boolean          @default(false)
   coachingTips       String?
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
+  candidateProfile   CandidateProfile @relation(fields: [candidateProfileId], references: [id])
+  experience         Experience?      @relation(fields: [experienceId], references: [id])
 }
 
 model JobApplication {
-  id             String     @id @default(uuid())
-  userId         String     // Supabase Auth UID
-  candidateProfileId String
-  candidateProfile   CandidateProfile @relation(fields: [candidateProfileId], references: [id])
-  title          String
-  company        String
-  description    String
-  dateApplied    DateTime?
-  status         ApplicationStatus @default(SAVED)
-  notes          String?           // Free-text candidate notes (interview details, contacts, etc.)
-  priority       JobPriority?      // User-set priority: DREAM, TARGET, BACKUP
-  closingDate    DateTime?         // Application deadline
-  documents      Document[]
-  blueprintJson  Json?      // Cached Stage 1 blueprint — persists across deploys
-  dimensions          Json?
-  overallGrade        String?
-  matchedIdentityCard String?   // identity card label string — denormalised from CandidateProfile.identityCards
+  id                  String            @id @default(uuid())
+  userId              String
+  candidateProfileId  String
+  title               String
+  company             String
+  description         String
+  dateApplied         DateTime?
+  status              ApplicationStatus @default(SAVED)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  notes               String?
+  priority            JobPriority?
+  closingDate         DateTime?
+  blueprintJson       Json?
   australianFlags     Json?
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  dimensions          Json?
+  matchedIdentityCard String?
+  overallGrade        String?
+  documents           Document[]
+  candidateProfile    CandidateProfile  @relation(fields: [candidateProfileId], references: [id])
 }
 
 model Document {
-  id             String           @id @default(uuid())
-  userId         String           // Supabase Auth UID
-  title          String?
+  id               String             @id @default(uuid())
+  userId           String
+  title            String?
   jobApplicationId String?
-  jobApplication JobApplication?   @relation(fields: [jobApplicationId], references: [id])
-  type           DocumentType
-  content        String
-  templateConfig Json?            // Section order, font styles, etc.
-  feedback       DocumentFeedback[]
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  type             DocumentType
+  content          String
+  templateConfig   Json?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  jobApplication   JobApplication?    @relation(fields: [jobApplicationId], references: [id])
+  feedback         DocumentFeedback[]
 }
 
 model DocumentFeedback {
   id           String       @id @default(uuid())
   documentId   String
-  document     Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)
   userId       String
-  rating       Int          // 1–5
-  documentType DocumentType // mirrors document.type — for aggregate filtering without joins
-  weakSection  String?      // per-type enum: see route handler for valid values
+  rating       Int
+  documentType DocumentType
+  weakSection  String?
   freeText     String?
   createdAt    DateTime     @default(now())
+  document     Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+}
+
+model DiagnosticReport {
+  id               String                     @id @default(uuid())
+  userId           String                     @unique
+  status           DiagnosticStatus           @default(PROCESSING)
+  intakeAnswers    Json
+  reportMarkdown   String?
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
+  candidateProfile CandidateProfile           @relation(fields: [userId], references: [userId])
+  feedback         DiagnosticReportFeedback[]
+}
+
+model DiagnosticReportFeedback {
+  id             String           @id @default(uuid())
+  reportId       String
+  sectionKey     String
+  relevanceScore String
+  createdAt      DateTime         @default(now())
+  report         DiagnosticReport @relation(fields: [reportId], references: [id])
 }
 
 enum ApplicationStatus {
@@ -215,29 +236,8 @@ enum JobPriority {
   BACKUP
 }
 
-model DiagnosticReport {
-  id              String                    @id @default(uuid())
-  userId          String                    @unique
-  status          DiagnosticStatus          @default(PROCESSING)
-  intakeAnswers   Json
-  reportMarkdown  String?
-  createdAt       DateTime                  @default(now())
-  updatedAt       DateTime                  @updatedAt
-  feedback        DiagnosticReportFeedback[]
-  candidateProfile CandidateProfile         @relation(fields: [userId], references: [userId])
-}
-
 enum DiagnosticStatus {
   PROCESSING
   COMPLETE
   FAILED
-}
-
-model DiagnosticReportFeedback {
-  id             String           @id @default(uuid())
-  reportId       String
-  report         DiagnosticReport @relation(fields: [reportId], references: [id])
-  sectionKey     String
-  relevanceScore String
-  createdAt      DateTime         @default(now())
 }
