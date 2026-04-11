@@ -20,7 +20,7 @@ export interface Theme {
 }
 
 export const LIGHT: Theme = {
-  bg: '#eceef4', dotColor: '#bfc4d1',
+  bg: '#F8FAFC', dotColor: '#bfc4d1',
   card: 'rgba(255,255,255,0.62)', cardBorder: 'rgba(255,255,255,0.9)',
   cardShadow: '0 8px 80px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.95)',
   text: '#111827', textMuted: '#6b7280', textFaint: '#9ca3af',
@@ -57,6 +57,18 @@ export const DARK: Theme = {
   fileBg: 'rgba(255,255,255,0.05)', fileBorder: 'rgba(255,255,255,0.12)',
 };
 
+// ── Semantic token injection ──────────────────────────────────────────────────
+
+function applySemanticTokens(isDark: boolean): void {
+  const root = document.documentElement;
+  root.style.setProperty('--text',       isDark ? '#F1F5F9' : '#0F172A');
+  root.style.setProperty('--text-muted', isDark ? '#94A3B8' : '#64748B');
+  root.style.setProperty('--text-faint', isDark ? '#475569' : '#94A3B8');
+  root.style.setProperty('--radius-card',  '20px');
+  root.style.setProperty('--radius-input', '12px');
+  root.style.setProperty('--space-card',   '24px');
+}
+
 // ── Context ───────────────────────────────────────────────────────────────────
 
 interface ThemeContextValue {
@@ -80,6 +92,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     localStorage.setItem('jobhub_dark_mode', String(isDark));
+  }, [isDark]);
+
+  useEffect(() => {
+    applySemanticTokens(isDark);
   }, [isDark]);
 
   const toggle = () => setIsDark(prev => !prev);
