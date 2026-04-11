@@ -48,12 +48,24 @@ export const ApplicationTracker: React.FC = () => {
             const { data } = await api.patch(`/jobs/${id}`, { status, dateApplied });
             return data;
         },
-        onSuccess: () => {
+        onMutate: async ({ id, status, dateApplied }) => {
+            await queryClient.cancelQueries({ queryKey: ['jobs'] });
+            const previous = queryClient.getQueryData<JobApplication[]>(['jobs']);
+            queryClient.setQueryData<JobApplication[]>(['jobs'], old =>
+                old?.map(j => j.id === id
+                    ? { ...j, status, ...(dateApplied !== undefined ? { dateApplied } : {}) }
+                    : j
+                ) ?? []
+            );
+            return { previous };
+        },
+        onError: (_err, _vars, context: any) => {
+            if (context?.previous) queryClient.setQueryData(['jobs'], context.previous);
+            toast.error('Failed to update status');
+        },
+        onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['jobs'] });
         },
-        onError: () => {
-            toast.error('Failed to update status');
-        }
     });
 
     const updateNotesMutation = useMutation({

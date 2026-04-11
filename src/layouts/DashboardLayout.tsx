@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, FileText, Briefcase, LogOut, User, Sun, Moon, Library, Mail } from 'lucide-react';
+import { LayoutDashboard, FileText, Briefcase, LogOut, User, Sun, Moon, Library, Mail, Linkedin } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppTheme } from '../contexts/ThemeContext';
 import { HuePicker } from '../components/HuePicker';
@@ -62,6 +62,25 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                             <span className="font-medium">{item.label}</span>
                         </NavLink>
                     ))}
+                    {/* LinkedIn — coming soon */}
+                    <div
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 12,
+                        padding: '12px 16px', borderRadius: 12, opacity: 0.5,
+                        cursor: 'not-allowed',
+                      }}
+                    >
+                      <Linkedin size={20} color={T.textMuted} />
+                      <span style={{ fontSize: 14, fontWeight: 500, color: T.textMuted, flex: 1 }}>LinkedIn</span>
+                      <span style={{
+                        fontSize: 9, fontWeight: 700, letterSpacing: '0.06em',
+                        textTransform: 'uppercase',
+                        background: 'rgba(99,102,241,0.12)', color: '#818cf8',
+                        padding: '2px 6px', borderRadius: 4,
+                      }}>
+                        Soon
+                      </span>
+                    </div>
                 </nav>
 
                 <div className="mt-auto space-y-3">
