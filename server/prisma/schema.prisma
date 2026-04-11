@@ -42,6 +42,9 @@ model CandidateProfile {
   identityCardsUpdatedAt       DateTime?
   profileAdvisorCallsToday     Int               @default(0)
   profileAdvisorCallsDate      DateTime?
+  headshotUrl                  String?
+  headshotGenerationsToday     Int               @default(0)
+  headshotGenerationsDate      DateTime?
   achievements                 Achievement[]
   certifications               Certification[]
   diagnosticReport             DiagnosticReport?

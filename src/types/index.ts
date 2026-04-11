@@ -6,6 +6,9 @@ export interface CandidateProfile {
     linkedin?: string;
     location?: string;
     professionalSummary?: string;
+    targetRole?: string | null;
+    seniority?: string | null;
+    headshotUrl?: string | null;
     skills: string[];
     experience: Experience[];
     education: Education[];

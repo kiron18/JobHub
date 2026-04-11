@@ -17,6 +17,8 @@ import { OnboardingGate } from './components/OnboardingGate';
 import { ReportExperience } from './components/ReportExperience';
 import { FirstVisitTip } from './components/FirstVisitTips';
 
+import { LinkedInPage } from './pages/LinkedInPage';
+
 // Auth & Context
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -333,6 +335,7 @@ function ReportOrDashboard() {
               <Route path="/workspace" element={<Workspace />} />
               <Route path="/documents" element={<DocumentLibrary />} />
               <Route path="/email-templates" element={<EmailTemplatesLibrary />} />
+              <Route path="/linkedin" element={<LinkedInPage />} />
               <Route path="*" element={<Dashboard />} />
             </Routes>
           </DashboardLayout>
