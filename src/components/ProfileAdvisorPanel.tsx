@@ -40,22 +40,32 @@ export function ProfileAdvisorPanel({ targetRole }: ProfileAdvisorPanelProps) {
   const [result, setResult] = useState<AdvisorResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+  const [analysisCount, setAnalysisCount] = useState(0);
+  const [limitReached, setLimitReached] = useState(false);
+  const [bypassGate, setBypassGate] = useState(false);
 
   const run = async () => {
     if (loading) return;
     setLoading(true);
+    setBypassGate(false);
     try {
       const { data } = await api.post('/analyze/profile-advisor', { targetRole });
       setResult(data);
+      setAnalysisCount(c => c + 1);
       setExpandedIdx(0);
-    } catch {
-      // silent
+    } catch (err: any) {
+      if (err?.response?.status === 429) {
+        setLimitReached(true);
+      }
+      // other errors: silent
     } finally {
       setLoading(false);
     }
   };
 
   const grade = result ? GRADE_CONFIG[result.overallGrade] || GRADE_CONFIG.C : null;
+  const isStrongAndAnalysed = result && (result.overallGrade === 'A' || result.overallGrade === 'B') && analysisCount >= 1;
+  const showGate = isStrongAndAnalysed && !bypassGate;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -69,20 +79,37 @@ export function ProfileAdvisorPanel({ targetRole }: ProfileAdvisorPanelProps) {
         </div>
         <button
           onClick={run}
-          disabled={loading}
+          disabled={loading || limitReached || !!showGate}
           style={{
             display: 'flex', alignItems: 'center', gap: 5,
             padding: '4px 10px', borderRadius: 6,
             border: '1px solid rgba(99,102,241,0.3)',
             background: 'rgba(99,102,241,0.08)',
-            color: loading ? '#6b7280' : '#818cf8',
-            fontSize: 10, fontWeight: 700, cursor: loading ? 'default' : 'pointer',
+            color: (loading || limitReached || showGate) ? '#6b7280' : '#818cf8',
+            fontSize: 10, fontWeight: 700,
+            cursor: (loading || limitReached || showGate) ? 'default' : 'pointer',
+            opacity: (limitReached || showGate) ? 0.5 : 1,
           }}
         >
           {loading ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
           {loading ? 'Analysing…' : result ? 'Re-analyse' : 'Analyse Profile'}
         </button>
       </div>
+
+      {limitReached && (
+        <div style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', fontSize: 11, color: '#fbbf24', lineHeight: 1.5, marginBottom: 8 }}>
+          You've analysed your profile 3 times today. Come back tomorrow, or make manual edits and check back then.
+        </div>
+      )}
+
+      {showGate && (
+        <div style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)', fontSize: 11, color: '#34d399', lineHeight: 1.5, marginBottom: 8 }}>
+          Your profile already scores {result?.overallGrade}. Another pass gives diminishing returns — consider editing your achievements first.{' '}
+          <button onClick={() => setBypassGate(true)} style={{ background: 'none', border: 'none', color: '#34d399', cursor: 'pointer', fontSize: 11, fontWeight: 700, textDecoration: 'underline', padding: 0 }}>
+            Analyse anyway
+          </button>
+        </div>
+      )}
 
       {/* Grade + summary */}
       {grade && result && (
