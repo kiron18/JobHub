@@ -92,16 +92,6 @@ function parseSkills(raw: string | null): SkillsJson {
   try { return JSON.parse(raw); } catch { return {}; }
 }
 
-function countSkills(raw: string | null): number {
-  const s = parseSkills(raw);
-  return [
-    ...(s.technical ?? []),
-    ...(s.industryKnowledge ?? []),
-    ...(s.soft ?? []),
-    ...(s.softSkills ?? []),
-  ].length;
-}
-
 // ── Coaching hint derivation ───────────────────────────────────────────────────
 
 interface Hint { type: 'warn' | 'ok'; message: string }
@@ -630,40 +620,71 @@ const ExperienceIsland: React.FC<ExperienceIslandProps> = ({ experience, achieve
 
 // ── EducationIsland ───────────────────────────────────────────────────────────
 
-interface EducationIslandProps {
-  education: Education[];
-  isDark: boolean;
-}
-
-const EducationIsland: React.FC<EducationIslandProps> = ({ education, isDark }) => {
+const EducationIsland: React.FC<{ education: Education[]; isDark: boolean }> = ({ education, isDark }) => {
   const qc = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [forms, setForms] = useState<Record<string, { institution: string; degree: string; field: string; year: string }>>({});
-
-  const mutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Record<string, string> }) =>
-      api.patch(`/education/${id}`, data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['profile'] });
-      setEditingId(null);
-      toast.info('Education updated.');
-    },
-    onError: () => toast.error('Failed to save. Please try again.'),
-  });
+  const [isAdding, setIsAdding] = useState(false);
+  const [addForm, setAddForm] = useState({ institution: '', degree: '', field: '', year: '' });
 
   const inp = inputStyle(isDark);
 
+  const editMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Record<string, string> }) => api.patch(`/education/${id}`, data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['profile'] }); setEditingId(null); toast.info('Education updated.'); },
+    onError: () => toast.error('Failed to save.'),
+  });
+
+  const addMutation = useMutation({
+    mutationFn: (data: typeof addForm) => api.post('/education', data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['profile'] }); setIsAdding(false); setAddForm({ institution: '', degree: '', field: '', year: '' }); toast.success('Education added.'); },
+    onError: () => toast.error('Failed to add education.'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.delete(`/education/${id}`),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['profile'] }); toast.info('Education removed.'); },
+    onError: () => toast.error('Failed to remove.'),
+  });
+
   return (
     <Island isDark={isDark}>
-      <SectionHeader icon={<GraduationCap size={13} />} title="Education" isDark={isDark} />
-      {education.length === 0 && (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <SectionHeader icon={<GraduationCap size={13} />} title="Education" isDark={isDark} />
+        {!isAdding && (
+          <button onClick={() => setIsAdding(true)} style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>
+            + Add
+          </button>
+        )}
+      </div>
+
+      {/* Add form */}
+      <AnimatePresence>
+        {isAdding && (
+          <motion.div key="add" {...slideIn} style={{ marginBottom: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 14px' }}>
+              {(['institution', 'degree', 'field', 'year'] as const).map(f => (
+                <div key={f}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: isDark ? '#6b7280' : '#9ca3af', display: 'block', marginBottom: 4 }}>
+                    {f.charAt(0).toUpperCase() + f.slice(1)}
+                  </span>
+                  <input style={inp} value={addForm[f]} onChange={e => setAddForm(p => ({ ...p, [f]: e.target.value }))} />
+                </div>
+              ))}
+            </div>
+            <SaveCancelButtons onSave={() => addMutation.mutate(addForm)} onCancel={() => setIsAdding(false)} saving={addMutation.isPending} isDark={isDark} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {education.length === 0 && !isAdding && (
         <p style={{ fontSize: 13, color: isDark ? '#6b7280' : '#9ca3af', fontStyle: 'italic' }}>No education records found.</p>
       )}
+
       {education.map(edu => {
         const hint = hintForEducation(edu);
         const isEditing = editingId === edu.id;
         const form = forms[edu.id] ?? { institution: edu.institution, degree: edu.degree, field: edu.field ?? '', year: edu.year ?? '' };
-
         return (
           <div key={edu.id} style={{ marginBottom: 14 }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
@@ -681,29 +702,24 @@ const EducationIsland: React.FC<EducationIslandProps> = ({ education, isDark }) 
                           </div>
                         ))}
                       </div>
-                      <SaveCancelButtons onSave={() => mutation.mutate({ id: edu.id, data: form })} onCancel={() => setEditingId(null)} saving={mutation.isPending} isDark={isDark} />
+                      <SaveCancelButtons onSave={() => editMutation.mutate({ id: edu.id, data: form })} onCancel={() => setEditingId(null)} saving={editMutation.isPending} isDark={isDark} />
                     </motion.div>
                   ) : (
                     <motion.div key="view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                      <p style={{ fontSize: 14, fontWeight: 700, color: isDark ? '#e5e7eb' : '#1f2937' }}>
-                        {edu.degree} {edu.field && `in ${edu.field}`}
-                      </p>
-                      <p style={{ fontSize: 13, color: isDark ? '#9ca3af' : '#6b7280' }}>
-                        {edu.institution}{edu.year && ` · ${edu.year}`}
-                      </p>
+                      <p style={{ fontSize: 14, fontWeight: 700, color: isDark ? '#e5e7eb' : '#1f2937' }}>{edu.degree}{edu.field && ` in ${edu.field}`}</p>
+                      <p style={{ fontSize: 13, color: isDark ? '#9ca3af' : '#6b7280' }}>{edu.institution}{edu.year && ` · ${edu.year}`}</p>
                       {hint && <CoachHint hint={hint} />}
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
               {!isEditing && (
-                <EditButton
-                  onClick={() => {
-                    setForms(prev => ({ ...prev, [edu.id]: { institution: edu.institution, degree: edu.degree, field: edu.field ?? '', year: edu.year ?? '' } }));
-                    setEditingId(edu.id);
-                  }}
-                  isDark={isDark}
-                />
+                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  <EditButton onClick={() => { setForms(prev => ({ ...prev, [edu.id]: { institution: edu.institution, degree: edu.degree, field: edu.field ?? '', year: edu.year ?? '' } })); setEditingId(edu.id); }} isDark={isDark} />
+                  <button onClick={() => deleteMutation.mutate(edu.id)} style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isDark ? '#6b7280' : '#9ca3af' }}>
+                    <X size={12} />
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -715,41 +731,81 @@ const EducationIsland: React.FC<EducationIslandProps> = ({ education, isDark }) 
 
 // ── SkillsIsland ──────────────────────────────────────────────────────────────
 
-interface SkillsIslandProps {
-  skills: string | null;
-  isDark: boolean;
-}
-
-const SkillsIsland: React.FC<SkillsIslandProps> = ({ skills, isDark }) => {
+const SkillsIsland: React.FC<{ skills: string | null; isDark: boolean }> = ({ skills, isDark }) => {
+  const qc = useQueryClient();
   const parsed = parseSkills(skills);
-  const total = countSkills(skills);
-
-  const allSkills = [
+  const allSkills: string[] = [
     ...(parsed.technical ?? []),
     ...(parsed.industryKnowledge ?? []),
     ...(parsed.soft ?? []),
     ...(parsed.softSkills ?? []),
   ];
+  const [editing, setEditing] = useState(false);
+  const [localSkills, setLocalSkills] = useState<string[]>(allSkills);
+  const [inputVal, setInputVal] = useState('');
+
+  const mutation = useMutation({
+    mutationFn: (skillList: string[]) => api.patch('/profile', { skills: JSON.stringify({ technical: skillList }) }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['profile'] }); setEditing(false); toast.info('Skills updated.'); },
+    onError: () => toast.error('Failed to save skills.'),
+  });
+
+  function openEdit() { setLocalSkills(allSkills); setInputVal(''); setEditing(true); }
+  function addSkill() {
+    const s = inputVal.trim();
+    if (s && !localSkills.includes(s)) setLocalSkills(p => [...p, s]);
+    setInputVal('');
+  }
+  function removeSkill(s: string) { setLocalSkills(p => p.filter(x => x !== s)); }
+
+  const inp = inputStyle(isDark);
 
   return (
     <Island isDark={isDark}>
-      <SectionHeader icon={<Wrench size={13} />} title="Skills" isDark={isDark} />
-      {allSkills.length === 0 ? (
-        <p style={{ fontSize: 13, color: isDark ? '#6b7280' : '#9ca3af', fontStyle: 'italic' }}>No skills found.</p>
-      ) : (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {allSkills.map((skill, i) => (
-            <span key={i} style={{
-              padding: '4px 10px', borderRadius: 99, fontSize: 12, fontWeight: 600,
-              background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)',
-              color: isDark ? '#d1d5db' : '#374151',
-              border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
-            }}>{skill}</span>
-          ))}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <SectionHeader icon={<Wrench size={13} />} title="Skills" isDark={isDark} />
+        {!editing && <EditButton onClick={openEdit} isDark={isDark} />}
+      </div>
+
+      {editing ? (
+        <div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+            {localSkills.map(s => (
+              <span key={s} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 99, fontSize: 12, fontWeight: 600, background: isDark ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0.08)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.2)' }}>
+                {s}
+                <button onClick={() => removeSkill(s)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: '#818cf8' }}><X size={10} /></button>
+              </span>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            <input
+              style={{ ...inp, flex: 1 }}
+              value={inputVal}
+              placeholder="Type a skill and press Enter"
+              onChange={e => setInputVal(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSkill(); } }}
+            />
+            <button onClick={addSkill} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.08)', color: '#818cf8', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Add</button>
+          </div>
+          <SaveCancelButtons onSave={() => mutation.mutate(localSkills)} onCancel={() => setEditing(false)} saving={mutation.isPending} isDark={isDark} />
         </div>
-      )}
-      {total < 5 && (
-        <CoachHint hint={{ type: 'warn', message: `Only ${total} skills listed. Add at least 5 to improve profile strength.` }} />
+      ) : (
+        <>
+          {allSkills.length === 0 ? (
+            <p style={{ fontSize: 13, color: isDark ? '#6b7280' : '#9ca3af', fontStyle: 'italic' }}>No skills found.</p>
+          ) : (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {allSkills.map((skill, i) => (
+                <span key={i} style={{ padding: '4px 10px', borderRadius: 99, fontSize: 12, fontWeight: 600, background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)', color: isDark ? '#d1d5db' : '#374151', border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}` }}>
+                  {skill}
+                </span>
+              ))}
+            </div>
+          )}
+          {allSkills.length < 5 && (
+            <CoachHint hint={{ type: 'warn', message: `Only ${allSkills.length} skills listed. Add at least 5 to improve profile strength.` }} />
+          )}
+        </>
       )}
     </Island>
   );
@@ -757,50 +813,224 @@ const SkillsIsland: React.FC<SkillsIslandProps> = ({ skills, isDark }) => {
 
 // ── CertificationsIsland ──────────────────────────────────────────────────────
 
-interface CertificationsIslandProps {
-  certifications: Certification[];
-  isDark: boolean;
-}
+const CertificationsIsland: React.FC<{ certifications: Certification[]; isDark: boolean }> = ({ certifications, isDark }) => {
+  const qc = useQueryClient();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [forms, setForms] = useState<Record<string, { name: string; issuingBody: string; year: string }>>({});
+  const [isAdding, setIsAdding] = useState(false);
+  const [addForm, setAddForm] = useState({ name: '', issuingBody: '', year: '' });
 
-const CertificationsIsland: React.FC<CertificationsIslandProps> = ({ certifications, isDark }) => (
-  <Island isDark={isDark}>
-    <SectionHeader icon={<Award size={13} />} title="Certifications" isDark={isDark} />
-    {certifications.length === 0
-      ? <p style={{ fontSize: 13, color: isDark ? '#6b7280' : '#9ca3af', fontStyle: 'italic' }}>No certifications on record.</p>
-      : certifications.map(cert => (
-        <div key={cert.id} style={{ marginBottom: 10 }}>
-          <p style={{ fontSize: 13, fontWeight: 700, color: isDark ? '#e5e7eb' : '#1f2937' }}>{cert.name}</p>
-          <p style={{ fontSize: 12, color: isDark ? '#9ca3af' : '#6b7280' }}>
-            {cert.issuingBody}{cert.year && ` · ${cert.year}`}
-          </p>
-        </div>
-      ))
-    }
-  </Island>
-);
+  const inp = inputStyle(isDark);
+
+  const editMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Record<string, string> }) => api.patch(`/certifications/${id}`, data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['profile'] }); setEditingId(null); toast.info('Certification updated.'); },
+    onError: () => toast.error('Failed to save.'),
+  });
+
+  const addMutation = useMutation({
+    mutationFn: (data: typeof addForm) => api.post('/certifications', data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['profile'] }); setIsAdding(false); setAddForm({ name: '', issuingBody: '', year: '' }); toast.success('Certification added.'); },
+    onError: () => toast.error('Failed to add certification.'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.delete(`/certifications/${id}`),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['profile'] }); toast.info('Certification removed.'); },
+    onError: () => toast.error('Failed to remove.'),
+  });
+
+  return (
+    <Island isDark={isDark}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <SectionHeader icon={<Award size={13} />} title="Certifications" isDark={isDark} />
+        {!isAdding && (
+          <button onClick={() => setIsAdding(true)} style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>
+            + Add
+          </button>
+        )}
+      </div>
+
+      <AnimatePresence>
+        {isAdding && (
+          <motion.div key="add" {...slideIn} style={{ marginBottom: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 80px', gap: '10px 14px' }}>
+              {(['name', 'issuingBody', 'year'] as const).map(f => (
+                <div key={f}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: isDark ? '#6b7280' : '#9ca3af', display: 'block', marginBottom: 4 }}>
+                    {f === 'issuingBody' ? 'Issuing Body' : f.charAt(0).toUpperCase() + f.slice(1)}
+                  </span>
+                  <input style={inp} value={addForm[f]} onChange={e => setAddForm(p => ({ ...p, [f]: e.target.value }))} />
+                </div>
+              ))}
+            </div>
+            <SaveCancelButtons onSave={() => addMutation.mutate(addForm)} onCancel={() => setIsAdding(false)} saving={addMutation.isPending} isDark={isDark} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {certifications.length === 0 && !isAdding && (
+        <p style={{ fontSize: 13, color: isDark ? '#6b7280' : '#9ca3af', fontStyle: 'italic' }}>No certifications on record.</p>
+      )}
+
+      {certifications.map(cert => {
+        const isEditing = editingId === cert.id;
+        const form = forms[cert.id] ?? { name: cert.name, issuingBody: cert.issuingBody, year: cert.year ?? '' };
+        return (
+          <div key={cert.id} style={{ marginBottom: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <AnimatePresence mode="wait">
+                  {isEditing ? (
+                    <motion.div key="edit" {...slideIn}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 80px', gap: '10px 14px' }}>
+                        {(['name', 'issuingBody', 'year'] as const).map(f => (
+                          <div key={f}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: isDark ? '#6b7280' : '#9ca3af', display: 'block', marginBottom: 4 }}>
+                              {f === 'issuingBody' ? 'Issuing Body' : f.charAt(0).toUpperCase() + f.slice(1)}
+                            </span>
+                            <input style={inp} value={form[f]} onChange={e => setForms(prev => ({ ...prev, [cert.id]: { ...form, [f]: e.target.value } }))} />
+                          </div>
+                        ))}
+                      </div>
+                      <SaveCancelButtons onSave={() => editMutation.mutate({ id: cert.id, data: form })} onCancel={() => setEditingId(null)} saving={editMutation.isPending} isDark={isDark} />
+                    </motion.div>
+                  ) : (
+                    <motion.div key="view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: isDark ? '#e5e7eb' : '#1f2937' }}>{cert.name}</p>
+                      <p style={{ fontSize: 12, color: isDark ? '#9ca3af' : '#6b7280' }}>{cert.issuingBody}{cert.year && ` · ${cert.year}`}</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+              {!isEditing && (
+                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  <EditButton onClick={() => { setForms(prev => ({ ...prev, [cert.id]: { name: cert.name, issuingBody: cert.issuingBody, year: cert.year ?? '' } })); setEditingId(cert.id); }} isDark={isDark} />
+                  <button onClick={() => deleteMutation.mutate(cert.id)} style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isDark ? '#6b7280' : '#9ca3af' }}>
+                    <X size={12} />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </Island>
+  );
+};
 
 // ── VolunteeringIsland ────────────────────────────────────────────────────────
 
-interface VolunteeringIslandProps {
-  volunteering: Volunteering[];
-  isDark: boolean;
-}
+const VolunteeringIsland: React.FC<{ volunteering: Volunteering[]; isDark: boolean }> = ({ volunteering, isDark }) => {
+  const qc = useQueryClient();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [forms, setForms] = useState<Record<string, { organization: string; role: string; description: string }>>({});
+  const [isAdding, setIsAdding] = useState(false);
+  const [addForm, setAddForm] = useState({ organization: '', role: '', description: '' });
 
-const VolunteeringIsland: React.FC<VolunteeringIslandProps> = ({ volunteering, isDark }) => (
-  <Island isDark={isDark}>
-    <SectionHeader icon={<Heart size={13} />} title="Volunteering" isDark={isDark} />
-    {volunteering.length === 0
-      ? <p style={{ fontSize: 13, color: isDark ? '#6b7280' : '#9ca3af', fontStyle: 'italic' }}>No volunteering records.</p>
-      : volunteering.map(vol => (
-        <div key={vol.id} style={{ marginBottom: 12 }}>
-          <p style={{ fontSize: 13, fontWeight: 700, color: isDark ? '#e5e7eb' : '#1f2937' }}>{vol.role}</p>
-          <p style={{ fontSize: 12, color: isDark ? '#9ca3af' : '#6b7280', marginBottom: vol.description ? 4 : 0 }}>{vol.organization}</p>
-          {vol.description && <p style={{ fontSize: 13, color: isDark ? '#9ca3af' : '#6b7280', lineHeight: 1.6 }}>{vol.description}</p>}
-        </div>
-      ))
-    }
-  </Island>
-);
+  const inp = inputStyle(isDark);
+
+  const editMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Record<string, string> }) => api.patch(`/volunteering/${id}`, data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['profile'] }); setEditingId(null); toast.info('Volunteering updated.'); },
+    onError: () => toast.error('Failed to save.'),
+  });
+
+  const addMutation = useMutation({
+    mutationFn: (data: typeof addForm) => api.post('/volunteering', data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['profile'] }); setIsAdding(false); setAddForm({ organization: '', role: '', description: '' }); toast.success('Volunteering added.'); },
+    onError: () => toast.error('Failed to add volunteering.'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.delete(`/volunteering/${id}`),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['profile'] }); toast.info('Volunteering removed.'); },
+    onError: () => toast.error('Failed to remove.'),
+  });
+
+  return (
+    <Island isDark={isDark}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <SectionHeader icon={<Heart size={13} />} title="Volunteering" isDark={isDark} />
+        {!isAdding && (
+          <button onClick={() => setIsAdding(true)} style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>
+            + Add
+          </button>
+        )}
+      </div>
+
+      <AnimatePresence>
+        {isAdding && (
+          <motion.div key="add" {...slideIn} style={{ marginBottom: 16 }}>
+            {(['organization', 'role'] as const).map(f => (
+              <div key={f} style={{ marginBottom: 10 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: isDark ? '#6b7280' : '#9ca3af', display: 'block', marginBottom: 4 }}>
+                  {f.charAt(0).toUpperCase() + f.slice(1)}
+                </span>
+                <input style={inp} value={addForm[f]} onChange={e => setAddForm(p => ({ ...p, [f]: e.target.value }))} />
+              </div>
+            ))}
+            <div style={{ marginBottom: 10 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: isDark ? '#6b7280' : '#9ca3af', display: 'block', marginBottom: 4 }}>Description (optional)</span>
+              <textarea rows={3} style={{ ...inp, resize: 'vertical' }} value={addForm.description} onChange={e => setAddForm(p => ({ ...p, description: e.target.value }))} />
+            </div>
+            <SaveCancelButtons onSave={() => addMutation.mutate(addForm)} onCancel={() => setIsAdding(false)} saving={addMutation.isPending} isDark={isDark} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {volunteering.length === 0 && !isAdding && (
+        <p style={{ fontSize: 13, color: isDark ? '#6b7280' : '#9ca3af', fontStyle: 'italic' }}>No volunteering records.</p>
+      )}
+
+      {volunteering.map(vol => {
+        const isEditing = editingId === vol.id;
+        const form = forms[vol.id] ?? { organization: vol.organization, role: vol.role, description: vol.description ?? '' };
+        return (
+          <div key={vol.id} style={{ marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <AnimatePresence mode="wait">
+                  {isEditing ? (
+                    <motion.div key="edit" {...slideIn}>
+                      {(['organization', 'role'] as const).map(f => (
+                        <div key={f} style={{ marginBottom: 10 }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: isDark ? '#6b7280' : '#9ca3af', display: 'block', marginBottom: 4 }}>
+                            {f.charAt(0).toUpperCase() + f.slice(1)}
+                          </span>
+                          <input style={inp} value={form[f]} onChange={e => setForms(prev => ({ ...prev, [vol.id]: { ...form, [f]: e.target.value } }))} />
+                        </div>
+                      ))}
+                      <div style={{ marginBottom: 10 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: isDark ? '#6b7280' : '#9ca3af', display: 'block', marginBottom: 4 }}>Description (optional)</span>
+                        <textarea rows={3} style={{ ...inp, resize: 'vertical' }} value={form.description} onChange={e => setForms(prev => ({ ...prev, [vol.id]: { ...form, description: e.target.value } }))} />
+                      </div>
+                      <SaveCancelButtons onSave={() => editMutation.mutate({ id: vol.id, data: form })} onCancel={() => setEditingId(null)} saving={editMutation.isPending} isDark={isDark} />
+                    </motion.div>
+                  ) : (
+                    <motion.div key="view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: isDark ? '#e5e7eb' : '#1f2937' }}>{vol.role}</p>
+                      <p style={{ fontSize: 12, color: isDark ? '#9ca3af' : '#6b7280', marginBottom: vol.description ? 4 : 0 }}>{vol.organization}</p>
+                      {vol.description && <p style={{ fontSize: 13, color: isDark ? '#9ca3af' : '#6b7280', lineHeight: 1.6 }}>{vol.description}</p>}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+              {!isEditing && (
+                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  <EditButton onClick={() => { setForms(prev => ({ ...prev, [vol.id]: { organization: vol.organization, role: vol.role, description: vol.description ?? '' } })); setEditingId(vol.id); }} isDark={isDark} />
+                  <button onClick={() => deleteMutation.mutate(vol.id)} style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isDark ? '#6b7280' : '#9ca3af' }}>
+                    <X size={12} />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </Island>
+  );
+};
 
 // ── CompletionSidebar ─────────────────────────────────────────────────────────
 
