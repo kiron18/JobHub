@@ -110,6 +110,12 @@ router.post('/job', async (req: any, res: any) => {
             securityClearanceRequired: 'none',
             salaryType: 'unknown',
         };
+
+        const citizenshipWarning: boolean =
+            australianFlags.requiresCitizenship === true &&
+            profile.visaStatus !== null &&
+            profile.visaStatus !== 'Australian Citizen';
+
         const matchedIdentityCard: string | null = analysis.matchedIdentityCard ?? null;
 
         let finalRanked = [];
@@ -156,6 +162,7 @@ router.post('/job', async (req: any, res: any) => {
             dimensions: dimensions ?? null,
             matchedIdentityCard,
             australianFlags,
+            citizenshipWarning,
             keywords: analysis.keywords || [],
             analysisTone: analysis.analysisTone || 'Professional',
             requiresSelectionCriteria: !!analysis.requiresSelectionCriteria,
