@@ -48,6 +48,8 @@ model CandidateProfile {
   identityCards                Json?
   identityCardsUpdatedAt       DateTime?
   achievementCountAtDerivation Int?
+  profileAdvisorCallsToday  Int       @default(0)
+  profileAdvisorCallsDate   DateTime?
 }
 
 model ResumeVersion {

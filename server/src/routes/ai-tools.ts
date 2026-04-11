@@ -193,6 +193,19 @@ router.post('/profile-advisor', async (req: any, res: any) => {
         });
         if (!profile) return res.status(404).json({ error: 'Profile not found.' });
 
+        // ── Daily rate limit ─────────────────────────────────────────────
+        const maxCalls = parseInt(process.env.MAX_DAILY_PROFILE_ANALYSES ?? '3', 10);
+        const today = new Date();
+        today.setUTCHours(0, 0, 0, 0);
+        const lastDate = (profile as any).profileAdvisorCallsDate;
+        const isToday = lastDate && new Date(lastDate) >= today;
+        const callsToday = isToday ? (profile as any).profileAdvisorCallsToday : 0;
+
+        if (callsToday >= maxCalls) {
+            return res.status(429).json({ error: 'DAILY_LIMIT_REACHED', callsToday, limit: maxCalls });
+        }
+        // ── End rate limit ───────────────────────────────────────────────
+
         const achievementSummary = profile.achievements.slice(0, 10).map((a: any) =>
             `- "${a.title}" (metric: ${a.metric || 'MISSING'}, desc: ${a.description?.length ?? 0} chars)`
         ).join('\n') || 'No achievements.';
@@ -242,6 +255,15 @@ Return ONLY valid JSON. Exactly 5 improvements, ordered by priority (1 = most ur
 
         const raw = await callLLM(prompt, true);
         const result = parseLLMJson(raw);
+
+        // Increment counter
+        await prisma.candidateProfile.update({
+            where: { userId },
+            data: {
+                profileAdvisorCallsToday: callsToday + 1,
+                profileAdvisorCallsDate: new Date(),
+            },
+        });
 
         return res.json({
             overallGrade: result.overallGrade || 'C',
