@@ -14,7 +14,6 @@ import {
     AlertCircle,
     BookOpen,
     FlaskConical,
-    Linkedin,
     Loader2,
     Copy,
     CheckCircle
@@ -29,15 +28,12 @@ import { StrategistDebrief } from './StrategistDebrief';
 import { CompanyResearchPanel } from './CompanyResearchPanel';
 import type { CompanyResearch } from './CompanyResearchPanel';
 import { CriteriaInputPanel } from './CriteriaInputPanel';
-import { GapAnalysisPanel } from './GapAnalysisPanel';
-import { SalaryInsightPanel } from './SalaryInsightPanel';
 import { InterviewQuestionsPanel } from './InterviewQuestionsPanel';
 import { JDSummaryBar } from './JDSummaryBar';
 import { ATSCoveragePanel } from './ATSCoveragePanel';
 import { ToneRewritePanel } from './ToneRewritePanel';
 import { ResumeScorecardPanel } from './ResumeScorecardPanel';
 import { CoverLetterPersonalisationPanel } from './CoverLetterPersonalisationPanel';
-import { FeedbackBar } from './FeedbackBar';
 import { exportDocx } from '../lib/exportDocx';
 import type { DocType } from '../lib/exportDocx';
 import { exportPdf } from '../lib/exportPdf';
@@ -228,6 +224,7 @@ export const ApplicationWorkspace: React.FC = () => {
     const [exportingPdf, setExportingPdf] = useState(false);
     const [companyResearch, setCompanyResearch] = useState<CompanyResearch | null>(null);
     const [selectionCriteriaText, setSelectionCriteriaText] = useState('');
+    const [scConfirmed, setScConfirmed] = useState(false);
     const [employerFramework, setEmployerFramework] = useState<string | null>(null);
 
     // Academic documents — generated on demand, stored separately (not in main documents map)
@@ -241,15 +238,15 @@ export const ApplicationWorkspace: React.FC = () => {
     // Cover letter tone preference
     const [coverLetterTone, setCoverLetterTone] = useState<'professional' | 'warm' | 'concise'>('professional');
 
-    // LinkedIn Profile Generator — standalone, stored separately
-    const [linkedInDoc, setLinkedInDoc] = useState('');
-    const [generatingLinkedIn, setGeneratingLinkedIn] = useState(false);
-    const [linkedInViewerOpen, setLinkedInViewerOpen] = useState(false);
-
     // Email cover letter modal
     const [emailVersion, setEmailVersion] = useState<{ emailSubject: string; emailBody: string } | null>(null);
     const [generatingEmail, setGeneratingEmail] = useState(false);
     const [copiedEmailField, setCopiedEmailField] = useState<'subject' | 'body' | null>(null);
+
+    // Reset SC confirmed flag when user leaves SC tab
+    useEffect(() => {
+        if (state.activeTab !== 'selection-criteria') setScConfirmed(false);
+    }, [state.activeTab]);
 
     // Auto-detect employer framework when SC tab is first activated
     useEffect(() => {
@@ -551,13 +548,13 @@ export const ApplicationWorkspace: React.FC = () => {
 
         // For SC, don't auto-generate until the user has pasted criteria
         // For interview-prep, auto-generate is fine (just needs the JD)
-        const scReady = state.activeTab !== 'selection-criteria' || selectionCriteriaText.trim().length > 20;
+        const scReady = state.activeTab !== 'selection-criteria' || (selectionCriteriaText.trim().length > 20 && scConfirmed);
 
         if (state.jobDescription && !hasDoc && !hasDocId && !state.isGenerating && !state.hasFailed[state.activeTab] && scReady) {
             console.log('Triggering generation for:', state.activeTab);
             handleGenerate(state.activeTab);
         }
-    }, [state.activeTab, state.jobDescription, state.documents, state.documentIds, state.isGenerating, state.hasFailed, selectionCriteriaText]);
+    }, [state.activeTab, state.jobDescription, state.documents, state.documentIds, state.isGenerating, state.hasFailed, selectionCriteriaText, scConfirmed]);
 
 
     const handleGenerateAcademic = async (docType: 'teaching-philosophy' | 'research-statement') => {
@@ -578,27 +575,6 @@ export const ApplicationWorkspace: React.FC = () => {
             toast.error('Generation failed — try again.');
         } finally {
             setGeneratingAcademic(null);
-        }
-    };
-
-    const handleGenerateLinkedIn = async () => {
-        if (generatingLinkedIn || !state.jobDescription) return;
-        setGeneratingLinkedIn(true);
-        try {
-            const { data } = await api.post('/generate/linkedin-profile', {
-                jobDescription: state.jobDescription,
-                selectedAchievementIds: state.selectedAchievementIds,
-                jobApplicationId: state.jobApplicationId,
-                analysisContext: { tone: state.analysisTone, competencies: state.coreCompetencies },
-                employerFramework,
-            });
-            setLinkedInDoc(data.content);
-            setLinkedInViewerOpen(true);
-            toast.success('LinkedIn profile sections generated');
-        } catch {
-            toast.error('Generation failed — try again.');
-        } finally {
-            setGeneratingLinkedIn(false);
         }
     };
 
@@ -822,7 +798,7 @@ export const ApplicationWorkspace: React.FC = () => {
                             />
                             {selectionCriteriaText.trim().length > 20 && !state.documents['selection-criteria'] && !state.isGenerating && (
                                 <button
-                                    onClick={() => handleGenerate('selection-criteria')}
+                                    onClick={() => setScConfirmed(true)}
                                     className="w-full mt-2 py-2.5 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2"
                                 >
                                     <List size={14} />
@@ -923,62 +899,6 @@ export const ApplicationWorkspace: React.FC = () => {
                         </div>
                     )}
 
-                    {/* LinkedIn Profile Generator — always available when JD is loaded */}
-                    {state.jobDescription && (
-                        <div className="p-4 border-b border-slate-800 shrink-0">
-                            <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 overflow-hidden">
-                                <div className="flex items-center gap-2 px-4 py-3 border-b border-sky-500/10 bg-sky-500/5">
-                                    <Linkedin size={13} className="text-sky-400" />
-                                    <span className="text-[10px] font-black text-sky-400 uppercase tracking-widest">LinkedIn Optimiser</span>
-                                </div>
-                                <div className="p-4">
-                                    <p className="text-[10px] text-slate-400 leading-relaxed mb-3">
-                                        Generate a headline, About section, and 10 featured skills tailored to this role.
-                                    </p>
-                                    <button
-                                        onClick={handleGenerateLinkedIn}
-                                        disabled={generatingLinkedIn}
-                                        className="w-full py-2 bg-sky-600/20 hover:bg-sky-600/30 disabled:opacity-50 text-sky-300 text-[11px] font-bold rounded-lg border border-sky-500/30 transition-all flex items-center justify-center gap-2"
-                                    >
-                                        {generatingLinkedIn ? (
-                                            <Loader2 size={11} className="animate-spin" />
-                                        ) : <Linkedin size={11} />}
-                                        {linkedInDoc ? 'Regenerate' : 'Generate'} LinkedIn Sections
-                                    </button>
-                                    {linkedInDoc && (
-                                        <button
-                                            onClick={() => setLinkedInViewerOpen(true)}
-                                            className="w-full mt-1.5 py-1.5 text-[10px] font-bold text-slate-300 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition-colors"
-                                        >
-                                            View / Copy
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Salary Insight Panel */}
-                    {state.metadata?.role && (
-                        <div className="p-4 border-b border-slate-800 shrink-0">
-                            <SalaryInsightPanel
-                                role={state.metadata.role}
-                                company={state.metadata.company}
-                                location="Australia"
-                            />
-                        </div>
-                    )}
-
-                    {/* Gap Analysis Panel — shown after first document generates */}
-                    {(state.documents.resume || state.documents['cover-letter'] || state.documents['selection-criteria']) && !state.isGenerating && (
-                        <div className="p-4 border-b border-slate-800 shrink-0">
-                            <GapAnalysisPanel
-                                jobDescription={state.jobDescription}
-                                keywords={state.keywords}
-                            />
-                        </div>
-                    )}
-
                     {/* ATS Coverage Panel — shown when resume or cover-letter is ready */}
                     {(state.documents.resume || state.documents['cover-letter']) && !state.isGenerating && (
                         <div className="p-4 border-b border-slate-800 shrink-0">
@@ -1035,46 +955,6 @@ export const ApplicationWorkspace: React.FC = () => {
                     <div className="flex-1 overflow-y-auto p-6 text-sm text-slate-400 leading-relaxed custom-scrollbar">
                         <HighlightedJD text={state.jobDescription} keywords={state.keywords || []} />
                     </div>
-
-                    {/* LinkedIn viewer modal */}
-                    <AnimatePresence>
-                        {linkedInViewerOpen && linkedInDoc && (
-                            <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                className="absolute inset-0 bg-slate-950/95 z-20 flex flex-col overflow-hidden"
-                            >
-                                <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-800 shrink-0">
-                                    <div className="flex items-center gap-2">
-                                        <Linkedin size={14} className="text-sky-400" />
-                                        <span className="text-sm font-bold text-slate-200">LinkedIn Profile Sections</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <button
-                                            onClick={() => { navigator.clipboard.writeText(linkedInDoc); toast.success('Copied to clipboard'); }}
-                                            className="text-[10px] font-black text-sky-400 border border-sky-700/50 px-3 py-1.5 rounded-lg hover:bg-sky-500/10 transition-colors uppercase tracking-wider"
-                                        >
-                                            Copy All
-                                        </button>
-                                        <button
-                                            onClick={() => setLinkedInViewerOpen(false)}
-                                            className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 transition-colors"
-                                        >
-                                            <ChevronLeft size={16} />
-                                        </button>
-                                    </div>
-                                </div>
-                                <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-                                    <div className="max-w-2xl mx-auto bg-white text-slate-900 rounded-sm p-10 shadow-2xl">
-                                        <article className="prose prose-slate max-w-none">
-                                            <ReactMarkdown>{linkedInDoc}</ReactMarkdown>
-                                        </article>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
 
                     {/* Academic document viewer modal */}
                     <AnimatePresence>
@@ -1321,7 +1201,7 @@ export const ApplicationWorkspace: React.FC = () => {
                                         placeholder={`Start typing your ${state.activeTab}...`}
                                     />
                                 ) : (
-                                    <article id="resume-preview-content" className="prose prose-slate max-w-none [&_p]:my-0.5 [&_ul]:my-1 [&_li]:my-0 [&_h2]:mt-3 [&_h2]:mb-1 [&_h3]:mt-2 [&_h3]:mb-0.5">
+                                    <article id="resume-preview-content" className="prose prose-slate max-w-none [&_p]:my-0.5 [&_ul]:my-1 [&_li]:my-0 [&_h1]:text-base [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-2 [&_h2]:text-sm [&_h2]:font-bold [&_h2]:mt-3 [&_h2]:mb-1 [&_h3]:text-sm [&_h3]:mt-2 [&_h3]:mb-0.5">
                                         <ReactMarkdown
                                             children={normaliseMarkdown(state.documents[state.activeTab] || '')}
                                             components={{
@@ -1362,14 +1242,6 @@ export const ApplicationWorkspace: React.FC = () => {
                                 )}
                             </div>
                         </div>
-                        {/* Feedback bar — shown once document is generated */}
-                        {state.documentIds[state.activeTab] && !state.isGenerating && (
-                            <FeedbackBar
-                                key={state.documentIds[state.activeTab]!}
-                                documentId={state.documentIds[state.activeTab]!}
-                                docTab={state.activeTab as any}
-                            />
-                        )}
                         {state.blueprint && !state.isGenerating && (
                             <StrategistDebrief
                                 blueprint={state.blueprint}
