@@ -183,13 +183,13 @@ SELECTION CRITERIA RESPONSES
 
 ---
 
-Criterion 1: [Paste full criterion text from JD]
+## Criterion 1: [Paste full criterion text from JD]
 
 [STAR response — prose, no bullet points unless multi-example]
 
 ---
 
-Criterion 2: [Paste full criterion text from JD]
+## Criterion 2: [Paste full criterion text from JD]
 
 [STAR response]
 
