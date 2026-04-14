@@ -59,7 +59,11 @@ const corsOptions = {
       if (/^https?:\/\/(www\.)?aussiegradcareers\.com(\.au)?$/.test(origin)) return cb(null, true);
       // Allow localhost in any form
       if (/^https?:\/\/localhost(:\d+)?$/.test(origin)) return cb(null, true);
-      cb(new Error(`CORS: origin not allowed — ${origin}`));
+      // Reject with null (not an Error) so Express does NOT call the 500 error handler.
+      // The cors package will simply omit the Access-Control-Allow-Origin header,
+      // causing the browser to block the request with a CORS error — not a 500.
+      console.warn(`[CORS] Blocked origin: ${origin}`);
+      cb(null, false);
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
