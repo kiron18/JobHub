@@ -678,11 +678,42 @@ function StepAuth({ answers, resume, cl1, cl2, onAuthSuccess, submitting, onBack
 }) {
   const { T } = useTheme();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [pwError, setPwError] = useState('');
   const [alreadyRegistered, setAlreadyRegistered] = useState(false);
+
+  // If already authenticated (non-anonymous), skip sign-up and submit directly.
+  // This handles the case where a user has a Supabase account but no profile yet
+  // (e.g., their first upload failed due to CORS), and re-enters onboarding after
+  // signing in via /auth.
+  const isAuthenticated = !!user && !(user as any).is_anonymous;
+  if (isAuthenticated) {
+    return (
+      <div>
+        <ProfileProgress step={4} answers={answers} />
+        <h2 style={{ fontSize: 24, fontWeight: 900, color: T.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
+          Ready to build your diagnosis
+        </h2>
+        <p style={{ color: T.textMuted, fontSize: 13, lineHeight: 1.6, marginBottom: 24 }}>
+          You're signed in as <strong style={{ color: T.text }}>{user.email}</strong>. Click below to submit your answers.
+        </p>
+        <PrimaryButton
+          onClick={onAuthSuccess}
+          disabled={submitting || !resume}
+          label={submitting ? 'Building diagnosis...' : 'Build my diagnosis →'}
+        />
+        {!resume && (
+          <p style={{ fontSize: 12, color: '#f87171', marginTop: 8 }}>Resume is missing — go back and upload it.</p>
+        )}
+        <div style={{ marginTop: 16 }}>
+          <BackButton onBack={onBack} />
+        </div>
+      </div>
+    );
+  }
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
