@@ -372,41 +372,142 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
           })}
         </div>
 
-        {/* End CTA */}
+        {/* Skool community CTA + embed */}
         {sections.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
-            style={{
-              marginTop: 48, padding: '48px 36px',
-              background: theme.ctaBg, border: `1px solid ${theme.ctaBorder}`,
-              borderRadius: 24, textAlign: 'center',
-            }}
+            style={{ marginTop: 48 }}
           >
-            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: theme.ctaEyebrow, marginBottom: 12, opacity: 0.8 }}>
-              You've got this
-            </p>
-            <h2 style={{ fontSize: 26, fontWeight: 800, color: theme.ctaHeading, marginBottom: 8, letterSpacing: '-0.01em' }}>
-              Your game plan is ready.
-            </h2>
-            <p style={{ fontSize: 15, color: theme.ctaBody, marginBottom: 36, lineHeight: 1.6 }}>
-              The market is hard right now, but most people are losing to fixable problems.<br />
-              You just found yours. Now let's fix them.
-            </p>
-            <button
-              onClick={onDone}
-              style={{
-                background: '#FCD34D', color: '#111827', border: 'none',
-                borderRadius: 14, padding: '15px 44px',
-                fontSize: 16, fontWeight: 800, cursor: 'pointer',
-                boxShadow: '0 4px 24px rgba(252,211,77,0.25)', transition: 'transform 0.15s, box-shadow 0.15s',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 32px rgba(252,211,77,0.35)'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 24px rgba(252,211,77,0.25)'; }}
-            >
-              Let's build your edge ↓
-            </button>
+            {/* Header */}
+            <div style={{
+              background: 'linear-gradient(135deg, #134E4A 0%, #0F766E 60%, #1E1B4B 100%)',
+              borderRadius: '24px 24px 0 0',
+              padding: '44px 40px 36px',
+              textAlign: 'center',
+              position: 'relative',
+              overflow: 'hidden',
+            }}>
+              <div style={{
+                position: 'absolute', top: -80, left: '50%', transform: 'translateX(-50%)',
+                width: 320, height: 320, borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%)',
+                pointerEvents: 'none',
+              }} />
+              <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(153,246,228,0.8)', marginBottom: 14, position: 'relative' }}>
+                Free community — Aussie Grad Careers
+              </p>
+              <h2 style={{ fontSize: 28, fontWeight: 800, color: 'white', lineHeight: 1.2, marginBottom: 14, position: 'relative', letterSpacing: '-0.01em' }}>
+                Here's your report.<br />
+                <span style={{ color: '#99F6E4', fontStyle: 'italic' }}>Want the 8-step training to fix it?</span>
+              </h2>
+              <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.75)', lineHeight: 1.65, maxWidth: 500, margin: '0 auto', position: 'relative' }}>
+                Your report found the problems. The training walks you through fixing each one — with templates, real examples, and weekly group coaching calls.
+              </p>
+            </div>
+
+            {/* 8 steps grid */}
+            <div style={{
+              background: isDark ? 'rgba(255,255,255,0.03)' : 'linear-gradient(135deg, #F0FDFA, white)',
+              border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(15,118,110,0.13)'}`,
+              borderTop: 'none',
+              padding: '28px 36px',
+            }}>
+              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#4D7C78', marginBottom: 16 }}>
+                What's inside
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                {[
+                  'Fix your CV profile paragraph — stop the credibility gap',
+                  'Reframe your background as an asset, not a liability',
+                  'Write cover letters that name the employer, not templates',
+                  'Contact specialist recruiters — what to say, who to message',
+                  'Filter roles by visa-safe employers — stop wasting applications',
+                  'Activate your community connections — warm outreach that lands',
+                  'Answer "tell me about yourself" — 4 versions for every context',
+                  'Weekly group coaching calls — live feedback on your applications',
+                ].map((step, i) => (
+                  <div key={i} style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 10,
+                    background: isDark ? 'rgba(255,255,255,0.04)' : 'white',
+                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(15,118,110,0.10)'}`,
+                    borderRadius: 12, padding: '12px 14px',
+                  }}>
+                    <div style={{
+                      width: 24, height: 24, borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #0F766E, #3730A3)',
+                      color: 'white', fontSize: 11, fontWeight: 700,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0,
+                    }}>{i + 1}</div>
+                    <p style={{ fontSize: 13, color: isDark ? '#9ca3af' : '#1E3A3A', lineHeight: 1.5, margin: 0, fontWeight: 500 }}>{step}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Skool embed */}
+            <div style={{
+              background: isDark ? 'rgba(255,255,255,0.02)' : 'white',
+              border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(15,118,110,0.13)'}`,
+              borderTop: 'none',
+              padding: '28px 36px',
+              textAlign: 'center',
+            }}>
+              <p style={{ fontSize: 14, color: isDark ? '#6b7280' : '#4D7C78', marginBottom: 20, lineHeight: 1.6 }}>
+                Join free below. Takes 30 seconds. <strong style={{ color: isDark ? '#9ca3af' : '#134E4A' }}>No redirect — sign up right here.</strong>
+              </p>
+              <div style={{ borderRadius: 16, overflow: 'hidden', border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(15,118,110,0.13)'}` }}>
+                <iframe
+                  src="https://www.skool.com/aussiegradcareers/about"
+                  title="Join Aussie Grad Careers on Skool"
+                  style={{ display: 'block', width: '100%', minHeight: 480, border: 'none' }}
+                  loading="lazy"
+                />
+              </div>
+              {/* Fallback if iframe is blocked */}
+              <a
+                href="https://www.skool.com/aussiegradcareers/about"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-block', marginTop: 16,
+                  background: 'linear-gradient(135deg, #0F766E, #134E4A)',
+                  color: 'white', border: 'none',
+                  borderRadius: 12, padding: '13px 36px',
+                  fontSize: 15, fontWeight: 700, cursor: 'pointer',
+                  textDecoration: 'none',
+                  boxShadow: '0 4px 20px rgba(15,118,110,0.25)',
+                }}
+              >
+                Join the free community →
+              </a>
+              <p style={{ fontSize: 12, color: isDark ? '#374151' : '#9CA3AF', marginTop: 10 }}>
+                Free community · No card required
+              </p>
+            </div>
+
+            {/* Continue to dashboard */}
+            <div style={{
+              background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(248,250,252,0.8)',
+              border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(15,118,110,0.10)'}`,
+              borderTop: 'none',
+              borderRadius: '0 0 24px 24px',
+              padding: '24px 36px',
+              textAlign: 'center',
+            }}>
+              <button
+                onClick={onDone}
+                style={{
+                  background: 'none', border: 'none',
+                  fontSize: 14, fontWeight: 700, color: isDark ? '#6b7280' : '#9CA3AF',
+                  cursor: 'pointer', letterSpacing: '0.02em',
+                }}
+              >
+                Skip — take me to the dashboard →
+              </button>
+            </div>
           </motion.div>
         )}
       </div>
