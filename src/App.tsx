@@ -273,6 +273,16 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     if (loading || user) return;
     if (signingIn) return;
 
+    // If this page load is an OAuth callback, Supabase is still processing
+    // the session from the URL hash/code — don't race it with signInAnonymously.
+    // onAuthStateChange will fire shortly and set user, which re-runs this effect.
+    const isOAuthCallback =
+      window.location.hash.includes('access_token') ||
+      window.location.hash.includes('error_description') ||
+      window.location.search.includes('code=') ||
+      window.location.search.includes('error=');
+    if (isOAuthCallback) return;
+
     const savedEmail = localStorage.getItem('jobhub_auth_email');
     if (savedEmail) {
       // Returning user — send to auth page with email pre-filled
