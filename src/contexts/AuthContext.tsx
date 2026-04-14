@@ -29,6 +29,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      // Track authenticated (non-anonymous) users so ProtectedRoute can redirect
+      // them to /auth on session expiry instead of starting a fresh anon session.
+      if (session?.user && !(session.user as any).is_anonymous && session.user.email) {
+        localStorage.setItem('jobhub_auth_email', session.user.email);
+      }
     });
 
     return () => {
