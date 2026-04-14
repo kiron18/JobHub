@@ -691,7 +691,7 @@ function StepAuth({ answers, resume, cl1, cl2, onAuthSuccess, submitting, onBack
     if (password.length < 8) { setPwError('Password must be at least 8 characters'); return; }
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({ email: email.trim(), password });
+      const { data, error } = await supabase.auth.signUp({ email: email.trim(), password });
       if (error) {
         const msg = error.message.toLowerCase();
         if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('user already registered')) {
@@ -701,6 +701,22 @@ function StepAuth({ answers, resume, cl1, cl2, onAuthSuccess, submitting, onBack
         }
         return;
       }
+
+      // If email confirmation is required, signUp returns session: null.
+      // Try signing in immediately — if auto-confirm is off this will fail
+      // and we redirect to /auth with instructions.
+      if (!data.session) {
+        const { error: loginErr } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+        if (loginErr) {
+          toast.success('Account created! Check your email to confirm it, then sign in.');
+          navigate('/auth');
+          return;
+        }
+      }
+
       onAuthSuccess();
     } catch (err: any) {
       toast.error(err.message || 'Sign up failed');
