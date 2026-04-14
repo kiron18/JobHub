@@ -55,8 +55,8 @@ const corsOptions = {
       // Allow any Vercel preview deployment
       if (/^https:\/\/[a-z0-9-]+-[a-z0-9]+-[a-z0-9]+\.vercel\.app$/.test(origin)) return cb(null, true);
       if (/^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(origin)) return cb(null, true);
-      // Allow production custom domain
-      if (/^https?:\/\/(www\.)?aussiegradcareers\.com$/.test(origin)) return cb(null, true);
+      // Allow production custom domains (.com and .com.au)
+      if (/^https?:\/\/(www\.)?aussiegradcareers\.com(\.au)?$/.test(origin)) return cb(null, true);
       // Allow localhost in any form
       if (/^https?:\/\/localhost(:\d+)?$/.test(origin)) return cb(null, true);
       cb(new Error(`CORS: origin not allowed — ${origin}`));
