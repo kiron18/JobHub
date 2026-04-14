@@ -910,9 +910,21 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
       clearPendingFilesFromIDB().catch(() => {});
       setSubmitting(false);
       setStep(6);
-    } catch (err) {
-      console.error('[OnboardingIntake] Submit failed:', err);
-      toast.error('Something went wrong uploading your files. Please try again.');
+    } catch (err: any) {
+      const status = err?.response?.status;
+      const detail = err?.response?.data?.error || err?.response?.data?.details || err?.message || 'Unknown error';
+      console.error('[OnboardingIntake] Submit failed:', status, detail, err);
+      if (status === 401) {
+        toast.error(`Authentication failed (401): ${detail}. Please refresh and try again.`);
+      } else if (status === 413) {
+        toast.error('File too large. Please use a PDF under 5MB.');
+      } else if (err?.code === 'ECONNABORTED' || err?.message?.includes('timeout')) {
+        toast.error('Request timed out. Your files may be too large — try a smaller PDF.');
+      } else if (!err?.response) {
+        toast.error(`Network error — cannot reach the server. Check your connection.`);
+      } else {
+        toast.error(`Upload failed (${status ?? 'error'}): ${detail}`);
+      }
       setSubmitting(false);
     }
   };
