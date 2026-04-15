@@ -317,19 +317,62 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
         <span style={{ color: T.textMuted }}>YOUR POSITIONING IS.</span>
       </h1>
 
-      <p style={{ color: T.textMuted, fontSize: 15, lineHeight: 1.7, marginBottom: 10, maxWidth: 400, margin: '0 auto 10px' }}>
-        In the next few minutes, we will figure out exactly where things are breaking down and build you a plan to fix it.
+      <p style={{ color: T.textMuted, fontSize: 15, lineHeight: 1.7, maxWidth: 400, margin: '0 auto 16px' }}>
+        Upload your resume, answer 8 quick questions, get a personalised breakdown of exactly where your job search is breaking down.
       </p>
-      <p style={{ color: T.textFaint, fontSize: 13, lineHeight: 1.6, marginBottom: 36 }}>
-        Answer honestly. The more specific you are, the more powerful what comes next.
-      </p>
+
+      {/* Report preview — shows what they'll unlock */}
+      <div style={{ marginBottom: 28, textAlign: 'left' }}>
+        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: T.textFaint, textAlign: 'center', marginBottom: 12 }}>
+          Your diagnosis will cover
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+          {[
+            { label: 'Role targeting', desc: 'Are you aiming at the right roles for your level?' },
+            { label: 'Document audit', desc: 'Is your resume costing you interviews?' },
+            { label: 'Application pipeline', desc: 'Where exactly are things dropping off?' },
+            { label: 'Honest assessment', desc: 'What your documents reveal vs. what you think' },
+            { label: 'Three-step fix', color: '#22c55e', desc: 'Concrete actions ranked by impact, written for you' },
+            { label: 'How we can help', desc: 'What tools and training are available to you' },
+          ].map((item, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, x: -12 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.15 + i * 0.06 }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
+                borderRadius: 12, border: `1px solid ${T.inputBorder}`,
+                background: T.inputBg,
+              }}
+            >
+              <div style={{
+                width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                background: item.color || T.progressFill,
+                boxShadow: `0 0 6px ${item.color || T.progressFill}60`,
+              }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: item.color || T.text }}>{item.label}</span>
+                <span style={{ fontSize: 12, color: T.textFaint, marginLeft: 8 }}>{item.desc}</span>
+              </div>
+              <div style={{
+                fontSize: 10, fontWeight: 700, color: T.textFaint,
+                background: T.chipBg, borderRadius: 6, padding: '2px 7px', flexShrink: 0,
+              }}>
+                locked
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
 
       <motion.button onClick={onNext}
         style={{ background: T.btnBg, color: T.btnText, padding: '15px 36px', borderRadius: 16, border: 'none', fontWeight: 900, fontSize: 16, cursor: 'pointer', boxShadow: T.btnShadow, letterSpacing: '-0.01em', width: '100%' }}
         whileHover={{ scale: 1.02, boxShadow: '0 8px 40px rgba(0,0,0,0.25)' }}
         whileTap={{ scale: 0.97 }}>
-        Let's find out
+        Unlock my diagnosis →
       </motion.button>
+      <p style={{ fontSize: 12, color: T.textFaint, marginTop: 10 }}>Takes about 3 minutes · Free</p>
     </div>
   );
 }
