@@ -77,27 +77,53 @@ function extractHook(content: string): string {
   return sentences.slice(0, 2).join(' ').trim() || clean.slice(0, 180);
 }
 
-// Render markdown-ish content as readable paragraphs (no external parser needed)
-function RenderContent({ text, color }: { text: string; color: string }) {
-  const lines = text.split('\n').filter(l => l.trim());
+// Render inline markdown — converts **bold** to <strong>
+function renderInline(text: string): React.ReactNode {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  if (parts.length === 1) return text;
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <>
+      {parts.map((part, i) =>
+        part.startsWith('**') && part.endsWith('**')
+          ? <strong key={i} style={{ fontWeight: 700, color: 'inherit' }}>{part.slice(2, -2)}</strong>
+          : <span key={i}>{part}</span>
+      )}
+    </>
+  );
+}
+
+// Render markdown content as readable paragraphs
+function RenderContent({ text, color }: { text: string; color: string }) {
+  const lines = text.split('\n').filter(l => {
+    const t = l.trim();
+    return t && t !== '---'; // skip horizontal rules
+  });
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {lines.map((line, i) => {
         const trimmed = line.trim();
         if (trimmed.startsWith('- ') || trimmed.startsWith('• ')) {
           return (
             <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-              <span style={{ color, fontWeight: 700, marginTop: 2, flexShrink: 0 }}>—</span>
-              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: 'inherit' }}>
-                {trimmed.replace(/^[-•]\s/, '')}
+              <span style={{ color, fontWeight: 800, marginTop: 3, flexShrink: 0, fontSize: 16 }}>·</span>
+              <p style={{ margin: 0, fontSize: 15, lineHeight: 1.75, color: 'inherit', fontWeight: 500 }}>
+                {renderInline(trimmed.replace(/^[-•]\s/, ''))}
               </p>
             </div>
           );
         }
-        if (trimmed.startsWith('###')) {
-          return <p key={i} style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.5 }}>{trimmed.replace(/^#+\s/, '')}</p>;
+        if (trimmed.startsWith('###') || trimmed.startsWith('##')) {
+          return (
+            <p key={i} style={{ margin: 0, fontSize: 11, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color, opacity: 0.85 }}>
+              {trimmed.replace(/^#+\s/, '')}
+            </p>
+          );
         }
-        return <p key={i} style={{ margin: 0, fontSize: 14, lineHeight: 1.75 }}>{trimmed}</p>;
+        return (
+          <p key={i} style={{ margin: 0, fontSize: 15, lineHeight: 1.8, fontWeight: 450 }}>
+            {renderInline(trimmed)}
+          </p>
+        );
       })}
     </div>
   );
@@ -265,6 +291,8 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
             const intro = SECTION_INTROS[section.key] || '';
             const isOpen = !!openMap[section.key];
 
+            const isFix = section.key === 'fix';
+
             return (
               <motion.div
                 key={section.key}
@@ -274,30 +302,50 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                 transition={{ delay: idx * 0.07, duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
                 style={{
                   borderRadius: 20,
-                  background: theme.islandBg,
-                  border: `1px solid ${isOpen ? meta.color + '30' : theme.islandBorder}`,
+                  background: isFix
+                    ? (isDark ? 'rgba(20,83,45,0.25)' : 'rgba(240,253,244,0.95)')
+                    : theme.islandBg,
+                  border: isFix
+                    ? `2px solid ${isOpen ? '#22c55e80' : '#22c55e40'}`
+                    : `1px solid ${isOpen ? meta.color + '30' : theme.islandBorder}`,
                   backdropFilter: 'blur(24px)',
                   WebkitBackdropFilter: 'blur(24px)',
                   overflow: 'hidden',
                   transition: 'border-color 0.25s, background 0.25s',
+                  boxShadow: isFix ? `0 0 0 4px ${isDark ? 'rgba(34,197,94,0.08)' : 'rgba(34,197,94,0.10)'}` : undefined,
                 }}
               >
                 {/* Collapsed header — always visible */}
                 <button
                   onClick={() => handleToggle(section.key)}
                   style={{
-                    width: '100%', textAlign: 'left', padding: '24px 28px',
+                    width: '100%', textAlign: 'left', padding: isFix ? '28px 28px 20px' : '24px 28px',
                     background: 'none', border: 'none', cursor: 'pointer',
                     display: 'flex', flexDirection: 'column', gap: 10,
                   }}
                 >
+                  {/* Fix badge — only shown for the fix island */}
+                  {isFix && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      <span style={{
+                        fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase',
+                        color: 'white', background: 'linear-gradient(90deg, #16a34a, #15803d)',
+                        borderRadius: 6, padding: '3px 10px',
+                      }}>
+                        Action plan
+                      </span>
+                      <span style={{ fontSize: 11, color: isDark ? '#4ade80' : '#15803d', fontWeight: 600 }}>
+                        Read this last — highest impact
+                      </span>
+                    </div>
+                  )}
                   {/* Top row: color dot + label + chevron */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div style={{
-                        width: 12, height: 12, borderRadius: '50%',
+                        width: isFix ? 14 : 12, height: isFix ? 14 : 12, borderRadius: '50%',
                         background: meta.color, flexShrink: 0,
-                        boxShadow: `0 0 8px ${meta.color}60`,
+                        boxShadow: `0 0 ${isFix ? 12 : 8}px ${meta.color}${isFix ? '90' : '60'}`,
                       }} />
                       <div>
                         <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: meta.color, margin: 0 }}>
@@ -363,6 +411,39 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                             <RenderContent text={fix} color={meta.color} />
                           </>
                         )}
+
+                        {/* Skool community banner — shown at bottom of every expanded island */}
+                        <a
+                          href="https://www.skool.com/aussiegradcareers/about"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            marginTop: 28, padding: '14px 18px', textDecoration: 'none',
+                            borderRadius: 14,
+                            background: isDark
+                              ? 'linear-gradient(90deg, rgba(19,78,74,0.5), rgba(30,27,75,0.5))'
+                              : 'linear-gradient(90deg, #F0FDFA, #EEF2FF)',
+                            border: `1px solid ${isDark ? 'rgba(45,212,191,0.18)' : 'rgba(15,118,110,0.18)'}`,
+                          }}
+                        >
+                          <div>
+                            <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: isDark ? '#99F6E4' : '#134E4A', lineHeight: 1.3 }}>
+                              The free Skool group walks you through fixing this step-by-step
+                            </p>
+                            <p style={{ margin: '3px 0 0', fontSize: 11, color: isDark ? '#6b7280' : '#4D7C78' }}>
+                              8 modules · weekly coaching calls · free to join →
+                            </p>
+                          </div>
+                          <div style={{
+                            flexShrink: 0, marginLeft: 16,
+                            background: 'linear-gradient(135deg, #0F766E, #3730A3)',
+                            color: 'white', fontSize: 11, fontWeight: 700,
+                            borderRadius: 8, padding: '7px 14px', whiteSpace: 'nowrap',
+                          }}>
+                            Join free
+                          </div>
+                        </a>
                       </div>
                     </motion.div>
                   )}
@@ -447,44 +528,39 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
               </div>
             </div>
 
-            {/* Skool embed */}
+            {/* Skool join CTA */}
             <div style={{
               background: isDark ? 'rgba(255,255,255,0.02)' : 'white',
               border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(15,118,110,0.13)'}`,
               borderTop: 'none',
-              padding: '28px 36px',
+              padding: '36px 40px',
               textAlign: 'center',
             }}>
-              <p style={{ fontSize: 14, color: isDark ? '#6b7280' : '#4D7C78', marginBottom: 20, lineHeight: 1.6 }}>
-                Join free below. Takes 30 seconds. <strong style={{ color: isDark ? '#9ca3af' : '#134E4A' }}>No redirect — sign up right here.</strong>
+              <p style={{ fontSize: 15, color: isDark ? '#d1d5db' : '#1E3A3A', marginBottom: 8, lineHeight: 1.65, fontWeight: 500 }}>
+                The community is free. Takes 30 seconds to join.
               </p>
-              <div style={{ borderRadius: 16, overflow: 'hidden', border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(15,118,110,0.13)'}` }}>
-                <iframe
-                  src="https://www.skool.com/aussiegradcareers/about"
-                  title="Join Aussie Grad Careers on Skool"
-                  style={{ display: 'block', width: '100%', minHeight: 480, border: 'none' }}
-                  loading="lazy"
-                />
-              </div>
-              {/* Fallback if iframe is blocked */}
+              <p style={{ fontSize: 13, color: isDark ? '#6b7280' : '#4D7C78', marginBottom: 28, lineHeight: 1.6 }}>
+                Once you're in, start with Module 1 — it directly addresses the biggest issue in your report.
+              </p>
               <a
                 href="https://www.skool.com/aussiegradcareers/about"
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
-                  display: 'inline-block', marginTop: 16,
+                  display: 'inline-block',
                   background: 'linear-gradient(135deg, #0F766E, #134E4A)',
                   color: 'white', border: 'none',
-                  borderRadius: 12, padding: '13px 36px',
-                  fontSize: 15, fontWeight: 700, cursor: 'pointer',
+                  borderRadius: 14, padding: '16px 48px',
+                  fontSize: 16, fontWeight: 800, cursor: 'pointer',
                   textDecoration: 'none',
-                  boxShadow: '0 4px 20px rgba(15,118,110,0.25)',
+                  boxShadow: '0 6px 24px rgba(15,118,110,0.30)',
+                  letterSpacing: '-0.01em',
                 }}
               >
                 Join the free community →
               </a>
-              <p style={{ fontSize: 12, color: isDark ? '#374151' : '#9CA3AF', marginTop: 10 }}>
-                Free community · No card required
+              <p style={{ fontSize: 12, color: isDark ? '#374151' : '#9CA3AF', marginTop: 14 }}>
+                Free · No credit card · Opens in new tab
               </p>
             </div>
 

@@ -41,6 +41,7 @@ const VISA_STATUS_OPTIONS = [
   'Australian Citizen',
   'Permanent Resident',
   'Skilled Visa (482 / 186 / 189 / 190)',
+  'Graduate Work Visa (Subclass 485)',
   'Working Holiday Visa',
   'Student Visa',
   'Other / Not specified',
@@ -1044,7 +1045,7 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
     />,
   ];
 
-  const SignOutBtn = user ? (
+  const SignOutBtn = user && !(user as any).is_anonymous ? (
     <motion.button
       onClick={async () => { await signOut(); navigate('/auth', { replace: true }); }}
       whileHover={{ scale: 1.05 }}
