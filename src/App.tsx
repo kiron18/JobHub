@@ -308,6 +308,79 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// --- Dashboard access gate — shown when user hasn't paid for Premium ---
+
+function DashboardGate({ children }: { children: React.ReactNode }) {
+  const { data: profile, isLoading } = useQuery({
+    queryKey: ['profile'],
+    queryFn: async () => {
+      const { data } = await api.get('/profile');
+      return data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  if (isLoading) return null;
+
+  if (!profile?.dashboardAccess) {
+    return (
+      <div style={{
+        minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: '#0a0f1a', padding: '24px',
+      }}>
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          style={{
+            maxWidth: 480, width: '100%', textAlign: 'center',
+            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 24, padding: '48px 40px',
+          }}
+        >
+          <div style={{
+            width: 56, height: 56, borderRadius: 16,
+            background: 'rgba(15,118,110,0.15)', border: '1px solid rgba(45,212,191,0.2)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 24px', fontSize: 28,
+          }}>
+            🔒
+          </div>
+          <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#4b5563', marginBottom: 12 }}>
+            Premium access required
+          </p>
+          <h2 style={{ fontSize: 26, fontWeight: 900, color: '#f3f4f6', lineHeight: 1.2, marginBottom: 12, letterSpacing: '-0.02em' }}>
+            The dashboard is for Skool Premium members.
+          </h2>
+          <p style={{ fontSize: 14, color: '#6b7280', lineHeight: 1.7, marginBottom: 32 }}>
+            Upgrade your Skool membership to unlock the full job application dashboard — job tracker, resume builder, cover letter generator, and more.
+          </p>
+          <a
+            href="https://www.skool.com/aussiegradcareers/about"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'block', width: '100%',
+              background: 'linear-gradient(135deg, #0F766E, #134E4A)',
+              color: 'white', textDecoration: 'none',
+              borderRadius: 14, padding: '15px 32px',
+              fontSize: 15, fontWeight: 800, letterSpacing: '-0.01em',
+              boxShadow: '0 6px 24px rgba(15,118,110,0.30)',
+            }}
+          >
+            Upgrade on Skool →
+          </a>
+          <p style={{ fontSize: 12, color: '#374151', marginTop: 14 }}>
+            Already upgraded? Access updates automatically within a few minutes.
+          </p>
+        </motion.div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
+
 // --- Report or Dashboard wrapper (first visit shows full-screen report) ---
 
 function ReportOrDashboard() {
@@ -331,25 +404,27 @@ function ReportOrDashboard() {
       {!reportSeen ? (
         <ReportExperience onDone={handleDone} />
       ) : (
-        <motion.div
-          key="dashboard"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3, ease: [0, 0, 0.2, 1] }}
-        >
-          <DashboardLayout>
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/tracker" element={<ApplicationTracker />} />
-              <Route path="/application-workspace" element={<ApplicationWorkspace />} />
-              <Route path="/workspace" element={<Workspace />} />
-              <Route path="/documents" element={<DocumentLibrary />} />
-              <Route path="/email-templates" element={<EmailTemplatesLibrary />} />
-              <Route path="/linkedin" element={<LinkedInPage />} />
-              <Route path="*" element={<Dashboard />} />
-            </Routes>
-          </DashboardLayout>
-        </motion.div>
+        <DashboardGate>
+          <motion.div
+            key="dashboard"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3, ease: [0, 0, 0.2, 1] }}
+          >
+            <DashboardLayout>
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/tracker" element={<ApplicationTracker />} />
+                <Route path="/application-workspace" element={<ApplicationWorkspace />} />
+                <Route path="/workspace" element={<Workspace />} />
+                <Route path="/documents" element={<DocumentLibrary />} />
+                <Route path="/email-templates" element={<EmailTemplatesLibrary />} />
+                <Route path="/linkedin" element={<LinkedInPage />} />
+                <Route path="*" element={<Dashboard />} />
+              </Routes>
+            </DashboardLayout>
+          </motion.div>
+        </DashboardGate>
       )}
     </>
   );

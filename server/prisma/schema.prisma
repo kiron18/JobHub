@@ -37,6 +37,7 @@ model CandidateProfile {
   marketingEmail               String?
   marketingEmailSent           Boolean           @default(false)
   visaStatus                   String?
+  dashboardAccess              Boolean           @default(false)
   achievementCountAtDerivation Int?
   identityCards                Json?
   identityCardsUpdatedAt       DateTime?

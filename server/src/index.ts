@@ -19,6 +19,7 @@ import onboardingRouter from './routes/onboarding';
 import researchRouter from './routes/research';
 import feedbackRouter from './routes/feedback';
 import linkedinRouter from './routes/linkedin';
+import webhooksRouter from './routes/webhooks';
 import { analyzeRateLimit } from './middleware/analyzeRateLimit';
 
 dotenv.config();
@@ -119,6 +120,7 @@ app.use('/api/onboarding', onboardingRouter);
 app.use('/api/research', researchRouter);
 app.use('/api/feedback', feedbackRouter);
 app.use('/api/linkedin', linkedinRouter);
+app.use('/api/webhooks', webhooksRouter);
 
 // Sentry error handler - must be before any other error handling middleware
 Sentry.setupExpressErrorHandler(app);
