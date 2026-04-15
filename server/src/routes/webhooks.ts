@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../index';
+import { authenticate } from '../middleware/auth';
+import { sendAccessRequestNotification } from '../services/email';
 
 const router = Router();
 
@@ -49,6 +51,41 @@ router.post('/membership', async (req, res) => {
     return res.json({ ok: true, dashboardAccess: grantAccess, rowsUpdated: updated.count });
   } catch (err) {
     console.error('[webhook/membership] DB error:', err);
+    return res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// POST /api/webhooks/request-access
+// Called by authenticated users who want dashboard access approved.
+// Marks their profile as requested and fires an admin notification email.
+router.post('/request-access', authenticate, async (req, res) => {
+  const userId = (req as any).user.id;
+  const { skoolEmail } = req.body as { skoolEmail?: string };
+
+  try {
+    const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
+    if (!profile) return res.status(404).json({ error: 'Profile not found' });
+
+    if (profile.dashboardAccess) {
+      return res.json({ ok: true, status: 'already_approved' });
+    }
+
+    await prisma.candidateProfile.update({
+      where: { userId },
+      data: { dashboardAccessRequested: true },
+    });
+
+    sendAccessRequestNotification({
+      userName: profile.name ?? '',
+      userEmail: profile.email ?? profile.marketingEmail ?? '',
+      skoolEmail: skoolEmail ?? '',
+      targetRole: profile.targetRole ?? '',
+      userId,
+    }).catch(err => console.error('[request-access] email error:', err));
+
+    return res.json({ ok: true, status: 'requested' });
+  } catch (err) {
+    console.error('[request-access] error:', err);
     return res.status(500).json({ error: 'Internal error' });
   }
 });

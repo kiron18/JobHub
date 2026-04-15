@@ -320,65 +320,179 @@ function DashboardGate({ children }: { children: React.ReactNode }) {
     staleTime: 5 * 60 * 1000,
   });
 
-  if (isLoading) return null;
+  const [requestState, setRequestState] = useState<'idle' | 'form' | 'submitting' | 'done'>('idle');
+  const [skoolEmail, setSkoolEmail] = useState('');
+  const [alreadyRequested, setAlreadyRequested] = useState(false);
 
-  if (!profile?.dashboardAccess) {
-    return (
-      <div style={{
-        minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: '#0a0f1a', padding: '24px',
-      }}>
+  useEffect(() => {
+    if (profile?.dashboardAccessRequested) setAlreadyRequested(true);
+  }, [profile?.dashboardAccessRequested]);
+
+  async function handleRequest() {
+    setRequestState('submitting');
+    try {
+      await api.post('/webhooks/request-access', { skoolEmail: skoolEmail.trim() || undefined });
+      setRequestState('done');
+    } catch {
+      setRequestState('form');
+    }
+  }
+
+  if (isLoading) return null;
+  if (profile?.dashboardAccess) return <>{children}</>;
+
+  const TOOLS = [
+    { icon: '🎯', label: 'Job Match Analyser', desc: 'Score any job against your profile and get ranked achievements in seconds' },
+    { icon: '✉️', label: 'Cover Letter Generator', desc: 'Personalised cover letters written for the specific company and role' },
+    { icon: '📊', label: 'Application Tracker', desc: 'Track every application, interview, and offer in one place' },
+    { icon: '🧠', label: 'Achievement Bank', desc: 'Your experience organised for instant retrieval and tailoring' },
+    { icon: '💼', label: 'Resume Versions', desc: 'Store and switch between targeted resume versions' },
+    { icon: '📧', label: 'Email Templates', desc: 'Follow-up and networking templates that don\'t sound like templates' },
+  ];
+
+  return (
+    <div style={{
+      minHeight: '100vh', overflowY: 'auto',
+      background: 'linear-gradient(160deg, #060b14 0%, #0a1628 50%, #060b14 100%)',
+      padding: '48px 24px 80px',
+    }}>
+      <div style={{ maxWidth: 640, margin: '0 auto' }}>
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          style={{
-            maxWidth: 480, width: '100%', textAlign: 'center',
-            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: 24, padding: '48px 40px',
-          }}
         >
-          <div style={{
-            width: 56, height: 56, borderRadius: 16,
-            background: 'rgba(15,118,110,0.15)', border: '1px solid rgba(45,212,191,0.2)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 24px', fontSize: 28,
-          }}>
-            🔒
+          {/* Header */}
+          <div style={{ textAlign: 'center', marginBottom: 40 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#4b5563', marginBottom: 16 }}>
+              Aussie Grad Careers — Premium
+            </p>
+            <h1 style={{ fontSize: 'clamp(28px, 5vw, 40px)', fontWeight: 900, color: '#f3f4f6', lineHeight: 1.15, marginBottom: 16, letterSpacing: '-0.025em' }}>
+              Your diagnosis is done.<br />
+              <span style={{ color: '#FCD34D' }}>Now let's fix it.</span>
+            </h1>
+            <p style={{ fontSize: 16, color: '#6b7280', lineHeight: 1.7, maxWidth: 480, margin: '0 auto' }}>
+              The tools below turn your diagnosis into action. Every application, cover letter, and follow-up — built around your specific profile.
+            </p>
           </div>
-          <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#4b5563', marginBottom: 12 }}>
-            Premium access required
-          </p>
-          <h2 style={{ fontSize: 26, fontWeight: 900, color: '#f3f4f6', lineHeight: 1.2, marginBottom: 12, letterSpacing: '-0.02em' }}>
-            The dashboard is for Skool Premium members.
-          </h2>
-          <p style={{ fontSize: 14, color: '#6b7280', lineHeight: 1.7, marginBottom: 32 }}>
-            Upgrade your Skool membership to unlock the full job application dashboard — job tracker, resume builder, cover letter generator, and more.
-          </p>
-          <a
-            href="https://www.skool.com/aussiegradcareers/about"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: 'block', width: '100%',
-              background: 'linear-gradient(135deg, #0F766E, #134E4A)',
-              color: 'white', textDecoration: 'none',
-              borderRadius: 14, padding: '15px 32px',
-              fontSize: 15, fontWeight: 800, letterSpacing: '-0.01em',
-              boxShadow: '0 6px 24px rgba(15,118,110,0.30)',
-            }}
-          >
-            Upgrade on Skool →
-          </a>
-          <p style={{ fontSize: 12, color: '#374151', marginTop: 14 }}>
-            Already upgraded? Access updates automatically within a few minutes.
-          </p>
+
+          {/* Locked tools grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 32 }}>
+            {TOOLS.map((t, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.08 + i * 0.05 }}
+                style={{
+                  background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
+                  borderRadius: 14, padding: '16px',
+                  filter: 'grayscale(0.3)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <span style={{ fontSize: 18 }}>{t.icon}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#9ca3af' }}>{t.label}</span>
+                  <span style={{ marginLeft: 'auto', fontSize: 10, color: '#374151', fontWeight: 700, background: 'rgba(255,255,255,0.04)', borderRadius: 4, padding: '2px 6px' }}>locked</span>
+                </div>
+                <p style={{ fontSize: 12, color: '#4b5563', lineHeight: 1.5, margin: 0 }}>{t.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* CTA card */}
+          <div style={{
+            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 20, padding: '32px',
+          }}>
+            {requestState === 'done' || alreadyRequested ? (
+              <div style={{ textAlign: 'center' }}>
+                <p style={{ fontSize: 22, fontWeight: 900, color: '#f3f4f6', marginBottom: 8 }}>Request received.</p>
+                <p style={{ fontSize: 14, color: '#6b7280', lineHeight: 1.7 }}>
+                  We'll verify your Premium membership and approve your access — usually within a few hours. You'll be able to log back in and access everything once it's confirmed.
+                </p>
+              </div>
+            ) : requestState === 'form' ? (
+              <div>
+                <p style={{ fontSize: 16, fontWeight: 800, color: '#f3f4f6', marginBottom: 6 }}>Confirm your membership</p>
+                <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 20, lineHeight: 1.6 }}>
+                  Enter the email you used to join Skool Premium below. We'll verify it and approve your access manually — usually within a few hours.
+                </p>
+                <input
+                  type="email"
+                  value={skoolEmail}
+                  onChange={e => setSkoolEmail(e.target.value)}
+                  placeholder="Skool email (leave blank if same as this account)"
+                  style={{
+                    width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: 12, color: '#f3f4f6', fontSize: 14, padding: '13px 16px',
+                    outline: 'none', marginBottom: 16, boxSizing: 'border-box',
+                  }}
+                />
+                <button
+                  onClick={handleRequest}
+                  style={{
+                    width: '100%', background: 'linear-gradient(135deg, #0F766E, #134E4A)',
+                    color: 'white', border: 'none', borderRadius: 12, padding: '14px',
+                    fontSize: 15, fontWeight: 800, cursor: 'pointer',
+                    boxShadow: '0 4px 20px rgba(15,118,110,0.25)',
+                  }}
+                >
+                  Submit request →
+                </button>
+              </div>
+            ) : (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                  <div style={{
+                    background: 'linear-gradient(135deg, #0F766E22, #13224422)',
+                    border: '1px solid rgba(45,212,191,0.2)',
+                    borderRadius: 12, padding: '10px 14px', flex: 1,
+                  }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#99F6E4' }}>Premium</p>
+                    <p style={{ margin: '2px 0 0', fontSize: 20, fontWeight: 900, color: 'white' }}>$67<span style={{ fontSize: 13, fontWeight: 500, color: '#6b7280' }}>/month</span></p>
+                  </div>
+                  <div style={{ color: '#374151', fontWeight: 700, fontSize: 12 }}>or</div>
+                  <div style={{
+                    background: 'linear-gradient(135deg, #0F766E22, #13224422)',
+                    border: '1px solid rgba(45,212,191,0.2)',
+                    borderRadius: 12, padding: '10px 14px', flex: 1,
+                  }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#99F6E4' }}>Annual</p>
+                    <p style={{ margin: '2px 0 0', fontSize: 20, fontWeight: 900, color: 'white' }}>$497<span style={{ fontSize: 13, fontWeight: 500, color: '#6b7280' }}>/year</span></p>
+                  </div>
+                </div>
+                <a
+                  href="https://www.skool.com/aussiegradcareers/about"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'block', textAlign: 'center', textDecoration: 'none',
+                    background: 'linear-gradient(135deg, #0F766E, #134E4A)',
+                    color: 'white', borderRadius: 14, padding: '15px',
+                    fontSize: 16, fontWeight: 800, letterSpacing: '-0.01em',
+                    boxShadow: '0 6px 24px rgba(15,118,110,0.30)', marginBottom: 12,
+                  }}
+                >
+                  Join Premium on Skool →
+                </a>
+                <button
+                  onClick={() => setRequestState('form')}
+                  style={{
+                    width: '100%', background: 'none', border: '1px solid rgba(255,255,255,0.08)',
+                    color: '#6b7280', borderRadius: 12, padding: '12px',
+                    fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  Already a Premium member? Request access
+                </button>
+              </div>
+            )}
+          </div>
         </motion.div>
       </div>
-    );
-  }
-
-  return <>{children}</>;
+    </div>
+  );
 }
 
 // --- Report or Dashboard wrapper (first visit shows full-screen report) ---

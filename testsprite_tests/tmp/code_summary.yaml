@@ -1,0 +1,372 @@
+version: "2"
+type: frontend
+tech_stack:
+  - language: TypeScript
+  - framework: React 19.2.0 with Vite 7.3.1
+  - ui_library: Tailwind CSS 4.2.1, Framer Motion 12.35.2, Lucide React icons, Sonner 2.0.7 (toasts)
+  - other: React Router DOM 7.13.1, TanStack React Query 5.90.21, Supabase 2.99.1, Axios 1.13.6, @react-pdf/renderer 4.3.2, docx 9.6.1, file-saver 2.0.5, react-markdown 10.1.0, @sentry/react 10.45.0
+
+routes:
+  - path: /auth
+    file: src/pages/AuthPage.tsx
+    auth_required: false
+    description: Login and sign-up page supporting magic link OTP and password authentication via Supabase
+
+  - path: /
+    file: src/App.tsx (Dashboard component)
+    auth_required: true
+    description: Home dashboard with application pipeline stats, match engine, upcoming deadlines, and achievement summary
+
+  - path: /tracker
+    file: src/components/ApplicationTracker.tsx
+    auth_required: true
+    description: Job application tracker with status management, notes, pipeline funnel, and email generation
+
+  - path: /application-workspace
+    file: src/components/ApplicationWorkspace.tsx
+    auth_required: true
+    description: Full workspace for generating and managing job application documents (resume, cover letter, selection criteria)
+
+  - path: /workspace
+    file: src/components/ProfileBank.tsx
+    auth_required: true
+    description: Profile management hub for achievements, experience, education, certifications, and identity card
+
+  - path: /documents
+    file: src/components/DocumentLibrary.tsx
+    auth_required: true
+    description: Library of all generated documents grouped by date with preview, copy, download, and delete
+
+  - path: /email-templates
+    file: src/components/EmailTemplatesLibrary.tsx
+    auth_required: true
+    description: Static library of pre-built email templates for job search outreach, follow-ups, and networking
+
+  - path: /*
+    file: src/App.tsx (catch-all redirect to Dashboard)
+    auth_required: true
+    description: Catch-all fallback redirecting unmatched routes to the dashboard
+
+features:
+  - name: Authentication
+    description: Multi-mode auth via Supabase supporting magic link OTP and email/password login; new users get anonymous sessions with onboarding gate
+    files:
+      - src/pages/AuthPage.tsx
+      - src/contexts/AuthContext.tsx
+      - src/lib/supabase.ts
+    entry_route: /auth
+    user_interactions:
+      - Enter email address in the input field
+      - Toggle between Magic Link and Password authentication modes
+      - Click Send Magic Link to receive OTP email
+      - Enter OTP code to verify and log in
+      - Enter password and click Sign In for password mode
+      - Click Sign Up to create a new account with email and password
+      - See error message on invalid credentials or expired OTP
+    api_calls:
+      - method: POST
+        endpoint: supabase.auth.signInWithOtp (magic link)
+      - method: POST
+        endpoint: supabase.auth.signInWithPassword
+      - method: POST
+        endpoint: supabase.auth.signUp
+    auth_required: false
+
+  - name: Onboarding Intake
+    description: 4-step profile intake form collecting target role, job search history, and profile data; triggers AI processing and diagnosis report generation
+    files:
+      - src/components/OnboardingIntake.tsx
+      - src/components/OnboardingGate.tsx
+      - src/components/ProcessingScreen.tsx
+    entry_route: /
+    user_interactions:
+      - Complete step 1 - enter target role, city, seniority level, and industry
+      - Complete step 2 - enter job search duration, channels used, and response patterns
+      - Complete step 3 - enter name, phone, LinkedIn URL, and location
+      - Optionally upload resume for auto-extraction of profile data
+      - Click Next to advance through steps
+      - See processing screen while AI generates profile and diagnosis report
+      - Click Retry if processing fails
+    api_calls:
+      - method: POST
+        endpoint: /onboarding/submit
+      - method: POST
+        endpoint: /onboarding/retry
+      - method: GET
+        endpoint: /onboarding/report
+      - method: POST
+        endpoint: /extract/resume
+    auth_required: true
+
+  - name: Diagnosis Report
+    description: AI-generated diagnosis report showing targeting, document audit, pipeline analysis, root cause analysis, and ranked action plan
+    files:
+      - src/components/ReportExperience.tsx
+      - src/lib/parseReport.ts
+    entry_route: /
+    user_interactions:
+      - View report sections (Targeting, Document Audit, Pipeline Analysis, Root Cause, Action Plan)
+      - Expand and collapse individual report sections
+      - Rate section relevance with thumbs up or thumbs down
+      - Read problem and fix pairs in each section
+      - Click Proceed to go to the dashboard
+    api_calls:
+      - method: GET
+        endpoint: /onboarding/report
+      - method: POST
+        endpoint: /onboarding/report/{reportId}/feedback
+      - method: POST
+        endpoint: /onboarding/retry
+    auth_required: true
+
+  - name: Dashboard
+    description: Home overview showing application pipeline counts by status, upcoming deadlines in next 7 days, match engine, and achievement summary
+    files:
+      - src/App.tsx
+      - src/components/MatchEngine.tsx
+    entry_route: /
+    user_interactions:
+      - View application counts by status (SAVED, APPLIED, INTERVIEW, OFFER, REJECTED)
+      - View upcoming deadlines list for applications closing within 7 days
+      - Click on status cards to navigate to filtered tracker view
+      - View achievement count and click to manage achievements
+      - Access match engine to paste job descriptions
+    api_calls:
+      - method: GET
+        endpoint: /profile
+      - method: GET
+        endpoint: /jobs
+      - method: GET
+        endpoint: /achievements/count
+      - method: POST
+        endpoint: /onboarding/backfill-achievements
+    auth_required: true
+
+  - name: Match Engine
+    description: Semantic matching of job descriptions against candidate profile producing a match score, ranked achievements, extracted metadata, and Australian-specific flags
+    files:
+      - src/components/MatchEngine.tsx
+    entry_route: /
+    user_interactions:
+      - Paste a job description into the text area
+      - Optionally enter a job URL to auto-fetch the description
+      - Click Analyse to run matching
+      - View overall match score percentage
+      - View ranked achievements labelled STRONG, MODERATE, or WEAK
+      - View extracted company name, role title, and metadata
+      - View Australian flags (APS level, citizenship, security clearance, salary type)
+      - See warning modal if match score is below 40%
+      - Click Save to Tracker to add job to application tracker
+      - Click Open Workspace to go to the application workspace
+    api_calls:
+      - method: POST
+        endpoint: /analyze/job
+      - method: POST
+        endpoint: /research/job-url
+    auth_required: true
+
+  - name: Application Workspace
+    description: Full document generation workspace for a matched job with tabs for resume, cover letter, selection criteria, and interview prep plus embedded analysis panels
+    files:
+      - src/components/ApplicationWorkspace.tsx
+      - src/components/GenerationPanel.tsx
+      - src/components/ResumeScorecardPanel.tsx
+      - src/components/ATSCoveragePanel.tsx
+      - src/components/CoverLetterPersonalisationPanel.tsx
+      - src/components/ToneRewritePanel.tsx
+      - src/components/GapAnalysisPanel.tsx
+      - src/components/InterviewQuestionsPanel.tsx
+      - src/components/SalaryInsightPanel.tsx
+      - src/components/CompanyResearchPanel.tsx
+      - src/components/DimensionsIsland.tsx
+      - src/components/JDSummaryBar.tsx
+    entry_route: /application-workspace
+    user_interactions:
+      - Select achievements to include from the achievement selector
+      - Click Generate Resume to create a tailored resume
+      - Click Generate Cover Letter to create a cover letter
+      - Click Generate Selection Criteria to create STAR responses
+      - Edit generated document content inline
+      - Preview rendered document
+      - Export document as DOCX or PDF
+      - Copy document content to clipboard
+      - Save document to library
+      - Run Resume Scorecard to get quality score and dimension breakdown
+      - Run ATS Coverage check to see matched and missing keywords
+      - Run Cover Letter Personalization check for tailoring score
+      - Run Tone Rewrite to adjust document tone (Confident, Concise, Formal, Warm, Technical)
+      - Run Gap Analysis to see skill gaps and quick wins
+      - Generate Interview Questions with practice mode
+      - View Salary Insights for role and location
+      - View Company Research including hiring manager details
+      - View JD Summary bar for key requirements
+      - View 10-Dimension scoring (grade A-F per dimension)
+      - View Australian flags for APS level, citizenship, clearance, salary type
+    api_calls:
+      - method: POST
+        endpoint: /generate/resume
+      - method: POST
+        endpoint: /generate/cover-letter
+      - method: POST
+        endpoint: /generate/selection-criteria
+      - method: POST
+        endpoint: /analyze/resume-score
+      - method: POST
+        endpoint: /analyze/ats-coverage
+      - method: POST
+        endpoint: /analyze/cover-letter-personalisation
+      - method: POST
+        endpoint: /analyze/tone-rewrite
+      - method: POST
+        endpoint: /analyze/gap
+      - method: POST
+        endpoint: /analyze/interview-questions
+      - method: POST
+        endpoint: /research/salary
+      - method: POST
+        endpoint: /research/company
+      - method: POST
+        endpoint: /analyze/jd-summary
+      - method: PATCH
+        endpoint: /documents/{id}
+      - method: POST
+        endpoint: /documents/upload
+    auth_required: true
+
+  - name: Application Tracker
+    description: Centralized tracker for all job applications with kanban-style status management, notes, pipeline funnel visualization, and AI email generation
+    files:
+      - src/components/ApplicationTracker.tsx
+      - src/components/tracker/JobCard.tsx
+      - src/components/tracker/PipelineFunnel.tsx
+    entry_route: /tracker
+    user_interactions:
+      - View all applications in card layout
+      - Filter by status (ALL, SAVED, APPLIED, INTERVIEW, OFFER, REJECTED)
+      - Filter by grade (A/B, C, D/F)
+      - Sort by match score, company, date applied, closing date, or priority
+      - Click status badge to advance application through the pipeline
+      - Add or edit notes in markdown format
+      - Set job priority (DREAM, TARGET, BACKUP)
+      - Set closing date for deadline tracking
+      - Click Generate Follow-Up Email to create an email draft
+      - Click Generate Cold Outreach to create outreach email
+      - Click Generate Rejection Response to respond to rejections
+      - Click Generate Offer Negotiation to negotiate salary
+      - Click Parse Notes to extract action items from notes
+      - Click Delete to remove application with confirmation
+      - View pipeline funnel showing application counts per stage
+      - View upcoming deadlines highlighted in the sidebar
+    api_calls:
+      - method: GET
+        endpoint: /jobs
+      - method: POST
+        endpoint: /jobs
+      - method: PATCH
+        endpoint: /jobs/{id}
+      - method: DELETE
+        endpoint: /jobs/{id}
+      - method: POST
+        endpoint: /generate/followup-email
+      - method: POST
+        endpoint: /generate/cold-outreach
+      - method: POST
+        endpoint: /generate/rejection-response
+      - method: POST
+        endpoint: /generate/offer-negotiation
+      - method: POST
+        endpoint: /analyze/notes-actions
+    auth_required: true
+
+  - name: Profile Bank
+    description: Central repository for managing candidate profile data including achievements, experience, education, certifications, skills, summary, and identity card
+    files:
+      - src/components/ProfileBank.tsx
+      - src/components/AchievementBank.tsx
+    entry_route: /workspace
+    user_interactions:
+      - View and edit professional summary with coaching hints
+      - View and edit skills (technical, industry knowledge, soft skills)
+      - Add or edit work experience entries with dates and descriptions
+      - Link achievements to specific experience entries
+      - Add or edit education entries
+      - Add or edit certifications and volunteering entries
+      - Add new achievement with title, description, and metrics
+      - Edit existing achievement inline
+      - Polish achievement wording via AI
+      - Delete achievement with confirmation
+      - View profile completion percentage and missing fields indicator
+      - Click Regenerate Identity Card to refresh the AI-generated profile summary
+      - Import resume via resume importer modal to backfill profile data
+    api_calls:
+      - method: GET
+        endpoint: /profile
+      - method: PATCH
+        endpoint: /profile
+      - method: GET
+        endpoint: /achievements
+      - method: POST
+        endpoint: /achievements
+      - method: PATCH
+        endpoint: /achievements/{id}
+      - method: DELETE
+        endpoint: /achievements/{id}
+      - method: POST
+        endpoint: /analyze/polish-achievement
+      - method: POST
+        endpoint: /profile/regenerate-identity
+    auth_required: true
+
+  - name: Document Library
+    description: Library of all AI-generated documents (resumes, cover letters, selection criteria) grouped by recency with preview, copy, export, and delete
+    files:
+      - src/components/DocumentLibrary.tsx
+      - src/components/DocumentList.tsx
+    entry_route: /documents
+    user_interactions:
+      - View documents grouped by date (Today, Yesterday, This Week, This Month, Older)
+      - Filter documents by type (Resume, Cover Letter, Selection Criteria)
+      - Search documents by title
+      - Click a document to preview its content in markdown
+      - Copy document content to clipboard
+      - Download document as DOCX file
+      - Delete document with confirmation
+    api_calls:
+      - method: GET
+        endpoint: /documents
+      - method: DELETE
+        endpoint: /documents/{id}
+    auth_required: true
+
+  - name: Email Templates Library
+    description: Static library of pre-built email templates for job search scenarios organized by category
+    files:
+      - src/components/EmailTemplatesLibrary.tsx
+    entry_route: /email-templates
+    user_interactions:
+      - Browse templates grouped by category (Outreach, Follow-Up, Interview, Networking)
+      - Expand a template card to view the full email template
+      - Copy template to clipboard
+      - Read personalization tips for each template
+    api_calls: []
+    auth_required: true
+
+known_limitations:
+  - issue: Email Templates Library is entirely static with no backend storage or personalization
+    location: src/components/EmailTemplatesLibrary.tsx
+    impact: Templates cannot be saved, edited, or personalized per user
+  - issue: Theme and hue picker settings are stored in localStorage only, not synced to backend
+    location: src/contexts/ThemeContext.tsx
+    impact: Colour preferences reset if localStorage is cleared or on a different device
+  - issue: Interview practice mode is UI-only with no backend tracking of practice sessions
+    location: src/components/InterviewQuestionsPanel.tsx
+    impact: Practice history and progress are not persisted
+  - issue: Achievement backfill only auto-triggers when achievement count is zero; no automatic re-trigger
+    location: src/components/ProfileBank.tsx, src/components/AchievementBank.tsx
+    impact: Users must manually initiate re-extraction after adding new resume content
+  - issue: Profile claim on returning magic-link login depends on backend matching by email
+    location: src/contexts/AuthContext.tsx
+    impact: If email match fails, returning users may lose access to their previous profile data
+  - issue: Report re-display requires manually clearing the seen flag; report does not re-show on return visits
+    location: src/components/ReportExperience.tsx
+    impact: Users cannot easily re-read their diagnosis report after dismissing it

@@ -3,6 +3,45 @@ import { Resend } from 'resend';
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const APP_URL = process.env.ALLOWED_ORIGIN ?? 'https://job-hub-snowy-ten.vercel.app';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'admin@aussiegradcareers.com.au';
+
+export async function sendAccessRequestNotification(params: {
+  userName: string;
+  userEmail: string;
+  skoolEmail: string;
+  targetRole: string;
+  userId: string;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[email] RESEND_API_KEY not set — skipping access request notification');
+    return;
+  }
+  const { userName, userEmail, skoolEmail, targetRole, userId } = params;
+  const supabaseUrl = `https://supabase.com/dashboard/project/${process.env.SUPABASE_PROJECT_REF ?? '_'}/editor`;
+
+  await resend.emails.send({
+    from: 'JobHub <onboarding@resend.dev>',
+    to: ADMIN_EMAIL,
+    subject: `Dashboard access request — ${userName || userEmail}`,
+    text: [
+      'New dashboard access request',
+      '',
+      `Name:         ${userName || '(not set)'}`,
+      `JobHub email: ${userEmail}`,
+      `Skool email:  ${skoolEmail || '(same as above)'}`,
+      `Target role:  ${targetRole || '(not set)'}`,
+      `User ID:      ${userId}`,
+      '',
+      'To approve, run this SQL in Supabase:',
+      '',
+      `UPDATE "CandidateProfile" SET "dashboardAccess" = true WHERE "userId" = '${userId}';`,
+      '',
+      `Supabase SQL editor: ${supabaseUrl}`,
+      '',
+      'To deny, no action needed.',
+    ].join('\n'),
+  });
+}
 
 export async function sendWelcomeEmail(to: string): Promise<void> {
   if (!process.env.RESEND_API_KEY) {

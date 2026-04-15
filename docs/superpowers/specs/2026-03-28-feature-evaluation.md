@@ -36,88 +36,38 @@ The app currently mixes Tailwind classes with inline `px` values throughout. The
 ### Why this matters
 Selection criteria are the dominant document format for Australian government and university jobs — two of the largest employment sectors in the country. Most candidates have no idea what they are, write them badly, or don't know one exists at all. A tool that writes strong SC responses automatically, from the achievement bank, is a significant differentiator.
 
-### What we know about SC documents (researched)
-
-**Two dominant formats — and they are diverging:**
-- **Traditional:** Per-criterion responses. Each criterion gets its own section (heading + 2–4 paragraphs). Submitted as a Word/PDF titled "Statement Addressing Selection Criteria."
-- **Modern (increasingly dominant for APS):** A single "Pitch" or "Statement of Claims" — a unified narrative addressing all criteria, submitted directly into the PageUp ATS text field (the system used by most APS agencies on apsjobs.gov.au). No per-criterion headings — evidence woven across criteria.
-
-**Which format applies:** The PageUp text-field word limit (usually 500–1000 words) is the tell for the modern pitch format. Traditional per-criterion responses are still standard for universities and many state government roles.
-
-**Frameworks by employer type:**
-
-| Employer | Framework | Notes |
-|---|---|---|
-| APS (federal) | Integrated Leadership System (ILS) | 5 clusters, level-scaled. Bands APS 1–6, EL1–2, SES. |
-| Queensland | LC4Q (Vision, Results, Accountability) | — |
-| NSW | NSW Capability Framework (5 groups) | — |
-| Victoria | VPSC framework | Similar to ILS |
-| University academic | MSAL levels A–E | Plus separate Teaching Philosophy + Research Statement docs |
-| University professional | HEW levels 1–10 | Per enterprise agreement |
-
-**ILS clusters (APS — most common):** Shapes Strategic Thinking / Achieves Results / Cultivates Productive Working Relationships / Exemplifies Personal Drive and Integrity / Communicates with Influence. The most frequently appearing in ads at APS 3–6: "Communicates with Influence", "Achieves Results", "Cultivates productive working relationships."
-
-**Response format:** STAR dominates across all Australian contexts (explicitly recommended in APSC's *Cracking the Code* guide). SAO and CAR are acceptable shorter variants. STAR allocation: Situation 10–15%, Task 10–15%, **Action 60–70%**, Result 15–20%.
-
-**Word counts:**
-
-| Context | Target |
-|---|---|
-| APS per-criterion (traditional) | 200–400 words |
-| APS pitch/statement of claims | 500–1000 words total |
-| APS EL1/EL2 | 350–500 words per criterion |
-| University professional (HEW) | 200–400 words |
-| University academic per-criterion | 300–600 words |
-| University teaching philosophy | 500–1000 words (separate doc) |
-
-**Rule:** Target 85–100% of the stated word limit. Under 75% is penalised.
-
-**Top 5 failure modes (in order of frequency):**
-1. Not addressing the criterion at all → auto-disqualification for essential criteria
-2. Generic claims without examples ("I have strong communication skills")
-3. Describing duties, not demonstrating capability (resume restatement)
-4. No quantification ("I led a project" vs "I led a $1.2M project delivered 3 weeks early")
-5. Exceeding word limit — signals poor written communication
-
-**Where SC documents live:**
-- APS Jobs (apsjobs.gov.au) — criteria in the ad and/or in a downloadable **Candidate Information Pack (CIP)** PDF
-- Position Description — criteria under "Selection Criteria" or "Key Capabilities"
-- **Often NOT in the PD at all** — linked in a separate CIP or emailed on request
-- University portals (UniJobs, Jobs@UniMelb, etc.) — criteria in PD; extra documents submitted as file uploads
-- State portals (recruitment.qld.gov.au, I Work for SA, Vic Careers) — state-specific
-
-**University academic edge case:** Academic roles require separate standalone documents — a **Teaching Philosophy Statement** (500–1000 words, reflective format — NOT STAR) and a **Research Statement** — in addition to per-criterion SC responses. These need entirely different generation logic.
+### What we know about SC documents
+- **Format varies by employer:** APS (federal) uses capability frameworks. State government uses competency frameworks. Universities use their own sets. Local government uses a mix.
+- **APS Integrated Leadership System (ILS):** Defines criteria like "Achieves Results", "Supports Productive Working Relationships", "Displays Personal Drive and Integrity", "Communicates with Influence", "Exemplifies Personal Integrity and Self-Awareness". Bands 1–6 define seniority expectations.
+- **Response format:** STAR (Situation, Task, Action, Result) is universal. Some agencies use CAR (Context, Action, Result) or SAO (Situation, Action, Outcome) — all are the same idea.
+- **Word count:** APS typically 300–500 words per criterion. Universities 250–400. Some roles request "brief" responses of 100–200 words. Word count or page count is sometimes mentioned in the selection criteria document, this should mentioned in the educational tips.
+- **Key quality markers:** Specific over generic. First-person active voice. Quantified outcomes. Direct evidence, not inferred claims. Written to the _level_ of the role (APS3 language vs EL2 language differs significantly).
+- **Where SC documents live:** Often NOT in the position description — linked separately on the APS Jobs portal, in a separate PDF attachment, or emailed on request. This is a real pain point for candidates.
 
 ### What the feature needs to do
-1. **Detection + education:** When a user pastes a JD, if `requiresSelectionCriteria` is true (already partially implemented), surface a clear explanation: _"This role requires a separate Selection Criteria response. For government and university jobs, this document lists specific capabilities you must address. You'll usually find it attached to the listing or on the agency's jobs portal."_
+1. **Detection + education:** When a user pastes a JD, if `requiresSelectionCriteria` is true (already partially implemented), surface a clear explanation: _"This role requires a separate Selection Criteria response. For government and university jobs, this document lists specific capabilities you must address. You'll usually find it attached to the listing or on the agency's jobs portal."_ Also include messaging to ensure that the full selection criteria is copied which may include details like length and STAR or CA
 
 2. **SC upload or manual entry:** Let the user paste/upload the actual SC document (separate from the PD). Each criterion becomes a separate field.
 
 3. **Per-criterion generation:** For each criterion, retrieve the most relevant achievements from the bank (semantic search via Pinecone), structure a STAR response, calibrate word count to the target range, and match tone to the role level.
 
-4. **Output:** Formatted DOCX with each criterion as a headed section. APS formatting conventions (Times New Roman 12pt or Arial 11pt, single-spaced, page numbered).
+4. **Output:** Formatted DOCX/PDF based on user choice with each criterion as a headed section. APS formatting conventions (Times New Roman 12pt or Arial 11pt, single-spaced, page numbered).
 
 ### What's already in place
-- `requiresSelectionCriteria` flag in JD analysis prompt (detects keyword "Selection Criteria" / "KSC" / "Statement of Claims")
-- Pinecone vector search for per-criterion achievement retrieval
-- Achievement bank with STAR-ready data (title, description, metric, metricType, skills, tags)
+- `requiresSelectionCriteria` flag in JD analysis prompt
+- Pinecone vector search for achievement retrieval
+- Achievement bank with STAR-ready data
 - DOCX export infrastructure (planned in Phase 1)
 
 ### What's missing
-1. **Job type detection** — APS federal vs state gov vs university academic vs university professional. Each has a different framework, word count, and output format.
-2. **Format detection** — Per-criterion responses vs unified pitch/statement of claims. The PageUp text limit in the ad is the tell.
-3. **SC upload / criterion parsing UI** — Users need to paste or upload the SC document separately (often not in the PD). We extract each criterion as a discrete item, flag multi-part criteria, tag essential vs desirable.
-4. **SC-aware generation prompt** — STAR structure, ILS keyword injection for APS roles, action-heavy allocation (60–70% of words on Action), word count enforcement at 85–95% of limit.
-5. **Per-criterion Pinecone retrieval** — Query vector DB separately per criterion using the criterion text as the query, not a global top-N.
-6. **Level calibration** — APS3 language vs EL1 language differ. EL1+ responses need strategic framing; APS3–6 need operational specificity.
-7. **Post-generation quality checks** — Flag responses with no quantified results, passive voice dominance, <75% word limit, or criterion keyword not mentioned.
-8. **University academic special case** — Detect academic roles and prompt user for Teaching Philosophy + Research Statement as separate generation tasks (reflective format, not STAR).
-9. **SC-specific DOCX template** — APS formatting conventions (Arial 11pt or Times New Roman 12pt, page numbered, criterion heading + response body).
+- SC upload / criterion parsing UI
+- SC-aware generation prompt
+- Per-criterion Pinecone retrieval (currently retrieves top N globally; should retrieve per criterion)
+- Level calibration (APS3 vs EL1 language registers are different)
+- SC-specific output template
 
 ### Recommendation
-**Sprint 2A:** Detection + education + criterion parsing UI (no generation yet). The most valuable thing is telling users "this role needs a separate SC document — here's where to find it and here's what it asks" before they even apply.
-
-**Sprint 2B:** Full SC generation using the above building blocks, alongside DOCX export (shared infrastructure).
+Build detection + education first (one sprint). Build full SC generation in Phase 2 alongside DOCX export since they share infrastructure.
 
 ---
 

@@ -1,0 +1,18 @@
+{
+  "status": "init",
+  "scope": "codebase",
+  "type": "frontend",
+  "localEndpoint": "http://localhost:5173/",
+  "serverPort": 64541,
+  "executionArgs": {
+    "projectName": "JobHub",
+    "projectPath": "E:\\AntiGravity\\JobHub",
+    "testIds": [],
+    "additionalInstruction": "The app is served locally on http://localhost:5173. Use this as the base URL for all navigation. Test credentials for login: use a valid test account if available. The app uses Supabase auth — magic link and email/password modes are supported.",
+    "serverMode": "production",
+    "envs": {
+      "API_KEY": "sk-user-mEHh9CVHxOCAZClYXA2Bhm0tAfSQ5od1kJrJxR1N1RWHZkU6i4dP__8VmjAS3VUgXfWb_oOAO7m60v3mKflbm1l2cIi3cERHD2OtAVQlU0AMAkslYuKYLggAYP_mD3QJEJM"
+    }
+  },
+  "proxy": "http://70b2b143-230c-4e96-ae4f-d0ef99e8e7ce:XJDKKkWhHeo3klGCAMOZsLRS42H7CB2o@tun.testsprite.com:8080"
+}
