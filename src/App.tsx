@@ -1,23 +1,23 @@
+import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink, useNavigate } from 'react-router-dom';
-import { useState, useEffect, useRef } from 'react';
 import { supabase } from './lib/supabase';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { motion } from 'framer-motion';
 
-// Components
+// Components — layout/gate loaded eagerly, page-level components lazy
 import { DashboardLayout } from './layouts/DashboardLayout';
-import { MatchEngine } from './components/MatchEngine';
-import { ApplicationWorkspace } from './components/ApplicationWorkspace';
-import { ApplicationTracker } from './components/ApplicationTracker';
-import { ProfileBank } from './components/ProfileBank';
-import { DocumentLibrary } from './components/DocumentLibrary';
-import { EmailTemplatesLibrary } from './components/EmailTemplatesLibrary';
 import { OnboardingGate } from './components/OnboardingGate';
-import { ReportExperience } from './components/ReportExperience';
 import { FirstVisitTip } from './components/FirstVisitTips';
 
-import { LinkedInPage } from './pages/LinkedInPage';
+const MatchEngine          = React.lazy(() => import('./components/MatchEngine').then(m => ({ default: m.MatchEngine })));
+const ApplicationWorkspace = React.lazy(() => import('./components/ApplicationWorkspace').then(m => ({ default: m.ApplicationWorkspace })));
+const ApplicationTracker   = React.lazy(() => import('./components/ApplicationTracker').then(m => ({ default: m.ApplicationTracker })));
+const ProfileBank          = React.lazy(() => import('./components/ProfileBank').then(m => ({ default: m.ProfileBank })));
+const DocumentLibrary      = React.lazy(() => import('./components/DocumentLibrary').then(m => ({ default: m.DocumentLibrary })));
+const EmailTemplatesLibrary = React.lazy(() => import('./components/EmailTemplatesLibrary').then(m => ({ default: m.EmailTemplatesLibrary })));
+const LinkedInPage         = React.lazy(() => import('./pages/LinkedInPage').then(m => ({ default: m.LinkedInPage })));
+const ReportExperience     = React.lazy(() => import('./components/ReportExperience').then(m => ({ default: m.ReportExperience })));
 
 // Auth & Context
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -149,7 +149,9 @@ const Dashboard = () => {
             ← Back to dashboard
           </button>
           <div style={{ position: 'fixed', inset: 0, zIndex: 50 }}>
-            <ReportExperience onDone={() => setShowReport(false)} />
+            <React.Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center"><div className="w-10 h-10 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" /></div>}>
+              <ReportExperience onDone={() => setShowReport(false)} />
+            </React.Suspense>
           </div>
         </>
       )}
@@ -516,7 +518,9 @@ function ReportOrDashboard() {
   return (
     <>
       {!reportSeen ? (
-        <ReportExperience onDone={handleDone} />
+        <React.Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center"><div className="w-10 h-10 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" /></div>}>
+          <ReportExperience onDone={handleDone} />
+        </React.Suspense>
       ) : (
         <DashboardGate>
           <motion.div
@@ -526,16 +530,18 @@ function ReportOrDashboard() {
             transition={{ duration: 0.3, ease: [0, 0, 0.2, 1] }}
           >
             <DashboardLayout>
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/tracker" element={<ApplicationTracker />} />
-                <Route path="/application-workspace" element={<ApplicationWorkspace />} />
-                <Route path="/workspace" element={<Workspace />} />
-                <Route path="/documents" element={<DocumentLibrary />} />
-                <Route path="/email-templates" element={<EmailTemplatesLibrary />} />
-                <Route path="/linkedin" element={<LinkedInPage />} />
-                <Route path="*" element={<Dashboard />} />
-              </Routes>
+              <React.Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" /></div>}>
+                <Routes>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/tracker" element={<ApplicationTracker />} />
+                  <Route path="/application-workspace" element={<ApplicationWorkspace />} />
+                  <Route path="/workspace" element={<Workspace />} />
+                  <Route path="/documents" element={<DocumentLibrary />} />
+                  <Route path="/email-templates" element={<EmailTemplatesLibrary />} />
+                  <Route path="/linkedin" element={<LinkedInPage />} />
+                  <Route path="*" element={<Dashboard />} />
+                </Routes>
+              </React.Suspense>
             </DashboardLayout>
           </motion.div>
         </DashboardGate>

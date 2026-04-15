@@ -5,9 +5,7 @@ import { FileText, Trash2, Download, Copy, Search, X, Loader2, Clock, CheckCircl
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import api from '../lib/api';
-import { exportDocx } from '../lib/exportDocx';
 import type { DocType } from '../lib/exportDocx';
-import { exportPdf } from '../lib/exportPdf';
 
 interface Document {
     id: string;
@@ -71,6 +69,7 @@ const DocCard: React.FC<DocCardProps> = ({ doc, onDelete, deleting }) => {
             const parts = doc.title.replace(/^[A-Z-]+ - /, '').split(' — ');
             const company = parts[0] || '';
             const role = parts[1] || '';
+            const { exportDocx } = await import('../lib/exportDocx');
             await exportDocx(doc.content, DOC_TYPE_MAP[doc.type], company, role);
             toast.success('Downloaded as .docx');
         } catch {
@@ -80,6 +79,7 @@ const DocCard: React.FC<DocCardProps> = ({ doc, onDelete, deleting }) => {
 
     const handleDownloadPdf = async () => {
         try {
+            const { exportPdf } = await import('../lib/exportPdf');
             await exportPdf(doc.content, DOC_TYPE_MAP[doc.type] as any, '', '');
             toast.success('Downloaded as PDF');
         } catch {
