@@ -570,18 +570,25 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
               border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(15,118,110,0.10)'}`,
               borderTop: 'none',
               borderRadius: '0 0 24px 24px',
-              padding: '24px 36px',
+              padding: '28px 36px',
               textAlign: 'center',
             }}>
+              <p style={{ fontSize: 13, color: isDark ? '#6b7280' : '#9ca3af', marginBottom: 14 }}>
+                Ready to start applying?
+              </p>
               <button
                 onClick={onDone}
                 style={{
-                  background: 'none', border: 'none',
-                  fontSize: 14, fontWeight: 700, color: isDark ? '#6b7280' : '#9CA3AF',
-                  cursor: 'pointer', letterSpacing: '0.02em',
+                  background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
+                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.10)'}`,
+                  borderRadius: 10,
+                  padding: '10px 24px',
+                  fontSize: 14, fontWeight: 700,
+                  color: isDark ? '#d1d5db' : '#374151',
+                  cursor: 'pointer', letterSpacing: '0.01em',
                 }}
               >
-                Skip — take me to the dashboard →
+                Go to my dashboard →
               </button>
             </div>
           </motion.div>
