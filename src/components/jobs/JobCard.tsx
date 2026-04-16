@@ -61,6 +61,7 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
   const [scoring, setScoring] = useState(false);
   const [saving, setSaving] = useState(false);
   const [addresseeLoading, setAddresseeLoading] = useState(false);
+  const [addresseeFailed, setAddresseeFailed] = useState(false);
   const [addresseeOverride, setAddresseeOverride] = useState<string | null>(null);
   const [editingAddressee, setEditingAddressee] = useState(false);
 
@@ -72,7 +73,7 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
     const nowExpanded = !expanded;
     setExpanded(nowExpanded);
 
-    if (nowExpanded && !addresseeFetched && !addresseeLoading) {
+    if (nowExpanded && !addresseeFetched && !addresseeLoading && !addresseeFailed) {
       setAddresseeLoading(true);
       try {
         const { data } = await api.post(`/job-feed/${item.id}/find-addressee`);
@@ -84,7 +85,7 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
           addresseeSource: data.addresseeSource,
         });
       } catch {
-        /* silent */
+        setAddresseeFailed(true);
       } finally {
         setAddresseeLoading(false);
       }
@@ -305,8 +306,11 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
                   )
                 )}
 
-                {!addresseeLoading && !addresseeFetched && (
+                {!addresseeLoading && !addresseeFetched && !addresseeFailed && (
                   <p className="text-xs text-slate-500 italic">Searching…</p>
+                )}
+                {addresseeFailed && (
+                  <p className="text-xs text-slate-500">Could not find contact information</p>
                 )}
               </div>
 
@@ -322,6 +326,7 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
                     href={item.sourceUrl}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider text-white transition-colors"
                     style={{ background: platform.color }}
                   >
@@ -337,6 +342,8 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
                   <button
                     onClick={handleSave}
                     disabled={saving || item.isSaved}
+                    title={item.isSaved ? 'Already saved to tracker' : 'Save to tracker'}
+                    aria-label={item.isSaved ? 'Already saved to tracker' : 'Save to tracker'}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider border border-slate-700 text-slate-400 hover:border-slate-600 hover:text-slate-200 transition-colors disabled:opacity-40"
                   >
                     {saving ? <Loader2 size={11} className="animate-spin" /> : item.isSaved ? <BookmarkCheck size={11} className="text-emerald-400" /> : <BookmarkPlus size={11} />}
