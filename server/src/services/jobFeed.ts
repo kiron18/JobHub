@@ -108,7 +108,9 @@ export async function fetchAdzunaJobs(role: string, city: string): Promise<RawJo
 export async function generateBullets(jobs: RawJob[]): Promise<(string[] | null)[]> {
   if (jobs.length === 0) return [];
 
-  const input = jobs.map(j => ({
+  const batch = jobs.slice(0, 10);
+
+  const input = batch.map(j => ({
     title: j.title,
     company: j.company,
     description: j.description.slice(0, 800),
@@ -127,10 +129,10 @@ ${JSON.stringify(input)}`;
   try {
     const raw = await callLLM(prompt, true);
     const parsed = parseLLMJson(raw);
-    if (!Array.isArray(parsed)) return jobs.map(() => null);
+    if (!Array.isArray(parsed)) return batch.map(() => null);
     return parsed.map((b: any) => (Array.isArray(b) ? b : null));
   } catch {
-    return jobs.map(() => null);
+    return batch.map(() => null);
   }
 }
 
