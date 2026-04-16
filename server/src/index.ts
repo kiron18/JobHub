@@ -20,6 +20,8 @@ import researchRouter from './routes/research';
 import feedbackRouter from './routes/feedback';
 import linkedinRouter from './routes/linkedin';
 import webhooksRouter from './routes/webhooks';
+import jobFeedRouter from './routes/job-feed';
+import { startJobFeedCron } from './cron/jobFeedCron';
 import { analyzeRateLimit } from './middleware/analyzeRateLimit';
 
 dotenv.config();
@@ -121,6 +123,7 @@ app.use('/api/research', researchRouter);
 app.use('/api/feedback', feedbackRouter);
 app.use('/api/linkedin', linkedinRouter);
 app.use('/api/webhooks', webhooksRouter);
+app.use('/api/job-feed', jobFeedRouter);
 
 // Sentry error handler - must be before any other error handling middleware
 Sentry.setupExpressErrorHandler(app);
@@ -137,4 +140,6 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 
 app.listen(PORT, () => {
     console.log(`Job Ready Backend running on http://localhost:${PORT}`);
+    startJobFeedCron();
+    console.log('[cron] Job feed cron scheduled (21:00 UTC daily)');
 });
