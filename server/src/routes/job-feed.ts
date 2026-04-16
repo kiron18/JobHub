@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Response } from 'express';
 import { prisma } from '../index';
 import { authenticate } from '../middleware/auth';
 import { analyzeRateLimit } from '../middleware/analyzeRateLimit';
@@ -17,7 +17,7 @@ const router = Router();
 router.use(authenticate);
 
 // Helper: check dashboardAccess
-async function requirePremium(userId: string, res: any): Promise<boolean> {
+async function requirePremium(userId: string, res: Response): Promise<boolean> {
   const profile = await prisma.candidateProfile.findUnique({
     where: { userId },
     select: { dashboardAccess: true },
@@ -32,12 +32,11 @@ async function requirePremium(userId: string, res: any): Promise<boolean> {
 // GET /api/job-feed/feed?offset=0
 router.get('/feed', async (req: any, res: any) => {
   const userId = req.user.id;
-  if (!(await requirePremium(userId, res))) return;
-
   const offset = parseInt((req.query.offset as string) || '0', 10);
   const today = todayAEST();
 
   try {
+    if (!(await requirePremium(userId, res))) return;
     // Lazy fetch if no jobs for today
     const count = await prisma.jobFeedItem.count({ where: { userId, feedDate: today } });
     if (count === 0) {
@@ -119,11 +118,10 @@ router.get('/feed', async (req: any, res: any) => {
 // POST /api/job-feed/refresh
 router.post('/refresh', async (req: any, res: any) => {
   const userId = req.user.id;
-  if (!(await requirePremium(userId, res))) return;
-
   const today = todayAEST();
 
   try {
+    if (!(await requirePremium(userId, res))) return;
     const newest = await prisma.jobFeedItem.findFirst({
       where: { userId, feedDate: today },
       orderBy: { createdAt: 'desc' },
@@ -150,11 +148,10 @@ router.post('/refresh', async (req: any, res: any) => {
 // POST /api/job-feed/:id/score
 router.post('/:id/score', analyzeRateLimit, async (req: any, res: any) => {
   const userId = req.user.id;
-  if (!(await requirePremium(userId, res))) return;
-
   const { id } = req.params;
 
   try {
+    if (!(await requirePremium(userId, res))) return;
     const item = await prisma.jobFeedItem.findUnique({ where: { id } });
     if (!item || item.userId !== userId) return res.status(404).json({ error: 'Not found' });
 
@@ -179,11 +176,10 @@ router.post('/:id/score', analyzeRateLimit, async (req: any, res: any) => {
 // POST /api/job-feed/:id/find-addressee
 router.post('/:id/find-addressee', async (req: any, res: any) => {
   const userId = req.user.id;
-  if (!(await requirePremium(userId, res))) return;
-
   const { id } = req.params;
 
   try {
+    if (!(await requirePremium(userId, res))) return;
     const item = await prisma.jobFeedItem.findUnique({ where: { id } });
     if (!item || item.userId !== userId) return res.status(404).json({ error: 'Not found' });
 
@@ -236,11 +232,10 @@ router.post('/:id/find-addressee', async (req: any, res: any) => {
 // POST /api/job-feed/:id/save
 router.post('/:id/save', async (req: any, res: any) => {
   const userId = req.user.id;
-  if (!(await requirePremium(userId, res))) return;
-
   const { id } = req.params;
 
   try {
+    if (!(await requirePremium(userId, res))) return;
     const item = await prisma.jobFeedItem.findUnique({ where: { id } });
     if (!item || item.userId !== userId) return res.status(404).json({ error: 'Not found' });
 
