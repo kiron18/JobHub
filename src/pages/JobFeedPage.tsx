@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { Loader2, RefreshCw, AlertCircle, Briefcase } from 'lucide-react';
 import { toast } from 'sonner';
 import { NavLink } from 'react-router-dom';

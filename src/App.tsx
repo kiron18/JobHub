@@ -18,6 +18,9 @@ const DocumentLibrary      = React.lazy(() => import('./components/DocumentLibra
 const EmailTemplatesLibrary = React.lazy(() => import('./components/EmailTemplatesLibrary').then(m => ({ default: m.EmailTemplatesLibrary })));
 const LinkedInPage         = React.lazy(() => import('./pages/LinkedInPage').then(m => ({ default: m.LinkedInPage })));
 const ReportExperience     = React.lazy(() => import('./components/ReportExperience').then(m => ({ default: m.ReportExperience })));
+const JobFeedPage = React.lazy(() =>
+  import('./pages/JobFeedPage').then(m => ({ default: m.JobFeedPage }))
+);
 
 // Auth & Context
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -61,6 +64,16 @@ const Dashboard = () => {
       return data;
     },
     refetchOnMount: true
+  });
+
+  const { data: feedData } = useQuery({
+    queryKey: ['job-feed', 0],
+    queryFn: async () => {
+      const { data } = await api.get('/job-feed/feed?offset=0');
+      return data;
+    },
+    staleTime: 5 * 60 * 1000,
+    enabled: !!(profile?.dashboardAccess),
   });
 
   const achievementCount = countData?.count ?? profile?.achievements?.length ?? 0;
@@ -126,6 +139,34 @@ const Dashboard = () => {
           View report →
         </button>
       </div>
+
+      {/* Job Feed widget */}
+      {feedData?.total > 0 && (
+        <NavLink
+          to="/jobs"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: 'rgba(99,102,241,0.06)',
+            border: '1px solid rgba(99,102,241,0.15)',
+            borderRadius: 16,
+            padding: '18px 24px',
+            textDecoration: 'none',
+            marginBottom: 0,
+          }}
+        >
+          <div>
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#818cf8', margin: 0 }}>
+              ✦ {feedData.total} new jobs today
+            </p>
+            <p style={{ fontSize: 12, color: '#6366f1', margin: '2px 0 0', opacity: 0.8 }}>
+              {profile?.targetRole} · {profile?.targetCity}
+            </p>
+          </div>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#818cf8' }}>View feed →</p>
+        </NavLink>
+      )}
 
       {/* First-visit tips */}
       <FirstVisitTip tips={[
@@ -539,6 +580,7 @@ function ReportOrDashboard() {
                   <Route path="/documents" element={<DocumentLibrary />} />
                   <Route path="/email-templates" element={<EmailTemplatesLibrary />} />
                   <Route path="/linkedin" element={<LinkedInPage />} />
+                  <Route path="/jobs" element={<JobFeedPage />} />
                   <Route path="*" element={<Dashboard />} />
                 </Routes>
               </React.Suspense>
