@@ -3,7 +3,11 @@ import { prisma } from '../index';
 import { buildDailyFeed } from '../services/jobFeed';
 
 // 21:00 UTC daily = 7:00 AEST
+let cronStarted = false;
+
 export function startJobFeedCron(): void {
+  if (cronStarted) return;
+  cronStarted = true;
   cron.schedule('0 21 * * *', async () => {
     console.log('[jobFeedCron] Starting daily feed pre-fetch');
 
@@ -25,7 +29,7 @@ export function startJobFeedCron(): void {
         await buildDailyFeed(userId);
         console.log(`[jobFeedCron] ✓ ${userId}`);
       } catch (err: any) {
-        console.error(`[jobFeedCron] ✗ ${userId}:`, err.message);
+        console.error(`[jobFeedCron] ✗ ${userId}:`, err instanceof Error ? err.message : String(err));
       }
     }
 
