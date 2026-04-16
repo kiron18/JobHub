@@ -53,6 +53,7 @@ model CandidateProfile {
   education                    Education[]
   experience                   Experience[]
   jobApplications              JobApplication[]
+  jobFeedItems                 JobFeedItem[]
   languages                    Language[]
   resumeVersions               ResumeVersion[]
   volunteering                 Volunteering[]
@@ -173,6 +174,33 @@ model JobApplication {
   overallGrade        String?
   documents           Document[]
   candidateProfile    CandidateProfile  @relation(fields: [candidateProfileId], references: [id])
+}
+
+model JobFeedItem {
+  id                   String           @id @default(uuid())
+  userId               String
+  feedDate             DateTime         @db.Date
+  title                String
+  company              String
+  location             String?
+  salary               String?
+  description          String
+  bullets              Json?
+  sourceUrl            String
+  sourcePlatform       String
+  postedAt             DateTime?
+  suggestedAddressee   String?
+  addresseeTitle       String?
+  addresseeConfidence  String?
+  addresseeSource      String?
+  matchScore           Int?
+  matchDetails         Json?
+  isRead               Boolean          @default(false)
+  isSaved              Boolean          @default(false)
+  createdAt            DateTime         @default(now())
+  candidateProfile     CandidateProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([userId, feedDate])
 }
 
 model Document {
