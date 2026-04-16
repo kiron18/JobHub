@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { prisma } from '../index';
 import { callLLM } from './llm';
+import { callLLMWithRetry } from '../utils/callLLMWithRetry';
 import { parseLLMJson } from '../utils/parseLLMResponse';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -47,10 +48,15 @@ function formatSalary(min?: number, max?: number): string | null {
   return null;
 }
 
-/** Returns today's date in AEST (UTC+10) as a JS Date at midnight UTC */
+/** Returns today's date in AEST/AEDT (Australia/Sydney) as a JS Date at midnight UTC */
 export function todayAEST(): Date {
-  const s = new Date(Date.now() + 10 * 3600 * 1000).toISOString().slice(0, 10);
-  return new Date(s + 'T00:00:00.000Z');
+  const s = new Intl.DateTimeFormat('en-AU', {
+    timeZone: 'Australia/Sydney',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date());
+  // en-AU locale returns "DD/MM/YYYY"
+  const [day, month, year] = s.split('/');
+  return new Date(`${year}-${month}-${day}T00:00:00.000Z`);
 }
 
 // ─── Adzuna fetch ─────────────────────────────────────────────────────────────
@@ -127,11 +133,12 @@ Jobs:
 ${JSON.stringify(input)}`;
 
   try {
-    const raw = await callLLM(prompt, true);
+    const raw = await callLLMWithRetry(prompt, true);
     const parsed = parseLLMJson(raw);
     if (!Array.isArray(parsed)) return batch.map(() => null);
     return parsed.map((b: any) => (Array.isArray(b) ? b : null));
-  } catch {
+  } catch (err) {
+    console.error('[generateBullets] LLM call failed:', err);
     return batch.map(() => null);
   }
 }
@@ -209,7 +216,8 @@ export async function findAddressee(
   if (!SERPAPI_KEY) return null;
 
   try {
-    const query = `"${company}" hiring manager OR "head of" OR founder site:linkedin.com`;
+    const safeCompany = company.replace(/"/g, '');
+    const query = `"${safeCompany}" hiring manager OR "head of" OR founder site:linkedin.com`;
     const resp = await axios.get('https://serpapi.com/search', {
       params: { engine: 'google', q: query, api_key: SERPAPI_KEY, num: 5 },
       timeout: 8000,
