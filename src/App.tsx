@@ -363,6 +363,7 @@ function DashboardGate({ children }: { children: React.ReactNode }) {
     staleTime: 5 * 60 * 1000,
   });
 
+  const { signOut } = useAuth();
   const [requestState, setRequestState] = useState<'idle' | 'form' | 'submitting' | 'done'>('idle');
   const [skoolEmail, setSkoolEmail] = useState('');
   const [alreadyRequested, setAlreadyRequested] = useState(false);
@@ -395,10 +396,22 @@ function DashboardGate({ children }: { children: React.ReactNode }) {
 
   return (
     <div style={{
-      minHeight: '100vh', overflowY: 'auto',
+      position: 'fixed', inset: 0, overflowY: 'auto',
       background: 'linear-gradient(160deg, #060b14 0%, #0a1628 50%, #060b14 100%)',
       padding: '48px 24px 80px',
     }}>
+      {/* Sign-out escape hatch */}
+      <button
+        onClick={() => signOut()}
+        style={{
+          position: 'absolute', top: 20, right: 24,
+          background: 'none', border: '1px solid rgba(255,255,255,0.10)',
+          color: '#6b7280', borderRadius: 10, padding: '8px 14px',
+          fontSize: 13, fontWeight: 600, cursor: 'pointer',
+        }}
+      >
+        Sign out
+      </button>
       <div style={{ maxWidth: 640, margin: '0 auto' }}>
         <motion.div
           initial={{ opacity: 0, y: 24 }}

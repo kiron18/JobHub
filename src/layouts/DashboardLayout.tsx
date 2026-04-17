@@ -14,7 +14,6 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
         { to: '/jobs', icon: Sparkles, label: 'Job Feed' },
         { to: '/tracker', icon: Briefcase, label: 'Applications' },
         { to: '/documents', icon: Library, label: 'Documents' },
-        { to: '/linkedin', icon: Linkedin, label: 'LinkedIn' },
         { to: '/email-templates', icon: Mail, label: 'Email Templates' },
         { to: '/workspace', icon: FileText, label: 'Profile & Achievements' },
     ];
