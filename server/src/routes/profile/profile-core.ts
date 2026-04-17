@@ -92,6 +92,7 @@ router.delete('/profile/resumes/:id', authenticate, async (req, res) => {
 router.post('/profile', authenticate, async (req, res) => {
     try {
         const userId = (req as any).user.id;
+        const authEmail = (req as any).user.email as string | undefined;
         const { profile, discoveredAchievements, experience, education, volunteering, certifications, languages, skills, coachingAlerts, resumeLabel, rawText } = req.body;
 
         if (!profile) {
@@ -111,7 +112,7 @@ router.post('/profile', authenticate, async (req, res) => {
                 updatedProfile = await tx.candidateProfile.create({
                     data: {
                         userId,
-                        email: profile.email,
+                        email: profile.email || authEmail || null,
                         name: profile.name,
                         professionalSummary: profile.professionalSummary,
                         skills: skills ? (typeof skills === 'string' ? skills : JSON.stringify(skills)) : '{}',
@@ -169,6 +170,7 @@ router.post('/profile', authenticate, async (req, res) => {
                 const scalarUpdate: Record<string, any> = {};
                 if (profile.name)                 scalarUpdate.name                = profile.name;
                 if (profile.email)                scalarUpdate.email               = profile.email;
+                else if (!existingProfile.email && authEmail) scalarUpdate.email   = authEmail;
                 if (profile.professionalSummary)  scalarUpdate.professionalSummary = profile.professionalSummary;
                 if (profile.location)             scalarUpdate.location            = profile.location;
                 if (profile.phone)                scalarUpdate.phone               = profile.phone;
