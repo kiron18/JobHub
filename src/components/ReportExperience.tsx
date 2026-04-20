@@ -14,6 +14,7 @@ interface ReportData {
   reportId: string;
   status: string;
   reportMarkdown: string | null;
+  createdAt: string | null;
 }
 
 // What each section actually means — shown collapsed so users understand context before reading
@@ -75,6 +76,32 @@ function extractHook(content: string): string {
   const clean = content.replace(/\*\*/g, '').replace(/#+\s/g, '').replace(/\n---\n[\s\S]*/,'').trim();
   const sentences = clean.match(/[^.!?]+[.!?]+/g) || [];
   return sentences.slice(0, 2).join(' ').trim() || clean.slice(0, 180);
+}
+
+/**
+ * Returns true if the given ISO date string falls within the current
+ * Thursday 19:00 AEST → Thursday 19:00 AEST window.
+ * Thursday 19:00 AEST = Thursday 09:00 UTC.
+ */
+function isInCurrentFridayWindow(createdAtISO: string | null): boolean {
+  if (!createdAtISO) return false;
+  const created = new Date(createdAtISO).getTime();
+  const now = new Date();
+  const day = now.getUTCDay();
+  const hour = now.getUTCHours();
+
+  let daysSince = (day - 4 + 7) % 7;
+  if (day === 4 && hour < 9) daysSince = 7;
+
+  const windowStart = new Date(now);
+  windowStart.setUTCDate(windowStart.getUTCDate() - daysSince);
+  windowStart.setUTCHours(9, 0, 0, 0);
+  windowStart.setUTCMilliseconds(0);
+
+  const windowEnd = new Date(windowStart);
+  windowEnd.setUTCDate(windowEnd.getUTCDate() + 7);
+
+  return created >= windowStart.getTime() && created < windowEnd.getTime();
 }
 
 // Render inline markdown — converts **bold** to <strong>
@@ -201,6 +228,25 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
 
       {/* Content */}
       <div style={{ position: 'relative', zIndex: 1, maxWidth: 780, margin: '0 auto', padding: '72px 24px 120px' }}>
+
+          {/* Friday call banner — only shown for reports in the current weekly window */}
+          {isInCurrentFridayWindow(data?.createdAt ?? null) && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              style={{
+                background: 'rgba(252,211,77,0.06)',
+                border: '1px solid rgba(252,211,77,0.20)',
+                borderRadius: 14, padding: '14px 20px',
+                marginBottom: 32, textAlign: 'center',
+              }}
+            >
+              <p style={{ margin: 0, fontSize: 14, color: '#FCD34D', fontWeight: 600 }}>
+                Your report is in this Friday's call batch — come with questions. I'll address it personally.
+              </p>
+            </motion.div>
+          )}
 
         {/* Header */}
         <motion.div
