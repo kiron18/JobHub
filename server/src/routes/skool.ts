@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import { prisma } from '../index';
-import { authenticate } from '../middleware/auth';
+import { authenticate, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
 // POST /api/skool/join
-router.post('/join', authenticate, async (req, res) => {
-  const userId = (req as any).user.id;
+router.post('/join', authenticate, async (req: AuthRequest, res) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ error: 'Unauthorised' });
   const { skoolEmail } = req.body as { skoolEmail?: string };
 
   const email = skoolEmail?.trim() || null;

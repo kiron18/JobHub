@@ -57,4 +57,13 @@ describe('POST /api/skool/join', () => {
       data: { skoolJoined: true, skoolCommunityEmail: null },
     });
   });
+
+  it('returns 500 when prisma update throws', async () => {
+    vi.mocked(prisma.candidateProfile.update).mockRejectedValue(new Error('db error'));
+    const res = await request(app)
+      .post('/api/skool/join')
+      .send({ skoolEmail: 'x@y.com' });
+    expect(res.status).toBe(500);
+    expect(res.body).toEqual({ error: 'Failed to record join' });
+  });
 });
