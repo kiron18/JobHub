@@ -1,0 +1,194 @@
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import api from '../lib/api';
+
+interface SkoolGateProps {
+  onJoined: () => void;
+}
+
+type GateState = 'prompt' | 'email' | 'success';
+
+export function SkoolGate({ onJoined }: SkoolGateProps) {
+  const queryClient = useQueryClient();
+  const [gateState, setGateState] = useState<GateState>('prompt');
+  const [skoolEmail, setSkoolEmail] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [visible, setVisible] = useState(true);
+
+  const { data: profile } = useQuery({
+    queryKey: ['profile'],
+    queryFn: async () => {
+      const { data } = await api.get('/profile');
+      return data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Already joined — render nothing (gate is transparent)
+  if (profile?.skoolJoined) return null;
+
+  async function handleSubmit() {
+    setSubmitting(true);
+    try {
+      await api.post('/skool/join', { skoolEmail: skoolEmail.trim() });
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      setGateState('success');
+      // After brief confirmation pause, dissolve gate
+      setTimeout(() => {
+        setVisible(false);
+        setTimeout(onJoined, 500);
+      }, 1200);
+    } catch {
+      setSubmitting(false);
+    }
+  }
+
+  const name = profile?.name?.split(' ')[0] ?? 'there';
+  const role = profile?.targetRole ?? 'your target role';
+
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.div
+          initial={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.5 }}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 50,
+            backdropFilter: 'blur(18px)',
+            WebkitBackdropFilter: 'blur(18px)',
+            background: 'rgba(6, 11, 20, 0.82)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '24px',
+          }}
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, delay: 0.1 }}
+            style={{
+              maxWidth: 520, width: '100%',
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(255,255,255,0.10)',
+              borderRadius: 24, padding: '40px 36px',
+            }}
+          >
+            {gateState === 'prompt' && (
+              <>
+                <p style={{
+                  fontSize: 11, fontWeight: 700, letterSpacing: '0.16em',
+                  textTransform: 'uppercase', color: '#4b5563', marginBottom: 16,
+                }}>
+                  Aussie Grad Careers — Free Community
+                </p>
+                <h2 style={{
+                  fontSize: 'clamp(22px, 4vw, 30px)', fontWeight: 900,
+                  color: '#f3f4f6', lineHeight: 1.2, marginBottom: 20,
+                }}>
+                  Your diagnosis is ready, {name}.
+                </h2>
+                <p style={{ fontSize: 15, color: '#9ca3af', lineHeight: 1.75, marginBottom: 28 }}>
+                  We've gone through your situation and put together an honest breakdown of
+                  what's actually holding back your <strong style={{ color: '#e5e7eb' }}>{role}</strong> search.
+                  Before you read it — one quick step.
+                </p>
+                <p style={{ fontSize: 15, color: '#9ca3af', lineHeight: 1.75, marginBottom: 28 }}>
+                  Join the free Aussie Grad Careers community on Skool. It takes 30 seconds
+                  and costs nothing. Inside you'll find videos and resources built around
+                  exactly the kinds of problems in your report.
+                </p>
+                <p style={{ fontSize: 15, color: '#e5e7eb', lineHeight: 1.75, marginBottom: 32, fontWeight: 600 }}>
+                  Every Friday I run a live call where I go through that week's reports
+                  personally. Yours will be in this week's batch. Come with questions — I'll
+                  answer them by name.
+                </p>
+                <a
+                  href="https://www.skool.com/aussiegradcareers"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setGateState('email')}
+                  style={{
+                    display: 'block', textAlign: 'center', textDecoration: 'none',
+                    background: 'linear-gradient(135deg, #0F766E, #134E4A)',
+                    color: 'white', borderRadius: 14, padding: '15px',
+                    fontSize: 16, fontWeight: 800,
+                    boxShadow: '0 6px 24px rgba(15,118,110,0.30)',
+                    marginBottom: 12,
+                  }}
+                >
+                  Join free on Skool →
+                </a>
+                <button
+                  onClick={() => setGateState('email')}
+                  style={{
+                    width: '100%', background: 'none',
+                    border: '1px solid rgba(255,255,255,0.07)',
+                    color: '#4b5563', borderRadius: 12, padding: '11px',
+                    fontSize: 13, cursor: 'pointer',
+                  }}
+                >
+                  Already a member? Continue →
+                </button>
+              </>
+            )}
+
+            {gateState === 'email' && (
+              <>
+                <h2 style={{
+                  fontSize: 22, fontWeight: 900, color: '#f3f4f6',
+                  marginBottom: 12,
+                }}>
+                  Almost there.
+                </h2>
+                <p style={{ fontSize: 15, color: '#9ca3af', lineHeight: 1.7, marginBottom: 24 }}>
+                  Drop the email you signed up with below so I know to include your report
+                  in Friday's discussion.
+                </p>
+                <input
+                  type="email"
+                  value={skoolEmail}
+                  onChange={e => setSkoolEmail(e.target.value)}
+                  placeholder="Email you used on Skool"
+                  style={{
+                    width: '100%', background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: 12, color: '#f3f4f6', fontSize: 14,
+                    padding: '13px 16px', outline: 'none',
+                    marginBottom: 8, boxSizing: 'border-box',
+                  }}
+                />
+                <p style={{ fontSize: 12, color: '#4b5563', marginBottom: 20 }}>
+                  Leave blank if it's the same as this account.
+                </p>
+                <button
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                  style={{
+                    width: '100%',
+                    background: submitting ? 'rgba(15,118,110,0.4)' : 'linear-gradient(135deg, #0F766E, #134E4A)',
+                    color: 'white', border: 'none', borderRadius: 14, padding: '15px',
+                    fontSize: 15, fontWeight: 800, cursor: submitting ? 'default' : 'pointer',
+                  }}
+                >
+                  {submitting ? 'Saving...' : 'Open my report →'}
+                </button>
+              </>
+            )}
+
+            {gateState === 'success' && (
+              <div style={{ textAlign: 'center', padding: '16px 0' }}>
+                <p style={{ fontSize: 22, fontWeight: 900, color: '#f3f4f6', marginBottom: 8 }}>
+                  You're in.
+                </p>
+                <p style={{ fontSize: 15, color: '#9ca3af' }}>
+                  Opening your report now.
+                </p>
+              </div>
+            )}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
