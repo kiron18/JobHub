@@ -1,9 +1,9 @@
 -- AlterTable: add skool gate fields to CandidateProfile
-ALTER TABLE "CandidateProfile" ADD COLUMN IF NOT EXISTS "skoolJoined" BOOLEAN NOT NULL DEFAULT false;
-ALTER TABLE "CandidateProfile" ADD COLUMN IF NOT EXISTS "skoolCommunityEmail" TEXT;
+ALTER TABLE "CandidateProfile" ADD COLUMN "skoolJoined" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "CandidateProfile" ADD COLUMN "skoolCommunityEmail" TEXT;
 
 -- CreateTable: FridayBrief
-CREATE TABLE IF NOT EXISTS "FridayBrief" (
+CREATE TABLE "FridayBrief" (
   "id"          TEXT NOT NULL,
   "windowStart" TIMESTAMP(3) NOT NULL,
   "windowEnd"   TIMESTAMP(3) NOT NULL,
@@ -14,4 +14,4 @@ CREATE TABLE IF NOT EXISTS "FridayBrief" (
 );
 
 -- CreateIndex: unique constraint on windowStart
-CREATE UNIQUE INDEX IF NOT EXISTS "FridayBrief_windowStart_key" ON "FridayBrief"("windowStart");
+CREATE UNIQUE INDEX "FridayBrief_windowStart_key" ON "FridayBrief"("windowStart");
