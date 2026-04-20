@@ -22,6 +22,7 @@ import linkedinRouter from './routes/linkedin';
 import webhooksRouter from './routes/webhooks';
 import skoolRouter from './routes/skool';
 import jobFeedRouter from './routes/job-feed';
+import adminRouter from './routes/admin';
 import { startJobFeedCron } from './cron/jobFeedCron';
 import { analyzeRateLimit } from './middleware/analyzeRateLimit';
 
@@ -126,6 +127,7 @@ app.use('/api/linkedin', linkedinRouter);
 app.use('/api/webhooks', webhooksRouter);
 app.use('/api/skool', skoolRouter);
 app.use('/api/job-feed', jobFeedRouter);
+app.use('/api/admin', adminRouter);
 
 // Sentry error handler - must be before any other error handling middleware
 Sentry.setupExpressErrorHandler(app);
