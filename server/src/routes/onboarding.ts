@@ -176,6 +176,7 @@ router.get('/report', authenticate, async (req: AuthRequest, res: Response) => {
       reportId: report.id,
       status: report.status,
       reportMarkdown: report.reportMarkdown ?? null,
+      createdAt: report.createdAt.toISOString(),
     });
   } catch (error) {
     console.error('[Onboarding] Report fetch error:', error);
