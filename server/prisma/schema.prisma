@@ -39,6 +39,8 @@ model CandidateProfile {
   visaStatus                   String?
   dashboardAccess              Boolean           @default(false)
   dashboardAccessRequested     Boolean           @default(false)
+  skoolJoined                  Boolean           @default(false)
+  skoolCommunityEmail          String?
   achievementCountAtDerivation Int?
   identityCards                Json?
   identityCardsUpdatedAt       DateTime?
@@ -275,4 +277,13 @@ enum DiagnosticStatus {
   PROCESSING
   COMPLETE
   FAILED
+}
+
+model FridayBrief {
+  id          String   @id @default(uuid())
+  windowStart DateTime @unique
+  windowEnd   DateTime
+  script      String
+  reportCount Int
+  generatedAt DateTime @default(now())
 }
