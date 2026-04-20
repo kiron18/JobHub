@@ -140,6 +140,7 @@ router.get('/friday-brief', authenticate, requireAdmin, async (_req, res) => {
       reportCount: firstTimeCount,
       cached: false,
       script: null,
+      generatedAt: null,
     });
   } catch (err) {
     console.error('[admin/friday-brief GET] error:', err);
