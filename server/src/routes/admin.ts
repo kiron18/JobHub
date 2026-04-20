@@ -1,6 +1,7 @@
 import { Router } from 'express';
+import type { Response, NextFunction } from 'express';
 import { prisma } from '../index';
-import { authenticate } from '../middleware/auth';
+import { authenticate, AuthRequest } from '../middleware/auth';
 import { callClaude } from '../services/llm';
 
 const router = Router();
@@ -30,7 +31,7 @@ function getCurrentWindow(): { from: Date; to: Date } {
   return { from, to };
 }
 
-async function requireAdmin(req: any, res: any, next: any) {
+async function requireAdmin(req: AuthRequest, res: Response, next: NextFunction) {
   const userId = req.user?.id;
   if (!userId) return res.status(401).json({ error: 'Unauthorised' });
   const profile = await prisma.candidateProfile.findUnique({
@@ -42,7 +43,7 @@ async function requireAdmin(req: any, res: any, next: any) {
 }
 
 async function getFirstTimeReportsForWindow(from: Date, to: Date) {
-  const windowReports = await prisma.diagnosticReport.findMany({
+  return prisma.diagnosticReport.findMany({
     where: { status: 'COMPLETE', createdAt: { gte: from, lt: to } },
     include: {
       candidateProfile: {
@@ -56,15 +57,6 @@ async function getFirstTimeReportsForWindow(from: Date, to: Date) {
     },
     orderBy: { createdAt: 'asc' },
   });
-
-  const firstTime = [];
-  for (const report of windowReports) {
-    const totalComplete = await prisma.diagnosticReport.count({
-      where: { userId: report.userId, status: 'COMPLETE' },
-    });
-    if (totalComplete === 1) firstTime.push(report);
-  }
-  return firstTime;
 }
 
 function buildBriefPrompt(
@@ -80,7 +72,7 @@ function buildBriefPrompt(
       `Search Duration: ${p?.searchDuration ?? 'Not specified'}`,
       `Perceived Blocker: ${p?.perceivedBlocker ?? 'Not specified'}`,
       `Report:`,
-      r.reportMarkdown ?? '(no report content)',
+      (r.reportMarkdown ?? '(no report content)').substring(0, 4000),
     ].join('\n');
   }).join('\n\n');
 
@@ -112,18 +104,9 @@ router.get('/friday-brief', authenticate, requireAdmin, async (_req, res) => {
       where: { windowStart: from },
     });
 
-    const allWindowReports = await prisma.diagnosticReport.findMany({
+    const firstTimeCount = await prisma.diagnosticReport.count({
       where: { status: 'COMPLETE', createdAt: { gte: from, lt: to } },
-      select: { userId: true },
     });
-
-    let firstTimeCount = 0;
-    for (const r of allWindowReports) {
-      const total = await prisma.diagnosticReport.count({
-        where: { userId: r.userId, status: 'COMPLETE' },
-      });
-      if (total === 1) firstTimeCount++;
-    }
 
     if (cached) {
       return res.json({
