@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, FileText, Briefcase, LogOut, User, Sun, Moon, Library, Mail, Linkedin, Sparkles } from 'lucide-react';
+import { LayoutDashboard, FileText, Briefcase, LogOut, User, Sun, Moon, Library, Mail, Linkedin, Sparkles, Radio } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppTheme } from '../contexts/ThemeContext';
 import { HuePicker } from '../components/HuePicker';
@@ -16,6 +16,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
         { to: '/documents', icon: Library, label: 'Documents' },
         { to: '/email-templates', icon: Mail, label: 'Email Templates' },
         { to: '/workspace', icon: FileText, label: 'Profile & Achievements' },
+        { to: '/admin/friday-brief', icon: Radio, label: 'Friday Brief' },
     ];
 
     return (

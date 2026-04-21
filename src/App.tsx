@@ -9,6 +9,7 @@ import { motion } from 'framer-motion';
 import { DashboardLayout } from './layouts/DashboardLayout';
 import { OnboardingGate } from './components/OnboardingGate';
 import { FirstVisitTip } from './components/FirstVisitTips';
+import { SkoolGate } from './components/SkoolGate';
 
 const MatchEngine          = React.lazy(() => import('./components/MatchEngine').then(m => ({ default: m.MatchEngine })));
 const ApplicationWorkspace = React.lazy(() => import('./components/ApplicationWorkspace').then(m => ({ default: m.ApplicationWorkspace })));
@@ -20,6 +21,9 @@ const LinkedInPage         = React.lazy(() => import('./pages/LinkedInPage').the
 const ReportExperience     = React.lazy(() => import('./components/ReportExperience').then(m => ({ default: m.ReportExperience })));
 const JobFeedPage = React.lazy(() =>
   import('./pages/JobFeedPage').then(m => ({ default: m.JobFeedPage }))
+);
+const FridayBriefPage = React.lazy(() =>
+  import('./pages/FridayBriefPage').then(m => ({ default: m.FridayBriefPage }))
 );
 
 // Auth & Context
@@ -558,6 +562,7 @@ function ReportOrDashboard() {
   const [reportSeen, setReportSeen] = useState(
     () => localStorage.getItem('jobhub_report_seen') === 'true'
   );
+  const [skoolJoined, setSkoolJoined] = useState(false);
 
   function handleDone() {
     console.log('[ReportOrDashboard] handleDone — marking report seen, navigating to /workspace');
@@ -572,9 +577,12 @@ function ReportOrDashboard() {
   return (
     <>
       {!reportSeen ? (
-        <React.Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center"><div className="w-10 h-10 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" /></div>}>
-          <ReportExperience onDone={handleDone} />
-        </React.Suspense>
+        <>
+          <React.Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center"><div className="w-10 h-10 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" /></div>}>
+            <ReportExperience onDone={handleDone} />
+          </React.Suspense>
+          {!skoolJoined && <SkoolGate onJoined={() => setSkoolJoined(true)} />}
+        </>
       ) : (
         <DashboardGate>
           <motion.div
@@ -594,6 +602,7 @@ function ReportOrDashboard() {
                   <Route path="/email-templates" element={<EmailTemplatesLibrary />} />
                   <Route path="/linkedin" element={<LinkedInPage />} />
                   <Route path="/jobs" element={<JobFeedPage />} />
+                  <Route path="/admin/friday-brief" element={<FridayBriefPage />} />
                   <Route path="*" element={<Dashboard />} />
                 </Routes>
               </React.Suspense>
