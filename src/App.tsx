@@ -357,6 +357,155 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 // --- Dashboard access gate — shown when user hasn't paid for Premium ---
 
+function AccessRequestModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const [step, setStep] = useState<'info' | 'form' | 'submitting' | 'done'>('info');
+  const [skoolEmail, setSkoolEmail] = useState('');
+
+  async function handleSubmit() {
+    setStep('submitting');
+    try {
+      await api.post('/webhooks/request-access', { skoolEmail: skoolEmail.trim() || undefined });
+      setStep('done');
+      setTimeout(onDone, 2000);
+    } catch {
+      setStep('form');
+    }
+  }
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 60,
+        backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+        background: 'rgba(6,11,20,0.85)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 24,
+      }}
+    >
+      <motion.div
+        onClick={e => e.stopPropagation()}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        style={{
+          maxWidth: 480, width: '100%',
+          background: '#0d1826',
+          border: '1px solid rgba(255,255,255,0.10)',
+          borderRadius: 24, padding: '36px 32px',
+          position: 'relative',
+        }}
+      >
+        <button
+          onClick={onClose}
+          style={{
+            position: 'absolute', top: 16, right: 16,
+            background: 'none', border: 'none', color: '#4b5563',
+            fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: 4,
+          }}
+        >
+          ×
+        </button>
+
+        {step === 'info' && (
+          <>
+            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#0F766E', marginBottom: 14 }}>
+              Premium Access
+            </p>
+            <h2 style={{ fontSize: 22, fontWeight: 900, color: '#f3f4f6', lineHeight: 1.25, marginBottom: 14 }}>
+              The dashboard is for Premium members.
+            </h2>
+            <p style={{ fontSize: 15, color: '#9ca3af', lineHeight: 1.7, marginBottom: 20 }}>
+              To unlock the full JobHub dashboard — job matching, cover letter generation, application tracking, and more — you need an active Premium membership in the{' '}
+              <a
+                href="https://www.skool.com/aussiegradcareers/about"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: '#2dd4bf', textDecoration: 'underline', textUnderlineOffset: 3 }}
+              >
+                Aussie Grad Careers Skool community
+              </a>.
+            </p>
+            <a
+              href="https://www.skool.com/aussiegradcareers/about"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'block', textAlign: 'center', textDecoration: 'none',
+                background: 'linear-gradient(135deg, #0F766E, #134E4A)',
+                color: 'white', borderRadius: 14, padding: '14px',
+                fontSize: 15, fontWeight: 800,
+                boxShadow: '0 4px 20px rgba(15,118,110,0.30)',
+                marginBottom: 12,
+              }}
+            >
+              Join Premium on Skool →
+            </a>
+            <button
+              onClick={() => setStep('form')}
+              style={{
+                width: '100%', background: 'none',
+                border: '1px solid rgba(255,255,255,0.08)',
+                color: '#6b7280', borderRadius: 12, padding: '11px',
+                fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              I'm already a Premium member — request access
+            </button>
+          </>
+        )}
+
+        {(step === 'form' || step === 'submitting') && (
+          <>
+            <h2 style={{ fontSize: 20, fontWeight: 900, color: '#f3f4f6', marginBottom: 10 }}>
+              Request access
+            </h2>
+            <p style={{ fontSize: 14, color: '#6b7280', lineHeight: 1.65, marginBottom: 22 }}>
+              Enter the email you used to join Skool Premium. We'll verify your membership and grant access manually — usually within a few hours.
+            </p>
+            <input
+              type="email"
+              value={skoolEmail}
+              onChange={e => setSkoolEmail(e.target.value)}
+              placeholder="Skool email (leave blank if same as this account)"
+              style={{
+                width: '100%', background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                borderRadius: 12, color: '#f3f4f6', fontSize: 14,
+                padding: '13px 16px', outline: 'none',
+                marginBottom: 16, boxSizing: 'border-box',
+              }}
+            />
+            <button
+              onClick={handleSubmit}
+              disabled={step === 'submitting'}
+              style={{
+                width: '100%',
+                background: step === 'submitting' ? 'rgba(15,118,110,0.4)' : 'linear-gradient(135deg, #0F766E, #134E4A)',
+                color: 'white', border: 'none', borderRadius: 12, padding: '14px',
+                fontSize: 15, fontWeight: 800,
+                cursor: step === 'submitting' ? 'default' : 'pointer',
+                boxShadow: '0 4px 20px rgba(15,118,110,0.25)',
+              }}
+            >
+              {step === 'submitting' ? 'Sending...' : 'Submit request →'}
+            </button>
+          </>
+        )}
+
+        {step === 'done' && (
+          <div style={{ textAlign: 'center', padding: '12px 0' }}>
+            <p style={{ fontSize: 22, fontWeight: 900, color: '#f3f4f6', marginBottom: 10 }}>Request received.</p>
+            <p style={{ fontSize: 14, color: '#6b7280', lineHeight: 1.7 }}>
+              We'll verify your Premium membership and approve your access — usually within a few hours. Log back in once it's confirmed.
+            </p>
+          </div>
+        )}
+      </motion.div>
+    </div>
+  );
+}
+
 function DashboardGate({ children }: { children: React.ReactNode }) {
   const { data: profile, isLoading } = useQuery({
     queryKey: ['profile'],
@@ -368,23 +517,12 @@ function DashboardGate({ children }: { children: React.ReactNode }) {
   });
 
   const { signOut } = useAuth();
-  const [requestState, setRequestState] = useState<'idle' | 'form' | 'submitting' | 'done'>('idle');
-  const [skoolEmail, setSkoolEmail] = useState('');
-  const [alreadyRequested, setAlreadyRequested] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [accessRequested, setAccessRequested] = useState(false);
 
   useEffect(() => {
-    if (profile?.dashboardAccessRequested) setAlreadyRequested(true);
+    if (profile?.dashboardAccessRequested) setAccessRequested(true);
   }, [profile?.dashboardAccessRequested]);
-
-  async function handleRequest() {
-    setRequestState('submitting');
-    try {
-      await api.post('/webhooks/request-access', { skoolEmail: skoolEmail.trim() || undefined });
-      setRequestState('done');
-    } catch {
-      setRequestState('form');
-    }
-  }
 
   if (isLoading) return null;
   if (profile?.dashboardAccess) return <>{children}</>;
@@ -395,163 +533,138 @@ function DashboardGate({ children }: { children: React.ReactNode }) {
     { icon: '📊', label: 'Application Tracker', desc: 'Track every application, interview, and offer in one place' },
     { icon: '🧠', label: 'Achievement Bank', desc: 'Your experience organised for instant retrieval and tailoring' },
     { icon: '💼', label: 'Resume Versions', desc: 'Store and switch between targeted resume versions' },
-    { icon: '📧', label: 'Email Templates', desc: 'Follow-up and networking templates that don\'t sound like templates' },
+    { icon: '📧', label: 'Email Templates', desc: "Follow-up and networking templates that don't sound like templates" },
   ];
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, overflowY: 'auto',
-      background: 'linear-gradient(160deg, #060b14 0%, #0a1628 50%, #060b14 100%)',
-      padding: '48px 24px 80px',
-    }}>
-      {/* Sign-out escape hatch */}
-      <button
-        onClick={() => signOut()}
-        style={{
-          position: 'absolute', top: 20, right: 24,
-          background: 'none', border: '1px solid rgba(255,255,255,0.10)',
-          color: '#6b7280', borderRadius: 10, padding: '8px 14px',
-          fontSize: 13, fontWeight: 600, cursor: 'pointer',
-        }}
-      >
-        Sign out
-      </button>
-      <div style={{ maxWidth: 640, margin: '0 auto' }}>
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+    <>
+      {showModal && (
+        <AccessRequestModal
+          onClose={() => setShowModal(false)}
+          onDone={() => { setShowModal(false); setAccessRequested(true); }}
+        />
+      )}
+      <div style={{
+        position: 'fixed', inset: 0, overflowY: 'auto',
+        background: 'linear-gradient(160deg, #060b14 0%, #0a1628 50%, #060b14 100%)',
+        padding: '48px 24px 80px',
+      }}>
+        <button
+          onClick={() => signOut()}
+          style={{
+            position: 'absolute', top: 20, right: 24,
+            background: 'none', border: '1px solid rgba(255,255,255,0.10)',
+            color: '#6b7280', borderRadius: 10, padding: '8px 14px',
+            fontSize: 13, fontWeight: 600, cursor: 'pointer',
+          }}
         >
-          {/* Header */}
-          <div style={{ textAlign: 'center', marginBottom: 40 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#4b5563', marginBottom: 16 }}>
-              Aussie Grad Careers — Premium
-            </p>
-            <h1 style={{ fontSize: 'clamp(28px, 5vw, 40px)', fontWeight: 900, color: '#f3f4f6', lineHeight: 1.15, marginBottom: 16, letterSpacing: '-0.025em' }}>
-              Your diagnosis is done.<br />
-              <span style={{ color: '#FCD34D' }}>Now let's fix it.</span>
-            </h1>
-            <p style={{ fontSize: 16, color: '#6b7280', lineHeight: 1.7, maxWidth: 480, margin: '0 auto' }}>
-              The tools below turn your diagnosis into action. Every application, cover letter, and follow-up — built around your specific profile.
-            </p>
-          </div>
+          Sign out
+        </button>
+        <div style={{ maxWidth: 640, margin: '0 auto' }}>
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div style={{ textAlign: 'center', marginBottom: 40 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#4b5563', marginBottom: 16 }}>
+                Aussie Grad Careers — Premium
+              </p>
+              <h1 style={{ fontSize: 'clamp(28px, 5vw, 40px)', fontWeight: 900, color: '#f3f4f6', lineHeight: 1.15, marginBottom: 16, letterSpacing: '-0.025em' }}>
+                Your diagnosis is done.<br />
+                <span style={{ color: '#FCD34D' }}>Now let's fix it.</span>
+              </h1>
+              <p style={{ fontSize: 16, color: '#6b7280', lineHeight: 1.7, maxWidth: 480, margin: '0 auto' }}>
+                The tools below turn your diagnosis into action. Every application, cover letter, and follow-up — built around your specific profile.
+              </p>
+            </div>
 
-          {/* Locked tools grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 32 }}>
-            {TOOLS.map((t, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.08 + i * 0.05 }}
-                style={{
-                  background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
-                  borderRadius: 14, padding: '16px',
-                  filter: 'grayscale(0.3)',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <span style={{ fontSize: 18 }}>{t.icon}</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: '#9ca3af' }}>{t.label}</span>
-                  <span style={{ marginLeft: 'auto', fontSize: 10, color: '#374151', fontWeight: 700, background: 'rgba(255,255,255,0.04)', borderRadius: 4, padding: '2px 6px' }}>locked</span>
-                </div>
-                <p style={{ fontSize: 12, color: '#4b5563', lineHeight: 1.5, margin: 0 }}>{t.desc}</p>
-              </motion.div>
-            ))}
-          </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 32 }}>
+              {TOOLS.map((t, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.08 + i * 0.05 }}
+                  style={{
+                    background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
+                    borderRadius: 14, padding: '16px', filter: 'grayscale(0.3)',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <span style={{ fontSize: 18 }}>{t.icon}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#9ca3af' }}>{t.label}</span>
+                    <span style={{ marginLeft: 'auto', fontSize: 10, color: '#374151', fontWeight: 700, background: 'rgba(255,255,255,0.04)', borderRadius: 4, padding: '2px 6px' }}>locked</span>
+                  </div>
+                  <p style={{ fontSize: 12, color: '#4b5563', lineHeight: 1.5, margin: 0 }}>{t.desc}</p>
+                </motion.div>
+              ))}
+            </div>
 
-          {/* CTA card */}
-          <div style={{
-            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: 20, padding: '32px',
-          }}>
-            {requestState === 'done' || alreadyRequested ? (
-              <div style={{ textAlign: 'center' }}>
-                <p style={{ fontSize: 22, fontWeight: 900, color: '#f3f4f6', marginBottom: 8 }}>Request received.</p>
-                <p style={{ fontSize: 14, color: '#6b7280', lineHeight: 1.7 }}>
-                  We'll verify your Premium membership and approve your access — usually within a few hours. You'll be able to log back in and access everything once it's confirmed.
-                </p>
-              </div>
-            ) : requestState === 'form' ? (
-              <div>
-                <p style={{ fontSize: 16, fontWeight: 800, color: '#f3f4f6', marginBottom: 6 }}>Confirm your membership</p>
-                <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 20, lineHeight: 1.6 }}>
-                  Enter the email you used to join Skool Premium below. We'll verify it and approve your access manually — usually within a few hours.
-                </p>
-                <input
-                  type="email"
-                  value={skoolEmail}
-                  onChange={e => setSkoolEmail(e.target.value)}
-                  placeholder="Skool email (leave blank if same as this account)"
-                  style={{
-                    width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
-                    borderRadius: 12, color: '#f3f4f6', fontSize: 14, padding: '13px 16px',
-                    outline: 'none', marginBottom: 16, boxSizing: 'border-box',
-                  }}
-                />
-                <button
-                  onClick={handleRequest}
-                  style={{
-                    width: '100%', background: 'linear-gradient(135deg, #0F766E, #134E4A)',
-                    color: 'white', border: 'none', borderRadius: 12, padding: '14px',
-                    fontSize: 15, fontWeight: 800, cursor: 'pointer',
-                    boxShadow: '0 4px 20px rgba(15,118,110,0.25)',
-                  }}
-                >
-                  Submit request →
-                </button>
-              </div>
-            ) : (
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-                  <div style={{
-                    background: 'linear-gradient(135deg, #0F766E22, #13224422)',
-                    border: '1px solid rgba(45,212,191,0.2)',
-                    borderRadius: 12, padding: '10px 14px', flex: 1,
-                  }}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#99F6E4' }}>Premium</p>
-                    <p style={{ margin: '2px 0 0', fontSize: 20, fontWeight: 900, color: 'white' }}>$67<span style={{ fontSize: 13, fontWeight: 500, color: '#6b7280' }}>/month</span></p>
-                  </div>
-                  <div style={{ color: '#374151', fontWeight: 700, fontSize: 12 }}>or</div>
-                  <div style={{
-                    background: 'linear-gradient(135deg, #0F766E22, #13224422)',
-                    border: '1px solid rgba(45,212,191,0.2)',
-                    borderRadius: 12, padding: '10px 14px', flex: 1,
-                  }}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#99F6E4' }}>Annual</p>
-                    <p style={{ margin: '2px 0 0', fontSize: 20, fontWeight: 900, color: 'white' }}>$497<span style={{ fontSize: 13, fontWeight: 500, color: '#6b7280' }}>/year</span></p>
-                  </div>
+            <div style={{
+              background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: 20, padding: '32px',
+            }}>
+              {accessRequested ? (
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{ fontSize: 22, fontWeight: 900, color: '#f3f4f6', marginBottom: 8 }}>Request received.</p>
+                  <p style={{ fontSize: 14, color: '#6b7280', lineHeight: 1.7 }}>
+                    We'll verify your Premium membership and approve your access — usually within a few hours. Log back in once it's confirmed.
+                  </p>
                 </div>
-                <a
-                  href="https://www.skool.com/aussiegradcareers/about"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: 'block', textAlign: 'center', textDecoration: 'none',
-                    background: 'linear-gradient(135deg, #0F766E, #134E4A)',
-                    color: 'white', borderRadius: 14, padding: '15px',
-                    fontSize: 16, fontWeight: 800, letterSpacing: '-0.01em',
-                    boxShadow: '0 6px 24px rgba(15,118,110,0.30)', marginBottom: 12,
-                  }}
-                >
-                  Join Premium on Skool →
-                </a>
-                <button
-                  onClick={() => setRequestState('form')}
-                  style={{
-                    width: '100%', background: 'none', border: '1px solid rgba(255,255,255,0.08)',
-                    color: '#6b7280', borderRadius: 12, padding: '12px',
-                    fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                  }}
-                >
-                  Already a Premium member? Request access
-                </button>
-              </div>
-            )}
-          </div>
-        </motion.div>
+              ) : (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                    <div style={{
+                      background: 'linear-gradient(135deg, #0F766E22, #13224422)',
+                      border: '1px solid rgba(45,212,191,0.2)',
+                      borderRadius: 12, padding: '10px 14px', flex: 1,
+                    }}>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#99F6E4' }}>Premium</p>
+                      <p style={{ margin: '2px 0 0', fontSize: 20, fontWeight: 900, color: 'white' }}>$67<span style={{ fontSize: 13, fontWeight: 500, color: '#6b7280' }}>/month</span></p>
+                    </div>
+                    <div style={{ color: '#374151', fontWeight: 700, fontSize: 12 }}>or</div>
+                    <div style={{
+                      background: 'linear-gradient(135deg, #0F766E22, #13224422)',
+                      border: '1px solid rgba(45,212,191,0.2)',
+                      borderRadius: 12, padding: '10px 14px', flex: 1,
+                    }}>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#99F6E4' }}>Annual</p>
+                      <p style={{ margin: '2px 0 0', fontSize: 20, fontWeight: 900, color: 'white' }}>$497<span style={{ fontSize: 13, fontWeight: 500, color: '#6b7280' }}>/year</span></p>
+                    </div>
+                  </div>
+                  <a
+                    href="https://www.skool.com/aussiegradcareers/about"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'block', textAlign: 'center', textDecoration: 'none',
+                      background: 'linear-gradient(135deg, #0F766E, #134E4A)',
+                      color: 'white', borderRadius: 14, padding: '15px',
+                      fontSize: 16, fontWeight: 800, letterSpacing: '-0.01em',
+                      boxShadow: '0 6px 24px rgba(15,118,110,0.30)', marginBottom: 12,
+                    }}
+                  >
+                    Join Premium on Skool →
+                  </a>
+                  <button
+                    onClick={() => setShowModal(true)}
+                    style={{
+                      width: '100%', background: 'none',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      color: '#6b7280', borderRadius: 12, padding: '12px',
+                      fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                    }}
+                  >
+                    Already a Premium member? Request access
+                  </button>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 

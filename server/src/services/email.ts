@@ -4,7 +4,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 const APP_URL = process.env.ALLOWED_ORIGIN ?? 'https://job-hub-snowy-ten.vercel.app';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'kiron@aussiegradcareers.com.au';
-const FROM_ADDRESS = `Aussie Grad Careers <noreply@aussiegradcareers.com.au>`;
+const FROM_ADDRESS = `Aussie Grad Careers <kiron@aussiegradcareers.com.au>`;
 
 export async function sendAccessRequestNotification(params: {
   userName: string;
