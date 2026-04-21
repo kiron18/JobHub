@@ -23,6 +23,7 @@ import webhooksRouter from './routes/webhooks';
 import skoolRouter from './routes/skool';
 import jobFeedRouter from './routes/job-feed';
 import adminRouter from './routes/admin';
+import stripeRouter, { stripeWebhookHandler } from './routes/stripe';
 import { startJobFeedCron } from './cron/jobFeedCron';
 import { analyzeRateLimit } from './middleware/analyzeRateLimit';
 
@@ -75,6 +76,10 @@ const corsOptions = {
     credentials: false,
 };
 app.use(cors(corsOptions));
+
+// Stripe webhook — raw body required for signature verification, must be before express.json()
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), stripeWebhookHandler);
+
 app.use(express.json({ limit: '10mb' }));
 
 const isDev = process.env.NODE_ENV !== 'production';
@@ -128,6 +133,7 @@ app.use('/api/webhooks', webhooksRouter);
 app.use('/api/skool', skoolRouter);
 app.use('/api/job-feed', jobFeedRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/stripe', stripeRouter);
 
 // Sentry error handler - must be before any other error handling middleware
 Sentry.setupExpressErrorHandler(app);
