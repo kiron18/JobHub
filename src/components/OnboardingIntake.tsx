@@ -305,61 +305,51 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
         style={{
           display: 'inline-block', fontSize: 11, fontWeight: 700, letterSpacing: '0.18em',
           textTransform: 'uppercase', color: T.textFaint,
-          background: T.chipBg, borderRadius: 99, padding: '6px 16px', marginBottom: 28,
+          background: T.chipBg, borderRadius: 99, padding: '6px 16px', marginBottom: 18,
         }}>
         Career diagnosis
       </motion.span>
 
-      <h1 style={{ fontSize: 'clamp(28px, 5vw, 44px)', fontWeight: 900, color: T.text, lineHeight: 1.12, marginBottom: 24, letterSpacing: '-0.025em' }}>
-        YOUR JOB SEARCH<br />
-        ISN'T BROKEN.
-        <br />
-        <span style={{ color: T.textMuted }}>YOUR POSITIONING IS.</span>
+      <h1 style={{ fontSize: 'clamp(22px, 4.5vw, 32px)', fontWeight: 900, color: T.text, lineHeight: 1.2, marginBottom: 12, letterSpacing: '-0.02em' }}>
+        Applying for months in Australia.<br />Getting nothing back?
       </h1>
 
-      <p style={{ color: T.textMuted, fontSize: 15, lineHeight: 1.7, maxWidth: 400, margin: '0 auto 16px' }}>
-        Upload your resume, answer 8 quick questions, get a personalised breakdown of exactly where your job search is breaking down.
+      <p style={{ color: T.textMuted, fontSize: 14, lineHeight: 1.65, maxWidth: 420, margin: '0 auto 18px' }}>
+        Take this free 3-minute diagnostic to find out exactly which part of your application process is costing you interviews — and what to fix first.
       </p>
 
-      {/* Report preview — shows what they'll unlock */}
-      <div style={{ marginBottom: 28, textAlign: 'left' }}>
-        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: T.textFaint, textAlign: 'center', marginBottom: 12 }}>
+      {/* Report preview — compact 2-column grid */}
+      <div style={{ marginBottom: 18, textAlign: 'left' }}>
+        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: T.textFaint, textAlign: 'center', marginBottom: 10 }}>
           Your diagnosis will cover
         </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
           {[
-            { label: 'Role targeting', desc: 'Are you aiming at the right roles for your level?' },
-            { label: 'Document audit', desc: 'Is your resume costing you interviews?' },
-            { label: 'Application pipeline', desc: 'Where exactly are things dropping off?' },
-            { label: 'Honest assessment', desc: 'What your documents reveal vs. what you think' },
-            { label: 'Three-step fix', color: '#22c55e', desc: 'Concrete actions ranked by impact, written for you' },
-            { label: 'How we can help', desc: 'What tools and training are available to you' },
+            { label: 'Role targeting', desc: 'Right roles for your level?' },
+            { label: 'Document audit', desc: 'Resume costing you interviews?' },
+            { label: 'Application pipeline', desc: 'Where things drop off?' },
+            { label: 'Honest assessment', desc: 'What your docs reveal' },
+            { label: 'Three-step fix', color: '#22c55e', desc: 'Ranked by impact, written for you' },
+            { label: 'How we can help', desc: 'Tools and training available' },
           ].map((item, i) => (
             <motion.div
               key={i}
-              initial={{ opacity: 0, x: -12 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.15 + i * 0.06 }}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 + i * 0.04 }}
               style={{
-                display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
-                borderRadius: 12, border: `1px solid ${T.inputBorder}`,
+                display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 10px',
+                borderRadius: 10, border: `1px solid ${T.inputBorder}`,
                 background: T.inputBg,
               }}
             >
               <div style={{
-                width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                width: 6, height: 6, borderRadius: '50%', flexShrink: 0, marginTop: 4,
                 background: item.color || T.progressFill,
-                boxShadow: `0 0 6px ${item.color || T.progressFill}60`,
               }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: item.color || T.text }}>{item.label}</span>
-                <span style={{ fontSize: 12, color: T.textFaint, marginLeft: 8 }}>{item.desc}</span>
-              </div>
-              <div style={{
-                fontSize: 10, fontWeight: 700, color: T.textFaint,
-                background: T.chipBg, borderRadius: 6, padding: '2px 7px', flexShrink: 0,
-              }}>
-                locked
+              <div>
+                <span style={{ fontSize: 12, fontWeight: 700, color: item.color || T.text, display: 'block' }}>{item.label}</span>
+                <span style={{ fontSize: 11, color: T.textFaint }}>{item.desc}</span>
               </div>
             </motion.div>
           ))}
@@ -367,8 +357,22 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
       </div>
 
       <motion.button onClick={onNext}
-        style={{ background: T.btnBg, color: T.btnText, padding: '15px 36px', borderRadius: 16, border: 'none', fontWeight: 900, fontSize: 16, cursor: 'pointer', boxShadow: T.btnShadow, letterSpacing: '-0.01em', width: '100%' }}
-        whileHover={{ scale: 1.02, boxShadow: '0 8px 40px rgba(0,0,0,0.25)' }}
+        style={{
+          background: 'linear-gradient(135deg, #16a34a, #15803d)',
+          color: 'white', padding: '15px 36px', borderRadius: 16, border: 'none',
+          fontWeight: 900, fontSize: 16, cursor: 'pointer',
+          boxShadow: '0 4px 24px rgba(22,163,74,0.35)',
+          letterSpacing: '-0.01em', width: '100%',
+        }}
+        animate={{
+          boxShadow: [
+            '0 4px 24px rgba(22,163,74,0.35)',
+            '0 4px 36px rgba(22,163,74,0.6)',
+            '0 4px 24px rgba(22,163,74,0.35)',
+          ],
+        }}
+        transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+        whileHover={{ scale: 1.02, boxShadow: '0 8px 40px rgba(22,163,74,0.55)' }}
         whileTap={{ scale: 0.97 }}>
         Unlock my diagnosis →
       </motion.button>

@@ -562,16 +562,6 @@ function ReportOrDashboard() {
   const [reportSeen, setReportSeen] = useState(
     () => localStorage.getItem('jobhub_report_seen') === 'true'
   );
-  // skoolJoined from profile prevents the gate flashing for returning users.
-  // Local skoolJoined state prevents re-showing during the profile invalidation window.
-  const { data: profile } = useQuery({
-    queryKey: ['profile'],
-    queryFn: async () => {
-      const { data } = await api.get('/profile');
-      return data;
-    },
-    staleTime: 5 * 60 * 1000,
-  });
   const [skoolJoined, setSkoolJoined] = useState(false);
 
   function handleDone() {
@@ -591,7 +581,7 @@ function ReportOrDashboard() {
           <React.Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center"><div className="w-10 h-10 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" /></div>}>
             <ReportExperience onDone={handleDone} />
           </React.Suspense>
-          {!profile?.skoolJoined && !skoolJoined && <SkoolGate onJoined={() => setSkoolJoined(true)} />}
+          {!skoolJoined && <SkoolGate onJoined={() => setSkoolJoined(true)} />}
         </>
       ) : (
         <DashboardGate>

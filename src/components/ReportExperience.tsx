@@ -163,18 +163,6 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
   const theme = makeTheme(isDark);
 
   const [processingMs, setProcessingMs] = useState(0);
-  const [waitlistEmail, setWaitlistEmail] = useState('');
-  const [waitlistDone, setWaitlistDone] = useState(false);
-
-  async function handleWaitlist() {
-    if (!waitlistEmail.trim() || waitlistDone) return;
-    try {
-      await api.post('/webhooks/request-access', { skoolEmail: waitlistEmail.trim() });
-    } catch {
-      // best effort
-    }
-    setWaitlistDone(true);
-  }
 
   const { data, isLoading, isError, refetch } = useQuery<ReportData>({
     queryKey: ['report'],
@@ -274,7 +262,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
             Here's what's actually going on.
           </h1>
           <p style={{ fontSize: 16, color: theme.sub, lineHeight: 1.6, maxWidth: 480, margin: '0 auto' }}>
-            Six areas, ranked by impact. Read the ones that resonate — then unlock your fix.
+            Six areas. Ranked by impact.
           </p>
         </motion.div>
 
@@ -554,7 +542,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
               </div>
             </div>
 
-            {/* Premium tool waitlist */}
+            {/* JobHub Pro CTA */}
             <div style={{
               background: isDark ? 'rgba(255,255,255,0.02)' : 'white',
               border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(99,102,241,0.15)'}`,
@@ -562,50 +550,33 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
               padding: '36px 40px',
               textAlign: 'center',
             }}>
-              <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#818cf8', marginBottom: 12 }}>
-                Coming soon
-              </p>
-              <h3 style={{ fontSize: 22, fontWeight: 900, color: isDark ? '#f3f4f6' : '#111827', marginBottom: 10, letterSpacing: '-0.01em', lineHeight: 1.2 }}>
-                The premium tool is nearly here.
+              <h3 style={{ fontSize: 22, fontWeight: 900, color: isDark ? '#f3f4f6' : '#111827', marginBottom: 12, letterSpacing: '-0.01em', lineHeight: 1.2 }}>
+                Ready to automate this entire process?
               </h3>
-              <p style={{ fontSize: 14, color: isDark ? '#6b7280' : '#4b5563', lineHeight: 1.7, maxWidth: 440, margin: '0 auto 10px', }}>
-                AI-powered job applications — match your achievements to any role, generate cover letters in seconds, and track everything in one place.
+              <p style={{ fontSize: 14, color: isDark ? '#9ca3af' : '#4b5563', lineHeight: 1.75, maxWidth: 460, margin: '0 auto 14px' }}>
+                JobHub Pro does everything this diagnostic identified — automatically matches your experience to job requirements, writes tailored cover letters, and tracks applications.
               </p>
-              <p style={{ fontSize: 13, color: isDark ? '#4b5563' : '#9ca3af', marginBottom: 24 }}>
-                More details dropping inside the Skool community first.
+              <p style={{ fontSize: 14, color: isDark ? '#9ca3af' : '#4b5563', lineHeight: 1.65, maxWidth: 440, margin: '0 auto 24px' }}>
+                Join our free community to get first access when it launches.
               </p>
-              {waitlistDone ? (
-                <p style={{ fontSize: 15, fontWeight: 700, color: '#34d399' }}>
-                  You're on the list. Watch the community for updates.
-                </p>
-              ) : (
-                <div style={{ display: 'flex', gap: 8, maxWidth: 400, margin: '0 auto' }}>
-                  <input
-                    type="email"
-                    value={waitlistEmail}
-                    onChange={e => setWaitlistEmail(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleWaitlist()}
-                    placeholder="Your email"
-                    style={{
-                      flex: 1, background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
-                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.10)' : 'rgba(99,102,241,0.20)'}`,
-                      borderRadius: 10, color: isDark ? '#f3f4f6' : '#111827',
-                      fontSize: 14, padding: '12px 16px', outline: 'none',
-                    }}
-                  />
-                  <button
-                    onClick={handleWaitlist}
-                    style={{
-                      background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
-                      color: 'white', border: 'none', borderRadius: 10,
-                      padding: '12px 20px', fontSize: 14, fontWeight: 700,
-                      cursor: 'pointer', whiteSpace: 'nowrap',
-                    }}
-                  >
-                    Join waitlist →
-                  </button>
-                </div>
-              )}
+              <a
+                href="https://www.skool.com/aussiegradcareers"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-block',
+                  background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
+                  color: 'white', borderRadius: 14, padding: '15px 40px',
+                  fontSize: 15, fontWeight: 800, textDecoration: 'none',
+                  boxShadow: '0 6px 24px rgba(79,70,229,0.30)',
+                  letterSpacing: '-0.01em', marginBottom: 20,
+                }}
+              >
+                Join Free Community →
+              </a>
+              <p style={{ fontSize: 13, color: isDark ? '#4b5563' : '#9ca3af', lineHeight: 1.65, maxWidth: 460, margin: '0 auto' }}>
+                <strong style={{ color: isDark ? '#6b7280' : '#6b7280' }}>P.S.</strong> — You'll be among the founding members who get early access and an edge on the competition.
+              </p>
             </div>
 
             {/* Continue to dashboard */}
