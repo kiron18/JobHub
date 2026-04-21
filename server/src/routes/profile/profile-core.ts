@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../../index';
 import { authenticate } from '../../middleware/auth';
 import { indexAchievement } from '../../services/vector';
+import { EXEMPT_EMAILS } from '../stripe';
 
 const router = Router();
 
@@ -24,6 +25,16 @@ router.get('/profile', authenticate, async (req, res) => {
         });
 
         if (!profile) return res.json(null);
+
+        // Auto-grant dashboardAccess for exempt accounts (owner + test accounts)
+        const authEmail = ((req as any).user?.email ?? '').toLowerCase();
+        if (EXEMPT_EMAILS.includes(authEmail) && !profile.dashboardAccess) {
+          await prisma.candidateProfile.update({
+            where: { userId },
+            data: { dashboardAccess: true },
+          });
+          profile.dashboardAccess = true;
+        }
 
         // Compute profile completion score
         let score = 0;
