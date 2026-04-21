@@ -1,5 +1,8 @@
 import { Router, Request, Response } from 'express';
 import StripeLib from 'stripe';
+import type { Checkout } from 'stripe/cjs/resources/Checkout/index.js';
+import type { Subscription } from 'stripe/cjs/resources/Subscriptions.js';
+import type { Invoice } from 'stripe/cjs/resources/Invoices.js';
 import { prisma } from '../index';
 import { authenticate, AuthRequest } from '../middleware/auth';
 
@@ -45,18 +48,24 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
     switch (event.type as string) {
       case 'checkout.session.completed':
       case 'checkout.session.async_payment_succeeded': {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const session: any = event.data.object;
+        const session = event.data.object as Checkout.Session;
         const userId: string | undefined = session.metadata?.userId;
         if (!userId) {
           console.warn('[stripe/webhook] No userId in session metadata — skipping');
           break;
         }
         const subscriptionId = session.subscription as string | null;
-        await prisma.candidateProfile.update({
+        await prisma.candidateProfile.upsert({
           where: { userId },
-          data: {
-            stripeCustomerId: session.customer as string,
+          update: {
+            stripeCustomerId: typeof session.customer === 'string' ? session.customer : undefined,
+            stripeSubscriptionId: subscriptionId ?? undefined,
+            subscriptionStatus: 'active',
+            dashboardAccess: true,
+          },
+          create: {
+            userId,
+            stripeCustomerId: typeof session.customer === 'string' ? session.customer : undefined,
             stripeSubscriptionId: subscriptionId ?? undefined,
             subscriptionStatus: 'active',
             dashboardAccess: true,
@@ -67,15 +76,13 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
       }
 
       case 'checkout.session.async_payment_failed': {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const session: any = event.data.object;
+        const session = event.data.object as Checkout.Session;
         console.warn(`[stripe/webhook] Async payment failed for session=${session.id}`);
         break;
       }
 
       case 'customer.subscription.updated': {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const sub: any = event.data.object;
+        const sub = event.data.object as Subscription;
         const profile = await prisma.candidateProfile.findFirst({
           where: { stripeSubscriptionId: sub.id },
         });
@@ -97,8 +104,7 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
       }
 
       case 'customer.subscription.deleted': {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const sub: any = event.data.object;
+        const sub = event.data.object as Subscription;
         const profile = await prisma.candidateProfile.findFirst({
           where: { stripeSubscriptionId: sub.id },
         });
@@ -115,9 +121,9 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
       }
 
       case 'invoice.payment_failed': {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const invoice: any = event.data.object;
-        const subId: string | null = (invoice.subscription as string) ?? null;
+        // Invoice.subscription was removed from Stripe SDK types in v17+; cast via unknown to read it safely.
+        const invoice = event.data.object as Invoice & { subscription?: string | null };
+        const subId: string | null = invoice.subscription ?? null;
         if (!subId) break;
         const profile = await prisma.candidateProfile.findFirst({
           where: { stripeSubscriptionId: subId },
