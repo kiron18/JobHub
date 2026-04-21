@@ -3,7 +3,8 @@ import { Resend } from 'resend';
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const APP_URL = process.env.ALLOWED_ORIGIN ?? 'https://job-hub-snowy-ten.vercel.app';
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'admin@aussiegradcareers.com.au';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'kiron@aussiegradcareers.com.au';
+const FROM_ADDRESS = `Aussie Grad Careers <noreply@aussiegradcareers.com.au>`;
 
 export async function sendAccessRequestNotification(params: {
   userName: string;
@@ -20,9 +21,9 @@ export async function sendAccessRequestNotification(params: {
   const supabaseUrl = `https://supabase.com/dashboard/project/${process.env.SUPABASE_PROJECT_REF ?? '_'}/editor`;
 
   await resend.emails.send({
-    from: 'JobHub <onboarding@resend.dev>',
+    from: FROM_ADDRESS,
     to: ADMIN_EMAIL,
-    subject: `Dashboard access request — ${userName || userEmail}`,
+    subject: `[JobHub Access Request] ${userName || userEmail}${targetRole ? ` — ${targetRole}` : ''}`,
     text: [
       'New dashboard access request',
       '',
@@ -49,7 +50,7 @@ export async function sendWelcomeEmail(to: string): Promise<void> {
     return;
   }
   await resend.emails.send({
-    from: 'JobHub <onboarding@resend.dev>',
+    from: FROM_ADDRESS,
     to,
     subject: 'Your JobHub diagnosis is ready',
     text: [
