@@ -16,6 +16,7 @@ import { searchAchievements } from '../services/vector';
 import { JOB_ANALYSIS_PROMPT } from '../services/prompts';
 import { parseLLMJson } from '../utils/parseLLMResponse';
 import { addGrades, computeComposite } from '../services/compositeScoring';
+import { EXEMPT_EMAILS } from './stripe';
 import type { DimensionScores } from '../services/compositeScoring';
 
 const router = Router();
@@ -41,6 +42,30 @@ router.post('/job', async (req: any, res: any) => {
         if (!profile) {
             return res.status(404).json({ error: 'Please set up your profile first.' });
         }
+
+        // ── Trial / subscription guard ────────────────────────────────────────────
+        const userEmail = ((req as any).user?.email ?? '').toLowerCase();
+        const isExempt = EXEMPT_EMAILS.includes(userEmail);
+        const hasPaidAccess = profile.dashboardAccess === true;
+        const trialJobsUsed: number = profile.freeJobsUsed ?? 0;
+        const hasTrialLeft = trialJobsUsed < 5;
+
+        if (!isExempt && !hasPaidAccess && !hasTrialLeft) {
+          return res.status(402).json({
+            error: 'Trial limit reached',
+            freeJobsUsed: trialJobsUsed,
+            upgradeRequired: true,
+          });
+        }
+
+        // Increment trial counter for non-exempt, non-paid users consuming a free job
+        if (!isExempt && !hasPaidAccess && hasTrialLeft) {
+          await prisma.candidateProfile.update({
+            where: { userId },
+            data: { freeJobsUsed: { increment: 1 } },
+          });
+        }
+        // ─────────────────────────────────────────────────────────────────────────
 
         let parsedSkills = { technical: [], industryKnowledge: [], softSkills: [] };
         try {
