@@ -88,20 +88,25 @@ export function SkoolGate({ onJoined }: SkoolGateProps) {
                 }}>
                   Your diagnosis is ready, {name}.
                 </h2>
-                <p style={{ fontSize: 15, color: '#9ca3af', lineHeight: 1.75, marginBottom: 28 }}>
+                <p style={{ fontSize: 15, color: '#9ca3af', lineHeight: 1.75, marginBottom: 16 }}>
                   We've gone through your situation and put together an honest breakdown of
                   what's actually holding back your <strong style={{ color: '#e5e7eb' }}>{role}</strong> search.
-                  Before you read it — one quick step.
+                </p>
+                <p style={{ fontSize: 18, color: '#e5e7eb', fontWeight: 800, lineHeight: 1.35, marginBottom: 28, letterSpacing: '-0.01em' }}>
+                  Before you read it.<br />One quick step.
                 </p>
                 <p style={{ fontSize: 15, color: '#9ca3af', lineHeight: 1.75, marginBottom: 28 }}>
-                  Join the free Aussie Grad Careers community on Skool. It takes 30 seconds
-                  and costs nothing. Inside you'll find videos and resources built around
-                  exactly the kinds of problems in your report.
+                  Join the free{' '}
+                  <a href="https://www.skool.com/aussiegradcareers" target="_blank" rel="noopener noreferrer" style={{ color: '#2dd4bf', textDecoration: 'underline', textUnderlineOffset: 3 }}>
+                    Aussie Grad Careers community
+                  </a>
+                  {' '}on Skool. It takes 30 seconds and costs nothing. Inside you'll find videos
+                  and resources built around exactly the kinds of problems in your report.
                 </p>
                 <p style={{ fontSize: 15, color: '#e5e7eb', lineHeight: 1.75, marginBottom: 32, fontWeight: 600 }}>
                   Every Friday I run a live call where I go through that week's reports
-                  personally. Yours will be in this week's batch. Come with questions — I'll
-                  answer them by name.
+                  personally. Yours will be in this week's batch, {name}. Come with questions — I'll
+                  answer them live.
                 </p>
                 <a
                   href="https://www.skool.com/aussiegradcareers"

@@ -163,6 +163,18 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
   const theme = makeTheme(isDark);
 
   const [processingMs, setProcessingMs] = useState(0);
+  const [waitlistEmail, setWaitlistEmail] = useState('');
+  const [waitlistDone, setWaitlistDone] = useState(false);
+
+  async function handleWaitlist() {
+    if (!waitlistEmail.trim() || waitlistDone) return;
+    try {
+      await api.post('/webhooks/request-access', { skoolEmail: waitlistEmail.trim() });
+    } catch {
+      // best effort
+    }
+    setWaitlistDone(true);
+  }
 
   const { data, isLoading, isError, refetch } = useQuery<ReportData>({
     queryKey: ['report'],
@@ -458,38 +470,6 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                           </>
                         )}
 
-                        {/* Skool community banner — shown at bottom of every expanded island */}
-                        <a
-                          href="https://www.skool.com/aussiegradcareers/about"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                            marginTop: 28, padding: '14px 18px', textDecoration: 'none',
-                            borderRadius: 14,
-                            background: isDark
-                              ? 'linear-gradient(90deg, rgba(19,78,74,0.5), rgba(30,27,75,0.5))'
-                              : 'linear-gradient(90deg, #F0FDFA, #EEF2FF)',
-                            border: `1px solid ${isDark ? 'rgba(45,212,191,0.18)' : 'rgba(15,118,110,0.18)'}`,
-                          }}
-                        >
-                          <div>
-                            <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: isDark ? '#99F6E4' : '#134E4A', lineHeight: 1.3 }}>
-                              The free Skool group walks you through fixing this step-by-step
-                            </p>
-                            <p style={{ margin: '3px 0 0', fontSize: 11, color: isDark ? '#6b7280' : '#4D7C78' }}>
-                              8 modules · weekly coaching calls · free to join →
-                            </p>
-                          </div>
-                          <div style={{
-                            flexShrink: 0, marginLeft: 16,
-                            background: 'linear-gradient(135deg, #0F766E, #3730A3)',
-                            color: 'white', fontSize: 11, fontWeight: 700,
-                            borderRadius: 8, padding: '7px 14px', whiteSpace: 'nowrap',
-                          }}>
-                            Join free
-                          </div>
-                        </a>
                       </div>
                     </motion.div>
                   )}
@@ -499,7 +479,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
           })}
         </div>
 
-        {/* Skool community CTA + embed */}
+        {/* Community + premium CTA */}
         {sections.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -523,18 +503,18 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                 pointerEvents: 'none',
               }} />
               <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(153,246,228,0.8)', marginBottom: 14, position: 'relative' }}>
-                Free community — Aussie Grad Careers
+                Free Community — Aussie Grad Careers
               </p>
               <h2 style={{ fontSize: 28, fontWeight: 800, color: 'white', lineHeight: 1.2, marginBottom: 14, position: 'relative', letterSpacing: '-0.01em' }}>
-                Here's your report.<br />
-                <span style={{ color: '#99F6E4', fontStyle: 'italic' }}>Want the 8-step training to fix it?</span>
+                You're in the community.<br />
+                <span style={{ color: '#99F6E4', fontStyle: 'italic' }}>Now make it work for you.</span>
               </h2>
               <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.75)', lineHeight: 1.65, maxWidth: 500, margin: '0 auto', position: 'relative' }}>
-                Your report found the problems. The training walks you through fixing each one — with templates, real examples, and weekly group coaching calls.
+                Everything in your report maps to a module inside the community. The frameworks, templates, and coaching calls are built for exactly this situation — start with Module 1.
               </p>
             </div>
 
-            {/* 8 steps grid */}
+            {/* 8 modules grid */}
             <div style={{
               background: isDark ? 'rgba(255,255,255,0.03)' : 'linear-gradient(135deg, #F0FDFA, white)',
               border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(15,118,110,0.13)'}`,
@@ -542,7 +522,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
               padding: '28px 36px',
             }}>
               <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#4D7C78', marginBottom: 16 }}>
-                What's inside
+                Your 8 modules
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 {[
@@ -574,40 +554,58 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
               </div>
             </div>
 
-            {/* Skool join CTA */}
+            {/* Premium tool waitlist */}
             <div style={{
               background: isDark ? 'rgba(255,255,255,0.02)' : 'white',
-              border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(15,118,110,0.13)'}`,
+              border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(99,102,241,0.15)'}`,
               borderTop: 'none',
               padding: '36px 40px',
               textAlign: 'center',
             }}>
-              <p style={{ fontSize: 15, color: isDark ? '#d1d5db' : '#1E3A3A', marginBottom: 8, lineHeight: 1.65, fontWeight: 500 }}>
-                The community is free. Takes 30 seconds to join.
+              <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#818cf8', marginBottom: 12 }}>
+                Coming soon
               </p>
-              <p style={{ fontSize: 13, color: isDark ? '#6b7280' : '#4D7C78', marginBottom: 28, lineHeight: 1.6 }}>
-                Once you're in, start with Module 1 — it directly addresses the biggest issue in your report.
+              <h3 style={{ fontSize: 22, fontWeight: 900, color: isDark ? '#f3f4f6' : '#111827', marginBottom: 10, letterSpacing: '-0.01em', lineHeight: 1.2 }}>
+                The premium tool is nearly here.
+              </h3>
+              <p style={{ fontSize: 14, color: isDark ? '#6b7280' : '#4b5563', lineHeight: 1.7, maxWidth: 440, margin: '0 auto 10px', }}>
+                AI-powered job applications — match your achievements to any role, generate cover letters in seconds, and track everything in one place.
               </p>
-              <a
-                href="https://www.skool.com/aussiegradcareers/about"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  display: 'inline-block',
-                  background: 'linear-gradient(135deg, #0F766E, #134E4A)',
-                  color: 'white', border: 'none',
-                  borderRadius: 14, padding: '16px 48px',
-                  fontSize: 16, fontWeight: 800, cursor: 'pointer',
-                  textDecoration: 'none',
-                  boxShadow: '0 6px 24px rgba(15,118,110,0.30)',
-                  letterSpacing: '-0.01em',
-                }}
-              >
-                Join the free community →
-              </a>
-              <p style={{ fontSize: 12, color: isDark ? '#374151' : '#9CA3AF', marginTop: 14 }}>
-                Free · No credit card · Opens in new tab
+              <p style={{ fontSize: 13, color: isDark ? '#4b5563' : '#9ca3af', marginBottom: 24 }}>
+                More details dropping inside the Skool community first.
               </p>
+              {waitlistDone ? (
+                <p style={{ fontSize: 15, fontWeight: 700, color: '#34d399' }}>
+                  You're on the list. Watch the community for updates.
+                </p>
+              ) : (
+                <div style={{ display: 'flex', gap: 8, maxWidth: 400, margin: '0 auto' }}>
+                  <input
+                    type="email"
+                    value={waitlistEmail}
+                    onChange={e => setWaitlistEmail(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleWaitlist()}
+                    placeholder="Your email"
+                    style={{
+                      flex: 1, background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.10)' : 'rgba(99,102,241,0.20)'}`,
+                      borderRadius: 10, color: isDark ? '#f3f4f6' : '#111827',
+                      fontSize: 14, padding: '12px 16px', outline: 'none',
+                    }}
+                  />
+                  <button
+                    onClick={handleWaitlist}
+                    style={{
+                      background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
+                      color: 'white', border: 'none', borderRadius: 10,
+                      padding: '12px 20px', fontSize: 14, fontWeight: 700,
+                      cursor: 'pointer', whiteSpace: 'nowrap',
+                    }}
+                  >
+                    Join waitlist →
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Continue to dashboard */}
