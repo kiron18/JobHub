@@ -476,10 +476,13 @@ function DashboardGate({ children }: { children: React.ReactNode }) {
     let attempts = 0;
     const interval = setInterval(async () => {
       attempts++;
-      await queryClient.invalidateQueries({ queryKey: ['profile'] });
-      const cached = queryClient.getQueryData<any>(['profile']);
-      if (cached?.dashboardAccess || attempts >= 15) {
-        clearInterval(interval);
+      try {
+        const fresh = await queryClient.fetchQuery<any>({ queryKey: ['profile'] });
+        if (fresh?.dashboardAccess || attempts >= 15) {
+          clearInterval(interval);
+        }
+      } catch {
+        if (attempts >= 15) clearInterval(interval);
       }
     }, 2000);
 
