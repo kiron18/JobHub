@@ -56,9 +56,7 @@ export function SkoolGate({ onJoined }: SkoolGateProps) {
           transition={{ duration: 0.5 }}
           style={{
             position: 'fixed', inset: 0, zIndex: 50,
-            backdropFilter: 'blur(18px)',
-            WebkitBackdropFilter: 'blur(18px)',
-            background: 'rgba(6, 11, 20, 0.82)',
+            background: 'linear-gradient(160deg, #060b14 0%, #0a1628 50%, #060b14 100%)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             padding: '24px',
           }}
@@ -70,21 +68,22 @@ export function SkoolGate({ onJoined }: SkoolGateProps) {
             style={{
               maxWidth: 520, width: '100%',
               background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.10)',
+              border: '1px solid rgba(255,255,255,0.08)',
               borderRadius: 24, padding: '40px 36px',
+              boxShadow: '0 24px 80px rgba(0,0,0,0.4)',
             }}
           >
             {gateState === 'prompt' && (
               <>
                 <p style={{
-                  fontSize: 11, fontWeight: 700, letterSpacing: '0.16em',
-                  textTransform: 'uppercase', color: '#4b5563', marginBottom: 16,
+                  fontSize: 11, fontWeight: 700, letterSpacing: '0.18em',
+                  textTransform: 'uppercase', color: '#0F766E', marginBottom: 16,
                 }}>
                   Aussie Grad Careers — Free Community
                 </p>
                 <h2 style={{
                   fontSize: 'clamp(22px, 4vw, 30px)', fontWeight: 900,
-                  color: '#f3f4f6', lineHeight: 1.2, marginBottom: 20,
+                  color: '#f3f4f6', lineHeight: 1.2, marginBottom: 20, letterSpacing: '-0.02em',
                 }}>
                   Your diagnosis is ready, {name}.
                 </h2>
