@@ -85,8 +85,15 @@ const ThemeContext = createContext<ThemeContextValue>({
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [isDark, setIsDark] = useState<boolean>(() => {
+    // v2: default dark to match onboarding. One-time migration for existing users.
+    const migrated = localStorage.getItem('jobhub_theme_v2');
+    if (!migrated) {
+      localStorage.setItem('jobhub_theme_v2', '1');
+      localStorage.setItem('jobhub_dark_mode', 'true');
+      return true;
+    }
     const stored = localStorage.getItem('jobhub_dark_mode');
-    if (stored === null) return false; // default: light
+    if (stored === null) return true; // new users default dark
     return stored === 'true';
   });
 

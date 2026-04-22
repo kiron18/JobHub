@@ -1,4 +1,5 @@
 import { Router, Response } from 'express';
+import axios from 'axios';
 import { prisma } from '../index';
 import { authenticate } from '../middleware/auth';
 import { analyzeRateLimit } from '../middleware/analyzeRateLimit';
@@ -263,6 +264,55 @@ router.post('/:id/save', async (req: any, res: any) => {
   } catch (err: any) {
     console.error('[job-feed/save]', err);
     return res.status(500).json({ error: 'Failed to save job' });
+  }
+});
+
+// POST /api/job-feed/:id/fetch-description — fetch full description from source URL
+router.post('/:id/fetch-description', async (req: any, res: any) => {
+  const userId = req.user.id;
+  const { id } = req.params;
+
+  try {
+    if (!(await requirePremium(userId, res))) return;
+    const item = await prisma.jobFeedItem.findUnique({ where: { id } });
+    if (!item || item.userId !== userId) return res.status(404).json({ error: 'Not found' });
+
+    const response = await axios.get(item.sourceUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-AU,en;q=0.9',
+      },
+      timeout: 12000,
+      maxRedirects: 5,
+    });
+
+    let html = response.data as string;
+
+    // Remove script/style blocks, then strip all tags
+    html = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ');
+    html = html.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ');
+    html = html.replace(/<[^>]+>/g, ' ');
+    html = html
+      .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      .replace(/&nbsp;/g, ' ').replace(/&#x27;/g, "'").replace(/&#39;/g, "'")
+      .replace(/\s{2,}/g, ' ').trim();
+
+    if (html.length < 200) {
+      return res.status(422).json({ error: 'Could not extract description from this page. Please open the listing directly.' });
+    }
+
+    const fullDescription = html.slice(0, 8000);
+
+    await prisma.jobFeedItem.update({
+      where: { id },
+      data: { description: fullDescription },
+    });
+
+    return res.json({ description: fullDescription });
+  } catch (err: any) {
+    console.error('[job-feed/fetch-description]', err.message);
+    return res.status(500).json({ error: 'Could not load the full description — open the listing directly and paste the job description.' });
   }
 });
 

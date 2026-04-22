@@ -3,6 +3,7 @@ import type { Response, NextFunction } from 'express';
 import { prisma } from '../index';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { callClaude } from '../services/llm';
+import { EXEMPT_EMAILS } from './stripe';
 
 const router = Router();
 
@@ -32,13 +33,10 @@ function getCurrentWindow(): { from: Date; to: Date } {
 }
 
 async function requireAdmin(req: AuthRequest, res: Response, next: NextFunction) {
-  const userId = req.user?.id;
-  if (!userId) return res.status(401).json({ error: 'Unauthorised' });
-  const profile = await prisma.candidateProfile.findUnique({
-    where: { userId },
-    select: { dashboardAccess: true },
-  });
-  if (!profile?.dashboardAccess) return res.status(403).json({ error: 'Forbidden' });
+  const email = (req.user?.email ?? '').toLowerCase();
+  if (!email || !EXEMPT_EMAILS.includes(email)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
   next();
 }
 

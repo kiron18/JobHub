@@ -27,7 +27,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
         { to: '/documents', icon: Library, label: 'Documents' },
         { to: '/email-templates', icon: Mail, label: 'Email Templates' },
         { to: '/workspace', icon: FileText, label: 'Profile & Achievements' },
-        ...(profile?.dashboardAccess ? [{ to: '/admin/friday-brief', icon: Radio, label: 'Friday Brief' }] : []),
+        ...(profile?.isAdmin ? [{ to: '/admin/friday-brief', icon: Radio, label: 'Friday Brief' }] : []),
     ];
 
     return (

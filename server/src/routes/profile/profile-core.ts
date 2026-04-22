@@ -36,6 +36,8 @@ router.get('/profile', authenticate, async (req, res) => {
           profile.dashboardAccess = true;
         }
 
+        const isAdmin = EXEMPT_EMAILS.includes(authEmail);
+
         // Compute profile completion score
         let score = 0;
         const missingFields: string[] = [];
@@ -50,6 +52,7 @@ router.get('/profile', authenticate, async (req, res) => {
 
         res.json({
             ...profile,
+            isAdmin,
             completion: {
                 score,
                 isReady: score >= 70,

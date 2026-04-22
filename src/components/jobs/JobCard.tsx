@@ -64,10 +64,17 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
   const [addresseeFailed, setAddresseeFailed] = useState(false);
   const [addresseeOverride, setAddresseeOverride] = useState<string | null>(null);
   const [editingAddressee, setEditingAddressee] = useState(false);
+  const [loadingFullDesc, setLoadingFullDesc] = useState(false);
+  const [fullDescFailed, setFullDescFailed] = useState(false);
+  const [fullDescLoaded, setFullDescLoaded] = useState(false);
 
   const platform = PLATFORM_CONFIG[item.sourcePlatform] ?? PLATFORM_CONFIG.other;
   const hasCriteriaHint = CRITERIA_KEYWORDS.some(k => item.description.toLowerCase().includes(k));
   const addresseeFetched = item.addresseeSource !== null;
+  // Adzuna truncates descriptions — warn and offer to fetch the full version
+  const isTruncated = !fullDescLoaded && (
+    item.description.endsWith('...') || item.description.endsWith('…') || item.description.length < 600
+  );
 
   const handleExpand = async () => {
     const nowExpanded = !expanded;
@@ -118,6 +125,22 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
       toast.error('Failed to save');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleLoadFullDesc = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setLoadingFullDesc(true);
+    setFullDescFailed(false);
+    try {
+      const { data } = await api.post(`/job-feed/${item.id}/fetch-description`);
+      onUpdate({ id: item.id, description: data.description });
+      setFullDescLoaded(true);
+    } catch (err: any) {
+      setFullDescFailed(true);
+      toast.error(err?.response?.data?.error ?? 'Could not load full description');
+    } finally {
+      setLoadingFullDesc(false);
     }
   };
 
@@ -244,6 +267,36 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
                 <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-500/8 border border-amber-500/20">
                   <AlertTriangle size={13} className="text-amber-400 flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-amber-300">This role may require a selection criteria response — check the full listing for details.</p>
+                </div>
+              )}
+
+              {/* Truncation warning */}
+              {isTruncated && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/8 border border-amber-500/20">
+                  <AlertTriangle size={13} className="text-amber-400 flex-shrink-0" />
+                  <p className="text-xs text-amber-300 flex-1">
+                    Description is a preview — cover letter quality may suffer without the full text.
+                  </p>
+                  {!fullDescFailed && (
+                    <button
+                      onClick={handleLoadFullDesc}
+                      disabled={loadingFullDesc}
+                      className="text-[10px] font-black text-amber-300 hover:text-amber-100 border border-amber-500/30 rounded px-2 py-0.5 transition-colors whitespace-nowrap disabled:opacity-50"
+                    >
+                      {loadingFullDesc ? <Loader2 size={10} className="animate-spin inline" /> : 'Load full →'}
+                    </button>
+                  )}
+                  {fullDescFailed && (
+                    <a
+                      href={item.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={e => e.stopPropagation()}
+                      className="text-[10px] font-black text-amber-300 hover:text-amber-100 border border-amber-500/30 rounded px-2 py-0.5 transition-colors whitespace-nowrap"
+                    >
+                      Open listing →
+                    </a>
+                  )}
                 </div>
               )}
 
