@@ -31,6 +31,7 @@ export const supabase = createClient(
       storage: localStorage,
       persistSession: true,
       detectSessionInUrl: true,
+      flowType: 'implicit',
     },
   }
 );
