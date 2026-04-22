@@ -2,6 +2,21 @@ import { Router } from 'express';
 import { prisma } from '../index';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { callClaude } from '../services/llm';
+import { EXEMPT_EMAILS } from './stripe';
+
+async function requirePaid(req: AuthRequest, res: any): Promise<boolean> {
+  const email = (req.user?.email ?? '').toLowerCase();
+  if (EXEMPT_EMAILS.includes(email)) return true;
+  const profile = await prisma.candidateProfile.findUnique({
+    where: { userId: req.user!.id },
+    select: { dashboardAccess: true },
+  });
+  if (!profile?.dashboardAccess) {
+    res.status(403).json({ error: 'LinkedIn features require an active subscription.' });
+    return false;
+  }
+  return true;
+}
 import multer from 'multer';
 import { fal } from '@fal-ai/client';
 import fs from 'fs';
@@ -48,6 +63,7 @@ export function checkHeadshotRateLimit(
 }
 
 router.post('/generate', authenticate, async (req: AuthRequest, res) => {
+  if (!(await requirePaid(req, res))) return;
   const userId = req.user!.id;
   const { targetRole } = req.body as { targetRole?: string };
 
@@ -110,6 +126,7 @@ Return ONLY valid JSON matching the schema in the rules above.`;
 });
 
 router.post('/outreach', authenticate, async (req: AuthRequest, res) => {
+  if (!(await requirePaid(req, res))) return;
   const userId = req.user!.id;
   const { targetFirstName, targetCompany, targetTopicOrPost, specificQuestion } =
     req.body as {
@@ -159,6 +176,7 @@ Return ONLY valid JSON matching the schema in the rules above.`;
 });
 
 router.post('/headshot', authenticate, upload.single('image'), async (req: AuthRequest, res) => {
+  if (!(await requirePaid(req, res))) return;
   const userId = req.user!.id;
   if (!req.file) return res.status(400).json({ error: 'No image provided' });
 
