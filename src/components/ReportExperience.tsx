@@ -266,18 +266,111 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
           </p>
         </motion.div>
 
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        <style>{`
+          @keyframes spin { to { transform: rotate(360deg); } }
+          @keyframes progressShimmer {
+            0% { background-position: -200% center; }
+            100% { background-position: 200% center; }
+          }
+        `}</style>
 
         {/* Loading / processing state */}
         {(isLoading || status === 'PROCESSING') && sections.length === 0 && processingMs < 60000 && (
-          <div style={{ textAlign: 'center', padding: '60px 0' }}>
+          <div style={{ padding: '20px 0 48px' }}>
+            {/* Progress block */}
             <div style={{
-              width: 48, height: 48, borderRadius: '50%',
-              border: `3px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
-              borderTopColor: '#FCD34D', margin: '0 auto 20px',
-              animation: 'spin 1s linear infinite',
-            }} />
-            <p style={{ color: theme.sub, fontSize: 14 }}>Your diagnosis is being written…</p>
+              background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.7)',
+              border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'}`,
+              borderRadius: 20, padding: '36px 32px 32px',
+              marginBottom: 20,
+            }}>
+              {/* Spinner + label row */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 28 }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+                  border: `3px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                  borderTopColor: '#0F766E',
+                  animation: 'spin 0.9s linear infinite',
+                }} />
+                <div>
+                  <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: isDark ? '#f3f4f6' : '#111827', lineHeight: 1.3 }}>
+                    Writing your diagnosis…
+                  </p>
+                  <p style={{ margin: '3px 0 0', fontSize: 13, color: theme.sub }}>
+                    {processingMs < 8000
+                      ? 'Reading your intake answers'
+                      : processingMs < 20000
+                        ? 'Analysing your resume and target role'
+                        : processingMs < 36000
+                          ? 'Identifying the gaps in your approach'
+                          : processingMs < 50000
+                            ? 'Writing your personalised diagnosis'
+                            : 'Finalising your report'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Progress bar */}
+              <div style={{
+                width: '100%', height: 6, borderRadius: 99,
+                background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)',
+                overflow: 'hidden', marginBottom: 12,
+              }}>
+                <div style={{
+                  height: '100%', borderRadius: 99,
+                  width: `${Math.min(88, 5 + (processingMs / 60000) * 83)}%`,
+                  background: 'linear-gradient(90deg, #0F766E 0%, #2dd4bf 50%, #0F766E 100%)',
+                  backgroundSize: '200% auto',
+                  animation: 'progressShimmer 2s linear infinite',
+                  transition: 'width 3.5s ease-out',
+                }} />
+              </div>
+              <p style={{ fontSize: 12, color: theme.sub, margin: 0 }}>
+                Usually takes 30–60 seconds — hang tight.
+              </p>
+            </div>
+
+            {/* Skool CTA */}
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(15,118,110,0.12) 0%, rgba(19,78,74,0.08) 100%)',
+              border: '1px solid rgba(15,118,110,0.25)',
+              borderRadius: 20, padding: '28px 32px',
+              display: 'flex', flexDirection: 'column', gap: 12,
+            }}>
+              <p style={{ margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#0F766E' }}>
+                While you wait
+              </p>
+              <p style={{ margin: 0, fontSize: 17, fontWeight: 800, color: isDark ? '#f3f4f6' : '#111827', lineHeight: 1.3, letterSpacing: '-0.01em' }}>
+                Join the free community while your report generates.
+              </p>
+              <p style={{ margin: 0, fontSize: 14, color: theme.sub, lineHeight: 1.7 }}>
+                The{' '}
+                <a
+                  href="https://www.skool.com/aussiegradcareers"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: '#2dd4bf', textDecoration: 'underline', textUnderlineOffset: 3 }}
+                >
+                  Aussie Grad Careers community
+                </a>
+                {' '}has the frameworks, templates, and live coaching calls that map directly to what's in your report — so you can take action the moment it's ready.
+              </p>
+              <a
+                href="https://www.skool.com/aussiegradcareers"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-block', alignSelf: 'flex-start',
+                  background: 'linear-gradient(135deg, #0F766E, #134E4A)',
+                  color: 'white', borderRadius: 12, padding: '11px 24px',
+                  fontSize: 14, fontWeight: 800, textDecoration: 'none',
+                  boxShadow: '0 4px 16px rgba(15,118,110,0.28)',
+                  marginTop: 4,
+                }}
+              >
+                Join free on Skool →
+              </a>
+            </div>
           </div>
         )}
 
