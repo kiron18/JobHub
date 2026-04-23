@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Upload, Loader2, Save, RefreshCw, Camera } from 'lucide-react';
+import { Upload, Loader2, Save, RefreshCw, Camera, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../../lib/api';
 import { useAppTheme } from '../../contexts/ThemeContext';
@@ -57,6 +57,18 @@ export const HeadshotGenerator: React.FC<Props> = ({ initialHeadshotUrl, onSaved
     } finally {
       setGenerating(false);
     }
+  }
+
+  async function handleDownload() {
+    if (!result) return;
+    const res = await fetch(result);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'headshot.png';
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   async function handleSave() {
@@ -156,22 +168,36 @@ export const HeadshotGenerator: React.FC<Props> = ({ initialHeadshotUrl, onSaved
               }}
             >
               {generating ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={13} />}
-              {generating ? 'Generating\u2026' : result ? 'Try Again' : 'Generate'}
+              {generating ? 'Generating...' : result ? 'Try Again' : 'Generate'}
             </button>
             {result && (
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '9px 16px', borderRadius: 8, border: `1px solid ${T.cardBorder}`,
-                  background: 'transparent', color: '#34d399', fontWeight: 700, fontSize: 13,
-                  cursor: saving ? 'default' : 'pointer',
-                }}
-              >
-                <Save size={13} />
-                {saving ? 'Saving\u2026' : 'Save to Profile'}
-              </button>
+              <>
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '9px 16px', borderRadius: 8, border: `1px solid ${T.cardBorder}`,
+                    background: 'transparent', color: '#34d399', fontWeight: 700, fontSize: 13,
+                    cursor: saving ? 'default' : 'pointer',
+                  }}
+                >
+                  <Save size={13} />
+                  {saving ? 'Saving...' : 'Save to Profile'}
+                </button>
+                <button
+                  onClick={handleDownload}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '9px 16px', borderRadius: 8, border: `1px solid ${T.cardBorder}`,
+                    background: 'transparent', color: T.textMuted, fontWeight: 700, fontSize: 13,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <Download size={13} />
+                  Download
+                </button>
+              </>
             )}
           </div>
           <p style={{ fontSize: 11, color: T.textFaint, marginTop: 10, lineHeight: 1.5 }}>
