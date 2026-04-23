@@ -33,7 +33,8 @@ async function requirePremium(userId: string, res: Response): Promise<boolean> {
 // GET /api/job-feed/feed?offset=0
 router.get('/feed', async (req: any, res: any) => {
   const userId = req.user.id;
-  const offset = parseInt((req.query.offset as string) || '0', 10);
+  let offset = parseInt((req.query.offset as string) || '0', 10);
+  if (isNaN(offset) || offset < 0) offset = 0;
   const today = todayAEST();
 
   try {
@@ -175,7 +176,7 @@ router.post('/:id/score', analyzeRateLimit, async (req: any, res: any) => {
 });
 
 // POST /api/job-feed/:id/find-addressee
-router.post('/:id/find-addressee', async (req: any, res: any) => {
+router.post('/:id/find-addressee', analyzeRateLimit, async (req: any, res: any) => {
   const userId = req.user.id;
   const { id } = req.params;
 
@@ -239,6 +240,7 @@ router.post('/:id/save', async (req: any, res: any) => {
     if (!(await requirePremium(userId, res))) return;
     const item = await prisma.jobFeedItem.findUnique({ where: { id } });
     if (!item || item.userId !== userId) return res.status(404).json({ error: 'Not found' });
+    if (item.isSaved) return res.status(409).json({ error: 'Already saved' });
 
     const profile = await prisma.candidateProfile.findUnique({
       where: { userId },
@@ -267,8 +269,21 @@ router.post('/:id/save', async (req: any, res: any) => {
   }
 });
 
+// Job board hostname allowlist for fetch-description SSRF protection
+const JOB_BOARD_HOSTS = [
+  /^(www\.)?seek\.com\.au$/,
+  /^(www\.)?linkedin\.com$/,
+  /^(www\.)?indeed\.com\.au$/,
+  /^(www\.)?jora\.com$/,
+  /^(www\.)?apsjobs\.gov\.au$/,
+  /^[a-z0-9-]+\.lever\.co$/,
+  /^[a-z0-9-]+\.greenhouse\.io$/,
+  /^[a-z0-9-]+\.workday\.com$/,
+  /^[a-z0-9-]+\.smartrecruiters\.com$/,
+];
+
 // POST /api/job-feed/:id/fetch-description — fetch full description from source URL
-router.post('/:id/fetch-description', async (req: any, res: any) => {
+router.post('/:id/fetch-description', analyzeRateLimit, async (req: any, res: any) => {
   const userId = req.user.id;
   const { id } = req.params;
 
@@ -276,6 +291,15 @@ router.post('/:id/fetch-description', async (req: any, res: any) => {
     if (!(await requirePremium(userId, res))) return;
     const item = await prisma.jobFeedItem.findUnique({ where: { id } });
     if (!item || item.userId !== userId) return res.status(404).json({ error: 'Not found' });
+
+    // Validate sourceUrl hostname to prevent SSRF
+    let parsedSource: URL;
+    try { parsedSource = new URL(item.sourceUrl); } catch {
+      return res.status(422).json({ error: 'Invalid source URL for this listing.' });
+    }
+    if (!JOB_BOARD_HOSTS.some(p => p.test(parsedSource.hostname))) {
+      return res.status(422).json({ error: 'Cannot fetch description from this source.' });
+    }
 
     const response = await axios.get(item.sourceUrl, {
       headers: {

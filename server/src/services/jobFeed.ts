@@ -157,10 +157,11 @@ export async function buildDailyFeed(userId: string): Promise<void> {
   const jobs = await fetchAdzunaJobs(profile.targetRole, profile.targetCity);
   const today = todayAEST();
 
-  // Idempotent: clear today's existing rows first
-  await prisma.jobFeedItem.deleteMany({ where: { userId, feedDate: today } });
-
+  // Only rebuild if we have new jobs — avoids wiping existing feed on Adzuna transient errors
   if (jobs.length === 0) return;
+
+  // Clear today's existing rows then insert fresh batch
+  await prisma.jobFeedItem.deleteMany({ where: { userId, feedDate: today } });
 
   await prisma.jobFeedItem.createMany({
     data: jobs.map(j => ({

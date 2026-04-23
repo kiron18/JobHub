@@ -28,7 +28,7 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
     return next();
   }
 
-  if (process.env.DEV_BYPASS_AUTH === 'true') {
+  if (process.env.NODE_ENV !== 'production' && process.env.DEV_BYPASS_AUTH === 'true') {
     req.user = { id: DEV_BYPASS_USER_ID, email: DEV_BYPASS_EMAIL };
     return next();
   }
@@ -47,7 +47,7 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
     return res.status(401).json({ error: 'No bearer token provided' });
   }
 
-  log(`Authenticating token: ${token.substring(0, 10)}...`);
+  log(`Authenticating token...`);
   try {
     const { data: { user }, error } = await supabase.auth.getUser(token);
     log(`Supabase auth check finished. Error: ${error?.message || 'None'}, User: ${user?.id || 'None'}`);

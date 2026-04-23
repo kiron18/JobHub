@@ -9,10 +9,18 @@ import { autoExtractAchievements } from '../services/autoExtract';
 
 const router = Router();
 
-// multer: memory storage, 5MB per file limit
+// multer: memory storage, 5MB per file limit, PDF/text only
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['application/pdf', 'text/plain'];
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDF and plain-text files are accepted'));
+    }
+  },
 });
 
 // ── POST /api/onboarding/submit ───────────────────────────────────────────────
@@ -260,6 +268,10 @@ router.post(
     }
 
     try {
+      const report = await prisma.diagnosticReport.findUnique({ where: { id: reportId } });
+      if (!report || report.userId !== req.user!.id) {
+        return res.status(404).json({ error: 'Report not found' });
+      }
       await prisma.diagnosticReportFeedback.create({
         data: { reportId, sectionKey, relevanceScore },
       });

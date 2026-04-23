@@ -6,7 +6,7 @@ dotenv.config();
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
-console.log(`LLM service initialized with key length: ${OPENROUTER_API_KEY?.length}, prefix: ${OPENROUTER_API_KEY?.substring(0, 10)}...`);
+console.log(`LLM service initialized. Key present: ${!!OPENROUTER_API_KEY}`);
 
 async function retryWithBackoff(fn: () => Promise<any>, retries: number = 2, delay: number = 2000): Promise<any> {
     try {
@@ -55,8 +55,8 @@ export async function callLLM(prompt: string, jsonMode: boolean = true) {
             {
                 headers: {
                     'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-                    'HTTP-Referer': 'http://localhost:5174',
-                    'X-Title': 'JobDash',
+                    'HTTP-Referer': process.env.OPENROUTER_REFERER || 'https://aussiegradcareers.com.au',
+                    'X-Title': process.env.OPENROUTER_APP_TITLE || 'JobHub',
                     'Content-Type': 'application/json',
                 },
                 timeout: 120000,

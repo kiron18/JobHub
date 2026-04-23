@@ -710,7 +710,9 @@ export const ApplicationWorkspace: React.FC = () => {
                     </button>
                     <button
                         onClick={handleDownload}
-                        className="flex items-center gap-2 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-emerald-600/20"
+                        disabled={state.isGenerating || !state.documents[state.activeTab as keyof typeof state.documents]}
+                        aria-label="Export document as Word"
+                        className="flex items-center gap-2 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-emerald-600/20"
                     >
                         <Download size={14} />
                         Export .docx

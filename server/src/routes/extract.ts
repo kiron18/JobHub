@@ -76,8 +76,10 @@ router.post('/resume', authenticate, async (req, res) => {
         console.error('Extraction Workflow Error:', error);
         res.status(500).json({
             error: 'Failed to extract data from resume',
-            details: error.message,
-            stack: error.stack
+            ...(process.env.NODE_ENV === 'development' && {
+                details: error.message,
+                stack: error.stack,
+            }),
         });
     }
 });

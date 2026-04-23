@@ -57,6 +57,8 @@ export const JobFeedPage: React.FC = () => {
 
   const handleRefresh = async () => {
     setRefreshing(true);
+    setJobs([]);
+    setOffset(0);
     try {
       await api.post('/job-feed/refresh');
       queryClient.invalidateQueries({ queryKey: ['job-feed'] });

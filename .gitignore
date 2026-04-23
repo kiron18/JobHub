@@ -9,6 +9,14 @@ server/.env.production
 # Large/generated files
 Resumes/
 
+# Marketing automation scripts (contain local keys, not part of web app)
+instagram_analysis.py
+assemblyai.py
+apify_reels.py
+apify_posts.py
+transcription_checkpoint.json
+instagram_analysis.xlsx
+
 # Git worktrees
 .worktrees/
 screenshots/

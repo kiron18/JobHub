@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../index';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { callClaude } from '../services/llm';
+import { parseLLMJson } from '../utils/parseLLMResponse';
 import { EXEMPT_EMAILS } from './stripe';
 
 async function requirePaid(req: AuthRequest, res: any): Promise<boolean> {
@@ -57,8 +58,11 @@ export function checkHeadshotRateLimit(
   lastDate: Date | null,
   limit: number
 ): { allowed: boolean; usedToday: number } {
-  const today = new Date().toDateString();
-  const usedToday = lastDate?.toDateString() === today ? storedCount : 0;
+  const today = new Date().toLocaleDateString('en-AU', { timeZone: 'Australia/Sydney' });
+  const lastDateStr = lastDate
+    ? new Date(lastDate).toLocaleDateString('en-AU', { timeZone: 'Australia/Sydney' })
+    : null;
+  const usedToday = lastDateStr === today ? storedCount : 0;
   return { allowed: usedToday < limit, usedToday };
 }
 
@@ -118,7 +122,7 @@ ${targetRole ? `## Target Role\nThe candidate is targeting: ${targetRole}` : ''}
 Return ONLY valid JSON matching the schema in the rules above.`;
 
     const { content } = await callClaude(prompt, true);
-    return res.json(JSON.parse(content));
+    return res.json(parseLLMJson(content));
   } catch (err: any) {
     console.error('[LinkedIn /generate]', err.message);
     return res.status(500).json({ error: 'Generation failed' });
@@ -168,7 +172,7 @@ ${specificQuestion ? `Specific question candidate wants to ask: ${specificQuesti
 Return ONLY valid JSON matching the schema in the rules above.`;
 
     const { content } = await callClaude(prompt, true);
-    return res.json(JSON.parse(content));
+    return res.json(parseLLMJson(content));
   } catch (err: any) {
     console.error('[LinkedIn /outreach]', err.message);
     return res.status(500).json({ error: 'Generation failed' });
@@ -239,6 +243,14 @@ router.post('/headshot/save', authenticate, async (req: AuthRequest, res) => {
   const userId = req.user!.id;
   const { imageUrl } = req.body as { imageUrl: string };
   if (!imageUrl) return res.status(400).json({ error: 'imageUrl required' });
+  // Validate it's a fal.ai CDN URL to prevent arbitrary URL storage
+  let parsedImageUrl: URL;
+  try { parsedImageUrl = new URL(imageUrl); } catch {
+    return res.status(400).json({ error: 'Invalid imageUrl format' });
+  }
+  if (!parsedImageUrl.hostname.endsWith('.fal.run') && !parsedImageUrl.hostname.endsWith('.fal.ai')) {
+    return res.status(400).json({ error: 'imageUrl must be a fal.ai URL' });
+  }
   try {
     await prisma.candidateProfile.update({ where: { userId }, data: { headshotUrl: imageUrl } });
     return res.json({ ok: true });

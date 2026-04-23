@@ -180,6 +180,9 @@ model JobApplication {
   overallGrade        String?
   documents           Document[]
   candidateProfile    CandidateProfile  @relation(fields: [candidateProfileId], references: [id])
+
+  @@index([userId])
+  @@index([candidateProfileId])
 }
 
 model JobFeedItem {
@@ -222,6 +225,9 @@ model Document {
   updatedAt        DateTime           @updatedAt
   jobApplication   JobApplication?    @relation(fields: [jobApplicationId], references: [id])
   feedback         DocumentFeedback[]
+
+  @@index([userId])
+  @@index([jobApplicationId])
 }
 
 model DocumentFeedback {

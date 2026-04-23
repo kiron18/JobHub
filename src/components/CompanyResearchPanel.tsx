@@ -67,7 +67,7 @@ export function CompanyResearchPanel({ company, role, research, onResearchUpdate
             setSalutationEdit(research.salutation);
             setHighlightEdit(research.highlights.join('\n'));
         }
-    }, [company]);
+    }, [company, role]);
 
     function saveSalutation() {
         if (!research) return;

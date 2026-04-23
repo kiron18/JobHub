@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { prisma } from '../index';
 import { authenticate } from '../middleware/auth';
-import { callLLM } from '../services/llm';
+import { callLLMWithRetry } from '../utils/callLLMWithRetry';
+import { todayAEST } from '../services/jobFeed';
 import { DOCUMENT_GENERATION_PROMPT_WITH_BLUEPRINT, DOCUMENT_GENERATION_PROMPT, buildSearchContextBlock } from '../services/prompts';
 import { generateBlueprint } from '../services/strategy';
 import { setCachedBlueprint } from '../services/blueprint-cache';
@@ -59,9 +60,8 @@ router.post('/:type', authenticate, async (req, res) => {
     }
 
     try {
-        // Daily generation limit — protects Claude Stage 1 costs
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
+        // Daily generation limit — protects Claude Stage 1 costs (AEST midnight)
+        const todayStart = todayAEST();
         const todayCount = await prisma.document.count({
             where: {
                 userId,
@@ -205,7 +205,7 @@ router.post('/:type', authenticate, async (req, res) => {
             );
 
         console.log(`[Generation] Stage 2: calling Llama for ${type}...`);
-        const stage2Raw = await callLLM(prompt, false);
+        const stage2Raw = await callLLMWithRetry(prompt, false);
         console.log(`[Generation] Stage 2 complete. ${stage2Raw.length} characters.`);
 
         // Approximate Llama token counts from character count (rough: 4 chars/token)

@@ -72,8 +72,11 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
   const hasCriteriaHint = CRITERIA_KEYWORDS.some(k => item.description.toLowerCase().includes(k));
   const addresseeFetched = item.addresseeSource !== null;
   // Adzuna truncates descriptions — warn and offer to fetch the full version
+  // Only flag as truncated when it ends with ellipsis (explicit truncation signal) or
+  // is from a platform known to truncate (sourcePlatform 'other' = Adzuna) with a short description
   const isTruncated = !fullDescLoaded && (
-    item.description.endsWith('...') || item.description.endsWith('…') || item.description.length < 600
+    item.description.endsWith('...') || item.description.endsWith('…') ||
+    (item.sourcePlatform === 'other' && item.description.length < 600)
   );
 
   const handleExpand = async () => {
@@ -147,6 +150,13 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
   const handleGenerateDocs = (e: React.MouseEvent) => {
     e.stopPropagation();
     localStorage.setItem('jobhub_current_jd', item.description);
+    // Persist job context so workspace can pre-fill company research and addressee
+    localStorage.setItem('jobhub_current_job_context', JSON.stringify({
+      company: item.company,
+      title: item.title,
+      suggestedAddressee: addresseeOverride ?? item.suggestedAddressee ?? null,
+      matchScore: item.matchScore ?? null,
+    }));
     navigate('/');
     toast.success('Job description loaded — click Analyse to start');
   };
@@ -359,9 +369,6 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
                   )
                 )}
 
-                {!addresseeLoading && !addresseeFetched && !addresseeFailed && (
-                  <p className="text-xs text-slate-500 italic">Searching…</p>
-                )}
                 {addresseeFailed && (
                   <p className="text-xs text-slate-500">Could not find contact information</p>
                 )}

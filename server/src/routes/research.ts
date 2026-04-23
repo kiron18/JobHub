@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { searchSerper, scrapeUrl, snippetsToText } from '../services/serper';
-import { callLLM } from '../services/llm';
+import { callLLMWithRetry } from '../utils/callLLMWithRetry';
+import { parseLLMJson } from '../utils/parseLLMResponse';
 
 const router = Router();
 
@@ -18,6 +19,9 @@ router.post('/company', authenticate, async (req, res) => {
 
     if (!company || company.length < 2) {
         return res.status(400).json({ error: 'company is required' });
+    }
+    if (company.length > 200 || (role && role.length > 300)) {
+        return res.status(400).json({ error: 'company or role value is too long' });
     }
 
     try {
@@ -73,12 +77,11 @@ Extract the following JSON. If a field cannot be determined from the evidence, u
 Return ONLY valid JSON. No preamble.
 `;
 
-        const raw = await callLLM(extractionPrompt, true);
+        const raw = await callLLMWithRetry(extractionPrompt, true);
 
         let parsed: any = {};
         try {
-            const clean = raw.replace(/```json|```/g, '').trim();
-            parsed = JSON.parse(clean);
+            parsed = parseLLMJson(raw);
         } catch {
             console.warn('[research] LLM returned non-JSON:', raw.slice(0, 200));
         }
@@ -93,7 +96,7 @@ Return ONLY valid JSON. No preamble.
 
     } catch (err: any) {
         console.error('[research] Error:', err.message);
-        return res.status(500).json({ error: 'Research failed', details: err.message });
+        return res.status(500).json({ error: 'Research failed' });
     }
 });
 
@@ -146,10 +149,10 @@ Respond with JSON:
 Return ONLY valid JSON.
 `;
 
-        const raw = await callLLM(prompt, true);
+        const raw = await callLLMWithRetry(prompt, true);
         let parsed: any = { framework: 'general', context: '' };
         try {
-            parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
+            parsed = parseLLMJson(raw);
         } catch {
             console.warn('[research] framework LLM non-JSON:', raw.slice(0, 200));
         }
@@ -177,9 +180,31 @@ router.post('/job-url', authenticate, async (req, res) => {
         return res.status(400).json({ error: 'A valid URL is required.' });
     }
 
-    // Basic allowlist — only permit known job board domains to prevent abuse
-    const allowedDomains = ['seek.com.au', 'linkedin.com', 'indeed.com', 'jora.com', 'apsjobs.gov.au', 'careers.', 'jobs.', 'ats.', 'lever.co', 'greenhouse.io', 'workday.com', 'smartrecruiters.com'];
-    const isAllowed = allowedDomains.some(d => url.includes(d));
+    // Parse hostname to prevent SSRF via substring bypass (e.g. evil.com/seek.com.au)
+    let parsedUrl: URL;
+    try {
+        parsedUrl = new URL(url);
+    } catch {
+        return res.status(400).json({ error: 'Invalid URL format.' });
+    }
+    if (!['https:', 'http:'].includes(parsedUrl.protocol)) {
+        return res.status(400).json({ error: 'URL must use http or https.' });
+    }
+    const allowedHostPatterns = [
+        /^(www\.)?seek\.com\.au$/,
+        /^(www\.)?linkedin\.com$/,
+        /^(www\.)?indeed\.com$/,
+        /^(www\.)?jora\.com$/,
+        /^(www\.)?apsjobs\.gov\.au$/,
+        /^[a-z0-9-]+\.lever\.co$/,
+        /^[a-z0-9-]+\.greenhouse\.io$/,
+        /^[a-z0-9-]+\.workday\.com$/,
+        /^[a-z0-9-]+\.smartrecruiters\.com$/,
+        /^careers\.[a-z0-9.-]+$/,
+        /^jobs\.[a-z0-9.-]+$/,
+        /^ats\.[a-z0-9.-]+$/,
+    ];
+    const isAllowed = allowedHostPatterns.some(p => p.test(parsedUrl.hostname));
     if (!isAllowed) {
         return res.status(400).json({ error: 'URL must be from a job board or career site.' });
     }
@@ -208,10 +233,10 @@ Return JSON:
 
 Return ONLY valid JSON.`;
 
-        const raw = await callLLM(prompt, true);
+        const raw = await callLLMWithRetry(prompt, true);
         let parsed: any = { jobDescription: rawText, title: null, company: null };
         try {
-            parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
+            parsed = parseLLMJson(raw);
         } catch {
             // Fall back to raw text if LLM fails
             parsed.jobDescription = rawText.slice(0, 4000);
@@ -273,10 +298,10 @@ Return JSON:
 If no reliable salary data found, return { "min": null, "max": null, "formatted": "No salary data found" }.
 Return ONLY valid JSON.`;
 
-        const raw = await callLLM(prompt, true);
+        const raw = await callLLMWithRetry(prompt, true);
         let parsed: any = { min: null, max: null, formatted: 'No salary data found' };
         try {
-            parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
+            parsed = parseLLMJson(raw);
         } catch {
             console.warn('[research] salary LLM non-JSON:', raw.slice(0, 100));
         }

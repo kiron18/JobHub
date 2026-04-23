@@ -5,7 +5,18 @@ import { authenticate } from '../middleware/auth';
 import { extractTextFromPDF } from '../services/pdf';
 
 const router = Router();
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['application/pdf', 'text/plain'];
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDF and plain-text files are accepted'));
+    }
+  },
+});
 
 // --- Document Routes ---
 router.get('/documents', authenticate, async (req, res) => {
