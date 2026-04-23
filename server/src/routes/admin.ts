@@ -3,6 +3,7 @@ import type { Response, NextFunction } from 'express';
 import { prisma } from '../index';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { callClaude } from '../services/llm';
+import { sendFridayBriefEmail } from '../services/email';
 import { EXEMPT_EMAILS } from './stripe';
 
 const router = Router();
@@ -152,6 +153,23 @@ router.post('/friday-brief/generate', authenticate, requireAdmin, async (_req, r
   } catch (err) {
     console.error('[admin/friday-brief POST] error:', err);
     return res.status(500).json({ error: 'Failed to generate brief' });
+  }
+});
+
+// POST /api/admin/friday-brief/email — send generated brief to admin email via Resend
+router.post('/friday-brief/email', authenticate, requireAdmin, async (_req, res) => {
+  const { from, to } = getCurrentWindow();
+  const weekLabel = from.toISOString().split('T')[0];
+  try {
+    const cached = await prisma.fridayBrief.findUnique({ where: { windowStart: from } });
+    if (!cached?.script) {
+      return res.status(400).json({ error: 'No brief generated for this week yet. Generate it first.' });
+    }
+    await sendFridayBriefEmail(cached.script, cached.reportCount, weekLabel);
+    return res.json({ ok: true, sentTo: process.env.ADMIN_EMAIL ?? 'kiron@aussiegradcareers.com.au', weekLabel });
+  } catch (err: any) {
+    console.error('[admin/friday-brief/email] error:', err);
+    return res.status(500).json({ error: 'Failed to send email' });
   }
 });
 

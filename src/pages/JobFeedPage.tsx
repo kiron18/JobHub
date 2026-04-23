@@ -146,20 +146,27 @@ export const JobFeedPage: React.FC = () => {
         <div className="glass-card p-12 flex flex-col items-center gap-4 text-center">
           <Briefcase size={36} className="text-slate-700" />
           <div>
-            <p className="text-base font-bold text-slate-400">No jobs found today</p>
+            <p className="text-base font-bold text-slate-400">
+              {refreshing ? 'Building your feed…' : 'No listings found today'}
+            </p>
             <p className="text-sm text-slate-600 mt-1">
-              No listings for {profile?.targetRole} in {profile?.targetCity} today.
-              Try broadening your target role in your profile, or search again.
+              {refreshing
+                ? `Searching for ${profile?.targetRole} roles in ${profile?.targetCity}. This takes up to 30 seconds.`
+                : `We searched for ${profile?.targetRole} roles in ${profile?.targetCity} but found nothing today. Try broadening your target role in your profile, or check back tomorrow — new listings appear daily.`
+              }
             </p>
           </div>
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold border border-slate-700 text-slate-400 hover:border-slate-600 hover:text-slate-200 transition-all disabled:opacity-40"
-          >
-            {refreshing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-            {refreshing ? 'Searching…' : 'Search again'}
-          </button>
+          {!refreshing && (
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold border border-slate-700 text-slate-400 hover:border-slate-600 hover:text-slate-200 transition-all disabled:opacity-40"
+            >
+              <RefreshCw size={12} />
+              Search again
+            </button>
+          )}
+          {refreshing && <Loader2 size={20} className="animate-spin text-slate-600" />}
         </div>
       )}
 

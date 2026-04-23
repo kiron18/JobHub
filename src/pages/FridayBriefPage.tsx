@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../lib/api';
+import { toast } from 'sonner';
 
 interface BriefData {
   window: { from: string; to: string };
@@ -30,6 +31,19 @@ export function FridayBriefPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['friday-brief'] });
+    },
+  });
+
+  const emailMutation = useMutation({
+    mutationFn: async () => {
+      const { data } = await api.post('/admin/friday-brief/email', {});
+      return data;
+    },
+    onSuccess: (res) => {
+      toast.success(`Brief sent to ${res.sentTo}`);
+    },
+    onError: () => {
+      toast.error('Failed to send email — check RESEND_API_KEY in Railway.');
     },
   });
 
@@ -86,7 +100,7 @@ export function FridayBriefPage() {
           {/* Script or generate button */}
           {data.script ? (
             <>
-              <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+              <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
                 <button
                   onClick={handleCopy}
                   style={{
@@ -96,6 +110,18 @@ export function FridayBriefPage() {
                   }}
                 >
                   {copied ? 'Copied!' : 'Copy script'}
+                </button>
+                <button
+                  onClick={() => emailMutation.mutate()}
+                  disabled={emailMutation.isPending}
+                  style={{
+                    background: emailMutation.isPending ? 'rgba(15,118,110,0.3)' : 'rgba(15,118,110,0.15)',
+                    border: '1px solid rgba(15,118,110,0.4)',
+                    color: '#34d399', borderRadius: 10, padding: '8px 16px',
+                    fontSize: 13, fontWeight: 600, cursor: emailMutation.isPending ? 'default' : 'pointer',
+                  }}
+                >
+                  {emailMutation.isPending ? 'Sending...' : '✉ Email to kiron@aussiegradcareers.com.au'}
                 </button>
                 <button
                   onClick={() => generateMutation.mutate()}

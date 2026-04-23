@@ -163,7 +163,7 @@ export function SkoolGate({ onJoined }: SkoolGateProps) {
                   }}
                 />
                 <p style={{ fontSize: 12, color: '#4b5563', marginBottom: 20 }}>
-                  Leave blank if it's the same as this account.
+                  Enter the email you used to join Skool.
                 </p>
                 <button
                   onClick={handleSubmit}

@@ -80,7 +80,7 @@ If the candidate has a name that is difficult to pronounce in English, they may 
 ## SECTION 3 — PROFESSIONAL SUMMARY
 
 ### 3.1 Structure
-- **Length:** 3–4 sentences, 60–90 words.
+- **Length:** 3–4 sentences, 60–80 words. Hard maximum: 80 words. Count before outputting and trim if over.
 - **Line 1:** Years of experience + core professional identity + industry/function.
 - **Line 2:** One or two signature achievements with a metric if possible.
 - **Line 3:** Value proposition — what the candidate brings to an employer in this specific role.

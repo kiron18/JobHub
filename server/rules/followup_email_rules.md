@@ -1,45 +1,40 @@
-# Post-Interview Follow-up Email Rules
+# Follow-Up After Application — Email Rules
 
 ## Purpose
-Generate a professional post-interview thank-you email for Australian job applications.
-The output is a ready-to-send email, not a draft needing heavy editing.
+Generate a brief, professional follow-up email for an Australian job application.
+This is sent 7–14 days after submitting an application, not after an interview.
+Output must be ready to send with minimal editing — only bracketed placeholders need filling.
 
 ## Australian Context
-Australian workplace culture is direct and values authenticity over formality.
-- Avoid US-style effusive gratitude ("I am SO excited about this opportunity!")
-- Tone: warm, confident, brief — not sycophantic
-- First name is appropriate unless the interview was very formal (C-suite, public sector)
-- Government/university applications: slightly more formal — use title + surname for first contact
+- Direct, warm, and brief. Australians dislike lengthy or overly formal emails.
+- First name is appropriate for most roles.
+- Government/senior roles: use "Dear [Title] [Surname]" for first contact.
 
-## Email Structure
-1. **Subject line** — specific, not generic. Include role title and your name.
-   Example: "Thank you — [Role Title] interview — [Candidate First Name]"
+## Output Format — STRICT
+Output exactly this structure. No more, no less.
 
-2. **Opening** — Thank them by name. Reference the specific date and role.
-   One sentence. Do not start with "I" (weak opener).
+```
+Subject: Following Up — [Job Title] Application
 
-3. **Body paragraph** — 2-3 sentences. One specific thing discussed that resonated.
-   Do NOT list everything. Pick the most memorable exchange or insight.
-   This is what distinguishes you from candidates who send generic notes.
+Hi [Hiring Manager Name],
 
-4. **Brief reinforcement** — One sentence connecting your background to a specific need raised.
-   Should feel like a natural continuation of the interview, not a sales pitch.
+I wanted to follow up on my application for the [Job Title] role at [Company], submitted on [date].
 
-5. **Close** — Express genuine interest in next steps. Mention you are available for any follow-up questions.
-   Sign off with first name only unless formal context.
+I remain very interested in the position and believe my background in [1 relevant skill or area from the job description] would be a strong fit.
 
-## Format
-- Output as a ready-to-use plain text email (no markdown formatting)
-- Subject line clearly labelled: "Subject: ..."
-- Then a blank line, then the email body
-- No HTML, no bullet points, no headers
-- 150–220 words total (body, not counting subject line)
-- Australian English spelling throughout (recognise, organisation, etc.)
+Please let me know if you need any additional information. I'm happy to chat at your convenience.
 
-## Common Mistakes to Avoid
-- Generic content that could apply to any interview
-- Repeating your entire resume or key achievements
-- Asking for the job directly (pushy)
-- Overclaiming ("I know I am the perfect candidate")
-- Length over 220 words (comes across as desperate)
-- Starting the email with "I"
+Kind regards,
+[Candidate Name]
+[Phone] | [Email]
+```
+
+## Rules
+- Pre-fill [Job Title] and [Company] from the provided job data — do NOT leave as placeholder
+- Pre-fill [1 relevant skill or area] with one specific skill from the job description — do NOT leave generic
+- Leave [Hiring Manager Name], [date], [Candidate Name], [Phone], [Email] as bracketed placeholders
+- Total word count: 60–80 words (body only, not subject or sign-off)
+- No bullet points. No paragraphs beyond the three shown. No extra sentences.
+- Australian English spelling throughout
+- Do not add any additional content, context, or achievements
+- Do not start any sentence with "I" in the opening line

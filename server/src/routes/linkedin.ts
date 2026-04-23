@@ -122,7 +122,8 @@ ${targetRole ? `## Target Role\nThe candidate is targeting: ${targetRole}` : ''}
 Return ONLY valid JSON matching the schema in the rules above.`;
 
     const { content } = await callClaude(prompt, true);
-    return res.json(parseLLMJson(content));
+    const cleaned = content.replace(/\u2014/g, '-').replace(/\u2013/g, '-');
+    return res.json(parseLLMJson(cleaned));
   } catch (err: any) {
     console.error('[LinkedIn /generate]', err.message);
     return res.status(500).json({ error: 'Generation failed' });
@@ -172,7 +173,8 @@ ${specificQuestion ? `Specific question candidate wants to ask: ${specificQuesti
 Return ONLY valid JSON matching the schema in the rules above.`;
 
     const { content } = await callClaude(prompt, true);
-    return res.json(parseLLMJson(content));
+    const cleaned = content.replace(/\u2014/g, '-').replace(/\u2013/g, '-');
+    return res.json(parseLLMJson(cleaned));
   } catch (err: any) {
     console.error('[LinkedIn /outreach]', err.message);
     return res.status(500).json({ error: 'Generation failed' });
@@ -234,8 +236,13 @@ router.post('/headshot', authenticate, upload.single('image'), async (req: AuthR
       remainingToday: MAX_DAILY_HEADSHOTS - newUsed,
     });
   } catch (err: any) {
-    console.error('[LinkedIn /headshot]', err.message);
-    return res.status(500).json({ error: 'Headshot generation failed' });
+    // Surface fal.ai specific errors to help diagnose Railway config issues
+    console.error('[LinkedIn /headshot] error:', err.message, err.body ?? err.response?.data ?? '');
+    const isFalAuthError = err.message?.includes('401') || err.message?.toLowerCase().includes('unauthorized') || err.message?.toLowerCase().includes('credentials');
+    if (isFalAuthError) {
+      return res.status(500).json({ error: 'Headshot service not configured — FAL_AI_KEY may be missing or invalid in Railway environment variables.' });
+    }
+    return res.status(500).json({ error: 'Headshot generation failed — please try again.' });
   }
 });
 

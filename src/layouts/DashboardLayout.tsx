@@ -28,7 +28,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
         { to: '/email-templates', icon: Mail, label: 'Email Templates' },
         { to: '/workspace', icon: FileText, label: 'Profile & Achievements' },
         { to: '/linkedin', icon: Linkedin, label: 'LinkedIn' },
-        ...(profile?.isAdmin ? [{ to: '/admin/friday-brief', icon: Radio, label: 'Friday Brief' }] : []),
+        // Friday Brief not in nav — access directly at /admin/friday-brief
     ];
 
     return (

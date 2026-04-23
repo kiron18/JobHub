@@ -13,6 +13,7 @@ import {
     Mail,
     Loader2,
     Sparkles,
+    HelpCircle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -162,10 +163,53 @@ const DocumentViewerModal: React.FC<{
 
 // ─── FollowUpNudge ───────────────────────────────────────────────────────────
 
+const EmailFinderTutorial: React.FC<{ onClose: () => void }> = ({ onClose }) => (
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+        onClick={onClose}>
+        <div className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-2xl p-6 space-y-4"
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+                <h3 className="text-sm font-black text-slate-100 uppercase tracking-wider">How to find the right email</h3>
+                <button onClick={onClose} className="text-slate-400 hover:text-slate-100"><X size={16} /></button>
+            </div>
+            <p className="text-xs text-slate-400 leading-relaxed">
+                Before sending, find the recruiter or hiring manager's email using one of these free tools:
+            </p>
+            <div className="space-y-3">
+                <div className="bg-slate-800/60 rounded-xl p-4 border border-slate-700/50">
+                    <p className="text-xs font-bold text-teal-400 mb-1">Hunter.io — fastest option</p>
+                    <ol className="text-xs text-slate-300 space-y-1 list-decimal list-inside">
+                        <li>Go to <span className="text-teal-400 font-mono">hunter.io</span></li>
+                        <li>Enter the company's website domain (e.g. <span className="font-mono">accenture.com</span>)</li>
+                        <li>Browse the list of emails or search by name</li>
+                        <li>25 free searches per month</li>
+                    </ol>
+                </div>
+                <div className="bg-slate-800/60 rounded-xl p-4 border border-slate-700/50">
+                    <p className="text-xs font-bold text-purple-400 mb-1">RocketReach — by name + company</p>
+                    <ol className="text-xs text-slate-300 space-y-1 list-decimal list-inside">
+                        <li>Go to <span className="text-purple-400 font-mono">rocketreach.co</span></li>
+                        <li>Search for the person's name + company</li>
+                        <li>Free plan includes limited lookups</li>
+                    </ol>
+                </div>
+                <div className="bg-slate-800/60 rounded-xl p-4 border border-slate-700/50">
+                    <p className="text-xs font-bold text-amber-400 mb-1">LinkedIn — if you can't find an email</p>
+                    <p className="text-xs text-slate-300">
+                        Send a connection request with a short note — "Hi [Name], I recently applied for [Role] at [Company] and wanted to connect." Many recruiters respond to direct LinkedIn messages.
+                    </p>
+                </div>
+            </div>
+            <p className="text-[10px] text-slate-500">If the hiring manager's name is unknown, address it to "Hiring Team" or the relevant department head.</p>
+        </div>
+    </div>
+);
+
 export const FollowUpNudge: React.FC<{ jobs: JobApplication[] }> = ({ jobs }) => {
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [aiEmails, setAiEmails] = useState<Record<string, string>>({});
     const [generatingFor, setGeneratingFor] = useState<string | null>(null);
+    const [showTutorial, setShowTutorial] = useState(false);
 
     const dueJobs = jobs.filter(j => {
         const days = daysSinceApplied(j.dateApplied);
@@ -211,17 +255,27 @@ export const FollowUpNudge: React.FC<{ jobs: JobApplication[] }> = ({ jobs }) =>
     };
 
     return (
+        <>
+        {showTutorial && <EmailFinderTutorial onClose={() => setShowTutorial(false)} />}
         <div className="border border-amber-500/30 bg-amber-500/5 rounded-2xl overflow-hidden">
             <div className="px-5 py-4 border-b border-amber-500/20 flex items-start gap-3">
                 <Bell size={16} className="text-amber-400 mt-0.5 shrink-0" />
-                <div>
+                <div className="flex-1">
                     <p className="text-sm font-black text-amber-400 uppercase tracking-wider leading-tight">
                         Follow-up Reminder
                     </p>
                     <p className="text-xs text-amber-400/70 font-medium mt-0.5">
-                        These applications are 7+ days old. Time to reach out — click to generate an AI email.
+                        These applications are 7+ days old. Time to reach out — click to generate an email.
                     </p>
                 </div>
+                <button
+                    onClick={() => setShowTutorial(true)}
+                    className="flex items-center gap-1 text-[10px] text-amber-400/60 hover:text-amber-300 transition-colors shrink-0 mt-0.5"
+                    title="How to find the right email address"
+                >
+                    <HelpCircle size={13} />
+                    <span>Find email</span>
+                </button>
             </div>
 
             <div className="divide-y divide-amber-500/10">
@@ -313,6 +367,7 @@ export const FollowUpNudge: React.FC<{ jobs: JobApplication[] }> = ({ jobs }) =>
                 })}
             </div>
         </div>
+        </>
     );
 };
 

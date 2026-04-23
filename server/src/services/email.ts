@@ -44,6 +44,29 @@ export async function sendAccessRequestNotification(params: {
   });
 }
 
+export async function sendFridayBriefEmail(script: string, reportCount: number, weekLabel: string): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[email] RESEND_API_KEY not set — skipping Friday Brief email');
+    return;
+  }
+  await resend.emails.send({
+    from: FROM_ADDRESS,
+    to: ADMIN_EMAIL,
+    subject: `Friday Brief — ${weekLabel} (${reportCount} report${reportCount === 1 ? '' : 's'})`,
+    text: [
+      `Friday Brief — Week of ${weekLabel}`,
+      `Reports this week: ${reportCount}`,
+      '',
+      '─'.repeat(60),
+      '',
+      script,
+      '',
+      '─'.repeat(60),
+      'Sent automatically from JobHub Admin',
+    ].join('\n'),
+  });
+}
+
 export async function sendWelcomeEmail(to: string): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
     console.warn('[email] RESEND_API_KEY not set — skipping welcome email');
