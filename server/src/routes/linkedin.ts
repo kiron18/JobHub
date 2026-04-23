@@ -226,7 +226,7 @@ router.post('/headshot', authenticate, upload.single('image'), async (req: AuthR
     let genaiResult: any;
     try {
       genaiResult = await genai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-3.1-flash-image-preview',
         contents: [
           {
             role: 'user',
