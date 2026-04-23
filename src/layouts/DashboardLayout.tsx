@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, FileText, Briefcase, LogOut, User, Sun, Moon, Library, Mail, Linkedin, Sparkles, Radio } from 'lucide-react';
+import { LayoutDashboard, FileText, Briefcase, LogOut, User, Sun, Moon, Library, Mail, Linkedin, Sparkles } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppTheme } from '../contexts/ThemeContext';
@@ -11,7 +11,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
     const { user, signOut } = useAuth();
     const { T, isDark, toggle } = useAppTheme();
 
-    const { data: profile } = useQuery({
+    useQuery({
         queryKey: ['profile'],
         queryFn: async () => {
             const { data } = await api.get('/profile');
