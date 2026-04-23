@@ -20,6 +20,7 @@ async function requirePaid(req: AuthRequest, res: any): Promise<boolean> {
 }
 import multer from 'multer';
 import { fal } from '@fal-ai/client';
+import JSZip from 'jszip';
 import fs from 'fs';
 import path from 'path';
 
@@ -207,16 +208,22 @@ router.post('/headshot', authenticate, upload.single('image'), async (req: AuthR
       });
     }
 
-    const base64 = req.file.buffer.toString('base64');
-    const dataUrl = `data:${req.file.mimetype};base64,${base64}`;
-
-    console.log('[headshot] key present:', !!process.env.FAL_AI_KEY, '| model: fal-ai/photomaker');
+    // fal-ai/photomaker now requires image_archive_url (a zip uploaded to fal storage).
+    // images_data_url was removed from the API.
+    const ext = req.file.mimetype === 'image/png' ? 'png' : req.file.mimetype === 'image/webp' ? 'webp' : 'jpg';
+    const zip = new JSZip();
+    zip.file(`image.${ext}`, req.file.buffer);
+    const zipBuffer = await zip.generateAsync({ type: 'nodebuffer', compression: 'STORE' });
+    const zipBlob = new Blob([zipBuffer], { type: 'application/zip' });
+    const zipFile = new File([zipBlob], 'images.zip', { type: 'application/zip' });
+    const imageArchiveUrl = await fal.storage.upload(zipFile);
+    console.log('[headshot] uploaded zip to fal storage:', imageArchiveUrl);
 
     let result: any;
     try {
       result = await fal.subscribe('fal-ai/photomaker', {
         input: {
-          images_data_url: [dataUrl],
+          image_archive_url: imageArchiveUrl,
           prompt: HEADSHOT_PROMPT,
           style: 'Photographic',
           negative_prompt: 'cartoon, illustration, anime, unrealistic, blurry, low quality',
