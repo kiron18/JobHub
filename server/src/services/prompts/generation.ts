@@ -225,15 +225,17 @@ ${ruleBase}
 ==============================================================
 CANDIDATE DATA
 ==============================================================
+IMPORTANT: If a section below is marked "(none — omit this section)" you MUST omit that entire section from the output. Do not write a heading, do not write placeholder text, do not say "Not provided". Simply leave it out.
+
 Name: ${profile.name}
 Contact (use | as separator on one line): ${[profile.email, profile.phone, profile.linkedin, profile.location].filter(Boolean).join(' | ')}
 Professional Summary: ${profile.professionalSummary}
 Skills: ${JSON.stringify(profile.skills)}
-Experience: ${JSON.stringify(profile.experience || [])}
-Education: ${JSON.stringify(profile.education || [])}
-Certifications: ${JSON.stringify(profile.certifications || [])}
-Volunteering: ${JSON.stringify(profile.volunteering || [])}
-Languages: ${JSON.stringify(profile.languages || [])}
+Experience: ${profile.experience?.length ? JSON.stringify(profile.experience) : '(none — omit this section)'}
+Education: ${profile.education?.length ? JSON.stringify(profile.education) : '(none — omit this section)'}
+Certifications: ${profile.certifications?.length ? JSON.stringify(profile.certifications) : '(none — omit this section)'}
+Volunteering: ${profile.volunteering?.length ? JSON.stringify(profile.volunteering) : '(none — omit this section)'}
+Languages: ${profile.languages?.length ? JSON.stringify(profile.languages) : '(none — omit this section)'}
 ${profile.coverLetterRawText ? `
 ==============================================================
 VOICE REFERENCE
@@ -380,15 +382,17 @@ CORE FOCUS AREAS (Prioritize these):
 ${analysisContext?.competencies?.map(c => `- ${c}`).join('\n') || "Map candidate strengths to JD requirements."}
 
 CANDIDATE DATA:
+IMPORTANT: If a section below is marked "(none — omit this section)" you MUST omit that entire section from the output. Do not write a heading, do not write placeholder text, do not say "Not provided". Simply leave it out.
+
 Name: ${profile.name}
 Contact (use | as separator on one line): ${[profile.email, profile.phone, profile.linkedin, profile.location].filter(Boolean).join(' | ')}
 Professional Summary: ${profile.professionalSummary}
 Skills: ${JSON.stringify(profile.skills)}
-Experience: ${JSON.stringify(profile.experience || [])}
-Education: ${JSON.stringify(profile.education || [])}
-Certifications: ${JSON.stringify(profile.certifications || [])}
-Volunteering: ${JSON.stringify(profile.volunteering || [])}
-Languages: ${JSON.stringify(profile.languages || [])}
+Experience: ${profile.experience?.length ? JSON.stringify(profile.experience) : '(none — omit this section)'}
+Education: ${profile.education?.length ? JSON.stringify(profile.education) : '(none — omit this section)'}
+Certifications: ${profile.certifications?.length ? JSON.stringify(profile.certifications) : '(none — omit this section)'}
+Volunteering: ${profile.volunteering?.length ? JSON.stringify(profile.volunteering) : '(none — omit this section)'}
+Languages: ${profile.languages?.length ? JSON.stringify(profile.languages) : '(none — omit this section)'}
 ${profile.coverLetterRawText ? `
 VOICE REFERENCE — match vocabulary level, sentence rhythm, and formality register from this sample. Preserve the candidate's natural style:
 "${profile.coverLetterRawText.slice(0, 600)}"

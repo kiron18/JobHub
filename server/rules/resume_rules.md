@@ -27,7 +27,7 @@ Generate sections in this exact sequence:
 1. Header (Name, Title, Contact)
 2. Professional Summary
 3. Work Experience
-4. Education
+4. Education *(omit entirely if no education data provided — do NOT write a heading or placeholder)*
 5. Skills & Competencies
 6. Certifications & Professional Development *(omit if empty)*
 7. Volunteering & Community Involvement *(omit if empty)*

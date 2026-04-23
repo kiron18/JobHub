@@ -678,7 +678,19 @@ const EducationIsland: React.FC<{ education: Education[]; isDark: boolean }> = (
       </AnimatePresence>
 
       {education.length === 0 && !isAdding && (
-        <p style={{ fontSize: 13, color: isDark ? '#6b7280' : '#9ca3af', fontStyle: 'italic' }}>No education records found.</p>
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', gap: 10,
+          padding: '12px 14px', borderRadius: 10,
+          background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)',
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <div>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#ef4444' }}>Education missing</p>
+            <p style={{ margin: '2px 0 0', fontSize: 12, color: isDark ? '#f87171' : '#dc2626' }}>
+              No education records found. Add your degree so it appears in generated resumes — click <strong>+ Add</strong> above.
+            </p>
+          </div>
+        </div>
       )}
 
       {education.map(edu => {

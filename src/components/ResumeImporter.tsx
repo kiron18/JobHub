@@ -310,6 +310,17 @@ export const ResumeImporter: React.FC = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             <div className="glass-card p-10 space-y-8">
                                 <h4 className="text-xl font-bold text-slate-300 border-b border-slate-800 pb-6">Education</h4>
+                                {(!extractedData.education || extractedData.education.length === 0) && (
+                                    <div className="flex items-start gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/30">
+                                        <AlertCircle size={16} className="text-red-400 mt-0.5 flex-shrink-0" />
+                                        <div>
+                                            <p className="text-sm font-bold text-red-400">Education not detected</p>
+                                            <p className="text-xs text-red-400/80 mt-0.5">
+                                                Your PDF may use a table or image format the parser can't read. Save and add your education manually in Profile &amp; Achievements.
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
                                 <div className="space-y-6">
                                     {extractedData.education?.map((edu: any, idx: number) => (
                                         <div key={idx} className="p-6 rounded-2xl border border-slate-800 bg-white/5 space-y-3">
