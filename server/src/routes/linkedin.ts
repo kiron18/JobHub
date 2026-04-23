@@ -27,8 +27,22 @@ import path from 'path';
 const router = Router();
 
 const MAX_DAILY_HEADSHOTS = parseInt(process.env.MAX_DAILY_HEADSHOTS || '3', 10);
-const HEADSHOT_PROMPT =
-  'A hyper-realistic headshot portrait of the uploaded image in DSLR-style realism with a soft pastel teal studio background and high quality studio lighting. The result should look clean and professional';
+
+// photomaker requires the trigger word "img" to reference the uploaded person.
+// Backgrounds rotate so each generation looks distinct.
+const HEADSHOT_BACKGROUNDS = [
+  'a soft gradient grey studio background',
+  'a clean white studio background with soft shadows',
+  'a warm charcoal studio background',
+  'a soft navy blue studio background',
+  'a blurred modern office background',
+  'a soft sage green studio background',
+];
+
+function buildHeadshotPrompt(): string {
+  const bg = HEADSHOT_BACKGROUNDS[Math.floor(Math.random() * HEADSHOT_BACKGROUNDS.length)];
+  return `A hyper-realistic professional headshot portrait of img, DSLR-style realism, ${bg}, high quality studio lighting, sharp focus, clean and professional`;
+}
 
 fal.config({ credentials: process.env.FAL_AI_KEY });
 
@@ -223,7 +237,7 @@ router.post('/headshot', authenticate, upload.single('image'), async (req: AuthR
       result = await fal.subscribe('fal-ai/photomaker', {
         input: {
           image_archive_url: imageArchiveUrl,
-          prompt: HEADSHOT_PROMPT,
+          prompt: buildHeadshotPrompt(),
           style: 'Photographic',
           negative_prompt: 'cartoon, illustration, anime, unrealistic, blurry, low quality',
           num_images: 1,
