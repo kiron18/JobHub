@@ -615,9 +615,11 @@ export const ApplicationWorkspace: React.FC = () => {
             /([^\n])\n(\*\*(Technical Skills|Industry Knowledge|Soft Skills):\*\*)/g,
             '$1\n\n$2'
         );
-        // Cover letter: single newlines between paragraphs of plain text → double newline
+        // Cover letter: collapse 3+ newlines to 2, then ensure any single \n between
+        // non-empty lines becomes \n\n so ReactMarkdown renders them as separate <p> tags.
         if (state.activeTab === 'cover-letter') {
-            out = out.replace(/([.!?])\n([A-Z])/g, '$1\n\n$2');
+            out = out.replace(/\n{3,}/g, '\n\n');
+            out = out.replace(/([^\n])\n([^\n])/g, '$1\n\n$2');
         }
         return out;
     };
@@ -1203,7 +1205,7 @@ export const ApplicationWorkspace: React.FC = () => {
                                         placeholder={`Start typing your ${state.activeTab}...`}
                                     />
                                 ) : (
-                                    <article id="resume-preview-content" className="prose prose-slate max-w-none [&_p]:my-0.5 [&_ul]:my-1 [&_li]:my-0 [&_h1]:text-base [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-2 [&_h2]:text-sm [&_h2]:font-bold [&_h2]:mt-3 [&_h2]:mb-1 [&_h3]:text-sm [&_h3]:mt-2 [&_h3]:mb-0.5">
+                                    <article id="resume-preview-content" className={`prose prose-slate max-w-none [&_ul]:my-1 [&_li]:my-0 [&_h1]:text-base [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-2 [&_h2]:text-sm [&_h2]:font-bold [&_h2]:mt-3 [&_h2]:mb-1 [&_h3]:text-sm [&_h3]:mt-2 [&_h3]:mb-0.5 ${state.activeTab === 'cover-letter' ? '[&_p]:my-3 [&_p]:leading-relaxed' : '[&_p]:my-0.5'}`}>
                                         <ReactMarkdown
                                             children={normaliseMarkdown(state.documents[state.activeTab] || '')}
                                             components={{
