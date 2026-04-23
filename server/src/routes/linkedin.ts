@@ -19,8 +19,8 @@ async function requirePaid(req: AuthRequest, res: any): Promise<boolean> {
   return true;
 }
 import multer from 'multer';
-import { fal } from '@fal-ai/client';
-import JSZip from 'jszip';
+import { GoogleGenAI } from '@google/genai';
+import { supabase } from '../lib/supabase';
 import fs from 'fs';
 import path from 'path';
 
@@ -28,7 +28,6 @@ const router = Router();
 
 const MAX_DAILY_HEADSHOTS = parseInt(process.env.MAX_DAILY_HEADSHOTS || '3', 10);
 
-// photomaker requires the trigger word "img" to reference the uploaded person.
 // Backgrounds rotate so each generation looks distinct.
 const HEADSHOT_BACKGROUNDS = [
   'a soft gradient grey studio background',
@@ -41,10 +40,10 @@ const HEADSHOT_BACKGROUNDS = [
 
 function buildHeadshotPrompt(): string {
   const bg = HEADSHOT_BACKGROUNDS[Math.floor(Math.random() * HEADSHOT_BACKGROUNDS.length)];
-  return `A hyper-realistic professional headshot portrait of img, DSLR-style realism, ${bg}, high quality studio lighting, sharp focus, clean and professional`;
+  return `A hyper-realistic professional headshot portrait, DSLR-style realism, ${bg}, high quality studio lighting, sharp focus, clean and professional. Keep the person's face, features, and identity faithful to the reference photo.`;
 }
 
-fal.config({ credentials: process.env.FAL_AI_KEY });
+const genai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY! });
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -222,52 +221,59 @@ router.post('/headshot', authenticate, upload.single('image'), async (req: AuthR
       });
     }
 
-    // fal-ai/photomaker now requires image_archive_url (a zip uploaded to fal storage).
-    // images_data_url was removed from the API.
-    const ext = req.file.mimetype === 'image/png' ? 'png' : req.file.mimetype === 'image/webp' ? 'webp' : 'jpg';
-    const zip = new JSZip();
-    zip.file(`image.${ext}`, req.file.buffer);
-    const zipBuffer = await zip.generateAsync({ type: 'nodebuffer', compression: 'STORE' });
-    const zipBlob = new Blob([zipBuffer], { type: 'application/zip' });
-    const imageArchiveUrl = await fal.storage.upload(zipBlob);
-    console.log('[headshot] uploaded zip to fal storage:', imageArchiveUrl);
+    const base64Input = req.file.buffer.toString('base64');
 
-    let result: any;
+    let genaiResult: any;
     try {
-      result = await fal.subscribe('fal-ai/photomaker', {
-        input: {
-          image_archive_url: imageArchiveUrl,
-          prompt: buildHeadshotPrompt(),
-          style: 'Photographic',
-          negative_prompt: 'cartoon, illustration, anime, unrealistic, blurry, low quality',
-          num_images: 1,
-        } as any,
+      genaiResult = await genai.models.generateContent({
+        model: 'gemini-2.0-flash-preview-image-generation',
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              { text: buildHeadshotPrompt() },
+              { inlineData: { mimeType: req.file.mimetype, data: base64Input } },
+            ],
+          },
+        ],
+        config: { responseModalities: ['IMAGE'] } as any,
       });
-    } catch (falErr: any) {
-      // Log every detail fal.ai sends back so it appears in Railway logs
-      console.error('[headshot] fal.ai call failed');
-      console.error('  message:', falErr.message);
-      console.error('  status:', falErr.status);
-      console.error('  body:', JSON.stringify(falErr.body ?? falErr.detail ?? falErr.response?.data ?? falErr));
-      const statusCode = falErr.status ?? falErr.statusCode;
-      if (statusCode === 401 || statusCode === 403) {
-        return res.status(500).json({ error: 'fal.ai auth failed (401/403) — FAL_AI_KEY may be wrong. Check Railway logs.' });
-      }
-      if (statusCode === 422) {
-        return res.status(500).json({ error: 'fal.ai rejected the request (422) — model input may be invalid. Check Railway logs.' });
-      }
-      return res.status(500).json({ error: `fal.ai error ${statusCode ?? 'unknown'}: ${falErr.message}` });
+    } catch (genaiErr: any) {
+      console.error('[headshot] Google GenAI call failed:', genaiErr.message);
+      return res.status(500).json({ error: `Image generation error: ${genaiErr.message}` });
     }
 
-    console.log('[headshot] raw result keys:', Object.keys(result ?? {}));
-
-    // fal client v1.x wraps in .data; some models return top-level
-    const images = result?.data?.images ?? result?.images;
-    const imageUrl = images?.[0]?.url as string | undefined;
-    if (!imageUrl) {
-      console.error('[headshot] no imageUrl in result:', JSON.stringify(result));
-      throw new Error('No image returned from fal.ai');
+    let imageData: string | undefined;
+    let imageMime = 'image/png';
+    for (const part of genaiResult?.candidates?.[0]?.content?.parts ?? []) {
+      if (part.inlineData?.data) {
+        imageData = part.inlineData.data;
+        imageMime = part.inlineData.mimeType ?? 'image/png';
+        break;
+      }
     }
+
+    if (!imageData) {
+      console.error('[headshot] no image in GenAI response:', JSON.stringify(genaiResult));
+      throw new Error('No image returned from Google GenAI');
+    }
+
+    const imgExt = imageMime.split('/')[1] ?? 'png';
+    const storagePath = `headshots/${userId}_${Date.now()}.${imgExt}`;
+    const imageBuffer = Buffer.from(imageData, 'base64');
+
+    const { error: uploadError } = await supabase.storage
+      .from('headshots')
+      .upload(storagePath, imageBuffer, { contentType: imageMime, upsert: true });
+
+    if (uploadError) {
+      console.error('[headshot] Supabase upload error:', uploadError);
+      throw new Error(`Storage upload failed: ${uploadError.message}`);
+    }
+
+    const { data: { publicUrl: imageUrl } } = supabase.storage
+      .from('headshots')
+      .getPublicUrl(storagePath);
 
     const newUsed = usedToday + 1;
     await prisma.candidateProfile.update({
@@ -291,13 +297,12 @@ router.post('/headshot/save', authenticate, async (req: AuthRequest, res) => {
   const userId = req.user!.id;
   const { imageUrl } = req.body as { imageUrl: string };
   if (!imageUrl) return res.status(400).json({ error: 'imageUrl required' });
-  // Validate it's a fal.ai CDN URL to prevent arbitrary URL storage
   let parsedImageUrl: URL;
   try { parsedImageUrl = new URL(imageUrl); } catch {
     return res.status(400).json({ error: 'Invalid imageUrl format' });
   }
-  if (!parsedImageUrl.hostname.endsWith('.fal.run') && !parsedImageUrl.hostname.endsWith('.fal.ai')) {
-    return res.status(400).json({ error: 'imageUrl must be a fal.ai URL' });
+  if (!parsedImageUrl.hostname.endsWith('.supabase.co')) {
+    return res.status(400).json({ error: 'imageUrl must be a Supabase storage URL' });
   }
   try {
     await prisma.candidateProfile.update({ where: { userId }, data: { headshotUrl: imageUrl } });
