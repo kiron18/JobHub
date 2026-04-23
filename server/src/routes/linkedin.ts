@@ -215,8 +215,7 @@ router.post('/headshot', authenticate, upload.single('image'), async (req: AuthR
     zip.file(`image.${ext}`, req.file.buffer);
     const zipBuffer = await zip.generateAsync({ type: 'nodebuffer', compression: 'STORE' });
     const zipBlob = new Blob([zipBuffer], { type: 'application/zip' });
-    const zipFile = new File([zipBlob], 'images.zip', { type: 'application/zip' });
-    const imageArchiveUrl = await fal.storage.upload(zipFile);
+    const imageArchiveUrl = await fal.storage.upload(zipBlob);
     console.log('[headshot] uploaded zip to fal storage:', imageArchiveUrl);
 
     let result: any;
