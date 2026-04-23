@@ -210,18 +210,44 @@ router.post('/headshot', authenticate, upload.single('image'), async (req: AuthR
     const base64 = req.file.buffer.toString('base64');
     const dataUrl = `data:${req.file.mimetype};base64,${base64}`;
 
-    const result = await fal.subscribe('fal-ai/photomaker', {
-      input: {
-        images_data_url: [dataUrl],
-        prompt: HEADSHOT_PROMPT,
-        style: 'Photographic',
-        negative_prompt: 'cartoon, illustration, anime, unrealistic, blurry, low quality',
-        num_images: 1,
-      } as any,
-    });
+    console.log('[headshot] key present:', !!process.env.FAL_AI_KEY, '| model: fal-ai/photomaker');
 
-    const imageUrl = (result as any).data?.images?.[0]?.url as string | undefined;
-    if (!imageUrl) throw new Error('No image returned from fal.ai');
+    let result: any;
+    try {
+      result = await fal.subscribe('fal-ai/photomaker', {
+        input: {
+          images_data_url: [dataUrl],
+          prompt: HEADSHOT_PROMPT,
+          style: 'Photographic',
+          negative_prompt: 'cartoon, illustration, anime, unrealistic, blurry, low quality',
+          num_images: 1,
+        } as any,
+      });
+    } catch (falErr: any) {
+      // Log every detail fal.ai sends back so it appears in Railway logs
+      console.error('[headshot] fal.ai call failed');
+      console.error('  message:', falErr.message);
+      console.error('  status:', falErr.status);
+      console.error('  body:', JSON.stringify(falErr.body ?? falErr.detail ?? falErr.response?.data ?? falErr));
+      const statusCode = falErr.status ?? falErr.statusCode;
+      if (statusCode === 401 || statusCode === 403) {
+        return res.status(500).json({ error: 'fal.ai auth failed (401/403) — FAL_AI_KEY may be wrong. Check Railway logs.' });
+      }
+      if (statusCode === 422) {
+        return res.status(500).json({ error: 'fal.ai rejected the request (422) — model input may be invalid. Check Railway logs.' });
+      }
+      return res.status(500).json({ error: `fal.ai error ${statusCode ?? 'unknown'}: ${falErr.message}` });
+    }
+
+    console.log('[headshot] raw result keys:', Object.keys(result ?? {}));
+
+    // fal client v1.x wraps in .data; some models return top-level
+    const images = result?.data?.images ?? result?.images;
+    const imageUrl = images?.[0]?.url as string | undefined;
+    if (!imageUrl) {
+      console.error('[headshot] no imageUrl in result:', JSON.stringify(result));
+      throw new Error('No image returned from fal.ai');
+    }
 
     const newUsed = usedToday + 1;
     await prisma.candidateProfile.update({
@@ -236,13 +262,8 @@ router.post('/headshot', authenticate, upload.single('image'), async (req: AuthR
       remainingToday: MAX_DAILY_HEADSHOTS - newUsed,
     });
   } catch (err: any) {
-    // Surface fal.ai specific errors to help diagnose Railway config issues
-    console.error('[LinkedIn /headshot] error:', err.message, err.body ?? err.response?.data ?? '');
-    const isFalAuthError = err.message?.includes('401') || err.message?.toLowerCase().includes('unauthorized') || err.message?.toLowerCase().includes('credentials');
-    if (isFalAuthError) {
-      return res.status(500).json({ error: 'Headshot service not configured — FAL_AI_KEY may be missing or invalid in Railway environment variables.' });
-    }
-    return res.status(500).json({ error: 'Headshot generation failed — please try again.' });
+    console.error('[headshot] unhandled error:', err.message);
+    return res.status(500).json({ error: err.message ?? 'Headshot generation failed' });
   }
 });
 
