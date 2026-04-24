@@ -166,6 +166,7 @@ model JobApplication {
   title               String
   company             String
   description         String
+  sourceUrl           String?
   dateApplied         DateTime?
   status              ApplicationStatus @default(SAVED)
   createdAt           DateTime          @default(now())
@@ -211,6 +212,19 @@ model JobFeedItem {
   candidateProfile     CandidateProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
 
   @@index([userId, feedDate])
+}
+
+model SeekJobCache {
+  id          String   @id @default(cuid())
+  queryHash   String
+  queryMeta   Json
+  feedDate    String
+  results     Json
+  resultCount Int
+  fetchedAt   DateTime @default(now())
+
+  @@unique([queryHash, feedDate])
+  @@index([feedDate])
 }
 
 model Document {
