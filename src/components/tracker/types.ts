@@ -20,6 +20,7 @@ export interface JobApplication {
     dateApplied: string | null;
     closingDate: string | null;
     notes: string | null;
+    sourceUrl: string | null;
     priority: JobPriority;
     documents: TrackerDocument[];
     createdAt: string;
