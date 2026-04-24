@@ -2,6 +2,8 @@ import axios from 'axios';
 import { prisma } from '../index';
 import { callLLMWithRetry } from '../utils/callLLMWithRetry';
 import { parseLLMJson } from '../utils/parseLLMResponse';
+import { buildClusterKey, fetchSeekJobsForCluster } from './seekScraper';
+import { deduplicateJobs } from '../utils/deduplicateJobs';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -147,20 +149,29 @@ ${JSON.stringify(input)}`;
 export async function buildDailyFeed(userId: string): Promise<void> {
   const profile = await prisma.candidateProfile.findUnique({
     where: { userId },
-    select: { targetRole: true, targetCity: true },
+    select: { targetRole: true, targetCity: true, industry: true },
   });
 
   if (!profile?.targetRole || !profile?.targetCity) {
     throw new Error('Profile incomplete — set a target role and city first');
   }
 
-  const jobs = await fetchAdzunaJobs(profile.targetRole, profile.targetCity);
-  const today = todayAEST();
+  const clusterKey = buildClusterKey(profile.targetRole, profile.targetCity, profile.industry);
 
-  // Only rebuild if we have new jobs — avoids wiping existing feed on Adzuna transient errors
+  const [adzunaJobs, seekJobs] = await Promise.all([
+    fetchAdzunaJobs(profile.targetRole, profile.targetCity),
+    fetchSeekJobsForCluster(clusterKey).catch((err: Error) => {
+      console.error(`[buildDailyFeed] Seek fetch failed for ${userId}:`, err.message);
+      return [] as RawJob[];
+    }),
+  ]);
+
+  const jobs = deduplicateJobs(seekJobs, adzunaJobs);
+
   if (jobs.length === 0) return;
 
-  // Clear today's existing rows then insert fresh batch
+  const today = todayAEST();
+
   await prisma.jobFeedItem.deleteMany({ where: { userId, feedDate: today } });
 
   await prisma.jobFeedItem.createMany({
