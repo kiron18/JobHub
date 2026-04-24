@@ -141,18 +141,25 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
     }
   };
 
-  const handleGenerateDocs = (e: React.MouseEvent) => {
+  const handlePrepareAndApply = (e: React.MouseEvent) => {
     e.stopPropagation();
     localStorage.setItem('jobhub_current_jd', item.description);
-    // Persist job context so workspace can pre-fill company research and addressee
     localStorage.setItem('jobhub_current_job_context', JSON.stringify({
       company: item.company,
       title: item.title,
       suggestedAddressee: addresseeOverride ?? item.suggestedAddressee ?? null,
       matchScore: item.matchScore ?? null,
     }));
+    localStorage.setItem('jobhub_apply_context', JSON.stringify({
+      jobId: item.id,
+      title: item.title,
+      company: item.company,
+      description: item.description,
+      sourceUrl: item.sourceUrl,
+      sourcePlatform: item.sourcePlatform,
+    }));
     navigate('/');
-    toast.success('Job description loaded — click Analyse to start');
+    toast.success('Job loaded — generate your documents, then apply');
   };
 
   return (
@@ -373,25 +380,14 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
                 <p className="text-xs text-slate-400 leading-relaxed">
                   <span className="font-semibold text-slate-200">We build the documents. You make the move.</span>{' '}
                   Applying directly signals genuine intent — hiring managers notice candidates who submit personally.
-                  Your application gets individual attention, not a filtered queue.
                 </p>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <a
-                    href={item.sourceUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={e => e.stopPropagation()}
+                  <button
+                    onClick={handlePrepareAndApply}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider text-white transition-colors"
                     style={{ background: platform.color }}
                   >
-                    <ExternalLink size={11} />
-                    Apply on {platform.label}
-                  </a>
-                  <button
-                    onClick={handleGenerateDocs}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider border border-brand-500/40 text-brand-400 hover:bg-brand-500/10 transition-colors"
-                  >
-                    Generate documents
+                    Prepare &amp; Apply →
                   </button>
                   <button
                     onClick={handleSave}
@@ -403,6 +399,16 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
                     {saving ? <Loader2 size={11} className="animate-spin" /> : item.isSaved ? <BookmarkCheck size={11} className="text-emerald-400" /> : <BookmarkPlus size={11} />}
                     {item.isSaved ? 'Saved' : 'Save'}
                   </button>
+                  <a
+                    href={item.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}
+                    className="flex items-center gap-1 text-[10px] font-bold text-slate-500 hover:text-slate-300 transition-colors"
+                  >
+                    <ExternalLink size={10} />
+                    View on {platform.label}
+                  </a>
                 </div>
               </div>
             </div>
