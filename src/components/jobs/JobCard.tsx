@@ -4,6 +4,7 @@ import { ExternalLink, ChevronDown, ChevronUp, Loader2, BookmarkPlus, BookmarkCh
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
+import { getPlatformConfig } from '../../lib/platforms';
 
 export interface JobFeedItem {
   id: string;
@@ -26,13 +27,6 @@ export interface JobFeedItem {
   isSaved: boolean;
 }
 
-const PLATFORM_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  seek:     { label: 'Seek',     color: '#14b8a6', bg: 'rgba(20,184,166,0.1)' },
-  indeed:   { label: 'Indeed',   color: '#60a5fa', bg: 'rgba(96,165,250,0.1)' },
-  jora:     { label: 'Jora',     color: '#fb923c', bg: 'rgba(251,146,60,0.1)' },
-  linkedin: { label: 'LinkedIn', color: '#818cf8', bg: 'rgba(129,140,248,0.1)' },
-  other:    { label: 'Job Board', color: '#94a3b8', bg: 'rgba(148,163,184,0.1)' },
-};
 
 function daysAgo(iso: string | null): string {
   if (!iso) return '';
@@ -68,7 +62,7 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
   const [fullDescFailed, setFullDescFailed] = useState(false);
   const [fullDescLoaded, setFullDescLoaded] = useState(false);
 
-  const platform = PLATFORM_CONFIG[item.sourcePlatform] ?? PLATFORM_CONFIG.other;
+  const platform = getPlatformConfig(item.sourcePlatform);
   const hasCriteriaHint = CRITERIA_KEYWORDS.some(k => item.description.toLowerCase().includes(k));
   const addresseeFetched = item.addresseeSource !== null;
   // Adzuna truncates descriptions — warn and offer to fetch the full version
