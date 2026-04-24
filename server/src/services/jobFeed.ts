@@ -49,6 +49,17 @@ function formatSalary(min?: number, max?: number): string | null {
   return null;
 }
 
+/** Filters out jobs that are clearly location-mismatched and non-remote. */
+function preMatchFilter(jobs: RawJob[], targetCity: string): RawJob[] {
+  const normalCity = targetCity.toLowerCase().split(',')[0].trim();
+  return jobs.filter(job => {
+    const loc = (job.location ?? '').toLowerCase();
+    if (loc.includes(normalCity)) return true;
+    const text = (job.title + ' ' + job.description).toLowerCase();
+    return text.includes('remote') || text.includes('work from home') || text.includes('wfh');
+  });
+}
+
 /** Returns today's date in AEST/AEDT (Australia/Sydney) as a JS Date at midnight UTC */
 export function todayAEST(): Date {
   const s = new Intl.DateTimeFormat('en-AU', {
@@ -166,7 +177,8 @@ export async function buildDailyFeed(userId: string): Promise<void> {
     }),
   ]);
 
-  const jobs = deduplicateJobs(seekJobs, adzunaJobs);
+  const deduped = deduplicateJobs(seekJobs, adzunaJobs);
+  const jobs = preMatchFilter(deduped, profile.targetCity);
 
   if (jobs.length === 0) return;
 
