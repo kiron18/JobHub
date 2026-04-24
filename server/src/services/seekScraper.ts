@@ -27,12 +27,18 @@ interface UserForCluster {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+const SENIORITY_RE = /^(senior|lead|junior|principal|staff|associate)\s+/i
+
+function stripSeniority(role: string): string {
+  return role.replace(SENIORITY_RE, '').trim()
+}
+
 export function buildClusterKey(
   targetRole: string,
   targetCity: string,
   industry: string | null
 ): ClusterKey {
-  const role = targetRole.trim()
+  const role = stripSeniority(targetRole.trim())
   const city = targetCity.trim().split(',')[0].trim().toLowerCase()
   const ind = (industry ?? '').trim().toLowerCase()
   const raw = `${role.toLowerCase()}|${city}|${ind}`
@@ -58,6 +64,26 @@ function buildActorInput(role: string, city: string) {
     keyword: role,    // Verify param name in actor docs
     location: city,   // Verify param name in actor docs
     maxItems: 50,     // Verify param name in actor docs
+    datePosted: '24h',
+  }
+}
+
+async function callApifyWithRetry(client: ApifyClient, input: ReturnType<typeof buildActorInput>): Promise<any[]> {
+  const attempt = async () => {
+    const run = await client.actor(SEEK_ACTOR_ID).call(input, { waitSecs: 120 })
+    const dataset = await client.dataset(run.defaultDatasetId).listItems()
+    return dataset.items
+  }
+  try {
+    return await attempt()
+  } catch (err: any) {
+    const msg = String(err?.message ?? '').toLowerCase()
+    if (msg.includes('429') || msg.includes('rate limit') || msg.includes('too many requests')) {
+      console.warn('[seekScraper] Rate limited — retrying after 60s')
+      await new Promise(r => setTimeout(r, 60_000))
+      return await attempt()
+    }
+    throw err
   }
 }
 
@@ -105,15 +131,25 @@ export async function fetchSeekJobsForCluster(cluster: ClusterKey): Promise<RawJ
 
   let items: any[] = []
   try {
-    const run = await client.actor(SEEK_ACTOR_ID).call(
-      buildActorInput(cluster.role, cluster.city),
-      { waitSecs: 120 }
-    )
-    const dataset = await client.dataset(run.defaultDatasetId).listItems()
-    items = dataset.items
+    items = await callApifyWithRetry(client, buildActorInput(cluster.role, cluster.city))
   } catch (err: any) {
     console.error(`[seekScraper] Apify call failed for cluster ${cluster.hash}:`, err.message)
     return []
+  }
+
+  // Zero-results fallback: try a broader keyword (last word of role — the role noun)
+  if (items.length === 0) {
+    const words = cluster.role.split(' ')
+    const broadKeyword = words.length > 1 ? words[words.length - 1] : null
+    if (broadKeyword) {
+      console.log(`[seekScraper] Zero results for "${cluster.role}" — trying broad keyword "${broadKeyword}"`)
+      try {
+        const broadItems = await callApifyWithRetry(client, buildActorInput(broadKeyword, cluster.city))
+        if (broadItems.length > 0) items = broadItems
+      } catch {
+        // Non-fatal — proceed with empty results
+      }
+    }
   }
 
   try {
