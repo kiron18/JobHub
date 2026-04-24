@@ -24,6 +24,7 @@ import { exportDocx } from '../../lib/exportDocx';
 import type { JobApplication, TrackerDocument, ApplicationStatus, JobPriority } from './types';
 import { PRIORITY_CONFIG, STATUS_FLOW } from './types';
 import { STATUS_CONFIG } from './constants';
+import { getPlatformConfig, extractPlatformFromUrl } from '../../lib/platforms';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -749,7 +750,7 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onStatusChange, onDelete,
                                         className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-500 hover:text-slate-300 border border-slate-700/50 hover:border-slate-600 rounded-lg px-3 py-1.5 transition-colors"
                                     >
                                         <ExternalLink size={10} />
-                                        View listing →
+                                        Apply on {getPlatformConfig(extractPlatformFromUrl(job.sourceUrl)).label} →
                                     </a>
                                 </div>
                             )}

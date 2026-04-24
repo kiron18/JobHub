@@ -54,3 +54,16 @@ export function getPlatformConfig(platform: string): PlatformConfig {
 export function getApplyInstructions(platform: string): string[] {
   return APPLY_INSTRUCTIONS[platform] ?? APPLY_INSTRUCTIONS.other
 }
+
+export function extractPlatformFromUrl(url: string): string {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    if (host.includes('seek.com.au')) return 'seek';
+    if (host.includes('indeed.com')) return 'indeed';
+    if (host.includes('jora.com')) return 'jora';
+    if (host.includes('linkedin.com')) return 'linkedin';
+    return 'other';
+  } catch {
+    return 'other';
+  }
+}
