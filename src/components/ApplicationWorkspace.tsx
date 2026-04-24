@@ -16,7 +16,8 @@ import {
     FlaskConical,
     Loader2,
     Copy,
-    CheckCircle
+    CheckCircle,
+    ExternalLink
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../lib/api';
@@ -37,6 +38,8 @@ import { CoverLetterPersonalisationPanel } from './CoverLetterPersonalisationPan
 import { exportDocx } from '../lib/exportDocx';
 import type { DocType } from '../lib/exportDocx';
 import { exportPdf } from '../lib/exportPdf';
+import { ApplyContextBanner, type ApplyContext } from './ApplyContextBanner';
+import { getPlatformConfig, getApplyInstructions } from '../lib/platforms';
 import { DimensionsIsland } from './DimensionsIsland';
 import type { DimensionScores, AustralianFlags } from './DimensionsIsland';
 
@@ -226,6 +229,18 @@ export const ApplicationWorkspace: React.FC = () => {
     const [selectionCriteriaText, setSelectionCriteriaText] = useState('');
     const [scConfirmed, setScConfirmed] = useState(false);
     const [employerFramework, setEmployerFramework] = useState<string | null>(null);
+
+    const [applyContext, setApplyContext] = useState<ApplyContext | null>(() => {
+        try {
+            const raw = localStorage.getItem('jobhub_apply_context');
+            return raw ? JSON.parse(raw) : null;
+        } catch { return null; }
+    });
+
+    const handleDismissApplyContext = () => {
+        localStorage.removeItem('jobhub_apply_context');
+        setApplyContext(null);
+    };
 
     // Academic documents — generated on demand, stored separately (not in main documents map)
     const [academicDocs, setAcademicDocs] = useState<{ 'teaching-philosophy': string; 'research-statement': string }>({
@@ -745,6 +760,8 @@ export const ApplicationWorkspace: React.FC = () => {
                 </div>
             )}
 
+            <ApplyContextBanner context={applyContext} onDismiss={handleDismissApplyContext} />
+
             <main className="flex-1 flex overflow-hidden">
                 <aside className="w-1/3 border-r border-slate-800 bg-slate-900/20 flex flex-col overflow-hidden">
                     {/* Cover letter: tone selector + research panel */}
@@ -1246,6 +1263,36 @@ export const ApplicationWorkspace: React.FC = () => {
                                 )}
                             </div>
                         </div>
+                        {/* Post-generation apply panel */}
+                        {applyContext && !state.isGenerating && state.documents[state.activeTab] && (
+                            <div className="w-full max-w-3xl mt-4 rounded-xl border border-teal-500/20 bg-teal-500/5 p-4">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <CheckCircle size={14} className="text-teal-400" />
+                                    <span className="text-xs font-bold text-teal-300">
+                                        Documents ready — submit your application
+                                    </span>
+                                </div>
+                                <a
+                                    href={applyContext.sourceUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider text-white mb-3 transition-opacity hover:opacity-80"
+                                    style={{ background: getPlatformConfig(applyContext.sourcePlatform).color }}
+                                >
+                                    <ExternalLink size={11} />
+                                    Apply on {getPlatformConfig(applyContext.sourcePlatform).label}
+                                </a>
+                                <ol className="space-y-1.5">
+                                    {getApplyInstructions(applyContext.sourcePlatform).map((step, i) => (
+                                        <li key={i} className="text-xs text-slate-400 flex items-start gap-2">
+                                            <span className="text-teal-500 font-bold flex-shrink-0 w-3">{i + 1}.</span>
+                                            {step}
+                                        </li>
+                                    ))}
+                                </ol>
+                            </div>
+                        )}
+
                         {state.blueprint && !state.isGenerating && (
                             <StrategistDebrief
                                 blueprint={state.blueprint}
