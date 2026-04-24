@@ -255,6 +255,7 @@ router.post('/:id/save', async (req: any, res: any) => {
         title: item.title,
         company: item.company,
         description: item.description,
+        sourceUrl: item.sourceUrl,
         notes: `Source: ${item.sourceUrl}`,
         status: 'SAVED',
       },
