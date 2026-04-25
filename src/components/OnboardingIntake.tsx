@@ -299,6 +299,7 @@ function FileDropZone({ label, subtext, required, file, onFile }: {
 
 function StepWelcome({ onNext }: { onNext: () => void }) {
   const { T } = useTheme();
+  const navigate = useNavigate();
   return (
     <div style={{ textAlign: 'center' }}>
       <motion.span initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
@@ -377,6 +378,19 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
         Unlock my diagnosis →
       </motion.button>
       <p style={{ fontSize: 12, color: T.textFaint, marginTop: 10 }}>Takes about 3 minutes · Free</p>
+      <p style={{ fontSize: 12, color: T.textFaint, marginTop: 16 }}>
+        Already have an account?{' '}
+        <button
+          onClick={() => navigate('/auth')}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: '#22c55e', fontWeight: 700, fontSize: 12, padding: 0,
+            textDecoration: 'underline', textUnderlineOffset: 3,
+          }}
+        >
+          Log in
+        </button>
+      </p>
     </div>
   );
 }
