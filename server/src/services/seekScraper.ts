@@ -1,195 +1,154 @@
-import { createHash } from 'crypto'
-import { ApifyClient } from 'apify-client'
-import { prisma } from '../index'
-import type { RawJob } from './jobFeed'
+import { createHash } from 'crypto';
+import { ApifyClient } from 'apify-client';
+import { prisma } from '../index';
+import type { RawJob } from './jobFeed';
 
-// ─── IMPORTANT ────────────────────────────────────────────────────────────────
-// Before production use, verify this actor ID on https://apify.com/store
-// Search "seek australia jobs scraper", pick highest-rated actor, check its
-// input schema, and update buildActorInput() parameter names accordingly.
-const SEEK_ACTOR_ID = 'bebity/seek-jobs-scraper'
-
-// ─── Types ────────────────────────────────────────────────────────────────────
+const SEEK_ACTOR_ID = 'websift/seek-job-scraper';
 
 export interface ClusterKey {
-  role: string
-  city: string
-  industry: string
-  hash: string
-}
-
-interface UserForCluster {
-  userId: string
-  targetRole: string
-  targetCity: string
-  industry: string | null
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-const SENIORITY_RE = /^(senior|lead|junior|principal|staff|associate)\s+/i
-
-function stripSeniority(role: string): string {
-  return role.replace(SENIORITY_RE, '').trim()
-}
-
-export function buildClusterKey(
-  targetRole: string,
-  targetCity: string,
-  industry: string | null
-): ClusterKey {
-  const role = stripSeniority(targetRole.trim())
-  const city = targetCity.trim().split(',')[0].trim().toLowerCase()
-  const ind = (industry ?? '').trim().toLowerCase()
-  const raw = `${role.toLowerCase()}|${city}|${ind}`
-  return {
-    role,
-    city,
-    industry: industry ?? '',
-    hash: createHash('sha256').update(raw).digest('hex'),
-  }
+  role: string;
+  city: string;
+  industry: string;
+  hash: string;
 }
 
 function todayFeedDate(): string {
   const s = new Intl.DateTimeFormat('en-AU', {
     timeZone: 'Australia/Sydney',
     year: 'numeric', month: '2-digit', day: '2-digit',
-  }).format(new Date())
-  const [day, month, year] = s.split('/')
-  return `${year}-${month}-${day}`
+  }).format(new Date());
+  const [day, month, year] = s.split('/');
+  return `${year}-${month}-${day}`;
 }
 
-function buildActorInput(role: string, city: string) {
+export function buildSeekClusterKey(
+  targetRole: string,
+  targetCity: string,
+  industry: string | null
+): ClusterKey {
+  const role = targetRole.trim();
+  const city = targetCity.trim().split(',')[0].trim().toLowerCase();
+  const ind = (industry ?? '').trim().toLowerCase();
+  const raw = `seek|${role.toLowerCase()}|${city}|${ind}`;
   return {
-    keyword: role,    // Verify param name in actor docs
-    location: city,   // Verify param name in actor docs
-    maxItems: 50,     // Verify param name in actor docs
-    datePosted: '24h',
-  }
+    role,
+    city,
+    industry: industry ?? '',
+    hash: createHash('sha256').update(raw).digest('hex'),
+  };
 }
 
-async function callApifyWithRetry(client: ApifyClient, input: ReturnType<typeof buildActorInput>): Promise<any[]> {
-  const attempt = async () => {
-    const run = await client.actor(SEEK_ACTOR_ID).call(input, { waitSecs: 120 })
-    const dataset = await client.dataset(run.defaultDatasetId).listItems()
-    return dataset.items
-  }
-  try {
-    return await attempt()
-  } catch (err: any) {
-    const msg = String(err?.message ?? '').toLowerCase()
-    if (msg.includes('429') || msg.includes('rate limit') || msg.includes('too many requests')) {
-      console.warn('[seekScraper] Rate limited — retrying after 60s')
-      await new Promise(r => setTimeout(r, 60_000))
-      return await attempt()
-    }
-    throw err
-  }
+function stripHtml(html: string): string {
+  return html
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ').replace(/&#x27;/g, "'").replace(/&#39;/g, "'")
+    .replace(/\s{2,}/g, ' ').trim();
 }
 
-function mapActorResult(item: any, city: string): RawJob | null {
-  const sourceUrl = item.jobUrl ?? item.url ?? item.link ?? ''
-  if (!sourceUrl) return null
+function mapSeekResult(item: any, city: string): RawJob | null {
+  const sourceUrl = item.jobLink ?? item.applyLink ?? '';
+  if (!sourceUrl) return null;
+
+  const rawDescription = item.content?.unEditedContent
+    ? stripHtml(item.content.unEditedContent)
+    : Array.isArray(item.content?.sections)
+    ? item.content.sections.join('\n')
+    : '';
+
   return {
-    title: item.title ?? item.jobTitle ?? 'Untitled',
-    company: item.company ?? item.companyName ?? item.advertiser ?? 'Unknown Company',
-    location: item.location ?? item.suburb ?? item.area ?? city,
-    salary: item.salary ?? item.salaryRange ?? item.salaryDescription ?? null,
-    description: item.description ?? item.jobDescription ?? item.jobSummary ?? '',
+    title: item.title ?? 'Untitled',
+    company: item.advertiser?.name ?? item.company ?? 'Unknown Company',
+    location: item.joblocationInfo?.displayLocation ?? item.joblocationInfo?.location ?? city,
+    salary: item.salary ?? null,
+    description: rawDescription,
     sourceUrl,
     sourcePlatform: 'seek',
-    postedAt: (item.listingDate ?? item.postedAt ?? item.datePosted)
-      ? new Date(item.listingDate ?? item.postedAt ?? item.datePosted)
-      : null,
-  }
+    postedAt: item.listedAt ? new Date(item.listedAt) : null,
+  };
 }
 
-// ─── Core scrape (with cache) ─────────────────────────────────────────────────
-
 export async function fetchSeekJobsForCluster(cluster: ClusterKey): Promise<RawJob[]> {
-  const feedDate = todayFeedDate()
+  const feedDate = todayFeedDate();
 
   const cached = await prisma.seekJobCache.findUnique({
     where: { queryHash_feedDate: { queryHash: cluster.hash, feedDate } },
-  })
+  });
 
   if (cached) {
-    const items = cached.results as any[]
+    const items = cached.results as any[];
     return items.flatMap(r => {
-      const mapped = mapActorResult(r, cluster.city)
-      return mapped ? [mapped] : []
-    })
+      const mapped = mapSeekResult(r, cluster.city);
+      return mapped ? [mapped] : [];
+    });
   }
 
-  const apiKey = process.env.APIFY_API_KEY
+  const apiKey = process.env.APIFY_API_KEY;
   if (!apiKey) {
-    console.warn('[seekScraper] APIFY_API_KEY not set — skipping Seek scrape')
-    return []
+    console.warn('[seekScraper] APIFY_API_KEY not set — skipping Seek scrape');
+    return [];
   }
 
-  const client = new ApifyClient({ token: apiKey })
+  const client = new ApifyClient({ token: apiKey });
 
-  let items: any[] = []
+  let items: any[] = [];
   try {
-    items = await callApifyWithRetry(client, buildActorInput(cluster.role, cluster.city))
+    const run = await client.actor(SEEK_ACTOR_ID).call(
+      {
+        searchTerm: cluster.role,
+        location: cluster.city,
+        maxResults: 50,
+        sortBy: 'date',
+        dateRange: 7,
+      },
+      { waitSecs: 180 }
+    );
+    const dataset = await client.dataset(run.defaultDatasetId).listItems();
+    items = dataset.items;
   } catch (err: any) {
-    console.error(`[seekScraper] Apify call failed for cluster ${cluster.hash}:`, err.message)
-    return []
-  }
-
-  // Zero-results fallback: try a broader keyword (last word of role — the role noun)
-  if (items.length === 0) {
-    const words = cluster.role.split(' ')
-    const broadKeyword = words.length > 1 ? words[words.length - 1] : null
-    if (broadKeyword) {
-      console.log(`[seekScraper] Zero results for "${cluster.role}" — trying broad keyword "${broadKeyword}"`)
-      try {
-        const broadItems = await callApifyWithRetry(client, buildActorInput(broadKeyword, cluster.city))
-        if (broadItems.length > 0) items = broadItems
-      } catch {
-        // Non-fatal — proceed with empty results
-      }
-    }
+    console.error(`[seekScraper] Apify call failed for cluster ${cluster.hash}:`, err.message);
+    return [];
   }
 
   try {
     await prisma.seekJobCache.create({
       data: {
         queryHash: cluster.hash,
-        queryMeta: { role: cluster.role, city: cluster.city, industry: cluster.industry },
+        queryMeta: { source: 'seek', role: cluster.role, city: cluster.city, industry: cluster.industry },
         feedDate,
         results: items,
         resultCount: items.length,
       },
-    })
+    });
   } catch (cacheErr: any) {
-    console.warn('[seekScraper] Cache write failed (non-fatal):', cacheErr.message)
+    console.warn('[seekScraper] Cache write failed (non-fatal):', cacheErr.message);
   }
 
   return items.flatMap(r => {
-    const mapped = mapActorResult(r, cluster.city)
-    return mapped ? [mapped] : []
-  })
+    const mapped = mapSeekResult(r, cluster.city);
+    return mapped ? [mapped] : [];
+  });
 }
 
-// ─── Prewarm all clusters in parallel (used by cron) ─────────────────────────
-
-export async function prewarmSeekClusters(users: UserForCluster[]): Promise<void> {
-  const seen = new Map<string, ClusterKey>()
-
+export async function prewarmSeekClusters(
+  users: { userId: string; targetRole: string; targetCity: string; industry: string | null }[]
+): Promise<void> {
+  const seen = new Map<string, ClusterKey>();
   for (const u of users) {
-    const key = buildClusterKey(u.targetRole, u.targetCity, u.industry)
-    if (!seen.has(key.hash)) seen.set(key.hash, key)
+    const key = buildSeekClusterKey(u.targetRole, u.targetCity, u.industry);
+    if (!seen.has(key.hash)) seen.set(key.hash, key);
   }
 
-  const clusters = Array.from(seen.values())
-  console.log(`[seekScraper] Prewarming ${clusters.length} cluster(s)`)
+  const clusters = Array.from(seen.values());
+  console.log(`[seekScraper] Prewarming ${clusters.length} Seek cluster(s)`);
 
   await Promise.allSettled(
     clusters.map(c =>
       fetchSeekJobsForCluster(c)
-        .then(jobs => console.log(`[seekScraper] cluster ${c.role}/${c.city} -> ${jobs.length} jobs`))
-        .catch(err => console.error(`[seekScraper] cluster ${c.role}/${c.city}:`, err.message))
+        .then(jobs => console.log(`[seekScraper] ✓ ${c.role}/${c.city} → ${jobs.length} jobs`))
+        .catch(err => console.error(`[seekScraper] ✗ ${c.role}/${c.city}:`, err.message))
     )
-  )
+  );
 }

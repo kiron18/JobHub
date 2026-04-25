@@ -1,7 +1,7 @@
 export interface PlatformConfig {
-  label: string
-  color: string
-  bg: string
+  label: string;
+  color: string;
+  bg: string;
 }
 
 export const PLATFORM_CONFIG: Record<string, PlatformConfig> = {
@@ -10,49 +10,49 @@ export const PLATFORM_CONFIG: Record<string, PlatformConfig> = {
   jora:     { label: 'Jora',      color: '#fb923c', bg: 'rgba(251,146,60,0.1)' },
   linkedin: { label: 'LinkedIn',  color: '#818cf8', bg: 'rgba(129,140,248,0.1)' },
   other:    { label: 'Job Board', color: '#94a3b8', bg: 'rgba(148,163,184,0.1)' },
-}
+};
 
 export const APPLY_INSTRUCTIONS: Record<string, string[]> = {
   seek: [
-    'Click the link above to open the job listing on Seek',
+    'Click the button above to open the job listing on Seek (opens in a new tab)',
     'Log in or create a free Seek account',
     'Upload your tailored resume',
     'Paste your cover letter into the application form',
-    'Submit your application',
+    'Review your details and submit your application',
   ],
   linkedin: [
-    'Click the link above to open the job on LinkedIn',
+    'Click the button above to open the job on LinkedIn (opens in a new tab)',
     'Sign in to your LinkedIn account',
     'Click "Apply" or "Easy Apply"',
     'Upload your resume and paste your cover letter',
-    'Submit your application',
+    'Complete any screening questions and submit',
   ],
   indeed: [
-    'Click the link above to open the listing on Indeed',
+    'Click the button above to open the listing on Indeed (opens in a new tab)',
     'Sign in or create an Indeed account',
     'Upload your tailored resume',
     'Paste your cover letter and submit',
   ],
   jora: [
-    'Click the link above — you may be redirected to the employer\'s site',
+    'Click the button above — you may be redirected to the employer\'s site (opens in a new tab)',
     'Upload your tailored resume',
     'Paste your cover letter into the application form',
     'Submit your application',
   ],
   other: [
-    'Click the link above to open the job listing',
+    'Click the button above to open the job listing (opens in a new tab)',
     'Upload your tailored resume',
     'Paste your cover letter into the application form',
     'Submit your application',
   ],
-}
+};
 
 export function getPlatformConfig(platform: string): PlatformConfig {
-  return PLATFORM_CONFIG[platform] ?? PLATFORM_CONFIG.other
+  return PLATFORM_CONFIG[platform] ?? PLATFORM_CONFIG.other;
 }
 
 export function getApplyInstructions(platform: string): string[] {
-  return APPLY_INSTRUCTIONS[platform] ?? APPLY_INSTRUCTIONS.other
+  return APPLY_INSTRUCTIONS[platform] ?? APPLY_INSTRUCTIONS.other;
 }
 
 export function extractPlatformFromUrl(url: string): string {
