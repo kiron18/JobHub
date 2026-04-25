@@ -309,4 +309,99 @@ router.post('/backfill-achievements', authenticate, async (req: AuthRequest, res
   }
 });
 
+// ── POST /api/onboarding/backfill-extras ──────────────────────────────────────
+// Re-extracts education, volunteering, certifications, and languages from the
+// stored resume. Safe to call repeatedly — deduplicates before inserting.
+// Does NOT re-run achievements (avoids duplicates).
+router.post('/backfill-extras', authenticate, async (req: AuthRequest, res: Response) => {
+  const userId = req.user!.id;
+  try {
+    const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
+    if (!profile?.resumeRawText) {
+      return res.json({ status: 'no_resume', message: 'No resume found — upload via Profile.' });
+    }
+
+    const { callLLM } = await import('../services/llm');
+    const { STAGE_1_PROMPT } = await import('../services/prompts');
+    const { parseLLMJson } = await import('../utils/parseLLMResponse');
+
+    const raw = await callLLM(STAGE_1_PROMPT(profile.resumeRawText));
+    let data: any;
+    try { data = parseLLMJson(raw); } catch { data = {}; }
+
+    const profileId = profile.id;
+    let saved = { education: 0, volunteering: 0, certifications: 0, languages: 0 };
+
+    await prisma.$transaction(async (tx) => {
+      // Education
+      const eduItems = (data.education || []).filter((e: any) => e.institution || e.degree);
+      if (eduItems.length > 0) {
+        const existing = await tx.education.findMany({ where: { candidateProfileId: profileId }, select: { institution: true, degree: true } });
+        const existingKeys = new Set(existing.map((e: any) => `${e.institution.toLowerCase().trim()}||${e.degree.toLowerCase().trim()}`));
+        const toCreate = eduItems.filter((e: any) =>
+          !existingKeys.has(`${(e.institution||'Unknown Institution').toLowerCase().trim()}||${(e.degree||'Unknown Degree').toLowerCase().trim()}`)
+        ).map((e: any) => ({
+          candidateProfileId: profileId,
+          institution: e.institution || 'Unknown Institution',
+          degree: e.degree || 'Unknown Degree',
+          field: e.field ?? null,
+          year: e.year ?? null,
+          coachingTips: Array.isArray(e.coachingTips) ? e.coachingTips.join(' | ') : (e.coachingTips || null),
+        }));
+        if (toCreate.length > 0) { await tx.education.createMany({ data: toCreate }); saved.education = toCreate.length; }
+      }
+
+      // Volunteering
+      const volItems = (data.volunteering || []).filter((v: any) => v.org || v.organization);
+      if (volItems.length > 0) {
+        const existing = await tx.volunteering.findMany({ where: { candidateProfileId: profileId }, select: { organization: true, role: true } });
+        const existingKeys = new Set(existing.map((v: any) => `${v.organization.toLowerCase().trim()}||${v.role.toLowerCase().trim()}`));
+        const toCreate = volItems.filter((v: any) => {
+          const org = (v.org || v.organization || 'Unknown').toLowerCase().trim();
+          const role = (v.role || 'Volunteer').toLowerCase().trim();
+          return !existingKeys.has(`${org}||${role}`);
+        }).map((v: any) => ({
+          candidateProfileId: profileId,
+          organization: v.org || v.organization || 'Unknown Organisation',
+          role: v.role || 'Volunteer',
+          description: v.desc || v.description || null,
+        }));
+        if (toCreate.length > 0) { await tx.volunteering.createMany({ data: toCreate }); saved.volunteering = toCreate.length; }
+      }
+
+      // Certifications
+      const certItems = (data.certifications || []).filter((c: any) => c.name);
+      if (certItems.length > 0) {
+        const existing = await tx.certification.findMany({ where: { candidateProfileId: profileId }, select: { name: true } });
+        const existingNames = new Set(existing.map((c: any) => c.name.toLowerCase().trim()));
+        const toCreate = certItems.filter((c: any) => !existingNames.has(c.name.toLowerCase().trim())).map((c: any) => ({
+          candidateProfileId: profileId,
+          name: c.name,
+          issuingBody: c.issuer || c.issuingBody || 'Unknown',
+          year: c.year ?? null,
+        }));
+        if (toCreate.length > 0) { await tx.certification.createMany({ data: toCreate }); saved.certifications = toCreate.length; }
+      }
+
+      // Languages
+      const langItems = (data.languages || []).filter((l: any) => l.name);
+      if (langItems.length > 0) {
+        const existing = await tx.language.findMany({ where: { candidateProfileId: profileId }, select: { name: true } });
+        const existingNames = new Set(existing.map((l: any) => l.name.toLowerCase().trim()));
+        const toCreate = langItems.filter((l: any) => !existingNames.has(l.name.toLowerCase().trim())).map((l: any) => ({
+          candidateProfileId: profileId,
+          name: l.name,
+          proficiency: l.proficiency || 'Conversational',
+        }));
+        if (toCreate.length > 0) { await tx.language.createMany({ data: toCreate }); saved.languages = toCreate.length; }
+      }
+    });
+
+    return res.json({ status: 'done', saved });
+  } catch (error) {
+    console.error('[Onboarding] Backfill extras error:', error);
+    return res.status(500).json({ error: 'Backfill failed' });
+  }
+});
+
 export default router;

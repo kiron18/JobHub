@@ -740,19 +740,16 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onStatusChange, onDelete,
                                 </div>
                             )}
 
-                            {/* Apply link */}
                             {job.sourceUrl && (
-                                <div className="flex items-center gap-2">
-                                    <a
-                                        href={job.sourceUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-500 hover:text-slate-300 border border-slate-700/50 hover:border-slate-600 rounded-lg px-3 py-1.5 transition-colors"
-                                    >
-                                        <ExternalLink size={10} />
-                                        Apply on {getPlatformConfig(extractPlatformFromUrl(job.sourceUrl)).label} →
-                                    </a>
-                                </div>
+                                <a
+                                    href={job.sourceUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-500 hover:text-slate-300 border border-slate-700/50 hover:border-slate-600 rounded-lg px-3 py-1.5 transition-colors"
+                                >
+                                    <ExternalLink size={10} />
+                                    View listing →
+                                </a>
                             )}
 
                             {/* Post-interview thank-you email generator */}

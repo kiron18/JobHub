@@ -22,7 +22,11 @@ export const ApplyContextBanner: React.FC<Props> = ({ context, onDismiss }) => {
   const platform = getPlatformConfig(context.sourcePlatform);
 
   return (
-    <div className="bg-slate-900/60 border-b border-slate-700/50 px-6 py-2 flex items-center justify-between shrink-0">
+<<<<<<< HEAD
+    <div className="bg-slate-900/70 border-b border-slate-700/50 px-6 py-2 flex items-center justify-between shrink-0">
+=======
+    <div className="bg-slate-900/70 border-b border-slate-700/50 px-6 py-2 flex items-center justify-between shrink-0">
+>>>>>>> 883a55e (feat(ux): Prepare & Apply flow — banner, post-gen panel, I've Applied, tracker link)
       <div className="flex items-center gap-3 min-w-0">
         <span
           className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex-shrink-0"
@@ -40,7 +44,7 @@ export const ApplyContextBanner: React.FC<Props> = ({ context, onDismiss }) => {
           href={context.sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider transition-colors"
+          className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider transition-opacity hover:opacity-70"
           style={{ color: platform.color }}
         >
           <ExternalLink size={10} />

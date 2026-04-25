@@ -17,7 +17,7 @@ import {
     Loader2,
     Copy,
     CheckCircle,
-    ExternalLink
+    ExternalLink,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../lib/api';
@@ -236,10 +236,26 @@ export const ApplicationWorkspace: React.FC = () => {
             return raw ? JSON.parse(raw) : null;
         } catch { return null; }
     });
+    const [markingApplied, setMarkingApplied] = useState(false);
 
     const handleDismissApplyContext = () => {
         localStorage.removeItem('jobhub_apply_context');
         setApplyContext(null);
+    };
+
+    const handleMarkApplied = async () => {
+        if (!applyContext || markingApplied) return;
+        setMarkingApplied(true);
+        try {
+            await api.post(`/job-feed/${applyContext.jobId}/mark-applied`);
+            localStorage.removeItem('jobhub_apply_context');
+            setApplyContext(null);
+            toast.success('Marked as Applied in your tracker');
+        } catch {
+            toast.error('Could not update tracker — please mark it manually');
+        } finally {
+            setMarkingApplied(false);
+        }
     };
 
     // Academic documents — generated on demand, stored separately (not in main documents map)
@@ -1263,33 +1279,41 @@ export const ApplicationWorkspace: React.FC = () => {
                                 )}
                             </div>
                         </div>
-                        {/* Post-generation apply panel */}
                         {applyContext && !state.isGenerating && state.documents[state.activeTab] && (
-                            <div className="w-full max-w-3xl mt-4 rounded-xl border border-teal-500/20 bg-teal-500/5 p-4">
-                                <div className="flex items-center gap-2 mb-3">
+                            <div className="w-full max-w-3xl mt-4 rounded-xl border border-teal-500/20 bg-teal-500/5 p-5">
+                                <div className="flex items-center gap-2 mb-4">
                                     <CheckCircle size={14} className="text-teal-400" />
-                                    <span className="text-xs font-bold text-teal-300">
-                                        Documents ready — submit your application
-                                    </span>
+                                    <span className="text-sm font-bold text-teal-300">Documents ready — time to apply</span>
                                 </div>
                                 <a
                                     href={applyContext.sourceUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider text-white mb-3 transition-opacity hover:opacity-80"
+                                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-[11px] font-black uppercase tracking-wider text-white mb-5 transition-opacity hover:opacity-80"
                                     style={{ background: getPlatformConfig(applyContext.sourcePlatform).color }}
                                 >
                                     <ExternalLink size={11} />
                                     Apply on {getPlatformConfig(applyContext.sourcePlatform).label}
                                 </a>
-                                <ol className="space-y-1.5">
+                                <ol className="space-y-2.5 mb-5">
                                     {getApplyInstructions(applyContext.sourcePlatform).map((step, i) => (
-                                        <li key={i} className="text-xs text-slate-400 flex items-start gap-2">
-                                            <span className="text-teal-500 font-bold flex-shrink-0 w-3">{i + 1}.</span>
+                                        <li key={i} className="text-xs text-slate-400 flex items-start gap-3">
+                                            <span className="text-teal-500 font-black flex-shrink-0 w-4 text-right">{i + 1}.</span>
                                             {step}
                                         </li>
                                     ))}
                                 </ol>
+                                <button
+                                    onClick={handleMarkApplied}
+                                    disabled={markingApplied}
+                                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider border border-teal-500/30 text-teal-400 hover:bg-teal-500/10 transition-colors disabled:opacity-50"
+                                >
+                                    {markingApplied
+                                        ? <Loader2 size={11} className="animate-spin" />
+                                        : <CheckCircle size={11} />
+                                    }
+                                    {markingApplied ? 'Updating tracker…' : "I've Applied"}
+                                </button>
                             </div>
                         )}
 

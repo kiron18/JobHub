@@ -384,7 +384,7 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
                 <div className="flex items-center gap-2 flex-wrap">
                   <button
                     onClick={handlePrepareAndApply}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider text-white transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider text-white transition-opacity hover:opacity-80"
                     style={{ background: platform.color }}
                   >
                     Prepare &amp; Apply →
