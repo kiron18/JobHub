@@ -179,6 +179,7 @@ model JobApplication {
   dimensions          Json?
   matchedIdentityCard String?
   overallGrade        String?
+  sourceUrl           String?
   documents           Document[]
   candidateProfile    CandidateProfile  @relation(fields: [candidateProfileId], references: [id])
 

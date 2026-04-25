@@ -56,7 +56,7 @@ router.get('/feed', async (req: any, res: any) => {
     const total = await prisma.jobFeedItem.count({ where: { userId, feedDate: today } });
     const items = await prisma.jobFeedItem.findMany({
       where: { userId, feedDate: today },
-      orderBy: [{ postedAt: 'desc' }, { createdAt: 'desc' }],
+      orderBy: [{ matchScore: 'desc' }, { postedAt: 'desc' }, { createdAt: 'desc' }],
       skip: offset,
       take: 10,
     });
@@ -267,6 +267,57 @@ router.post('/:id/save', async (req: any, res: any) => {
   } catch (err: any) {
     console.error('[job-feed/save]', err);
     return res.status(500).json({ error: 'Failed to save job' });
+  }
+});
+
+// POST /api/job-feed/:id/mark-applied — save (if needed) + mark as APPLIED in one step
+router.post('/:id/mark-applied', async (req: any, res: any) => {
+  const userId = req.user.id;
+  const { id } = req.params;
+
+  try {
+    if (!(await requirePremium(userId, res))) return;
+    const item = await prisma.jobFeedItem.findUnique({ where: { id } });
+    if (!item || item.userId !== userId) return res.status(404).json({ error: 'Not found' });
+
+    const profile = await prisma.candidateProfile.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    if (!profile) return res.status(404).json({ error: 'Profile not found' });
+
+    // Find existing application by title + company for this user
+    let jobApp = await prisma.jobApplication.findFirst({
+      where: { userId, title: item.title, company: item.company },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (jobApp) {
+      await prisma.jobApplication.update({
+        where: { id: jobApp.id },
+        data: { status: 'APPLIED', dateApplied: new Date() },
+      });
+    } else {
+      jobApp = await prisma.jobApplication.create({
+        data: {
+          userId,
+          candidateProfileId: profile.id,
+          title: item.title,
+          company: item.company,
+          description: item.description,
+          sourceUrl: item.sourceUrl,
+          notes: `Source: ${item.sourceUrl}`,
+          status: 'APPLIED',
+          dateApplied: new Date(),
+        },
+      });
+      await prisma.jobFeedItem.update({ where: { id }, data: { isSaved: true } });
+    }
+
+    return res.json({ ok: true, jobApplicationId: jobApp.id });
+  } catch (err: any) {
+    console.error('[job-feed/mark-applied]', err);
+    return res.status(500).json({ error: 'Failed to mark as applied' });
   }
 });
 

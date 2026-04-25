@@ -2,7 +2,8 @@ import axios from 'axios';
 import { prisma } from '../index';
 import { callLLMWithRetry } from '../utils/callLLMWithRetry';
 import { parseLLMJson } from '../utils/parseLLMResponse';
-import { buildClusterKey, fetchSeekJobsForCluster } from './seekScraper';
+import { buildSeekClusterKey, fetchSeekJobsForCluster } from './seekScraper';
+import { buildLinkedInClusterKey, fetchLinkedInJobsForCluster } from './linkedinScraper';
 import { deduplicateJobs } from '../utils/deduplicateJobs';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -155,34 +156,63 @@ ${JSON.stringify(input)}`;
   }
 }
 
+// ─── Quick keyword pre-scorer ─────────────────────────────────────────────────
+
+function quickScore(skillsJson: any, job: RawJob): number {
+  if (!skillsJson) return 50;
+  try {
+    const parsed = typeof skillsJson === 'string' ? JSON.parse(skillsJson) : skillsJson;
+    const allSkills: string[] = [
+      ...(parsed.technical || []),
+      ...(parsed.industryKnowledge || []),
+      ...(parsed.tools || []),
+      ...(parsed.soft || []),
+    ].map((s: string) => String(s).toLowerCase()).filter(s => s.length > 2);
+
+    if (allSkills.length === 0) return 50;
+
+    const haystack = `${job.title} ${job.description}`.toLowerCase();
+    const matches = allSkills.filter(s => haystack.includes(s));
+    return Math.min(99, Math.round((matches.length / allSkills.length) * 100));
+  } catch {
+    return 50;
+  }
+}
+
 // ─── Build daily feed ─────────────────────────────────────────────────────────
 
 export async function buildDailyFeed(userId: string): Promise<void> {
   const profile = await prisma.candidateProfile.findUnique({
     where: { userId },
-    select: { targetRole: true, targetCity: true, industry: true },
+    select: { targetRole: true, targetCity: true, industry: true, skills: true },
   });
 
   if (!profile?.targetRole || !profile?.targetCity) {
     throw new Error('Profile incomplete — set a target role and city first');
   }
 
-  const clusterKey = buildClusterKey(profile.targetRole, profile.targetCity, profile.industry);
+  const seekCluster = buildSeekClusterKey(profile.targetRole, profile.targetCity, profile.industry);
+  const linkedInCluster = buildLinkedInClusterKey(profile.targetRole, profile.targetCity, profile.industry);
 
-  const [adzunaJobs, seekJobs] = await Promise.all([
-    fetchAdzunaJobs(profile.targetRole, profile.targetCity),
-    fetchSeekJobsForCluster(clusterKey).catch((err: Error) => {
-      console.error(`[buildDailyFeed] Seek fetch failed for ${userId}:`, err.message);
+  const [adzunaJobs, seekJobs, linkedInJobs] = await Promise.all([
+    fetchAdzunaJobs(profile.targetRole, profile.targetCity).catch((err: Error) => {
+      console.error(`[buildDailyFeed] Adzuna failed for ${userId}:`, err.message);
+      return [] as RawJob[];
+    }),
+    fetchSeekJobsForCluster(seekCluster).catch((err: Error) => {
+      console.error(`[buildDailyFeed] Seek failed for ${userId}:`, err.message);
+      return [] as RawJob[];
+    }),
+    fetchLinkedInJobsForCluster(linkedInCluster).catch((err: Error) => {
+      console.error(`[buildDailyFeed] LinkedIn failed for ${userId}:`, err.message);
       return [] as RawJob[];
     }),
   ]);
 
-  const deduped = deduplicateJobs(seekJobs, adzunaJobs);
-  const jobs = preMatchFilter(deduped, profile.targetCity);
+  const jobs = deduplicateJobs([...seekJobs, ...linkedInJobs], adzunaJobs);
+  const today = todayAEST();
 
   if (jobs.length === 0) return;
-
-  const today = todayAEST();
 
   await prisma.jobFeedItem.deleteMany({ where: { userId, feedDate: today } });
 
@@ -198,6 +228,7 @@ export async function buildDailyFeed(userId: string): Promise<void> {
       sourceUrl: j.sourceUrl,
       sourcePlatform: j.sourcePlatform,
       postedAt: j.postedAt,
+      matchScore: quickScore(profile.skills, j),
     })),
   });
 }
@@ -247,8 +278,6 @@ export async function findAddressee(
     });
 
     const results: any[] = resp.data?.organic_results ?? [];
-
-    const smallSignals = /startup|small team|our team of [1-9]\b|family business|directly with the founder/i.test(description);
 
     const titlePatterns = [
       /\b(CEO|Founder|Co-Founder|Managing Director)\b/i,
