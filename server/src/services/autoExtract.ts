@@ -111,6 +111,117 @@ export async function autoExtractAchievements(userId: string, resumeText: string
         await tx.experience.createMany({ data: experienceToCreate });
       }
 
+      // 6b. Save education entries
+      const educationToCreate = (stage1Data.education || [])
+        .filter((edu: any) => edu.institution || edu.degree)
+        .map((edu: any) => ({
+          candidateProfileId: profileId,
+          institution: edu.institution || 'Unknown Institution',
+          degree: edu.degree || 'Unknown Degree',
+          field: edu.field ?? null,
+          year: edu.year ?? null,
+          coachingTips: Array.isArray(edu.coachingTips)
+            ? edu.coachingTips.join(' | ')
+            : (edu.coachingTips || null),
+        }));
+
+      if (educationToCreate.length > 0) {
+        const existingEdu = await tx.education.findMany({
+          where: { candidateProfileId: profileId },
+          select: { institution: true, degree: true },
+        });
+        const existingEduKeys = new Set(
+          existingEdu.map((e: any) => `${e.institution.toLowerCase().trim()}||${e.degree.toLowerCase().trim()}`)
+        );
+        const newEdu = educationToCreate.filter((e: any) =>
+          !existingEduKeys.has(`${e.institution.toLowerCase().trim()}||${e.degree.toLowerCase().trim()}`)
+        );
+        if (newEdu.length > 0) {
+          await tx.education.createMany({ data: newEdu });
+          console.log(`[AutoExtract] Saved ${newEdu.length} education entries for userId: ${userId}`);
+        }
+      }
+
+      // 6c. Save volunteering entries
+      const volunteeringToCreate = (stage1Data.volunteering || [])
+        .filter((vol: any) => vol.org || vol.organization)
+        .map((vol: any) => ({
+          candidateProfileId: profileId,
+          organization: vol.org || vol.organization || 'Unknown Organisation',
+          role: vol.role || 'Volunteer',
+          description: vol.desc || vol.description || null,
+        }));
+
+      if (volunteeringToCreate.length > 0) {
+        const existingVols = await tx.volunteering.findMany({
+          where: { candidateProfileId: profileId },
+          select: { organization: true, role: true },
+        });
+        const existingVolKeys = new Set(
+          existingVols.map((v: any) => `${v.organization.toLowerCase().trim()}||${v.role.toLowerCase().trim()}`)
+        );
+        const newVols = volunteeringToCreate.filter((v: any) =>
+          !existingVolKeys.has(`${v.organization.toLowerCase().trim()}||${v.role.toLowerCase().trim()}`)
+        );
+        if (newVols.length > 0) {
+          await tx.volunteering.createMany({ data: newVols });
+          console.log(`[AutoExtract] Saved ${newVols.length} volunteering entries for userId: ${userId}`);
+        }
+      }
+
+      // 6d. Save certification entries
+      const certsToCreate = (stage1Data.certifications || [])
+        .filter((cert: any) => cert.name)
+        .map((cert: any) => ({
+          candidateProfileId: profileId,
+          name: cert.name,
+          issuingBody: cert.issuer || cert.issuingBody || 'Unknown',
+          year: cert.year ?? null,
+        }));
+
+      if (certsToCreate.length > 0) {
+        const existingCerts = await tx.certification.findMany({
+          where: { candidateProfileId: profileId },
+          select: { name: true },
+        });
+        const existingCertNames = new Set(
+          existingCerts.map((c: any) => c.name.toLowerCase().trim())
+        );
+        const newCerts = certsToCreate.filter((c: any) =>
+          !existingCertNames.has(c.name.toLowerCase().trim())
+        );
+        if (newCerts.length > 0) {
+          await tx.certification.createMany({ data: newCerts });
+          console.log(`[AutoExtract] Saved ${newCerts.length} certification entries for userId: ${userId}`);
+        }
+      }
+
+      // 6e. Save language entries
+      const langsToCreate = (stage1Data.languages || [])
+        .filter((lang: any) => lang.name)
+        .map((lang: any) => ({
+          candidateProfileId: profileId,
+          name: lang.name,
+          proficiency: lang.proficiency || 'Conversational',
+        }));
+
+      if (langsToCreate.length > 0) {
+        const existingLangs = await tx.language.findMany({
+          where: { candidateProfileId: profileId },
+          select: { name: true },
+        });
+        const existingLangNames = new Set(
+          existingLangs.map((l: any) => l.name.toLowerCase().trim())
+        );
+        const newLangs = langsToCreate.filter((l: any) =>
+          !existingLangNames.has(l.name.toLowerCase().trim())
+        );
+        if (newLangs.length > 0) {
+          await tx.language.createMany({ data: newLangs });
+          console.log(`[AutoExtract] Saved ${newLangs.length} language entries for userId: ${userId}`);
+        }
+      }
+
       // 7. Re-fetch profile with experience to get experience IDs
       const refreshedProfile = await tx.candidateProfile.findUnique({
         where: { userId },
