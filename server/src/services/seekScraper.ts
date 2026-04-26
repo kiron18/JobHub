@@ -100,10 +100,10 @@ export async function fetchSeekJobsForCluster(cluster: ClusterKey): Promise<RawJ
         searchTerm: cluster.role,
         location: cluster.city,
         maxResults: 50,
-        sortBy: 'date',
+        sortBy: 'ListedDate',
         dateRange: 7,
       },
-      { waitSecs: 180 }
+      { waitSecs: 60 }
     );
     const dataset = await client.dataset(run.defaultDatasetId).listItems();
     items = dataset.items;

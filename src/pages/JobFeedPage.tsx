@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence } from 'framer-motion';
 import { Loader2, RefreshCw, AlertCircle, Briefcase } from 'lucide-react';
@@ -17,6 +17,8 @@ export const JobFeedPage: React.FC = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [profileIncomplete, setProfileIncomplete] = useState(false);
+  const [building, setBuilding] = useState(false);
+  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: profile } = useQuery({
     queryKey: ['profile'],
@@ -24,21 +26,34 @@ export const JobFeedPage: React.FC = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { isLoading, isError } = useQuery({
+  const { isLoading, isError, refetch } = useQuery({
     queryKey: ['job-feed', 0],
     queryFn: async () => {
       const { data } = await api.get('/job-feed/feed?offset=0');
-      setJobs(data.jobs);
-      setTotal(data.total);
-      setHasMore(data.hasMore);
-      setFeedDate(data.feedDate);
+      setJobs(data.jobs ?? []);
+      setTotal(data.total ?? 0);
+      setHasMore(data.hasMore ?? false);
+      setFeedDate(data.feedDate ?? '');
       setProfileIncomplete(data.profileIncomplete ?? false);
+      setBuilding(data.building ?? false);
       setOffset(0);
       return data;
     },
     refetchOnMount: true,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
   });
+
+  // When the server says it's building, poll every 20s until jobs appear
+  useEffect(() => {
+    if (building && !isLoading) {
+      pollRef.current = setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['job-feed'] });
+      }, 20_000);
+    }
+    return () => {
+      if (pollRef.current) clearTimeout(pollRef.current);
+    };
+  }, [building, isLoading]);
 
   const handleLoadMore = async () => {
     setLoadingMore(true);
@@ -76,7 +91,6 @@ export const JobFeedPage: React.FC = () => {
     setJobs(prev => prev.map(j => (j.id === updated.id ? { ...j, ...updated } : j)));
   }, []);
 
-  // ─── Loading state ───
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-24">
@@ -91,7 +105,7 @@ export const JobFeedPage: React.FC = () => {
       <header className="flex items-start justify-between gap-4">
         <div className="space-y-1">
           <h2 className="text-4xl font-extrabold tracking-tight text-white">Job Feed</h2>
-          {feedDate && !profileIncomplete && (
+          {feedDate && !profileIncomplete && !building && (
             <p className="text-base text-slate-400 font-medium">
               {total} jobs for{' '}
               <span className="text-slate-200">{profile?.targetRole ?? 'your role'}</span>{' '}
@@ -101,7 +115,7 @@ export const JobFeedPage: React.FC = () => {
             </p>
           )}
         </div>
-        {!profileIncomplete && (
+        {!profileIncomplete && !building && (
           <button
             onClick={handleRefresh}
             disabled={refreshing}
@@ -112,6 +126,22 @@ export const JobFeedPage: React.FC = () => {
           </button>
         )}
       </header>
+
+      {/* Building state */}
+      {building && (
+        <div className="glass-card p-10 flex flex-col items-center gap-4 text-center">
+          <div className="w-10 h-10 border-2 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" />
+          <div>
+            <p className="text-base font-bold text-slate-200">Building your feed…</p>
+            <p className="text-sm text-slate-500 mt-1">
+              Searching for <span className="text-slate-300">{profile?.targetRole}</span> roles
+              in <span className="text-slate-300">{profile?.targetCity}</span>.
+              This takes about 30–60 seconds on first load.
+            </p>
+          </div>
+          <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">Auto-refreshing…</p>
+        </div>
+      )}
 
       {/* Profile incomplete */}
       {profileIncomplete && (
@@ -141,32 +171,25 @@ export const JobFeedPage: React.FC = () => {
         </div>
       )}
 
-      {/* Empty */}
-      {!isLoading && !isError && !profileIncomplete && jobs.length === 0 && (
+      {/* Empty (build finished but no results) */}
+      {!isLoading && !isError && !profileIncomplete && !building && jobs.length === 0 && (
         <div className="glass-card p-12 flex flex-col items-center gap-4 text-center">
           <Briefcase size={36} className="text-slate-700" />
           <div>
-            <p className="text-base font-bold text-slate-400">
-              {refreshing ? 'Building your feed…' : 'No listings found today'}
-            </p>
+            <p className="text-base font-bold text-slate-400">No listings found today</p>
             <p className="text-sm text-slate-600 mt-1">
-              {refreshing
-                ? `Searching for ${profile?.targetRole} roles in ${profile?.targetCity}. This takes up to 30 seconds.`
-                : `We searched for ${profile?.targetRole} roles in ${profile?.targetCity} but found nothing today. Try broadening your target role in your profile, or check back tomorrow — new listings appear daily.`
-              }
+              We searched for {profile?.targetRole} roles in {profile?.targetCity} but found nothing today.
+              Try broadening your target role in your profile, or check back tomorrow.
             </p>
           </div>
-          {!refreshing && (
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold border border-slate-700 text-slate-400 hover:border-slate-600 hover:text-slate-200 transition-all disabled:opacity-40"
-            >
-              <RefreshCw size={12} />
-              Search again
-            </button>
-          )}
-          {refreshing && <Loader2 size={20} className="animate-spin text-slate-600" />}
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold border border-slate-700 text-slate-400 hover:border-slate-600 hover:text-slate-200 transition-all disabled:opacity-40"
+          >
+            {refreshing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+            Search again
+          </button>
         </div>
       )}
 
@@ -179,7 +202,6 @@ export const JobFeedPage: React.FC = () => {
             ))}
           </AnimatePresence>
 
-          {/* Load more */}
           {hasMore && (
             <div className="flex items-center justify-between pt-2">
               <p className="text-xs text-slate-500">Showing {jobs.length} of {total} jobs</p>

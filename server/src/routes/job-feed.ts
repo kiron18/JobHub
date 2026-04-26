@@ -14,6 +14,9 @@ import { scoreJobForFeed } from '../services/jobAnalysis';
 
 const router = Router();
 
+// Tracks which userIds have a feed build currently in flight
+const buildingNow = new Set<string>();
+
 // All routes require auth
 router.use(authenticate);
 
@@ -39,18 +42,34 @@ router.get('/feed', async (req: any, res: any) => {
 
   try {
     if (!(await requirePremium(userId, res))) return;
-    // Lazy fetch if no jobs for today
+
+    // Pre-check profile completeness before attempting any build
+    const profile = await prisma.candidateProfile.findUnique({
+      where: { userId },
+      select: { targetRole: true, targetCity: true },
+    });
+    if (!profile?.targetRole || !profile?.targetCity) {
+      return res.json({ jobs: [], total: 0, hasMore: false, feedDate: today.toISOString().slice(0, 10), profileIncomplete: true });
+    }
+
+    // If no jobs exist for today, kick off a background build and return immediately
     const count = await prisma.jobFeedItem.count({ where: { userId, feedDate: today } });
     if (count === 0) {
-      try {
-        await buildDailyFeed(userId);
-      } catch (err: any) {
-        // Profile incomplete — surface message but don't 500
-        if (err.message?.includes('Profile incomplete')) {
-          return res.json({ jobs: [], total: 0, hasMore: false, feedDate: today.toISOString().slice(0, 10), profileIncomplete: true });
-        }
-        throw err;
+      if (!buildingNow.has(userId)) {
+        buildingNow.add(userId);
+        buildDailyFeed(userId)
+          .catch((err: any) => {
+            console.error(`[job-feed] Background build failed for ${userId}:`, err.message);
+          })
+          .finally(() => buildingNow.delete(userId));
       }
+      return res.json({
+        jobs: [],
+        total: 0,
+        hasMore: false,
+        feedDate: today.toISOString().slice(0, 10),
+        building: true,
+      });
     }
 
     const total = await prisma.jobFeedItem.count({ where: { userId, feedDate: today } });
