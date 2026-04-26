@@ -26,7 +26,7 @@ export const JobFeedPage: React.FC = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { isLoading, isError, refetch } = useQuery({
+  const { isLoading, isError } = useQuery({
     queryKey: ['job-feed', 0],
     queryFn: async () => {
       const { data } = await api.get('/job-feed/feed?offset=0');
