@@ -158,7 +158,9 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
       sourceUrl: item.sourceUrl,
       sourcePlatform: item.sourcePlatform,
     }));
-    navigate('/');
+    navigate('/application-workspace', {
+      state: { jobDescription: item.description, analysis: null, initialTab: 'cover-letter' },
+    });
     toast.success('Job loaded — generate your documents, then apply');
   };
 
@@ -278,6 +280,16 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
                 <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-500/8 border border-amber-500/20">
                   <AlertTriangle size={13} className="text-amber-400 flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-amber-300">This role may require a selection criteria response — check the full listing for details.</p>
+                </div>
+              )}
+
+              {/* Seek screening questions notice */}
+              {item.sourcePlatform === 'seek' && (
+                <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-600/40">
+                  <AlertTriangle size={13} className="text-slate-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-slate-400">
+                    Employers on Seek often add screening questions during the application process that don't appear in the listing — worth reviewing before you apply.
+                  </p>
                 </div>
               )}
 

@@ -39,7 +39,7 @@ export const JobFeedPage: React.FC = () => {
       setOffset(0);
       return data;
     },
-    refetchOnMount: true,
+    refetchOnMount: false,
     staleTime: 5 * 60 * 1000,
   });
 
