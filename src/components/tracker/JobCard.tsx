@@ -24,7 +24,7 @@ import { exportDocx } from '../../lib/exportDocx';
 import type { JobApplication, TrackerDocument, ApplicationStatus, JobPriority } from './types';
 import { PRIORITY_CONFIG, STATUS_FLOW } from './types';
 import { STATUS_CONFIG } from './constants';
-import { getPlatformConfig, extractPlatformFromUrl } from '../../lib/platforms';
+import { getPlatformConfig } from '../../lib/platforms';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
