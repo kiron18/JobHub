@@ -30,28 +30,44 @@ export interface QualityGateResult {
  */
 export const QUALITY_GATE_PROMPT = (
     blueprint: StrategyBlueprint,
-    generatedContent: string
-): string => `You are a quality gate. Check the document below against 3 criteria only. Return JSON.
+    generatedContent: string,
+    docType: 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE' = 'COVER_LETTER'
+): string => {
+    const check1 = docType === 'COVER_LETTER'
+        ? `CHECK 1 — OPENING HOOK: Does the cover letter open with (or very closely paraphrase) the required hook? A close paraphrase passes. A generic opener that ignores the hook fails.\nHook required: "${blueprint.openingHook}"`
+        : docType === 'RESUME'
+        ? `CHECK 1 — PROFESSIONAL SUMMARY: Does the resume professional summary read as a scannable credential block (years of experience + outcomes + capability)? FAIL if the summary begins with the exact company-specific hook "${blueprint.openingHook}" or any near-verbatim restatement of it. PASS if the summary is role-focused and does not echo the cover letter opener.`
+        : `CHECK 1 — NARRATIVE VOICE: Does each criterion response address the criterion directly without beginning with the company-specific hook "${blueprint.openingHook}"? Selection criteria must open on-criterion, not with a generic narrative hook. PASS if each response opens with a relevant claim or evidence.`;
+
+    const formatCheck = docType === 'RESUME'
+        ? `The document must use bullet points / short statements for experience and skills. FAIL if the professional summary or any experience section contains multi-sentence narrative paragraphs that read like a cover letter pitch. Scannable structure required.`
+        : docType === 'COVER_LETTER'
+        ? `The document must be written in flowing narrative paragraphs. FAIL if any section opens with a bullet-point list or reads like a resume bullet (e.g. "Led X achieving Y" as a standalone line with no surrounding prose). Cover letters must not replicate resume structure.`
+        : `Each selection criterion response must open by directly addressing the criterion — not with a resume-style bullet or a cover letter narrative hook. FAIL if any criterion response is a bullet list or opens with a generic paragraph unrelated to the criterion.`;
+
+    return `You are a quality gate. Check the document below against 3 criteria only. Return JSON.
 
 BLUEPRINT REFERENCE:
-Opening hook required: "${blueprint.openingHook}"
 Pitfall flags (must be absent): ${blueprint.pitfallFlags.map(f => `"${f}"`).join(' | ')}
-Tone required: ${blueprint.toneBlueprint}
+Messaging angles that MUST appear in the document: ${blueprint.messagingAngles.map(a => `"${a}"`).join(' | ')}
+Document type: ${docType}
 
 GENERATED DOCUMENT:
 """
 ${generatedContent}
 """
 
-CHECK 1 — OPENING HOOK: Does the document open with (or very closely paraphrase) the required hook? A close paraphrase passes. A generic opener that ignores the hook fails.
+${check1}
 
 CHECK 2 — PITFALL FLAGS: Does the document contain any pitfall flag phrase or a close variant? Scan every sentence. If found, flag it.
 
-CHECK 3 — TONE MATCH: Does the overall tone match the tone blueprint? Minor deviations pass. A document that is warm and values-heavy when the blueprint calls for direct and results-oriented fails.
+CHECK 3 — KEYWORD COVERAGE AND FORMAT: Two sub-checks, both must pass.
+  3a. KEYWORD COVERAGE: Do at least 3 of the messaging angles listed above appear (verbatim or as clear paraphrases) in the document? If fewer than 3 are present, fail and identify which angles are missing.
+  3b. DOCUMENT FORMAT: ${formatCheck}
 
-DECISION RULE: If all 3 checks pass, set passed: true and return empty arrays. Only flag genuine failures. Do not nitpick style. Do not suggest improvements to content that meets the spec.
+DECISION RULE: If all 3 checks pass, set passed: true and return empty arrays. Only flag genuine failures — minor wording variations pass. Do not nitpick style.
 
-REWRITE RULE: Maximum 3 rewrites. Each rewrite must be surgical — replace only the failing text, leave surrounding content intact. Do not rewrite passing sections.
+REWRITE RULE: Maximum 3 rewrites total across all failing checks. Each rewrite must be surgical — replace only the failing text, leave surrounding content intact.
 
 Return valid JSON only. No preamble. No markdown fences.
 
@@ -183,8 +199,9 @@ DIRECTOR'S BRIEF — READ THIS FIRST. IT OVERRIDES ALL DEFAULTS.
 
 You are executing a document strategy designed by a senior career strategist. Your job is to write the ${type} exactly as the strategist has specified. Do not improvise the strategic elements. Apply your formatting and language skills within the strategic frame you are given.
 
-OPENING HOOK (use this — or a minimal paraphrase that preserves specificity — as the document's opening sentence):
-"${blueprint.openingHook}"
+${type === 'COVER_LETTER' ? `OPENING HOOK (use this — or a minimal paraphrase that preserves specificity — as the cover letter's opening sentence):
+"${blueprint.openingHook}"` : `PROFESSIONAL SUMMARY DIRECTIVE (resume only — do NOT replicate the cover letter hook):
+Write a 3–4 sentence professional summary that leads with years of experience + core professional identity, then top 2–3 quantified outcomes, then a forward-looking capability statement. It must NOT begin with a company-specific hook or mirror the cover letter opening sentence. It must be scannable and role-agnostic enough to work across similar applications.`}
 
 POSITIONING STATEMENT (shape the professional summary / pitch opening around this):
 ${blueprint.positioningStatement}

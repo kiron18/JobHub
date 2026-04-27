@@ -25,6 +25,9 @@ const JobFeedPage = React.lazy(() =>
 const FridayBriefPage = React.lazy(() =>
   import('./pages/FridayBriefPage').then(m => ({ default: m.FridayBriefPage }))
 );
+const AdminDashboard = React.lazy(() =>
+  import('./pages/AdminDashboard').then(m => ({ default: m.AdminDashboard }))
+);
 
 // Auth & Context
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -563,6 +566,7 @@ function ReportOrDashboard() {
                   <Route path="/email-templates" element={<EmailTemplatesLibrary />} />
                   <Route path="/linkedin" element={<LinkedInPage />} />
                   <Route path="/jobs" element={<JobFeedPage />} />
+                  <Route path="/admin" element={<AdminDashboard />} />
                   <Route path="/admin/friday-brief" element={<FridayBriefPage />} />
                   <Route path="*" element={<Dashboard />} />
                 </Routes>

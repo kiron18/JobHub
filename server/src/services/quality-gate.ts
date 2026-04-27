@@ -14,9 +14,10 @@ export interface QualityGateOutcome {
 
 export async function reviewDocument(
     blueprint: StrategyBlueprint,
-    generatedContent: string
+    generatedContent: string,
+    docType: 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE' = 'COVER_LETTER'
 ): Promise<QualityGateOutcome> {
-    const prompt = QUALITY_GATE_PROMPT(blueprint, generatedContent);
+    const prompt = QUALITY_GATE_PROMPT(blueprint, generatedContent, docType);
     const { content, usage } = await callClaude(prompt, true);
 
     let result: QualityGateResult;

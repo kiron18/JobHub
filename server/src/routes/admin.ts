@@ -95,6 +95,109 @@ Write a complete spoken script with exactly these four sections:
 Write the full script now, ready for Kiron to read. Do not include any meta-commentary or instructions — just the script.`;
 }
 
+// GET /api/admin/stats
+router.get('/stats', authenticate, requireAdmin, async (_req, res) => {
+  const now = new Date();
+  const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
+  const weekAgo    = new Date(now); weekAgo.setDate(weekAgo.getDate() - 7);
+  const twoWeeksAgo = new Date(now); twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+
+  function buildDailyBuckets(items: { createdAt: Date }[], days: number) {
+    const buckets: Record<string, number> = {};
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      buckets[d.toISOString().split('T')[0]] = 0;
+    }
+    for (const item of items) {
+      const key = item.createdAt.toISOString().split('T')[0];
+      if (key in buckets) buckets[key]++;
+    }
+    return Object.entries(buckets).map(([date, count]) => ({ date, count }));
+  }
+
+  try {
+    const [
+      totalProfiles,
+      onboardedProfiles,
+      newToday,
+      newThisWeek,
+      planBreakdown,
+      totalDocs,
+      docsToday,
+      docsThisWeek,
+      docsByType,
+      recentProfiles,
+      recentDocs,
+      totalAnalyses,
+      analysesThisWeek,
+      analysesToday,
+      totalDiagnostics,
+      diagnosticsComplete,
+      diagnosticsThisWeek,
+      appsByStatus,
+      feedbackStats,
+    ] = await Promise.all([
+      prisma.candidateProfile.count(),
+      prisma.candidateProfile.count({ where: { hasCompletedOnboarding: true } }),
+      prisma.candidateProfile.count({ where: { createdAt: { gte: todayStart } } }),
+      prisma.candidateProfile.count({ where: { createdAt: { gte: weekAgo } } }),
+      prisma.candidateProfile.groupBy({ by: ['plan'] as any, _count: { id: true } }),
+      prisma.document.count(),
+      prisma.document.count({ where: { createdAt: { gte: todayStart } } }),
+      prisma.document.count({ where: { createdAt: { gte: weekAgo } } }),
+      prisma.document.groupBy({ by: ['type'], _count: { id: true } }),
+      prisma.candidateProfile.findMany({ where: { createdAt: { gte: twoWeeksAgo } }, select: { createdAt: true } }),
+      prisma.document.findMany({ where: { createdAt: { gte: twoWeeksAgo } }, select: { createdAt: true } }),
+      prisma.jobApplication.count({ where: { overallGrade: { not: null } } }),
+      prisma.jobApplication.count({ where: { overallGrade: { not: null }, createdAt: { gte: weekAgo } } }),
+      prisma.jobApplication.count({ where: { overallGrade: { not: null }, createdAt: { gte: todayStart } } }),
+      prisma.diagnosticReport.count(),
+      prisma.diagnosticReport.count({ where: { status: 'COMPLETE' } }),
+      prisma.diagnosticReport.count({ where: { createdAt: { gte: weekAgo } } }),
+      prisma.jobApplication.groupBy({ by: ['status'], _count: { id: true } }),
+      prisma.documentFeedback.aggregate({ _avg: { rating: true }, _count: { id: true } }),
+    ]);
+
+    const byPlan: Record<string, number> = {};
+    for (const row of planBreakdown as any[]) byPlan[row.plan] = row._count.id;
+    const paidCount = Object.entries(byPlan).filter(([k]) => k !== 'free').reduce((s, [, v]) => s + v, 0);
+
+    const byType: Record<string, number> = {};
+    for (const row of docsByType) byType[row.type] = row._count.id;
+
+    const byStatus: Record<string, number> = {};
+    for (const row of appsByStatus) byStatus[row.status] = row._count.id;
+
+    return res.json({
+      users: {
+        total: totalProfiles,
+        onboarded: onboardedProfiles,
+        paid: paidCount,
+        free: totalProfiles - paidCount,
+        newToday,
+        newThisWeek,
+        byPlan,
+        daily: buildDailyBuckets(recentProfiles, 14),
+      },
+      generations: {
+        total: totalDocs,
+        today: docsToday,
+        thisWeek: docsThisWeek,
+        byType,
+        daily: buildDailyBuckets(recentDocs, 14),
+      },
+      analyses: { total: totalAnalyses, thisWeek: analysesThisWeek, today: analysesToday },
+      diagnostics: { total: totalDiagnostics, complete: diagnosticsComplete, thisWeek: diagnosticsThisWeek },
+      applications: { byStatus },
+      feedback: { total: feedbackStats._count.id, avgRating: feedbackStats._avg.rating },
+    });
+  } catch (err) {
+    console.error('[admin/stats] error:', err);
+    return res.status(500).json({ error: 'Failed to load stats' });
+  }
+});
+
 // GET /api/admin/friday-brief
 router.get('/friday-brief', authenticate, requireAdmin, async (_req, res) => {
   const { from, to } = getCurrentWindow();

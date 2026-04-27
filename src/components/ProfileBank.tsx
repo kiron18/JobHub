@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import api from '../lib/api';
 import { useAppTheme } from '../contexts/ThemeContext';
 import { ProfileAdvisorPanel } from './ProfileAdvisorPanel';
+import { ActivityWidget } from './ActivityWidget';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -1229,6 +1230,8 @@ export const ProfileBank: React.FC = () => {
             Your achievement bank — the source of truth for every resume and cover letter JobHub generates. Complete it once, use it forever.
           </p>
         </div>
+
+        <ActivityWidget />
 
         {/* Two-column layout */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 24, alignItems: 'start' }}>

@@ -1322,14 +1322,18 @@ export const ApplicationWorkspace: React.FC = () => {
                             </div>
                         )}
 
-                        {state.blueprint && !state.isGenerating && (
+                    </div>
+
+                    {/* Strategist's Notes — docked below scroll area, never overlaps document */}
+                    {state.blueprint && !state.isGenerating && (
+                        <div className="shrink-0 border-t border-slate-800/60 bg-slate-950">
                             <StrategistDebrief
                                 blueprint={state.blueprint}
                                 rankedAchievements={state.rankedAchievements}
                                 companyName={state.metadata?.company}
                             />
-                        )}
-                    </div>
+                        </div>
+                    )}
 
                     {/* Email Version Modal */}
                     <AnimatePresence>

@@ -218,7 +218,7 @@ router.post('/:type', authenticate, async (req, res) => {
         if (QUALITY_GATE_ENABLED && blueprintResult) {
             console.log('[Generation] Stage 3: running quality gate...');
             try {
-                const review = await reviewDocument(blueprintResult.blueprint, stage2Raw);
+                const review = await reviewDocument(blueprintResult.blueprint, stage2Raw, docType);
                 finalContent = review.rewrittenContent;
                 stage3Info = { triggered: true, tokens: review.tokens };
                 console.log(`[Generation] Stage 3 complete. passed=${review.passed}, flags=${review.flags.length}`);
