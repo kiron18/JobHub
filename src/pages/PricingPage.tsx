@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Zap, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../lib/api';
 
@@ -223,8 +224,14 @@ export function PricingPage() {
     try {
       const { data } = await api.post('/stripe/checkout', { plan });
       window.location.href = data.url;
-    } catch {
+    } catch (err: any) {
       setLoading(null);
+      const msg = err?.response?.data?.error ?? '';
+      if (msg.toLowerCase().includes('complimentary')) {
+        toast.success('Your account already has full access - no payment needed.');
+      } else {
+        toast.error('Could not start checkout. Please try again.');
+      }
     }
   }
 

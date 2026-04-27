@@ -366,18 +366,10 @@ export function showUpgradeModal(trigger: UpgradeTrigger) {
 }
 
 function FreeBanner({ profile }: { profile: any }) {
-  const [checkingOut, setCheckingOut] = React.useState(false);
+  const navigate = useNavigate();
   const genLeft = Math.max(0, 5 - (profile?.freeGenerationsUsed ?? 0));
   const anaLeft = Math.max(0, 5 - (profile?.freeAnalysesUsed ?? 0));
   const allGone = genLeft === 0 && anaLeft === 0;
-
-  async function handleCheckout() {
-    setCheckingOut(true);
-    try {
-      const { data } = await api.post('/stripe/checkout', { plan: 'three_month' });
-      window.location.href = data.url;
-    } catch { setCheckingOut(false); }
-  }
 
   return (
     <div style={{
@@ -393,8 +385,7 @@ function FreeBanner({ profile }: { profile: any }) {
         Free tier — {genLeft} document {genLeft === 1 ? 'generation' : 'generations'} · {anaLeft} {anaLeft === 1 ? 'analysis' : 'analyses'} remaining
       </p>
       <button
-        onClick={handleCheckout}
-        disabled={checkingOut}
+        onClick={() => navigate('/pricing')}
         style={{
           background: 'linear-gradient(135deg, #0F766E, #134E4A)',
           color: 'white', border: 'none', borderRadius: 8,
@@ -402,7 +393,7 @@ function FreeBanner({ profile }: { profile: any }) {
           whiteSpace: 'nowrap' as const,
         }}
       >
-        {checkingOut ? '...' : 'Upgrade — from $97/mo →'}
+        View plans →
       </button>
     </div>
   );

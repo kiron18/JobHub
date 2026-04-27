@@ -141,7 +141,11 @@ Return ONLY valid JSON matching the schema in the rules above.`;
 
     const { content } = await callClaude(prompt, true);
     const cleaned = content.replace(/\u2014/g, '-').replace(/\u2013/g, '-');
-    return res.json(parseLLMJson(cleaned));
+    const parsed = parseLLMJson(cleaned);
+    // Hard-enforce character limits the LLM sometimes ignores
+    if (parsed?.openToWork?.length > 150) parsed.openToWork = parsed.openToWork.slice(0, 147) + '...';
+    if (parsed?.headline?.length > 220) parsed.headline = parsed.headline.slice(0, 220);
+    return res.json(parsed);
   } catch (err: any) {
     console.error('[LinkedIn /generate]', err.message);
     return res.status(500).json({ error: 'Generation failed' });
