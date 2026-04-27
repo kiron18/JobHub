@@ -6,6 +6,7 @@ import { extractTextFromBuffer } from '../services/pdf';
 import { generateDiagnosticReport, DiagnosticReportInput } from '../services/diagnosticReport';
 import { sendWelcomeEmail } from '../services/email';
 import { autoExtractAchievements } from '../services/autoExtract';
+import { buildDailyFeed } from '../services/jobFeed';
 
 const router = Router();
 
@@ -113,6 +114,17 @@ router.post(
       autoExtractAchievements(userId, resumeText).catch(err =>
         console.error('[Onboarding] Auto-extract failed:', err)
       );
+
+      // Pre-warm job feed — build in background so it's ready when user finishes reading the report
+      prisma.jobFeedItem.count({ where: { userId } })
+        .then(count => {
+          if (count === 0) {
+            buildDailyFeed(userId).catch(err =>
+              console.error('[Onboarding] Pre-warm job feed failed:', err)
+            );
+          }
+        })
+        .catch(() => {});
 
       const report = await prisma.diagnosticReport.upsert({
         where: { userId },

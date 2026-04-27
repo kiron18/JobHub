@@ -152,6 +152,40 @@ If any of these is No → rewrite the bullet or do not include it.
 **Approved action verb bank (non-exhaustive):**
 Grew, Reduced, Built, Launched, Managed, Increased, Cut, Generated, Led, Delivered, Optimised, Spearheaded, Orchestrated, Drove, Designed, Implemented, Secured, Negotiated, Streamlined, Developed, Trained, Mentored, Analysed, Scaled, Oversaw, Restructured, Coordinated, Produced
 
+### 4.2A Worked Examples — Bullet Before/After
+
+Use these as the quality benchmark. Every bullet in generated output must be at or above the "After" standard.
+
+**Before (fails):**
+> Responsible for managing social media accounts and helping to develop content strategies for the team.
+
+**After (passes):**
+> Grew Instagram engagement rate from 2.1% to 6.8% in 90 days by redesigning the content calendar around peak-time posting and A/B testing caption formats across 48 posts.
+
+---
+
+**Before (fails):**
+> Assisted with onboarding new employees and ensuring they understood company policies.
+
+**After (passes):**
+> Cut new-hire time-to-productivity from 6 weeks to 3.5 weeks by redesigning the onboarding programme, consolidating 14 separate induction documents into a single structured 4-day schedule.
+
+---
+
+**Before (fails):**
+> Worked closely with the sales team to improve customer satisfaction scores.
+
+**After (passes):**
+> Lifted customer satisfaction (NPS) from 41 to 67 over two quarters by implementing a post-call feedback loop and delivering targeted coaching to 8 sales representatives based on call recording analysis.
+
+---
+
+**Diagnostic check before writing each bullet:**
+1. Who is the agent? Must be "I" — not "we" or "the team."
+2. What is the number? Every bullet needs one — %, $, headcount, volume, or timeframe.
+3. What exactly did I do? Name the specific method or decision, not a job description phrase.
+4. So what? The result must matter to the employer — connect it to output, efficiency, or revenue.
+
 ### 4.3 Overseas Experience
 - Do not downplay international experience — it is globally valued.
 - Add brief context for companies unknown to the reader: *(Top-10 FMCG company in India, ~8,000 employees)*

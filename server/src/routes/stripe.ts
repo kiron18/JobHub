@@ -7,6 +7,7 @@ export const EXEMPT_EMAILS = [
   'kamiproject2021@gmail.com',
   'kiron182@gmail.com',
   'kiron@aussiegradcareers.com.au',
+  'kironorik@gmail.com',
 ];
 
 const stripe = new StripeLib(process.env.STRIPE_SECRET_KEY!, {

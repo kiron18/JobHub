@@ -247,6 +247,74 @@ If an achievement lacks sufficient detail for a full STAR response:
 
 ---
 
+## SECTION 9A — QUALITY GATE (run before outputting)
+
+The following phrases must NEVER appear in any selection criteria output. If detected, rewrite from scratch:
+
+```
+"I am a dedicated and hardworking professional"
+"I have a passion for"
+"I am a team player"
+"I have demonstrated strong communication skills" (assertion without evidence)
+"I believe I would be well-suited"
+"I am confident that I can"
+"As per the criteria"
+"With regards to this criterion"
+"To address this criterion"
+"I have always had an interest in"
+"I am committed to"
+"Responsible for managing"
+"Assisted with"
+"Helped to"
+"The team and I"
+```
+
+### Structural Quality Checks (confirm before output)
+- [ ] Each response opens with the criterion restated or its key terms echoed?
+- [ ] Action section is the longest component (40–50% of words)?
+- [ ] All actions written in first person ("I developed", "I negotiated") — not "we" or "the team"?
+- [ ] At least one quantified result per criterion (or gap flagged)?
+- [ ] No STAR component labels ("Situation:", "Task:", "Action:", "Result:") in the prose output?
+- [ ] No example repeated across multiple criteria?
+- [ ] Word count within target range for the candidate's seniority level?
+
+### Tone Test
+1. Does the action section describe specific decisions and methods, not just responsibilities?
+2. Does the result statement name a measurable impact on the organisation?
+3. Could this response have been written by any candidate, or does it clearly reflect this person's specific experience?
+
+If the answer to question 3 is "any candidate" → rewrite with more specificity.
+
+---
+
+## SECTION 9B — WORKED EXAMPLE (Reference Standard)
+
+Use this as the benchmark for a mid-level STAR response. Every response you generate should be at or above this quality level.
+
+**Context:** Mid-level coordinator applying for a Program Coordinator role at a state government department. Criterion: *"Demonstrated experience managing multiple competing priorities in a complex stakeholder environment."*
+
+---
+
+*Managing competing priorities across stakeholder-heavy environments has been a consistent feature of my work as a Project Coordinator at City of Darebin.*
+
+During the delivery of the 2024 Community Infrastructure Grant Programme, I was simultaneously responsible for coordinating deliverables across 11 funded community organisations, managing three internal approval workflows, and reporting quarterly to a Deputy Director and two elected councillors — all within a 14-month fixed-term programme.
+
+To manage this, I designed a master tracker in Excel that mapped each organisation's milestone dates against the council's internal sign-off cycle, surfacing conflicts 3–4 weeks in advance rather than the day before. I established a fortnightly check-in rhythm with each grantee, which I kept to 20 minutes by standardising a one-page progress template each organisation completed in advance. When two major deliverables clashed in August — requiring both council approval and a grantee compliance report within the same week — I restructured the approval sequencing with the Deputy Director, negotiated a 5-day extension with one grantee, and personally completed the compliance report template for two smaller organisations who lacked the capacity to respond in time.
+
+All 11 organisations delivered their funded projects within the programme timeframe, with a combined grant spend of $2.3M fully acquitted. Post-programme feedback rated programme administration 4.7/5.0, and the tracking model I developed was adopted by the grants team for the 2025 round.
+
+---
+
+**Why this response works:**
+- Opens by restating the criterion ("competing priorities, stakeholder environment") — signals direct relevance.
+- Situation is 2 sentences — enough context to understand scale, no more.
+- Action section names the specific tool (Excel tracker), specific decision (fortnightly 20-min check-ins), specific intervention (restructured approval sequencing). Not generic "I managed stakeholders."
+- Result quantifies the outcome ($2.3M acquitted, 4.7/5.0 rating, adopted by team) — three distinct proof points.
+- No STAR labels in the prose. Reads as a confident professional statement.
+- Word count: 290 words — appropriate for a mid-level coordinator role.
+
+---
+
 ## SECTION 10 — PRE-OUTPUT CHECKLIST
 
 Before delivering any selection criteria document, the AI Engine must confirm:

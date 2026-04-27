@@ -27,6 +27,18 @@ const SECTION_INTROS: Record<string, string> = {
   what_jobhub_does: 'How the platform takes what\'s in your bank and turns it into documents that get responses.',
 };
 
+// Severity classification for each section
+const SECTION_SEVERITY: Record<string, { label: string; color: string; bg: string }> = {
+  document_audit:   { label: 'CRITICAL', color: '#ef4444', bg: 'rgba(239,68,68,0.10)' },
+  honest:           { label: 'CRITICAL', color: '#ef4444', bg: 'rgba(239,68,68,0.10)' },
+  targeting:        { label: 'REVIEW',   color: '#f59e0b', bg: 'rgba(245,158,11,0.10)' },
+  pipeline:         { label: 'REVIEW',   color: '#f59e0b', bg: 'rgba(245,158,11,0.10)' },
+  fix:              { label: 'ACTION PLAN', color: '#22c55e', bg: 'rgba(34,197,94,0.10)' },
+  what_jobhub_does: { label: 'INSIGHT',  color: '#6366f1', bg: 'rgba(99,102,241,0.10)' },
+};
+
+const SECTION_ORDER = ['targeting', 'document_audit', 'pipeline', 'honest', 'fix', 'what_jobhub_does'];
+
 function makeTheme(isDark: boolean) {
   return isDark ? {
     bg: '#0d1117',
@@ -262,7 +274,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
             Here's what's actually going on.
           </h1>
           <p style={{ fontSize: 16, color: theme.sub, lineHeight: 1.6, maxWidth: 480, margin: '0 auto' }}>
-            Six areas. Ranked by impact.
+            Six areas. Open each one. The severity badge tells you where to focus first.
           </p>
         </motion.div>
 
@@ -422,13 +434,21 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
 
         {/* Islands — full-width, stacked vertically */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {sections.map((section, idx) => {
+          {sections
+            .sort((a, b) => {
+              const ai = SECTION_ORDER.indexOf(a.key);
+              const bi = SECTION_ORDER.indexOf(b.key);
+              return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+            })
+            .map((section, idx) => {
             const meta = SECTION_ICONS[section.key];
             if (!meta) return null;
+            const severity = SECTION_SEVERITY[section.key];
             const { problem, fix } = splitProblemFix(section.content);
             const hook = extractHook(problem);
             const intro = SECTION_INTROS[section.key] || '';
             const isOpen = !!openMap[section.key];
+            const sectionNum = String(idx + 1).padStart(2, '0');
 
             const isFix = section.key === 'fix';
 
@@ -458,34 +478,28 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                 <button
                   onClick={() => handleToggle(section.key)}
                   style={{
-                    width: '100%', textAlign: 'left', padding: isFix ? '28px 28px 20px' : '24px 28px',
+                    width: '100%', textAlign: 'left', padding: '22px 24px 18px',
                     background: 'none', border: 'none', cursor: 'pointer',
-                    display: 'flex', flexDirection: 'column', gap: 10,
+                    display: 'flex', flexDirection: 'column', gap: 12,
                   }}
                 >
-                  {/* Fix badge — only shown for the fix island */}
-                  {isFix && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  {/* Top row: section number + label + severity badge + chevron */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      {/* Section number */}
                       <span style={{
-                        fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase',
-                        color: 'white', background: 'linear-gradient(90deg, #16a34a, #15803d)',
-                        borderRadius: 6, padding: '3px 10px',
+                        fontSize: 11, fontWeight: 900, color: meta.color, opacity: 0.5,
+                        letterSpacing: '-0.01em', fontVariantNumeric: 'tabular-nums', flexShrink: 0,
                       }}>
-                        Action plan
+                        {sectionNum}
                       </span>
-                      <span style={{ fontSize: 11, color: isDark ? '#4ade80' : '#15803d', fontWeight: 600 }}>
-                        Read this last — highest impact
-                      </span>
-                    </div>
-                  )}
-                  {/* Top row: color dot + label + chevron */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      {/* Color dot */}
                       <div style={{
-                        width: isFix ? 14 : 12, height: isFix ? 14 : 12, borderRadius: '50%',
+                        width: 10, height: 10, borderRadius: '50%',
                         background: meta.color, flexShrink: 0,
-                        boxShadow: `0 0 ${isFix ? 12 : 8}px ${meta.color}${isFix ? '90' : '60'}`,
+                        boxShadow: `0 0 8px ${meta.color}60`,
                       }} />
+                      {/* Label + intro */}
                       <div>
                         <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: meta.color, margin: 0 }}>
                           {meta.label}
@@ -495,25 +509,37 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                         </p>
                       </div>
                     </div>
-                    <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
-                      <ChevronDown size={18} color={theme.eyebrow} />
-                    </motion.div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                      {/* Severity badge */}
+                      {severity && (
+                        <span style={{
+                          fontSize: 9, fontWeight: 900, letterSpacing: '0.12em', textTransform: 'uppercase',
+                          color: severity.color, background: severity.bg,
+                          borderRadius: 6, padding: '3px 8px', border: `1px solid ${severity.color}30`,
+                        }}>
+                          {severity.label}
+                        </span>
+                      )}
+                      <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
+                        <ChevronDown size={18} color={theme.eyebrow} />
+                      </motion.div>
+                    </div>
                   </div>
 
                   {/* Hook — the key finding, always visible */}
                   {!isOpen && (
                     <p style={{
-                      fontSize: 15, fontWeight: 600, color: theme.hookText,
-                      lineHeight: 1.55, margin: '0 0 0 42px',
-                      borderLeft: `2px solid ${meta.color}40`,
-                      paddingLeft: 12,
+                      fontSize: 17, fontWeight: 700, color: theme.hookText,
+                      lineHeight: 1.5, margin: '0 0 0 34px',
+                      borderLeft: `3px solid ${meta.color}50`,
+                      paddingLeft: 14,
                     }}>
                       {hook}
                     </p>
                   )}
                   {!isOpen && (
-                    <p style={{ fontSize: 12, fontWeight: 700, color: meta.color, margin: '4px 0 0 42px', letterSpacing: '0.04em' }}>
-                      Read your full diagnosis →
+                    <p style={{ fontSize: 11, fontWeight: 700, color: meta.color, margin: '2px 0 0 34px', letterSpacing: '0.05em' }}>
+                      Open to read full diagnosis →
                     </p>
                   )}
                 </button>
@@ -528,26 +554,30 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                       transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
                       style={{ overflow: 'hidden' }}
                     >
-                      <div style={{ padding: '0 28px 28px 28px', color: theme.bodyText }}>
+                      <div style={{ padding: '0 24px 24px 24px', color: theme.bodyText }}>
                         <div style={{ height: 1, background: theme.divider, marginBottom: 20 }} />
 
                         {/* Problem section */}
                         <RenderContent text={problem} color={meta.color} />
 
-                        {/* Fix section */}
+                        {/* Fix section — visually distinct zone */}
                         {fix && (
                           <>
                             <div style={{
-                              margin: '24px 0 20px',
-                              display: 'flex', alignItems: 'center', gap: 10,
+                              margin: '24px -24px 0',
+                              padding: '20px 24px',
+                              background: isDark ? `rgba(${meta.color === '#5EEAD4' ? '94,234,212' : '255,255,255'},0.04)` : `${meta.color}08`,
+                              borderTop: `1px solid ${meta.color}25`,
+                              borderBottom: `1px solid ${meta.color}25`,
                             }}>
-                              <div style={{ flex: 1, height: 1, background: theme.divider }} />
-                              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: meta.color, whiteSpace: 'nowrap' }}>
+                              <p style={{
+                                fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase',
+                                color: meta.color, margin: '0 0 14px',
+                              }}>
                                 Your fix
                               </p>
-                              <div style={{ flex: 1, height: 1, background: theme.divider }} />
+                              <RenderContent text={fix} color={meta.color} />
                             </div>
-                            <RenderContent text={fix} color={meta.color} />
                           </>
                         )}
 

@@ -53,20 +53,19 @@ Professional culture rewards: directness, evidence over assertion, a hint of war
 
 [Salutation]
 
-[Paragraph 1 — Opening: Role + Hook]
-[Paragraph 2 — Evidence Block 1: Most relevant achievement]
-[Paragraph 3 — Evidence Block 2: Second relevant achievement or skill cluster]
-[Paragraph 4 — Company Connection: Why this organisation specifically]
-[Paragraph 5 — Closing: Call to action + visa note if required]
+[Paragraph 1 — The Hook: Role name + one specific company detail + why this candidate]
+[Paragraph 2 — The Evidence: ONE quantified achievement story (Situation → Action → Result)]
+[Paragraph 3 — The Connection: Why this company specifically — references something from the ad]
+[Paragraph 4 — The Close: Peer-level CTA, confident and brief]
 
 [Sign-off]
 [Full Name]
 ```
 
 ### 2.2 Length
-- **Target: 3–5 paragraphs. One full page maximum.**
-- Aim for 300–450 words. Under 300 reads as underprepared. Over 500 risks losing the reader.
-- Paragraphs should be 3–5 sentences each. No walls of text.
+- **Exactly 4 paragraphs. One full page maximum.** See Section 9A for the mandatory paragraph-by-paragraph structure.
+- Aim for 300–400 words. Under 250 reads as underprepared. Over 450 risks losing the reader.
+- Paragraphs should be 2–4 sentences each. Hook paragraph is intentionally shorter (2–3 sentences).
 
 ### 2.3 Formatting Rules
 - Left-aligned throughout, single line spacing within paragraphs, double spacing between paragraphs.
@@ -352,6 +351,53 @@ The following phrases must NEVER appear in any output. If detected, rewrite that
 3. Does it sound like it's trying too hard to impress?
 
 If the answer to 2 or 3 is yes → rewrite for specificity and directness. Shorter sentences beat longer ones. Concrete beats abstract. Proof beats claims.
+
+---
+
+## SECTION 10B — WORKED EXAMPLE (Reference Standard)
+
+The following is a complete, high-standard cover letter. Use this as the benchmark for tone, structure, specificity, and length. Every letter you generate should be at or above this quality level.
+
+---
+
+**Context:** Graduate applying for a Marketing Coordinator role at a regional bank in Melbourne.
+
+---
+
+Priya Sharma
+Marketing Coordinator | Digital & Content
+priya.sharma@gmail.com | +61 412 345 678 | linkedin.com/in/priyasharma
+South Yarra, VIC, Australia
+
+14 April 2026
+
+Dear Ms. Williams,
+
+ANZ's recent Grow Your Business campaign — which drove a 22% increase in SME account enquiries according to the 2025 Annual Report — reflects exactly the kind of data-backed content strategy I want to help build as Marketing Coordinator.
+
+During my placement at Medibank, I identified that our member newsletters had a 19% open rate against an industry benchmark of 28%. I redesigned the content calendar, introduced A/B testing across three subject line variants, and shifted to behavioural segmentation based on claim history. Within 10 weeks, open rates reached 31% — a 63% relative improvement — and the approach was adopted by the broader digital communications team for all outbound member campaigns.
+
+ANZ's 2025–2027 strategy explicitly prioritises "human + digital" customer experiences, and the Coordinator role sits at that intersection. I'm particularly interested in the bank's work on contextual content delivery through the ANZ Plus platform — my Honours thesis examined how notification timing affects financial product engagement, and I'd welcome the chance to apply that research in a commercial setting.
+
+I'd love to explore how my background fits what ANZ is building in this space — happy to connect at a time that works for you.
+
+Yours sincerely,
+Priya Sharma
+
+---
+
+**Why this letter works:**
+- Para 1: Names the specific campaign with a real metric. Not generic praise — a specific proof of research.
+- Para 2: One achievement, fully quantified, written as Situation (19% open rate) → Action (redesigned, A/B tested, segmented) → Result (31%, adopted by team).
+- Para 3: References a specific strategic initiative from the company's own documents. Could not apply to a competitor.
+- Para 4: Peer-level, confident, no supplication.
+- Word count: 218 words. Tight. Every sentence earns its place.
+
+**What would make this letter fail:**
+- "I am excited to apply for the Marketing Coordinator position at ANZ" as the opener → generic, rewrite
+- Listing 4 different achievements → breaks the one-story rule, dilutes impact
+- "I believe I would be a great cultural fit" → assertion, not evidence → banned
+- "I look forward to hearing from you" → passive, supplicant → banned
 
 ---
 

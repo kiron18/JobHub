@@ -132,14 +132,16 @@ export const JobFeedPage: React.FC = () => {
         <div className="glass-card p-10 flex flex-col items-center gap-4 text-center">
           <div className="w-10 h-10 border-2 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" />
           <div>
-            <p className="text-base font-bold text-slate-200">Building your feed…</p>
+            <p className="text-base font-bold text-slate-200">Searching live listings for you…</p>
             <p className="text-sm text-slate-500 mt-1">
-              Searching for <span className="text-slate-300">{profile?.targetRole}</span> roles
-              in <span className="text-slate-300">{profile?.targetCity}</span>.
-              This takes about 30–60 seconds on first load.
+              Finding <span className="text-slate-300">{profile?.targetRole}</span> roles
+              in <span className="text-slate-300">{profile?.targetCity}</span> across Seek, LinkedIn, and Adzuna.
+            </p>
+            <p className="text-xs text-slate-600 mt-2">
+              This takes 1–2 minutes on first load. Grab a coffee — we'll check back automatically.
             </p>
           </div>
-          <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">Auto-refreshing…</p>
+          <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">Auto-refreshing every 20 seconds…</p>
         </div>
       )}
 

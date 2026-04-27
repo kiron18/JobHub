@@ -167,12 +167,17 @@ export async function exportPdf(
     docType: DocType,
     candidateName: string,
     jobTitle?: string,
+    company?: string,
 ): Promise<void> {
     const doc = buildPdfDocument(content);
     const blob = await pdf(doc as any).toBlob();
-    const dateStr = new Date().toISOString().slice(0, 10);
     const namePart = candidateName.replace(/\s+/g, '_') || 'document';
-    const rolePart = jobTitle ? `_${jobTitle.replace(/\s+/g, '_').slice(0, 30)}` : '';
+    const identifier = company
+        ? company.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_').slice(0, 25)
+        : jobTitle
+            ? jobTitle.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_').slice(0, 30)
+            : '';
     const label = DOC_LABELS[docType];
-    saveAs(blob, `${namePart}${rolePart}_${label}_${dateStr}.pdf`);
+    const fileName = identifier ? `${namePart}_${identifier}_${label}.pdf` : `${namePart}_${label}.pdf`;
+    saveAs(blob, fileName);
 }

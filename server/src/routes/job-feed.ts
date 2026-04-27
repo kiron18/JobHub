@@ -36,6 +36,40 @@ async function requirePremium(userId: string, res: Response): Promise<boolean> {
   return true;
 }
 
+// POST /api/job-feed/refresh — rebuild today's feed (30-min cooldown)
+router.post('/refresh', async (req: any, res: any) => {
+  const userId = req.user.id;
+  const today = todayAEST();
+  const COOLDOWN_MS = 30 * 60 * 1000;
+
+  try {
+    const newest = await prisma.jobFeedItem.findFirst({
+      where: { userId, feedDate: today },
+      orderBy: { createdAt: 'desc' },
+      select: { createdAt: true },
+    });
+
+    if (newest) {
+      const elapsed = Date.now() - new Date(newest.createdAt).getTime();
+      if (elapsed < COOLDOWN_MS) {
+        const retryAfter = Math.ceil((COOLDOWN_MS - elapsed) / 1000);
+        return res.status(429).json({ error: 'Feed was refreshed recently.', retryAfter });
+      }
+      await prisma.jobFeedItem.deleteMany({ where: { userId, feedDate: today } });
+    }
+
+    if (!buildingNow.has(userId)) {
+      buildingNow.add(userId);
+      buildDailyFeed(userId).finally(() => buildingNow.delete(userId));
+    }
+
+    return res.json({ ok: true, building: true });
+  } catch (err: any) {
+    console.error('[job-feed/refresh]', err);
+    return res.status(500).json({ error: 'Could not refresh feed' });
+  }
+});
+
 // GET /api/job-feed/feed?offset=0
 router.get('/feed', async (req: any, res: any) => {
   const userId = req.user.id;

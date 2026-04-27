@@ -14,7 +14,7 @@ Output must be ready to send with minimal editing — only bracketed placeholder
 Output exactly this structure. No more, no less.
 
 ```
-Subject: Following Up — [Job Title] Application
+Subject: Following Up on [Job Title] Application
 
 Hi [Hiring Manager Name],
 

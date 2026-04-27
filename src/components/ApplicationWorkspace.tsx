@@ -304,8 +304,9 @@ export const ApplicationWorkspace: React.FC = () => {
         const currentDoc = state.documents[state.activeTab];
         const currentDocId = state.documentIds[state.activeTab];
 
-        if (state.jobApplicationId && !currentDoc && !currentDocId && !state.isGenerating) {
+        if (state.jobApplicationId && !currentDoc && !currentDocId && !state.isGenerating && !isFetchingDocs) {
             console.log('Fetching existing documents for Job Application:', state.jobApplicationId);
+            setIsFetchingDocs(true);
             const fetchDocs = async () => {
                 try {
                     const { data: jobs } = await api.get('/jobs');
@@ -313,12 +314,12 @@ export const ApplicationWorkspace: React.FC = () => {
                     if (currentJob && currentJob.documents) {
                         const docsMatch: any = {};
                         const idsMatch: any = {};
-                        
+
                         currentJob.documents.forEach((d: any) => {
                             let type: 'resume' | 'cover-letter' | 'selection-criteria' = 'resume';
                             if (d.type === 'COVER_LETTER') type = 'cover-letter';
                             if (d.type === 'STAR_RESPONSE') type = 'selection-criteria';
-                            
+
                             docsMatch[type] = d.content;
                             idsMatch[type] = d.id;
                         });
@@ -332,7 +333,7 @@ export const ApplicationWorkspace: React.FC = () => {
                 } catch (e) {
                     console.error('Failed to fetch existing documents:', e);
                 } finally {
-                    // Ensure we don't try again if it fails once
+                    setIsFetchingDocs(false);
                 }
             };
             fetchDocs();
@@ -378,10 +379,11 @@ export const ApplicationWorkspace: React.FC = () => {
     
     const executeDownload = async (content: string) => {
         const candidateName = profile?.name || '';
-        const jobTitle = state.metadata?.role || state.metadata?.company || '';
+        const jobTitle = state.metadata?.role || '';
+        const company = state.metadata?.company || '';
 
         try {
-            await exportDocx(content, state.activeTab as DocType, candidateName, jobTitle);
+            await exportDocx(content, state.activeTab as DocType, candidateName, jobTitle, company);
             toast.success('Downloaded as Word document (.docx)');
         } catch (docxError) {
             console.warn('[Download] DOCX export failed, falling back to print:', docxError);
@@ -425,12 +427,13 @@ export const ApplicationWorkspace: React.FC = () => {
         setExportingPdf(true);
         try {
             const candidateName = profile?.name || '';
-            const jobTitle = state.metadata?.role || state.metadata?.company || '';
-            await exportPdf(content, state.activeTab as DocType, candidateName, jobTitle);
+            const jobTitle = state.metadata?.role || '';
+            const company = state.metadata?.company || '';
+            await exportPdf(content, state.activeTab as DocType, candidateName, jobTitle, company);
             toast.success('Downloaded as PDF');
         } catch (err) {
             console.error('[PDF Export] failed:', err);
-            toast.error('PDF export failed — try .docx instead');
+            toast.error('PDF export failed - try .docx instead');
         } finally {
             setExportingPdf(false);
         }
@@ -483,6 +486,7 @@ export const ApplicationWorkspace: React.FC = () => {
     }, [state.documents, state.activeTab, state.documentIds, state.saveStatus]);
 
     const [abortController, setAbortController] = useState<AbortController | null>(null);
+    const [isFetchingDocs, setIsFetchingDocs] = useState(false);
 
     const handleGenerate = async (type: WorkspaceState['activeTab'], regenerate = false) => {
         if (state.hasFailed[type] && !regenerate) return;
@@ -581,11 +585,12 @@ export const ApplicationWorkspace: React.FC = () => {
         // For interview-prep, auto-generate is fine (just needs the JD)
         const scReady = state.activeTab !== 'selection-criteria' || (selectionCriteriaText.trim().length > 20 && scConfirmed);
 
-        if (state.jobDescription && !hasDoc && !hasDocId && !state.isGenerating && !state.hasFailed[state.activeTab] && scReady) {
+        // Don't auto-generate while we're still fetching existing docs from the server (prevents race condition)
+        if (state.jobDescription && !hasDoc && !hasDocId && !state.isGenerating && !isFetchingDocs && !state.hasFailed[state.activeTab] && scReady) {
             console.log('Triggering generation for:', state.activeTab);
             handleGenerate(state.activeTab);
         }
-    }, [state.activeTab, state.jobDescription, state.documents, state.documentIds, state.isGenerating, state.hasFailed, selectionCriteriaText, scConfirmed]);
+    }, [state.activeTab, state.jobDescription, state.documents, state.documentIds, state.isGenerating, state.hasFailed, selectionCriteriaText, scConfirmed, isFetchingDocs]);
 
 
     const handleGenerateAcademic = async (docType: 'teaching-philosophy' | 'research-statement') => {
@@ -1184,8 +1189,8 @@ export const ApplicationWorkspace: React.FC = () => {
                                 )}
                             </div>
                         )}
-                        <div className="w-full max-w-3xl bg-white text-slate-900 shadow-2xl rounded-sm flex flex-col overflow-hidden">
-                            <div className="flex-1 overflow-y-auto p-12 custom-scrollbar-light">
+                        <div className="w-full max-w-3xl bg-white text-slate-900 shadow-2xl rounded-sm min-h-[900px]" style={{ fontFamily: 'Calibri, Arial, "Helvetica Neue", sans-serif' }}>
+                            <div className="p-12">
                                 {rateLimitError ? (
                                     <div className="flex flex-col items-center justify-center h-full py-40 space-y-4">
                                         <div className="flex items-start gap-3 max-w-md w-full bg-amber-50 border border-amber-200 rounded-xl p-5">
@@ -1238,7 +1243,7 @@ export const ApplicationWorkspace: React.FC = () => {
                                         placeholder={`Start typing your ${state.activeTab}...`}
                                     />
                                 ) : (
-                                    <article id="resume-preview-content" className={`prose prose-slate max-w-none [&_ul]:my-1 [&_li]:my-0 [&_h1]:text-base [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-2 [&_h2]:text-sm [&_h2]:font-bold [&_h2]:mt-3 [&_h2]:mb-1 [&_h3]:text-sm [&_h3]:mt-2 [&_h3]:mb-0.5 ${state.activeTab === 'cover-letter' ? '[&_p]:my-3 [&_p]:leading-relaxed' : '[&_p]:my-0.5'}`}>
+                                    <article id="resume-preview-content" className={`prose prose-slate max-w-none [&_ul]:my-1 [&_li]:my-0.5 [&_li]:leading-snug [&_h1]:text-[18pt] [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-1 [&_h1]:tracking-tight [&_h2]:text-[10.5pt] [&_h2]:font-bold [&_h2]:mt-4 [&_h2]:mb-1 [&_h2]:uppercase [&_h2]:tracking-wide [&_h2]:border-b [&_h2]:border-slate-300 [&_h2]:pb-0.5 [&_h3]:text-[10.5pt] [&_h3]:font-bold [&_h3]:mt-2.5 [&_h3]:mb-0.5 [&_strong]:font-semibold text-[10.5pt] leading-[1.45] ${state.activeTab === 'cover-letter' ? '[&_p]:my-4 [&_p]:leading-[1.6]' : '[&_p]:my-0.5'}`} style={{ fontFamily: 'Calibri, Arial, "Helvetica Neue", sans-serif', fontSize: '10.5pt' }}>
                                         <ReactMarkdown
                                             children={normaliseMarkdown(state.documents[state.activeTab] || '')}
                                             components={{
@@ -1283,7 +1288,7 @@ export const ApplicationWorkspace: React.FC = () => {
                             <div className="w-full max-w-3xl mt-4 rounded-xl border border-teal-500/20 bg-teal-500/5 p-5">
                                 <div className="flex items-center gap-2 mb-4">
                                     <CheckCircle size={14} className="text-teal-400" />
-                                    <span className="text-sm font-bold text-teal-300">Documents ready — time to apply</span>
+                                    <span className="text-sm font-bold text-teal-300">Documents ready - time to apply</span>
                                 </div>
                                 <a
                                     href={applyContext.sourceUrl}

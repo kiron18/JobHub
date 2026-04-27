@@ -186,6 +186,7 @@ export async function exportDocx(
     docType: DocType,
     candidateName: string,
     jobTitle?: string,
+    company?: string,
 ): Promise<void> {
     const font = FONTS[docType];
 
@@ -254,10 +255,16 @@ export async function exportDocx(
     });
 
     const blob = await Packer.toBlob(doc);
-    const dateStr = new Date().toISOString().slice(0, 10);
     const namePart = candidateName.replace(/\s+/g, '_') || 'document';
-    const rolePart = jobTitle ? `_${jobTitle.replace(/\s+/g, '_').slice(0, 30)}` : '';
-    const fileName = `${namePart}${rolePart}_${docTypeLabel[docType].replace(/\s+/g, '_')}_${dateStr}.docx`;
+    const identifier = company
+        ? company.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_').slice(0, 25)
+        : jobTitle
+            ? jobTitle.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_').slice(0, 30)
+            : '';
+    const typeLabel = docTypeLabel[docType].replace(/\s+/g, '_');
+    const fileName = identifier
+        ? `${namePart}_${identifier}_${typeLabel}.docx`
+        : `${namePart}_${typeLabel}.docx`;
 
     saveAs(blob, fileName);
 }

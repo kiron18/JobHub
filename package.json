@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "test:serve": "npm run build && vite preview",
     "eval": "promptfoo eval --config evals/promptfooconfig.yaml",
     "eval:watch": "promptfoo eval --config evals/promptfooconfig.yaml --watch",
     "eval:view": "promptfoo view"
