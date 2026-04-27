@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Zap, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
@@ -214,6 +214,15 @@ export function PricingPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState<Plan | null>(null);
+
+  useEffect(() => {
+    document.body.style.overflow = 'auto';
+    document.documentElement.style.overflow = 'auto';
+    return () => {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    };
+  }, []);
 
   async function handleSelect(plan: Plan) {
     if (!user) {

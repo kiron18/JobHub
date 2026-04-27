@@ -31,6 +31,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthPage } from './pages/AuthPage';
 import { PricingPage } from './pages/PricingPage';
+import { GeoBlockedPage } from './pages/GeoBlockedPage';
 
 // Lib
 import api from './lib/api';
@@ -585,6 +586,7 @@ function App() {
               {/* Public Routes */}
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/pricing" element={<PricingPage />} />
+              <Route path="/not-available" element={<GeoBlockedPage />} />
 
               {/* Protected Application Routes */}
               <Route path="/*" element={
