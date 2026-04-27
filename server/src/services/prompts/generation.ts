@@ -82,6 +82,7 @@ Return valid JSON only. No preamble. No markdown fences.
     }
   ]
 }`;
+};
 
 // =============================================================================
 // HYBRID ARCHITECTURE — STAGE 2 (Llama executor with blueprint)
