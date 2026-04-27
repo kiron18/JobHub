@@ -43,26 +43,15 @@ router.post('/job', async (req: any, res: any) => {
             return res.status(404).json({ error: 'Please set up your profile first.' });
         }
 
-        // ── Trial / subscription guard ────────────────────────────────────────────
+        // ── Access control ────────────────────────────────────────────────────────
         const userEmail = ((req as any).user?.email ?? '').toLowerCase();
-        const isExempt = EXEMPT_EMAILS.includes(userEmail);
-        const hasPaidAccess = profile.dashboardAccess === true;
-        const trialJobsUsed: number = profile.freeJobsUsed ?? 0;
-        const hasTrialLeft = trialJobsUsed < 5;
-
-        if (!isExempt && !hasPaidAccess && !hasTrialLeft) {
+        const { checkAccess } = await import('../middleware/accessControl');
+        const access = await checkAccess(userId, 'analysis', userEmail);
+        if (!access.allowed) {
           return res.status(402).json({
-            error: 'Trial limit reached',
-            freeJobsUsed: trialJobsUsed,
+            error: 'Analysis limit reached',
             upgradeRequired: true,
-          });
-        }
-
-        // Increment trial counter for non-exempt, non-paid users consuming a free job
-        if (!isExempt && !hasPaidAccess && hasTrialLeft) {
-          await prisma.candidateProfile.update({
-            where: { userId },
-            data: { freeJobsUsed: { increment: 1 } },
+            remaining: 0,
           });
         }
         // ─────────────────────────────────────────────────────────────────────────

@@ -30,6 +30,7 @@ const FridayBriefPage = React.lazy(() =>
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthPage } from './pages/AuthPage';
+import { PricingPage } from './pages/PricingPage';
 
 // Lib
 import api from './lib/api';
@@ -355,94 +356,83 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-// --- Dashboard access gate — shown when user hasn't paid for Premium ---
+// --- Dashboard access gate ---
 
-function TrialBanner({ freeJobsUsed }: { freeJobsUsed: number }) {
-  const remaining = 5 - freeJobsUsed;
+import { UpgradeModal, type UpgradeTrigger } from './components/UpgradeModal';
+
+// Global event bus for triggering the upgrade modal from anywhere in the app
+export function showUpgradeModal(trigger: UpgradeTrigger) {
+  window.dispatchEvent(new CustomEvent('show-upgrade', { detail: trigger }));
+}
+
+function FreeBanner({ profile }: { profile: any }) {
   const [checkingOut, setCheckingOut] = React.useState(false);
+  const genLeft = Math.max(0, 5 - (profile?.freeGenerationsUsed ?? 0));
+  const anaLeft = Math.max(0, 5 - (profile?.freeAnalysesUsed ?? 0));
+  const allGone = genLeft === 0 && anaLeft === 0;
 
-  async function handleCheckout(plan: 'monthly' | 'annual') {
+  async function handleCheckout() {
     setCheckingOut(true);
     try {
-      const { data } = await api.post('/stripe/checkout', { plan });
+      const { data } = await api.post('/stripe/checkout', { plan: 'three_month' });
       window.location.href = data.url;
-    } catch {
-      setCheckingOut(false);
-    }
+    } catch { setCheckingOut(false); }
   }
 
   return (
     <div style={{
-      background: remaining <= 1
+      background: allGone
         ? 'linear-gradient(90deg, rgba(220,38,38,0.12), rgba(220,38,38,0.06))'
-        : 'linear-gradient(90deg, rgba(15,118,110,0.12), rgba(15,118,110,0.06))',
-      borderBottom: `1px solid ${remaining <= 1 ? 'rgba(220,38,38,0.2)' : 'rgba(15,118,110,0.2)'}`,
-      padding: '10px 20px',
+        : 'linear-gradient(90deg, rgba(15,118,110,0.10), rgba(15,118,110,0.04))',
+      borderBottom: `1px solid ${allGone ? 'rgba(220,38,38,0.2)' : 'rgba(15,118,110,0.15)'}`,
+      padding: '9px 20px',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       gap: 12, flexWrap: 'wrap' as const,
     }}>
-      <p style={{ margin: 0, fontSize: 13, color: remaining <= 1 ? '#fca5a5' : '#99F6E4', fontWeight: 600 }}>
-        {remaining === 0
-          ? 'You have used all 5 free job analyses.'
-          : `${remaining} free job ${remaining === 1 ? 'analysis' : 'analyses'} remaining.`}
+      <p style={{ margin: 0, fontSize: 12, color: allGone ? '#fca5a5' : '#6ee7b7', fontWeight: 600 }}>
+        Free tier — {genLeft} document {genLeft === 1 ? 'generation' : 'generations'} · {anaLeft} {anaLeft === 1 ? 'analysis' : 'analyses'} remaining
       </p>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button
-          onClick={() => handleCheckout('monthly')}
-          disabled={checkingOut}
-          style={{
-            background: 'linear-gradient(135deg, #0F766E, #134E4A)',
-            color: 'white', border: 'none', borderRadius: 8,
-            padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
-          }}
-        >
-          {checkingOut ? '...' : 'Subscribe $67/mo →'}
-        </button>
-        <button
-          onClick={() => handleCheckout('annual')}
-          disabled={checkingOut}
-          style={{
-            background: 'none', border: '1px solid rgba(45,212,191,0.3)',
-            color: '#2dd4bf', borderRadius: 8,
-            padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
-          }}
-        >
-          {checkingOut ? '...' : '$497/yr (save 38%)'}
-        </button>
-      </div>
+      <button
+        onClick={handleCheckout}
+        disabled={checkingOut}
+        style={{
+          background: 'linear-gradient(135deg, #0F766E, #134E4A)',
+          color: 'white', border: 'none', borderRadius: 8,
+          padding: '6px 14px', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+          whiteSpace: 'nowrap' as const,
+        }}
+      >
+        {checkingOut ? '...' : 'Upgrade — from $97/mo →'}
+      </button>
     </div>
   );
 }
 
 function PastDueBanner() {
   const [loading, setLoading] = React.useState(false);
-
   async function handlePortal() {
     setLoading(true);
     try {
       const { data } = await api.post('/stripe/portal');
       window.location.href = data.url;
-    } catch {
-      setLoading(false);
-    }
+    } catch { setLoading(false); }
   }
-
   return (
     <div style={{
       background: 'linear-gradient(90deg, rgba(220,38,38,0.12), rgba(220,38,38,0.06))',
       borderBottom: '1px solid rgba(220,38,38,0.2)',
-      padding: '10px 20px',
+      padding: '9px 20px',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
     }}>
-      <p style={{ margin: 0, fontSize: 13, color: '#fca5a5', fontWeight: 600 }}>
-        Your last payment failed. Update your payment method to keep access.
+      <p style={{ margin: 0, fontSize: 12, color: '#fca5a5', fontWeight: 600 }}>
+        Your last payment failed — update your card to keep access.
       </p>
       <button
         onClick={handlePortal}
         disabled={loading}
         style={{
           background: '#dc2626', color: 'white', border: 'none',
-          borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+          borderRadius: 8, padding: '6px 14px', fontSize: 11, fontWeight: 700, cursor: 'pointer',
         }}
       >
         {loading ? '...' : 'Update payment →'}
@@ -451,219 +441,78 @@ function PastDueBanner() {
   );
 }
 
+function TrialBanner({ trialEndDate }: { trialEndDate: string }) {
+  const end = new Date(trialEndDate);
+  const daysLeft = Math.ceil((end.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  return (
+    <div style={{
+      background: 'linear-gradient(90deg, rgba(15,118,110,0.10), rgba(15,118,110,0.04))',
+      borderBottom: '1px solid rgba(15,118,110,0.15)',
+      padding: '9px 20px',
+      display: 'flex', alignItems: 'center', gap: 12,
+    }}>
+      <p style={{ margin: 0, fontSize: 12, color: '#6ee7b7', fontWeight: 600 }}>
+        Free trial — {daysLeft > 0 ? `${daysLeft} day${daysLeft === 1 ? '' : 's'} remaining` : 'ends today'}. Your card will be charged after the trial.
+      </p>
+    </div>
+  );
+}
+
 function DashboardGate({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const { data: profile, isLoading } = useQuery({
     queryKey: ['profile'],
-    queryFn: async () => {
-      const { data } = await api.get('/profile');
-      return data;
-    },
+    queryFn: async () => { const { data } = await api.get('/profile'); return data; },
     staleTime: 5 * 60 * 1000,
   });
 
-  const { signOut } = useAuth();
-  const [checkingOut, setCheckingOut] = useState(false);
+  const [upgradeTrigger, setUpgradeTrigger] = useState<UpgradeTrigger | null>(null);
+
+  // Listen for upgrade events from any component
+  useEffect(() => {
+    const handler = (e: Event) => setUpgradeTrigger((e as CustomEvent).detail as UpgradeTrigger);
+    window.addEventListener('show-upgrade', handler);
+    return () => window.removeEventListener('show-upgrade', handler);
+  }, []);
 
   // Post-payment polling: Stripe webhook may arrive slightly after redirect
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('payment') !== 'success') return;
-
-    // Remove the query param so a page refresh doesn't re-trigger polling
-    window.history.replaceState({}, '', '/dashboard');
-
+    window.history.replaceState({}, '', '/');
     let attempts = 0;
     const interval = setInterval(async () => {
       attempts++;
       try {
-        const fresh = await queryClient.fetchQuery<any>({ queryKey: ['profile'] });
-        if (fresh?.dashboardAccess || attempts >= 15) {
-          clearInterval(interval);
-        }
-      } catch {
-        if (attempts >= 15) clearInterval(interval);
-      }
+        await queryClient.invalidateQueries({ queryKey: ['profile'] });
+        const fresh = queryClient.getQueryData<any>(['profile']);
+        if (fresh?.plan !== 'free' || attempts >= 15) clearInterval(interval);
+      } catch { if (attempts >= 15) clearInterval(interval); }
     }, 2000);
-
     return () => clearInterval(interval);
   }, [queryClient]);
 
   if (isLoading) return null;
 
-  const freeJobsUsed: number = profile?.freeJobsUsed ?? 0;
-  const hasTrialLeft = freeJobsUsed < 5;
-  const isPaid = profile?.dashboardAccess === true;
-  const isPastDue = profile?.subscriptionStatus === 'past_due';
-
-  // Has access — either paid or trial remaining
-  if (isPaid || hasTrialLeft) {
-    return (
-      <>
-        {isPastDue && <PastDueBanner />}
-        {!isPaid && hasTrialLeft && <TrialBanner freeJobsUsed={freeJobsUsed} />}
-        {children}
-      </>
-    );
-  }
-
-  // No access — paywall
-  async function handleCheckout(plan: 'monthly' | 'annual') {
-    setCheckingOut(true);
-    try {
-      const { data } = await api.post('/stripe/checkout', { plan });
-      window.location.href = data.url;
-    } catch {
-      setCheckingOut(false);
-    }
-  }
-
-  async function handlePortal() {
-    setCheckingOut(true);
-    try {
-      const { data } = await api.post('/stripe/portal');
-      window.location.href = data.url;
-    } catch {
-      setCheckingOut(false);
-    }
-  }
-
-  const TOOLS = [
-    { icon: '🎯', label: 'Job Match Analyser', desc: 'Score any job against your profile and get ranked achievements in seconds' },
-    { icon: '✉️', label: 'Cover Letter Generator', desc: 'Personalised cover letters written for the specific company and role' },
-    { icon: '📊', label: 'Application Tracker', desc: 'Track every application, interview, and offer in one place' },
-    { icon: '🧠', label: 'Achievement Bank', desc: 'Your experience organised for instant retrieval and tailoring' },
-    { icon: '💼', label: 'Resume Versions', desc: 'Store and switch between targeted resume versions' },
-    { icon: '📧', label: 'Email Templates', desc: "Follow-up and networking templates that don't sound like templates" },
-  ];
+  const plan: string = profile?.plan ?? 'free';
+  const planStatus: string = profile?.planStatus ?? 'active';
+  const isPastDue = planStatus === 'past_due';
+  const isTrialing = planStatus === 'trialing';
+  const isFree = plan === 'free';
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, overflowY: 'auto',
-      background: 'linear-gradient(160deg, #060b14 0%, #0a1628 50%, #060b14 100%)',
-      padding: '48px 24px 80px',
-    }}>
-      <button
-        onClick={() => signOut()}
-        style={{
-          position: 'absolute', top: 20, right: 24,
-          background: 'none', border: '1px solid rgba(255,255,255,0.10)',
-          color: '#6b7280', borderRadius: 10, padding: '8px 14px',
-          fontSize: 13, fontWeight: 600, cursor: 'pointer',
-        }}
-      >
-        Sign out
-      </button>
-
-      <div style={{ maxWidth: 640, margin: '0 auto' }}>
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <div style={{ textAlign: 'center', marginBottom: 40 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#4b5563', marginBottom: 16 }}>
-              JobHub Pro
-            </p>
-            <h1 style={{ fontSize: 'clamp(28px, 5vw, 40px)', fontWeight: 900, color: '#f3f4f6', lineHeight: 1.15, marginBottom: 16, letterSpacing: '-0.025em' }}>
-              You've used your 5 free analyses.<br />
-              <span style={{ color: '#FCD34D' }}>Ready to keep going?</span>
-            </h1>
-            <p style={{ fontSize: 16, color: '#6b7280', lineHeight: 1.7, maxWidth: 480, margin: '0 auto' }}>
-              Subscribe to unlock unlimited job analyses, cover letters, selection criteria, and everything below.
-            </p>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 32 }}>
-            {TOOLS.map((t, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.08 + i * 0.05 }}
-                style={{
-                  background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
-                  borderRadius: 14, padding: '16px', filter: 'grayscale(0.3)',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <span style={{ fontSize: 18 }}>{t.icon}</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: '#9ca3af' }}>{t.label}</span>
-                  <span style={{ marginLeft: 'auto', fontSize: 10, color: '#374151', fontWeight: 700, background: 'rgba(255,255,255,0.04)', borderRadius: 4, padding: '2px 6px' }}>locked</span>
-                </div>
-                <p style={{ fontSize: 12, color: '#4b5563', lineHeight: 1.5, margin: 0 }}>{t.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-
-          <div style={{
-            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: 20, padding: '32px',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-              <div style={{
-                background: 'linear-gradient(135deg, #0F766E22, #13224422)',
-                border: '1px solid rgba(45,212,191,0.2)',
-                borderRadius: 12, padding: '10px 14px', flex: 1,
-              }}>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#99F6E4' }}>Monthly</p>
-                <p style={{ margin: '2px 0 0', fontSize: 20, fontWeight: 900, color: 'white' }}>$67<span style={{ fontSize: 13, fontWeight: 500, color: '#6b7280' }}>/month</span></p>
-              </div>
-              <div style={{ color: '#374151', fontWeight: 700, fontSize: 12 }}>or</div>
-              <div style={{
-                background: 'linear-gradient(135deg, #0F766E22, #13224422)',
-                border: '1px solid rgba(45,212,191,0.2)',
-                borderRadius: 12, padding: '10px 14px', flex: 1,
-              }}>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#99F6E4' }}>Annual</p>
-                <p style={{ margin: '2px 0 0', fontSize: 20, fontWeight: 900, color: 'white' }}>$497<span style={{ fontSize: 13, fontWeight: 500, color: '#6b7280' }}>/year</span></p>
-                <p style={{ margin: '2px 0 0', fontSize: 11, color: '#0F766E', fontWeight: 600 }}>Save 38%</p>
-              </div>
-            </div>
-
-            <button
-              onClick={() => handleCheckout('monthly')}
-              disabled={checkingOut}
-              style={{
-                width: '100%',
-                background: checkingOut ? 'rgba(15,118,110,0.4)' : 'linear-gradient(135deg, #0F766E, #134E4A)',
-                color: 'white', border: 'none', borderRadius: 14, padding: '15px',
-                fontSize: 16, fontWeight: 800, letterSpacing: '-0.01em',
-                cursor: checkingOut ? 'default' : 'pointer',
-                boxShadow: '0 6px 24px rgba(15,118,110,0.30)', marginBottom: 10,
-              }}
-            >
-              {checkingOut ? 'Redirecting...' : 'Subscribe monthly — $67/mo →'}
-            </button>
-            <button
-              onClick={() => handleCheckout('annual')}
-              disabled={checkingOut}
-              style={{
-                width: '100%', background: 'none',
-                border: '1px solid rgba(45,212,191,0.25)',
-                color: '#2dd4bf', borderRadius: 14, padding: '14px',
-                fontSize: 15, fontWeight: 700, cursor: checkingOut ? 'default' : 'pointer',
-                marginBottom: 10,
-              }}
-            >
-              {checkingOut ? 'Redirecting...' : 'Subscribe annually — $497/yr (best value)'}
-            </button>
-            {profile?.stripeCustomerId && (
-              <button
-                onClick={handlePortal}
-                disabled={checkingOut}
-                style={{
-                  width: '100%', background: 'none', border: 'none',
-                  color: '#4b5563', fontSize: 12, cursor: 'pointer', padding: '8px',
-                }}
-              >
-                Manage existing subscription
-              </button>
-            )}
-          </div>
-        </motion.div>
-      </div>
-    </div>
+    <>
+      {upgradeTrigger && (
+        <UpgradeModal
+          trigger={upgradeTrigger}
+          onClose={() => setUpgradeTrigger(null)}
+        />
+      )}
+      {isPastDue && <PastDueBanner />}
+      {isTrialing && profile?.trialEndDate && <TrialBanner trialEndDate={profile.trialEndDate} />}
+      {isFree && !isPastDue && <FreeBanner profile={profile} />}
+      {children}
+    </>
   );
 }
 
@@ -735,8 +584,9 @@ function App() {
         <AuthProvider>
           <Router>
             <Routes>
-              {/* Public/Auth Routes */}
+              {/* Public Routes */}
               <Route path="/auth" element={<AuthPage />} />
+              <Route path="/pricing" element={<PricingPage />} />
 
               {/* Protected Application Routes */}
               <Route path="/*" element={

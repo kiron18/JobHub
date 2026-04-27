@@ -32,7 +32,7 @@ describe('POST /api/skool/join', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('saves skool email and flips skoolJoined to true', async () => {
-    mockUpdate.mockResolvedValue({});
+    mockUpdate.mockResolvedValue({} as any);
     const res = await request(app)
       .post('/api/skool/join')
       .send({ skoolEmail: 'member@skool.com' });
@@ -46,7 +46,7 @@ describe('POST /api/skool/join', () => {
   });
 
   it('sets skoolJoined true with no email when skoolEmail is blank', async () => {
-    mockUpdate.mockResolvedValue({});
+    mockUpdate.mockResolvedValue({} as any);
     const res = await request(app)
       .post('/api/skool/join')
       .send({ skoolEmail: '' });

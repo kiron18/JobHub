@@ -17,7 +17,11 @@ export function startJobFeedCron(): void {
     let users: { userId: string; targetRole: string; targetCity: string; industry: string | null }[] = [];
     try {
       const profiles = await prisma.candidateProfile.findMany({
-        where: { dashboardAccess: true, hasCompletedOnboarding: true },
+        where: {
+          hasCompletedOnboarding: true,
+          plan: { not: 'free' },
+          planStatus: { in: ['active', 'trialing'] },
+        },
         select: { userId: true, targetRole: true, targetCity: true, industry: true },
       });
       users = profiles.filter(

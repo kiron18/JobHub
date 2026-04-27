@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { prisma } from '../index';
 import { authenticate } from '../middleware/auth';
+import { checkAccess } from '../middleware/accessControl';
 import { callLLMWithRetry } from '../utils/callLLMWithRetry';
-import { todayAEST } from '../services/jobFeed';
 import { DOCUMENT_GENERATION_PROMPT_WITH_BLUEPRINT, DOCUMENT_GENERATION_PROMPT, buildSearchContextBlock } from '../services/prompts';
 import { generateBlueprint } from '../services/strategy';
 import { setCachedBlueprint } from '../services/blueprint-cache';
@@ -60,17 +60,13 @@ router.post('/:type', authenticate, async (req, res) => {
     }
 
     try {
-        // Daily generation limit — protects Claude Stage 1 costs (AEST midnight)
-        const todayStart = todayAEST();
-        const todayCount = await prisma.document.count({
-            where: {
-                userId,
-                createdAt: { gte: todayStart }
-            }
-        });
-        if (todayCount >= MAX_DAILY_GENERATIONS) {
-            return res.status(429).json({
-                error: `Daily generation limit reached (${MAX_DAILY_GENERATIONS} documents per day). Try again tomorrow.`
+        const userEmail = ((req as any).user?.email ?? '').toLowerCase();
+        const access = await checkAccess(userId, 'generation', userEmail);
+        if (!access.allowed) {
+            return res.status(402).json({
+                error: 'Generation limit reached',
+                upgradeRequired: true,
+                remaining: 0,
             });
         }
 

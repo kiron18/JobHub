@@ -41,10 +41,17 @@ model CandidateProfile {
   dashboardAccessRequested     Boolean           @default(false)
   skoolJoined                  Boolean           @default(false)
   skoolCommunityEmail          String?
-  stripeCustomerId     String?
-  stripeSubscriptionId String?
-  subscriptionStatus   String?
-  freeJobsUsed         Int     @default(0)
+  stripeCustomerId       String?
+  stripeSubscriptionId   String?
+  subscriptionStatus     String?
+  plan                   String    @default("free")
+  planStatus             String    @default("active")
+  trialEndDate           DateTime?
+  accessExpiresAt        DateTime?
+  freeGenerationsUsed    Int       @default(0)
+  freeAnalysesUsed       Int       @default(0)
+  freeJobSearchesUsed    Int       @default(0)
+  freeMatchScoresUsed    Int       @default(0)
   achievementCountAtDerivation Int?
   identityCards                Json?
   identityCardsUpdatedAt       DateTime?

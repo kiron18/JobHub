@@ -1,8 +1,5 @@
 import { Router, Request, Response } from 'express';
 import StripeLib from 'stripe';
-import type { Checkout } from 'stripe/cjs/resources/Checkout/index.js';
-import type { Subscription } from 'stripe/cjs/resources/Subscriptions.js';
-import type { Invoice } from 'stripe/cjs/resources/Invoices.js';
 import { prisma } from '../index';
 import { authenticate, AuthRequest } from '../middleware/auth';
 
@@ -16,11 +13,18 @@ const stripe = new StripeLib(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2026-03-25.dahlia',
 });
 
-const APP_URL = (process.env.ALLOWED_ORIGIN ?? 'https://job-hub-snowy-ten.vercel.app')
+const APP_URL = (process.env.ALLOWED_ORIGIN ?? 'https://aussiegradcareers.com.au')
   .split(',')[0]
   .trim();
 
-// ── Webhook handler — must receive raw body, registered before express.json() ──
+const PRICE_IDS: Record<string, string> = {
+  monthly: process.env.MONTHLY_PRICE_ID!,
+  annual: process.env.ANNUAL_PRICE_ID!,
+  three_month: process.env.STRIPE_THREE_MONTH_PRICE_ID!,
+};
+
+// ── Webhook handler — raw body, registered before express.json() ──────────────
+
 export async function stripeWebhookHandler(req: Request, res: Response): Promise<void> {
   const sig = req.headers['stripe-signature'];
   if (!sig) {
@@ -28,7 +32,6 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
     return;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let event: any;
   try {
     event = stripe.webhooks.constructEvent(
@@ -46,57 +49,79 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
 
   try {
     switch (event.type as string) {
-      case 'checkout.session.completed':
-      case 'checkout.session.async_payment_succeeded': {
-        const session = event.data.object as Checkout.Session;
+
+      case 'checkout.session.completed': {
+        const session = event.data.object;
         const userId: string | undefined = session.metadata?.userId;
         if (!userId) {
           console.warn('[stripe/webhook] No userId in session metadata — skipping');
           break;
         }
-        const subscriptionId = session.subscription as string | null;
-        await prisma.candidateProfile.upsert({
-          where: { userId },
-          update: {
-            stripeCustomerId: typeof session.customer === 'string' ? session.customer : undefined,
-            stripeSubscriptionId: subscriptionId ?? undefined,
-            subscriptionStatus: 'active',
-            dashboardAccess: true,
-          },
-          create: {
-            userId,
-            stripeCustomerId: typeof session.customer === 'string' ? session.customer : undefined,
-            stripeSubscriptionId: subscriptionId ?? undefined,
-            subscriptionStatus: 'active',
-            dashboardAccess: true,
-          },
-        });
-        console.log(`[stripe/webhook] Granted access to userId=${userId}`);
-        break;
-      }
 
-      case 'checkout.session.async_payment_failed': {
-        const session = event.data.object as Checkout.Session;
-        console.warn(`[stripe/webhook] Async payment failed for session=${session.id}`);
+        const isOneTime = session.mode === 'payment';
+        const subscriptionId = session.subscription as string | null;
+        const customerId = typeof session.customer === 'string' ? session.customer : null;
+
+        if (isOneTime) {
+          // 3-month bundle: one-time payment
+          const accessExpiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+          await prisma.candidateProfile.update({
+            where: { userId },
+            data: {
+              stripeCustomerId: customerId ?? undefined,
+              plan: 'three_month',
+              planStatus: 'active',
+              accessExpiresAt,
+              dashboardAccess: true,
+            },
+          });
+          console.log(`[stripe/webhook] 3-month access granted to userId=${userId}, expires=${accessExpiresAt.toISOString()}`);
+        } else {
+          // Monthly or annual subscription — may be in trial
+          let trialEndDate: Date | null = null;
+          if (subscriptionId) {
+            try {
+              const sub = await stripe.subscriptions.retrieve(subscriptionId);
+              if (sub.trial_end) trialEndDate = new Date(sub.trial_end * 1000);
+            } catch { /* non-fatal */ }
+          }
+          const isTrialing = trialEndDate !== null && trialEndDate > new Date();
+          await prisma.candidateProfile.update({
+            where: { userId },
+            data: {
+              stripeCustomerId: customerId ?? undefined,
+              stripeSubscriptionId: subscriptionId ?? undefined,
+              plan: session.metadata?.plan ?? 'monthly',
+              planStatus: isTrialing ? 'trialing' : 'active',
+              trialEndDate: trialEndDate ?? undefined,
+              dashboardAccess: true,
+            },
+          });
+          console.log(`[stripe/webhook] Subscription access granted to userId=${userId}, trialing=${isTrialing}`);
+        }
         break;
       }
 
       case 'customer.subscription.updated': {
-        const sub = event.data.object as Subscription;
+        const sub = event.data.object;
         const profile = await prisma.candidateProfile.findFirst({
           where: { stripeSubscriptionId: sub.id },
         });
-        if (!profile) {
-          console.warn(`[stripe/webhook] No profile for subscriptionId=${sub.id}`);
-          break;
-        }
-        const isActive = sub.status === 'active' || sub.status === 'trialing';
+        if (!profile) break;
+
+        const isActive = sub.status === 'active';
+        const isTrialing = sub.status === 'trialing';
         const isPastDue = sub.status === 'past_due' || sub.status === 'unpaid';
+
+        let trialEndDate: Date | undefined;
+        if (sub.trial_end) trialEndDate = new Date(sub.trial_end * 1000);
+
         await prisma.candidateProfile.update({
           where: { id: profile.id },
           data: {
-            subscriptionStatus: sub.status as string,
-            dashboardAccess: isActive || isPastDue ? true : false,
+            planStatus: sub.status,
+            trialEndDate: trialEndDate ?? null,
+            dashboardAccess: isActive || isTrialing || isPastDue,
           },
         });
         console.log(`[stripe/webhook] Subscription ${sub.id} → status=${sub.status}`);
@@ -104,7 +129,7 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
       }
 
       case 'customer.subscription.deleted': {
-        const sub = event.data.object as Subscription;
+        const sub = event.data.object;
         const profile = await prisma.candidateProfile.findFirst({
           where: { stripeSubscriptionId: sub.id },
         });
@@ -112,17 +137,46 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
         await prisma.candidateProfile.update({
           where: { id: profile.id },
           data: {
-            subscriptionStatus: 'canceled',
+            plan: 'free',
+            planStatus: 'cancelled',
             dashboardAccess: false,
           },
         });
-        console.log(`[stripe/webhook] Revoked access for subscriptionId=${sub.id}`);
+        console.log(`[stripe/webhook] Access revoked for subscriptionId=${sub.id}`);
         break;
       }
 
       case 'invoice.payment_failed': {
-        // Invoice.subscription was removed from Stripe SDK types in v17+; cast via unknown to read it safely.
-        const invoice = event.data.object as Invoice & { subscription?: string | null };
+        const invoice = event.data.object;
+        const subId: string | null = invoice.subscription ?? null;
+        if (!subId) break;
+        const profile = await prisma.candidateProfile.findFirst({
+          where: { stripeSubscriptionId: subId },
+        });
+        if (!profile) break;
+
+        const isFirstPayment = invoice.billing_reason === 'subscription_cycle'
+          && profile.planStatus === 'trialing';
+
+        if (isFirstPayment) {
+          // Trial ended, card declined — downgrade immediately
+          await prisma.candidateProfile.update({
+            where: { id: profile.id },
+            data: { plan: 'free', planStatus: 'expired', dashboardAccess: false },
+          });
+          console.log(`[stripe/webhook] Trial payment failed for ${subId} — downgraded to free`);
+        } else {
+          await prisma.candidateProfile.update({
+            where: { id: profile.id },
+            data: { planStatus: 'past_due' },
+          });
+          console.log(`[stripe/webhook] Payment failed for ${subId} — marked past_due`);
+        }
+        break;
+      }
+
+      case 'invoice.payment_succeeded': {
+        const invoice = event.data.object;
         const subId: string | null = invoice.subscription ?? null;
         if (!subId) break;
         const profile = await prisma.candidateProfile.findFirst({
@@ -131,9 +185,9 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
         if (!profile) break;
         await prisma.candidateProfile.update({
           where: { id: profile.id },
-          data: { subscriptionStatus: 'past_due' },
+          data: { planStatus: 'active', dashboardAccess: true },
         });
-        console.log(`[stripe/webhook] Payment failed for subscriptionId=${subId} — marked past_due`);
+        console.log(`[stripe/webhook] Payment succeeded for ${subId} — plan active`);
         break;
       }
 
@@ -149,7 +203,8 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
   res.json({ received: true });
 }
 
-// ── Router — checkout and portal (registered after express.json()) ──
+// ── Router ────────────────────────────────────────────────────────────────────
+
 const router = Router();
 
 // POST /api/stripe/checkout
@@ -158,8 +213,8 @@ router.post('/checkout', authenticate, async (req: AuthRequest, res: Response) =
   const userEmail = req.user!.email ?? '';
   const { plan } = req.body as { plan?: string };
 
-  if (plan !== 'monthly' && plan !== 'annual') {
-    res.status(400).json({ error: 'plan must be "monthly" or "annual"' });
+  if (!plan || !['monthly', 'annual', 'three_month'].includes(plan)) {
+    res.status(400).json({ error: 'plan must be "monthly", "annual", or "three_month"' });
     return;
   }
 
@@ -168,27 +223,40 @@ router.post('/checkout', authenticate, async (req: AuthRequest, res: Response) =
     return;
   }
 
-  const priceId = plan === 'monthly'
-    ? process.env.MONTHLY_PRICE_ID!
-    : process.env.ANNUAL_PRICE_ID!;
+  const priceId = PRICE_IDS[plan];
+  if (!priceId) {
+    res.status(500).json({ error: `Price ID not configured for plan: ${plan}` });
+    return;
+  }
 
   try {
     const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
+    const isOneTime = plan === 'three_month';
 
-    const session = await stripe.checkout.sessions.create({
-      mode: 'subscription',
-      ...(profile?.stripeCustomerId
-        ? { customer: profile.stripeCustomerId }
-        : { customer_email: userEmail }
-      ),
+    const sessionParams: any = {
+      mode: isOneTime ? 'payment' : 'subscription',
       line_items: [{ price: priceId, quantity: 1 }],
-      metadata: { userId },
-      success_url: `${APP_URL}/dashboard?payment=success`,
-      cancel_url: `${APP_URL}/dashboard`,
+      metadata: { userId, plan },
+      success_url: `${APP_URL}/?payment=success`,
+      cancel_url: `${APP_URL}/pricing`,
       billing_address_collection: 'auto',
       allow_promotion_codes: true,
-    });
+    };
 
+    if (profile?.stripeCustomerId) {
+      sessionParams.customer = profile.stripeCustomerId;
+    } else {
+      sessionParams.customer_email = userEmail;
+    }
+
+    if (!isOneTime) {
+      sessionParams.subscription_data = {
+        trial_period_days: 7,
+        metadata: { userId, plan },
+      };
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
     res.json({ url: session.url });
   } catch (err: any) {
     console.error('[stripe/checkout] Error:', err.message);
@@ -199,23 +267,44 @@ router.post('/checkout', authenticate, async (req: AuthRequest, res: Response) =
 // POST /api/stripe/portal
 router.post('/portal', authenticate, async (req: AuthRequest, res: Response) => {
   const userId = req.user!.id;
-
   try {
     const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
     if (!profile?.stripeCustomerId) {
       res.status(400).json({ error: 'No Stripe customer found for this account' });
       return;
     }
-
     const session = await stripe.billingPortal.sessions.create({
       customer: profile.stripeCustomerId,
-      return_url: `${APP_URL}/dashboard`,
+      return_url: APP_URL,
     });
-
     res.json({ url: session.url });
   } catch (err: any) {
     console.error('[stripe/portal] Error:', err.message);
     res.status(500).json({ error: 'Failed to create portal session' });
+  }
+});
+
+// GET /api/stripe/status
+router.get('/status', authenticate, async (req: AuthRequest, res: Response) => {
+  const userId = req.user!.id;
+  try {
+    const profile = await prisma.candidateProfile.findUnique({
+      where: { userId },
+      select: {
+        plan: true,
+        planStatus: true,
+        trialEndDate: true,
+        accessExpiresAt: true,
+        freeGenerationsUsed: true,
+        freeAnalysesUsed: true,
+        freeJobSearchesUsed: true,
+        freeMatchScoresUsed: true,
+        stripeCustomerId: true,
+      },
+    });
+    res.json(profile ?? {});
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to fetch subscription status' });
   }
 });
 

@@ -25,6 +25,7 @@ import jobFeedRouter from './routes/job-feed';
 import adminRouter from './routes/admin';
 import stripeRouter, { stripeWebhookHandler } from './routes/stripe';
 import { startJobFeedCron } from './cron/jobFeedCron';
+import { startTrialReminderCron } from './cron/trialReminderCron';
 import { analyzeRateLimit } from './middleware/analyzeRateLimit';
 
 dotenv.config();
@@ -151,5 +152,7 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 app.listen(PORT, () => {
     console.log(`Job Ready Backend running on http://localhost:${PORT}`);
     startJobFeedCron();
+    startTrialReminderCron();
     console.log('[cron] Job feed cron scheduled (21:00 UTC daily)');
+    console.log('[cron] Trial reminder cron scheduled (10:00 UTC daily)');
 });

@@ -89,3 +89,32 @@ export async function sendWelcomeEmail(to: string): Promise<void> {
     ].join('\n'),
   });
 }
+
+export async function sendTrialReminderEmail(to: string, name: string): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[email] RESEND_API_KEY not set — skipping trial reminder');
+    return;
+  }
+  const displayName = name || 'there';
+  const cancelUrl = `${APP_URL}/pricing`;
+  await resend.emails.send({
+    from: FROM_ADDRESS,
+    to,
+    subject: 'Your free trial ends tomorrow',
+    text: [
+      `Hi ${displayName},`,
+      '',
+      "Your 7-day free trial with Aussie Grad Careers ends tomorrow.",
+      '',
+      'After tomorrow, your card will be charged and your subscription will continue automatically.',
+      'If you want to cancel before being charged, you can do so here:',
+      '',
+      cancelUrl,
+      '',
+      "If you're happy to continue — great, no action needed.",
+      '',
+      'Good luck with the applications,',
+      'The Aussie Grad Careers team',
+    ].join('\n'),
+  });
+}

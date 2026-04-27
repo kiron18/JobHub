@@ -3,6 +3,7 @@ import axios from 'axios';
 import { prisma } from '../index';
 import { authenticate } from '../middleware/auth';
 import { analyzeRateLimit } from '../middleware/analyzeRateLimit';
+import { checkAccess } from '../middleware/accessControl';
 import {
   buildDailyFeed,
   generateBullets,
@@ -20,14 +21,16 @@ const buildingNow = new Set<string>();
 // All routes require auth
 router.use(authenticate);
 
-// Helper: check dashboardAccess
+// Helper: check paid access (for routes that require full subscription)
 async function requirePremium(userId: string, res: Response): Promise<boolean> {
   const profile = await prisma.candidateProfile.findUnique({
     where: { userId },
-    select: { dashboardAccess: true },
+    select: { plan: true, planStatus: true, accessExpiresAt: true, dashboardAccess: true },
   });
-  if (!profile?.dashboardAccess) {
-    res.status(403).json({ error: 'Premium access required' });
+  const isPaid = profile?.dashboardAccess === true
+    || (profile?.plan !== 'free' && (profile?.planStatus === 'active' || profile?.planStatus === 'trialing'));
+  if (!isPaid) {
+    res.status(403).json({ error: 'Subscription required' });
     return false;
   }
   return true;
@@ -41,7 +44,7 @@ router.get('/feed', async (req: any, res: any) => {
   const today = todayAEST();
 
   try {
-    if (!(await requirePremium(userId, res))) return;
+    const userEmail = (req.user?.email ?? '').toLowerCase();
 
     // Pre-check profile completeness before attempting any build
     const profile = await prisma.candidateProfile.findUnique({
@@ -52,9 +55,14 @@ router.get('/feed', async (req: any, res: any) => {
       return res.json({ jobs: [], total: 0, hasMore: false, feedDate: today.toISOString().slice(0, 10), profileIncomplete: true });
     }
 
-    // If no jobs exist for today, kick off a background build and return immediately
     const count = await prisma.jobFeedItem.count({ where: { userId, feedDate: today } });
+
     if (count === 0) {
+      // Gate the BUILD (not the read) — free tier gets 1 lifetime feed build
+      const access = await checkAccess(userId, 'job_search', userEmail);
+      if (!access.allowed) {
+        return res.status(402).json({ error: 'Job search limit reached', upgradeRequired: true, remaining: 0 });
+      }
       if (!buildingNow.has(userId)) {
         buildingNow.add(userId);
         buildDailyFeed(userId)
@@ -136,43 +144,17 @@ router.get('/feed', async (req: any, res: any) => {
   }
 });
 
-// POST /api/job-feed/refresh
-router.post('/refresh', async (req: any, res: any) => {
-  const userId = req.user.id;
-  const today = todayAEST();
-
-  try {
-    if (!(await requirePremium(userId, res))) return;
-    const newest = await prisma.jobFeedItem.findFirst({
-      where: { userId, feedDate: today },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    if (newest) {
-      const ageSeconds = Math.floor((Date.now() - newest.createdAt.getTime()) / 1000);
-      if (ageSeconds < 3600) {
-        return res.status(400).json({
-          error: 'Feed refreshed recently. Try again later.',
-          retryAfter: 3600 - ageSeconds,
-        });
-      }
-    }
-
-    await buildDailyFeed(userId);
-    return res.json({ ok: true });
-  } catch (err: any) {
-    console.error('[job-feed/refresh]', err);
-    return res.status(500).json({ error: 'Failed to refresh feed' });
-  }
-});
-
 // POST /api/job-feed/:id/score
 router.post('/:id/score', analyzeRateLimit, async (req: any, res: any) => {
   const userId = req.user.id;
+  const userEmail = (req.user?.email ?? '').toLowerCase();
   const { id } = req.params;
 
   try {
-    if (!(await requirePremium(userId, res))) return;
+    const access = await checkAccess(userId, 'match_score', userEmail);
+    if (!access.allowed) {
+      return res.status(402).json({ error: 'Match score limit reached', upgradeRequired: true, remaining: 0 });
+    }
     const item = await prisma.jobFeedItem.findUnique({ where: { id } });
     if (!item || item.userId !== userId) return res.status(404).json({ error: 'Not found' });
 
