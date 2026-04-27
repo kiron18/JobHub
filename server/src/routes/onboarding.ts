@@ -15,12 +15,16 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    const allowed = [
+    const allowedMimes = [
       'application/pdf',
       'text/plain',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/msword',
+      'application/octet-stream',
     ];
-    if (allowed.includes(file.mimetype)) {
+    const ext = file.originalname.toLowerCase();
+    const allowedExt = ext.endsWith('.pdf') || ext.endsWith('.docx') || ext.endsWith('.doc') || ext.endsWith('.txt');
+    if (allowedMimes.includes(file.mimetype) || allowedExt) {
       cb(null, true);
     } else {
       cb(new Error('Only PDF, DOCX, and plain-text files are accepted'));
