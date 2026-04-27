@@ -57,7 +57,7 @@ function Terms() {
         <p>These terms are governed by the laws of Victoria, Australia. Any disputes are subject to the exclusive jurisdiction of Victorian courts.</p>
       </Section>
       <Section title="10. Contact">
-        <p>Questions about these terms: <a href="mailto:support@aussiegradcareers.com.au" style={{ color: '#2dd4bf' }}>support@aussiegradcareers.com.au</a></p>
+        <p>Questions about these terms: <a href="mailto:kiron@aussiegradcareers.com.au" style={{ color: '#2dd4bf' }}>kiron@aussiegradcareers.com.au</a></p>
       </Section>
     </Policy>
   );
@@ -108,7 +108,7 @@ function Privacy() {
           <li>Request deletion of your account and data</li>
           <li>Withdraw marketing consent at any time</li>
         </ul>
-        <p>To exercise any of these rights, email <a href="mailto:support@aussiegradcareers.com.au" style={{ color: '#2dd4bf' }}>support@aussiegradcareers.com.au</a>.</p>
+        <p>To exercise any of these rights, email <a href="mailto:kiron@aussiegradcareers.com.au" style={{ color: '#2dd4bf' }}>kiron@aussiegradcareers.com.au</a>.</p>
       </Section>
       <Section title="7. Data retention">
         <p>We retain your data while your account is active. If you delete your account, we will delete your personal data within 30 days, except where we are required to retain it by law (e.g. financial records).</p>
@@ -117,7 +117,7 @@ function Privacy() {
         <p>We use essential cookies for authentication only. We do not use tracking or advertising cookies.</p>
       </Section>
       <Section title="9. Contact">
-        <p>Privacy enquiries: <a href="mailto:support@aussiegradcareers.com.au" style={{ color: '#2dd4bf' }}>support@aussiegradcareers.com.au</a></p>
+        <p>Privacy enquiries: <a href="mailto:kiron@aussiegradcareers.com.au" style={{ color: '#2dd4bf' }}>kiron@aussiegradcareers.com.au</a></p>
       </Section>
     </Policy>
   );
@@ -147,7 +147,7 @@ function Refunds() {
         <p>Change-of-mind refunds outside these windows are not guaranteed but can be requested.</p>
       </Section>
       <Section title="How to request a refund">
-        <p>Email <a href="mailto:support@aussiegradcareers.com.au" style={{ color: '#2dd4bf' }}>support@aussiegradcareers.com.au</a> with your account email and reason. We aim to respond within 2 business days. Approved refunds are processed via Stripe and appear within 5-10 business days.</p>
+        <p>Email <a href="mailto:kiron@aussiegradcareers.com.au" style={{ color: '#2dd4bf' }}>kiron@aussiegradcareers.com.au</a> with your account email and reason. We aim to respond within 2 business days. Approved refunds are processed via Stripe and appear within 5-10 business days.</p>
       </Section>
       <Section title="What we do not refund">
         <ul>
@@ -178,7 +178,7 @@ function Cancellation() {
         <p>If you are on a free trial, you must cancel before day 8 to avoid being charged. Cancelling during the trial ends your access at the end of the trial period.</p>
       </Section>
       <Section title="Your data after cancellation">
-        <p>Your documents and profile data are retained for 30 days after your access expires. You can request immediate deletion by emailing <a href="mailto:support@aussiegradcareers.com.au" style={{ color: '#2dd4bf' }}>support@aussiegradcareers.com.au</a>.</p>
+        <p>Your documents and profile data are retained for 30 days after your access expires. You can request immediate deletion by emailing <a href="mailto:kiron@aussiegradcareers.com.au" style={{ color: '#2dd4bf' }}>kiron@aussiegradcareers.com.au</a>.</p>
       </Section>
       <Section title="How to cancel">
         <p>Log in to your account, go to Settings, and click "Manage subscription". This opens the Stripe billing portal where you can cancel immediately. Alternatively, email us and we will cancel on your behalf.</p>
