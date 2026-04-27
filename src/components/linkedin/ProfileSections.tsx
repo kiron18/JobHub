@@ -107,6 +107,7 @@ export const ProfileSections: React.FC<Props> = ({
           />
           <SectionCard
             label="Open to Work Signal"
+            description={<>A short tagline (max 150 characters) that appears on your LinkedIn profile when you enable <strong style={{ color: 'inherit' }}>"Open to Work"</strong>. To use it: go to your LinkedIn profile &rarr; click the <em>Open to work</em> button below your name &rarr; paste this text into the <em>"What kind of work are you looking for?"</em> field.</>}
             charLimit={150}
             content={profileData.openToWork}
             onContentChange={v => onSectionChange('openToWork', v)}

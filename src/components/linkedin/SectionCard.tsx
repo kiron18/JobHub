@@ -4,6 +4,7 @@ import { useAppTheme } from '../../contexts/ThemeContext';
 
 interface Props {
   label: string;
+  description?: React.ReactNode;
   charLimit?: number;
   charTarget?: string;
   content: string;
@@ -14,7 +15,7 @@ interface Props {
 }
 
 export const SectionCard: React.FC<Props> = ({
-  label, charLimit, charTarget, content, onContentChange,
+  label, description, charLimit, charTarget, content, onContentChange,
   onRegenerate, regenerating, renderContent,
 }) => {
   const { T } = useAppTheme();
@@ -77,6 +78,11 @@ export const SectionCard: React.FC<Props> = ({
           </button>
         </div>
       </div>
+      {description && (
+        <p style={{ fontSize: 12, color: T.textFaint, margin: '0 0 12px', lineHeight: 1.6 }}>
+          {description}
+        </p>
+      )}
       {renderContent ? (
         renderContent(content)
       ) : (
