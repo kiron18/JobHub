@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Zap, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
@@ -317,7 +317,7 @@ export function PricingPage() {
         <div style={{ textAlign: 'center', marginTop: 80 }}>
           <p style={{ fontSize: 14, color: '#64748b', marginBottom: 20 }}>
             Questions? Reach us at{' '}
-            <span style={{ color: '#2dd4bf' }}>support@aussiegradcareers.com</span>
+            <span style={{ color: '#2dd4bf' }}>support@aussiegradcareers.com.au</span>
           </p>
           <button
             onClick={() => navigate('/auth')}
@@ -336,6 +336,30 @@ export function PricingPage() {
           >
             {user ? 'Go to dashboard →' : 'Get started free →'}
           </button>
+        </div>
+
+        {/* Legal footer */}
+        <div style={{
+          marginTop: 48,
+          paddingTop: 24,
+          borderTop: '1px solid rgba(255,255,255,0.06)',
+          display: 'flex',
+          justifyContent: 'center',
+          flexWrap: 'wrap',
+          gap: '8px 24px',
+        }}>
+          {[
+            { to: '/legal/terms',        label: 'Terms of Service' },
+            { to: '/legal/privacy',      label: 'Privacy Policy' },
+            { to: '/legal/refunds',      label: 'Refund Policy' },
+            { to: '/legal/cancellation', label: 'Cancellation Policy' },
+            { to: '/legal/trial',        label: 'Free Trial Terms' },
+            { to: '/legal/disclaimer',   label: 'Disclaimer' },
+          ].map(({ to, label }) => (
+            <Link key={to} to={to} style={{ fontSize: 12, color: '#475569', textDecoration: 'none' }}>
+              {label}
+            </Link>
+          ))}
         </div>
       </div>
     </div>

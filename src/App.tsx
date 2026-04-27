@@ -32,6 +32,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthPage } from './pages/AuthPage';
 import { PricingPage } from './pages/PricingPage';
 import { GeoBlockedPage } from './pages/GeoBlockedPage';
+import { LegalPage } from './pages/LegalPage';
 
 // Lib
 import api from './lib/api';
@@ -587,6 +588,8 @@ function App() {
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/not-available" element={<GeoBlockedPage />} />
+              <Route path="/legal/:policy" element={<LegalPage />} />
+              <Route path="/legal" element={<LegalPage />} />
 
               {/* Protected Application Routes */}
               <Route path="/*" element={
