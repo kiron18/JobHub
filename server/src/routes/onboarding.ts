@@ -1,4 +1,4 @@
-import { Router, Response } from 'express';
+import { Router, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { prisma } from '../index';
 import { authenticate, AuthRequest } from '../middleware/auth';
@@ -24,15 +24,26 @@ const upload = multer({
   },
 });
 
-// ── POST /api/onboarding/submit ───────────────────────────────────────────────
-router.post(
-  '/submit',
-  authenticate,
+// Wraps multer so file-type/size errors return 400 instead of propagating as 500
+function handleUpload(req: AuthRequest, res: Response, next: NextFunction) {
   upload.fields([
     { name: 'resume', maxCount: 1 },
     { name: 'coverLetter1', maxCount: 1 },
     { name: 'coverLetter2', maxCount: 1 },
-  ]),
+  ])(req as any, res, (err: any) => {
+    if (err) {
+      const status = err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE' ? 413 : 400;
+      return res.status(status).json({ error: err.message || 'File upload error' });
+    }
+    next();
+  });
+}
+
+// ── POST /api/onboarding/submit ───────────────────────────────────────────────
+router.post(
+  '/submit',
+  authenticate,
+  handleUpload,
   async (req: AuthRequest, res: Response) => {
     const userId = req.user!.id;
 
