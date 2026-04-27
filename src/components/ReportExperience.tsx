@@ -635,41 +635,81 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
               </div>
             </div>
 
-            {/* JobHub Pro CTA */}
+            {/* Paid tool CTA — Hormozi value stack */}
             <div style={{
               background: isDark ? 'rgba(255,255,255,0.02)' : 'white',
-              border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(99,102,241,0.15)'}`,
+              border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(15,118,110,0.13)'}`,
               borderTop: 'none',
-              padding: '36px 40px',
-              textAlign: 'center',
+              padding: '40px 40px 36px',
             }}>
-              <h3 style={{ fontSize: 22, fontWeight: 900, color: isDark ? '#f3f4f6' : '#111827', marginBottom: 12, letterSpacing: '-0.01em', lineHeight: 1.2 }}>
-                Ready to automate this entire process?
+              <p style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#0F766E', marginBottom: 14 }}>
+                Aussie Grad Careers — Pro Tool
+              </p>
+              <h3 style={{ fontSize: 26, fontWeight: 900, color: isDark ? '#f3f4f6' : '#111827', marginBottom: 8, letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+                One tailored application every 3 minutes.
               </h3>
-              <p style={{ fontSize: 14, color: isDark ? '#9ca3af' : '#4b5563', lineHeight: 1.75, maxWidth: 460, margin: '0 auto 14px' }}>
-                JobHub Pro does everything this diagnostic identified — automatically matches your experience to job requirements, writes tailored cover letters, and tracks applications.
+              <p style={{ fontSize: 15, color: isDark ? '#9ca3af' : '#4b5563', lineHeight: 1.7, marginBottom: 28, maxWidth: 520 }}>
+                The average Australian graduate earns $1,200+ per week in their first role.
+                Every week you wait costs more than a full year of this tool.
               </p>
-              <p style={{ fontSize: 14, color: isDark ? '#9ca3af' : '#4b5563', lineHeight: 1.65, maxWidth: 440, margin: '0 auto 24px' }}>
-                Join our free community to get first access when it launches.
-              </p>
-              <a
-                href="https://www.skool.com/aussiegradcareers"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  display: 'inline-block',
-                  background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
-                  color: 'white', borderRadius: 14, padding: '15px 40px',
-                  fontSize: 15, fontWeight: 800, textDecoration: 'none',
-                  boxShadow: '0 6px 24px rgba(79,70,229,0.30)',
-                  letterSpacing: '-0.01em', marginBottom: 20,
-                }}
-              >
-                Join Free Community →
-              </a>
-              <p style={{ fontSize: 13, color: isDark ? '#4b5563' : '#9ca3af', lineHeight: 1.65, maxWidth: 460, margin: '0 auto' }}>
-                <strong style={{ color: isDark ? '#6b7280' : '#6b7280' }}>P.S.</strong> — You'll be among the founding members who get early access and an edge on the competition.
-              </p>
+
+              {/* Value stack */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 28 }}>
+                {[
+                  { emoji: '📄', label: 'Tailored resume', desc: 'Built from your achievements, matched to every JD' },
+                  { emoji: '✉️', label: 'Personalised cover letter', desc: 'Names the company, proves the match, passes the filter' },
+                  { emoji: '📋', label: 'Selection criteria', desc: 'SAR-structured responses for each criterion' },
+                  { emoji: '🎤', label: 'Interview prep', desc: 'Role-specific questions with your actual achievement answers' },
+                  { emoji: '🔗', label: 'LinkedIn optimisation', desc: 'Headline, About, bio — and an AI-generated profile photo' },
+                  { emoji: '📨', label: 'Outreach templates', desc: 'Cold approach, LinkedIn DM, post-interview follow-up' },
+                  { emoji: '🗺️', label: 'Daily job feed', desc: 'Matched roles from Seek and LinkedIn, pulled to you every morning' },
+                  { emoji: '🗓️', label: 'Application tracker', desc: 'Reminds you when to follow up and exactly what to say' },
+                ].map(({ emoji, label, desc }) => (
+                  <div key={label} style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 10,
+                    background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(15,118,110,0.04)',
+                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,118,110,0.10)'}`,
+                    borderRadius: 12, padding: '12px 14px',
+                  }}>
+                    <span style={{ fontSize: 18, flexShrink: 0 }}>{emoji}</span>
+                    <div>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: isDark ? '#e2e8f0' : '#111827' }}>{label}</p>
+                      <p style={{ margin: '2px 0 0', fontSize: 12, color: isDark ? '#6b7280' : '#6b7280', lineHeight: 1.5 }}>{desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ textAlign: 'center' }}>
+                <button
+                  onClick={onDone}
+                  style={{
+                    display: 'inline-block',
+                    background: 'linear-gradient(135deg, #0F766E, #134E4A)',
+                    color: 'white', borderRadius: 14, padding: '16px 48px',
+                    fontSize: 16, fontWeight: 900, border: 'none',
+                    boxShadow: '0 6px 24px rgba(15,118,110,0.35)',
+                    letterSpacing: '-0.01em', cursor: 'pointer', marginBottom: 12,
+                  }}
+                >
+                  Start using the tools →
+                </button>
+                <p style={{ fontSize: 12, color: isDark ? '#4b5563' : '#9ca3af', marginBottom: 16 }}>
+                  7-day free trial · No charge until day 8 · Cancel any time
+                </p>
+                <p style={{ fontSize: 13, color: isDark ? '#4b5563' : '#9ca3af', lineHeight: 1.6 }}>
+                  Not ready to commit?{' '}
+                  <a
+                    href="https://www.skool.com/aussiegradcareers"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: '#0F766E', textDecoration: 'underline', textUnderlineOffset: 3 }}
+                  >
+                    Join the free Skool community
+                  </a>
+                  {' '}— templates, frameworks, and live coaching calls at no cost. A solid starting point if you want to implement the fixes from your report yourself.
+                </p>
+              </div>
             </div>
 
             {/* Continue to dashboard */}
@@ -678,26 +718,15 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
               border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(15,118,110,0.10)'}`,
               borderTop: 'none',
               borderRadius: '0 0 24px 24px',
-              padding: '28px 36px',
+              padding: '20px 36px',
               textAlign: 'center',
             }}>
-              <p style={{ fontSize: 13, color: isDark ? '#6b7280' : '#9ca3af', marginBottom: 14 }}>
-                Ready to start applying?
+              <p style={{ fontSize: 12, color: isDark ? '#374151' : '#9ca3af', margin: 0 }}>
+                Already have an account?{' '}
+                <button onClick={onDone} style={{ background: 'none', border: 'none', color: '#0F766E', fontWeight: 700, cursor: 'pointer', fontSize: 12, padding: 0 }}>
+                  Go straight to the dashboard →
+                </button>
               </p>
-              <button
-                onClick={onDone}
-                style={{
-                  background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
-                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.10)'}`,
-                  borderRadius: 10,
-                  padding: '10px 24px',
-                  fontSize: 14, fontWeight: 700,
-                  color: isDark ? '#d1d5db' : '#374151',
-                  cursor: 'pointer', letterSpacing: '0.01em',
-                }}
-              >
-                Go to my dashboard →
-              </button>
             </div>
           </motion.div>
         )}

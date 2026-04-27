@@ -114,17 +114,43 @@ If the candidate has a name that is difficult to pronounce in English, they may 
 - For current roles: use *[Start Date] — Present*
 
 ### 4.2 Bullet Point Rules
-Every bullet must follow the **CAR method**: Challenge → Action → Result.
+Every bullet must be **outcome-first**. Structure:
 
-**Structure:** *[Strong action verb] + [what was done] + [quantified result or impact]*
+```
+[Result/number] + [action verb] + [method or context]
+```
+
+Not:
+```
+[Task description] + [vague result]
+```
+
+**Before generating each bullet, run this check:**
+- Does it answer "So what?"
+- Does it contain a number, percentage, or concrete scale indicator?
+- Does it name what the candidate specifically did (not "we" or "the team")?
+
+If any of these is No → rewrite the bullet or do not include it.
 
 - Minimum one metric per bullet (%, $, headcount, timeframe, volume).
 - If a metric is genuinely unavailable, use contextual scale: *"...across a team of 12"* or *"...serving 3,000+ customers"*.
 - Maximum 3–5 bullets per role. Quality over quantity.
 - Start every bullet with a different action verb. No repetition.
+- Past tense for previous roles, present tense for current role.
+
+**Banned bullet patterns (automatic rewrite):**
+- "Responsible for managing..."
+- "Assisted with..."
+- "Helped to develop..."
+- "Worked closely with the team to..."
+- "Demonstrating my ability to..." (AI self-narration — never acceptable)
+- "Highlighting my..." (same)
+- "Showcasing my..." (same)
+- "Ensuring alignment with..." (vague process language)
+- Any bullet where "we" or "the team" is the agent of the result — rewrite to "I"
 
 **Approved action verb bank (non-exhaustive):**
-Spearheaded, Delivered, Orchestrated, Drove, Managed, Led, Designed, Implemented, Launched, Reduced, Generated, Secured, Negotiated, Streamlined, Developed, Trained, Mentored, Analysed, Built, Scaled, Oversaw, Restructured, Coordinated, Produced, Presented
+Grew, Reduced, Built, Launched, Managed, Increased, Cut, Generated, Led, Delivered, Optimised, Spearheaded, Orchestrated, Drove, Designed, Implemented, Secured, Negotiated, Streamlined, Developed, Trained, Mentored, Analysed, Scaled, Oversaw, Restructured, Coordinated, Produced
 
 ### 4.3 Overseas Experience
 - Do not downplay international experience — it is globally valued.
@@ -282,6 +308,37 @@ The rules above apply across most industries. The following are exceptions where
 ### 11.5 Creative Industries (Design, Media, Marketing)
 - Portfolio link in the header is appropriate and recommended.
 - For roles where creative output is judged, the resume can be slightly more visually formatted — but ATS compliance still applies for digital submissions.
+
+---
+
+## SECTION 11A — QUALITY GATE (run before outputting)
+
+The following phrases must NEVER appear in any resume output. If detected, rewrite that sentence from scratch:
+
+```
+"demonstrating my ability to"
+"highlighting my"
+"showcasing my"
+"results-driven" (without an immediately following number)
+"team player"
+"excellent communication skills"
+"responsible for managing"
+"assisted with"
+"helped to develop"
+"worked closely with the team to"
+"ensuring alignment with"
+"I am a hardworking"
+"I am passionate"
+```
+
+### Resume Structural Checks (confirm before output)
+- [ ] Professional Summary contains at least one number?
+- [ ] Every bullet starts with a strong action verb?
+- [ ] Every bullet contains a quantified outcome?
+- [ ] No bullet contains "we" or "the team" as the agent of the result?
+- [ ] No AI self-narration phrases in any bullet?
+- [ ] Professional Summary does NOT share any sentence with the cover letter Para 1?
+- [ ] Skills section only lists skills named in the job ad OR evidenced in work experience bullets?
 
 ---
 

@@ -225,6 +225,75 @@ For full selection criteria rules, see the separate `selection_criteria_rules.md
 
 ---
 
+## SECTION 9A — PARAGRAPH-BY-PARAGRAPH RULES (STRICT — takes precedence over Section 2)
+
+The cover letter is always exactly **4 paragraphs**. One page. No exceptions.
+
+### Paragraph 1 — The Hook
+Name the role. Then write ONE sentence that shows specific knowledge of this company — not the industry, this company. Use VOLUME_SIGNALS or TEAM_CONTEXT from the job ad if available. Connect that specific detail to the candidate's background.
+
+**Target length:** 2–3 sentences maximum.
+
+**Banned opens (automatic rewrite):**
+- "I am writing to express my interest in..."
+- "I am excited to apply for..."
+- "I am a passionate and motivated..."
+- "With X years of experience..."
+- Any sentence that could apply to a different company in the same industry
+
+**Test:** Could this opening apply to a competitor? If yes, rewrite it.
+
+---
+
+### Paragraph 2 — The Evidence
+ONE story. Not a list. Structure: Situation (1 sentence) → Action (specific, first person, not "the team") → Result (a number, %, dollar value, time saved, or scale).
+
+Use the strongest quantified achievement from the candidate's bank that directly relates to the role's key requirements.
+
+**Hard rules:**
+- Maximum ONE achievement in this paragraph
+- The result must be quantified
+- The action must name a specific method or decision, not just a responsibility
+
+**Banned patterns:**
+- "I have managed X, Y, and Z..." (list format)
+- "In addition to this, I also..." (second achievement)
+- "My experience includes..." (task summary)
+- "I am confident in my ability to..." (claim without proof)
+
+**Test:** Does this paragraph contain more than one achievement? If yes, cut to the strongest one.
+
+---
+
+### Paragraph 3 — The Connection
+Show you understand their specific situation — not just that you have relevant skills. Use TEAM_CONTEXT, VOLUME_SIGNALS, or CULTURAL_FLAGS from the ad to write something that could only apply to this company.
+
+**This paragraph must NOT:**
+- Repeat what's in Para 2
+- List skills ("I am proficient in X, Y, Z")
+- Use "great cultural fit" or any equivalent
+- Mirror ad language without adding insight
+
+**Test:** If you removed the company name, could this have been written for a competitor? If yes, rewrite with a specific detail from the ad.
+
+---
+
+### Paragraph 4 — The Close
+One to two sentences. Confident and peer-level. Ask for the next conversation.
+
+**Approved patterns:**
+- "I'd welcome the opportunity to discuss [role] further — happy to connect at a time that works for you."
+- "I'd love to explore how my background fits what [Company] is building — feel free to reach out."
+
+**Banned close patterns:**
+- "I am available to discuss how my skills and experience align with..."
+- "I hope to hear from you"
+- "Thank you for your time and consideration"
+- "I look forward to discussing my qualifications"
+- Any sentence with "I hope", "I wish", or "I would be honoured"
+
+---
+
 ## SECTION 10 — BANNED PHRASES & PATTERNS
 
 The following phrases and patterns reduce the quality of any cover letter. Flag and replace them:
@@ -240,6 +309,49 @@ The following phrases and patterns reduce the quality of any cover letter. Flag 
 | "I look forward to hearing from you" | Proactive CTA from Section 7.2 |
 | "References available upon request" | Remove — does not belong in a cover letter |
 | Any mention of salary expectations | Never include unless explicitly asked |
+
+---
+
+## SECTION 10A — QUALITY GATE (run before outputting)
+
+The following phrases must NEVER appear in any output. If detected, rewrite that sentence from scratch before returning the document:
+
+```
+"demonstrating my ability to"
+"highlighting my"
+"showcasing my"
+"I am confident in my ability to"
+"I believe I would be"
+"passionate about contributing"
+"I am a highly motivated"
+"results-driven"
+"team player"
+"excellent communication skills"
+"great cultural fit"
+"I hope to hear from you"
+"I look forward to discussing my qualifications"
+"I am available to discuss how my skills and experience align"
+"as per the job description"
+"as mentioned in the job advertisement"
+"I am writing to express my interest"
+"I am excited to apply"
+"in addition to this, I also"
+```
+
+### Structural Quality Checks (confirm before output)
+- [ ] Exactly 4 paragraphs?
+- [ ] Para 1 names the company with a specific, non-generic detail?
+- [ ] Para 2 contains exactly ONE achievement story with a quantified result?
+- [ ] Para 3 references something specific to this company, not a generic skill?
+- [ ] Close uses peer-level language from the approved patterns?
+- [ ] No sentence from Para 1 appears in the resume summary?
+
+### Tone Test (apply before finalising)
+1. Does it sound like it was written by a person who knows their value?
+2. Does it sound like it could have been written by ChatGPT?
+3. Does it sound like it's trying too hard to impress?
+
+If the answer to 2 or 3 is yes → rewrite for specificity and directness. Shorter sentences beat longer ones. Concrete beats abstract. Proof beats claims.
 
 ---
 

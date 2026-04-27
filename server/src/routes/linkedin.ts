@@ -10,9 +10,13 @@ async function requirePaid(req: AuthRequest, res: any): Promise<boolean> {
   if (EXEMPT_EMAILS.includes(email)) return true;
   const profile = await prisma.candidateProfile.findUnique({
     where: { userId: req.user!.id },
-    select: { dashboardAccess: true },
+    select: { plan: true, planStatus: true, accessExpiresAt: true },
   });
-  if (!profile?.dashboardAccess) {
+  const plan = profile?.plan ?? 'free';
+  const planStatus = profile?.planStatus ?? 'active';
+  const isPaid = plan !== 'free' && (planStatus === 'active' || planStatus === 'trialing' || planStatus === 'past_due');
+  const isThreeMonth = plan === 'three_month' && profile?.accessExpiresAt && profile.accessExpiresAt > new Date();
+  if (!isPaid && !isThreeMonth) {
     res.status(403).json({ error: 'LinkedIn features require an active subscription.' });
     return false;
   }

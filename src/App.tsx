@@ -520,9 +520,16 @@ function DashboardGate({ children }: { children: React.ReactNode }) {
 
 function ReportOrDashboard() {
   const navigate = useNavigate();
-  const [reportSeen, setReportSeen] = useState(
-    () => localStorage.getItem('jobhub_report_seen') === 'true'
-  );
+  const [reportSeen, setReportSeen] = useState(() => {
+    // Email link uses ?view=report to force the report to show even for returning users
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('view') === 'report') {
+      window.history.replaceState({}, '', '/');
+      localStorage.removeItem('jobhub_report_seen');
+      return false;
+    }
+    return localStorage.getItem('jobhub_report_seen') === 'true';
+  });
   const [skoolJoined, setSkoolJoined] = useState(false);
 
   function handleDone() {

@@ -167,16 +167,19 @@ export function SkoolGate({ onJoined }: SkoolGateProps) {
                 </p>
                 <button
                   onClick={handleSubmit}
-                  disabled={submitting}
+                  disabled={submitting || !skoolEmail.trim()}
                   style={{
                     width: '100%',
-                    background: submitting ? 'rgba(15,118,110,0.4)' : 'linear-gradient(135deg, #0F766E, #134E4A)',
+                    background: (submitting || !skoolEmail.trim()) ? 'rgba(15,118,110,0.4)' : 'linear-gradient(135deg, #0F766E, #134E4A)',
                     color: 'white', border: 'none', borderRadius: 14, padding: '15px',
-                    fontSize: 15, fontWeight: 800, cursor: submitting ? 'default' : 'pointer',
+                    fontSize: 15, fontWeight: 800, cursor: (submitting || !skoolEmail.trim()) ? 'default' : 'pointer',
                   }}
                 >
                   {submitting ? 'Saving...' : 'Open my report →'}
                 </button>
+                <p style={{ fontSize: 11, color: '#4b5563', marginTop: 8, textAlign: 'center' }}>
+                  Email required to proceed.
+                </p>
               </>
             )}
 

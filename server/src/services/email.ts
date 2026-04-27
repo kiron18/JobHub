@@ -2,7 +2,7 @@ import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const APP_URL = process.env.ALLOWED_ORIGIN ?? 'https://job-hub-snowy-ten.vercel.app';
+const APP_URL = 'https://aussiegradcareers.com.au';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'kiron@aussiegradcareers.com.au';
 const FROM_ADDRESS = `Aussie Grad Careers <kiron@aussiegradcareers.com.au>`;
 
@@ -75,17 +75,20 @@ export async function sendWelcomeEmail(to: string): Promise<void> {
   await resend.emails.send({
     from: FROM_ADDRESS,
     to,
-    subject: 'Your JobHub diagnosis is ready',
+    subject: 'Your diagnosis is ready — here\'s what we found',
     text: [
       "G'day,",
       '',
-      "Your diagnostic report is ready — head back to the app to see exactly what's been holding back your job search and your three-step fix.",
+      "Your diagnostic report is ready.",
       '',
-      APP_URL,
+      "We've gone through your resume, your answers, and your situation. What's in there is written specifically for you — not a template.",
       '',
-      "We'll also be sending you job opportunities we've hand-picked for your role and location soon. Stay tuned.",
+      "Click below to read your full diagnosis and three-step fix:",
       '',
-      'The JobHub team',
+      `${APP_URL}/?view=report`,
+      '',
+      "— The Aussie Grad Careers team",
+      `aussiegradcareers.com.au`,
     ].join('\n'),
   });
 }
