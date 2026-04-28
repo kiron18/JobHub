@@ -586,22 +586,23 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                       Option 1 · Free
                     </span>
                     <h3 style={{ fontSize: 19, fontWeight: 800, color: isDark ? '#f3f4f6' : '#111827', margin: '0 0 8px', lineHeight: 1.2, letterSpacing: '-0.01em' }}>
-                      Learn the system yourself
+                      Master the system yourself
                     </h3>
                     <p style={{ fontSize: 13.5, color: isDark ? '#9ca3af' : '#4b5563', lineHeight: 1.7, margin: 0 }}>
-                      Templates, training videos, and weekly Q&A calls. You'll get the knowledge to make these changes manually.
+                      Templates, training videos, and weekly group calls. Build your applications yourself with our proven frameworks.
                     </p>
                   </div>
 
-                  {/* Personal offer quote */}
+                  {/* Testimonial */}
                   <div style={{
                     background: isDark ? 'rgba(16,185,129,0.10)' : 'rgba(16,185,129,0.07)',
                     borderLeft: '3px solid #10b981',
                     borderRadius: '0 10px 10px 0', padding: '12px 14px',
                   }}>
-                    <p style={{ margin: 0, fontSize: 13, color: isDark ? '#a7f3d0' : '#065f46', lineHeight: 1.65, fontStyle: 'italic' }}>
-                      "With 2 other international grads, I'll personally review your LinkedIn profile and send you my exact outreach templates that got Sarah 8 interviews in 3 weeks."
+                    <p style={{ margin: '0 0 6px', fontSize: 13, color: isDark ? '#a7f3d0' : '#065f46', lineHeight: 1.65, fontStyle: 'italic' }}>
+                      "The templates and training calls gave me the confidence to optimize my own applications. Got 2 interviews in my first month."
                     </p>
+                    <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: isDark ? '#6ee7b7' : '#059669' }}>— David, Software Engineer</p>
                   </div>
 
                   <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -657,10 +658,10 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                       Option 2 · $97/month
                     </span>
                     <h3 style={{ fontSize: 19, fontWeight: 800, color: isDark ? '#f3f4f6' : '#111827', margin: '0 0 8px', lineHeight: 1.2, letterSpacing: '-0.01em' }}>
-                      Let our AI do it for you
+                      Let AI master it for you
                     </h3>
                     <p style={{ fontSize: 13.5, color: isDark ? '#9ca3af' : '#4b5563', lineHeight: 1.7, margin: 0 }}>
-                      This analysis took 30 seconds. Doing this level of customisation manually takes most people 2–3 hours per application.
+                      What took you 3 hours of manual work now takes 3 minutes with AI. That's 20x faster application creation.
                     </p>
                   </div>
 
@@ -681,6 +682,17 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                       <p style={{ margin: 0, fontSize: 26, fontWeight: 900, color: isDark ? '#374151' : '#d1d5db', letterSpacing: '-0.03em', lineHeight: 1, textDecoration: 'line-through' }}>3 hrs</p>
                       <p style={{ margin: '3px 0 0', fontSize: 11, color: isDark ? '#6b7280' : '#9ca3af', fontWeight: 600 }}>manually</p>
                     </div>
+                  </div>
+
+                  {/* Sarah testimonial — moved from left */}
+                  <div style={{
+                    background: isDark ? 'rgba(99,102,241,0.10)' : 'rgba(99,102,241,0.07)',
+                    borderLeft: '3px solid #6366f1',
+                    borderRadius: '0 10px 10px 0', padding: '12px 14px',
+                  }}>
+                    <p style={{ margin: '0 0 6px', fontSize: 13, color: isDark ? '#c7d2fe' : '#3730a3', lineHeight: 1.65, fontStyle: 'italic' }}>
+                      "With 2 other international grads, I'll personally review your LinkedIn profile and send you my exact outreach templates that got Sarah 8 interviews in 3 weeks."
+                    </p>
                   </div>
 
                   <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -704,7 +716,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                         letterSpacing: '-0.01em', minHeight: 44,
                       }}
                     >
-                      Start 7-Day Free Trial →
+                      Get Instant Access — Free for 7 Days →
                     </button>
                     <p style={{ margin: 0, fontSize: 11, color: isDark ? '#4b5563' : '#9ca3af', textAlign: 'center' }}>
                       See how fast this really is · No charge until day 8
@@ -723,7 +735,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                   Know someone in the same boat?
                 </p>
                 <p style={{ fontSize: 18, fontWeight: 800, color: theme.heading, margin: '0 0 6px', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-                  Share this with them. Their report is free.
+                  Share this with them. They get a free diagnostic.
                 </p>
                 <p style={{ fontSize: 13, color: theme.sub, lineHeight: 1.6, margin: '0 0 16px' }}>
                   Every international grad you refer gets clarity on exactly what's holding their applications back.
@@ -822,7 +834,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                 whiteSpace: 'nowrap', minHeight: 44,
               }}
             >
-              Start 7-Day Free Trial →
+              Get Instant Access — Free for 7 Days →
             </button>
             <button
               onClick={() => setShowSticky(false)}
@@ -895,10 +907,10 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                     Free Community
                   </span>
                   <h2 style={{ fontSize: 24, fontWeight: 900, color: isDark ? '#f3f4f6' : '#111827', margin: '0 0 10px', lineHeight: 1.2, letterSpacing: '-0.02em' }}>
-                    Learn the system yourself
+                    Master the system yourself
                   </h2>
                   <p style={{ fontSize: 14, color: theme.sub, lineHeight: 1.7, margin: '0 0 22px' }}>
-                    Templates, training videos, and weekly group Q&A calls. Everything you need to implement your report's fixes manually.
+                    Templates, training videos, and weekly group calls. Build your applications yourself with our proven frameworks.
                   </p>
 
                   <div style={{
@@ -907,12 +919,10 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                     borderLeft: '3px solid #10b981', borderRadius: '0 12px 12px 0',
                     padding: '14px 16px', marginBottom: 24,
                   }}>
-                    <p style={{ margin: '0 0 3px', fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: isDark ? '#34d399' : '#059669' }}>
-                      Personal offer
+                    <p style={{ margin: '0 0 6px', fontSize: 14, color: isDark ? '#a7f3d0' : '#065f46', lineHeight: 1.7, fontStyle: 'italic' }}>
+                      "The templates and training calls gave me the confidence to optimize my own applications. Got 2 interviews in my first month."
                     </p>
-                    <p style={{ margin: 0, fontSize: 14, color: isDark ? '#a7f3d0' : '#065f46', lineHeight: 1.7, fontStyle: 'italic' }}>
-                      "With 2 other international grads, I'll personally review your LinkedIn profile and send you my exact outreach templates that got Sarah 8 interviews in 3 weeks."
-                    </p>
+                    <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: isDark ? '#6ee7b7' : '#059669' }}>— David, Software Engineer</p>
                   </div>
 
                   <p style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: isDark ? '#4b5563' : '#9ca3af', marginBottom: 12 }}>
@@ -959,7 +969,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                     Pro Tool · $97/month
                   </span>
                   <h2 style={{ fontSize: 24, fontWeight: 900, color: isDark ? '#f3f4f6' : '#111827', margin: '0 0 10px', lineHeight: 1.2, letterSpacing: '-0.02em' }}>
-                    Let our AI do it for you
+                    Let AI master it for you
                   </h2>
                   <p style={{ fontSize: 14, color: theme.sub, lineHeight: 1.7, margin: '0 0 6px' }}>
                     One tailored application every 3 minutes — resume, cover letter, and LinkedIn optimisation built from your achievement bank.
@@ -997,7 +1007,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                       cursor: 'pointer', letterSpacing: '-0.01em', marginBottom: 10,
                     }}
                   >
-                    Start 7-Day Free Trial →
+                    Get Instant Access — Free for 7 Days →
                   </button>
                   <p style={{ textAlign: 'center', fontSize: 12, color: isDark ? '#4b5563' : '#9ca3af', margin: 0 }}>
                     No charge until day 8 · Cancel any time
