@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import {
   Users, FileText, BarChart2, Activity,
   TrendingUp, Star, ClipboardList,
-  RefreshCcw, Mail, Copy, Check, Zap,
+  RefreshCcw, Mail, Copy, Check, Zap, ExternalLink,
 } from 'lucide-react';
 import api from '../lib/api';
 
@@ -526,10 +526,126 @@ function btnStyle(accent?: string): React.CSSProperties {
   };
 }
 
+// ─── Funnel tab ───────────────────────────────────────────────────────────────
+
+function FunnelTab({ stats }: { stats: Stats }) {
+  const stages = [
+    { label: 'Accounts created',       value: stats.users.total,            colour: S.teal,   note: 'Everyone who signed up' },
+    { label: 'Completed onboarding',   value: stats.users.onboarded,        colour: S.blue,   note: 'Submitted answers + documents' },
+    { label: 'Diagnostic report done', value: stats.diagnostics.complete,   colour: S.purple, note: 'Got their personalised diagnosis' },
+    { label: 'Documents generated',    value: stats.generations.total,      colour: S.amber,  note: 'Total docs created (not unique users)' },
+    { label: 'Job analyses run',       value: stats.analyses.total,         colour: S.green,  note: 'Ran at least one match analysis' },
+    { label: 'Converted to paid',      value: stats.users.paid,             colour: '#f472b6', note: 'Active paid subscription' },
+  ];
+  const peak = Math.max(...stages.map(s => s.value), 1);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+      {/* Vercel Analytics link */}
+      <div style={{
+        background: 'linear-gradient(135deg, rgba(99,102,241,0.10), rgba(99,102,241,0.04))',
+        border: `1px solid rgba(99,102,241,0.25)`, borderRadius: 14,
+        padding: '18px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap',
+      }}>
+        <div>
+          <p style={{ margin: '0 0 4px', fontSize: 10, fontWeight: 900, letterSpacing: '0.12em', textTransform: 'uppercase', color: S.purple }}>
+            Vercel Analytics
+          </p>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: S.main }}>Page views, visitors &amp; traffic sources</p>
+          <p style={{ margin: '3px 0 0', fontSize: 12, color: S.dim }}>Live visitor data collected since Analytics was enabled — open Vercel to see it.</p>
+        </div>
+        <a
+          href="https://vercel.com/dashboard"
+          target="_blank" rel="noopener noreferrer"
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 7,
+            background: `${S.purple}20`, border: `1px solid ${S.purple}40`,
+            color: S.purple, borderRadius: 10, padding: '9px 16px',
+            fontSize: 13, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap',
+          }}
+        >
+          <ExternalLink size={13} />
+          Open Vercel Analytics
+        </a>
+      </div>
+
+      {/* Conversion funnel */}
+      <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 14, padding: '22px 24px' }}>
+        <SectionHead label="Conversion funnel — all time" />
+        <p style={{ fontSize: 12, color: S.dim, margin: '0 0 24px' }}>
+          Drop-off at each stage of the user journey. Admin accounts excluded.
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {stages.map((stage, i) => {
+            const prev = i === 0 ? stage.value : stages[i - 1].value;
+            const pct = peak ? Math.round((stage.value / peak) * 100) : 0;
+            const dropPct = prev && i > 0 ? Math.round((stage.value / prev) * 100) : null;
+            return (
+              <div key={stage.label}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: stage.colour, flexShrink: 0, display: 'inline-block' }} />
+                    <span style={{ fontSize: 13, fontWeight: 600, color: S.main }}>{stage.label}</span>
+                    <span style={{ fontSize: 11, color: S.dim }}>{stage.note}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                    {dropPct !== null && (
+                      <span style={{
+                        fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99,
+                        background: dropPct >= 70 ? 'rgba(74,222,128,0.12)' : dropPct >= 40 ? 'rgba(251,191,36,0.12)' : 'rgba(248,113,113,0.12)',
+                        color: dropPct >= 70 ? S.green : dropPct >= 40 ? S.amber : S.red,
+                      }}>
+                        {dropPct}% from prev
+                      </span>
+                    )}
+                    <span style={{ fontSize: 18, fontWeight: 900, color: stage.colour, minWidth: 32, textAlign: 'right' }}>
+                      {fmt(stage.value)}
+                    </span>
+                  </div>
+                </div>
+                <div style={{ height: 8, borderRadius: 99, background: 'rgba(255,255,255,0.05)', overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%', width: `${pct}%`, borderRadius: 99,
+                    background: stage.colour, transition: 'width 0.6s cubic-bezier(0.25,1,0.5,1)',
+                  }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Summary row */}
+        <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${S.border}`, display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+          <div>
+            <p style={{ margin: 0, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: S.dim }}>Onboarding rate</p>
+            <p style={{ margin: '3px 0 0', fontSize: 22, fontWeight: 900, color: S.blue }}>{pct(stats.users.onboarded, stats.users.total)}</p>
+          </div>
+          <div>
+            <p style={{ margin: 0, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: S.dim }}>Diagnostic rate</p>
+            <p style={{ margin: '3px 0 0', fontSize: 22, fontWeight: 900, color: S.purple }}>{pct(stats.diagnostics.complete, stats.users.onboarded)}</p>
+          </div>
+          <div>
+            <p style={{ margin: 0, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: S.dim }}>Paid conversion</p>
+            <p style={{ margin: '3px 0 0', fontSize: 22, fontWeight: 900, color: '#f472b6' }}>{pct(stats.users.paid, stats.users.total)}</p>
+          </div>
+          <div>
+            <p style={{ margin: 0, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: S.dim }}>Docs per user</p>
+            <p style={{ margin: '3px 0 0', fontSize: 22, fontWeight: 900, color: S.amber }}>
+              {stats.users.onboarded ? (stats.generations.total / stats.users.onboarded).toFixed(1) : '—'}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function AdminDashboard() {
-  const [tab, setTab] = useState<'overview' | 'friday'>('overview');
+  const [tab, setTab] = useState<'overview' | 'funnel' | 'friday'>('overview');
 
   const { data: stats, isLoading, isError, refetch, isFetching } = useQuery<Stats>({
     queryKey: ['admin-stats'],
@@ -574,7 +690,7 @@ export function AdminDashboard() {
           display: 'inline-flex', background: 'rgba(255,255,255,0.04)',
           border: `1px solid ${S.border}`, borderRadius: 12, padding: 4, marginBottom: 28,
         }}>
-          {([['overview', 'Overview', BarChart2], ['friday', 'Friday Brief', ClipboardList]] as const).map(([key, label, Icon]) => (
+          {([['overview', 'Overview', BarChart2], ['funnel', 'Funnel', TrendingUp], ['friday', 'Friday Brief', ClipboardList]] as const).map(([key, label, Icon]) => (
             <button key={key} onClick={() => setTab(key)}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -590,13 +706,15 @@ export function AdminDashboard() {
         </div>
 
         {/* Content */}
-        {tab === 'overview' && (
+        {(tab === 'overview' || tab === 'funnel') && (
           isLoading ? (
             <p style={{ color: S.dim }}>Loading stats...</p>
           ) : isError || !stats ? (
             <p style={{ color: S.red }}>Failed to load stats. Make sure you're logged in as admin.</p>
-          ) : (
+          ) : tab === 'overview' ? (
             <OverviewTab stats={stats} />
+          ) : (
+            <FunnelTab stats={stats} />
           )
         )}
 
