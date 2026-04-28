@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import type { Response, NextFunction } from 'express';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../index';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { callClaude } from '../services/llm';
@@ -7,6 +8,23 @@ import { sendFridayBriefEmail } from '../services/email';
 import { EXEMPT_EMAILS } from './stripe';
 
 const router = Router();
+
+// Admin/test accounts excluded from all platform stats
+const EXCLUDED_EMAILS = [
+  'kiron182@gmail.com',
+  'kironorik@gmail.com',
+  'kironoriktest@gmail.com',
+  'yornorik281@gmail.com',
+  'kamiproject2021@gmail.com',
+];
+
+async function getExcludedUserIds(): Promise<string[]> {
+  const profiles = await prisma.candidateProfile.findMany({
+    where: { email: { in: EXCLUDED_EMAILS } },
+    select: { userId: true },
+  });
+  return profiles.map(p => p.userId);
+}
 
 /**
  * Returns the start and end of the current weekly window.
@@ -41,9 +59,13 @@ async function requireAdmin(req: AuthRequest, res: Response, next: NextFunction)
   next();
 }
 
-async function getFirstTimeReportsForWindow(from: Date, to: Date) {
+async function getFirstTimeReportsForWindow(from: Date, to: Date, excludedUserIds: string[]) {
   return prisma.diagnosticReport.findMany({
-    where: { status: 'COMPLETE', createdAt: { gte: from, lt: to } },
+    where: {
+      status: 'COMPLETE',
+      createdAt: { gte: from, lt: to },
+      ...(excludedUserIds.length ? { userId: { notIn: excludedUserIds } } : {}),
+    },
     include: {
       candidateProfile: {
         select: {
@@ -117,6 +139,9 @@ router.get('/stats', authenticate, requireAdmin, async (_req, res) => {
   }
 
   try {
+    const excludedUserIds = await getExcludedUserIds();
+    const ex = excludedUserIds.length ? { notIn: excludedUserIds } : undefined;
+
     const [
       totalProfiles,
       onboardedProfiles,
@@ -138,25 +163,25 @@ router.get('/stats', authenticate, requireAdmin, async (_req, res) => {
       appsByStatus,
       feedbackStats,
     ] = await Promise.all([
-      prisma.candidateProfile.count(),
-      prisma.candidateProfile.count({ where: { hasCompletedOnboarding: true } }),
-      prisma.candidateProfile.count({ where: { createdAt: { gte: todayStart } } }),
-      prisma.candidateProfile.count({ where: { createdAt: { gte: weekAgo } } }),
-      prisma.candidateProfile.groupBy({ by: ['plan'] as any, _count: { id: true } }),
-      prisma.document.count(),
-      prisma.document.count({ where: { createdAt: { gte: todayStart } } }),
-      prisma.document.count({ where: { createdAt: { gte: weekAgo } } }),
-      prisma.document.groupBy({ by: ['type'], _count: { id: true } }),
-      prisma.candidateProfile.findMany({ where: { createdAt: { gte: twoWeeksAgo } }, select: { createdAt: true } }),
-      prisma.document.findMany({ where: { createdAt: { gte: twoWeeksAgo } }, select: { createdAt: true } }),
-      prisma.jobApplication.count({ where: { overallGrade: { not: null } } }),
-      prisma.jobApplication.count({ where: { overallGrade: { not: null }, createdAt: { gte: weekAgo } } }),
-      prisma.jobApplication.count({ where: { overallGrade: { not: null }, createdAt: { gte: todayStart } } }),
-      prisma.diagnosticReport.count(),
-      prisma.diagnosticReport.count({ where: { status: 'COMPLETE' } }),
-      prisma.diagnosticReport.count({ where: { createdAt: { gte: weekAgo } } }),
-      prisma.jobApplication.groupBy({ by: ['status'], _count: { id: true } }),
-      prisma.documentFeedback.aggregate({ _avg: { rating: true }, _count: { id: true } }),
+      prisma.candidateProfile.count({ where: ex ? { userId: ex } : {} }),
+      prisma.candidateProfile.count({ where: { hasCompletedOnboarding: true, ...(ex ? { userId: ex } : {}) } }),
+      prisma.candidateProfile.count({ where: { createdAt: { gte: todayStart }, ...(ex ? { userId: ex } : {}) } }),
+      prisma.candidateProfile.count({ where: { createdAt: { gte: weekAgo }, ...(ex ? { userId: ex } : {}) } }),
+      prisma.candidateProfile.groupBy({ by: ['plan'] as any, _count: { id: true }, ...(ex ? { where: { userId: ex } } : {}) }),
+      prisma.document.count({ where: ex ? { userId: ex } : {} }),
+      prisma.document.count({ where: { createdAt: { gte: todayStart }, ...(ex ? { userId: ex } : {}) } }),
+      prisma.document.count({ where: { createdAt: { gte: weekAgo }, ...(ex ? { userId: ex } : {}) } }),
+      prisma.document.groupBy({ by: ['type'], _count: { id: true }, ...(ex ? { where: { userId: ex } } : {}) }),
+      prisma.candidateProfile.findMany({ where: { createdAt: { gte: twoWeeksAgo }, ...(ex ? { userId: ex } : {}) }, select: { createdAt: true } }),
+      prisma.document.findMany({ where: { createdAt: { gte: twoWeeksAgo }, ...(ex ? { userId: ex } : {}) }, select: { createdAt: true } }),
+      prisma.jobApplication.count({ where: { overallGrade: { not: null }, ...(ex ? { userId: ex } : {}) } }),
+      prisma.jobApplication.count({ where: { overallGrade: { not: null }, createdAt: { gte: weekAgo }, ...(ex ? { userId: ex } : {}) } }),
+      prisma.jobApplication.count({ where: { overallGrade: { not: null }, createdAt: { gte: todayStart }, ...(ex ? { userId: ex } : {}) } }),
+      prisma.diagnosticReport.count({ where: ex ? { userId: ex } : {} }),
+      prisma.diagnosticReport.count({ where: { status: 'COMPLETE', ...(ex ? { userId: ex } : {}) } }),
+      prisma.diagnosticReport.count({ where: { createdAt: { gte: weekAgo }, ...(ex ? { userId: ex } : {}) } }),
+      prisma.jobApplication.groupBy({ by: ['status'], _count: { id: true }, ...(ex ? { where: { userId: ex } } : {}) }),
+      prisma.documentFeedback.aggregate({ _avg: { rating: true }, _count: { id: true }, ...(ex ? { where: { userId: ex } } : {}) }),
     ]);
 
     const byPlan: Record<string, number> = {};
@@ -202,12 +227,17 @@ router.get('/stats', authenticate, requireAdmin, async (_req, res) => {
 router.get('/friday-brief', authenticate, requireAdmin, async (_req, res) => {
   const { from, to } = getCurrentWindow();
   try {
+    const excludedUserIds = await getExcludedUserIds();
     const cached = await prisma.fridayBrief.findUnique({
       where: { windowStart: from },
     });
 
     const firstTimeCount = await prisma.diagnosticReport.count({
-      where: { status: 'COMPLETE', createdAt: { gte: from, lt: to } },
+      where: {
+        status: 'COMPLETE',
+        createdAt: { gte: from, lt: to },
+        ...(excludedUserIds.length ? { userId: { notIn: excludedUserIds } } : {}),
+      },
     });
 
     if (cached) {
@@ -237,7 +267,8 @@ router.get('/friday-brief', authenticate, requireAdmin, async (_req, res) => {
 router.post('/friday-brief/generate', authenticate, requireAdmin, async (_req, res) => {
   const { from, to } = getCurrentWindow();
   try {
-    const reports = await getFirstTimeReportsForWindow(from, to);
+    const excludedUserIds = await getExcludedUserIds();
+    const reports = await getFirstTimeReportsForWindow(from, to, excludedUserIds);
 
     if (reports.length === 0) {
       return res.json({ script: 'No first-time reports in this window yet.', reportCount: 0 });
@@ -261,7 +292,7 @@ router.post('/friday-brief/generate', authenticate, requireAdmin, async (_req, r
 
 // POST /api/admin/friday-brief/email — send generated brief to admin email via Resend
 router.post('/friday-brief/email', authenticate, requireAdmin, async (_req, res) => {
-  const { from, to } = getCurrentWindow();
+  const { from } = getCurrentWindow();
   const weekLabel = from.toISOString().split('T')[0];
   try {
     const cached = await prisma.fridayBrief.findUnique({ where: { windowStart: from } });
@@ -276,24 +307,33 @@ router.post('/friday-brief/email', authenticate, requireAdmin, async (_req, res)
   }
 });
 
-// GET /api/admin/analysis — LLM insight on platform engagement metrics
+// GET /api/admin/analysis — LLM growth intelligence on platform engagement metrics
 router.get('/analysis', authenticate, requireAdmin, async (_req, res) => {
   try {
-    const [docsByUser, docsByType, diagnosticUsers, totalUsers, totalOnboarded, profilesRaw, firstDocDates] = await Promise.all([
-      prisma.document.groupBy({ by: ['userId'], _count: { id: true } }),
-      prisma.document.groupBy({ by: ['type'], _count: { id: true } }),
-      prisma.diagnosticReport.findMany({ where: { status: 'COMPLETE' }, select: { userId: true } }),
-      prisma.candidateProfile.count(),
-      prisma.candidateProfile.count({ where: { hasCompletedOnboarding: true } }),
-      prisma.candidateProfile.findMany({ where: { hasCompletedOnboarding: true }, select: { userId: true, createdAt: true } }),
-      prisma.$queryRaw<Array<{ userId: string; minCreatedAt: Date }>>`
-        SELECT "userId", MIN("createdAt") as "minCreatedAt" FROM "Document" GROUP BY "userId"
-      `,
+    const excludedUserIds = await getExcludedUserIds();
+    const ex = excludedUserIds.length ? { notIn: excludedUserIds } : undefined;
+
+    const [docsByUser, docsByType, diagnosticUsers, totalUsers, totalOnboarded, profilesRaw] = await Promise.all([
+      prisma.document.groupBy({ by: ['userId'], _count: { id: true }, ...(ex ? { where: { userId: ex } } : {}) }),
+      prisma.document.groupBy({ by: ['type'], _count: { id: true }, ...(ex ? { where: { userId: ex } } : {}) }),
+      prisma.diagnosticReport.findMany({ where: { status: 'COMPLETE', ...(ex ? { userId: ex } : {}) }, select: { userId: true } }),
+      prisma.candidateProfile.count({ where: ex ? { userId: ex } : {} }),
+      prisma.candidateProfile.count({ where: { hasCompletedOnboarding: true, ...(ex ? { userId: ex } : {}) } }),
+      prisma.candidateProfile.findMany({ where: { hasCompletedOnboarding: true, ...(ex ? { userId: ex } : {}) }, select: { userId: true, createdAt: true } }),
     ]);
+
+    const exclusionClause = excludedUserIds.length
+      ? Prisma.sql`WHERE "userId" NOT IN (${Prisma.join(excludedUserIds)})`
+      : Prisma.sql`WHERE 1=1`;
+
+    const firstDocDates = await prisma.$queryRaw<Array<{ userId: string; minCreatedAt: Date }>>`
+      SELECT "userId", MIN("createdAt") as "minCreatedAt" FROM "Document" ${exclusionClause} GROUP BY "userId"
+    `;
 
     const docUserIds = new Set(docsByUser.map(d => d.userId));
     const highEngagers = docsByUser.filter(u => u._count.id >= 5).length;
     const lowEngagers = docsByUser.filter(u => u._count.id >= 1 && u._count.id <= 2).length;
+    const zeroDocUsers = totalUsers - docsByUser.length;
 
     const typeMap: Record<string, number> = {};
     for (const row of docsByType) typeMap[row.type] = row._count.id;
@@ -310,23 +350,27 @@ router.get('/analysis', authenticate, requireAdmin, async (_req, res) => {
     const avgGapDays = gapCount > 0 ? (totalGap / gapCount).toFixed(1) : 'unknown';
     const diagNoDocs = diagnosticUsers.filter(d => !docUserIds.has(d.userId)).length;
 
-    const prompt = `You are the growth advisor for JobReady, an AI career platform for Australian graduate job seekers. The business goal is clear: close the gap between free and paid users and build a frictionless conversion funnel. Free users get 5 document generations and 5 analyses — the mission is to get them to the moment they feel they need more.
+    const prompt = `You are a growth strategist analysing a B2C SaaS platform called JobReady — an AI career platform for Australian graduate job seekers. Free users get 5 document generations and 5 analyses before hitting the paywall. The business goal: get free users to feel the product's value and convert to paid within their first 7 days.
 
-Platform data:
+Live platform data (admin/test accounts excluded):
 - Total users: ${totalUsers} (${totalOnboarded} completed onboarding)
-- Users who generated 5+ documents: ${highEngagers}
-- Users who generated only 1-2 documents: ${lowEngagers}
-- Users with zero documents: ${totalUsers - docsByUser.length}
-- Document type breakdown: Resumes: ${typeMap['RESUME'] ?? 0}, Cover Letters: ${typeMap['COVER_LETTER'] ?? 0}, Selection Criteria: ${typeMap['STAR_RESPONSE'] ?? 0}
-- Average days from signup to first document generated: ${avgGapDays} days
-- Users who completed a diagnostic but never generated a document: ${diagNoDocs} out of ${diagnosticUsers.length} diagnostic completions
+- Users who generated 5+ documents (hit paywall): ${highEngagers}
+- Users who generated only 1-2 documents (low engagement): ${lowEngagers}
+- Users with zero documents (never started): ${zeroDocUsers}
+- Document type breakdown — Resumes: ${typeMap['RESUME'] ?? 0}, Cover Letters: ${typeMap['COVER_LETTER'] ?? 0}, Selection Criteria: ${typeMap['STAR_RESPONSE'] ?? 0}
+- Average days from signup to first document: ${avgGapDays} days
+- Users who completed a diagnostic but never generated a document: ${diagNoDocs} out of ${diagnosticUsers.length}
 
-For each question below, answer in 2-3 sentences. Ground every answer in the numbers above. End each answer with one concrete action the business should take to drive free-to-paid conversion.
+Identify the 3 to 5 most financially significant patterns in this data — things that are either leaking revenue or represent the clearest conversion opportunity. Do not answer pre-set questions. Find what actually matters.
 
-1. What's the engagement difference between users who generated 5+ documents vs 1-2, and what does it mean for conversion?
-2. Which document type correlates with highest engagement, and how should we use that to pull free users toward the paywall?
-3. What does the ${avgGapDays}-day gap between signup and first document tell us about where users are losing momentum — and how do we fix it?
-4. ${diagNoDocs} out of ${diagnosticUsers.length} users who ran diagnostics never generated a document — where is this funnel breaking and what's the one intervention that would fix it?`;
+For each insight, use exactly this format:
+
+**INSIGHT [N]: [Short title]**
+What the data shows: [2-3 sentences grounded in the numbers above]
+Revenue impact: [What this costs us or could earn us — be specific, make assumptions if needed]
+Action: [One concrete change we can make this week to move the needle]
+
+Be direct. Be specific to this data. No generic SaaS advice — only what the numbers actually tell us.`;
 
     const { content: analysis } = await callClaude(prompt, false);
     return res.json({ analysis });

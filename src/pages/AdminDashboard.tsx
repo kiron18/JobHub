@@ -75,22 +75,33 @@ function BarChart({ data, colour = S.teal }: { data: { date: string; count: numb
 
   return (
     <div>
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ width: '100%', height: 58, display: 'block' }}>
+      <svg viewBox={`0 0 ${W} ${H + 6}`} preserveAspectRatio="none" style={{ width: '100%', height: 64, display: 'block', overflow: 'visible' }}>
         {data.map((d, i) => {
           const h = Math.max((d.count / max) * H, d.count > 0 ? 2 : 0.5);
           const x = i * (barW + gap);
           const y = H - h;
           const isWeekend = [0, 6].includes(new Date(d.date + 'T00:00:00').getDay());
           return (
-            <rect key={d.date} x={x} y={y} width={barW} height={h}
-              fill={d.count > 0 ? colour : 'rgba(255,255,255,0.05)'}
-              rx={1} opacity={isWeekend ? 0.55 : 1}>
-              <title>{d.date}: {d.count}</title>
-            </rect>
+            <g key={d.date}>
+              <rect x={x} y={y} width={barW} height={h}
+                fill={d.count > 0 ? colour : 'rgba(255,255,255,0.05)'}
+                rx={1} opacity={isWeekend ? 0.55 : 1}>
+                <title>{d.date}: {d.count}</title>
+              </rect>
+              {d.count > 0 && (
+                <text
+                  x={x + barW / 2} y={y - 1.5}
+                  textAnchor="middle" fontSize={3.5}
+                  fill={colour} fontFamily="system-ui" fontWeight="700"
+                >
+                  {d.count}
+                </text>
+              )}
+            </g>
           );
         })}
       </svg>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
         {labelIdxs.map(i => (
           <span key={i} style={{ fontSize: 10, color: S.dim, fontFamily: 'system-ui' }}>
             {data[i]?.date.slice(5)}
@@ -154,15 +165,27 @@ function SectionHead({ label }: { label: string }) {
 
 // ─── AI Insights section ──────────────────────────────────────────────────────
 
-const QUESTIONS = [
-  'Engagement difference between 5+ vs 1-2 document users',
-  'Document type with highest engagement → conversion implication',
-  'Signup-to-first-doc gap → where momentum breaks',
-  'Diagnostic completers who never generated → funnel leak fix',
-];
+interface Insight { title: string; finding: string; impact: string; action: string; }
+
+function parseInsights(raw: string): Insight[] {
+  const blocks = raw.split(/\n(?=\*\*INSIGHT|\*\*[0-9])/).map(s => s.trim()).filter(Boolean);
+  return blocks.map(block => {
+    const titleMatch = block.match(/\*\*(?:INSIGHT\s*\d+:\s*)?(.+?)\*\*/i);
+    const findingMatch = block.match(/(?:What the data shows|Finding)[:\s]+(.+?)(?=\n(?:Revenue|Impact|Action)|$)/si);
+    const impactMatch = block.match(/(?:Revenue impact|Impact)[:\s]+(.+?)(?=\nAction|$)/si);
+    const actionMatch = block.match(/Action[:\s]+(.+?)$/si);
+    return {
+      title: titleMatch?.[1]?.trim() ?? `Insight`,
+      finding: findingMatch?.[1]?.trim() ?? '',
+      impact: impactMatch?.[1]?.trim() ?? '',
+      action: actionMatch?.[1]?.trim() ?? '',
+    };
+  }).filter(i => i.finding || i.action);
+}
 
 function InsightsSection() {
-  const [analysis, setAnalysis] = useState<string | null>(null);
+  const [insights, setInsights] = useState<Insight[]>([]);
+  const [raw, setRaw] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -171,7 +194,8 @@ function InsightsSection() {
     setError(null);
     try {
       const { data } = await api.get('/admin/analysis');
-      setAnalysis(data.analysis);
+      setRaw(data.analysis);
+      setInsights(parseInsights(data.analysis));
     } catch {
       setError('Failed to generate analysis.');
     } finally {
@@ -179,66 +203,68 @@ function InsightsSection() {
     }
   }
 
-  const answers = analysis
-    ? analysis.split(/\n(?=\d+\.)/).map(s => s.trim()).filter(Boolean)
-    : [];
+  const accentByIndex = [S.teal, S.amber, S.purple, S.blue, S.green];
 
   return (
     <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 14, padding: '20px 22px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: insights.length ? 20 : 14, flexWrap: 'wrap', gap: 10 }}>
         <div>
-          <SectionHead label="AI Growth Insights" />
-          <p style={{ margin: '2px 0 0', fontSize: 12, color: S.dim }}>Free-to-paid funnel analysis — 4 questions answered from your live data</p>
+          <SectionHead label="AI Growth Intelligence" />
+          <p style={{ margin: '2px 0 0', fontSize: 12, color: S.dim }}>
+            Reads your live data — surfaces what's making or leaking money right now
+          </p>
         </div>
-        <button onClick={generate} disabled={loading} style={{
-          ...btnStyle(S.purple),
-          opacity: loading ? 0.6 : 1,
-          minWidth: 160,
-          justifyContent: 'center',
-        }}>
-          {loading ? 'Analysing...' : analysis ? 'Regenerate' : '✦ Generate Insights'}
+        <button onClick={generate} disabled={loading} style={{ ...btnStyle(S.purple), opacity: loading ? 0.6 : 1, minWidth: 160, justifyContent: 'center' }}>
+          {loading ? 'Analysing...' : insights.length ? '↺ Refresh' : '✦ Run Analysis'}
         </button>
       </div>
 
-      {!analysis && !loading && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {QUESTIONS.map((q, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', background: 'rgba(255,255,255,0.02)', borderRadius: 9, border: `1px solid ${S.border}` }}>
-              <span style={{ fontSize: 11, fontWeight: 800, color: S.purple, minWidth: 18 }}>{i + 1}</span>
-              <span style={{ fontSize: 12, color: S.sub }}>{q}</span>
-            </div>
-          ))}
-        </div>
+      {!insights.length && !loading && !error && (
+        <p style={{ fontSize: 12, color: S.dim, margin: 0, lineHeight: 1.6 }}>
+          Scans feature usage, drop-off points, engagement patterns, and the free→paid gap.
+          Tells you what to change and why — based on what's actually happening today.
+        </p>
       )}
 
       {loading && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '24px 0', color: S.dim, fontSize: 13 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '20px 0', color: S.dim, fontSize: 13 }}>
           <div style={{ width: 16, height: 16, border: `2px solid ${S.purple}40`, borderTopColor: S.purple, borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-          Analysing your metrics...
+          Reading your data...
         </div>
       )}
 
       {error && <p style={{ color: S.red, fontSize: 13, margin: 0 }}>{error}</p>}
 
-      {answers.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {answers.map((answer, i) => {
-            const lines = answer.split('\n');
-            const heading = lines[0].replace(/^\d+\.\s*/, '');
-            const body = lines.slice(1).join('\n').trim() || heading;
-            const hasBody = lines.length > 1;
+      {insights.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {insights.map((ins, i) => {
+            const accent = accentByIndex[i % accentByIndex.length];
             return (
-              <div key={i} style={{ padding: '14px 16px', background: 'rgba(167,139,250,0.04)', border: `1px solid rgba(167,139,250,0.12)`, borderRadius: 10 }}>
-                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                  <span style={{ fontSize: 11, fontWeight: 900, color: S.purple, paddingTop: 2, minWidth: 18 }}>{i + 1}</span>
-                  <div>
-                    {hasBody && <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: S.purple, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{QUESTIONS[i]}</p>}
-                    <p style={{ margin: 0, fontSize: 13, color: S.main, lineHeight: 1.6 }}>{hasBody ? body : heading}</p>
-                  </div>
+              <div key={i} style={{ padding: '16px 18px', background: `${accent}08`, border: `1px solid ${accent}22`, borderRadius: 11, borderLeft: `3px solid ${accent}` }}>
+                <p style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 800, color: accent }}>{ins.title}</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {ins.finding && (
+                    <p style={{ margin: 0, fontSize: 12, color: S.sub, lineHeight: 1.6 }}>
+                      <span style={{ fontWeight: 700, color: S.dim }}>Data: </span>{ins.finding}
+                    </p>
+                  )}
+                  {ins.impact && (
+                    <p style={{ margin: 0, fontSize: 12, color: S.sub, lineHeight: 1.6 }}>
+                      <span style={{ fontWeight: 700, color: S.dim }}>Impact: </span>{ins.impact}
+                    </p>
+                  )}
+                  {ins.action && (
+                    <p style={{ margin: 0, fontSize: 12, color: S.main, lineHeight: 1.6, background: `${accent}12`, padding: '8px 12px', borderRadius: 7, marginTop: 4 }}>
+                      <span style={{ fontWeight: 700, color: accent }}>→ Action: </span>{ins.action}
+                    </p>
+                  )}
                 </div>
               </div>
             );
           })}
+          {raw && insights.length === 0 && (
+            <p style={{ fontSize: 13, color: S.sub, whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{raw}</p>
+          )}
         </div>
       )}
     </div>
