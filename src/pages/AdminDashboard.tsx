@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
   Users, FileText, BarChart2, Activity,
-  TrendingUp, Star, Briefcase, ClipboardList,
+  TrendingUp, Star, ClipboardList,
   RefreshCcw, Mail, Copy, Check, Zap,
 } from 'lucide-react';
 import api from '../lib/api';
