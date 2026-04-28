@@ -149,8 +149,30 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   });
 });
 
-app.listen(PORT, () => {
+async function ensureColumns() {
+  try {
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "JobApplication"
+        ADD COLUMN IF NOT EXISTS "australianFlags" JSONB,
+        ADD COLUMN IF NOT EXISTS "dimensions" JSONB,
+        ADD COLUMN IF NOT EXISTS "matchedIdentityCard" TEXT,
+        ADD COLUMN IF NOT EXISTS "overallGrade" TEXT;
+      ALTER TABLE "CandidateProfile"
+        ADD COLUMN IF NOT EXISTS "achievementCountAtDerivation" INTEGER,
+        ADD COLUMN IF NOT EXISTS "identityCards" JSONB,
+        ADD COLUMN IF NOT EXISTS "identityCardsUpdatedAt" TIMESTAMP(3),
+        ADD COLUMN IF NOT EXISTS "profileAdvisorCallsToday" INTEGER NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS "profileAdvisorCallsDate" TIMESTAMP(3);
+    `);
+    console.log('[startup] schema columns verified');
+  } catch (err) {
+    console.warn('[startup] ensureColumns skipped:', err);
+  }
+}
+
+app.listen(PORT, async () => {
     console.log(`Job Ready Backend running on http://localhost:${PORT}`);
+    await ensureColumns();
     startJobFeedCron();
     startTrialReminderCron();
     console.log('[cron] Job feed cron scheduled (21:00 UTC daily)');
