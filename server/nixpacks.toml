@@ -2,7 +2,7 @@
 NODE_VERSION = "20"
 
 [phases.build]
-cmds = ["npx prisma generate", "node scripts/migrate-safe.js"]
+cmds = ["npx prisma generate"]
 
 [start]
 cmd = "npx tsx src/index.ts"
