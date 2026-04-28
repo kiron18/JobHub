@@ -618,11 +618,11 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                     <a
                       href="https://www.skool.com/aussiegradcareers" target="_blank" rel="noopener noreferrer"
                       style={{
-                        display: 'block', textAlign: 'center',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center',
                         background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white',
                         borderRadius: 12, padding: '13px 18px', fontSize: 14, fontWeight: 800,
                         textDecoration: 'none', boxShadow: '0 4px 14px rgba(16,185,129,0.28)', letterSpacing: '-0.01em',
-                        minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        minHeight: 44,
                       } as React.CSSProperties}
                     >
                       Join Free Community
