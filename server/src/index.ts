@@ -45,7 +45,15 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('CRITICAL: Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
-export const prisma = new PrismaClient();
+function buildDatabaseUrl() {
+  const url = process.env.DATABASE_URL ?? '';
+  const withPgBouncer = url.includes('pgbouncer=true') ? url : `${url}${url.includes('?') ? '&' : '?'}pgbouncer=true`;
+  return withPgBouncer.includes('connection_limit=') ? withPgBouncer : `${withPgBouncer}&connection_limit=5`;
+}
+
+export const prisma = new PrismaClient({
+  datasources: { db: { url: buildDatabaseUrl() } },
+});
 const app = express();
 const PORT = process.env.PORT || 3002;
 
