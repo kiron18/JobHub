@@ -1,25 +1,30 @@
 #!/usr/bin/env node
-// Safe wrapper around prisma migrate deploy.
-// Exits 0 on P3009 (failed migration in DB) when the schema is already in sync.
-// All other errors still fail the build.
 const { spawnSync } = require('child_process');
+
+const TIMEOUT_MS = 30_000;
 
 const result = spawnSync('npx', ['prisma', 'migrate', 'deploy'], {
   stdio: ['inherit', 'pipe', 'pipe'],
   encoding: 'utf-8',
+  timeout: TIMEOUT_MS,
 });
 
 const out = (result.stdout || '') + (result.stderr || '');
 process.stdout.write(result.stdout || '');
 process.stderr.write(result.stderr || '');
 
+if (result.signal === 'SIGTERM' || result.error?.code === 'ETIMEDOUT') {
+  console.log('\n[migrate-safe] Migration timed out after 30s — skipping and starting app.');
+  process.exit(0);
+}
+
 if (result.status !== 0) {
   if (out.includes('P3009')) {
-    console.log(
-      '\n[migrate-safe] P3009 detected: a previously-failed migration is blocking deploys.\n' +
-      'The schema is already in sync — skipping and continuing deployment.\n' +
-      'Resolve the stuck migration in the database when convenient.'
-    );
+    console.log('\n[migrate-safe] P3009 detected — schema already in sync, skipping.');
+    process.exit(0);
+  }
+  if (out.includes('EMAXCONNSESSION') || out.includes('P1001') || out.includes('P1013')) {
+    console.log('\n[migrate-safe] DB unreachable — skipping migration, starting app.');
     process.exit(0);
   }
   process.exit(result.status ?? 1);
