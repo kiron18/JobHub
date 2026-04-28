@@ -72,32 +72,32 @@ function BarChart({ data, colour = S.teal }: { data: { date: string; count: numb
   const gap = 2;
   const barW = (W - gap * (data.length - 1)) / data.length;
   const labelIdxs = [0, Math.floor(data.length / 2), data.length - 1];
+  const gapPct = `${(gap / W) * 100}%`;
 
   return (
     <div>
-      <svg viewBox={`0 0 ${W} ${H + 6}`} preserveAspectRatio="none" style={{ width: '100%', height: 64, display: 'block', overflow: 'visible' }}>
+      {/* Count labels — rendered as HTML so they're legible */}
+      <div style={{ display: 'flex', columnGap: gapPct, marginBottom: 4, alignItems: 'flex-end', height: 18 }}>
+        {data.map(d => (
+          <div key={d.date} style={{ flex: 1, textAlign: 'center' }}>
+            {d.count > 0 && (
+              <span style={{ fontSize: 11, fontWeight: 700, color: colour, lineHeight: 1 }}>{d.count}</span>
+            )}
+          </div>
+        ))}
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ width: '100%', height: 56, display: 'block' }}>
         {data.map((d, i) => {
           const h = Math.max((d.count / max) * H, d.count > 0 ? 2 : 0.5);
           const x = i * (barW + gap);
           const y = H - h;
           const isWeekend = [0, 6].includes(new Date(d.date + 'T00:00:00').getDay());
           return (
-            <g key={d.date}>
-              <rect x={x} y={y} width={barW} height={h}
-                fill={d.count > 0 ? colour : 'rgba(255,255,255,0.05)'}
-                rx={1} opacity={isWeekend ? 0.55 : 1}>
-                <title>{d.date}: {d.count}</title>
-              </rect>
-              {d.count > 0 && (
-                <text
-                  x={x + barW / 2} y={y - 1.5}
-                  textAnchor="middle" fontSize={3.5}
-                  fill={colour} fontFamily="system-ui" fontWeight="700"
-                >
-                  {d.count}
-                </text>
-              )}
-            </g>
+            <rect key={d.date} x={x} y={y} width={barW} height={h}
+              fill={d.count > 0 ? colour : 'rgba(255,255,255,0.05)'}
+              rx={1} opacity={isWeekend ? 0.55 : 1}>
+              <title>{d.date}: {d.count}</title>
+            </rect>
           );
         })}
       </svg>
