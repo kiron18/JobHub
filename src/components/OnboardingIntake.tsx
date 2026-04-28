@@ -9,7 +9,6 @@ import { useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  savePendingAnswers, saveFilesToIDB,
   loadPendingAnswers, loadFilesFromIDB,
   clearPendingAnswers, clearPendingFilesFromIDB,
 } from '../lib/pendingOnboarding';
@@ -730,11 +729,8 @@ function buildFinalAnswers(answers: IntakeAnswers) {
 
 // ── Step: Auth ────────────────────────────────────────────────────────────────
 
-function StepAuth({ answers, resume, cl1, cl2, onAuthSuccess, submitting, onBack }: {
+function StepAuth({ answers, onAuthSuccess, submitting, onBack }: {
   answers: IntakeAnswers;
-  resume: File | null;
-  cl1: File | null;
-  cl2: File | null;
   onAuthSuccess: () => void;
   submitting: boolean;
   onBack: () => void;
@@ -1035,9 +1031,6 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
     <StepAuth
       key="auth"
       answers={answers}
-      resume={resume}
-      cl1={cl1}
-      cl2={cl2}
       onAuthSuccess={handleAuthAndContinue}
       submitting={submitting}
       onBack={goBack}
