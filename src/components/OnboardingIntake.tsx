@@ -64,13 +64,14 @@ const BLOCKER_OPTIONS = [
 ];
 const STEP_LABELS = [
   '',
-  'Your target is locked in.',
-  'Search history added.',
-  'Profile almost complete.',
-  'Ready to build your diagnosis.',
+  'Target locked in.',
+  'Search history noted.',
+  'Your situation is clear.',
+  'Account created.',
+  '',
 ];
 
-const STEP_CTAS = ['', 'Lock in my target', 'Add my history', 'Complete my profile', 'Build my diagnosis'];
+const STEP_CTAS = ['', 'Lock in my target', 'Add my history', 'Complete my profile', '', 'Build my diagnosis'];
 
 // ── Scene ─────────────────────────────────────────────────────────────────────
 
@@ -148,12 +149,12 @@ function ProfileProgress({ step, answers }: { step: number; answers: IntakeAnswe
         <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: T.textFaint }}>
           Building your profile
         </span>
-        <span style={{ fontSize: 11, color: T.textFaint, fontWeight: 600 }}>{step} / 4</span>
+        <span style={{ fontSize: 11, color: T.textFaint, fontWeight: 600 }}>{step} / 5</span>
       </div>
       <div style={{ height: 4, background: T.progressBg, borderRadius: 99, overflow: 'hidden' }}>
         <motion.div
           style={{ height: '100%', background: T.progressFill, borderRadius: 99 }}
-          animate={{ width: `${(step / 4) * 100}%` }}
+          animate={{ width: `${(step / 5) * 100}%` }}
           transition={{ duration: 0.6, ease: [0.25, 1, 0.5, 1] }}
         />
       </div>
@@ -410,22 +411,22 @@ function StepRole({ answers, onChange, onNext, onBack }: {
       <h2 style={{ fontSize: 24, fontWeight: 900, color: T.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
         What role are you targeting and where?
       </h2>
-      <p style={{ color: T.textFaint, fontSize: 13, marginBottom: 24 }}>Be specific. This anchors everything we generate for you.</p>
+      <p style={{ color: T.textFaint, fontSize: 13, marginBottom: 24 }}>Be specific — this anchors your entire diagnosis to real hiring conditions in Australia.</p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <Field label="Role" hint="You can list more than one if your search is broad, though a specific focus tends to produce stronger results.">
+        <Field label="Role" hint="Vague targets produce vague diagnoses. The more specific you are, the more precisely we can flag what's off.">
           <TInput placeholder="e.g. Senior Product Manager" value={answers.targetRole} onChange={v => onChange('targetRole', v)} />
         </Field>
-        <Field label="City">
+        <Field label="City" hint="Job market conditions vary significantly by city — Sydney, Melbourne, and Brisbane move very differently for the same role.">
           <TInput placeholder="e.g. Sydney" value={answers.targetCity} onChange={v => onChange('targetCity', v)} />
         </Field>
-        <Field label="Seniority">
+        <Field label="Seniority" hint="We compare your positioning against what employers at this level actually expect to see.">
           <TSelect value={answers.seniority} onChange={v => onChange('seniority', v)} options={SENIORITY_OPTIONS} placeholder="Select level" />
         </Field>
-        <Field label="Industry">
+        <Field label="Industry" hint="Different industries have different filtering patterns — this helps us spot what's specific to your market.">
           <TSelect value={answers.industry} onChange={v => onChange('industry', v)} options={INDUSTRY_OPTIONS} placeholder="Select industry" />
         </Field>
-        <Field label="Work rights in Australia">
+        <Field label="Work rights in Australia" hint="Visa status is often a quiet screening filter. We flag when it's likely affecting your results before you even get a look.">
           <TSelect
             value={answers.visaStatus}
             onChange={v => onChange('visaStatus', v)}
@@ -466,13 +467,13 @@ function StepTimeline({ answers, onChange, onNext, onBack }: {
       </h2>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <Field label="How long have you been looking?">
+        <Field label="How long have you been looking?" hint="Helps us distinguish a recent slump from a persistent pattern — they have different root causes and fixes.">
           <TSelect value={answers.searchDuration} onChange={v => onChange('searchDuration', v)} options={DURATION_OPTIONS} placeholder="Select duration" />
         </Field>
-        <Field label="Applications sent">
+        <Field label="Applications sent" hint="Your send-to-response rate is one of the strongest indicators of where the problem actually sits.">
           <TSelect value={answers.applicationsCount} onChange={v => onChange('applicationsCount', v)} options={COUNT_OPTIONS} placeholder="Select range" />
         </Field>
-        <Field label="Channels used">
+        <Field label="Channels used" hint="Different platforms suit different profiles. We'll tell you if you're fishing in the wrong pond for your background.">
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {CHANNEL_OPTIONS.map(ch => {
               const active = answers.channels.includes(ch);
@@ -537,7 +538,7 @@ function StepResponses({ answers, onChange, onNext, onBack }: {
         <h2 style={{ fontSize: 20, fontWeight: 900, color: T.text, marginBottom: 4, letterSpacing: '-0.02em' }}>
           What responses are you getting?
         </h2>
-        <p style={{ color: T.textFaint, fontSize: 13, marginBottom: 12 }}>Pick whichever best describes your pattern.</p>
+        <p style={{ color: T.textFaint, fontSize: 13, marginBottom: 12 }}>The pattern tells us exactly where in the funnel things break down — before the interview, in it, or after.</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
           {RESPONSE_OPTIONS.map(opt => (
             <motion.button key={opt.value} type="button" onClick={() => onChange('responsePattern', opt.value)}
@@ -552,9 +553,9 @@ function StepResponses({ answers, onChange, onNext, onBack }: {
 
       <div style={{ marginBottom: 8 }}>
         <h2 style={{ fontSize: 20, fontWeight: 900, color: T.text, marginBottom: 4, letterSpacing: '-0.02em' }}>
-          What's your biggest blocker?
+          What do you think is blocking you?
         </h2>
-        <p style={{ color: T.textFaint, fontSize: 13, marginBottom: 12 }}>Select everything that applies.</p>
+        <p style={{ color: T.textFaint, fontSize: 13, marginBottom: 12 }}>Your own read is valuable diagnostic input — even when the real issue turns out to be something else.</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
           {BLOCKER_OPTIONS.map(opt => {
             const sel = answers.blockerOptions.includes(opt);
@@ -604,7 +605,7 @@ function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onNext, submit
   const { T } = useTheme();
   return (
     <div>
-      <ProfileProgress step={4} answers={{ targetRole: '', targetCity: '', seniority: '', industry: '', visaStatus: '', searchDuration: '', applicationsCount: '', channels: [], channelOther: '', responsePattern: '', blockerOptions: [], blockerOther: '', perceivedBlocker: '', marketingEmail: '', marketingConsent: true }} />
+      <ProfileProgress step={5} answers={{ targetRole: '', targetCity: '', seniority: '', industry: '', visaStatus: '', searchDuration: '', applicationsCount: '', channels: [], channelOther: '', responsePattern: '', blockerOptions: [], blockerOther: '', perceivedBlocker: '', marketingEmail: '', marketingConsent: true }} />
       <h2 style={{ fontSize: 24, fontWeight: 900, color: T.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
         Now show us what you've been sending out.
       </h2>
@@ -614,9 +615,9 @@ function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onNext, submit
       <p style={{ color: T.textFaint, fontSize: 12, marginBottom: 20 }}>PDF or Word accepted.</p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <FileDropZone label="Your resume" required file={resume} onFile={setResume} />
-        <FileDropZone label="A recent cover letter" subtext="If you don't have one, that's useful information too." file={cl1} onFile={setCl1} />
-        <FileDropZone label="Another cover letter if you have it" file={cl2} onFile={setCl2} />
+        <FileDropZone label="Your resume (required)" required file={resume} onFile={setResume} subtext="We extract how you position yourself — structure, tone, and targeting all feed into the diagnosis." />
+        <FileDropZone label="A recent cover letter" subtext="Shows how you personalise applications. If you don't have one, that itself tells us something." file={cl1} onFile={setCl1} />
+        <FileDropZone label="A second cover letter (optional)" subtext="Two cover letters let us spot whether you're adapting your approach or sending the same thing everywhere." file={cl2} onFile={setCl2} />
       </div>
 
       {/* Marketing consent only — email captured in StepAuth */}
@@ -639,7 +640,7 @@ function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onNext, submit
         <PrimaryButton
           onClick={onNext}
           disabled={!resume || submitting}
-          label="Next"
+          label={submitting ? 'Building diagnosis...' : 'Build my diagnosis →'}
         />
       </div>
     </div>
@@ -757,19 +758,16 @@ function StepAuth({ answers, resume, cl1, cl2, onAuthSuccess, submitting, onBack
       <div>
         <ProfileProgress step={4} answers={answers} />
         <h2 style={{ fontSize: 24, fontWeight: 900, color: T.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
-          Ready to build your diagnosis
+          You're already signed in
         </h2>
         <p style={{ color: T.textMuted, fontSize: 13, lineHeight: 1.6, marginBottom: 24 }}>
-          You're signed in as <strong style={{ color: T.text }}>{user.email}</strong>. Click below to submit your answers.
+          Signed in as <strong style={{ color: T.text }}>{user.email}</strong>. One last step — upload your documents and we'll run your diagnosis.
         </p>
         <PrimaryButton
           onClick={onAuthSuccess}
-          disabled={submitting || !resume}
-          label={submitting ? 'Building diagnosis...' : 'Build my diagnosis →'}
+          disabled={submitting}
+          label="Continue to upload →"
         />
-        {!resume && (
-          <p style={{ fontSize: 12, color: '#f87171', marginTop: 8 }}>Resume is missing — go back and upload it.</p>
-        )}
         <div style={{ marginTop: 16 }}>
           <BackButton onBack={onBack} />
         </div>
@@ -829,10 +827,13 @@ function StepAuth({ answers, resume, cl1, cl2, onAuthSuccess, submitting, onBack
     <div>
       <ProfileProgress step={4} answers={answers} />
       <h2 style={{ fontSize: 24, fontWeight: 900, color: T.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
-        Last step — create your account
+        Save your progress — get your report
       </h2>
-      <p style={{ color: T.textMuted, fontSize: 13, lineHeight: 1.6, marginBottom: 24 }}>
-        Your diagnosis report will be sent to this email. Use one you actually check — we don't send spam.
+      <p style={{ color: T.textMuted, fontSize: 13, lineHeight: 1.6, marginBottom: 6 }}>
+        Create a free account to save your answers and access your full diagnosis report. One more step after this — uploading your documents.
+      </p>
+      <p style={{ color: T.textFaint, fontSize: 12, lineHeight: 1.5, marginBottom: 20 }}>
+        We'll send your report to this email. No spam — just your diagnosis.
       </p>
 
       {/* Email + Password form */}
@@ -885,7 +886,7 @@ function StepAuth({ answers, resume, cl1, cl2, onAuthSuccess, submitting, onBack
         <PrimaryButton
           onClick={() => {}}
           disabled={loading || submitting || !email.trim() || !password}
-          label={loading || submitting ? 'Creating account...' : 'Create account & build diagnosis'}
+          label={loading || submitting ? 'Creating account...' : 'Create account & continue →'}
         />
       </form>
 
@@ -966,9 +967,13 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
     }
   };
 
-  const handleAuthSuccess = async () => {
+  const handleAuthAndContinue = () => {
+    goNext();
+  };
+
+  const handleFilesSubmit = async () => {
     if (!resume) {
-      toast.error('Resume is missing — please go back and re-upload it.');
+      toast.error('Resume is missing — please upload it.');
       return;
     }
     let userEmail = '';
@@ -1027,26 +1032,26 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
     <StepRole key="role" answers={answers} onChange={onChange} onNext={goNext} onBack={goBack} />,
     <StepTimeline key="timeline" answers={answers} onChange={onChange} onNext={goNext} onBack={goBack} />,
     <StepResponses key="responses" answers={answers} onChange={onChange} onNext={goNext} onBack={goBack} />,
-    <StepFiles
-      key="files"
-      resume={resume} setResume={setResume}
-      cl1={cl1} setCl1={setCl1}
-      cl2={cl2} setCl2={setCl2}
-      onNext={goNext}
-      submitting={submitting}
-      onBack={goBack}
-      marketingConsent={answers.marketingConsent}
-      onMarketingConsentChange={v => setAnswers(prev => ({ ...prev, marketingConsent: v }))}
-    />,
     <StepAuth
       key="auth"
       answers={answers}
       resume={resume}
       cl1={cl1}
       cl2={cl2}
-      onAuthSuccess={handleAuthSuccess}
+      onAuthSuccess={handleAuthAndContinue}
       submitting={submitting}
       onBack={goBack}
+    />,
+    <StepFiles
+      key="files"
+      resume={resume} setResume={setResume}
+      cl1={cl1} setCl1={setCl1}
+      cl2={cl2} setCl2={setCl2}
+      onNext={handleFilesSubmit}
+      submitting={submitting}
+      onBack={goBack}
+      marketingConsent={answers.marketingConsent}
+      onMarketingConsentChange={v => setAnswers(prev => ({ ...prev, marketingConsent: v }))}
     />,
   ];
 
