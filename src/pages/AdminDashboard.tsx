@@ -71,32 +71,33 @@ function BarChart({ data, colour = S.teal }: { data: { date: string; count: numb
   const H = 48;
   const gap = 2;
   const barW = (W - gap * (data.length - 1)) / data.length;
+  const labelIdxs = [0, Math.floor(data.length / 2), data.length - 1];
 
   return (
-    <svg viewBox={`0 0 ${W} ${H + 14}`} preserveAspectRatio="none" style={{ width: '100%', height: 72, display: 'block' }}>
-      {data.map((d, i) => {
-        const h = Math.max((d.count / max) * H, d.count > 0 ? 2 : 0.5);
-        const x = i * (barW + gap);
-        const y = H - h;
-        const isWeekend = [0, 6].includes(new Date(d.date + 'T00:00:00').getDay());
-        const label = d.date.slice(5); // MM-DD
-        return (
-          <g key={d.date}>
-            <rect x={x} y={y} width={barW} height={h}
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ width: '100%', height: 58, display: 'block' }}>
+        {data.map((d, i) => {
+          const h = Math.max((d.count / max) * H, d.count > 0 ? 2 : 0.5);
+          const x = i * (barW + gap);
+          const y = H - h;
+          const isWeekend = [0, 6].includes(new Date(d.date + 'T00:00:00').getDay());
+          return (
+            <rect key={d.date} x={x} y={y} width={barW} height={h}
               fill={d.count > 0 ? colour : 'rgba(255,255,255,0.05)'}
               rx={1} opacity={isWeekend ? 0.55 : 1}>
               <title>{d.date}: {d.count}</title>
             </rect>
-            {(i === 0 || i === data.length - 1 || i === Math.floor(data.length / 2)) && (
-              <text x={x + barW / 2} y={H + 11} textAnchor="middle"
-                fontSize={4.5} fill={S.dim} fontFamily="system-ui">
-                {label}
-              </text>
-            )}
-          </g>
-        );
-      })}
-    </svg>
+          );
+        })}
+      </svg>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
+        {labelIdxs.map(i => (
+          <span key={i} style={{ fontSize: 10, color: S.dim, fontFamily: 'system-ui' }}>
+            {data[i]?.date.slice(5)}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -148,6 +149,99 @@ function SectionHead({ label }: { label: string }) {
     <p style={{ margin: '0 0 14px', fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.12em', color: S.dim }}>
       {label}
     </p>
+  );
+}
+
+// ─── AI Insights section ──────────────────────────────────────────────────────
+
+const QUESTIONS = [
+  'Engagement difference between 5+ vs 1-2 document users',
+  'Document type with highest engagement → conversion implication',
+  'Signup-to-first-doc gap → where momentum breaks',
+  'Diagnostic completers who never generated → funnel leak fix',
+];
+
+function InsightsSection() {
+  const [analysis, setAnalysis] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function generate() {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data } = await api.get('/admin/analysis');
+      setAnalysis(data.analysis);
+    } catch {
+      setError('Failed to generate analysis.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const answers = analysis
+    ? analysis.split(/\n(?=\d+\.)/).map(s => s.trim()).filter(Boolean)
+    : [];
+
+  return (
+    <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 14, padding: '20px 22px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+        <div>
+          <SectionHead label="AI Growth Insights" />
+          <p style={{ margin: '2px 0 0', fontSize: 12, color: S.dim }}>Free-to-paid funnel analysis — 4 questions answered from your live data</p>
+        </div>
+        <button onClick={generate} disabled={loading} style={{
+          ...btnStyle(S.purple),
+          opacity: loading ? 0.6 : 1,
+          minWidth: 160,
+          justifyContent: 'center',
+        }}>
+          {loading ? 'Analysing...' : analysis ? 'Regenerate' : '✦ Generate Insights'}
+        </button>
+      </div>
+
+      {!analysis && !loading && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {QUESTIONS.map((q, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', background: 'rgba(255,255,255,0.02)', borderRadius: 9, border: `1px solid ${S.border}` }}>
+              <span style={{ fontSize: 11, fontWeight: 800, color: S.purple, minWidth: 18 }}>{i + 1}</span>
+              <span style={{ fontSize: 12, color: S.sub }}>{q}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {loading && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '24px 0', color: S.dim, fontSize: 13 }}>
+          <div style={{ width: 16, height: 16, border: `2px solid ${S.purple}40`, borderTopColor: S.purple, borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+          Analysing your metrics...
+        </div>
+      )}
+
+      {error && <p style={{ color: S.red, fontSize: 13, margin: 0 }}>{error}</p>}
+
+      {answers.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {answers.map((answer, i) => {
+            const lines = answer.split('\n');
+            const heading = lines[0].replace(/^\d+\.\s*/, '');
+            const body = lines.slice(1).join('\n').trim() || heading;
+            const hasBody = lines.length > 1;
+            return (
+              <div key={i} style={{ padding: '14px 16px', background: 'rgba(167,139,250,0.04)', border: `1px solid rgba(167,139,250,0.12)`, borderRadius: 10 }}>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: 11, fontWeight: 900, color: S.purple, paddingTop: 2, minWidth: 18 }}>{i + 1}</span>
+                  <div>
+                    {hasBody && <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: S.purple, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{QUESTIONS[i]}</p>}
+                    <p style={{ margin: 0, fontSize: 13, color: S.main, lineHeight: 1.6 }}>{hasBody ? body : heading}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -271,6 +365,9 @@ function OverviewTab({ stats }: { stats: Stats }) {
           </div>
         </div>
       </div>
+
+      <InsightsSection />
+
     </div>
   );
 }

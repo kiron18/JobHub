@@ -276,4 +276,64 @@ router.post('/friday-brief/email', authenticate, requireAdmin, async (_req, res)
   }
 });
 
+// GET /api/admin/analysis — LLM insight on platform engagement metrics
+router.get('/analysis', authenticate, requireAdmin, async (_req, res) => {
+  try {
+    const [docsByUser, docsByType, diagnosticUsers, totalUsers, totalOnboarded, profilesRaw, firstDocDates] = await Promise.all([
+      prisma.document.groupBy({ by: ['userId'], _count: { id: true } }),
+      prisma.document.groupBy({ by: ['type'], _count: { id: true } }),
+      prisma.diagnosticReport.findMany({ where: { status: 'COMPLETE' }, select: { userId: true } }),
+      prisma.candidateProfile.count(),
+      prisma.candidateProfile.count({ where: { hasCompletedOnboarding: true } }),
+      prisma.candidateProfile.findMany({ where: { hasCompletedOnboarding: true }, select: { userId: true, createdAt: true } }),
+      prisma.$queryRaw<Array<{ userId: string; minCreatedAt: Date }>>`
+        SELECT "userId", MIN("createdAt") as "minCreatedAt" FROM "Document" GROUP BY "userId"
+      `,
+    ]);
+
+    const docUserIds = new Set(docsByUser.map(d => d.userId));
+    const highEngagers = docsByUser.filter(u => u._count.id >= 5).length;
+    const lowEngagers = docsByUser.filter(u => u._count.id >= 1 && u._count.id <= 2).length;
+
+    const typeMap: Record<string, number> = {};
+    for (const row of docsByType) typeMap[row.type] = row._count.id;
+
+    const firstDocMap = new Map(firstDocDates.map(r => [r.userId, new Date(r.minCreatedAt)]));
+    let totalGap = 0, gapCount = 0;
+    for (const p of profilesRaw) {
+      const firstDoc = firstDocMap.get(p.userId);
+      if (firstDoc) {
+        totalGap += (firstDoc.getTime() - p.createdAt.getTime()) / 86_400_000;
+        gapCount++;
+      }
+    }
+    const avgGapDays = gapCount > 0 ? (totalGap / gapCount).toFixed(1) : 'unknown';
+    const diagNoDocs = diagnosticUsers.filter(d => !docUserIds.has(d.userId)).length;
+
+    const prompt = `You are the growth advisor for JobReady, an AI career platform for Australian graduate job seekers. The business goal is clear: close the gap between free and paid users and build a frictionless conversion funnel. Free users get 5 document generations and 5 analyses — the mission is to get them to the moment they feel they need more.
+
+Platform data:
+- Total users: ${totalUsers} (${totalOnboarded} completed onboarding)
+- Users who generated 5+ documents: ${highEngagers}
+- Users who generated only 1-2 documents: ${lowEngagers}
+- Users with zero documents: ${totalUsers - docsByUser.length}
+- Document type breakdown: Resumes: ${typeMap['RESUME'] ?? 0}, Cover Letters: ${typeMap['COVER_LETTER'] ?? 0}, Selection Criteria: ${typeMap['STAR_RESPONSE'] ?? 0}
+- Average days from signup to first document generated: ${avgGapDays} days
+- Users who completed a diagnostic but never generated a document: ${diagNoDocs} out of ${diagnosticUsers.length} diagnostic completions
+
+For each question below, answer in 2-3 sentences. Ground every answer in the numbers above. End each answer with one concrete action the business should take to drive free-to-paid conversion.
+
+1. What's the engagement difference between users who generated 5+ documents vs 1-2, and what does it mean for conversion?
+2. Which document type correlates with highest engagement, and how should we use that to pull free users toward the paywall?
+3. What does the ${avgGapDays}-day gap between signup and first document tell us about where users are losing momentum — and how do we fix it?
+4. ${diagNoDocs} out of ${diagnosticUsers.length} users who ran diagnostics never generated a document — where is this funnel breaking and what's the one intervention that would fix it?`;
+
+    const { content: analysis } = await callClaude(prompt, false);
+    return res.json({ analysis });
+  } catch (err) {
+    console.error('[admin/analysis] error:', err);
+    return res.status(500).json({ error: 'Failed to generate analysis' });
+  }
+});
+
 export default router;
