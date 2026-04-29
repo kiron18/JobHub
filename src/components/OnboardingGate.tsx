@@ -51,8 +51,6 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
     staleTime: 30_000,
     retry: 1,
     retryDelay: 1000,
-    // Anonymous users have no profile — skip the fetch to avoid remounting OnboardingIntake
-    enabled: !isAnonymous,
   });
 
   // When a returning user logs in via magic link they get a new userId.
@@ -111,7 +109,9 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.hasCompletedOnboarding, user?.email]);
 
-  if (isLoading || claiming) {
+  // Don't show spinner for anonymous users — it would unmount OnboardingIntake and
+  // reset form state. Anonymous users are fine seeing the intake even while loading.
+  if ((isLoading && !isAnonymous) || claiming) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950">
         <div className="w-12 h-12 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
