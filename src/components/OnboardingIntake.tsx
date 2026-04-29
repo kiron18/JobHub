@@ -52,7 +52,7 @@ const STEP_LABELS = [
   '',
   'Target locked in.',
   'Search pattern clear.',
-  'Account created.',
+  'Documents ready.',
   '',
 ];
 
@@ -480,7 +480,7 @@ function StepAuth({ answers, onAuthSuccess, onBack }: {
   if (isAuthenticated) {
     return (
       <div>
-        <ProfileProgress step={3} answers={answers} />
+        <ProfileProgress step={4} answers={answers} />
         <h2 style={{ fontSize: 24, fontWeight: 900, color: T.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
           Account ready — let's go
         </h2>
@@ -555,7 +555,7 @@ function StepAuth({ answers, onAuthSuccess, onBack }: {
 
   return (
     <div>
-      <ProfileProgress step={3} answers={answers} />
+      <ProfileProgress step={4} answers={answers} />
       <h2 style={{ fontSize: 24, fontWeight: 900, color: T.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
         Create your free account
       </h2>
@@ -641,7 +641,7 @@ function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, onBa
   const { T } = useTheme();
   return (
     <div>
-      <ProfileProgress step={4} answers={answers} />
+      <ProfileProgress step={3} answers={answers} />
       <h2 style={{ fontSize: 24, fontWeight: 900, color: T.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
         Now upload your documents.
       </h2>
@@ -751,19 +751,10 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
     }
   };
 
-  const handleAuthAndContinue = (email: string) => {
+  const handleAuthAndContinue = async (email: string) => {
+    if (!resume) { toast.error('Resume is missing — please go back and upload it.'); return; }
     setPendingEmail(email);
-    goNext();
-  };
-
-  const handleFilesSubmit = async () => {
-    if (!resume) { toast.error('Resume is missing — please upload it.'); return; }
-    let userEmail = pendingEmail;
-    try {
-      const { data } = await supabase.auth.getSession();
-      if (data.session?.user?.email) userEmail = data.session.user.email;
-    } catch {}
-    await doSubmit({ ...answers, marketingEmail: userEmail }, resume, cl1, cl2);
+    await doSubmit({ ...answers, marketingEmail: email }, resume, cl1, cl2);
   };
 
   // Restore mid-onboarding progress saved before the email confirmation redirect
@@ -774,7 +765,7 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
     try {
       const saved = JSON.parse(raw);
       setAnswers(saved.answers);
-      setStep(3); // jump to StepAuth — user is authenticated, will see "Account ready → let's go"
+      setStep(4); // jump to StepAuth — user is authenticated, will see "Account ready → let's go"
       localStorage.removeItem('jobhub_email_confirm_progress');
     } catch {}
   }, [user]);
@@ -818,19 +809,19 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
     <StepWelcome key="welcome" onNext={goNext} />,
     <StepRole key="role" answers={answers} onChange={(k, v) => onChange(k, v as string)} onNext={goNext} onBack={goBack} />,
     <StepResponses key="responses" answers={answers} onChange={(k, v) => onChange(k, v as string)} onNext={goNext} onBack={goBack} />,
-    <StepAuth key="auth" answers={answers} onAuthSuccess={handleAuthAndContinue} onBack={goBack} />,
     <StepFiles
       key="files"
       answers={answers}
       resume={resume} setResume={setResume}
       cl1={cl1} setCl1={setCl1}
       cl2={cl2} setCl2={setCl2}
-      onSubmit={handleFilesSubmit}
+      onSubmit={goNext}
       onBack={goBack}
       marketingConsent={answers.marketingConsent}
       onMarketingConsentChange={v => setAnswers(prev => ({ ...prev, marketingConsent: v }))}
-      emailSent={pendingEmail}
+      emailSent=""
     />,
+    <StepAuth key="auth" answers={answers} onAuthSuccess={handleAuthAndContinue} onBack={goBack} />,
   ];
 
   const SignOutBtn = user && !(user as any).is_anonymous && step > 0 ? (
