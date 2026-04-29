@@ -535,6 +535,8 @@ function StepAuth({ answers, onAuthSuccess, onBack }: {
         if (!data.user?.identities || data.user.identities.length === 0) {
           setAlreadyRegistered(true);
         } else {
+          // Save progress so it survives the page reload after email confirmation
+          localStorage.setItem('jobhub_email_confirm_progress', JSON.stringify({ answers }));
           setAwaitingConfirmation(true);
         }
         return;
@@ -609,6 +611,9 @@ function StepAuth({ answers, onAuthSuccess, onBack }: {
             <p style={{ fontSize: 14, fontWeight: 700, color: '#a5b4fc', margin: '0 0 6px 0' }}>Check your inbox</p>
             <p style={{ fontSize: 13, color: '#c7d2fe', margin: 0, lineHeight: 1.5 }}>
               We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account, then come back here to continue.
+            </p>
+            <p style={{ fontSize: 12, color: '#818cf8', margin: '6px 0 0 0' }}>
+              Can't find it? Check your spam or junk folder.
             </p>
           </motion.div>
         )}
@@ -764,7 +769,20 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
     await doSubmit({ ...answers, marketingEmail: userEmail }, resume, cl1, cl2);
   };
 
-  // resumeMode: fired when user returns after email confirmation with IDB files saved
+  // Restore mid-onboarding progress saved before the email confirmation redirect
+  useEffect(() => {
+    if (!user || (user as any).is_anonymous) return;
+    const raw = localStorage.getItem('jobhub_email_confirm_progress');
+    if (!raw) return;
+    try {
+      const saved = JSON.parse(raw);
+      setAnswers(saved.answers);
+      setStep(3); // jump to StepAuth — user is authenticated, will see "Account ready → let's go"
+      localStorage.removeItem('jobhub_email_confirm_progress');
+    } catch {}
+  }, [user]);
+
+  // resumeMode: fired when user returns after OAuth redirect with IDB files saved
   useEffect(() => {
     if (!resumeMode) return;
     async function loadAndSubmit() {
