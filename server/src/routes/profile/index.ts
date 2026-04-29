@@ -7,6 +7,7 @@ import jobsRouter from './jobs';
 import identityRouter from './identity';
 import certificationsRouter from './certifications';
 import volunteeringRouter from './volunteering';
+import sourceDocumentsRouter from './source-documents';
 
 const router = Router();
 
@@ -18,5 +19,6 @@ router.use(jobsRouter);
 router.use(identityRouter);
 router.use(certificationsRouter);
 router.use(volunteeringRouter);
+router.use(sourceDocumentsRouter);
 
 export default router;

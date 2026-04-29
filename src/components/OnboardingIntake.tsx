@@ -11,6 +11,7 @@ import { useAuth } from '../contexts/AuthContext';
 import {
   loadPendingAnswers, loadFilesFromIDB,
   clearPendingAnswers, clearPendingFilesFromIDB,
+  saveFilesToIDB, savePendingAnswers,
 } from '../lib/pendingOnboarding';
 
 // ── Local theme alias ─────────────────────────────────────────────────────────
@@ -66,7 +67,7 @@ const STEP_LABELS = [
   'Target locked in.',
   'Search history noted.',
   'Your situation is clear.',
-  'Account created.',
+  'Documents ready.',
   '',
 ];
 
@@ -593,18 +594,19 @@ function StepResponses({ answers, onChange, onNext, onBack }: {
 
 // ── Step: Files ───────────────────────────────────────────────────────────────
 
-function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onNext, submitting, onBack, marketingConsent, onMarketingConsentChange }: {
+function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onNext, onBack, marketingConsent, onMarketingConsentChange, answers }: {
   resume: File | null; setResume: (f: File | null) => void;
   cl1: File | null; setCl1: (f: File | null) => void;
   cl2: File | null; setCl2: (f: File | null) => void;
-  onNext: () => void; submitting: boolean; onBack: () => void;
+  onNext: () => void; onBack: () => void;
   marketingConsent: boolean;
   onMarketingConsentChange: (v: boolean) => void;
+  answers: IntakeAnswers;
 }) {
   const { T } = useTheme();
   return (
     <div>
-      <ProfileProgress step={5} answers={{ targetRole: '', targetCity: '', seniority: '', industry: '', visaStatus: '', searchDuration: '', applicationsCount: '', channels: [], channelOther: '', responsePattern: '', blockerOptions: [], blockerOther: '', perceivedBlocker: '', marketingEmail: '', marketingConsent: true }} />
+      <ProfileProgress step={4} answers={answers} />
       <h2 style={{ fontSize: 24, fontWeight: 900, color: T.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
         Now show us what you've been sending out.
       </h2>
@@ -635,11 +637,11 @@ function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onNext, submit
       </div>
 
       <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
-        <BackButton onBack={onBack} disabled={submitting} />
+        <BackButton onBack={onBack} />
         <PrimaryButton
           onClick={onNext}
-          disabled={!resume || submitting}
-          label={submitting ? 'Building diagnosis...' : 'Build my diagnosis →'}
+          disabled={!resume}
+          label="Continue →"
         />
       </div>
     </div>
@@ -729,11 +731,14 @@ function buildFinalAnswers(answers: IntakeAnswers) {
 
 // ── Step: Auth ────────────────────────────────────────────────────────────────
 
-function StepAuth({ answers, onAuthSuccess, submitting, onBack }: {
+function StepAuth({ answers, onAuthSuccess, submitting, onBack, resume, cl1, cl2 }: {
   answers: IntakeAnswers;
   onAuthSuccess: () => void;
   submitting: boolean;
   onBack: () => void;
+  resume: File | null;
+  cl1: File | null;
+  cl2: File | null;
 }) {
   const { T } = useTheme();
   const navigate = useNavigate();
@@ -760,19 +765,23 @@ function StepAuth({ answers, onAuthSuccess, submitting, onBack }: {
     return () => subscription.unsubscribe();
   }, [confirmationSent]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // If already authenticated (non-anonymous), skip straight to file upload.
+  // Already signed in — documents were already uploaded at the previous step.
   const isAuthenticated = !!user && !(user as any).is_anonymous;
   if (isAuthenticated) {
     return (
       <div>
-        <ProfileProgress step={4} answers={answers} />
+        <ProfileProgress step={5} answers={answers} />
         <h2 style={{ fontSize: 24, fontWeight: 900, color: T.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
           You're already signed in
         </h2>
         <p style={{ color: T.textMuted, fontSize: 13, lineHeight: 1.6, marginBottom: 24 }}>
-          Signed in as <strong style={{ color: T.text }}>{user.email}</strong>. One last step — upload your documents and we'll run your diagnosis.
+          Signed in as <strong style={{ color: T.text }}>{user.email}</strong>. Your documents are ready — run your diagnosis now.
         </p>
-        <PrimaryButton onClick={onAuthSuccess} disabled={submitting} label="Continue to upload →" />
+        <PrimaryButton
+          onClick={onAuthSuccess}
+          disabled={submitting}
+          label={submitting ? 'Uploading documents…' : 'Run my diagnosis →'}
+        />
         <div style={{ marginTop: 16 }}>
           <BackButton onBack={onBack} />
         </div>
@@ -809,8 +818,11 @@ function StepAuth({ answers, onAuthSuccess, submitting, onBack }: {
         // Email confirmation required — try silent sign-in first (in case auto-confirm is on)
         const { error: loginErr } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
         if (loginErr) {
-          // Auto-confirm is off. Save answers and show inline confirmation screen.
-          localStorage.setItem('jobhub_onboarding_draft', JSON.stringify(answers));
+          // Persist files + answers to IDB/localStorage so resumeMode auto-submits after confirmation.
+          if (resume) {
+            await saveFilesToIDB({ resume, cl1, cl2 }).catch(() => {});
+          }
+          savePendingAnswers(buildFinalAnswers(answers));
           setConfirmationSent(true);
           return;
         }
@@ -840,7 +852,7 @@ function StepAuth({ answers, onAuthSuccess, submitting, onBack }: {
   if (confirmationSent) {
     return (
       <div>
-        <ProfileProgress step={4} answers={answers} />
+        <ProfileProgress step={5} answers={answers} />
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -878,9 +890,9 @@ function StepAuth({ answers, onAuthSuccess, submitting, onBack }: {
               What happens next
             </p>
             {[
-              { done: true,    text: 'Account created' },
-              { done: false,   text: 'Confirm your email — click the link we just sent', active: true },
-              { done: false,   text: 'Upload your resume — we run your full diagnosis' },
+              { done: true,  text: 'Account created' },
+              { done: true,  text: 'Resume received' },
+              { done: false, text: 'Confirm your email — click the link we just sent', active: true },
             ].map((item, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: i < 2 ? 10 : 0 }}>
                 {item.done
@@ -902,11 +914,11 @@ function StepAuth({ answers, onAuthSuccess, submitting, onBack }: {
               style={{ width: 7, height: 7, borderRadius: '50%', background: '#818cf8', flexShrink: 0 }}
             />
             <p style={{ fontSize: 12, color: '#a5b4fc', fontWeight: 500, margin: 0, lineHeight: 1.5 }}>
-              Your diagnostic profile is being assembled from your answers. The full analysis runs as soon as you upload your resume.
+              Resume in. Your full diagnosis runs the moment you confirm — usually 2–3 minutes.
             </p>
           </div>
 
-          {/* Resend */}
+          {/* Resend + spam note */}
           <p style={{ textAlign: 'center', fontSize: 12, color: T.textFaint }}>
             Didn't get it?{' '}
             {resendSent ? (
@@ -921,6 +933,9 @@ function StepAuth({ answers, onAuthSuccess, submitting, onBack }: {
                 {resendLoading ? 'Sending…' : 'Resend confirmation email'}
               </button>
             )}
+          </p>
+          <p style={{ textAlign: 'center', fontSize: 11, color: T.textFaint, marginTop: 6 }}>
+            Also check your spam or junk folder.
           </p>
 
           <p style={{ textAlign: 'center', fontSize: 11, color: T.textFaint, marginTop: 10 }}>
@@ -940,12 +955,12 @@ function StepAuth({ answers, onAuthSuccess, submitting, onBack }: {
 
   return (
     <div>
-      <ProfileProgress step={4} answers={answers} />
+      <ProfileProgress step={5} answers={answers} />
       <h2 style={{ fontSize: 24, fontWeight: 900, color: T.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
-        Save your progress — get your report
+        Last step — create your account
       </h2>
       <p style={{ color: T.textMuted, fontSize: 13, lineHeight: 1.6, marginBottom: 6 }}>
-        Create a free account to save your answers and access your full diagnosis report. One more step after this — uploading your documents.
+        Your documents are in. Create a free account to save everything and get your full diagnosis report.
       </p>
       <p style={{ color: T.textFaint, fontSize: 12, lineHeight: 1.5, marginBottom: 20 }}>
         We'll send your report to this email. No spam — just your diagnosis.
@@ -1008,7 +1023,7 @@ function StepAuth({ answers, onAuthSuccess, submitting, onBack }: {
         <PrimaryButton
           onClick={() => {}}
           disabled={loading || submitting || !email.trim() || password.length < 8 || !/[^a-zA-Z0-9]/.test(password)}
-          label={loading || submitting ? 'Creating account...' : 'Create account & continue →'}
+          label={loading ? 'Creating account...' : submitting ? 'Uploading documents…' : 'Create account & run diagnosis →'}
         />
       </form>
 
@@ -1090,7 +1105,7 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
   };
 
   const handleAuthAndContinue = () => {
-    goNext();
+    handleFilesSubmit();
   };
 
   const handleFilesSubmit = async () => {
@@ -1138,12 +1153,10 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
   }, [resumeMode]);
 
   // Restore answers after email confirmation redirect.
-  // When a user signs up, gets sent to /auth for email confirmation, confirms their
-  // email, and returns — they're now authenticated but have no profile. We land here
-  // in OnboardingIntake. If draft answers were saved before they left, restore them
-  // and jump straight to the file upload step so they don't start from scratch.
+  // When the user confirms email and lands back at the app root, this fires on
+  // mount (user.id just became available) and jumps straight to file upload.
   useEffect(() => {
-    if (resumeMode) return; // resumeMode handles its own auto-submit path
+    if (resumeMode) return;
     const isConfirmedUser = user && !(user as any).is_anonymous;
     if (!isConfirmedUser) return;
 
@@ -1153,7 +1166,7 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
     try {
       const draft = JSON.parse(draftRaw);
       setAnswers(prev => ({ ...prev, ...draft }));
-      setStep(5); // Jump to StepFiles — auth already done
+      setStep(4); // Jump to StepFiles — auth already done
     } catch {}
     localStorage.removeItem('jobhub_onboarding_draft');
   }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1175,23 +1188,26 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
     <StepRole key="role" answers={answers} onChange={onChange} onNext={goNext} onBack={goBack} />,
     <StepTimeline key="timeline" answers={answers} onChange={onChange} onNext={goNext} onBack={goBack} />,
     <StepResponses key="responses" answers={answers} onChange={onChange} onNext={goNext} onBack={goBack} />,
+    <StepFiles
+      key="files"
+      answers={answers}
+      resume={resume} setResume={setResume}
+      cl1={cl1} setCl1={setCl1}
+      cl2={cl2} setCl2={setCl2}
+      onNext={goNext}
+      onBack={goBack}
+      marketingConsent={answers.marketingConsent}
+      onMarketingConsentChange={v => setAnswers(prev => ({ ...prev, marketingConsent: v }))}
+    />,
     <StepAuth
       key="auth"
       answers={answers}
       onAuthSuccess={handleAuthAndContinue}
       submitting={submitting}
       onBack={goBack}
-    />,
-    <StepFiles
-      key="files"
-      resume={resume} setResume={setResume}
-      cl1={cl1} setCl1={setCl1}
-      cl2={cl2} setCl2={setCl2}
-      onNext={handleFilesSubmit}
-      submitting={submitting}
-      onBack={goBack}
-      marketingConsent={answers.marketingConsent}
-      onMarketingConsentChange={v => setAnswers(prev => ({ ...prev, marketingConsent: v }))}
+      resume={resume}
+      cl1={cl1}
+      cl2={cl2}
     />,
   ];
 

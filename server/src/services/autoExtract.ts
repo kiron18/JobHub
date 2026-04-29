@@ -293,3 +293,34 @@ export async function autoExtractAchievements(userId: string, resumeText: string
     console.error('[AutoExtract] Error during auto-extraction:', err);
   }
 }
+
+// Forces a full re-extraction of achievements and experience from a new resume.
+// Called from the source-documents route when the user re-uploads their resume.
+// Clears the two resume-derived relational tables first so the extraction pipeline
+// starts from a clean slate; education/certs/languages are deduplicated by the
+// pipeline itself so they are safe to leave in place.
+export async function forceAutoExtract(userId: string, resumeText: string): Promise<void> {
+  try {
+    // Clear extracted relational data before re-extracting so we start fresh.
+    // Experience + achievements are wholly resume-derived; education/certs/etc.
+    // are deduplicated by the extraction pipeline so they're safe to leave.
+    const profile = await prisma.candidateProfile.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    if (!profile) return;
+
+    await prisma.$transaction([
+      prisma.achievement.deleteMany({ where: { candidateProfileId: profile.id } }),
+      prisma.experience.deleteMany({ where: { candidateProfileId: profile.id } }),
+    ]);
+
+    console.log(`[ForceExtract] Cleared experience + achievements for userId: ${userId}`);
+  } catch (err) {
+    console.error('[ForceExtract] Failed to clear existing data:', err);
+    return;
+  }
+
+  // Now run standard extraction — achievement count is 0 so the guard won't skip
+  await autoExtractAchievements(userId, resumeText);
+}

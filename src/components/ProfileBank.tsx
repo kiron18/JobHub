@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   Pencil, Check, X, AlertTriangle, CheckCircle2,
   ChevronRight, User, Briefcase, GraduationCap,
-  Award, Heart, Wrench, Star,
+  Award, Heart, Wrench, Star, FileText, UploadCloud, RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../lib/api';
@@ -74,6 +74,10 @@ interface ProfileData {
   professionalSummary: string | null;
   skills: string | null;
   targetRole?: string | null;
+  resumeFilename?: string | null;
+  coverLetterFilename?: string | null;
+  coverLetterFilename2?: string | null;
+  documentsUpdatedAt?: string | null;
   experience: Experience[];
   education: Education[];
   certifications: Certification[];
@@ -267,6 +271,192 @@ const SaveCancelButtons: React.FC<{
     </button>
   </div>
 );
+
+// ── SourceDocumentsIsland ─────────────────────────────────────────────────────
+
+const SourceDocumentsIsland: React.FC<{ profile: ProfileData; isDark: boolean }> = ({ profile, isDark }) => {
+  const qc = useQueryClient();
+  const resumeRef = useRef<HTMLInputElement>(null);
+  const cl1Ref    = useRef<HTMLInputElement>(null);
+  const cl2Ref    = useRef<HTMLInputElement>(null);
+
+  const [pendingResume, setPendingResume] = useState<File | null>(null);
+  const [pendingCl1,    setPendingCl1]    = useState<File | null>(null);
+  const [pendingCl2,    setPendingCl2]    = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const hasAny = !!(pendingResume || pendingCl1 || pendingCl2);
+
+  async function handleUpdate() {
+    if (!hasAny) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      if (pendingResume) fd.append('resume',       pendingResume);
+      if (pendingCl1)    fd.append('coverLetter1', pendingCl1);
+      if (pendingCl2)    fd.append('coverLetter2', pendingCl2);
+      await api.post('/profile/source-documents', fd);
+      if (pendingResume) {
+        toast.success('Resume uploaded — extracting your profile. Refresh in ~30 seconds.');
+        // Poll after extraction delay
+        setTimeout(() => qc.invalidateQueries({ queryKey: ['profile'] }), 30_000);
+      } else {
+        toast.success('Cover letters updated.');
+      }
+      qc.invalidateQueries({ queryKey: ['profile'] });
+      setPendingResume(null); setPendingCl1(null); setPendingCl2(null);
+    } catch {
+      toast.error('Upload failed. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  const docBg    = isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)';
+  const docBorder = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+  const mutedText = isDark ? '#6b7280' : '#9ca3af';
+  const mainText  = isDark ? '#f3f4f6' : '#111827';
+
+  const docs = [
+    {
+      label:    'Resume',
+      required: true,
+      stored:   profile.resumeFilename,
+      pending:  pendingResume,
+      ref:      resumeRef,
+      onPick:   (f: File) => setPendingResume(f),
+    },
+    {
+      label:    'Cover Letter 1',
+      required: false,
+      stored:   profile.coverLetterFilename,
+      pending:  pendingCl1,
+      ref:      cl1Ref,
+      onPick:   (f: File) => setPendingCl1(f),
+    },
+    {
+      label:    'Cover Letter 2',
+      required: false,
+      stored:   profile.coverLetterFilename2,
+      pending:  pendingCl2,
+      ref:      cl2Ref,
+      onPick:   (f: File) => setPendingCl2(f),
+    },
+  ];
+
+  const updatedLabel = profile.documentsUpdatedAt
+    ? new Date(profile.documentsUpdatedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
+    : null;
+
+  return (
+    <Island isDark={isDark}>
+      <SectionHeader
+        icon={<FileText size={13} />}
+        title="Source Documents"
+        isDark={isDark}
+        badge={
+          updatedLabel
+            ? <span style={{ fontSize: 10, color: mutedText }}>Updated {updatedLabel}</span>
+            : undefined
+        }
+      />
+
+      <p style={{ fontSize: 12, color: mutedText, marginBottom: 16, lineHeight: 1.5 }}>
+        Your resume is the source of truth for profile extraction. Cover letters are diagnostic — they show how you've been positioning yourself and feed the initial analysis, but are not used as templates for generated documents.
+      </p>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {docs.map(({ label, required, stored, pending, ref, onPick }) => (
+          <div
+            key={label}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '10px 14px', borderRadius: 10,
+              background: pending ? (isDark ? 'rgba(99,102,241,0.08)' : 'rgba(99,102,241,0.05)') : docBg,
+              border: `1px solid ${pending ? 'rgba(99,102,241,0.25)' : docBorder}`,
+              transition: 'background 0.2s, border-color 0.2s',
+            }}
+          >
+            <FileText size={14} color={pending ? '#818cf8' : mutedText} style={{ flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: mutedText, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                {label}{required && <span style={{ color: '#f87171', marginLeft: 4 }}>*</span>}
+              </p>
+              <p style={{ margin: '2px 0 0', fontSize: 12, color: pending ? '#a5b4fc' : (stored ? mainText : mutedText), fontWeight: pending ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {pending ? pending.name : (stored ?? 'Not on file')}
+              </p>
+            </div>
+            <input
+              ref={ref}
+              type="file"
+              accept=".pdf,.docx,.doc,.txt"
+              style={{ display: 'none' }}
+              onChange={e => { const f = e.target.files?.[0]; if (f) onPick(f); e.target.value = ''; }}
+            />
+            <button
+              onClick={() => ref.current?.click()}
+              disabled={uploading}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                padding: '6px 12px', borderRadius: 7, border: 'none', cursor: uploading ? 'not-allowed' : 'pointer',
+                background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                color: isDark ? '#9ca3af' : '#6b7280',
+                fontSize: 11, fontWeight: 700, flexShrink: 0,
+              }}
+            >
+              <UploadCloud size={11} />
+              {stored || pending ? 'Replace' : 'Upload'}
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <AnimatePresence>
+        {hasAny && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14 }}>
+              <button
+                onClick={handleUpdate}
+                disabled={uploading}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '9px 18px', borderRadius: 9, border: 'none',
+                  cursor: uploading ? 'not-allowed' : 'pointer',
+                  background: uploading ? 'rgba(99,102,241,0.4)' : '#6366f1',
+                  color: '#fff', fontSize: 13, fontWeight: 700,
+                  opacity: uploading ? 0.7 : 1,
+                }}
+              >
+                <RefreshCw size={12} style={{ animation: uploading ? 'spin 0.8s linear infinite' : 'none' }} />
+                {uploading ? 'Uploading…' : pendingResume ? 'Update & re-extract profile' : 'Update documents'}
+              </button>
+              <button
+                onClick={() => { setPendingResume(null); setPendingCl1(null); setPendingCl2(null); }}
+                disabled={uploading}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: 11, color: mutedText, fontWeight: 600, padding: '6px 8px',
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+            {pendingResume && (
+              <p style={{ fontSize: 11, color: mutedText, marginTop: 8, lineHeight: 1.5 }}>
+                Uploading a new resume will clear your existing work experience and achievements, then re-extract them from the new file. Manually added education and certifications are kept.
+              </p>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </Island>
+  );
+};
 
 // ── PersonalDetailsIsland ────────────────────────────────────────────────────
 
@@ -1276,6 +1466,7 @@ export const ProfileBank: React.FC = () => {
                 </div>
               </div>
             )}
+            <SourceDocumentsIsland profile={profile} isDark={isDark} />
             <PersonalDetailsIsland profile={profile} isDark={isDark} />
             <SummaryIsland profile={profile} isDark={isDark} />
             <ExperienceIsland experience={profile.experience} achievements={profile.achievements} isDark={isDark} />

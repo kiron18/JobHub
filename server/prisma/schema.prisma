@@ -60,6 +60,10 @@ model CandidateProfile {
   headshotUrl                  String?
   headshotGenerationsToday     Int               @default(0)
   headshotGenerationsDate      DateTime?
+  resumeFilename               String?
+  coverLetterFilename          String?
+  coverLetterFilename2         String?
+  documentsUpdatedAt           DateTime?
   achievements                 Achievement[]
   certifications               Certification[]
   diagnosticReport             DiagnosticReport?
