@@ -67,7 +67,7 @@ const STEP_LABELS = [
   'Target locked in.',
   'Search history noted.',
   'Your situation is clear.',
-  'Documents ready.',
+  'Account created.',
   '',
 ];
 
@@ -592,21 +592,328 @@ function StepResponses({ answers, onChange, onNext, onBack }: {
   );
 }
 
-// ── Step: Files ───────────────────────────────────────────────────────────────
+// ── Step: Auth ────────────────────────────────────────────────────────────────
 
-function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onNext, onBack, marketingConsent, onMarketingConsentChange, answers }: {
-  resume: File | null; setResume: (f: File | null) => void;
-  cl1: File | null; setCl1: (f: File | null) => void;
-  cl2: File | null; setCl2: (f: File | null) => void;
-  onNext: () => void; onBack: () => void;
-  marketingConsent: boolean;
-  onMarketingConsentChange: (v: boolean) => void;
+function StepAuth({ answers, onAuthSuccess, onBack }: {
   answers: IntakeAnswers;
+  onAuthSuccess: (email: string) => void;
+  onBack: () => void;
 }) {
   const { T } = useTheme();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [pwError, setPwError] = useState('');
+  const [alreadyRegistered, setAlreadyRegistered] = useState(false);
+
+  // Already signed in — skip signup and continue to documents
+  const isAuthenticated = !!user && !(user as any).is_anonymous;
+  if (isAuthenticated) {
+    return (
+      <div>
+        <ProfileProgress step={4} answers={answers} />
+        <h2 style={{ fontSize: 24, fontWeight: 900, color: T.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
+          You're already signed in
+        </h2>
+        <p style={{ color: T.textMuted, fontSize: 13, lineHeight: 1.6, marginBottom: 24 }}>
+          Signed in as <strong style={{ color: T.text }}>{user.email}</strong>. Continue to upload your documents and run your diagnosis.
+        </p>
+        <PrimaryButton
+          onClick={() => onAuthSuccess(user.email ?? '')}
+          disabled={false}
+          label="Continue →"
+        />
+        <div style={{ marginTop: 16 }}>
+          <BackButton onBack={onBack} />
+        </div>
+      </div>
+    );
+  }
+
+  async function handleSignUp(e: React.FormEvent) {
+    e.preventDefault();
+    setPwError('');
+    setAlreadyRegistered(false);
+    if (password.length < 8 || !/[^a-zA-Z0-9]/.test(password)) {
+      setPwError('Password must be at least 8 characters and include at least one symbol (e.g. ! @ # $)');
+      return;
+    }
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: { emailRedirectTo: window.location.origin },
+      });
+      if (error) {
+        const msg = error.message.toLowerCase();
+        if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('user already registered')) {
+          setAlreadyRegistered(true);
+        } else {
+          toast.error(error.message || 'Sign up failed');
+        }
+        return;
+      }
+
+      if (!data.session) {
+        // Try silent sign-in — succeeds when auto-confirm is enabled (dev/test)
+        await supabase.auth.signInWithPassword({ email: email.trim(), password }).catch(() => {});
+      }
+
+      // Always advance to documents step regardless of session state.
+      // StepFiles will check the session at submission time.
+      onAuthSuccess(email.trim());
+    } catch (err: any) {
+      toast.error(err.message || 'Sign up failed');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const inputStyle: React.CSSProperties = {
+    background: T.inputBg, border: `1px solid ${T.inputBorder}`,
+    borderRadius: 12, color: T.inputText, fontSize: 15,
+    padding: '12px 16px', width: '100%', outline: 'none',
+    fontFamily: 'inherit', boxSizing: 'border-box',
+  };
+
   return (
     <div>
       <ProfileProgress step={4} answers={answers} />
+      <h2 style={{ fontSize: 24, fontWeight: 900, color: T.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
+        Create your free account
+      </h2>
+      <p style={{ color: T.textMuted, fontSize: 13, lineHeight: 1.6, marginBottom: 6 }}>
+        We'll save your progress and send your full diagnosis report to this email.
+      </p>
+      <p style={{ color: T.textFaint, fontSize: 12, lineHeight: 1.5, marginBottom: 20 }}>
+        No spam — just your diagnosis and occasional job search tips if you opt in.
+      </p>
+
+      <form onSubmit={handleSignUp}>
+        <div style={{ marginBottom: 14 }}>
+          <span style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' as const, color: T.textFaint, marginBottom: 8 }}>Email</span>
+          <input
+            type="email"
+            value={email}
+            onChange={e => { setEmail(e.target.value); setAlreadyRegistered(false); }}
+            placeholder="you@example.com"
+            required
+            style={inputStyle}
+          />
+        </div>
+        <div style={{ marginBottom: 8 }}>
+          <span style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' as const, color: T.textFaint, marginBottom: 8 }}>Password</span>
+          <input
+            type="password"
+            value={password}
+            onChange={e => { setPassword(e.target.value); setPwError(''); }}
+            placeholder="e.g. Hunter2!"
+            required
+            style={inputStyle}
+          />
+          {password.length > 0 && (
+            <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: password.length >= 8 ? '#4ade80' : '#f87171' }}>
+                {password.length >= 8 ? '✓' : '✗'} 8+ characters
+              </span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: /[^a-zA-Z0-9]/.test(password) ? '#4ade80' : '#f87171' }}>
+                {/[^a-zA-Z0-9]/.test(password) ? '✓' : '✗'} 1 symbol (! @ # $ …)
+              </span>
+            </div>
+          )}
+          {pwError && <p style={{ fontSize: 12, color: '#f87171', marginTop: 6 }}>{pwError}</p>}
+        </div>
+
+        {alreadyRegistered && (
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            style={{ padding: '12px 14px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 10, marginBottom: 14 }}
+          >
+            <p style={{ fontSize: 13, color: '#fcd34d', margin: 0 }}>
+              This email already has an account.{' '}
+              <button
+                type="button"
+                onClick={() => navigate('/auth')}
+                style={{ background: 'none', border: 'none', color: '#fbbf24', fontWeight: 700, cursor: 'pointer', fontSize: 13, textDecoration: 'underline', padding: 0 }}
+              >
+                Sign in instead.
+              </button>
+            </p>
+          </motion.div>
+        )}
+
+        <PrimaryButton
+          onClick={() => {}}
+          disabled={loading || !email.trim() || password.length < 8 || !/[^a-zA-Z0-9]/.test(password)}
+          label={loading ? 'Creating account...' : 'Continue →'}
+        />
+      </form>
+
+      <div style={{ marginTop: 16 }}>
+        <BackButton onBack={onBack} />
+      </div>
+    </div>
+  );
+}
+
+// ── Step: Files ───────────────────────────────────────────────────────────────
+
+function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, onBack, marketingConsent, onMarketingConsentChange, answers, pendingEmail }: {
+  resume: File | null; setResume: (f: File | null) => void;
+  cl1: File | null; setCl1: (f: File | null) => void;
+  cl2: File | null; setCl2: (f: File | null) => void;
+  onSubmit: () => void; onBack: () => void;
+  marketingConsent: boolean;
+  onMarketingConsentChange: (v: boolean) => void;
+  answers: IntakeAnswers;
+  pendingEmail: string;
+}) {
+  const { T } = useTheme();
+  const [confirmationSent, setConfirmationSent] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendSent, setResendSent] = useState(false);
+
+  // Listen for email confirmation cross-tab — fires when user clicks the link in any tab
+  useEffect(() => {
+    if (!confirmationSent) return;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        onSubmit();
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [confirmationSent]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleSubmit() {
+    if (!resume) return;
+    const { data } = await supabase.auth.getSession();
+    if (data.session) {
+      onSubmit();
+    } else {
+      // No session yet — save files to IDB so resumeMode can pick them up after confirmation
+      await saveFilesToIDB({ resume, cl1, cl2 }).catch(() => {});
+      savePendingAnswers(buildFinalAnswers(answers));
+      setConfirmationSent(true);
+    }
+  }
+
+  async function handleResend() {
+    setResendLoading(true);
+    try {
+      await supabase.auth.resend({ type: 'signup', email: pendingEmail, options: { emailRedirectTo: window.location.origin } });
+      setResendSent(true);
+    } catch {
+      // silent
+    } finally {
+      setResendLoading(false);
+    }
+  }
+
+  // ── Awaiting email confirmation screen ───────────────────────────────────────
+  if (confirmationSent) {
+    return (
+      <div>
+        <ProfileProgress step={5} answers={answers} />
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
+        >
+          {/* Icon */}
+          <div style={{ textAlign: 'center', marginBottom: 24, marginTop: 8 }}>
+            <motion.div
+              animate={{ scale: [1, 1.06, 1] }}
+              transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+              style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                width: 64, height: 64, borderRadius: 20,
+                background: 'rgba(99,102,241,0.14)',
+              }}
+            >
+              <Mail size={28} color="#818cf8" />
+            </motion.div>
+          </div>
+
+          {/* Headline */}
+          <h2 style={{ fontSize: 24, fontWeight: 900, color: T.text, marginBottom: 8, letterSpacing: '-0.02em', textAlign: 'center' }}>
+            Check your inbox
+          </h2>
+          <p style={{ color: T.textMuted, fontSize: 13, lineHeight: 1.65, marginBottom: 6, textAlign: 'center' }}>
+            We've sent a confirmation link to
+          </p>
+          <p style={{ color: T.text, fontSize: 14, fontWeight: 700, marginBottom: 20, textAlign: 'center' }}>
+            {pendingEmail}
+          </p>
+
+          {/* What happens next */}
+          <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 14, padding: '16px 18px', marginBottom: 20 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: T.textFaint, marginBottom: 12 }}>
+              What happens next
+            </p>
+            {[
+              { done: true,  text: 'Account created' },
+              { done: true,  text: 'Documents queued' },
+              { done: false, text: 'Confirm your email — click the link we just sent', active: true },
+            ].map((item, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: i < 2 ? 10 : 0 }}>
+                {item.done
+                  ? <CheckCircle size={15} color="#4ade80" style={{ flexShrink: 0, marginTop: 1 }} />
+                  : <Circle size={15} color={(item as any).active ? '#818cf8' : T.textFaint} style={{ flexShrink: 0, marginTop: 1 }} />
+                }
+                <span style={{ fontSize: 13, color: item.done ? T.textMuted : (item as any).active ? T.text : T.textFaint, fontWeight: (item as any).active ? 600 : 400, lineHeight: 1.5 }}>
+                  {item.text}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Preparing indicator */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)', borderRadius: 12, marginBottom: 20 }}>
+            <motion.div
+              animate={{ opacity: [0.4, 1, 0.4] }}
+              transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+              style={{ width: 7, height: 7, borderRadius: '50%', background: '#818cf8', flexShrink: 0 }}
+            />
+            <p style={{ fontSize: 12, color: '#a5b4fc', fontWeight: 500, margin: 0, lineHeight: 1.5 }}>
+              Documents queued. Your full diagnosis runs the moment you confirm — usually 2–3 minutes.
+            </p>
+          </div>
+
+          {/* Resend + spam note */}
+          <p style={{ textAlign: 'center', fontSize: 12, color: T.textFaint }}>
+            Didn't get it?{' '}
+            {resendSent ? (
+              <span style={{ color: '#4ade80', fontWeight: 600 }}>Sent ✓</span>
+            ) : (
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={resendLoading}
+                style={{ background: 'none', border: 'none', color: '#818cf8', fontWeight: 600, cursor: 'pointer', fontSize: 12, padding: 0 }}
+              >
+                {resendLoading ? 'Sending…' : 'Resend confirmation email'}
+              </button>
+            )}
+          </p>
+          <p style={{ textAlign: 'center', fontSize: 11, color: T.textFaint, marginTop: 6 }}>
+            Also check your spam or junk folder.
+          </p>
+
+          <p style={{ textAlign: 'center', fontSize: 11, color: T.textFaint, marginTop: 10 }}>
+            This page will advance automatically once you confirm.
+          </p>
+        </motion.div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <ProfileProgress step={5} answers={answers} />
       <h2 style={{ fontSize: 24, fontWeight: 900, color: T.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
         Now show us what you've been sending out.
       </h2>
@@ -621,7 +928,7 @@ function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onNext, onBack
         <FileDropZone label="A second cover letter (optional)" subtext="Two cover letters let us spot whether you're adapting your approach or sending the same thing everywhere." file={cl2} onFile={setCl2} />
       </div>
 
-      {/* Marketing consent only — email captured in StepAuth */}
+      {/* Marketing consent */}
       <div style={{ marginTop: 24 }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
           <input
@@ -639,9 +946,9 @@ function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onNext, onBack
       <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
         <BackButton onBack={onBack} />
         <PrimaryButton
-          onClick={onNext}
+          onClick={handleSubmit}
           disabled={!resume}
-          label="Continue →"
+          label="Build my diagnosis →"
         />
       </div>
     </div>
@@ -729,316 +1036,12 @@ function buildFinalAnswers(answers: IntakeAnswers) {
   };
 }
 
-// ── Step: Auth ────────────────────────────────────────────────────────────────
-
-function StepAuth({ answers, onAuthSuccess, submitting, onBack, resume, cl1, cl2 }: {
-  answers: IntakeAnswers;
-  onAuthSuccess: () => void;
-  submitting: boolean;
-  onBack: () => void;
-  resume: File | null;
-  cl1: File | null;
-  cl2: File | null;
-}) {
-  const { T } = useTheme();
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [pwError, setPwError] = useState('');
-  const [alreadyRegistered, setAlreadyRegistered] = useState(false);
-  const [confirmationSent, setConfirmationSent] = useState(false);
-  const [resendLoading, setResendLoading] = useState(false);
-  const [resendSent, setResendSent] = useState(false);
-
-  // When email confirmation is pending, listen for the SIGNED_IN event.
-  // Supabase syncs auth state across tabs via localStorage, so clicking
-  // the confirmation link in any tab fires this listener here too.
-  useEffect(() => {
-    if (!confirmationSent) return;
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        onAuthSuccess();
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [confirmationSent]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Already signed in — documents were already uploaded at the previous step.
-  const isAuthenticated = !!user && !(user as any).is_anonymous;
-  if (isAuthenticated) {
-    return (
-      <div>
-        <ProfileProgress step={5} answers={answers} />
-        <h2 style={{ fontSize: 24, fontWeight: 900, color: T.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
-          You're already signed in
-        </h2>
-        <p style={{ color: T.textMuted, fontSize: 13, lineHeight: 1.6, marginBottom: 24 }}>
-          Signed in as <strong style={{ color: T.text }}>{user.email}</strong>. Your documents are ready — run your diagnosis now.
-        </p>
-        <PrimaryButton
-          onClick={onAuthSuccess}
-          disabled={submitting}
-          label={submitting ? 'Uploading documents…' : 'Run my diagnosis →'}
-        />
-        <div style={{ marginTop: 16 }}>
-          <BackButton onBack={onBack} />
-        </div>
-      </div>
-    );
-  }
-
-  async function handleSignUp(e: React.FormEvent) {
-    e.preventDefault();
-    setPwError('');
-    setAlreadyRegistered(false);
-    if (password.length < 8 || !/[^a-zA-Z0-9]/.test(password)) {
-      setPwError('Password must be at least 8 characters and include at least one symbol (e.g. ! @ # $)');
-      return;
-    }
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: { emailRedirectTo: window.location.origin },
-      });
-      if (error) {
-        const msg = error.message.toLowerCase();
-        if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('user already registered')) {
-          setAlreadyRegistered(true);
-        } else {
-          toast.error(error.message || 'Sign up failed');
-        }
-        return;
-      }
-
-      if (!data.session) {
-        // Email confirmation required — try silent sign-in first (in case auto-confirm is on)
-        const { error: loginErr } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-        if (loginErr) {
-          // Persist files + answers to IDB/localStorage so resumeMode auto-submits after confirmation.
-          if (resume) {
-            await saveFilesToIDB({ resume, cl1, cl2 }).catch(() => {});
-          }
-          savePendingAnswers(buildFinalAnswers(answers));
-          setConfirmationSent(true);
-          return;
-        }
-      }
-
-      onAuthSuccess();
-    } catch (err: any) {
-      toast.error(err.message || 'Sign up failed');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleResend() {
-    setResendLoading(true);
-    try {
-      await supabase.auth.resend({ type: 'signup', email: email.trim(), options: { emailRedirectTo: window.location.origin } });
-      setResendSent(true);
-    } catch {
-      // silent
-    } finally {
-      setResendLoading(false);
-    }
-  }
-
-  // ── Awaiting email confirmation screen ───────────────────────────────────────
-  if (confirmationSent) {
-    return (
-      <div>
-        <ProfileProgress step={5} answers={answers} />
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
-        >
-          {/* Icon */}
-          <div style={{ textAlign: 'center', marginBottom: 24, marginTop: 8 }}>
-            <motion.div
-              animate={{ scale: [1, 1.06, 1] }}
-              transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
-              style={{
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                width: 64, height: 64, borderRadius: 20,
-                background: 'rgba(99,102,241,0.14)',
-              }}
-            >
-              <Mail size={28} color="#818cf8" />
-            </motion.div>
-          </div>
-
-          {/* Headline */}
-          <h2 style={{ fontSize: 24, fontWeight: 900, color: T.text, marginBottom: 8, letterSpacing: '-0.02em', textAlign: 'center' }}>
-            Check your inbox
-          </h2>
-          <p style={{ color: T.textMuted, fontSize: 13, lineHeight: 1.65, marginBottom: 6, textAlign: 'center' }}>
-            We've sent a confirmation link to
-          </p>
-          <p style={{ color: T.text, fontSize: 14, fontWeight: 700, marginBottom: 20, textAlign: 'center' }}>
-            {email}
-          </p>
-
-          {/* What happens next */}
-          <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 14, padding: '16px 18px', marginBottom: 20 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: T.textFaint, marginBottom: 12 }}>
-              What happens next
-            </p>
-            {[
-              { done: true,  text: 'Account created' },
-              { done: true,  text: 'Resume received' },
-              { done: false, text: 'Confirm your email — click the link we just sent', active: true },
-            ].map((item, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: i < 2 ? 10 : 0 }}>
-                {item.done
-                  ? <CheckCircle size={15} color="#4ade80" style={{ flexShrink: 0, marginTop: 1 }} />
-                  : <Circle size={15} color={(item as any).active ? '#818cf8' : T.textFaint} style={{ flexShrink: 0, marginTop: 1 }} />
-                }
-                <span style={{ fontSize: 13, color: item.done ? T.textMuted : (item as any).active ? T.text : T.textFaint, fontWeight: (item as any).active ? 600 : 400, lineHeight: 1.5 }}>
-                  {item.text}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          {/* Preparing indicator */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)', borderRadius: 12, marginBottom: 20 }}>
-            <motion.div
-              animate={{ opacity: [0.4, 1, 0.4] }}
-              transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
-              style={{ width: 7, height: 7, borderRadius: '50%', background: '#818cf8', flexShrink: 0 }}
-            />
-            <p style={{ fontSize: 12, color: '#a5b4fc', fontWeight: 500, margin: 0, lineHeight: 1.5 }}>
-              Resume in. Your full diagnosis runs the moment you confirm — usually 2–3 minutes.
-            </p>
-          </div>
-
-          {/* Resend + spam note */}
-          <p style={{ textAlign: 'center', fontSize: 12, color: T.textFaint }}>
-            Didn't get it?{' '}
-            {resendSent ? (
-              <span style={{ color: '#4ade80', fontWeight: 600 }}>Sent ✓</span>
-            ) : (
-              <button
-                type="button"
-                onClick={handleResend}
-                disabled={resendLoading}
-                style={{ background: 'none', border: 'none', color: '#818cf8', fontWeight: 600, cursor: 'pointer', fontSize: 12, padding: 0 }}
-              >
-                {resendLoading ? 'Sending…' : 'Resend confirmation email'}
-              </button>
-            )}
-          </p>
-          <p style={{ textAlign: 'center', fontSize: 11, color: T.textFaint, marginTop: 6 }}>
-            Also check your spam or junk folder.
-          </p>
-
-          <p style={{ textAlign: 'center', fontSize: 11, color: T.textFaint, marginTop: 10 }}>
-            This page will advance automatically once you confirm.
-          </p>
-        </motion.div>
-      </div>
-    );
-  }
-
-  const inputStyle: React.CSSProperties = {
-    background: T.inputBg, border: `1px solid ${T.inputBorder}`,
-    borderRadius: 12, color: T.inputText, fontSize: 15,
-    padding: '12px 16px', width: '100%', outline: 'none',
-    fontFamily: 'inherit', boxSizing: 'border-box',
-  };
-
-  return (
-    <div>
-      <ProfileProgress step={5} answers={answers} />
-      <h2 style={{ fontSize: 24, fontWeight: 900, color: T.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
-        Last step — create your account
-      </h2>
-      <p style={{ color: T.textMuted, fontSize: 13, lineHeight: 1.6, marginBottom: 6 }}>
-        Your documents are in. Create a free account to save everything and get your full diagnosis report.
-      </p>
-      <p style={{ color: T.textFaint, fontSize: 12, lineHeight: 1.5, marginBottom: 20 }}>
-        We'll send your report to this email. No spam — just your diagnosis.
-      </p>
-
-      <form onSubmit={handleSignUp}>
-        <div style={{ marginBottom: 14 }}>
-          <span style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' as const, color: T.textFaint, marginBottom: 8 }}>Email</span>
-          <input
-            type="email"
-            value={email}
-            onChange={e => { setEmail(e.target.value); setAlreadyRegistered(false); }}
-            placeholder="you@example.com"
-            required
-            style={inputStyle}
-          />
-        </div>
-        <div style={{ marginBottom: 8 }}>
-          <span style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' as const, color: T.textFaint, marginBottom: 8 }}>Password</span>
-          <input
-            type="password"
-            value={password}
-            onChange={e => { setPassword(e.target.value); setPwError(''); }}
-            placeholder="e.g. Hunter2!"
-            required
-            style={inputStyle}
-          />
-          {password.length > 0 && (
-            <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
-              <span style={{ fontSize: 11, fontWeight: 600, color: password.length >= 8 ? '#4ade80' : '#f87171' }}>
-                {password.length >= 8 ? '✓' : '✗'} 8+ characters
-              </span>
-              <span style={{ fontSize: 11, fontWeight: 600, color: /[^a-zA-Z0-9]/.test(password) ? '#4ade80' : '#f87171' }}>
-                {/[^a-zA-Z0-9]/.test(password) ? '✓' : '✗'} 1 symbol (! @ # $ …)
-              </span>
-            </div>
-          )}
-          {pwError && <p style={{ fontSize: 12, color: '#f87171', marginTop: 6 }}>{pwError}</p>}
-        </div>
-
-        {alreadyRegistered && (
-          <motion.div
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            style={{ padding: '12px 14px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 10, marginBottom: 14 }}
-          >
-            <p style={{ fontSize: 13, color: '#fcd34d', margin: 0 }}>
-              This email already has an account.{' '}
-              <button
-                type="button"
-                onClick={() => navigate('/auth')}
-                style={{ background: 'none', border: 'none', color: '#fbbf24', fontWeight: 700, cursor: 'pointer', fontSize: 13, textDecoration: 'underline', padding: 0 }}
-              >
-                Sign in instead.
-              </button>
-            </p>
-          </motion.div>
-        )}
-
-        <PrimaryButton
-          onClick={() => {}}
-          disabled={loading || submitting || !email.trim() || password.length < 8 || !/[^a-zA-Z0-9]/.test(password)}
-          label={loading ? 'Creating account...' : submitting ? 'Uploading documents…' : 'Create account & run diagnosis →'}
-        />
-      </form>
-
-      <div style={{ marginTop: 16 }}>
-        <BackButton onBack={onBack} />
-      </div>
-    </div>
-  );
-}
-
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean }) {
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState('');
   const { T, isDark, toggle: toggleDark } = useAppTheme();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -1104,8 +1107,10 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
     }
   };
 
-  const handleAuthAndContinue = () => {
-    handleFilesSubmit();
+  // Called by StepAuth when account is created — advance to documents step
+  const handleAuthAndContinue = (email: string) => {
+    setPendingEmail(email);
+    goNext();
   };
 
   const handleFilesSubmit = async () => {
@@ -1113,10 +1118,10 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
       toast.error('Resume is missing — please upload it.');
       return;
     }
-    let userEmail = '';
+    let userEmail = pendingEmail;
     try {
       const { data } = await supabase.auth.getSession();
-      userEmail = data.session?.user?.email ?? '';
+      if (data.session?.user?.email) userEmail = data.session.user.email;
     } catch {}
     await doSubmit({ ...buildFinalAnswers(answers), marketingEmail: userEmail }, resume, cl1, cl2);
   };
@@ -1134,7 +1139,6 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
       }
       setAnswers(pendingAnswers as unknown as IntakeAnswers);
 
-      // Fetch the authenticated user's email to populate the confirmation screen
       let userEmail = '';
       try {
         const { data } = await supabase.auth.getSession();
@@ -1152,9 +1156,7 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resumeMode]);
 
-  // Restore answers after email confirmation redirect.
-  // When the user confirms email and lands back at the app root, this fires on
-  // mount (user.id just became available) and jumps straight to file upload.
+  // Restore answers after email confirmation redirect — jump straight to documents step
   useEffect(() => {
     if (resumeMode) return;
     const isConfirmedUser = user && !(user as any).is_anonymous;
@@ -1166,7 +1168,7 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
     try {
       const draft = JSON.parse(draftRaw);
       setAnswers(prev => ({ ...prev, ...draft }));
-      setStep(4); // Jump to StepFiles — auth already done
+      setStep(5); // Jump to StepFiles — auth already done
     } catch {}
     localStorage.removeItem('jobhub_onboarding_draft');
   }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1188,26 +1190,23 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
     <StepRole key="role" answers={answers} onChange={onChange} onNext={goNext} onBack={goBack} />,
     <StepTimeline key="timeline" answers={answers} onChange={onChange} onNext={goNext} onBack={goBack} />,
     <StepResponses key="responses" answers={answers} onChange={onChange} onNext={goNext} onBack={goBack} />,
+    <StepAuth
+      key="auth"
+      answers={answers}
+      onAuthSuccess={handleAuthAndContinue}
+      onBack={goBack}
+    />,
     <StepFiles
       key="files"
       answers={answers}
       resume={resume} setResume={setResume}
       cl1={cl1} setCl1={setCl1}
       cl2={cl2} setCl2={setCl2}
-      onNext={goNext}
+      onSubmit={handleFilesSubmit}
       onBack={goBack}
+      pendingEmail={pendingEmail}
       marketingConsent={answers.marketingConsent}
       onMarketingConsentChange={v => setAnswers(prev => ({ ...prev, marketingConsent: v }))}
-    />,
-    <StepAuth
-      key="auth"
-      answers={answers}
-      onAuthSuccess={handleAuthAndContinue}
-      submitting={submitting}
-      onBack={goBack}
-      resume={resume}
-      cl1={cl1}
-      cl2={cl2}
     />,
   ];
 
@@ -1240,10 +1239,8 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
         <ProcessingScreen
           isDark={isDark}
           theme={T}
-          email={answers.marketingEmail?.trim() ?? ''}
+          email={answers.marketingEmail?.trim() ?? pendingEmail}
           onComplete={() => {
-            // reportSeen is cleared by ProcessingScreen before invalidateQueries fires,
-            // so by the time we get here the flag is already gone.
             console.log('[OnboardingIntake] onComplete called — ProcessingScreen already cleared reportSeen');
           }}
           onRetry={handleRetry}
