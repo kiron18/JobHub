@@ -19,19 +19,27 @@ interface ProcessingScreenProps {
 }
 
 const MESSAGES = [
-  "Righto, let's see what we're working with...",
-  "Digging through your resume. There's good stuff in here, trust.",
-  "Mapping out where you've been dropping off. We got you.",
-  "This is the bit that actually changes things, hang tight...",
-  "Nearly there. Your diagnosis is coming together nicely.",
-  "Last bit of thinking... you're about to see exactly what's been holding you back.",
+  "Reading how you've positioned your experience...",
+  "Parsing your resume structure and layout...",
+  "Cross-referencing against Australian hiring expectations...",
+  "Checking for signals that get filtered before a human reads it...",
+  "Identifying how a recruiter reads your first page in 6 seconds...",
+  "Scanning for the gaps that typically go unspoken in rejections...",
+  "Connecting your documents to your actual results...",
+  "Pinpointing exactly where your funnel breaks down...",
+  "Building your three-step fix, ranked by impact...",
+  "Writing the section most candidates find confronting...",
+  "The hard part: being specific without softening it...",
+  "Almost there — pulling everything together now...",
+  "This is the diagnosis most people never get to see...",
+  "Get ready. This one hits hard.",
 ];
-const FALLBACK_MESSAGE = "Still cooking, won't be long...";
+const FALLBACK_MESSAGE = "Still running — this one's thorough...";
 const FAILED_MESSAGE   = "Something went sideways, but we've got your data.";
 
-const BAR_DURATION_MS = 30_000;
+const BAR_DURATION_MS = 150_000;
 const POLL_INTERVAL_MS = 3_000;
-const MESSAGE_INTERVAL_MS = 8_000;
+const MESSAGE_INTERVAL_MS = 10_000;
 
 export function ProcessingScreen({ isDark: _isDark, theme: T, email, onComplete, onRetry }: ProcessingScreenProps) {
   const queryClient = useQueryClient();
