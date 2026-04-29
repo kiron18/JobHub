@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase';
 import { ProcessingScreen } from './ProcessingScreen';
 import { useAppTheme } from '../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
-import { LogOut } from 'lucide-react';
+import { LogOut, Mail, CheckCircle, Circle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import {
   loadPendingAnswers, loadFilesFromIDB,
@@ -743,11 +743,24 @@ function StepAuth({ answers, onAuthSuccess, submitting, onBack }: {
   const [loading, setLoading] = useState(false);
   const [pwError, setPwError] = useState('');
   const [alreadyRegistered, setAlreadyRegistered] = useState(false);
+  const [confirmationSent, setConfirmationSent] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendSent, setResendSent] = useState(false);
 
-  // If already authenticated (non-anonymous), skip sign-up and submit directly.
-  // This handles the case where a user has a Supabase account but no profile yet
-  // (e.g., their first upload failed due to CORS), and re-enters onboarding after
-  // signing in via /auth.
+  // When email confirmation is pending, listen for the SIGNED_IN event.
+  // Supabase syncs auth state across tabs via localStorage, so clicking
+  // the confirmation link in any tab fires this listener here too.
+  useEffect(() => {
+    if (!confirmationSent) return;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        onAuthSuccess();
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [confirmationSent]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // If already authenticated (non-anonymous), skip straight to file upload.
   const isAuthenticated = !!user && !(user as any).is_anonymous;
   if (isAuthenticated) {
     return (
@@ -759,11 +772,7 @@ function StepAuth({ answers, onAuthSuccess, submitting, onBack }: {
         <p style={{ color: T.textMuted, fontSize: 13, lineHeight: 1.6, marginBottom: 24 }}>
           Signed in as <strong style={{ color: T.text }}>{user.email}</strong>. One last step — upload your documents and we'll run your diagnosis.
         </p>
-        <PrimaryButton
-          onClick={onAuthSuccess}
-          disabled={submitting}
-          label="Continue to upload →"
-        />
+        <PrimaryButton onClick={onAuthSuccess} disabled={submitting} label="Continue to upload →" />
         <div style={{ marginTop: 16 }}>
           <BackButton onBack={onBack} />
         </div>
@@ -796,20 +805,13 @@ function StepAuth({ answers, onAuthSuccess, submitting, onBack }: {
         return;
       }
 
-      // If email confirmation is required, signUp returns session: null.
-      // Try signing in immediately — if auto-confirm is off this will fail
-      // and we redirect to /auth with instructions.
       if (!data.session) {
-        const { error: loginErr } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
-        });
+        // Email confirmation required — try silent sign-in first (in case auto-confirm is on)
+        const { error: loginErr } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
         if (loginErr) {
-          // Save answers so they're restored when the user returns after confirming.
-          // Answers only — files haven't been uploaded yet at this step.
+          // Auto-confirm is off. Save answers and show inline confirmation screen.
           localStorage.setItem('jobhub_onboarding_draft', JSON.stringify(answers));
-          toast.success('Account created! Check your email, then come back to finish uploading.');
-          navigate('/auth');
+          setConfirmationSent(true);
           return;
         }
       }
@@ -820,6 +822,113 @@ function StepAuth({ answers, onAuthSuccess, submitting, onBack }: {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleResend() {
+    setResendLoading(true);
+    try {
+      await supabase.auth.resend({ type: 'signup', email: email.trim(), options: { emailRedirectTo: window.location.origin } });
+      setResendSent(true);
+    } catch {
+      // silent
+    } finally {
+      setResendLoading(false);
+    }
+  }
+
+  // ── Awaiting email confirmation screen ───────────────────────────────────────
+  if (confirmationSent) {
+    return (
+      <div>
+        <ProfileProgress step={4} answers={answers} />
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
+        >
+          {/* Icon */}
+          <div style={{ textAlign: 'center', marginBottom: 24, marginTop: 8 }}>
+            <motion.div
+              animate={{ scale: [1, 1.06, 1] }}
+              transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+              style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                width: 64, height: 64, borderRadius: 20,
+                background: 'rgba(99,102,241,0.14)',
+              }}
+            >
+              <Mail size={28} color="#818cf8" />
+            </motion.div>
+          </div>
+
+          {/* Headline */}
+          <h2 style={{ fontSize: 24, fontWeight: 900, color: T.text, marginBottom: 8, letterSpacing: '-0.02em', textAlign: 'center' }}>
+            Check your inbox
+          </h2>
+          <p style={{ color: T.textMuted, fontSize: 13, lineHeight: 1.65, marginBottom: 6, textAlign: 'center' }}>
+            We've sent a confirmation link to
+          </p>
+          <p style={{ color: T.text, fontSize: 14, fontWeight: 700, marginBottom: 20, textAlign: 'center' }}>
+            {email}
+          </p>
+
+          {/* What happens next */}
+          <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 14, padding: '16px 18px', marginBottom: 20 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: T.textFaint, marginBottom: 12 }}>
+              What happens next
+            </p>
+            {[
+              { done: true,    text: 'Account created' },
+              { done: false,   text: 'Confirm your email — click the link we just sent', active: true },
+              { done: false,   text: 'Upload your resume — we run your full diagnosis' },
+            ].map((item, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: i < 2 ? 10 : 0 }}>
+                {item.done
+                  ? <CheckCircle size={15} color="#4ade80" style={{ flexShrink: 0, marginTop: 1 }} />
+                  : <Circle size={15} color={(item as any).active ? '#818cf8' : T.textFaint} style={{ flexShrink: 0, marginTop: 1 }} />
+                }
+                <span style={{ fontSize: 13, color: item.done ? T.textMuted : (item as any).active ? T.text : T.textFaint, fontWeight: (item as any).active ? 600 : 400, lineHeight: 1.5 }}>
+                  {item.text}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Preparing indicator */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)', borderRadius: 12, marginBottom: 20 }}>
+            <motion.div
+              animate={{ opacity: [0.4, 1, 0.4] }}
+              transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+              style={{ width: 7, height: 7, borderRadius: '50%', background: '#818cf8', flexShrink: 0 }}
+            />
+            <p style={{ fontSize: 12, color: '#a5b4fc', fontWeight: 500, margin: 0, lineHeight: 1.5 }}>
+              Your diagnostic profile is being assembled from your answers. The full analysis runs as soon as you upload your resume.
+            </p>
+          </div>
+
+          {/* Resend */}
+          <p style={{ textAlign: 'center', fontSize: 12, color: T.textFaint }}>
+            Didn't get it?{' '}
+            {resendSent ? (
+              <span style={{ color: '#4ade80', fontWeight: 600 }}>Sent ✓</span>
+            ) : (
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={resendLoading}
+                style={{ background: 'none', border: 'none', color: '#818cf8', fontWeight: 600, cursor: 'pointer', fontSize: 12, padding: 0 }}
+              >
+                {resendLoading ? 'Sending…' : 'Resend confirmation email'}
+              </button>
+            )}
+          </p>
+
+          <p style={{ textAlign: 'center', fontSize: 11, color: T.textFaint, marginTop: 10 }}>
+            This page will advance automatically once you confirm.
+          </p>
+        </motion.div>
+      </div>
+    );
   }
 
   const inputStyle: React.CSSProperties = {
@@ -842,7 +951,6 @@ function StepAuth({ answers, onAuthSuccess, submitting, onBack }: {
         We'll send your report to this email. No spam — just your diagnosis.
       </p>
 
-      {/* Email + Password form */}
       <form onSubmit={handleSignUp}>
         <div style={{ marginBottom: 14 }}>
           <span style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' as const, color: T.textFaint, marginBottom: 8 }}>Email</span>
@@ -875,9 +983,7 @@ function StepAuth({ answers, onAuthSuccess, submitting, onBack }: {
               </span>
             </div>
           )}
-          {pwError && (
-            <p style={{ fontSize: 12, color: '#f87171', marginTop: 6 }}>{pwError}</p>
-          )}
+          {pwError && <p style={{ fontSize: 12, color: '#f87171', marginTop: 6 }}>{pwError}</p>}
         </div>
 
         {alreadyRegistered && (
