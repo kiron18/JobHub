@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink, useNavigate } from 'react-router-dom';
-import { supabase } from './lib/supabase';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { motion } from 'framer-motion';
@@ -303,15 +302,15 @@ const Workspace = () => {
 
 // Protected Route Guard
 // - Returning users (have jobhub_auth_email in localStorage) → redirect to /auth to log in
-// - New visitors (no stored email) → create anonymous session and start onboarding
+// - New visitors (no stored email, no session) → render children; OnboardingGate handles
+//   the unauthenticated case via the 401 on profile fetch and shows OnboardingIntake
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [signingIn, setSigningIn] = useState(false);
   const prevUserIdRef = useRef<string | null>(null);
 
-  // When the Supabase userId changes (magic-link login → new session), the old
+  // When the Supabase userId changes (e.g. magic-link login → new session), the old
   // ['profile'] cache belongs to a different user — clear it immediately so
   // OnboardingGate always fetches fresh data for the new userId.
   useEffect(() => {
@@ -325,30 +324,14 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     if (loading || user) return;
-    if (signingIn) return;
-
-    // If this page load is an OAuth callback, Supabase is still processing
-    // the session from the URL hash/code — don't race it with signInAnonymously.
-    // onAuthStateChange will fire shortly and set user, which re-runs this effect.
-    const isOAuthCallback =
-      window.location.hash.includes('access_token') ||
-      window.location.hash.includes('error_description') ||
-      window.location.search.includes('code=') ||
-      window.location.search.includes('error=');
-    if (isOAuthCallback) return;
 
     const savedEmail = localStorage.getItem('jobhub_auth_email');
     if (savedEmail) {
-      // Returning user — send to auth page with email pre-filled
       navigate(`/auth?email=${encodeURIComponent(savedEmail)}`, { replace: true });
-    } else {
-      // New visitor — create anonymous session
-      setSigningIn(true);
-      supabase.auth.signInAnonymously().finally(() => setSigningIn(false));
     }
   }, [loading, user]);
 
-  if (loading || signingIn || !user) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950">
         <div className="flex flex-col items-center gap-4">

@@ -474,6 +474,7 @@ function StepAuth({ answers, onAuthSuccess, onBack }: {
   const [loading, setLoading] = useState(false);
   const [pwError, setPwError] = useState('');
   const [alreadyRegistered, setAlreadyRegistered] = useState(false);
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
 
   const isAuthenticated = !!user && !(user as any).is_anonymous;
   if (isAuthenticated) {
@@ -506,6 +507,7 @@ function StepAuth({ answers, onAuthSuccess, onBack }: {
     e.preventDefault();
     setPwError('');
     setAlreadyRegistered(false);
+    setAwaitingConfirmation(false);
     if (password.length < 8 || !/[^a-zA-Z0-9]/.test(password)) {
       setPwError('Password must be at least 8 characters and include at least one symbol (e.g. ! @ # $)');
       return;
@@ -527,7 +529,14 @@ function StepAuth({ answers, onAuthSuccess, onBack }: {
         return;
       }
       if (!data.session) {
-        setAlreadyRegistered(true);
+        console.log('[StepAuth] signUp — no session. userId:', data.user?.id?.slice(0, 8), 'identities:', data.user?.identities?.length ?? 'null');
+        // identities is empty → existing user (Supabase obfuscates this for security)
+        // identities is non-empty → new user awaiting email confirmation
+        if (!data.user?.identities || data.user.identities.length === 0) {
+          setAlreadyRegistered(true);
+        } else {
+          setAwaitingConfirmation(true);
+        }
         return;
       }
       onAuthSuccess(email.trim());
@@ -561,7 +570,7 @@ function StepAuth({ answers, onAuthSuccess, onBack }: {
       <form onSubmit={handleSignUp}>
         <div style={{ marginBottom: 14 }}>
           <span style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' as const, color: T.textFaint, marginBottom: 8 }}>Email</span>
-          <input type="email" value={email} onChange={e => { setEmail(e.target.value); setAlreadyRegistered(false); }}
+          <input type="email" value={email} onChange={e => { setEmail(e.target.value); setAlreadyRegistered(false); setAwaitingConfirmation(false); }}
             placeholder="you@example.com" required style={inputStyle} />
         </div>
         <div style={{ marginBottom: 8 }}>
@@ -590,6 +599,16 @@ function StepAuth({ answers, onAuthSuccess, onBack }: {
                 style={{ background: 'none', border: 'none', color: '#fbbf24', fontWeight: 700, cursor: 'pointer', fontSize: 13, textDecoration: 'underline', padding: 0 }}>
                 Sign in instead.
               </button>
+            </p>
+          </motion.div>
+        )}
+
+        {awaitingConfirmation && (
+          <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+            style={{ padding: '14px 16px', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.25)', borderRadius: 10, marginBottom: 14 }}>
+            <p style={{ fontSize: 14, fontWeight: 700, color: '#a5b4fc', margin: '0 0 6px 0' }}>Check your inbox</p>
+            <p style={{ fontSize: 13, color: '#c7d2fe', margin: 0, lineHeight: 1.5 }}>
+              We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account, then come back here to continue.
             </p>
           </motion.div>
         )}
