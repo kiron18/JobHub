@@ -475,7 +475,7 @@ function StepAuth({ answers, onAuthSuccess, onBack }: {
   const [pwError, setPwError] = useState('');
   const [alreadyRegistered, setAlreadyRegistered] = useState(false);
 
-  const isAuthenticated = !!user;
+  const isAuthenticated = !!user && !(user as any).is_anonymous;
   if (isAuthenticated) {
     return (
       <div>
