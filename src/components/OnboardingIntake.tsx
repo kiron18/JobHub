@@ -487,9 +487,6 @@ function StepAuth({ answers, onAuthSuccess, onBack }: {
         <p style={{ color: T.textMuted, fontSize: 13, lineHeight: 1.6, marginBottom: 8 }}>
           Signed in as <strong style={{ color: T.text }}>{user.email}</strong>.
         </p>
-        <p style={{ color: T.textFaint, fontSize: 12, lineHeight: 1.5, marginBottom: 24 }}>
-          A confirmation link was sent to your inbox — but you don't need to click it before continuing. Your account is active now.
-        </p>
         <PrimaryButton onClick={() => onAuthSuccess(user.email ?? '')} disabled={false} label="Continue →" />
         <div style={{ marginTop: 16 }}><BackButton onBack={onBack} /></div>
         <p style={{ marginTop: 20, fontSize: 12, color: T.textFaint, textAlign: 'center' }}>
@@ -563,10 +560,10 @@ function StepAuth({ answers, onAuthSuccess, onBack }: {
         Create your free account
       </h2>
       <p style={{ color: T.textMuted, fontSize: 13, lineHeight: 1.6, marginBottom: 6 }}>
-        We'll save your progress and send your full diagnosis report to this email.
+        We'll send your full diagnostic report, personalised job tips, and role recommendations here — so make it one you actually check.
       </p>
       <p style={{ color: T.textFaint, fontSize: 12, lineHeight: 1.5, marginBottom: 20 }}>
-        No spam — just your diagnosis and occasional job search tips if you opt in.
+        No cold outreach. Just your results and the occasional insight worth reading.
       </p>
 
       <form onSubmit={handleSignUp}>
@@ -659,7 +656,7 @@ function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, onBa
           background: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.18)',
         }}>
           <p style={{ fontSize: 12, color: T.textMuted, margin: 0, lineHeight: 1.5 }}>
-            Account created for <strong style={{ color: T.text }}>{emailSent}</strong>. A confirmation email is on its way — check your spam folder if it doesn't arrive in a minute.
+            Account created for <strong style={{ color: T.text }}>{emailSent}</strong>. Your report and recommendations will be sent here.
           </p>
         </div>
       )}

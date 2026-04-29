@@ -26,8 +26,7 @@ export const AuthPage: React.FC = () => {
         ? await supabase.auth.signUp({ email, password })
         : await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      if (!isSignup) navigate('/', { replace: true });
-      else toast.success('Check your email to confirm your account');
+      navigate('/', { replace: true });
     } catch (err: any) {
       toast.error(err.message || 'Authentication failed');
     } finally {

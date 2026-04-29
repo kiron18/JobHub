@@ -181,7 +181,7 @@ export function ProcessingScreen({ isDark: _isDark, theme: T, email, onComplete,
                 border: '1px solid rgba(99,102,241,0.15)',
                 lineHeight: 1.6,
               }}>
-                📧 Check <strong style={{ color: T.text }}>{email}</strong> for a confirmation link — click it to secure your account and access it from any device.
+                Your report and personalised recommendations will be sent to <strong style={{ color: T.text }}>{email}</strong> once ready.
               </p>
             )}
           </>
