@@ -2,14 +2,14 @@ import { callClaude } from './llm';
 
 export interface DiagnosticReportInput {
   targetRole: string;
-  targetCity: string;
+  targetCity?: string;
   seniority: string;
   industry: string;
-  searchDuration: string;
-  applicationsCount: string;
-  channels: string[];
+  searchDuration?: string;
+  applicationsCount?: string;
+  channels?: string[];
   responsePattern: string;
-  perceivedBlocker: string;
+  perceivedBlocker?: string;
   resumeText: string;
   coverLetterText1?: string;
   coverLetterText2?: string;
@@ -36,15 +36,10 @@ Your output is a structured markdown report with exactly 6 sections. Each sectio
 ---
 
 CANDIDATE INTAKE DATA:
-Target role: ${input.targetRole}
-Target city: ${input.targetCity}
+Target role: ${input.targetRole}${input.targetCity ? `\nTarget city: ${input.targetCity}` : ''}
 Seniority level: ${input.seniority}
-Industry: ${input.industry}
-Search duration: ${input.searchDuration}
-Applications sent: ${input.applicationsCount}
-Channels used: ${input.channels.join(', ')}
-Response pattern: ${input.responsePattern}
-Self-identified blocker: "${input.perceivedBlocker}"
+Industry: ${input.industry}${input.searchDuration ? `\nSearch duration: ${input.searchDuration}` : ''}${input.applicationsCount ? `\nApplications sent: ${input.applicationsCount}` : ''}${input.channels?.length ? `\nChannels used: ${input.channels.join(', ')}` : ''}
+Response pattern: ${input.responsePattern}${input.perceivedBlocker ? `\nSelf-identified blocker: "${input.perceivedBlocker}"` : ''}
 
 RESUME:
 """
@@ -77,7 +72,10 @@ Based on their response pattern ("${input.responsePattern}"), diagnose what stag
 
 ## The Honest Assessment
 
-Cross-reference their self-identified blocker ("${input.perceivedBlocker}") against what their documents actually reveal. If they are right, validate it and say why. If the documents reveal a different problem, say so warmly and specifically.
+${input.perceivedBlocker
+  ? `Cross-reference their self-identified blocker ("${input.perceivedBlocker}") against what their documents actually reveal. If they are right, validate it and say why. If the documents reveal a different problem, say so warmly and specifically.`
+  : `Based purely on their documents, identify the single biggest thing that is costing them results. Be direct but warm. Every candidate has a primary lever — name it clearly and immediately follow it with the fix.`
+}
 
 ## The 3-Step Fix
 
