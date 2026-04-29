@@ -778,7 +778,11 @@ function StepAuth({ answers, onAuthSuccess, submitting, onBack }: {
     if (password.length < 8) { setPwError('Password must be at least 8 characters'); return; }
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signUp({ email: email.trim(), password });
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: { emailRedirectTo: window.location.origin },
+      });
       if (error) {
         const msg = error.message.toLowerCase();
         if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('user already registered')) {
@@ -798,7 +802,10 @@ function StepAuth({ answers, onAuthSuccess, submitting, onBack }: {
           password,
         });
         if (loginErr) {
-          toast.success('Account created! Check your email to confirm it, then sign in.');
+          // Save answers so they're restored when the user returns after confirming.
+          // Answers only — files haven't been uploaded yet at this step.
+          localStorage.setItem('jobhub_onboarding_draft', JSON.stringify(answers));
+          toast.success('Account created! Check your email, then come back to finish uploading.');
           navigate('/auth');
           return;
         }
@@ -1010,6 +1017,27 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
     loadAndSubmit();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resumeMode]);
+
+  // Restore answers after email confirmation redirect.
+  // When a user signs up, gets sent to /auth for email confirmation, confirms their
+  // email, and returns — they're now authenticated but have no profile. We land here
+  // in OnboardingIntake. If draft answers were saved before they left, restore them
+  // and jump straight to the file upload step so they don't start from scratch.
+  useEffect(() => {
+    if (resumeMode) return; // resumeMode handles its own auto-submit path
+    const isConfirmedUser = user && !(user as any).is_anonymous;
+    if (!isConfirmedUser) return;
+
+    const draftRaw = localStorage.getItem('jobhub_onboarding_draft');
+    if (!draftRaw) return;
+
+    try {
+      const draft = JSON.parse(draftRaw);
+      setAnswers(prev => ({ ...prev, ...draft }));
+      setStep(5); // Jump to StepFiles — auth already done
+    } catch {}
+    localStorage.removeItem('jobhub_onboarding_draft');
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleRetry = async () => {
     try {
