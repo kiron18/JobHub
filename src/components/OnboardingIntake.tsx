@@ -517,7 +517,7 @@ function StepAuth({ answers, onAuthSuccess, onBack }: {
         return;
       }
       if (!data.session) {
-        toast.error('Could not create session. Please try again.');
+        setAlreadyRegistered(true);
         return;
       }
       onAuthSuccess(email.trim());
