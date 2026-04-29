@@ -38,6 +38,8 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
   // cycle of: claim → invalidate → isLoading flips → claim again.
   const claimFiredRef = useRef(false);
 
+  const isAnonymous = !!user && !!(user as any).is_anonymous;
+
   const { data: profile, isLoading, isError } = useQuery({
     queryKey: ['profile'],
     queryFn: async () => {
@@ -46,9 +48,11 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
       console.log('[OnboardingGate] profile fetched — hasCompletedOnboarding:', data?.hasCompletedOnboarding, '| userId:', data?.userId);
       return data;
     },
-    staleTime: 30_000,     // 30s — fresh enough without mid-onboarding refetch loops
+    staleTime: 30_000,
     retry: 1,
     retryDelay: 1000,
+    // Anonymous users have no profile — skip the fetch to avoid remounting OnboardingIntake
+    enabled: !isAnonymous,
   });
 
   // When a returning user logs in via magic link they get a new userId.
