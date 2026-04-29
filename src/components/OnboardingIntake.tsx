@@ -334,6 +334,19 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
         </div>
       </div>
 
+      <div style={{
+        marginBottom: 18, padding: '12px 16px', borderRadius: 12,
+        background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.25)',
+        textAlign: 'left',
+      }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: '#fde047', margin: '0 0 4px' }}>
+          Before you start — grab your resume.
+        </p>
+        <p style={{ fontSize: 12, color: T.textMuted, margin: 0, lineHeight: 1.5 }}>
+          This diagnostic reads your actual documents to identify what's costing you interviews. Resume is required. Cover letters help if you have them.
+        </p>
+      </div>
+
       <motion.button onClick={onNext}
         style={{
           background: 'linear-gradient(135deg, #16a34a, #15803d)',
@@ -346,7 +359,7 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
         transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
         whileHover={{ scale: 1.02, boxShadow: '0 8px 40px rgba(22,163,74,0.55)' }}
         whileTap={{ scale: 0.97 }}>
-        Unlock my diagnosis →
+        Start my diagnosis →
       </motion.button>
       <p style={{ fontSize: 12, color: T.textFaint, marginTop: 10 }}>Takes about 3 minutes · Free</p>
       <p style={{ fontSize: 12, color: T.textFaint, marginTop: 16 }}>
@@ -585,25 +598,37 @@ function StepAuth({ answers, onAuthSuccess, onBack }: {
 
 // ── Step: Files ───────────────────────────────────────────────────────────────
 
-function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, onBack, marketingConsent, onMarketingConsentChange, answers }: {
+function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, onBack, marketingConsent, onMarketingConsentChange, answers, emailSent }: {
   resume: File | null; setResume: (f: File | null) => void;
   cl1: File | null; setCl1: (f: File | null) => void;
   cl2: File | null; setCl2: (f: File | null) => void;
   onSubmit: () => void; onBack: () => void;
   marketingConsent: boolean; onMarketingConsentChange: (v: boolean) => void;
   answers: IntakeAnswers;
+  emailSent: string;
 }) {
   const { T } = useTheme();
   return (
     <div>
       <ProfileProgress step={4} answers={answers} />
       <h2 style={{ fontSize: 24, fontWeight: 900, color: T.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
-        Now show us what you've been sending out.
+        Now upload your documents.
       </h2>
       <p style={{ color: T.textMuted, fontSize: 13, lineHeight: 1.6, marginBottom: 6 }}>
-        We're not judging the documents. We're using them to understand how you've been positioning yourself.
+        We're not judging them — we're reading them to find exactly what's holding you back.
       </p>
-      <p style={{ color: T.textFaint, fontSize: 12, marginBottom: 20 }}>PDF or Word accepted.</p>
+      <p style={{ color: T.textFaint, fontSize: 12, marginBottom: 12 }}>PDF or Word accepted.</p>
+
+      {emailSent && (
+        <div style={{
+          marginBottom: 16, padding: '10px 14px', borderRadius: 10,
+          background: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.18)',
+        }}>
+          <p style={{ fontSize: 12, color: T.textMuted, margin: 0, lineHeight: 1.5 }}>
+            Account created for <strong style={{ color: T.text }}>{emailSent}</strong>. A confirmation email is on its way — check your spam folder if it doesn't arrive in a minute.
+          </p>
+        </div>
+      )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <FileDropZone label="Your resume (required)" required file={resume} onFile={setResume}
@@ -760,6 +785,7 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
       onBack={goBack}
       marketingConsent={answers.marketingConsent}
       onMarketingConsentChange={v => setAnswers(prev => ({ ...prev, marketingConsent: v }))}
+      emailSent={pendingEmail}
     />,
   ];
 
