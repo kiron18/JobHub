@@ -30,6 +30,8 @@ export async function autoExtractAchievements(userId: string, resumeText: string
       return;
     }
 
+    console.log(`[AutoExtract] Stage 1 parsed — education: ${stage1Data.education?.length ?? 0}, experience: ${stage1Data.experience?.length ?? 0}, certs: ${stage1Data.certifications?.length ?? 0}`);
+
     // 3. Run STAGE_2_PROMPT per experience role to get achievements
     console.log(`[AutoExtract] Running Stage 2 for userId: ${userId}`);
     let achievements: any[] = [];

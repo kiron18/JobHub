@@ -33,6 +33,10 @@ router.post('/resume', authenticate, async (req, res) => {
             throw new Error(`Invalid Stage 1 JSON: ${e.message}`);
         }
 
+        console.log('[extract] education items found:', stage1Data.education?.length ?? 0, JSON.stringify(stage1Data.education ?? []));
+        console.log('[extract] experience roles found:', stage1Data.experience?.length ?? 0);
+        console.log('[extract] certifications found:', stage1Data.certifications?.length ?? 0);
+
         console.log('--- Stage 2: Achievement Detection (Per-Role) ---');
         let achievements: any[] = [];
 

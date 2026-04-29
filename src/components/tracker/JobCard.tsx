@@ -245,7 +245,7 @@ export const FollowUpNudge: React.FC<{ jobs: JobApplication[] }> = ({ jobs }) =>
             });
             setAiEmails(prev => ({ ...prev, [job.id]: data.content }));
         } catch {
-            toast.error('Could not generate AI email — using template instead.');
+            toast.error('Could not generate email — using template instead.');
         } finally {
             setGeneratingFor(null);
         }
@@ -316,7 +316,7 @@ export const FollowUpNudge: React.FC<{ jobs: JobApplication[] }> = ({ jobs }) =>
                                         <button
                                             onClick={(e) => handleGenerateAI(job, e)}
                                             disabled={isGenerating}
-                                            aria-label={`Generate AI follow-up email for ${job.title}`}
+                                            aria-label={`Generate follow-up email for ${job.title}`}
                                             className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black text-brand-400 border border-brand-600/30 hover:bg-brand-600/10 transition-colors uppercase tracking-wider disabled:opacity-50"
                                         >
                                             {isGenerating ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
