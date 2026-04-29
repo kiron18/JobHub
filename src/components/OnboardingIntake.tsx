@@ -791,7 +791,7 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
 
   const SignOutBtn = user && step > 0 ? (
     <motion.button
-      onClick={async () => { await signOut(); navigate('/auth', { replace: true }); }}
+      onClick={async () => { await signOut(); navigate('/', { replace: true }); }}
       whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
       style={{
         position: 'fixed', top: 20, left: 20, zIndex: 100,
