@@ -38,8 +38,6 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
   // cycle of: claim → invalidate → isLoading flips → claim again.
   const claimFiredRef = useRef(false);
 
-  const isAnonymous = !!user && !!(user as any).is_anonymous;
-
   const { data: profile, isLoading, isError } = useQuery({
     queryKey: ['profile'],
     queryFn: async () => {
@@ -109,9 +107,7 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.hasCompletedOnboarding, user?.email]);
 
-  // Don't show spinner for anonymous users — it would unmount OnboardingIntake and
-  // reset form state. Anonymous users are fine seeing the intake even while loading.
-  if ((isLoading && !isAnonymous) || claiming) {
+  if (isLoading || claiming) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950">
         <div className="w-12 h-12 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />

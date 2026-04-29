@@ -462,7 +462,7 @@ function StepAuth({ answers, onAuthSuccess, onBack }: {
   const [pwError, setPwError] = useState('');
   const [alreadyRegistered, setAlreadyRegistered] = useState(false);
 
-  const isAuthenticated = !!user && !(user as any).is_anonymous;
+  const isAuthenticated = !!user;
   if (isAuthenticated) {
     return (
       <div>
@@ -489,31 +489,27 @@ function StepAuth({ answers, onAuthSuccess, onBack }: {
     }
     setLoading(true);
     try {
-      // Step 1: Get an anonymous session immediately — allows diagnosis to run without waiting for email confirmation
-      const { error: anonError } = await supabase.auth.signInAnonymously();
-      if (anonError) throw anonError;
-
-      // Step 2: Link email + password to the anonymous account — Supabase sends a confirmation email
-      const { error: updateError } = await supabase.auth.updateUser(
-        { email: email.trim(), password },
-        { emailRedirectTo: `${window.location.origin}/auth/callback` }
-      );
-      if (updateError) {
-        const msg = updateError.message.toLowerCase();
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      });
+      if (signUpError) {
+        const msg = signUpError.message.toLowerCase();
         if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('already been registered') || msg.includes('email address is already')) {
           setAlreadyRegistered(true);
         } else {
-          toast.error(updateError.message || 'Sign up failed');
+          toast.error(signUpError.message || 'Sign up failed');
         }
-        await supabase.auth.signOut();
         return;
       }
-
-      // We now have a live session — proceed to document upload immediately
+      if (!data.session) {
+        toast.error('Could not create session. Please try again.');
+        return;
+      }
       onAuthSuccess(email.trim());
     } catch (err: any) {
       toast.error(err.message || 'Sign up failed');
-      await supabase.auth.signOut().catch(() => {});
     } finally {
       setLoading(false);
     }
@@ -767,7 +763,7 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
     />,
   ];
 
-  const SignOutBtn = user && !(user as any).is_anonymous ? (
+  const SignOutBtn = user ? (
     <motion.button
       onClick={async () => { await signOut(); navigate('/auth', { replace: true }); }}
       whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
