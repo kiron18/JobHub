@@ -81,22 +81,6 @@ function extractHook(content: string): string {
   return sentences.slice(0, 2).join(' ').trim() || clean.slice(0, 180);
 }
 
-function isInCurrentFridayWindow(createdAtISO: string | null): boolean {
-  if (!createdAtISO) return false;
-  const created = new Date(createdAtISO).getTime();
-  const now = new Date();
-  const day = now.getUTCDay();
-  const hour = now.getUTCHours();
-  let daysSince = (day - 4 + 7) % 7;
-  if (day === 4 && hour < 9) daysSince = 7;
-  const windowStart = new Date(now);
-  windowStart.setUTCDate(windowStart.getUTCDate() - daysSince);
-  windowStart.setUTCHours(9, 0, 0, 0);
-  windowStart.setUTCMilliseconds(0);
-  const windowEnd = new Date(windowStart);
-  windowEnd.setUTCDate(windowEnd.getUTCDate() + 7);
-  return created >= windowStart.getTime() && created < windowEnd.getTime();
-}
 
 function renderInline(text: string): React.ReactNode {
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
