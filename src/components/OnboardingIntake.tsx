@@ -789,7 +789,7 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
     />,
   ];
 
-  const SignOutBtn = user ? (
+  const SignOutBtn = user && step > 0 ? (
     <motion.button
       onClick={async () => { await signOut(); navigate('/auth', { replace: true }); }}
       whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
