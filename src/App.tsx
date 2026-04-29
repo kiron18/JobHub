@@ -33,6 +33,7 @@ const AdminDashboard = React.lazy(() =>
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthPage } from './pages/AuthPage';
+import { AuthCallback } from './components/AuthCallback';
 import { PricingPage } from './pages/PricingPage';
 import { GeoBlockedPage } from './pages/GeoBlockedPage';
 import { LegalPage } from './pages/LegalPage';
@@ -590,6 +591,7 @@ function App() {
             <Routes>
               {/* Public Routes */}
               <Route path="/auth" element={<AuthPage />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/not-available" element={<GeoBlockedPage />} />
               <Route path="/legal/:policy" element={<LegalPage />} />

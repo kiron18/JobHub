@@ -642,10 +642,10 @@ function StepAuth({ answers, onAuthSuccess, onBack }: {
     }
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
-        options: { emailRedirectTo: window.location.origin },
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
       });
       if (error) {
         const msg = error.message.toLowerCase();
@@ -657,13 +657,8 @@ function StepAuth({ answers, onAuthSuccess, onBack }: {
         return;
       }
 
-      if (!data.session) {
-        // Try silent sign-in — succeeds when auto-confirm is enabled (dev/test)
-        await supabase.auth.signInWithPassword({ email: email.trim(), password }).catch(() => {});
-      }
-
-      // Always advance to documents step regardless of session state.
-      // StepFiles will check the session at submission time.
+      // Always advance to documents step regardless of whether confirmation is needed.
+      // StepFiles checks the session at submit time and shows the inbox screen if needed.
       onAuthSuccess(email.trim());
     } catch (err: any) {
       toast.error(err.message || 'Sign up failed');
