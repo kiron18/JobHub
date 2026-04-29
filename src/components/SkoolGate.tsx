@@ -7,12 +7,11 @@ interface SkoolGateProps {
   onJoined: () => void;
 }
 
-type GateState = 'prompt' | 'email' | 'success';
+type GateState = 'prompt' | 'success';
 
 export function SkoolGate({ onJoined }: SkoolGateProps) {
   const queryClient = useQueryClient();
   const [gateState, setGateState] = useState<GateState>('prompt');
-  const [skoolEmail, setSkoolEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [visible, setVisible] = useState(true);
 
@@ -31,10 +30,9 @@ export function SkoolGate({ onJoined }: SkoolGateProps) {
   async function handleSubmit() {
     setSubmitting(true);
     try {
-      await api.post('/skool/join', { skoolEmail: skoolEmail.trim() });
+      await api.post('/skool/join', {});
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       setGateState('success');
-      // After brief confirmation pause, dissolve gate
       setTimeout(() => {
         setVisible(false);
         setTimeout(onJoined, 500);
@@ -102,16 +100,11 @@ export function SkoolGate({ onJoined }: SkoolGateProps) {
                   {' '}on Skool. It takes 30 seconds and costs nothing. Inside you'll find videos
                   and resources built around exactly the kinds of problems in your report.
                 </p>
-                <p style={{ fontSize: 15, color: '#e5e7eb', lineHeight: 1.75, marginBottom: 32, fontWeight: 600 }}>
-                  Every Friday I run a live call where I go through that week's reports
-                  personally. Yours will be in this week's batch, {name}. Come with questions — I'll
-                  answer them live.
-                </p>
                 <a
                   href="https://www.skool.com/aussiegradcareers"
                   target="_blank"
                   rel="noopener noreferrer"
-                  onClick={() => setGateState('email')}
+                  onClick={handleSubmit}
                   style={{
                     display: 'block', textAlign: 'center', textDecoration: 'none',
                     background: 'linear-gradient(135deg, #0F766E, #134E4A)',
@@ -119,67 +112,24 @@ export function SkoolGate({ onJoined }: SkoolGateProps) {
                     fontSize: 16, fontWeight: 800,
                     boxShadow: '0 6px 24px rgba(15,118,110,0.30)',
                     marginBottom: 12,
+                    opacity: submitting ? 0.6 : 1,
+                    pointerEvents: submitting ? 'none' : 'auto',
                   }}
                 >
                   Join free on Skool →
                 </a>
                 <button
-                  onClick={() => setGateState('email')}
+                  onClick={handleSubmit}
+                  disabled={submitting}
                   style={{
                     width: '100%', background: 'none',
                     border: '1px solid rgba(255,255,255,0.07)',
                     color: '#4b5563', borderRadius: 12, padding: '11px',
-                    fontSize: 13, cursor: 'pointer',
+                    fontSize: 13, cursor: submitting ? 'default' : 'pointer',
                   }}
                 >
                   Already a member? Continue →
                 </button>
-              </>
-            )}
-
-            {gateState === 'email' && (
-              <>
-                <h2 style={{
-                  fontSize: 22, fontWeight: 900, color: '#f3f4f6',
-                  marginBottom: 12,
-                }}>
-                  Almost there.
-                </h2>
-                <p style={{ fontSize: 15, color: '#9ca3af', lineHeight: 1.7, marginBottom: 24 }}>
-                  Drop the email you signed up with below so I know to include your report
-                  in Friday's discussion.
-                </p>
-                <input
-                  type="email"
-                  value={skoolEmail}
-                  onChange={e => setSkoolEmail(e.target.value)}
-                  placeholder="Email you used on Skool"
-                  style={{
-                    width: '100%', background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.12)',
-                    borderRadius: 12, color: '#f3f4f6', fontSize: 14,
-                    padding: '13px 16px', outline: 'none',
-                    marginBottom: 8, boxSizing: 'border-box',
-                  }}
-                />
-                <p style={{ fontSize: 12, color: '#4b5563', marginBottom: 20 }}>
-                  Enter the email you used to join Skool.
-                </p>
-                <button
-                  onClick={handleSubmit}
-                  disabled={submitting || !skoolEmail.trim()}
-                  style={{
-                    width: '100%',
-                    background: (submitting || !skoolEmail.trim()) ? 'rgba(15,118,110,0.4)' : 'linear-gradient(135deg, #0F766E, #134E4A)',
-                    color: 'white', border: 'none', borderRadius: 14, padding: '15px',
-                    fontSize: 15, fontWeight: 800, cursor: (submitting || !skoolEmail.trim()) ? 'default' : 'pointer',
-                  }}
-                >
-                  {submitting ? 'Saving...' : 'Open my report →'}
-                </button>
-                <p style={{ fontSize: 11, color: '#4b5563', marginTop: 8, textAlign: 'center' }}>
-                  Email required to proceed.
-                </p>
               </>
             )}
 

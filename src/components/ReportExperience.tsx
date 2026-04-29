@@ -260,23 +260,6 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
         {/* Content */}
         <div style={{ position: 'relative', zIndex: 1, maxWidth: 780, margin: '0 auto', padding: '72px 24px 140px' }}>
 
-          {/* Friday call banner */}
-          {isInCurrentFridayWindow(data?.createdAt ?? null) && (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              style={{
-                background: 'rgba(252,211,77,0.06)', border: '1px solid rgba(252,211,77,0.20)',
-                borderRadius: 14, padding: '14px 20px', marginBottom: 32, textAlign: 'center',
-              }}
-            >
-              <p style={{ margin: 0, fontSize: 14, color: '#FCD34D', fontWeight: 600 }}>
-                Your report is in this Friday's call batch — come with questions. I'll address it personally.
-              </p>
-            </motion.div>
-          )}
-
           {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: -16 }}
@@ -805,48 +788,63 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
               position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50,
               background: theme.stickyBg, borderTop: `1px solid ${theme.stickyBorder}`,
               boxShadow: '0 -8px 32px rgba(0,0,0,0.16)',
-              padding: '14px 24px 18px',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap',
+              padding: '12px 24px 16px',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
             }}
           >
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: theme.heading, marginRight: 4, whiteSpace: 'nowrap' }}>
-              Ready to speed up your job search?
-            </p>
-            <a
-              href="https://www.skool.com/aussiegradcareers" target="_blank" rel="noopener noreferrer"
-              style={{
-                background: isDark ? 'rgba(16,185,129,0.12)' : 'rgba(16,185,129,0.09)',
-                border: '1px solid rgba(16,185,129,0.30)',
-                color: isDark ? '#34d399' : '#059669', borderRadius: 10,
-                padding: '10px 18px', fontSize: 13, fontWeight: 700,
-                textDecoration: 'none', whiteSpace: 'nowrap', minHeight: 44,
-                display: 'inline-flex', alignItems: 'center',
-              }}
-            >
-              Join Free Community
-            </a>
-            <button
-              onClick={onDone}
-              style={{
-                background: 'linear-gradient(135deg, #6366f1, #4f46e5)', color: 'white',
-                borderRadius: 10, padding: '10px 18px', fontSize: 13, fontWeight: 800,
-                border: 'none', cursor: 'pointer', boxShadow: '0 4px 12px rgba(99,102,241,0.28)',
-                whiteSpace: 'nowrap', minHeight: 44,
-              }}
-            >
-              Get Instant Access — Free for 7 Days →
-            </button>
-            <button
-              onClick={() => setShowSticky(false)}
-              aria-label="Dismiss"
-              style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: isDark ? '#4b5563' : '#9ca3af', padding: 8,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 44,
-              }}
-            >
-              <X size={15} />
-            </button>
+            {(() => {
+              const BLOCKER_PRIORITY = ['document_audit', 'honest', 'targeting', 'pipeline'];
+              const BLOCKER_HEADLINES: Record<string, string> = {
+                document_audit: "Your resume isn't clearing the 6-second recruiter test.",
+                honest:         "Your positioning isn't matching what the market wants.",
+                targeting:      "Your targeting strategy is working against you.",
+                pipeline:       "Your applications aren't turning into conversations.",
+              };
+              const topKey = BLOCKER_PRIORITY.find(k => sections.some(s => s.key === k));
+              const headline = topKey ? BLOCKER_HEADLINES[topKey] : "Your job search strategy has a clear blocker.";
+              return (
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: theme.heading, textAlign: 'center' }}>
+                  {headline}
+                </p>
+              );
+            })()}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+              <a
+                href="https://www.skool.com/aussiegradcareers" target="_blank" rel="noopener noreferrer"
+                style={{
+                  background: isDark ? 'rgba(16,185,129,0.12)' : 'rgba(16,185,129,0.09)',
+                  border: '1px solid rgba(16,185,129,0.30)',
+                  color: isDark ? '#34d399' : '#059669', borderRadius: 10,
+                  padding: '10px 18px', fontSize: 13, fontWeight: 700,
+                  textDecoration: 'none', whiteSpace: 'nowrap', minHeight: 44,
+                  display: 'inline-flex', alignItems: 'center',
+                }}
+              >
+                Free frameworks & weekly guidance (Skool)
+              </a>
+              <button
+                onClick={onDone}
+                style={{
+                  background: 'linear-gradient(135deg, #6366f1, #4f46e5)', color: 'white',
+                  borderRadius: 10, padding: '10px 18px', fontSize: 13, fontWeight: 800,
+                  border: 'none', cursor: 'pointer', boxShadow: '0 4px 12px rgba(99,102,241,0.28)',
+                  whiteSpace: 'nowrap', minHeight: 44,
+                }}
+              >
+                Rebuild your strategy with AI (7-Day Free Trial)
+              </button>
+              <button
+                onClick={() => setShowSticky(false)}
+                aria-label="Dismiss"
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: isDark ? '#4b5563' : '#9ca3af', padding: 8,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 44,
+                }}
+              >
+                <X size={15} />
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
