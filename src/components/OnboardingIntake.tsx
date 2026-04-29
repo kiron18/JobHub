@@ -280,23 +280,6 @@ function BackButton({ onBack, disabled }: { onBack: () => void; disabled?: boole
   );
 }
 
-function CheckBox({ checked }: { checked: boolean }) {
-  const { T } = useTheme();
-  return (
-    <div style={{
-      width: 16, height: 16, borderRadius: 4, flexShrink: 0,
-      border: `1.5px solid ${checked ? T.optActiveBg : T.optBorder}`,
-      background: checked ? T.optActiveBg : 'transparent',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
-    }}>
-      {checked && (
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-          <path d="M1.5 5l2.5 2.5L8.5 2" stroke={T.optActiveText} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-      )}
-    </div>
-  );
-}
 
 // ── Step: Welcome ─────────────────────────────────────────────────────────────
 
@@ -511,11 +494,10 @@ function StepAuth({ answers, onAuthSuccess, onBack }: {
       if (anonError) throw anonError;
 
       // Step 2: Link email + password to the anonymous account — Supabase sends a confirmation email
-      const { error: updateError } = await supabase.auth.updateUser({
-        email: email.trim(),
-        password,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback` } as any,
-      });
+      const { error: updateError } = await supabase.auth.updateUser(
+        { email: email.trim(), password },
+        { emailRedirectTo: `${window.location.origin}/auth/callback` }
+      );
       if (updateError) {
         const msg = updateError.message.toLowerCase();
         if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('already been registered') || msg.includes('email address is already')) {
@@ -751,7 +733,7 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
         userEmail = data.session?.user?.email ?? '';
       } catch {}
       await doSubmit(
-        { ...(pendingAnswers as IntakeAnswers), marketingEmail: userEmail },
+        { ...(pendingAnswers as unknown as IntakeAnswers), marketingEmail: userEmail },
         pendingFiles.resume, pendingFiles.cl1, pendingFiles.cl2
       );
     }
