@@ -468,7 +468,7 @@ function StepAuth({ answers, onAuthSuccess, onBack }: {
 }) {
   const { T } = useTheme();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -481,13 +481,23 @@ function StepAuth({ answers, onAuthSuccess, onBack }: {
       <div>
         <ProfileProgress step={3} answers={answers} />
         <h2 style={{ fontSize: 24, fontWeight: 900, color: T.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
-          You're already signed in
+          Account ready — let's go
         </h2>
-        <p style={{ color: T.textMuted, fontSize: 13, lineHeight: 1.6, marginBottom: 24 }}>
-          Signed in as <strong style={{ color: T.text }}>{user.email}</strong>. Continue to upload your documents.
+        <p style={{ color: T.textMuted, fontSize: 13, lineHeight: 1.6, marginBottom: 8 }}>
+          Signed in as <strong style={{ color: T.text }}>{user.email}</strong>.
+        </p>
+        <p style={{ color: T.textFaint, fontSize: 12, lineHeight: 1.5, marginBottom: 24 }}>
+          A confirmation link was sent to your inbox — but you don't need to click it before continuing. Your account is active now.
         </p>
         <PrimaryButton onClick={() => onAuthSuccess(user.email ?? '')} disabled={false} label="Continue →" />
         <div style={{ marginTop: 16 }}><BackButton onBack={onBack} /></div>
+        <p style={{ marginTop: 20, fontSize: 12, color: T.textFaint, textAlign: 'center' }}>
+          Not you?{' '}
+          <button type="button" onClick={async () => { await signOut(); navigate('/', { replace: true }); }}
+            style={{ background: 'none', border: 'none', color: T.textMuted, fontWeight: 600, cursor: 'pointer', fontSize: 12, textDecoration: 'underline', padding: 0 }}>
+            Sign out and use a different email
+          </button>
+        </p>
       </div>
     );
   }
