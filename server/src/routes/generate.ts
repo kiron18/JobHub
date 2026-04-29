@@ -14,7 +14,7 @@ import path from 'path';
 const router = Router();
 
 const MAX_DAILY_GENERATIONS = parseInt(process.env.MAX_DAILY_GENERATIONS || '10', 10);
-const QUALITY_GATE_ENABLED = process.env.QUALITY_GATE_ENABLED === 'true';
+const QUALITY_GATE_ENABLED = process.env.QUALITY_GATE_ENABLED !== 'false';
 
 // Llama pricing (OpenRouter)
 const LLAMA_INPUT_COST_PER_M = 0.12;
@@ -213,15 +213,20 @@ router.post('/:type', authenticate, async (req, res) => {
 
         // ── STAGE 3: Quality Gate (Claude — optional) ──────────────────────────
         let finalContent = stage2Raw;
+        let profileViolations: string[] = [];
         let stage3Info: { triggered: boolean; tokens?: { input: number; output: number; cost_usd: number } } = { triggered: false };
 
         if (QUALITY_GATE_ENABLED && blueprintResult) {
             console.log('[Generation] Stage 3: running quality gate...');
             try {
-                const review = await reviewDocument(blueprintResult.blueprint, stage2Raw, docType);
+                const review = await reviewDocument(blueprintResult.blueprint, stage2Raw, docType, profile);
                 finalContent = review.rewrittenContent;
+                profileViolations = review.profileViolations;
                 stage3Info = { triggered: true, tokens: review.tokens };
-                console.log(`[Generation] Stage 3 complete. passed=${review.passed}, flags=${review.flags.length}`);
+                if (review.profileViolations.length > 0) {
+                    console.warn(`[Generation] Stage 3 profile violations (${review.profileViolations.length}):`, review.profileViolations);
+                }
+                console.log(`[Generation] Stage 3 complete. passed=${review.passed}, flags=${review.flags.length}, profileViolations=${review.profileViolations.length}`);
             } catch (gateError: any) {
                 console.error('[Generation] Stage 3 failed — using Stage 2 output unchanged:', gateError.message);
             }
@@ -258,7 +263,7 @@ router.post('/:type', authenticate, async (req, res) => {
         };
         console.log('[Generation] Cost breakdown:', JSON.stringify(costBreakdown));
 
-        res.json({ content: finalContent, id: doc.id, costBreakdown, blueprint: blueprintResult?.blueprint ?? null });
+        res.json({ content: finalContent, id: doc.id, costBreakdown, blueprint: blueprintResult?.blueprint ?? null, profileViolations });
 
     } catch (error) {
         console.error(`Generation Error (${type}):`, error);

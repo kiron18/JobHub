@@ -18,6 +18,8 @@ import {
     Copy,
     CheckCircle,
     ExternalLink,
+    ShieldAlert,
+    X,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../lib/api';
@@ -89,6 +91,7 @@ interface WorkspaceState {
         salaryType: 'base' | 'trp' | 'unknown';
     } | null;
     blueprint?: any | null;
+    profileViolations?: string[];
 }
 
 import { ProfileCompletion } from './ProfileCompletion';
@@ -222,6 +225,7 @@ export const ApplicationWorkspace: React.FC = () => {
 
     const [isEditing, setIsEditing] = useState(false);
     const [isConfirmingRegen, setIsConfirmingRegen] = useState(false);
+    const [violationsBannerDismissed, setViolationsBannerDismissed] = useState(false);
     const [regenerateFeedback, setRegenerateFeedback] = useState('');
     const [rateLimitError, setRateLimitError] = useState(false);
     const [exportingPdf, setExportingPdf] = useState(false);
@@ -495,6 +499,7 @@ export const ApplicationWorkspace: React.FC = () => {
         setAbortController(controller);
         setRateLimitError(false);
 
+        setViolationsBannerDismissed(false);
         setState(prev => ({ ...prev, isGenerating: true }));
         try {
             const { data } = await api.post(`/generate/${type}`, {
@@ -537,7 +542,8 @@ export const ApplicationWorkspace: React.FC = () => {
                 },
                 saveStatus: 'saved',
                 isGenerating: false,
-                blueprint: data.blueprint ?? prev.blueprint
+                blueprint: data.blueprint ?? prev.blueprint,
+                profileViolations: data.profileViolations ?? []
             }));
             setIsConfirmingRegen(false);
             setIsEditing(false);
@@ -1189,6 +1195,42 @@ export const ApplicationWorkspace: React.FC = () => {
                                 )}
                             </div>
                         )}
+                        <AnimatePresence>
+                            {!violationsBannerDismissed && (state.profileViolations?.length ?? 0) > 0 && !state.isGenerating && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -8 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -8 }}
+                                    transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+                                    className="w-full max-w-3xl mb-3 rounded-xl border border-amber-500/30 bg-amber-500/8 p-4"
+                                >
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="flex items-start gap-3 min-w-0">
+                                            <ShieldAlert size={16} className="text-amber-400 mt-0.5 shrink-0" />
+                                            <div className="min-w-0">
+                                                <p className="text-[11px] font-black text-amber-300 uppercase tracking-wider mb-1">Review before sending</p>
+                                                <p className="text-[11px] text-amber-200/70 leading-relaxed mb-2.5">The AI accuracy check flagged these claims — confirm each one matches your actual experience.</p>
+                                                <ul className="space-y-1">
+                                                    {state.profileViolations!.map((v, i) => (
+                                                        <li key={i} className="flex items-start gap-2 text-[11px] text-amber-200/80">
+                                                            <span className="text-amber-500 mt-0.5 shrink-0">·</span>
+                                                            {v}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => setViolationsBannerDismissed(true)}
+                                            className="shrink-0 text-amber-500/50 hover:text-amber-400 transition-colors mt-0.5"
+                                            aria-label="Dismiss"
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                         <div className="w-full max-w-3xl bg-white text-slate-900 shadow-2xl rounded-sm min-h-[900px]" style={{ fontFamily: 'Calibri, Arial, "Helvetica Neue", sans-serif' }}>
                             <div className="p-12">
                                 {rateLimitError ? (

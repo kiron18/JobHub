@@ -12,6 +12,7 @@ import { StrategyBlueprint } from './strategy';
 export interface QualityGateResult {
     passed: boolean;
     flags: string[];
+    profileViolations: string[];
     rewrites: Array<{
         section: string;
         original: string;
@@ -28,10 +29,17 @@ export interface QualityGateResult {
  * - "Pass if good" default prevents the gate from blocking acceptable work
  * - Prompt kept under 400 words total to minimise latency and cost
  */
+export interface ProfileSnapshot {
+    employers: string[];
+    jobTitles: string[];
+    achievementMetrics: string[];
+}
+
 export const QUALITY_GATE_PROMPT = (
     blueprint: StrategyBlueprint,
     generatedContent: string,
-    docType: 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE' = 'COVER_LETTER'
+    docType: 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE' = 'COVER_LETTER',
+    profileSnapshot?: ProfileSnapshot | null
 ): string => {
     const check1 = docType === 'COVER_LETTER'
         ? `CHECK 1 — OPENING HOOK: Does the cover letter open with (or very closely paraphrase) the required hook? A close paraphrase passes. A generic opener that ignores the hook fails.\nHook required: "${blueprint.openingHook}"`
@@ -45,7 +53,26 @@ export const QUALITY_GATE_PROMPT = (
         ? `The document must be written in flowing narrative paragraphs. FAIL if any section opens with a bullet-point list or reads like a resume bullet (e.g. "Led X achieving Y" as a standalone line with no surrounding prose). Cover letters must not replicate resume structure.`
         : `Each selection criterion response must open by directly addressing the criterion — not with a resume-style bullet or a cover letter narrative hook. FAIL if any criterion response is a bullet list or opens with a generic paragraph unrelated to the criterion.`;
 
-    return `You are a quality gate. Check the document below against 3 criteria only. Return JSON.
+    const profileGroundingBlock = profileSnapshot && (profileSnapshot.employers.length > 0 || profileSnapshot.jobTitles.length > 0)
+        ? `
+CHECK 4 — PROFILE GROUNDING (hallucination detection):
+Verify every factual claim in the document is traceable to the candidate's actual data.
+
+CANDIDATE'S VERIFIED EMPLOYERS: ${profileSnapshot.employers.length > 0 ? profileSnapshot.employers.map(e => `"${e}"`).join(' | ') : '(none on record)'}
+CANDIDATE'S VERIFIED JOB TITLES: ${profileSnapshot.jobTitles.length > 0 ? profileSnapshot.jobTitles.map(t => `"${t}"`).join(' | ') : '(none on record)'}
+${profileSnapshot.achievementMetrics.length > 0 ? `CANDIDATE'S VERIFIED METRICS (from achievement bank): ${profileSnapshot.achievementMetrics.map(m => `"${m}"`).join(' | ')}` : ''}
+
+Scan the document for:
+a) Any employer or organisation name NOT in VERIFIED EMPLOYERS — flag it.
+b) Any job title claimed NOT in VERIFIED JOB TITLES — flag it.
+c) Any specific numerical metric (%, $, team size, headcount, duration, dollar value) that does NOT appear in VERIFIED METRICS and is not already annotated [VERIFY:] — flag it.
+
+For each violation: add a rewrite that either removes the fabricated claim or replaces the specific number with [VERIFY: describe what the candidate should check] so they can confirm accuracy before sending.
+
+PASS if no violations found, or all inferred numbers are already marked [VERIFY:]. Do NOT flag legitimate paraphrases of verified metrics (e.g. "23% reduction" is a valid paraphrase of a metric "reduced costs by 23%").`
+        : '';
+
+    return `You are a quality gate. Check the document below against ${profileGroundingBlock ? '4' : '3'} criteria only. Return JSON.
 
 BLUEPRINT REFERENCE:
 Pitfall flags (must be absent): ${blueprint.pitfallFlags.map(f => `"${f}"`).join(' | ')}
@@ -64,16 +91,18 @@ CHECK 2 — PITFALL FLAGS: Does the document contain any pitfall flag phrase or 
 CHECK 3 — KEYWORD COVERAGE AND FORMAT: Two sub-checks, both must pass.
   3a. KEYWORD COVERAGE: Do at least 3 of the messaging angles listed above appear (verbatim or as clear paraphrases) in the document? If fewer than 3 are present, fail and identify which angles are missing.
   3b. DOCUMENT FORMAT: ${formatCheck}
+${profileGroundingBlock}
 
-DECISION RULE: If all 3 checks pass, set passed: true and return empty arrays. Only flag genuine failures — minor wording variations pass. Do not nitpick style.
+DECISION RULE: If all checks pass, set passed: true and return empty arrays. Only flag genuine failures — minor wording variations pass. Do not nitpick style.
 
-REWRITE RULE: Maximum 3 rewrites total across all failing checks. Each rewrite must be surgical — replace only the failing text, leave surrounding content intact.
+REWRITE RULE: Maximum 4 rewrites total across all failing checks. Each rewrite must be surgical — replace only the failing text, leave surrounding content intact.
 
 Return valid JSON only. No preamble. No markdown fences.
 
 {
   "passed": true | false,
   "flags": ["description of each failure — empty array if passed"],
+  "profileViolations": ["list of fabricated or unverifiable claims found — empty array if none"],
   "rewrites": [
     {
       "section": "short label e.g. 'opening paragraph'",
