@@ -775,7 +775,10 @@ function StepAuth({ answers, onAuthSuccess, submitting, onBack }: {
     e.preventDefault();
     setPwError('');
     setAlreadyRegistered(false);
-    if (password.length < 8) { setPwError('Password must be at least 8 characters'); return; }
+    if (password.length < 8 || !/[^a-zA-Z0-9]/.test(password)) {
+      setPwError('Password must be at least 8 characters and include at least one symbol (e.g. ! @ # $)');
+      return;
+    }
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -858,10 +861,20 @@ function StepAuth({ answers, onAuthSuccess, submitting, onBack }: {
             type="password"
             value={password}
             onChange={e => { setPassword(e.target.value); setPwError(''); }}
-            placeholder="Minimum 8 characters"
+            placeholder="e.g. Hunter2!"
             required
             style={inputStyle}
           />
+          {password.length > 0 && (
+            <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: password.length >= 8 ? '#4ade80' : '#f87171' }}>
+                {password.length >= 8 ? '✓' : '✗'} 8+ characters
+              </span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: /[^a-zA-Z0-9]/.test(password) ? '#4ade80' : '#f87171' }}>
+                {/[^a-zA-Z0-9]/.test(password) ? '✓' : '✗'} 1 symbol (! @ # $ …)
+              </span>
+            </div>
+          )}
           {pwError && (
             <p style={{ fontSize: 12, color: '#f87171', marginTop: 6 }}>{pwError}</p>
           )}
@@ -888,7 +901,7 @@ function StepAuth({ answers, onAuthSuccess, submitting, onBack }: {
 
         <PrimaryButton
           onClick={() => {}}
-          disabled={loading || submitting || !email.trim() || !password}
+          disabled={loading || submitting || !email.trim() || password.length < 8 || !/[^a-zA-Z0-9]/.test(password)}
           label={loading || submitting ? 'Creating account...' : 'Create account & continue →'}
         />
       </form>

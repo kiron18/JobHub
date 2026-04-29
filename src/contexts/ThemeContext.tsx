@@ -42,7 +42,7 @@ export const DARK: Theme = {
   bg: '#0d1117', dotColor: '#1b2030',
   card: 'rgba(255,255,255,0.05)', cardBorder: 'rgba(255,255,255,0.1)',
   cardShadow: '0 8px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)',
-  text: '#f3f4f6', textMuted: '#9ca3af', textFaint: '#4b5563',
+  text: '#f3f4f6', textMuted: '#9ca3af', textFaint: '#64748b',
   inputBg: 'rgba(255,255,255,0.07)', inputBorder: 'rgba(255,255,255,0.11)', inputText: '#f3f4f6',
   btnBg: '#f3f4f6', btnText: '#111827', btnShadow: '0 4px 24px rgba(0,0,0,0.4)',
   progressBg: 'rgba(255,255,255,0.1)', progressFill: '#f3f4f6',
@@ -63,7 +63,7 @@ function applySemanticTokens(isDark: boolean): void {
   const root = document.documentElement;
   root.style.setProperty('--text',       isDark ? '#F1F5F9' : '#0F172A');
   root.style.setProperty('--text-muted', isDark ? '#94A3B8' : '#64748B');
-  root.style.setProperty('--text-faint', isDark ? '#475569' : '#94A3B8');
+  root.style.setProperty('--text-faint', isDark ? '#64748b' : '#94A3B8');
   root.style.setProperty('--radius-card',  '20px');
   root.style.setProperty('--radius-input', '12px');
   root.style.setProperty('--space-card',   '24px');
