@@ -529,10 +529,7 @@ function StepAuth({ answers, onAuthSuccess, onBack }: {
         return;
       }
       // Flag that we're handling submit here so the useEffect doesn't double-fire.
-      // Delay 800ms to let Supabase's getUser() API recognise the new token before
-      // the server's authenticate middleware validates it.
       justSignedUpRef.current = true;
-      await new Promise(r => setTimeout(r, 800));
       onAuthSuccess(email.trim());
     } catch (err: any) {
       toast.error(err.message || 'Sign up failed');
@@ -750,6 +747,23 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
   const handleAuthAndContinue = async (email: string) => {
     if (!resume) { toast.error('Resume is missing — please go back and upload it.'); return; }
     setPendingEmail(email);
+
+    // Wait until the server accepts the token before sending the file upload.
+    // New sign-up tokens take 1-2s to propagate through Supabase's getUser() API.
+    // Poll GET /profile: any non-401 response (including 404 for brand-new users) means auth is working.
+    for (let attempt = 0; attempt < 6; attempt++) {
+      try {
+        await api.get('/profile');
+        break;
+      } catch (e: any) {
+        if (e?.response?.status === 401 && attempt < 5) {
+          await new Promise(r => setTimeout(r, 600));
+        } else {
+          break; // 404 or other non-401 = auth is working; or we've exhausted retries
+        }
+      }
+    }
+
     await doSubmit({ ...answers, marketingEmail: email }, resume, cl1, cl2);
   };
 

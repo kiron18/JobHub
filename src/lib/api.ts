@@ -27,11 +27,15 @@ api.interceptors.request.use(
 // Retry 401s once — Supabase's getUser() API can take ~1-2s to recognise a brand-new
 // session token after signUp(). Only retry when we have a valid session (so we don't
 // silently swallow legitimate auth errors from unauthenticated requests).
+// Never retry multipart/form-data — FormData is a consumed stream and the retry would
+// send an empty body, causing silent data loss on file uploads.
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const config = error.config as typeof error.config & { _retried?: boolean };
-    if (error.response?.status === 401 && !config._retried) {
+    const contentType = String(config.headers?.['Content-Type'] ?? config.headers?.['content-type'] ?? '');
+    const isMultipart = contentType.includes('multipart');
+    if (error.response?.status === 401 && !config._retried && !isMultipart) {
       config._retried = true;
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.access_token) {
