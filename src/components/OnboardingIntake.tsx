@@ -475,12 +475,14 @@ function StepAuth({ answers, onAuthSuccess, onBack }: {
   const [pwError, setPwError] = useState('');
   const [alreadyRegistered, setAlreadyRegistered] = useState(false);
   const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
+  const justSignedUpRef = useRef(false);
 
   const isAuthenticated = !!user && !(user as any).is_anonymous;
 
   // Already logged in — skip this step automatically, no confirmation screen needed
+  // justSignedUpRef prevents double-call when handleSignUp already invoked onAuthSuccess
   useEffect(() => {
-    if (isAuthenticated && user?.email) {
+    if (isAuthenticated && user?.email && !justSignedUpRef.current) {
       onAuthSuccess(user.email);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -526,6 +528,11 @@ function StepAuth({ answers, onAuthSuccess, onBack }: {
         }
         return;
       }
+      // Flag that we're handling submit here so the useEffect doesn't double-fire.
+      // Delay 800ms to let Supabase's getUser() API recognise the new token before
+      // the server's authenticate middleware validates it.
+      justSignedUpRef.current = true;
+      await new Promise(r => setTimeout(r, 800));
       onAuthSuccess(email.trim());
     } catch (err: any) {
       toast.error(err.message || 'Sign up failed');
@@ -707,6 +714,7 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
     coverLetter1: File | null,
     coverLetter2: File | null
   ) => {
+    if (submitting) return;
     setSubmitting(true);
     const formData = new FormData();
     formData.append('answers', JSON.stringify(finalAnswers));
