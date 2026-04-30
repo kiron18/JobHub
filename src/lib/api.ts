@@ -24,4 +24,24 @@ api.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
+// Retry 401s once — Supabase's getUser() API can take ~1-2s to recognise a brand-new
+// session token after signUp(). Only retry when we have a valid session (so we don't
+// silently swallow legitimate auth errors from unauthenticated requests).
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const config = error.config as typeof error.config & { _retried?: boolean };
+    if (error.response?.status === 401 && !config._retried) {
+      config._retried = true;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        await new Promise(r => setTimeout(r, 1500));
+        config.headers.Authorization = `Bearer ${session.access_token}`;
+        return api(config);
+      }
+    }
+    return Promise.reject(error);
+  },
+);
+
 export default api;
