@@ -8,10 +8,6 @@ import { useAppTheme } from '../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import {
-  loadPendingAnswers, loadFilesFromIDB,
-  clearPendingAnswers, clearPendingFilesFromIDB,
-} from '../lib/pendingOnboarding';
 
 const useTheme = () => useAppTheme();
 
@@ -41,20 +37,15 @@ const VISA_STATUS_OPTIONS = [
   'Other / Not specified',
 ];
 const RESPONSE_OPTIONS = [
-  { value: 'mostly_silence', label: 'Mostly silence', sub: 'Applications go in and nothing comes back' },
-  { value: 'mostly_rejections', label: 'Mostly rejections', sub: 'Getting responses, but all rejections' },
-  { value: 'interviews_stall', label: 'Interviews that stall', sub: 'Getting interviews but they go nowhere' },
-  { value: 'no_offers', label: 'Interviews but no offers', sub: 'Getting far but not closing' },
-  { value: 'mix', label: 'Mix of everything', sub: '' },
+  { value: 'mostly_silence',    label: 'Mostly silence',            sub: 'Applications go in and nothing comes back' },
+  { value: 'mostly_rejections', label: 'Mostly rejections',         sub: 'Getting responses, but all rejections' },
+  { value: 'interviews_stall',  label: 'Interviews that stall',     sub: 'Getting interviews but they go nowhere' },
+  { value: 'no_offers',         label: 'Interviews but no offers',  sub: 'Getting far but not closing' },
+  { value: 'mix',               label: 'Mix of everything',         sub: '' },
 ];
 
-const STEP_LABELS = [
-  '',
-  'Target locked in.',
-  'Search pattern clear.',
-  'Documents ready.',
-  '',
-];
+// Labels shown after completing each step (shown at the top of the NEXT step)
+const STEP_LABELS = ['', 'Target locked in.', 'Search pattern clear.'];
 
 // ── Scene ─────────────────────────────────────────────────────────────────────
 
@@ -111,8 +102,8 @@ function ProfileProgress({ step, answers }: { step: number; answers: IntakeAnswe
   const { T } = useTheme();
   const chips: string[] = [];
   if (answers.targetRole) chips.push(answers.targetRole);
-  if (answers.seniority) chips.push(answers.seniority);
-  if (answers.industry) chips.push(answers.industry);
+  if (answers.seniority)  chips.push(answers.seniority);
+  if (answers.industry)   chips.push(answers.industry);
 
   return (
     <div style={{ marginBottom: 28 }}>
@@ -120,12 +111,12 @@ function ProfileProgress({ step, answers }: { step: number; answers: IntakeAnswe
         <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: T.textFaint }}>
           Building your profile
         </span>
-        <span style={{ fontSize: 11, color: T.textFaint, fontWeight: 600 }}>{step} / 4</span>
+        <span style={{ fontSize: 11, color: T.textFaint, fontWeight: 600 }}>{step} / 3</span>
       </div>
       <div style={{ height: 4, background: T.progressBg, borderRadius: 99, overflow: 'hidden' }}>
         <motion.div
           style={{ height: '100%', background: T.progressFill, borderRadius: 99 }}
-          animate={{ width: `${(step / 4) * 100}%` }}
+          animate={{ width: `${(step / 3) * 100}%` }}
           transition={{ duration: 0.6, ease: [0.25, 1, 0.5, 1] }}
         />
       </div>
@@ -280,7 +271,6 @@ function BackButton({ onBack, disabled }: { onBack: () => void; disabled?: boole
   );
 }
 
-
 // ── Step: Welcome ─────────────────────────────────────────────────────────────
 
 function StepWelcome({ onNext }: { onNext: () => void }) {
@@ -311,12 +301,12 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
           {[
-            { label: 'Role targeting', desc: 'Right roles for your level?' },
-            { label: 'Document audit', desc: 'Resume costing you interviews?' },
-            { label: 'Application pipeline', desc: 'Where things drop off?' },
-            { label: 'Honest assessment', desc: 'What your docs reveal' },
+            { label: 'Role targeting',        desc: 'Right roles for your level?' },
+            { label: 'Document audit',         desc: 'Resume costing you interviews?' },
+            { label: 'Application pipeline',   desc: 'Where things drop off?' },
+            { label: 'Honest assessment',      desc: 'What your docs reveal' },
             { label: 'Three-step fix', color: '#22c55e', desc: 'Ranked by impact, written for you' },
-            { label: 'How we can help', desc: 'Tools and training available' },
+            { label: 'How we can help',        desc: 'Tools and training available' },
           ].map((item, i) => (
             <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * 0.04 }}
               style={{
@@ -369,6 +359,164 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
           Log in
         </button>
       </p>
+    </div>
+  );
+}
+
+// ── Step: Auth (step 1 — before questions) ────────────────────────────────────
+
+function StepAuth({ onAuthSuccess, onBack }: {
+  onAuthSuccess: () => void;
+  onBack: () => void;
+}) {
+  const { T } = useTheme();
+  const { user } = useAuth();
+  const [email, setEmail]       = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading]   = useState(false);
+  const [pwError, setPwError]   = useState('');
+  const [mode, setMode]         = useState<'signup' | 'signin'>('signup');
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
+  const justCalledRef = useRef(false);
+
+  const isAuthenticated = !!user && !(user as any).is_anonymous;
+
+  // If already authenticated (e.g. returning user), skip this step
+  useEffect(() => {
+    if (isAuthenticated && !justCalledRef.current) {
+      justCalledRef.current = true;
+      onAuthSuccess();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
+
+  if (isAuthenticated) return null;
+
+  const inputStyle: React.CSSProperties = {
+    background: T.inputBg, border: `1px solid ${T.inputBorder}`,
+    borderRadius: 12, color: T.inputText, fontSize: 15,
+    padding: '12px 16px', width: '100%', outline: 'none',
+    fontFamily: 'inherit', boxSizing: 'border-box',
+  };
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setPwError('');
+    setLoading(true);
+
+    try {
+      if (mode === 'signin') {
+        const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+        if (error) {
+          toast.error('Incorrect email or password.');
+        }
+        // onAuthStateChange fires → setUser → isAuthenticated → useEffect → onAuthSuccess()
+      } else {
+        if (password.length < 8 || !/[^a-zA-Z0-9]/.test(password)) {
+          setPwError('Password needs 8+ characters and at least one symbol (! @ # $ …)');
+          setLoading(false);
+          return;
+        }
+        const { data, error: signUpError } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+        });
+        if (signUpError) {
+          const msg = signUpError.message.toLowerCase();
+          if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('already been registered')) {
+            setMode('signin');
+            toast.error('Account already exists — sign in below.');
+          } else {
+            toast.error(signUpError.message || 'Sign up failed');
+          }
+          return;
+        }
+        if (!data.session) {
+          if (!data.user?.identities || data.user.identities.length === 0) {
+            setMode('signin');
+            toast.error('Account already exists — sign in below.');
+          } else {
+            setAwaitingConfirmation(true);
+          }
+          return;
+        }
+        justCalledRef.current = true;
+        onAuthSuccess();
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Something went wrong');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const isSignup = mode === 'signup';
+  const canSubmit = email.trim().length > 0 && password.length >= (isSignup ? 8 : 1) && (isSignup ? /[^a-zA-Z0-9]/.test(password) : true);
+
+  return (
+    <div>
+      <h2 style={{ fontSize: 24, fontWeight: 900, color: T.text, marginBottom: 8, letterSpacing: '-0.02em' }}>
+        {isSignup ? 'Get your personalized job readiness diagnostic' : 'Welcome back'}
+      </h2>
+      <p style={{ color: T.textMuted, fontSize: 13, lineHeight: 1.6, marginBottom: 24 }}>
+        {isSignup
+          ? 'Enter your email to receive your full results — and access them anytime.'
+          : 'Sign in to continue your diagnosis.'}
+      </p>
+
+      {awaitingConfirmation ? (
+        <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+          style={{ padding: '14px 16px', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.25)', borderRadius: 10 }}>
+          <p style={{ fontSize: 14, fontWeight: 700, color: '#a5b4fc', margin: '0 0 6px 0' }}>Check your inbox</p>
+          <p style={{ fontSize: 13, color: '#c7d2fe', margin: 0, lineHeight: 1.5 }}>
+            We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account, then come back here.
+          </p>
+          <p style={{ fontSize: 12, color: '#818cf8', margin: '6px 0 0 0' }}>Can't find it? Check spam.</p>
+        </motion.div>
+      ) : (
+        <form onSubmit={handleSubmit}>
+          <div style={{ marginBottom: 14 }}>
+            <span style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' as const, color: T.textFaint, marginBottom: 8 }}>Email</span>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+              placeholder="you@example.com" required style={inputStyle} autoFocus />
+          </div>
+          <div style={{ marginBottom: 8 }}>
+            <span style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' as const, color: T.textFaint, marginBottom: 8 }}>Password</span>
+            <input type="password" value={password} onChange={e => { setPassword(e.target.value); setPwError(''); }}
+              placeholder={isSignup ? 'e.g. Hunter2!' : 'Your password'} required style={inputStyle} />
+            {isSignup && password.length > 0 && (
+              <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: password.length >= 8 ? '#4ade80' : '#f87171' }}>
+                  {password.length >= 8 ? '✓' : '✗'} 8+ characters
+                </span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: /[^a-zA-Z0-9]/.test(password) ? '#4ade80' : '#f87171' }}>
+                  {/[^a-zA-Z0-9]/.test(password) ? '✓' : '✗'} 1 symbol (! @ # $ …)
+                </span>
+              </div>
+            )}
+            {pwError && <p style={{ fontSize: 12, color: '#f87171', marginTop: 6 }}>{pwError}</p>}
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+            <PrimaryButton
+              onClick={() => {}}
+              disabled={loading || !canSubmit}
+              label={loading ? (isSignup ? 'Creating account…' : 'Signing in…') : 'Continue →'}
+            />
+          </div>
+        </form>
+      )}
+
+      <p style={{ fontSize: 13, color: T.textFaint, marginTop: 16, textAlign: 'center' }}>
+        {isSignup ? 'Already have an account? ' : 'New here? '}
+        <button type="button" onClick={() => { setMode(isSignup ? 'signin' : 'signup'); setPwError(''); }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.progressFill, fontWeight: 700, fontSize: 13, padding: 0, textDecoration: 'underline', textUnderlineOffset: 3 }}>
+          {isSignup ? 'Sign in' : 'Create an account'}
+        </button>
+      </p>
+
+      <div style={{ marginTop: 16 }}><BackButton onBack={onBack} /></div>
     </div>
   );
 }
@@ -459,176 +607,15 @@ function StepResponses({ answers, onChange, onNext, onBack }: {
   );
 }
 
-// ── Step: Auth ────────────────────────────────────────────────────────────────
-
-function StepAuth({ answers, onAuthSuccess, onBack }: {
-  answers: IntakeAnswers;
-  onAuthSuccess: (email: string) => void;
-  onBack: () => void;
-}) {
-  const { T } = useTheme();
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [pwError, setPwError] = useState('');
-  const [alreadyRegistered, setAlreadyRegistered] = useState(false);
-  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
-  const justSignedUpRef = useRef(false);
-
-  const isAuthenticated = !!user && !(user as any).is_anonymous;
-
-  // Already logged in — skip this step automatically, no confirmation screen needed
-  // justSignedUpRef prevents double-call when handleSignUp already invoked onAuthSuccess
-  useEffect(() => {
-    if (isAuthenticated && user?.email && !justSignedUpRef.current) {
-      onAuthSuccess(user.email);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated]);
-
-  if (isAuthenticated) return null;
-
-  async function handleSignUp(e: React.FormEvent) {
-    e.preventDefault();
-    setPwError('');
-    setAlreadyRegistered(false);
-    setAwaitingConfirmation(false);
-    if (password.length < 8 || !/[^a-zA-Z0-9]/.test(password)) {
-      setPwError('Password must be at least 8 characters and include at least one symbol (e.g. ! @ # $)');
-      return;
-    }
-    setLoading(true);
-    try {
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-      });
-      if (signUpError) {
-        const msg = signUpError.message.toLowerCase();
-        if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('already been registered') || msg.includes('email address is already')) {
-          setAlreadyRegistered(true);
-        } else {
-          toast.error(signUpError.message || 'Sign up failed');
-        }
-        return;
-      }
-      if (!data.session) {
-        console.log('[StepAuth] signUp — no session. userId:', data.user?.id?.slice(0, 8), 'identities:', data.user?.identities?.length ?? 'null');
-        // identities is empty → existing user (Supabase obfuscates this for security)
-        // identities is non-empty → new user awaiting email confirmation
-        if (!data.user?.identities || data.user.identities.length === 0) {
-          setAlreadyRegistered(true);
-        } else {
-          // Save progress so it survives the page reload after email confirmation
-          localStorage.setItem('jobhub_email_confirm_progress', JSON.stringify({ answers }));
-          setAwaitingConfirmation(true);
-        }
-        return;
-      }
-      // Flag that we're handling submit here so the useEffect doesn't double-fire.
-      justSignedUpRef.current = true;
-      onAuthSuccess(email.trim());
-    } catch (err: any) {
-      toast.error(err.message || 'Sign up failed');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  const inputStyle: React.CSSProperties = {
-    background: T.inputBg, border: `1px solid ${T.inputBorder}`,
-    borderRadius: 12, color: T.inputText, fontSize: 15,
-    padding: '12px 16px', width: '100%', outline: 'none',
-    fontFamily: 'inherit', boxSizing: 'border-box',
-  };
-
-  return (
-    <div>
-      <ProfileProgress step={4} answers={answers} />
-      <h2 style={{ fontSize: 24, fontWeight: 900, color: T.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
-        Create your free account
-      </h2>
-      <p style={{ color: T.textMuted, fontSize: 13, lineHeight: 1.6, marginBottom: 6 }}>
-        We'll send your full diagnostic report, personalised job tips, and role recommendations here — so make it one you actually check.
-      </p>
-      <p style={{ color: T.textFaint, fontSize: 12, lineHeight: 1.5, marginBottom: 20 }}>
-        No cold outreach. Just your results and the occasional insight worth reading.
-      </p>
-
-      <form onSubmit={handleSignUp}>
-        <div style={{ marginBottom: 14 }}>
-          <span style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' as const, color: T.textFaint, marginBottom: 8 }}>Email</span>
-          <input type="email" value={email} onChange={e => { setEmail(e.target.value); setAlreadyRegistered(false); setAwaitingConfirmation(false); }}
-            placeholder="you@example.com" required style={inputStyle} />
-        </div>
-        <div style={{ marginBottom: 8 }}>
-          <span style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' as const, color: T.textFaint, marginBottom: 8 }}>Password</span>
-          <input type="password" value={password} onChange={e => { setPassword(e.target.value); setPwError(''); }}
-            placeholder="e.g. Hunter2!" required style={inputStyle} />
-          {password.length > 0 && (
-            <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
-              <span style={{ fontSize: 11, fontWeight: 600, color: password.length >= 8 ? '#4ade80' : '#f87171' }}>
-                {password.length >= 8 ? '✓' : '✗'} 8+ characters
-              </span>
-              <span style={{ fontSize: 11, fontWeight: 600, color: /[^a-zA-Z0-9]/.test(password) ? '#4ade80' : '#f87171' }}>
-                {/[^a-zA-Z0-9]/.test(password) ? '✓' : '✗'} 1 symbol (! @ # $ …)
-              </span>
-            </div>
-          )}
-          {pwError && <p style={{ fontSize: 12, color: '#f87171', marginTop: 6 }}>{pwError}</p>}
-        </div>
-
-        {alreadyRegistered && (
-          <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-            style={{ padding: '12px 14px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 10, marginBottom: 14 }}>
-            <p style={{ fontSize: 13, color: '#fcd34d', margin: 0 }}>
-              This email already has an account.{' '}
-              <button type="button" onClick={() => navigate('/auth')}
-                style={{ background: 'none', border: 'none', color: '#fbbf24', fontWeight: 700, cursor: 'pointer', fontSize: 13, textDecoration: 'underline', padding: 0 }}>
-                Sign in instead.
-              </button>
-            </p>
-          </motion.div>
-        )}
-
-        {awaitingConfirmation && (
-          <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-            style={{ padding: '14px 16px', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.25)', borderRadius: 10, marginBottom: 14 }}>
-            <p style={{ fontSize: 14, fontWeight: 700, color: '#a5b4fc', margin: '0 0 6px 0' }}>Check your inbox</p>
-            <p style={{ fontSize: 13, color: '#c7d2fe', margin: 0, lineHeight: 1.5 }}>
-              We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account, then come back here to continue.
-            </p>
-            <p style={{ fontSize: 12, color: '#818cf8', margin: '6px 0 0 0' }}>
-              Can't find it? Check your spam or junk folder.
-            </p>
-          </motion.div>
-        )}
-
-        <PrimaryButton
-          onClick={() => {}}
-          disabled={loading || !email.trim() || password.length < 8 || !/[^a-zA-Z0-9]/.test(password)}
-          label={loading ? 'Setting up your account...' : 'Continue →'}
-        />
-      </form>
-
-      <div style={{ marginTop: 16 }}><BackButton onBack={onBack} /></div>
-    </div>
-  );
-}
-
 // ── Step: Files ───────────────────────────────────────────────────────────────
 
-function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, onBack, marketingConsent, onMarketingConsentChange, answers, emailSent }: {
+function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, onBack, marketingConsent, onMarketingConsentChange, answers }: {
   resume: File | null; setResume: (f: File | null) => void;
   cl1: File | null; setCl1: (f: File | null) => void;
   cl2: File | null; setCl2: (f: File | null) => void;
   onSubmit: () => void; onBack: () => void;
   marketingConsent: boolean; onMarketingConsentChange: (v: boolean) => void;
   answers: IntakeAnswers;
-  emailSent: string;
 }) {
   const { T } = useTheme();
   return (
@@ -640,18 +627,7 @@ function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, onBa
       <p style={{ color: T.textMuted, fontSize: 13, lineHeight: 1.6, marginBottom: 6 }}>
         We're not judging them — we're reading them to find exactly what's holding you back.
       </p>
-      <p style={{ color: T.textFaint, fontSize: 12, marginBottom: 12 }}>PDF or Word accepted.</p>
-
-      {emailSent && (
-        <div style={{
-          marginBottom: 16, padding: '10px 14px', borderRadius: 10,
-          background: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.18)',
-        }}>
-          <p style={{ fontSize: 12, color: T.textMuted, margin: 0, lineHeight: 1.5 }}>
-            Account created for <strong style={{ color: T.text }}>{emailSent}</strong>. Your report and recommendations will be sent here.
-          </p>
-        </div>
-      )}
+      <p style={{ color: T.textFaint, fontSize: 12, marginBottom: 16 }}>PDF or Word accepted.</p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <FileDropZone label="Your resume (required)" required file={resume} onFile={setResume}
@@ -681,16 +657,16 @@ function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, onBa
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean }) {
-  const [step, setStep] = useState(0);
+  const [step, setStep]           = useState(0);
   const [submitting, setSubmitting] = useState(false);
-  const [pendingEmail, setPendingEmail] = useState('');
   const { T, isDark, toggle: toggleDark } = useAppTheme();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
 
+  // If there's already a report being processed (e.g. user refreshed mid-way), go straight to the processing screen
   useEffect(() => {
     api.get('/onboarding/report').then(({ data }) => {
-      if (data.status === 'PROCESSING' || data.status === 'FAILED') { setStep(5); }
+      if (data.status === 'PROCESSING' || data.status === 'FAILED') setStep(5);
     }).catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -699,8 +675,8 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
     responsePattern: '', marketingEmail: '', marketingConsent: false,
   });
   const [resume, setResume] = useState<File | null>(null);
-  const [cl1, setCl1] = useState<File | null>(null);
-  const [cl2, setCl2] = useState<File | null>(null);
+  const [cl1, setCl1]       = useState<File | null>(null);
+  const [cl2, setCl2]       = useState<File | null>(null);
 
   const onChange = (k: keyof IntakeAnswers, v: string | boolean) =>
     setAnswers(prev => ({ ...prev, [k]: v }));
@@ -709,34 +685,30 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
     finalAnswers: IntakeAnswers,
     resumeFile: File,
     coverLetter1: File | null,
-    coverLetter2: File | null
+    coverLetter2: File | null,
   ) => {
     if (submitting) return;
     setSubmitting(true);
-    const formData = new FormData();
-    formData.append('answers', JSON.stringify(finalAnswers));
-    formData.append('resume', resumeFile);
-    if (coverLetter1) formData.append('coverLetter1', coverLetter1);
-    if (coverLetter2) formData.append('coverLetter2', coverLetter2);
+    const fd = new FormData();
+    fd.append('answers', JSON.stringify(finalAnswers));
+    fd.append('resume', resumeFile);
+    if (coverLetter1) fd.append('coverLetter1', coverLetter1);
+    if (coverLetter2) fd.append('coverLetter2', coverLetter2);
 
     try {
-      await api.post('/onboarding/submit', formData, { timeout: 30000 });
-      clearPendingAnswers();
-      clearPendingFilesFromIDB().catch(() => {});
+      await api.post('/onboarding/submit', fd, { timeout: 30000 });
       setSubmitting(false);
       setStep(5);
     } catch (err: any) {
       const status = err?.response?.status;
-      const detail = err?.response?.data?.error || err?.response?.data?.details || err?.message || 'Unknown error';
-      console.error('[OnboardingIntake] Submit failed:', status, detail, err);
-      if (status === 401) {
-        toast.error(`Authentication failed (401): ${detail}. Please refresh and try again.`);
-      } else if (status === 413) {
+      const detail = err?.response?.data?.error || err?.message || 'Unknown error';
+      console.error('[OnboardingIntake] Submit failed:', status, detail);
+      if (status === 413) {
         toast.error('File too large. Please use a PDF under 5MB.');
       } else if (err?.code === 'ECONNABORTED' || err?.message?.includes('timeout')) {
-        toast.error('Request timed out. Your files may be too large — try a smaller PDF.');
+        toast.error('Request timed out. Try a smaller PDF.');
       } else if (!err?.response) {
-        toast.error('Network error — cannot reach the server. Check your connection.');
+        toast.error('Network error — check your connection and try again.');
       } else {
         toast.error(`Upload failed (${status ?? 'error'}): ${detail}`);
       }
@@ -744,68 +716,14 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
     }
   };
 
-  const handleAuthAndContinue = async (email: string) => {
-    if (!resume) { toast.error('Resume is missing — please go back and upload it.'); return; }
-    setPendingEmail(email);
-
-    // Wait until the server accepts the token before sending the file upload.
-    // New sign-up tokens take 1-2s to propagate through Supabase's getUser() API.
-    // Poll GET /profile: any non-401 response (including 404 for brand-new users) means auth is working.
-    for (let attempt = 0; attempt < 6; attempt++) {
-      try {
-        await api.get('/profile');
-        break;
-      } catch (e: any) {
-        if (e?.response?.status === 401 && attempt < 5) {
-          await new Promise(r => setTimeout(r, 600));
-        } else {
-          break; // 404 or other non-401 = auth is working; or we've exhausted retries
-        }
-      }
-    }
-
-    await doSubmit({ ...answers, marketingEmail: email }, resume, cl1, cl2);
+  // Called when the user clicks "Build my diagnosis →" on StepFiles
+  const handleFilesSubmit = async () => {
+    if (!resume) { toast.error('Resume is required.'); return; }
+    await doSubmit(
+      { ...answers, marketingEmail: user?.email ?? '' },
+      resume, cl1, cl2,
+    );
   };
-
-  // Restore mid-onboarding progress saved before the email confirmation redirect
-  useEffect(() => {
-    if (!user || (user as any).is_anonymous) return;
-    const raw = localStorage.getItem('jobhub_email_confirm_progress');
-    if (!raw) return;
-    try {
-      const saved = JSON.parse(raw);
-      setAnswers(saved.answers);
-      setStep(4); // jump to StepAuth — user is authenticated, will see "Account ready → let's go"
-      localStorage.removeItem('jobhub_email_confirm_progress');
-    } catch {}
-  }, [user]);
-
-  // resumeMode: fired when user returns after OAuth redirect with IDB files saved
-  useEffect(() => {
-    if (!resumeMode) return;
-    async function loadAndSubmit() {
-      setSubmitting(true);
-      const pendingAnswers = loadPendingAnswers();
-      const pendingFiles = await loadFilesFromIDB();
-      if (!pendingAnswers || !pendingFiles.resume) {
-        toast.error('Could not restore your session. Please start again.');
-        setSubmitting(false);
-        return;
-      }
-      setAnswers(pendingAnswers as unknown as IntakeAnswers);
-      let userEmail = '';
-      try {
-        const { data } = await supabase.auth.getSession();
-        userEmail = data.session?.user?.email ?? '';
-      } catch {}
-      await doSubmit(
-        { ...(pendingAnswers as unknown as IntakeAnswers), marketingEmail: userEmail },
-        pendingFiles.resume, pendingFiles.cl1, pendingFiles.cl2
-      );
-    }
-    loadAndSubmit();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resumeMode]);
 
   const handleRetry = async () => {
     try { await api.post('/onboarding/retry'); setStep(5); }
@@ -815,8 +733,10 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
   const goNext = () => setStep(s => s + 1);
   const goBack = () => setStep(s => Math.max(0, s - 1));
 
+  // Step order: Welcome(0) → Auth(1) → Role(2) → Responses(3) → Files(4) → ProcessingScreen(5)
   const STEPS = [
     <StepWelcome key="welcome" onNext={goNext} />,
+    <StepAuth key="auth" onAuthSuccess={goNext} onBack={goBack} />,
     <StepRole key="role" answers={answers} onChange={(k, v) => onChange(k, v as string)} onNext={goNext} onBack={goBack} />,
     <StepResponses key="responses" answers={answers} onChange={(k, v) => onChange(k, v as string)} onNext={goNext} onBack={goBack} />,
     <StepFiles
@@ -825,16 +745,14 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
       resume={resume} setResume={setResume}
       cl1={cl1} setCl1={setCl1}
       cl2={cl2} setCl2={setCl2}
-      onSubmit={goNext}
+      onSubmit={handleFilesSubmit}
       onBack={goBack}
       marketingConsent={answers.marketingConsent}
       onMarketingConsentChange={v => setAnswers(prev => ({ ...prev, marketingConsent: v }))}
-      emailSent=""
     />,
-    <StepAuth key="auth" answers={answers} onAuthSuccess={handleAuthAndContinue} onBack={goBack} />,
   ];
 
-  const SignOutBtn = user && !(user as any).is_anonymous && step > 0 ? (
+  const SignOutBtn = user && !(user as any).is_anonymous && step > 1 ? (
     <motion.button
       onClick={async () => { await signOut(); navigate('/', { replace: true }); }}
       whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
@@ -846,7 +764,6 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
         justifyContent: 'center', gap: 6, fontSize: 12, fontWeight: 600,
         backdropFilter: 'blur(12px)',
       }}
-      title="Sign out"
     >
       <LogOut size={14} />
       Sign out
@@ -861,8 +778,8 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
         {SignOutBtn}
         <ProcessingScreen
           isDark={isDark} theme={T}
-          email={answers.marketingEmail?.trim() || pendingEmail}
-          onComplete={() => { console.log('[OnboardingIntake] onComplete called'); }}
+          email={user?.email ?? answers.marketingEmail}
+          onComplete={() => {}}
           onRetry={handleRetry}
         />
       </div>
