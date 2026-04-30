@@ -443,4 +443,35 @@ router.post('/backfill-extras', authenticate, async (req: AuthRequest, res: Resp
   }
 });
 
+// ── POST /api/onboarding/rating ───────────────────────────────────────────────
+// Saves the user's overall diagnostic rating (1–5 stars, chip tags, optional comment).
+router.post('/rating', authenticate, async (req: AuthRequest, res: Response) => {
+  const userId = req.user!.id;
+  const { rating, chips, comment } = req.body as {
+    rating: number;
+    chips?: string[];
+    comment?: string;
+  };
+
+  if (!rating || rating < 1 || rating > 5) {
+    return res.status(400).json({ error: 'Rating must be 1–5' });
+  }
+
+  try {
+    await prisma.diagnosticReport.update({
+      where: { userId },
+      data: {
+        overallRating: rating,
+        ratingChips: Array.isArray(chips) ? chips : [],
+        ratingComment: comment?.trim() ?? null,
+        ratedAt: new Date(),
+      },
+    });
+    return res.json({ ok: true });
+  } catch (error) {
+    console.error('[Onboarding] Rating error:', error);
+    return res.status(500).json({ error: 'Failed to save rating' });
+  }
+});
+
 export default router;

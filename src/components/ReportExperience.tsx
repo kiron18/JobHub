@@ -1,87 +1,104 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
-import { Sun, Moon, ChevronDown, Copy, Check, X } from 'lucide-react';
+import { Sun, Moon, Copy, Check, X, Star } from 'lucide-react';
 import api from '../lib/api';
 import { parseReportSections, splitProblemFix } from '../lib/parseReport';
-import { SECTION_ICONS } from '../lib/reportIcons';
 
-interface ReportExperienceProps {
-  onDone: () => void;
-}
+// ── Color constants ────────────────────────────────────────────────────────────
+const INDIGO = '#5850EC';
+const TEAL   = '#0F766E';
+const RED    = '#ef4444';
+const AMBER  = '#f59e0b';
 
-interface ReportData {
-  reportId: string;
-  status: string;
-  reportMarkdown: string | null;
-  createdAt: string | null;
-}
+// ── Section metadata (replaces SECTION_ICONS — simplified 2-color palette) ────
+const SECTION_META: Record<string, {
+  label: string;
+  severity: string;
+  color: string;
+  bg: string;
+  isCritical: boolean;
+}> = {
+  targeting:      { label: 'Targeting',            severity: 'REVIEW',      color: AMBER,   bg: 'rgba(245,158,11,0.08)',  isCritical: false },
+  document_audit: { label: 'Document Audit',       severity: 'CRITICAL',    color: RED,     bg: 'rgba(239,68,68,0.08)',   isCritical: true  },
+  pipeline:       { label: 'Application Pipeline', severity: 'REVIEW',      color: AMBER,   bg: 'rgba(245,158,11,0.08)',  isCritical: false },
+  honest:         { label: 'The Honest Truth',     severity: 'CRITICAL',    color: RED,     bg: 'rgba(239,68,68,0.08)',   isCritical: true  },
+  fix:            { label: 'Your 3-Step Fix',      severity: 'ACTION PLAN', color: INDIGO,  bg: 'rgba(88,80,236,0.08)',   isCritical: false },
+};
+
+const SECTION_ORDER    = ['targeting', 'document_audit', 'pipeline', 'honest', 'fix', 'what_jobhub_does'];
+const CARDS_TO_RENDER  = ['targeting', 'document_audit', 'pipeline', 'honest', 'fix'];
 
 const SECTION_INTROS: Record<string, string> = {
-  targeting:        'Whether you\'re aiming at the right roles, seniority, and location for your experience level.',
-  document_audit:   'How well your resume and cover letter communicate your value to a recruiter in 6 seconds.',
-  pipeline:         'Where in the process — applications, interviews, or offers — things are dropping off and why.',
-  honest:           'What your actual documents reveal versus what you think the problem is.',
-  fix:              'Three concrete actions ranked by impact, written specifically for your situation.',
-  what_jobhub_does: 'How the platform takes what\'s in your bank and turns it into documents that get responses.',
+  targeting:      'Whether you\'re targeting the right roles and seniority for your experience.',
+  document_audit: 'How your resume and cover letter land with a recruiter in the first 6 seconds.',
+  pipeline:       'Where in the process — applications, interviews, offers — things are breaking.',
+  honest:         'What your documents reveal versus what you think the problem is.',
+  fix:            'Three concrete actions ranked by impact, written for your situation.',
 };
 
-const SECTION_SEVERITY: Record<string, { label: string; color: string; bg: string }> = {
-  document_audit:   { label: 'CRITICAL',    color: '#ef4444', bg: 'rgba(239,68,68,0.10)' },
-  honest:           { label: 'CRITICAL',    color: '#ef4444', bg: 'rgba(239,68,68,0.10)' },
-  targeting:        { label: 'REVIEW',      color: '#f59e0b', bg: 'rgba(245,158,11,0.10)' },
-  pipeline:         { label: 'REVIEW',      color: '#f59e0b', bg: 'rgba(245,158,11,0.10)' },
-  fix:              { label: 'ACTION PLAN', color: '#22c55e', bg: 'rgba(34,197,94,0.10)' },
-  what_jobhub_does: { label: 'INSIGHT',     color: '#6366f1', bg: 'rgba(99,102,241,0.10)' },
+const RESPONSE_INTROS: Record<string, string> = {
+  mostly_silence:    'Your applications are going out — but nothing is coming back.',
+  mostly_rejections: 'You\'re getting responses, but they all end the same way.',
+  interviews_stall:  'You\'re getting in the room. The problem is what happens next.',
+  no_offers:         'You\'re making it to the final stages. Something is breaking at the close.',
+  mix:               'The pattern isn\'t consistent — which usually means the issue is structural.',
 };
 
-const SECTION_ORDER = ['targeting', 'document_audit', 'pipeline', 'honest', 'fix', 'what_jobhub_does'];
-
+// ── Theme ──────────────────────────────────────────────────────────────────────
 function makeTheme(isDark: boolean) {
   return isDark ? {
-    bg: '#0d1117',
-    eyebrow: '#4b5563',
-    heading: '#f3f4f6',
-    sub: '#6b7280',
-    islandBg: 'rgba(255,255,255,0.03)',
-    islandBorder: 'rgba(255,255,255,0.07)',
-    introText: '#6b7280',
-    hookText: '#e5e7eb',
-    bodyText: '#9ca3af',
-    divider: 'rgba(255,255,255,0.06)',
-    toggleBg: 'rgba(255,255,255,0.08)',
-    toggleColor: '#9ca3af',
-    blobs: ['rgba(251,191,36,0.04)', 'rgba(45,212,191,0.03)', 'rgba(167,139,250,0.04)'],
-    modalBg: '#111827',
-    stickyBg: '#111827',
+    bg:           '#0d1117',
+    card:         'rgba(255,255,255,0.03)',
+    cardBorder:   'rgba(255,255,255,0.07)',
+    heading:      '#f3f4f6',
+    sub:          '#6b7280',
+    intro:        '#6b7280',
+    body:         '#9ca3af',
+    divider:      'rgba(255,255,255,0.07)',
+    fixBand:      'rgba(255,255,255,0.04)',
+    toggleBg:     'rgba(255,255,255,0.08)',
+    toggleColor:  '#9ca3af',
+    stickyBg:     '#111827',
     stickyBorder: 'rgba(255,255,255,0.08)',
+    modalBg:      '#111827',
+    inputBg:      'rgba(255,255,255,0.05)',
+    inputBorder:  'rgba(255,255,255,0.10)',
+    inputText:    '#e5e7eb',
+    chipBg:       'rgba(255,255,255,0.07)',
+    chipBorder:   'rgba(255,255,255,0.12)',
+    chipActive:   INDIGO,
+    referralBg:   'rgba(255,255,255,0.025)',
+    referralBorder:'rgba(255,255,255,0.07)',
+    blobs:        ['rgba(88,80,236,0.05)', 'rgba(15,118,110,0.04)', 'rgba(239,68,68,0.03)'],
   } : {
-    bg: '#f5f4f0',
-    eyebrow: '#9ca3af',
-    heading: '#111827',
-    sub: '#6b7280',
-    islandBg: 'rgba(255,255,255,0.85)',
-    islandBorder: 'rgba(0,0,0,0.08)',
-    introText: '#6b7280',
-    hookText: '#1f2937',
-    bodyText: '#4b5563',
-    divider: 'rgba(0,0,0,0.06)',
-    toggleBg: 'rgba(0,0,0,0.07)',
-    toggleColor: '#6b7280',
-    blobs: ['rgba(251,191,36,0.10)', 'rgba(45,212,191,0.08)', 'rgba(167,139,250,0.08)'],
-    modalBg: '#ffffff',
-    stickyBg: '#ffffff',
-    stickyBorder: 'rgba(0,0,0,0.08)',
+    bg:           '#f5f4f0',
+    card:         'rgba(255,255,255,0.92)',
+    cardBorder:   'rgba(0,0,0,0.08)',
+    heading:      '#111827',
+    sub:          '#6b7280',
+    intro:        '#9ca3af',
+    body:         '#4b5563',
+    divider:      'rgba(0,0,0,0.07)',
+    fixBand:      'rgba(0,0,0,0.025)',
+    toggleBg:     'rgba(0,0,0,0.07)',
+    toggleColor:  '#6b7280',
+    stickyBg:     '#ffffff',
+    stickyBorder: 'rgba(0,0,0,0.09)',
+    modalBg:      '#ffffff',
+    inputBg:      'rgba(0,0,0,0.04)',
+    inputBorder:  'rgba(0,0,0,0.12)',
+    inputText:    '#111827',
+    chipBg:       'rgba(0,0,0,0.05)',
+    chipBorder:   'rgba(0,0,0,0.10)',
+    chipActive:   INDIGO,
+    referralBg:   'rgba(248,250,252,0.95)',
+    referralBorder:'rgba(0,0,0,0.07)',
+    blobs:        ['rgba(88,80,236,0.07)', 'rgba(15,118,110,0.06)', 'rgba(239,68,68,0.04)'],
   };
 }
 
-function extractHook(content: string): string {
-  const clean = content.replace(/\*\*/g, '').replace(/#+\s/g, '').replace(/\n---\n[\s\S]*/, '').trim();
-  const sentences = clean.match(/[^.!?]+[.!?]+/g) || [];
-  return sentences.slice(0, 2).join(' ').trim() || clean.slice(0, 180);
-}
-
-
+// ── Inline markdown renderer ───────────────────────────────────────────────────
 function renderInline(text: string): React.ReactNode {
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
   if (parts.length === 1) return text;
@@ -99,29 +116,29 @@ function renderInline(text: string): React.ReactNode {
 function RenderContent({ text, color }: { text: string; color: string }) {
   const lines = text.split('\n').filter(l => { const t = l.trim(); return t && t !== '---'; });
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
       {lines.map((line, i) => {
-        const trimmed = line.trim();
-        if (trimmed.startsWith('- ') || trimmed.startsWith('• ')) {
+        const t = line.trim();
+        if (t.startsWith('- ') || t.startsWith('• ')) {
           return (
             <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-              <span style={{ color, fontWeight: 800, marginTop: 3, flexShrink: 0, fontSize: 16 }}>·</span>
+              <span style={{ color, fontWeight: 800, marginTop: 3, flexShrink: 0, fontSize: 14 }}>·</span>
               <p style={{ margin: 0, fontSize: 15, lineHeight: 1.75, color: 'inherit', fontWeight: 500 }}>
-                {renderInline(trimmed.replace(/^[-•]\s/, ''))}
+                {renderInline(t.replace(/^[-•]\s/, ''))}
               </p>
             </div>
           );
         }
-        if (trimmed.startsWith('###') || trimmed.startsWith('##')) {
+        if (t.startsWith('###') || t.startsWith('##')) {
           return (
-            <p key={i} style={{ margin: 0, fontSize: 11, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color, opacity: 0.85 }}>
-              {trimmed.replace(/^#+\s/, '')}
+            <p key={i} style={{ margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color, opacity: 0.85 }}>
+              {t.replace(/^#+\s/, '')}
             </p>
           );
         }
         return (
           <p key={i} style={{ margin: 0, fontSize: 15, lineHeight: 1.8, fontWeight: 450 }}>
-            {renderInline(trimmed)}
+            {renderInline(t)}
           </p>
         );
       })}
@@ -129,43 +146,169 @@ function RenderContent({ text, color }: { text: string; color: string }) {
   );
 }
 
-const SKOOL_MODULES = [
-  'Fix your CV profile paragraph — stop the credibility gap',
-  'Reframe your background as an asset, not a liability',
-  'Write cover letters that name the employer, not templates',
-  'Contact specialist recruiters — what to say, who to message',
-  'Filter roles by visa-safe employers — stop wasting applications',
-  'Activate your community connections — warm outreach that lands',
-  'Answer "tell me about yourself" — 4 versions for every context',
-  'Weekly group coaching calls — live feedback on your applications',
-];
+// ── Social proof widget ────────────────────────────────────────────────────────
+const RATING_CHIPS = ['Spot on', 'Eye-opening', 'Needed to hear this', 'Needs more detail'];
 
-const PRO_FEATURES = [
-  { emoji: '📄', label: 'Tailored resume',         desc: 'Built from your achievements, matched to every JD' },
-  { emoji: '✉️', label: 'Cover letter',             desc: 'Names the company, proves the match, passes the filter' },
-  { emoji: '📋', label: 'Selection criteria',       desc: 'SAR-structured responses for each criterion' },
-  { emoji: '🎤', label: 'Interview prep',            desc: 'Role-specific questions with your actual achievement answers' },
-  { emoji: '🔗', label: 'LinkedIn optimisation',    desc: 'Headline, About, bio — and an AI-generated profile photo' },
-  { emoji: '📨', label: 'Outreach templates',       desc: 'Cold approach, LinkedIn DM, post-interview follow-up' },
-  { emoji: '🗺️', label: 'Daily job feed',           desc: 'Matched roles from Seek and LinkedIn, pulled every morning' },
-  { emoji: '🗓️', label: 'Application tracker',      desc: 'Reminds you when to follow up and what to say' },
-];
+function SocialProofWidget({ isDark, theme }: { isDark: boolean; theme: ReturnType<typeof makeTheme> }) {
+  const [rating, setRating] = useState(0);
+  const [hovered, setHovered] = useState(0);
+  const [chips, setChips] = useState<string[]>([]);
+  const [comment, setComment] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  function toggleChip(chip: string) {
+    setChips(prev => prev.includes(chip) ? prev.filter(c => c !== chip) : [...prev, chip]);
+  }
+
+  async function handleSubmit() {
+    if (!rating) return;
+    setSubmitting(true);
+    try {
+      await api.post('/onboarding/rating', { rating, chips, comment: comment.trim() || undefined });
+      setSubmitted(true);
+    } catch {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-60px' }}
+      transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
+      style={{
+        background: theme.card,
+        border: `1px solid ${theme.cardBorder}`,
+        borderRadius: 20,
+        padding: '28px 28px 24px',
+        backdropFilter: 'blur(24px)',
+      }}
+    >
+      {submitted ? (
+        <div style={{ textAlign: 'center', padding: '8px 0' }}>
+          <p style={{ fontSize: 22, fontWeight: 900, color: theme.heading, margin: '0 0 6px', letterSpacing: '-0.02em' }}>Thanks for the feedback.</p>
+          <p style={{ fontSize: 14, color: theme.sub }}>This helps us improve the diagnosis for everyone.</p>
+        </div>
+      ) : (
+        <>
+          <p style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: theme.sub, marginBottom: 8 }}>
+            How accurate was your diagnosis?
+          </p>
+          <h3 style={{ fontSize: 20, fontWeight: 900, color: theme.heading, margin: '0 0 20px', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+            Does this match what you've been experiencing?
+          </h3>
+
+          {/* Stars */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 18 }}>
+            {[1, 2, 3, 4, 5].map(n => (
+              <button
+                key={n}
+                onClick={() => setRating(n)}
+                onMouseEnter={() => setHovered(n)}
+                onMouseLeave={() => setHovered(0)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex' }}
+              >
+                <Star
+                  size={28}
+                  fill={(hovered || rating) >= n ? AMBER : 'none'}
+                  color={(hovered || rating) >= n ? AMBER : (isDark ? '#374151' : '#d1d5db')}
+                  strokeWidth={1.5}
+                  style={{ transition: 'all 0.1s' }}
+                />
+              </button>
+            ))}
+          </div>
+
+          {/* Chips */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 18 }}>
+            {RATING_CHIPS.map(chip => {
+              const active = chips.includes(chip);
+              return (
+                <button
+                  key={chip}
+                  onClick={() => toggleChip(chip)}
+                  style={{
+                    background: active ? `${INDIGO}15` : theme.chipBg,
+                    border: `1px solid ${active ? INDIGO + '50' : theme.chipBorder}`,
+                    borderRadius: 99, padding: '7px 14px', fontSize: 13, fontWeight: 600,
+                    color: active ? INDIGO : theme.sub, cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {chip}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Optional comment */}
+          <textarea
+            placeholder="Anything else? (optional)"
+            value={comment}
+            onChange={e => setComment(e.target.value)}
+            rows={2}
+            style={{
+              width: '100%', background: theme.inputBg, border: `1px solid ${theme.inputBorder}`,
+              borderRadius: 10, color: theme.inputText, fontSize: 14,
+              padding: '10px 14px', outline: 'none', resize: 'none',
+              fontFamily: 'inherit', marginBottom: 14, boxSizing: 'border-box',
+            }}
+          />
+
+          <button
+            onClick={handleSubmit}
+            disabled={!rating || submitting}
+            style={{
+              background: rating ? INDIGO : (isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'),
+              color: rating ? 'white' : theme.sub,
+              border: 'none', borderRadius: 10, padding: '11px 24px',
+              fontSize: 14, fontWeight: 700, cursor: rating ? 'pointer' : 'default',
+              transition: 'all 0.2s', boxShadow: rating ? `0 4px 14px ${INDIGO}30` : 'none',
+            }}
+          >
+            {submitting ? 'Saving...' : 'Submit feedback'}
+          </button>
+        </>
+      )}
+    </motion.div>
+  );
+}
+
+// ── Main component ─────────────────────────────────────────────────────────────
+interface ReportExperienceProps {
+  onDone: () => void;
+}
+
+interface ReportData {
+  reportId: string;
+  status: string;
+  reportMarkdown: string | null;
+  createdAt: string | null;
+}
 
 export function ReportExperience({ onDone }: ReportExperienceProps) {
-  const [isDark, setIsDark] = useState(false);
-  const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
+  const [isDark, setIsDark] = useState(true);
   const theme = makeTheme(isDark);
   const [processingMs, setProcessingMs] = useState(0);
+  const [showSticky, setShowSticky] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [msgCopied, setMsgCopied] = useState(false);
+  const ctaRef = useRef<HTMLDivElement>(null);
 
   const { data, isLoading, isError, refetch } = useQuery<ReportData>({
     queryKey: ['report'],
     queryFn: async () => { const res = await api.get<ReportData>('/onboarding/report'); return res.data; },
     staleTime: 0,
     refetchOnMount: true,
-    refetchInterval: (query) => {
-      const status = query.state.data?.status;
-      return status === 'PROCESSING' ? 4000 : false;
-    },
+    refetchInterval: (query) => query.state.data?.status === 'PROCESSING' ? 4000 : false,
+  });
+
+  const { data: profile } = useQuery<{ name?: string; targetRole?: string; responsePattern?: string }>({
+    queryKey: ['profile'],
+    queryFn: async () => { const { data } = await api.get('/profile'); return data; },
+    staleTime: 5 * 60 * 1000,
   });
 
   useEffect(() => {
@@ -173,29 +316,6 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
     const t = setInterval(() => setProcessingMs(ms => ms + 4000), 4000);
     return () => clearInterval(t);
   }, [data?.status]);
-
-  const sections = parseReportSections(data?.reportMarkdown ?? '');
-  const status = data?.status;
-
-  function handleToggle(key: string) {
-    setOpenMap(prev => ({ ...prev, [key]: !prev[key] }));
-  }
-
-  const [optionModal, setOptionModal] = useState<1 | 2 | null>(null);
-  const [linkCopied, setLinkCopied] = useState(false);
-  const [msgCopied, setMsgCopied] = useState(false);
-  const [showSticky, setShowSticky] = useState(false);
-  const ctaRef = useRef<HTMLDivElement>(null);
-
-  const { data: profile } = useQuery<{ name?: string }>({
-    queryKey: ['profile'],
-    queryFn: async () => { const { data } = await api.get('/profile'); return data; },
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const refSlug = ((profile as any)?.name ?? '').split(/\s/)[0].toLowerCase().replace(/[^a-z0-9]/g, '') || 'friend';
-  const referralLink = `https://aussiegradcareers.com.au?ref=${refSlug}`;
-  const shareMsg = `I just found this free tool that analyzed exactly why my applications weren't getting responses. Takes 5 minutes and the report is actually useful - ${referralLink}`;
 
   useEffect(() => {
     const el = ctaRef.current;
@@ -206,10 +326,56 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
     );
     obs.observe(el);
     return () => obs.disconnect();
-  }, [sections.length]);
+  }, []);
+
+  const sections = parseReportSections(data?.reportMarkdown ?? '');
+  const status   = data?.status;
+
+  const firstName  = profile?.name?.split(' ')[0] ?? null;
+  const targetRole = (profile as any)?.targetRole ?? null;
+  const responsePattern = (profile as any)?.responsePattern ?? null;
+
+  const refSlug = (profile?.name ?? '').split(/\s/)[0].toLowerCase().replace(/[^a-z0-9]/g, '') || 'friend';
+  const referralLink = `https://aussiegradcareers.com.au?ref=${refSlug}`;
+  const shareMsg = `I just found this free tool that analyzed exactly why my applications weren't getting responses. Takes 5 minutes and the report is genuinely useful — ${referralLink}`;
+
+  // Extract what_jobhub_does content for use in CTA section
+  const whatJobHubSection = sections.find(s => s.key === 'what_jobhub_does');
+  const whatJobHubSnippet = whatJobHubSection
+    ? whatJobHubSection.content.split('\n').filter(l => l.trim() && !l.trim().startsWith('#')).slice(0, 2).join(' ')
+    : '';
+
+  const cardSections = sections
+    .filter(s => CARDS_TO_RENDER.includes(s.key))
+    .sort((a, b) => {
+      const ai = SECTION_ORDER.indexOf(a.key);
+      const bi = SECTION_ORDER.indexOf(b.key);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
+
+  const BLOCKER_PRIORITY = ['document_audit', 'honest', 'targeting', 'pipeline'];
+  const BLOCKER_HEADLINES: Record<string, string> = {
+    document_audit: 'Your resume isn\'t clearing the 6-second recruiter test.',
+    honest:         'Your positioning isn\'t matching what the market wants.',
+    targeting:      'Your targeting strategy is working against you.',
+    pipeline:       'Your applications aren\'t turning into conversations.',
+  };
+  const topKey = BLOCKER_PRIORITY.find(k => sections.some(s => s.key === k));
+  const stickyHeadline = topKey ? BLOCKER_HEADLINES[topKey] : 'Your job search has a clear blocker.';
 
   return (
     <>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
+        @keyframes criticalPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+        @media print {
+          .no-print { display: none !important; }
+          body { background: white !important; color: black !important; }
+          .print-card { break-inside: avoid; }
+        }
+      `}</style>
+
       <div style={{ position: 'fixed', inset: 0, overflowY: 'auto', background: theme.bg, zIndex: 10, transition: 'background 0.3s' }}>
 
         {/* Ambient blobs */}
@@ -229,7 +395,8 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
         {/* Theme toggle */}
         <button
           onClick={() => setIsDark(d => !d)}
-          aria-label="Toggle dark mode"
+          aria-label="Toggle theme"
+          className="no-print"
           style={{
             position: 'fixed', top: 20, right: 20, zIndex: 20,
             width: 40, height: 40, borderRadius: 99,
@@ -242,37 +409,36 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
         </button>
 
         {/* Content */}
-        <div style={{ position: 'relative', zIndex: 1, maxWidth: 780, margin: '0 auto', padding: '72px 24px 140px' }}>
+        <div style={{ position: 'relative', zIndex: 1, maxWidth: 720, margin: '0 auto', padding: '72px 24px 160px' }}>
 
-          {/* Header */}
+          {/* ── Personalized header ── */}
           <motion.div
             initial={{ opacity: 0, y: -16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            style={{ marginBottom: 56, textAlign: 'center' }}
+            style={{ marginBottom: 48, textAlign: 'center' }}
           >
-            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: theme.eyebrow, marginBottom: 12 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: theme.sub, marginBottom: 12 }}>
               Your diagnosis
             </p>
-            <h1 style={{ fontSize: 34, fontWeight: 800, color: theme.heading, margin: '0 0 12px', lineHeight: 1.2, letterSpacing: '-0.02em' }}>
-              Here's what's actually going on.
+            <h1 style={{ fontSize: 'clamp(26px, 5vw, 38px)', fontWeight: 900, color: theme.heading, margin: '0 0 12px', lineHeight: 1.15, letterSpacing: '-0.025em' }}>
+              {firstName && targetRole
+                ? <>Here's what's holding back<br />your <span style={{ color: INDIGO }}>{targetRole}</span> search, {firstName}.</>
+                : firstName
+                ? <>Here's what's holding back<br />your search, {firstName}.</>
+                : <>Here's what's actually going on.</>
+              }
             </h1>
-            <p style={{ fontSize: 16, color: theme.sub, lineHeight: 1.6, maxWidth: 480, margin: '0 auto' }}>
-              Six areas. Open each one. The severity badge tells you where to focus first.
-            </p>
+            {responsePattern && RESPONSE_INTROS[responsePattern] && (
+              <p style={{ fontSize: 16, color: theme.sub, lineHeight: 1.6, maxWidth: 460, margin: '0 auto 0' }}>
+                {RESPONSE_INTROS[responsePattern]}
+              </p>
+            )}
           </motion.div>
 
-          <style>{`
-            @keyframes spin { to { transform: rotate(360deg); } }
-            @keyframes progressShimmer {
-              0% { background-position: -200% center; }
-              100% { background-position: 200% center; }
-            }
-          `}</style>
-
-          {/* Loading / processing */}
+          {/* ── Loading / processing ── */}
           {(isLoading || status === 'PROCESSING') && sections.length === 0 && processingMs < 60000 && (
-            <div style={{ padding: '20px 0 48px' }}>
+            <div style={{ padding: '8px 0 40px' }}>
               <div style={{
                 background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.7)',
                 border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'}`,
@@ -282,10 +448,10 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                   <div style={{
                     width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
                     border: `3px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
-                    borderTopColor: '#0F766E', animation: 'spin 0.9s linear infinite',
+                    borderTopColor: TEAL, animation: 'spin 0.9s linear infinite',
                   }} />
                   <div>
-                    <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: isDark ? '#f3f4f6' : '#111827', lineHeight: 1.3 }}>
+                    <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: theme.heading, lineHeight: 1.3 }}>
                       Writing your diagnosis…
                     </p>
                     <p style={{ margin: '3px 0 0', fontSize: 13, color: theme.sub }}>
@@ -297,41 +463,41 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                     </p>
                   </div>
                 </div>
-                <div style={{ width: '100%', height: 6, borderRadius: 99, background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)', overflow: 'hidden', marginBottom: 12 }}>
+                <div style={{ width: '100%', height: 4, borderRadius: 99, background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)', overflow: 'hidden', marginBottom: 10 }}>
                   <div style={{
                     height: '100%', borderRadius: 99,
                     width: `${Math.min(88, 5 + (processingMs / 60000) * 83)}%`,
-                    background: 'linear-gradient(90deg, #0F766E 0%, #2dd4bf 50%, #0F766E 100%)',
-                    backgroundSize: '200% auto', animation: 'progressShimmer 2s linear infinite',
+                    background: `linear-gradient(90deg, ${TEAL} 0%, #2dd4bf 50%, ${TEAL} 100%)`,
+                    backgroundSize: '200% auto', animation: 'shimmer 2s linear infinite',
                     transition: 'width 3.5s ease-out',
                   }} />
                 </div>
-                <p style={{ fontSize: 12, color: theme.sub, margin: 0 }}>Usually takes 30–60 seconds — hang tight.</p>
+                <p style={{ fontSize: 12, color: theme.sub, margin: 0 }}>Usually 30–60 seconds — hang tight.</p>
               </div>
 
               <div style={{
-                background: 'linear-gradient(135deg, rgba(15,118,110,0.12) 0%, rgba(19,78,74,0.08) 100%)',
-                border: '1px solid rgba(15,118,110,0.25)', borderRadius: 20, padding: '28px 32px',
-                display: 'flex', flexDirection: 'column', gap: 12,
+                background: `linear-gradient(135deg, rgba(15,118,110,0.12) 0%, rgba(19,78,74,0.08) 100%)`,
+                border: '1px solid rgba(15,118,110,0.25)', borderRadius: 20, padding: '24px 28px',
               }}>
-                <p style={{ margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#0F766E' }}>While you wait</p>
-                <p style={{ margin: 0, fontSize: 17, fontWeight: 800, color: isDark ? '#f3f4f6' : '#111827', lineHeight: 1.3, letterSpacing: '-0.01em' }}>
+                <p style={{ margin: '0 0 6px', fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: TEAL }}>
+                  While you wait
+                </p>
+                <p style={{ margin: '0 0 8px', fontSize: 17, fontWeight: 800, color: theme.heading, lineHeight: 1.3, letterSpacing: '-0.01em' }}>
                   Join the free community while your report generates.
                 </p>
-                <p style={{ margin: 0, fontSize: 14, color: theme.sub, lineHeight: 1.7 }}>
+                <p style={{ margin: '0 0 16px', fontSize: 14, color: theme.sub, lineHeight: 1.7 }}>
                   The{' '}
                   <a href="https://www.skool.com/aussiegradcareers" target="_blank" rel="noopener noreferrer" style={{ color: '#2dd4bf', textDecoration: 'underline', textUnderlineOffset: 3 }}>
                     Aussie Grad Careers community
                   </a>
-                  {' '}has the frameworks, templates, and live coaching calls that map directly to what's in your report — so you can take action the moment it's ready.
+                  {' '}has the frameworks, templates, and live coaching calls that map directly to what's in your report.
                 </p>
                 <a
                   href="https://www.skool.com/aussiegradcareers" target="_blank" rel="noopener noreferrer"
                   style={{
-                    display: 'inline-block', alignSelf: 'flex-start',
-                    background: 'linear-gradient(135deg, #0F766E, #134E4A)', color: 'white',
-                    borderRadius: 12, padding: '11px 24px', fontSize: 14, fontWeight: 800,
-                    textDecoration: 'none', boxShadow: '0 4px 16px rgba(15,118,110,0.28)', marginTop: 4,
+                    display: 'inline-block', background: `linear-gradient(135deg, ${TEAL}, #134E4A)`,
+                    color: 'white', borderRadius: 10, padding: '10px 22px', fontSize: 14, fontWeight: 800,
+                    textDecoration: 'none', boxShadow: `0 4px 16px rgba(15,118,110,0.28)`,
                   }}
                 >
                   Join free on Skool →
@@ -340,11 +506,11 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
             </div>
           )}
 
-          {/* Stuck in processing */}
+          {/* ── Stuck in processing ── */}
           {status === 'PROCESSING' && sections.length === 0 && processingMs >= 60000 && (
             <div style={{ textAlign: 'center', padding: '60px 0' }}>
               <p style={{ color: theme.sub, fontSize: 15, marginBottom: 8 }}>This is taking longer than expected.</p>
-              <p style={{ color: theme.sub, fontSize: 13, marginBottom: 24 }}>Generation may have timed out — regenerating is safe and only takes a minute.</p>
+              <p style={{ color: theme.sub, fontSize: 13, marginBottom: 24 }}>Regenerating is safe and only takes a minute.</p>
               <button
                 onClick={async () => { await api.post('/onboarding/retry'); setProcessingMs(0); refetch(); }}
                 style={{ background: '#FCD34D', color: '#111827', border: 'none', borderRadius: 10, padding: '10px 24px', fontWeight: 700, cursor: 'pointer' }}
@@ -354,13 +520,11 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
             </div>
           )}
 
-          {/* API error */}
+          {/* ── API error ── */}
           {(isError || (!isLoading && !data)) && (
             <div style={{ textAlign: 'center', padding: '60px 0' }}>
               <p style={{ color: '#f87171', fontSize: 15, marginBottom: 8 }}>Couldn't load your report.</p>
-              <p style={{ color: theme.sub, fontSize: 13, marginBottom: 24 }}>
-                This can happen if your session changed. Try regenerating — your intake answers are saved.
-              </p>
+              <p style={{ color: theme.sub, fontSize: 13, marginBottom: 24 }}>Your intake answers are saved — try regenerating.</p>
               <button
                 onClick={async () => { await api.post('/onboarding/retry'); refetch(); }}
                 style={{ background: '#FCD34D', color: '#111827', border: 'none', borderRadius: 10, padding: '10px 24px', fontWeight: 700, cursor: 'pointer' }}
@@ -370,7 +534,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
             </div>
           )}
 
-          {/* FAILED or empty */}
+          {/* ── FAILED / unparseable ── */}
           {!isError && data && (status === 'FAILED' || (status === 'COMPLETE' && sections.length === 0)) && (
             <div style={{ textAlign: 'center', padding: '60px 0' }}>
               <p style={{ color: '#f87171', fontSize: 15, marginBottom: 8 }}>
@@ -386,341 +550,199 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
             </div>
           )}
 
-          {/* Report sections */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {sections
-              .sort((a, b) => {
-                const ai = SECTION_ORDER.indexOf(a.key);
-                const bi = SECTION_ORDER.indexOf(b.key);
-                return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-              })
-              .map((section, idx) => {
-                const meta = SECTION_ICONS[section.key];
-                if (!meta) return null;
-                const severity = SECTION_SEVERITY[section.key];
-                const { problem, fix } = splitProblemFix(section.content);
-                const hook = extractHook(problem);
-                const intro = SECTION_INTROS[section.key] || '';
-                const isOpen = !!openMap[section.key];
-                const sectionNum = String(idx + 1).padStart(2, '0');
-                const isFix = section.key === 'fix';
+          {/* ── Section cards (always visible) ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {cardSections.map((section, idx) => {
+              const meta = SECTION_META[section.key];
+              if (!meta) return null;
+              const { problem, fix } = splitProblemFix(section.content);
+              const intro = SECTION_INTROS[section.key] ?? '';
+              const sectionNum = String(idx + 1).padStart(2, '0');
 
-                return (
+              return (
+                <div key={section.key}>
                   <motion.div
-                    key={section.key}
-                    id={`report-island-${section.key}`}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.07, duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
+                    className="print-card"
+                    initial={{ opacity: 0, y: 28 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: '-60px' }}
+                    transition={{ delay: 0, duration: 0.45, ease: [0.25, 1, 0.5, 1] }}
+                    whileHover={{ y: -2, transition: { duration: 0.2 } }}
                     style={{
+                      background: theme.card,
                       borderRadius: 20,
-                      background: isFix ? (isDark ? 'rgba(20,83,45,0.25)' : 'rgba(240,253,244,0.95)') : theme.islandBg,
-                      border: isFix
-                        ? `2px solid ${isOpen ? '#22c55e80' : '#22c55e40'}`
-                        : `1px solid ${isOpen ? meta.color + '30' : theme.islandBorder}`,
-                      backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
-                      overflow: 'hidden', transition: 'border-color 0.25s, background 0.25s',
-                      boxShadow: isFix ? `0 0 0 4px ${isDark ? 'rgba(34,197,94,0.08)' : 'rgba(34,197,94,0.10)'}` : undefined,
+                      border: `1px solid ${theme.cardBorder}`,
+                      borderLeft: `4px solid ${meta.color}`,
+                      backdropFilter: 'blur(24px)',
+                      WebkitBackdropFilter: 'blur(24px)',
+                      overflow: 'hidden',
+                      boxShadow: meta.isCritical
+                        ? `0 4px 24px ${meta.color}12`
+                        : '0 2px 12px rgba(0,0,0,0.06)',
+                      transition: 'box-shadow 0.2s',
                     }}
                   >
-                    <button
-                      onClick={() => handleToggle(section.key)}
-                      style={{ width: '100%', textAlign: 'left', padding: '22px 24px 18px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 12 }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <span style={{ fontSize: 11, fontWeight: 900, color: meta.color, opacity: 0.5, letterSpacing: '-0.01em', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                    {/* Card header */}
+                    <div style={{ padding: '22px 24px 0' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                          <span style={{ fontSize: 11, fontWeight: 900, color: meta.color, opacity: 0.4, letterSpacing: '-0.01em', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
                             {sectionNum}
                           </span>
-                          <div style={{ width: 10, height: 10, borderRadius: '50%', background: meta.color, flexShrink: 0, boxShadow: `0 0 8px ${meta.color}60` }} />
                           <div>
-                            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: meta.color, margin: 0 }}>{meta.label}</p>
-                            <p style={{ fontSize: 11, color: theme.introText, margin: '2px 0 0', lineHeight: 1.4 }}>{intro}</p>
+                            <p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: theme.heading, letterSpacing: '-0.01em' }}>{meta.label}</p>
+                            <p style={{ margin: '3px 0 0', fontSize: 12, color: theme.intro, lineHeight: 1.4 }}>{intro}</p>
                           </div>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                          {severity && (
-                            <span style={{
-                              fontSize: 9, fontWeight: 900, letterSpacing: '0.12em', textTransform: 'uppercase',
-                              color: severity.color, background: severity.bg,
-                              borderRadius: 6, padding: '3px 8px', border: `1px solid ${severity.color}30`,
-                            }}>
-                              {severity.label}
-                            </span>
-                          )}
-                          <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
-                            <ChevronDown size={18} color={theme.eyebrow} />
-                          </motion.div>
+                        <span style={{
+                          fontSize: 9, fontWeight: 900, letterSpacing: '0.12em', textTransform: 'uppercase',
+                          color: meta.color, background: meta.bg,
+                          borderRadius: 6, padding: '4px 9px', flexShrink: 0,
+                          border: `1px solid ${meta.color}25`,
+                          ...(meta.isCritical ? { animation: 'criticalPulse 3s ease-in-out infinite' } : {}),
+                        }}>
+                          {meta.severity}
+                        </span>
+                      </div>
+                      <div style={{ height: 1, background: theme.divider, marginBottom: 18 }} />
+                    </div>
+
+                    {/* Problem content */}
+                    <div style={{ padding: '0 24px', color: theme.body }}>
+                      <RenderContent text={problem} color={meta.color} />
+                    </div>
+
+                    {/* Fix band */}
+                    {fix && (
+                      <div style={{
+                        margin: '20px 0 0',
+                        padding: '18px 24px 22px',
+                        background: isDark ? `${meta.color}08` : meta.bg,
+                        borderTop: `1px solid ${meta.color}20`,
+                      }}>
+                        <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.16em', textTransform: 'uppercase', color: meta.color, margin: '0 0 12px' }}>
+                          {section.key === 'fix' ? 'Your 3-Step Plan' : 'Your Fix'}
+                        </p>
+                        <div style={{ color: theme.body }}>
+                          <RenderContent text={fix} color={meta.color} />
                         </div>
                       </div>
-
-                      {!isOpen && (
-                        <p style={{ fontSize: 17, fontWeight: 700, color: theme.hookText, lineHeight: 1.5, margin: '0 0 0 34px', borderLeft: `3px solid ${meta.color}50`, paddingLeft: 14 }}>
-                          {hook}
-                        </p>
-                      )}
-                      {!isOpen && (
-                        <p style={{ fontSize: 11, fontWeight: 700, color: meta.color, margin: '2px 0 0 34px', letterSpacing: '0.05em' }}>
-                          Open to read full diagnosis →
-                        </p>
-                      )}
-                    </button>
-
-                    <AnimatePresence>
-                      {isOpen && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-                          style={{ overflow: 'hidden' }}
-                        >
-                          <div style={{ padding: '0 24px 24px 24px', color: theme.bodyText }}>
-                            <div style={{ height: 1, background: theme.divider, marginBottom: 20 }} />
-                            <RenderContent text={problem} color={meta.color} />
-                            {fix && (
-                              <div style={{
-                                margin: '24px -24px 0', padding: '20px 24px',
-                                background: isDark ? `rgba(${meta.color === '#5EEAD4' ? '94,234,212' : '255,255,255'},0.04)` : `${meta.color}08`,
-                                borderTop: `1px solid ${meta.color}25`, borderBottom: `1px solid ${meta.color}25`,
-                              }}>
-                                <p style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: meta.color, margin: '0 0 14px' }}>
-                                  Your fix
-                                </p>
-                                <RenderContent text={fix} color={meta.color} />
-                              </div>
-                            )}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                    )}
                   </motion.div>
-                );
-              })}
+
+                  {/* Social proof widget — appears after card 4 (honest truth) */}
+                  {section.key === 'honest' && (
+                    <div style={{ marginTop: 16 }}>
+                      <SocialProofWidget isDark={isDark} theme={theme} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
-          {/* ── What now section ── */}
+          {/* ── CTA section ── */}
           {sections.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5, duration: 0.5, ease: [0.25, 1, 0.5, 1] }}
-              style={{ marginTop: 64 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-40px' }}
+              transition={{ duration: 0.5, ease: [0.25, 1, 0.5, 1] }}
+              style={{ marginTop: 56 }}
             >
-              {/* Section header */}
-              <div style={{ textAlign: 'center', marginBottom: 28 }}>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, marginBottom: 16 }}>
+              <div style={{ textAlign: 'center', marginBottom: 24 }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, marginBottom: 14 }}>
                   <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 8px #22c55e80' }} />
                   <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#22c55e' }}>
                     Diagnosis complete
                   </span>
                 </div>
-                <h2 style={{ fontSize: 30, fontWeight: 900, color: theme.heading, margin: '0 0 10px', lineHeight: 1.15, letterSpacing: '-0.025em' }}>
-                  You now know exactly what's holding back your applications.
+                <h2 style={{ fontSize: 'clamp(24px, 4vw, 32px)', fontWeight: 900, color: theme.heading, margin: '0 0 12px', lineHeight: 1.15, letterSpacing: '-0.025em' }}>
+                  You now know exactly<br />what's holding you back.
                 </h2>
-                <p style={{ fontSize: 16, color: theme.sub, lineHeight: 1.6, maxWidth: 400, margin: '0 auto' }}>
-                  You have two options to fix these gaps:
-                </p>
+                {whatJobHubSnippet ? (
+                  <p style={{ fontSize: 15, color: theme.sub, lineHeight: 1.7, maxWidth: 480, margin: '0 auto 0' }}>
+                    {whatJobHubSnippet.length > 220 ? whatJobHubSnippet.slice(0, 220).replace(/\s\S+$/, '…') : whatJobHubSnippet}
+                  </p>
+                ) : (
+                  <p style={{ fontSize: 15, color: theme.sub, lineHeight: 1.7, maxWidth: 480, margin: '0 auto 0' }}>
+                    Our AI platform addresses each of these blockers directly — resume optimisation,
+                    application tracking, and interview prep built from your achievement bank.
+                  </p>
+                )}
               </div>
 
-              {/* Urgency bar */}
+              {/* Urgency note */}
               <div style={{
                 background: isDark ? 'rgba(251,191,36,0.06)' : 'rgba(254,243,199,0.85)',
                 border: `1px solid ${isDark ? 'rgba(251,191,36,0.22)' : 'rgba(251,191,36,0.40)'}`,
-                borderRadius: 14, padding: '14px 22px', marginBottom: 18, textAlign: 'center',
+                borderRadius: 12, padding: '13px 20px', marginBottom: 20, textAlign: 'center',
               }}>
                 <p style={{ margin: 0, fontSize: 14, color: isDark ? '#fcd34d' : '#92400e', lineHeight: 1.65, fontWeight: 500 }}>
-                  Every week you spend manually customising applications is a week you're competing with Australians who have local networks and no visa concerns.
+                  Every week you spend manually customising applications is a week Australians with local networks pull ahead.
                 </p>
               </div>
 
-              {/* Two options */}
-              <div ref={ctaRef} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 18 }}>
-
-                {/* Option 1: Free */}
-                <div style={{
-                  background: isDark ? 'rgba(6,78,59,0.15)' : 'rgba(240,253,244,0.95)',
-                  border: `1px solid ${isDark ? 'rgba(16,185,129,0.22)' : 'rgba(16,185,129,0.28)'}`,
-                  borderRadius: 20, padding: '24px 20px 20px',
-                  display: 'flex', flexDirection: 'column', gap: 14,
-                }}>
-                  <div>
-                    <span style={{
-                      display: 'inline-block', fontSize: 9, fontWeight: 900, letterSpacing: '0.16em',
-                      textTransform: 'uppercase', background: isDark ? 'rgba(16,185,129,0.16)' : 'rgba(16,185,129,0.12)',
-                      color: isDark ? '#34d399' : '#065f46', borderRadius: 6, padding: '3px 8px', marginBottom: 12,
-                    }}>
-                      Option 1 · Free
-                    </span>
-                    <h3 style={{ fontSize: 19, fontWeight: 800, color: isDark ? '#f3f4f6' : '#111827', margin: '0 0 8px', lineHeight: 1.2, letterSpacing: '-0.01em' }}>
-                      Master the system yourself
-                    </h3>
-                    <p style={{ fontSize: 13.5, color: isDark ? '#9ca3af' : '#4b5563', lineHeight: 1.7, margin: 0 }}>
-                      Templates, training videos, and weekly group calls. Build your applications yourself with our proven frameworks.
-                    </p>
-                  </div>
-
-                  {/* Testimonial */}
-                  <div style={{
-                    background: isDark ? 'rgba(16,185,129,0.10)' : 'rgba(16,185,129,0.07)',
-                    borderLeft: '3px solid #10b981',
-                    borderRadius: '0 10px 10px 0', padding: '12px 14px',
-                  }}>
-                    <p style={{ margin: '0 0 6px', fontSize: 13, color: isDark ? '#a7f3d0' : '#065f46', lineHeight: 1.65, fontStyle: 'italic' }}>
-                      "The templates and training calls gave me the confidence to optimize my own applications. Got 2 interviews in my first month."
-                    </p>
-                    <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: isDark ? '#6ee7b7' : '#059669' }}>— David, Software Engineer</p>
-                  </div>
-
-                  <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <button
-                      onClick={() => setOptionModal(1)}
-                      style={{
-                        background: 'none', border: `1px solid ${isDark ? 'rgba(16,185,129,0.28)' : 'rgba(16,185,129,0.35)'}`,
-                        borderRadius: 10, padding: '9px 14px', fontSize: 12, fontWeight: 700,
-                        color: isDark ? '#34d399' : '#059669', cursor: 'pointer', textAlign: 'center', minHeight: 44,
-                      }}
-                    >
-                      See what's included →
-                    </button>
-                    <a
-                      href="https://www.skool.com/aussiegradcareers" target="_blank" rel="noopener noreferrer"
-                      style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center',
-                        background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white',
-                        borderRadius: 12, padding: '13px 18px', fontSize: 14, fontWeight: 800,
-                        textDecoration: 'none', boxShadow: '0 4px 14px rgba(16,185,129,0.28)', letterSpacing: '-0.01em',
-                        minHeight: 44,
-                      } as React.CSSProperties}
-                    >
-                      Join Free Community
-                    </a>
-                  </div>
-                </div>
-
-                {/* Option 2: Paid */}
-                <div style={{
-                  background: isDark ? 'rgba(79,70,229,0.12)' : 'rgba(238,242,255,0.95)',
-                  border: `2px solid ${isDark ? 'rgba(99,102,241,0.35)' : 'rgba(99,102,241,0.30)'}`,
-                  borderRadius: 20, padding: '24px 20px 20px',
-                  display: 'flex', flexDirection: 'column', gap: 14,
-                  position: 'relative', overflow: 'hidden',
-                }}>
-                  <div style={{
-                    position: 'absolute', top: 13, right: -28,
-                    background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
-                    color: 'white', fontSize: 8, fontWeight: 900, letterSpacing: '0.12em',
-                    textTransform: 'uppercase', padding: '4px 36px', transform: 'rotate(45deg)',
-                    pointerEvents: 'none',
-                  }}>
-                    FASTEST
-                  </div>
-
-                  <div>
-                    <span style={{
-                      display: 'inline-block', fontSize: 9, fontWeight: 900, letterSpacing: '0.16em',
-                      textTransform: 'uppercase', background: isDark ? 'rgba(99,102,241,0.16)' : 'rgba(99,102,241,0.12)',
-                      color: isDark ? '#a5b4fc' : '#4338ca', borderRadius: 6, padding: '3px 8px', marginBottom: 12,
-                    }}>
-                      Option 2 · $97/month
-                    </span>
-                    <h3 style={{ fontSize: 19, fontWeight: 800, color: isDark ? '#f3f4f6' : '#111827', margin: '0 0 8px', lineHeight: 1.2, letterSpacing: '-0.01em' }}>
-                      Let AI master it for you
-                    </h3>
-                    <p style={{ fontSize: 13.5, color: isDark ? '#9ca3af' : '#4b5563', lineHeight: 1.7, margin: 0 }}>
-                      What took you 3 hours of manual work now takes 3 minutes with AI. That's 20x faster application creation.
-                    </p>
-                  </div>
-
-                  {/* Speed stat */}
-                  <div style={{
-                    background: isDark ? 'rgba(99,102,241,0.10)' : 'rgba(99,102,241,0.07)',
-                    border: `1px solid ${isDark ? 'rgba(99,102,241,0.20)' : 'rgba(99,102,241,0.16)'}`,
-                    borderRadius: 12, padding: '14px 16px',
-                    display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 8,
-                    alignItems: 'center', textAlign: 'center',
-                  }}>
-                    <div>
-                      <p style={{ margin: 0, fontSize: 26, fontWeight: 900, color: isDark ? '#a5b4fc' : '#4338ca', letterSpacing: '-0.03em', lineHeight: 1 }}>3 min</p>
-                      <p style={{ margin: '3px 0 0', fontSize: 11, color: isDark ? '#6b7280' : '#9ca3af', fontWeight: 600 }}>with AI</p>
-                    </div>
-                    <span style={{ fontSize: 13, color: isDark ? '#374151' : '#d1d5db' }}>vs</span>
-                    <div>
-                      <p style={{ margin: 0, fontSize: 26, fontWeight: 900, color: isDark ? '#374151' : '#d1d5db', letterSpacing: '-0.03em', lineHeight: 1, textDecoration: 'line-through' }}>3 hrs</p>
-                      <p style={{ margin: '3px 0 0', fontSize: 11, color: isDark ? '#6b7280' : '#9ca3af', fontWeight: 600 }}>manually</p>
-                    </div>
-                  </div>
-
-                  {/* Sarah testimonial — moved from left */}
-                  <div style={{
-                    background: isDark ? 'rgba(99,102,241,0.10)' : 'rgba(99,102,241,0.07)',
-                    borderLeft: '3px solid #6366f1',
-                    borderRadius: '0 10px 10px 0', padding: '12px 14px',
-                  }}>
-                    <p style={{ margin: '0 0 6px', fontSize: 13, color: isDark ? '#c7d2fe' : '#3730a3', lineHeight: 1.65, fontStyle: 'italic' }}>
-                      "With 2 other international grads, I'll personally review your LinkedIn profile and send you my exact outreach templates that got Sarah 8 interviews in 3 weeks."
-                    </p>
-                  </div>
-
-                  <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <button
-                      onClick={() => setOptionModal(2)}
-                      style={{
-                        background: 'none', border: `1px solid ${isDark ? 'rgba(99,102,241,0.32)' : 'rgba(99,102,241,0.35)'}`,
-                        borderRadius: 10, padding: '9px 14px', fontSize: 12, fontWeight: 700,
-                        color: isDark ? '#a5b4fc' : '#4338ca', cursor: 'pointer', textAlign: 'center', minHeight: 44,
-                      }}
-                    >
-                      See all features →
-                    </button>
-                    <button
-                      onClick={onDone}
-                      style={{
-                        width: '100%', background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
-                        color: 'white', borderRadius: 12, padding: '13px 18px',
-                        fontSize: 14, fontWeight: 800, border: 'none',
-                        boxShadow: '0 4px 16px rgba(99,102,241,0.32)', cursor: 'pointer',
-                        letterSpacing: '-0.01em', minHeight: 44,
-                      }}
-                    >
-                      Get Instant Access — Free for 7 Days →
-                    </button>
-                    <p style={{ margin: 0, fontSize: 11, color: isDark ? '#4b5563' : '#9ca3af', textAlign: 'center' }}>
-                      See how fast this really is · No charge until day 8
-                    </p>
-                  </div>
+              {/* Primary CTA */}
+              <div ref={ctaRef} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+                <motion.button
+                  onClick={onDone}
+                  animate={{
+                    boxShadow: [
+                      `0 4px 18px ${INDIGO}35`,
+                      `0 6px 32px ${INDIGO}60`,
+                      `0 4px 18px ${INDIGO}35`,
+                    ],
+                  }}
+                  transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
+                  whileHover={{ scale: 1.015 }}
+                  whileTap={{ scale: 0.98 }}
+                  style={{
+                    width: '100%', background: `linear-gradient(135deg, ${INDIGO}, #4f46e5)`,
+                    color: 'white', borderRadius: 14, padding: '16px 24px',
+                    fontSize: 16, fontWeight: 800, border: 'none', cursor: 'pointer',
+                    letterSpacing: '-0.01em',
+                  }}
+                >
+                  Rebuild Your Strategy with AI — Free for 7 Days →
+                </motion.button>
+                <p style={{ margin: 0, fontSize: 12, color: theme.sub, textAlign: 'center' }}>
+                  No charge until day 8 · Cancel any time · No credit card upfront
+                </p>
+                <div style={{ textAlign: 'center' }}>
+                  <a
+                    href="https://www.skool.com/aussiegradcareers" target="_blank" rel="noopener noreferrer"
+                    style={{ fontSize: 13, color: isDark ? '#2dd4bf' : TEAL, textDecoration: 'underline', textUnderlineOffset: 3, fontWeight: 600 }}
+                  >
+                    Or join the free community (Skool) — frameworks, templates & weekly guidance →
+                  </a>
                 </div>
               </div>
 
-              {/* Referral / share section */}
+              {/* Referral section */}
               <div style={{
-                background: isDark ? 'rgba(255,255,255,0.025)' : 'rgba(248,250,252,0.92)',
-                border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)'}`,
-                borderRadius: 20, padding: '24px 24px 20px', marginBottom: 20,
+                background: theme.referralBg,
+                border: `1px solid ${theme.referralBorder}`,
+                borderRadius: 20, padding: '22px 24px', marginBottom: 20,
               }}>
-                <p style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: isDark ? '#374151' : '#9ca3af', marginBottom: 8 }}>
+                <p style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: isDark ? '#374151' : '#9ca3af', marginBottom: 6 }}>
                   Know someone in the same boat?
                 </p>
-                <p style={{ fontSize: 18, fontWeight: 800, color: theme.heading, margin: '0 0 6px', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-                  Share this with them. They get a free diagnostic.
+                <p style={{ fontSize: 18, fontWeight: 800, color: theme.heading, margin: '0 0 5px', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+                  Share this — they get a free diagnosis.
                 </p>
-                <p style={{ fontSize: 13, color: theme.sub, lineHeight: 1.6, margin: '0 0 16px' }}>
+                <p style={{ fontSize: 13, color: theme.sub, lineHeight: 1.6, margin: '0 0 14px' }}>
                   Every international grad you refer gets clarity on exactly what's holding their applications back.
                 </p>
-
-                {/* Message preview */}
                 <div style={{
                   background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
                   border: `1px dashed ${isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.10)'}`,
-                  borderRadius: 12, padding: '13px 15px', marginBottom: 13,
-                  fontSize: 13, color: isDark ? '#6b7280' : '#6b7280', lineHeight: 1.7, fontStyle: 'italic',
+                  borderRadius: 10, padding: '11px 14px', marginBottom: 12,
+                  fontSize: 13, color: theme.sub, lineHeight: 1.7, fontStyle: 'italic',
                 }}>
-                  "I just found this free tool that analyzed exactly why my applications weren't getting responses. Takes 5 minutes and the report is actually useful —{' '}
-                  <span style={{ color: isDark ? '#5eead4' : '#0F766E', fontStyle: 'normal', fontWeight: 600 }}>
-                    {referralLink}
-                  </span>"
+                  "I just found this free tool that analyzed exactly why my applications weren't getting responses — takes 5 minutes and the report is genuinely useful —{' '}
+                  <span style={{ color: isDark ? '#5eead4' : TEAL, fontStyle: 'normal', fontWeight: 600 }}>{referralLink}</span>"
                 </div>
-
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   {[
                     { label: 'Copy message', copied: msgCopied, onClick: () => { navigator.clipboard.writeText(shareMsg); setMsgCopied(true); setTimeout(() => setMsgCopied(false), 2500); } },
@@ -731,10 +753,12 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                       onClick={onClick}
                       style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                        background: copied ? (isDark ? 'rgba(34,197,94,0.12)' : 'rgba(34,197,94,0.10)') : (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'),
+                        background: copied
+                          ? (isDark ? 'rgba(34,197,94,0.12)' : 'rgba(34,197,94,0.10)')
+                          : (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'),
                         border: `1px solid ${copied ? 'rgba(34,197,94,0.30)' : (isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.09)')}`,
                         borderRadius: 10, padding: '11px 16px', fontSize: 13, fontWeight: 700,
-                        color: copied ? '#22c55e' : (isDark ? '#9ca3af' : '#4b5563'),
+                        color: copied ? '#22c55e' : theme.sub,
                         cursor: 'pointer', transition: 'all 0.18s', minHeight: 44,
                       }}
                     >
@@ -746,12 +770,12 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
               </div>
 
               {/* Dashboard skip */}
-              <div style={{ textAlign: 'center', paddingBottom: 8 }}>
+              <div style={{ textAlign: 'center' }}>
                 <button
                   onClick={onDone}
-                  style={{ background: 'none', border: 'none', color: isDark ? '#374151' : '#9ca3af', fontWeight: 500, cursor: 'pointer', fontSize: 13, padding: '8px 0' }}
+                  style={{ background: 'none', border: 'none', color: isDark ? '#374151' : '#9ca3af', fontWeight: 500, cursor: 'pointer', fontSize: 13 }}
                 >
-                  Already have an account? Go straight to the dashboard →
+                  Already have an account? Go to the dashboard →
                 </button>
               </div>
             </motion.div>
@@ -764,6 +788,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
       <AnimatePresence>
         {showSticky && sections.length > 0 && (
           <motion.div
+            className="no-print"
             initial={{ y: 88, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 88, opacity: 0 }}
@@ -776,29 +801,16 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
             }}
           >
-            {(() => {
-              const BLOCKER_PRIORITY = ['document_audit', 'honest', 'targeting', 'pipeline'];
-              const BLOCKER_HEADLINES: Record<string, string> = {
-                document_audit: "Your resume isn't clearing the 6-second recruiter test.",
-                honest:         "Your positioning isn't matching what the market wants.",
-                targeting:      "Your targeting strategy is working against you.",
-                pipeline:       "Your applications aren't turning into conversations.",
-              };
-              const topKey = BLOCKER_PRIORITY.find(k => sections.some(s => s.key === k));
-              const headline = topKey ? BLOCKER_HEADLINES[topKey] : "Your job search strategy has a clear blocker.";
-              return (
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: theme.heading, textAlign: 'center' }}>
-                  {headline}
-                </p>
-              );
-            })()}
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: theme.heading, textAlign: 'center' }}>
+              {stickyHeadline}
+            </p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
               <a
                 href="https://www.skool.com/aussiegradcareers" target="_blank" rel="noopener noreferrer"
                 style={{
-                  background: isDark ? 'rgba(16,185,129,0.12)' : 'rgba(16,185,129,0.09)',
-                  border: '1px solid rgba(16,185,129,0.30)',
-                  color: isDark ? '#34d399' : '#059669', borderRadius: 10,
+                  background: isDark ? `rgba(15,118,110,0.12)` : `rgba(15,118,110,0.09)`,
+                  border: '1px solid rgba(15,118,110,0.30)',
+                  color: isDark ? '#34d399' : TEAL, borderRadius: 10,
                   padding: '10px 18px', fontSize: 13, fontWeight: 700,
                   textDecoration: 'none', whiteSpace: 'nowrap', minHeight: 44,
                   display: 'inline-flex', alignItems: 'center',
@@ -809,9 +821,9 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
               <button
                 onClick={onDone}
                 style={{
-                  background: 'linear-gradient(135deg, #6366f1, #4f46e5)', color: 'white',
+                  background: `linear-gradient(135deg, ${INDIGO}, #4f46e5)`, color: 'white',
                   borderRadius: 10, padding: '10px 18px', fontSize: 13, fontWeight: 800,
-                  border: 'none', cursor: 'pointer', boxShadow: '0 4px 12px rgba(99,102,241,0.28)',
+                  border: 'none', cursor: 'pointer', boxShadow: `0 4px 12px ${INDIGO}28`,
                   whiteSpace: 'nowrap', minHeight: 44,
                 }}
               >
@@ -829,174 +841,6 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                 <X size={15} />
               </button>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── Option modals ── */}
-      <AnimatePresence>
-        {optionModal !== null && (
-          <motion.div
-            key="modal-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            onClick={() => setOptionModal(null)}
-            style={{
-              position: 'fixed', inset: 0, zIndex: 100,
-              background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
-            }}
-          >
-            <motion.div
-              key={optionModal}
-              initial={{ opacity: 0, y: 24, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 16, scale: 0.97 }}
-              transition={{ ease: [0.25, 1, 0.5, 1], duration: 0.32 }}
-              onClick={e => e.stopPropagation()}
-              style={{
-                background: theme.modalBg,
-                border: `1px solid ${optionModal === 1
-                  ? (isDark ? 'rgba(16,185,129,0.28)' : 'rgba(16,185,129,0.18)')
-                  : (isDark ? 'rgba(99,102,241,0.35)' : 'rgba(99,102,241,0.18)')}`,
-                borderRadius: 24, padding: '36px 36px 32px',
-                maxWidth: 560, width: '100%', maxHeight: '88vh', overflowY: 'auto',
-                position: 'relative',
-              }}
-            >
-              <button
-                onClick={() => setOptionModal(null)}
-                style={{
-                  position: 'absolute', top: 16, right: 16,
-                  background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)',
-                  border: 'none', borderRadius: 10, width: 34, height: 34,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', color: isDark ? '#6b7280' : '#9ca3af',
-                }}
-              >
-                <X size={14} />
-              </button>
-
-              {optionModal === 1 ? (
-                <>
-                  <span style={{
-                    display: 'inline-block', fontSize: 9, fontWeight: 900, letterSpacing: '0.16em',
-                    textTransform: 'uppercase', background: isDark ? 'rgba(16,185,129,0.16)' : 'rgba(16,185,129,0.10)',
-                    color: isDark ? '#34d399' : '#065f46', borderRadius: 6, padding: '3px 8px', marginBottom: 14,
-                  }}>
-                    Free Community
-                  </span>
-                  <h2 style={{ fontSize: 24, fontWeight: 900, color: isDark ? '#f3f4f6' : '#111827', margin: '0 0 10px', lineHeight: 1.2, letterSpacing: '-0.02em' }}>
-                    Master the system yourself
-                  </h2>
-                  <p style={{ fontSize: 14, color: theme.sub, lineHeight: 1.7, margin: '0 0 22px' }}>
-                    Templates, training videos, and weekly group calls. Build your applications yourself with our proven frameworks.
-                  </p>
-
-                  <div style={{
-                    background: isDark ? 'rgba(16,185,129,0.10)' : 'rgba(240,253,244,0.95)',
-                    border: `1px solid ${isDark ? 'rgba(16,185,129,0.22)' : 'rgba(16,185,129,0.20)'}`,
-                    borderLeft: '3px solid #10b981', borderRadius: '0 12px 12px 0',
-                    padding: '14px 16px', marginBottom: 24,
-                  }}>
-                    <p style={{ margin: '0 0 6px', fontSize: 14, color: isDark ? '#a7f3d0' : '#065f46', lineHeight: 1.7, fontStyle: 'italic' }}>
-                      "The templates and training calls gave me the confidence to optimize my own applications. Got 2 interviews in my first month."
-                    </p>
-                    <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: isDark ? '#6ee7b7' : '#059669' }}>— David, Software Engineer</p>
-                  </div>
-
-                  <p style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: isDark ? '#4b5563' : '#9ca3af', marginBottom: 12 }}>
-                    8 modules included
-                  </p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 28 }}>
-                    {SKOOL_MODULES.map((item, i) => (
-                      <div key={i} style={{
-                        display: 'flex', alignItems: 'flex-start', gap: 10,
-                        padding: '10px 12px',
-                        background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'}`,
-                        borderRadius: 10,
-                      }}>
-                        <span style={{
-                          width: 22, height: 22, borderRadius: '50%',
-                          background: 'linear-gradient(135deg, #10b981, #047857)',
-                          color: 'white', fontSize: 11, fontWeight: 700,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                        }}>{i + 1}</span>
-                        <p style={{ margin: 0, fontSize: 13, color: isDark ? '#9ca3af' : '#374151', lineHeight: 1.5 }}>{item}</p>
-                      </div>
-                    ))}
-                  </div>
-                  <a
-                    href="https://www.skool.com/aussiegradcareers" target="_blank" rel="noopener noreferrer"
-                    style={{
-                      display: 'block', textAlign: 'center',
-                      background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white',
-                      borderRadius: 14, padding: '14px 24px', fontSize: 15, fontWeight: 800,
-                      textDecoration: 'none', boxShadow: '0 6px 20px rgba(16,185,129,0.28)', letterSpacing: '-0.01em',
-                    }}
-                  >
-                    Join Free Community →
-                  </a>
-                </>
-              ) : (
-                <>
-                  <span style={{
-                    display: 'inline-block', fontSize: 9, fontWeight: 900, letterSpacing: '0.16em',
-                    textTransform: 'uppercase', background: isDark ? 'rgba(99,102,241,0.16)' : 'rgba(99,102,241,0.10)',
-                    color: isDark ? '#a5b4fc' : '#4338ca', borderRadius: 6, padding: '3px 8px', marginBottom: 14,
-                  }}>
-                    Pro Tool · $97/month
-                  </span>
-                  <h2 style={{ fontSize: 24, fontWeight: 900, color: isDark ? '#f3f4f6' : '#111827', margin: '0 0 10px', lineHeight: 1.2, letterSpacing: '-0.02em' }}>
-                    Let AI master it for you
-                  </h2>
-                  <p style={{ fontSize: 14, color: theme.sub, lineHeight: 1.7, margin: '0 0 6px' }}>
-                    One tailored application every 3 minutes — resume, cover letter, and LinkedIn optimisation built from your achievement bank.
-                  </p>
-                  <p style={{ fontSize: 14, color: isDark ? '#fbbf24' : '#92400e', lineHeight: 1.65, margin: '0 0 22px', fontWeight: 500 }}>
-                    The average Australian graduate earns $1,200+ per week. Every week you wait costs more than a full year of this tool.
-                  </p>
-
-                  <p style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: isDark ? '#4b5563' : '#9ca3af', marginBottom: 12 }}>
-                    Everything included
-                  </p>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 28 }}>
-                    {PRO_FEATURES.map(({ emoji, label, desc }) => (
-                      <div key={label} style={{
-                        display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px',
-                        background: isDark ? 'rgba(99,102,241,0.07)' : 'rgba(99,102,241,0.04)',
-                        border: `1px solid ${isDark ? 'rgba(99,102,241,0.14)' : 'rgba(99,102,241,0.10)'}`,
-                        borderRadius: 10,
-                      }}>
-                        <span style={{ fontSize: 16, flexShrink: 0 }}>{emoji}</span>
-                        <div>
-                          <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: isDark ? '#e2e8f0' : '#111827' }}>{label}</p>
-                          <p style={{ margin: '2px 0 0', fontSize: 11, color: isDark ? '#6b7280' : '#6b7280', lineHeight: 1.5 }}>{desc}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <button
-                    onClick={() => { setOptionModal(null); onDone(); }}
-                    style={{
-                      display: 'block', width: '100%',
-                      background: 'linear-gradient(135deg, #6366f1, #4f46e5)', color: 'white',
-                      borderRadius: 14, padding: '14px 24px', fontSize: 15, fontWeight: 800,
-                      border: 'none', boxShadow: '0 6px 20px rgba(99,102,241,0.32)',
-                      cursor: 'pointer', letterSpacing: '-0.01em', marginBottom: 10,
-                    }}
-                  >
-                    Get Instant Access — Free for 7 Days →
-                  </button>
-                  <p style={{ textAlign: 'center', fontSize: 12, color: isDark ? '#4b5563' : '#9ca3af', margin: 0 }}>
-                    No charge until day 8 · Cancel any time
-                  </p>
-                </>
-              )}
-            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

@@ -309,6 +309,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const prevUserIdRef = useRef<string | null>(null);
+  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // When the Supabase userId changes (e.g. magic-link login → new session), the old
   // ['profile'] cache belongs to a different user — clear it immediately so
@@ -322,14 +323,25 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     prevUserIdRef.current = newId;
   }, [user?.id]);
 
+  // Debounced redirect: wait 700ms before sending to /auth so Supabase auth state
+  // can settle after sign-up (it briefly emits user=null between SIGNED_UP and SIGNED_IN).
+  // Cancels immediately if user appears within the window — safe to revert by removing timer.
   useEffect(() => {
-    if (loading || user) return;
-
-    const savedEmail = localStorage.getItem('jobhub_auth_email');
-    if (savedEmail) {
-      navigate(`/auth?email=${encodeURIComponent(savedEmail)}`, { replace: true });
+    if (redirectTimerRef.current) {
+      clearTimeout(redirectTimerRef.current);
+      redirectTimerRef.current = null;
     }
-  }, [loading, user]);
+    if (loading || user) return;
+    const savedEmail = localStorage.getItem('jobhub_auth_email');
+    if (!savedEmail) return;
+    redirectTimerRef.current = setTimeout(() => {
+      navigate(`/auth?email=${encodeURIComponent(savedEmail)}`, { replace: true });
+    }, 700);
+  }, [loading, user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => () => {
+    if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
+  }, []);
 
   if (loading) {
     return (
