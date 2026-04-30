@@ -94,6 +94,7 @@ model Experience {
   startDate          String
   endDate            String?
   isCurrent          Boolean          @default(false)
+  type               String           @default("work")
   description        String?
   coachingTips       String?
   createdAt          DateTime         @default(now())

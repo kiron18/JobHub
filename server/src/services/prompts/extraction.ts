@@ -1,17 +1,16 @@
 export const STAGE_1_PROMPT = (text: string) => `
-You are a expert Career Coach and Data Extraction Engine.
-Your goal is 100% data density and providing helpful coaching hints to candidates.
-
-Extract EVERY piece of information into the structured JSON format below.
-Compare extracted data against the "Standard Resume Standards" (Reverse chronological, metrics needed, no personal ID).
+You are an expert Career Coach and Data Extraction Engine.
+Your goal is 100% data density — extract EVERY piece of information into the structured JSON format below.
 
 Specific Instructions:
-1. VOLUNTEERING: Extract any community work or student societies (valued as strategic assets).
-2. CERTIFICATIONS: Separate professional credentials from formal education.
-3. LANGUAGES: Extract all languages and proficiency levels.
-4. COACHING ALERTS: Identify missing or weak data.
-   - RED: Missing mandatory info (e.g., Year in Education, Contact info).
-   - ORANGE: Content needs improvement (e.g., Bullet point without a metric, generic "team player" clichés).
+1. EXPERIENCE: Paid or unpaid work roles only. Do NOT include academic projects here.
+2. PROJECTS: Extract ALL projects — academic, personal, freelance, open source, university capstone. These are first-class items. Use the institution or organisation name as "org". If no org, use "Personal Project" or "University Project".
+3. VOLUNTEERING: Community work, student societies, extracurriculars.
+4. CERTIFICATIONS: Professional credentials and short courses only — not degrees.
+5. LANGUAGES: All languages and proficiency levels.
+6. COACHING ALERTS:
+   - RED: Missing mandatory info (e.g., contact email, degree year).
+   - ORANGE: Weak content (e.g., bullet without a metric, vague descriptions like "assisted with tasks").
 
 Schema:
 {
@@ -24,8 +23,8 @@ Schema:
     "professionalSummary": "3-4 sentences implied third person"
   },
   "skills": {
-    "technical": ["Excel", "Python"],
-    "industryKnowledge": ["Financial Modelling"],
+    "technical": ["Python", "Flask"],
+    "industryKnowledge": ["Cybersecurity", "Machine Learning"],
     "softSkills": ["Stakeholder Engagement"]
   },
   "experience": [
@@ -33,17 +32,30 @@ Schema:
       "company": "Company Name",
       "role": "Job Title",
       "startDate": "YYYY-MM",
-      "endDate": "YYYY-MM or Present",
+      "endDate": "YYYY-MM or present",
       "bullets": ["Point 1", "Point 2"],
-      "coachingTips": ["Tip on how to add a metric here"]
+      "coachingTips": ["Add a metric to bullet 1"]
+    }
+  ],
+  "projects": [
+    {
+      "org": "University or Organisation Name (or 'Personal Project')",
+      "title": "Project Title",
+      "startDate": "YYYY-MM",
+      "endDate": "YYYY-MM or present",
+      "bullets": ["What was built", "What was achieved", "Technologies used"],
+      "skills": ["Python", "Machine Learning"],
+      "coachingTips": ["Quantify the outcome — e.g. model accuracy achieved"]
     }
   ],
   "education": [
     {
       "institution": "University Name",
       "degree": "Degree Name",
-      "year": "YYYY",
-      "coachingTips": "Missing year? Mention it here."
+      "field": "Field of Study",
+      "startDate": "YYYY",
+      "endDate": "YYYY or present",
+      "coachingTips": "Missing graduation year? Add it."
     }
   ],
   "volunteering": [{ "org": "", "role": "", "desc": "" }],

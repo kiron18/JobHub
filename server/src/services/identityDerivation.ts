@@ -38,6 +38,7 @@ export async function deriveIdentityCards(userId: string): Promise<void> {
         role: e.role,
         startDate: e.startDate,
         endDate: e.endDate,
+        type: (e as any).type ?? 'work',
       })),
       profile.achievements.map(a => ({
         title: a.title,

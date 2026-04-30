@@ -30,35 +30,52 @@ export async function autoExtractAchievements(userId: string, resumeText: string
       return;
     }
 
-    console.log(`[AutoExtract] Stage 1 parsed — education: ${stage1Data.education?.length ?? 0}, experience: ${stage1Data.experience?.length ?? 0}, certs: ${stage1Data.certifications?.length ?? 0}`);
+    console.log(`[AutoExtract] Stage 1 parsed — education: ${stage1Data.education?.length ?? 0}, experience: ${stage1Data.experience?.length ?? 0}, projects: ${stage1Data.projects?.length ?? 0}, certs: ${stage1Data.certifications?.length ?? 0}`);
 
-    // 3. Run STAGE_2_PROMPT per experience role to get achievements
+    // 3. Run STAGE_2_PROMPT on experience AND project entries to extract achievements
     console.log(`[AutoExtract] Running Stage 2 for userId: ${userId}`);
     let achievements: any[] = [];
 
+    // Combine work experience and projects into a single list for Stage 2, tracking type
+    const allEntries: Array<{ role: string; company: string; bullets: string[]; type: 'work' | 'project'; originalIndex: number }> = [];
+
     if (stage1Data.experience && Array.isArray(stage1Data.experience)) {
-      for (let i = 0; i < stage1Data.experience.length; i++) {
-        const exp = stage1Data.experience[i];
+      stage1Data.experience.forEach((exp: any, i: number) => {
         if (exp.bullets && exp.bullets.length > 0) {
-          try {
-            const stage2Raw = await callLLM(STAGE_2_PROMPT(exp.role, exp.company, exp.bullets));
-            let stage2Data: any;
-            try {
-              stage2Data = parseLLMJson(stage2Raw);
-            } catch (e: any) {
-              console.error(`[AutoExtract] Failed to parse Stage 2 JSON for role ${exp.role}:`, e.message);
-              continue;
-            }
-            const roleAchievements = (stage2Data.achievements || []).map((ach: any) => ({
-              ...ach,
-              experienceIndex: i,
-            }));
-            achievements = [...achievements, ...roleAchievements];
-          } catch (e: any) {
-            console.error(`[AutoExtract] Stage 2 LLM call failed for role ${exp.role}:`, e.message);
-            continue;
-          }
+          allEntries.push({ role: exp.role || 'Unknown Role', company: exp.company || 'Unknown', bullets: exp.bullets, type: 'work', originalIndex: i });
         }
+      });
+    }
+
+    if (stage1Data.projects && Array.isArray(stage1Data.projects)) {
+      stage1Data.projects.forEach((proj: any, i: number) => {
+        if (proj.bullets && proj.bullets.length > 0) {
+          allEntries.push({ role: proj.title || 'Project', company: proj.org || 'University Project', bullets: proj.bullets, type: 'project', originalIndex: i });
+        }
+      });
+    }
+
+    for (const entry of allEntries) {
+      try {
+        const stage2Raw = await callLLM(STAGE_2_PROMPT(entry.role, entry.company, entry.bullets));
+        let stage2Data: any;
+        try {
+          stage2Data = parseLLMJson(stage2Raw);
+        } catch (e: any) {
+          console.error(`[AutoExtract] Failed to parse Stage 2 JSON for ${entry.role}:`, e.message);
+          continue;
+        }
+        const entryAchievements = (stage2Data.achievements || []).map((ach: any) => ({
+          ...ach,
+          entryType: entry.type,
+          entryRole: entry.role,
+          entryCompany: entry.company,
+          originalIndex: entry.originalIndex,
+        }));
+        achievements = [...achievements, ...entryAchievements];
+      } catch (e: any) {
+        console.error(`[AutoExtract] Stage 2 LLM call failed for ${entry.role}:`, e.message);
+        continue;
       }
     }
 
@@ -96,13 +113,14 @@ export async function autoExtractAchievements(userId: string, resumeText: string
         });
       }
 
-      // 6. Save experience entries using createMany
+      // 6. Save experience entries (work) using createMany
       const experienceToCreate = (stage1Data.experience || []).map((exp: any) => ({
         candidateProfileId: profileId,
         company: exp.company || 'Unknown Company',
         role: exp.role || 'Unknown Role',
         startDate: exp.startDate || 'Unknown',
         endDate: exp.endDate ?? null,
+        type: 'work',
         description: exp.bullets?.join('\n') || exp.description || '',
         coachingTips: Array.isArray(exp.coachingTips)
           ? exp.coachingTips.join(' | ')
@@ -111,6 +129,25 @@ export async function autoExtractAchievements(userId: string, resumeText: string
 
       if (experienceToCreate.length > 0) {
         await tx.experience.createMany({ data: experienceToCreate });
+      }
+
+      // 6f. Save project entries as Experience with type = 'project'
+      const projectsToCreate = (stage1Data.projects || []).map((proj: any) => ({
+        candidateProfileId: profileId,
+        company: proj.org || 'University Project',
+        role: proj.title || 'Project',
+        startDate: proj.startDate || 'Unknown',
+        endDate: proj.endDate ?? null,
+        type: 'project',
+        description: proj.bullets?.join('\n') || '',
+        coachingTips: Array.isArray(proj.coachingTips)
+          ? proj.coachingTips.join(' | ')
+          : (proj.coachingTips || null),
+      }));
+
+      if (projectsToCreate.length > 0) {
+        await tx.experience.createMany({ data: projectsToCreate });
+        console.log(`[AutoExtract] Saved ${projectsToCreate.length} project entries for userId: ${userId}`);
       }
 
       // 6b. Save education entries
@@ -242,18 +279,21 @@ export async function autoExtractAchievements(userId: string, resumeText: string
           existingAchievements.map((a: { title: string }) => a.title.toLowerCase().trim())
         );
 
+        // Build lookup: role+company key → experience id
+        const expLookup = new Map<string, string>();
+        for (const exp of refreshedProfile.experience) {
+          const key = `${(exp.role || '').toLowerCase().trim()}||${(exp.company || '').toLowerCase().trim()}`;
+          expLookup.set(key, exp.id);
+        }
+
         const achievementsToCreate = achievements
           .filter((ach: any) => {
             const title = (ach.title || 'Untitled Achievement').toLowerCase().trim();
             return !existingTitles.has(title);
           })
           .map((ach: any) => {
-            const experienceId =
-              ach.experienceIndex !== undefined &&
-              refreshedProfile.experience &&
-              refreshedProfile.experience[ach.experienceIndex]
-                ? refreshedProfile.experience[ach.experienceIndex].id
-                : null;
+            const lookupKey = `${(ach.entryRole || '').toLowerCase().trim()}||${(ach.entryCompany || '').toLowerCase().trim()}`;
+            const experienceId = expLookup.get(lookupKey) ?? null;
 
             return {
               candidateProfileId: profileId,

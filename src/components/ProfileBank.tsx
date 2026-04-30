@@ -21,6 +21,7 @@ interface Experience {
   role: string;
   startDate: string;
   endDate: string | null;
+  type: string;
   description: string;
   coachingTips: string | null;
 }
@@ -711,16 +712,17 @@ const ExperienceIsland: React.FC<ExperienceIslandProps> = ({ experience, achieve
   });
 
   const inp = inputStyle(isDark);
+  const workEntries = experience.filter(e => !e.type || e.type === 'work');
 
   return (
     <Island isDark={isDark}>
       <SectionHeader icon={<Briefcase size={13} />} title="Work Experience" isDark={isDark} />
-      {experience.length === 0 && (
+      {workEntries.length === 0 && (
         <p style={{ fontSize: 13, color: isDark ? '#6b7280' : '#9ca3af', fontStyle: 'italic' }}>
           No experience found. Upload a resume to populate this section.
         </p>
       )}
-      {experience.map(exp => {
+      {workEntries.map(exp => {
         const linked = achievements.filter(a => a.experienceId === exp.id);
         const hint = hintForExperience(exp, linked);
         const isEditing = editingId === exp.id;
@@ -800,6 +802,47 @@ const ExperienceIsland: React.FC<ExperienceIslandProps> = ({ experience, achieve
                 {linked.map(ach => (
                   <AchievementRow key={ach.id} ach={ach} isDark={isDark} />
                 ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </Island>
+  );
+};
+
+// ── ProjectsIsland ────────────────────────────────────────────────────────────
+
+const ProjectsIsland: React.FC<{ experience: Experience[]; achievements: Achievement[]; isDark: boolean }> = ({ experience, achievements, isDark }) => {
+  const projects = experience.filter(e => e.type === 'project');
+  if (projects.length === 0) return null;
+
+  return (
+    <Island isDark={isDark}>
+      <SectionHeader icon={<Briefcase size={13} />} title="Projects" isDark={isDark} />
+      {projects.map(proj => {
+        const linked = achievements.filter(a => a.experienceId === proj.id);
+        return (
+          <div key={proj.id} style={{
+            marginBottom: 20, paddingBottom: 20,
+            borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+          }}>
+            <p style={{ fontSize: 15, fontWeight: 700, color: isDark ? '#e5e7eb' : '#1f2937' }}>{proj.role}</p>
+            <p style={{ fontSize: 13, color: isDark ? '#9ca3af' : '#6b7280', marginTop: 2 }}>
+              {proj.company} · {proj.startDate}{proj.endDate ? `–${proj.endDate}` : ''}
+            </p>
+            {proj.description && (
+              <p style={{ fontSize: 13, color: isDark ? '#9ca3af' : '#6b7280', lineHeight: 1.6, marginTop: 6 }}>{proj.description}</p>
+            )}
+            {linked.length > 0 && (
+              <div style={{
+                marginTop: 12, marginLeft: 16, paddingLeft: 16,
+                borderLeft: `2px solid ${isDark ? 'rgba(99,102,241,0.2)' : 'rgba(99,102,241,0.2)'}`,
+              }}>
+                <p style={{ fontSize: 10, fontWeight: 700, color: '#818cf8', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>
+                  Achievements
+                </p>
+                {linked.map(ach => <AchievementRow key={ach.id} ach={ach} isDark={isDark} />)}
               </div>
             )}
           </div>
@@ -1431,7 +1474,7 @@ export const ProfileBank: React.FC = () => {
             {Array.isArray((profile as any)?.identityCards) && (profile as any).identityCards.length > 0 && (
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-xs font-black uppercase tracking-widest text-slate-500">Professional Identity</h3>
+                  <h3 className="text-xs font-black uppercase tracking-widest text-slate-500">Roles You Should Target</h3>
                   <button
                     onClick={handleRegenerateIdentity}
                     disabled={regenerating}
@@ -1470,6 +1513,7 @@ export const ProfileBank: React.FC = () => {
             <PersonalDetailsIsland profile={profile} isDark={isDark} />
             <SummaryIsland profile={profile} isDark={isDark} />
             <ExperienceIsland experience={profile.experience} achievements={profile.achievements} isDark={isDark} />
+            <ProjectsIsland experience={profile.experience} achievements={profile.achievements} isDark={isDark} />
             <EducationIsland education={profile.education} isDark={isDark} />
             <SkillsIsland skills={profile.skills} isDark={isDark} />
             <CertificationsIsland certifications={profile.certifications} isDark={isDark} />
