@@ -468,7 +468,7 @@ function StepAuth({ answers, onAuthSuccess, onBack }: {
 }) {
   const { T } = useTheme();
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
