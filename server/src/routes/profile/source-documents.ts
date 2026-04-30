@@ -41,7 +41,7 @@ function handleUpload(req: AuthRequest, res: Response, next: NextFunction) {
 }
 
 // POST /api/profile/source-documents
-router.post('/source-documents', authenticate, handleUpload, async (req: AuthRequest, res: Response) => {
+router.post('/profile/source-documents', authenticate, handleUpload, async (req: AuthRequest, res: Response) => {
   const userId = req.user!.id;
   const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
 
