@@ -30,6 +30,7 @@ const AdminDashboard = React.lazy(() =>
 
 // Auth & Context
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { supabase } from './lib/supabase';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthPage } from './pages/AuthPage';
 import { AuthCallback } from './components/AuthCallback';
@@ -309,7 +310,6 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const prevUserIdRef = useRef<string | null>(null);
-  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // When the Supabase userId changes (e.g. magic-link login → new session), the old
   // ['profile'] cache belongs to a different user — clear it immediately so
@@ -323,25 +323,19 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     prevUserIdRef.current = newId;
   }, [user?.id]);
 
-  // Debounced redirect: wait 700ms before sending to /auth so Supabase auth state
-  // can settle after sign-up (it briefly emits user=null between SIGNED_UP and SIGNED_IN).
-  // Cancels immediately if user appears within the window — safe to revert by removing timer.
+  // Guard: only redirect to /auth when React state says no user AND Supabase confirms
+  // no active session. This prevents a false redirect when React state lags one render
+  // behind the auth event (e.g. immediately after navigate('/') from AuthPage).
   useEffect(() => {
-    if (redirectTimerRef.current) {
-      clearTimeout(redirectTimerRef.current);
-      redirectTimerRef.current = null;
-    }
     if (loading || user) return;
     const savedEmail = localStorage.getItem('jobhub_auth_email');
     if (!savedEmail) return;
-    redirectTimerRef.current = setTimeout(() => {
-      navigate(`/auth?email=${encodeURIComponent(savedEmail)}`, { replace: true });
-    }, 700);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        navigate(`/auth?email=${encodeURIComponent(savedEmail)}`, { replace: true });
+      }
+    });
   }, [loading, user]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => () => {
-    if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
-  }, []);
 
   if (loading) {
     return (
@@ -522,8 +516,6 @@ function ReportOrDashboard() {
     }
     return localStorage.getItem('jobhub_report_seen') === 'true';
   });
-  const [skoolJoined, setSkoolJoined] = useState(false);
-
   function handleDone() {
     console.log('[ReportOrDashboard] handleDone — marking report seen, navigating to /workspace');
     localStorage.setItem('jobhub_report_seen', 'true');
@@ -541,7 +533,6 @@ function ReportOrDashboard() {
           <React.Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center"><div className="w-10 h-10 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" /></div>}>
             <ReportExperience onDone={handleDone} />
           </React.Suspense>
-          {!skoolJoined && <SkoolGate onJoined={() => setSkoolJoined(true)} />}
         </>
       ) : (
         <DashboardGate>
