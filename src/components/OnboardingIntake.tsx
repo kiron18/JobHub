@@ -477,28 +477,16 @@ function StepAuth({ answers, onAuthSuccess, onBack }: {
   const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
 
   const isAuthenticated = !!user && !(user as any).is_anonymous;
-  if (isAuthenticated) {
-    return (
-      <div>
-        <ProfileProgress step={4} answers={answers} />
-        <h2 style={{ fontSize: 24, fontWeight: 900, color: T.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
-          Account ready — let's go
-        </h2>
-        <p style={{ color: T.textMuted, fontSize: 13, lineHeight: 1.6, marginBottom: 8 }}>
-          Signed in as <strong style={{ color: T.text }}>{user.email}</strong>.
-        </p>
-        <PrimaryButton onClick={() => onAuthSuccess(user.email ?? '')} disabled={false} label="Continue →" />
-        <div style={{ marginTop: 16 }}><BackButton onBack={onBack} /></div>
-        <p style={{ marginTop: 20, fontSize: 12, color: T.textFaint, textAlign: 'center' }}>
-          Not you?{' '}
-          <button type="button" onClick={async () => { await signOut(); navigate('/', { replace: true }); }}
-            style={{ background: 'none', border: 'none', color: T.textMuted, fontWeight: 600, cursor: 'pointer', fontSize: 12, textDecoration: 'underline', padding: 0 }}>
-            Sign out and use a different email
-          </button>
-        </p>
-      </div>
-    );
-  }
+
+  // Already logged in — skip this step automatically, no confirmation screen needed
+  useEffect(() => {
+    if (isAuthenticated && user?.email) {
+      onAuthSuccess(user.email);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
+
+  if (isAuthenticated) return null;
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();

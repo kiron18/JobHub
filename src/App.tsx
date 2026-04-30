@@ -8,7 +8,6 @@ import { motion } from 'framer-motion';
 import { DashboardLayout } from './layouts/DashboardLayout';
 import { OnboardingGate } from './components/OnboardingGate';
 import { FirstVisitTip } from './components/FirstVisitTips';
-import { SkoolGate } from './components/SkoolGate';
 
 const MatchEngine          = React.lazy(() => import('./components/MatchEngine').then(m => ({ default: m.MatchEngine })));
 const ApplicationWorkspace = React.lazy(() => import('./components/ApplicationWorkspace').then(m => ({ default: m.ApplicationWorkspace })));
