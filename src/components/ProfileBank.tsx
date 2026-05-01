@@ -1417,6 +1417,14 @@ export const ProfileBank: React.FC = () => {
 
   const queryClient = useQueryClient();
   const [regenerating, setRegenerating] = useState(false);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(() =>
+    !localStorage.getItem('jobhub_profile_visited')
+  );
+
+  const dismissWelcomeModal = () => {
+    localStorage.setItem('jobhub_profile_visited', '1');
+    setShowWelcomeModal(false);
+  };
 
   const handleRegenerateIdentity = async () => {
     setRegenerating(true);
@@ -1453,6 +1461,59 @@ export const ProfileBank: React.FC = () => {
 
   return (
     <div style={{ background: pageBg, minHeight: '100%', padding: '24px 0', color: textMain, fontFamily: 'system-ui, sans-serif' }}>
+      {/* First-visit welcome modal */}
+      <AnimatePresence>
+        {showWelcomeModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={dismissWelcomeModal}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 8 }}
+              transition={{ duration: 0.25, ease: [0.25, 1, 0.5, 1] }}
+              onClick={(e) => e.stopPropagation()}
+              style={{ background: isDark ? '#0d1117' : '#fff', border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`, borderRadius: 20, padding: '32px 36px', maxWidth: 460, width: '100%' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Star size={20} style={{ color: '#818cf8' }} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: 17, fontWeight: 800, color: isDark ? '#f3f4f6' : '#111827', margin: 0, letterSpacing: '-0.01em' }}>Your Achievement Bank</h3>
+                  <p style={{ fontSize: 12, color: isDark ? '#6b7280' : '#9ca3af', margin: '2px 0 0' }}>How to get the most out of this page</p>
+                </div>
+              </div>
+              {[
+                { num: '1', title: 'Add your experience', desc: 'Enter every role you\'ve held. The AI uses your full work history to find the right story for each application.' },
+                { num: '2', title: 'Link achievements to each role', desc: 'These are the specific wins, metrics, and outcomes — the evidence behind your claims. This is the most important part.' },
+                { num: '3', title: 'Every document draws from this', desc: 'Your resume, cover letters, and interview answers are all built from this bank. Update it once and every generation improves.' },
+              ].map(step => (
+                <div key={step.num} style={{ display: 'flex', gap: 14, marginBottom: 18 }}>
+                  <div style={{ flexShrink: 0, width: 26, height: 26, borderRadius: '50%', background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.28)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, color: '#818cf8' }}>
+                    {step.num}
+                  </div>
+                  <div>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: isDark ? '#e5e7eb' : '#111827', margin: '2px 0 4px' }}>{step.title}</p>
+                    <p style={{ fontSize: 12, color: isDark ? '#9ca3af' : '#6b7280', margin: 0, lineHeight: 1.55 }}>{step.desc}</p>
+                  </div>
+                </div>
+              ))}
+              <button
+                onClick={dismissWelcomeModal}
+                style={{ marginTop: 8, width: '100%', padding: '13px 0', borderRadius: 10, background: 'rgba(99,102,241,0.9)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', letterSpacing: '-0.01em' }}
+              >
+                Got it, let's build →
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px' }}>
         {/* Page header */}
         <div style={{ marginBottom: 28 }}>

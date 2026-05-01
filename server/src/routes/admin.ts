@@ -12,15 +12,24 @@ const router = Router();
 // Admin/test accounts excluded from all platform stats
 const EXCLUDED_EMAILS = [
   'kiron182@gmail.com',
-  'kironorik@gmail.com',
-  'kironoriktest@gmail.com',
   'yornorik281@gmail.com',
   'kamiproject2021@gmail.com',
+  'kironorik182@gmail.com',
+  'kironorik@gmail.com',
+  'kironoriktest@gmail.com',
 ];
+
+const ANALYTICS_START_DATE = new Date('2026-04-27T00:00:00Z');
 
 async function getExcludedUserIds(): Promise<string[]> {
   const profiles = await prisma.candidateProfile.findMany({
-    where: { email: { in: EXCLUDED_EMAILS } },
+    where: {
+      OR: [
+        { email: { in: EXCLUDED_EMAILS } },
+        { email: null },
+        { email: '' },
+      ]
+    },
     select: { userId: true },
   });
   return profiles.map(p => p.userId);
@@ -60,10 +69,13 @@ async function requireAdmin(req: AuthRequest, res: Response, next: NextFunction)
 }
 
 async function getFirstTimeReportsForWindow(from: Date, to: Date, excludedUserIds: string[]) {
+  const actualFrom = from.getTime() < ANALYTICS_START_DATE.getTime() ? ANALYTICS_START_DATE : from;
+  if (actualFrom >= to) return [];
+
   return prisma.diagnosticReport.findMany({
     where: {
       status: 'COMPLETE',
-      createdAt: { gte: from, lt: to },
+      createdAt: { gte: actualFrom, lt: to },
       ...(excludedUserIds.length ? { userId: { notIn: excludedUserIds } } : {}),
     },
     include: {
@@ -121,8 +133,8 @@ Write the full script now, ready for Kiron to read. Do not include any meta-comm
 router.get('/stats', authenticate, requireAdmin, async (_req, res) => {
   const now = new Date();
   const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
-  const weekAgo    = new Date(now); weekAgo.setDate(weekAgo.getDate() - 7);
-  const twoWeeksAgo = new Date(now); twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+  const weekAgo = new Date(Math.max(now.getTime() - 7 * 24 * 60 * 60 * 1000, ANALYTICS_START_DATE.getTime()));
+  const twoWeeksAgo = new Date(Math.max(now.getTime() - 14 * 24 * 60 * 60 * 1000, ANALYTICS_START_DATE.getTime()));
 
   function buildDailyBuckets(items: { createdAt: Date }[], days: number) {
     const buckets: Record<string, number> = {};
@@ -141,6 +153,7 @@ router.get('/stats', authenticate, requireAdmin, async (_req, res) => {
   try {
     const excludedUserIds = await getExcludedUserIds();
     const ex = excludedUserIds.length ? { notIn: excludedUserIds } : undefined;
+    const startFilter = { gte: ANALYTICS_START_DATE };
 
     const [
       totalProfiles,
@@ -163,25 +176,25 @@ router.get('/stats', authenticate, requireAdmin, async (_req, res) => {
       appsByStatus,
       feedbackStats,
     ] = await Promise.all([
-      prisma.candidateProfile.count({ where: ex ? { userId: ex } : {} }),
-      prisma.candidateProfile.count({ where: { hasCompletedOnboarding: true, ...(ex ? { userId: ex } : {}) } }),
+      prisma.candidateProfile.count({ where: { createdAt: startFilter, ...(ex ? { userId: ex } : {}) } }),
+      prisma.candidateProfile.count({ where: { hasCompletedOnboarding: true, createdAt: startFilter, ...(ex ? { userId: ex } : {}) } }),
       prisma.candidateProfile.count({ where: { createdAt: { gte: todayStart }, ...(ex ? { userId: ex } : {}) } }),
       prisma.candidateProfile.count({ where: { createdAt: { gte: weekAgo }, ...(ex ? { userId: ex } : {}) } }),
-      prisma.candidateProfile.groupBy({ by: ['plan'] as any, _count: { id: true }, ...(ex ? { where: { userId: ex } } : {}) }),
-      prisma.document.count({ where: ex ? { userId: ex } : {} }),
+      prisma.candidateProfile.groupBy({ by: ['plan'] as any, _count: { id: true }, where: { createdAt: startFilter, ...(ex ? { userId: ex } : {}) } }),
+      prisma.document.count({ where: { createdAt: startFilter, ...(ex ? { userId: ex } : {}) } }),
       prisma.document.count({ where: { createdAt: { gte: todayStart }, ...(ex ? { userId: ex } : {}) } }),
       prisma.document.count({ where: { createdAt: { gte: weekAgo }, ...(ex ? { userId: ex } : {}) } }),
-      prisma.document.groupBy({ by: ['type'], _count: { id: true }, ...(ex ? { where: { userId: ex } } : {}) }),
+      prisma.document.groupBy({ by: ['type'], _count: { id: true }, where: { createdAt: startFilter, ...(ex ? { userId: ex } : {}) } }),
       prisma.candidateProfile.findMany({ where: { createdAt: { gte: twoWeeksAgo }, ...(ex ? { userId: ex } : {}) }, select: { createdAt: true } }),
       prisma.document.findMany({ where: { createdAt: { gte: twoWeeksAgo }, ...(ex ? { userId: ex } : {}) }, select: { createdAt: true } }),
-      prisma.jobApplication.count({ where: { overallGrade: { not: null }, ...(ex ? { userId: ex } : {}) } }),
+      prisma.jobApplication.count({ where: { overallGrade: { not: null }, createdAt: startFilter, ...(ex ? { userId: ex } : {}) } }),
       prisma.jobApplication.count({ where: { overallGrade: { not: null }, createdAt: { gte: weekAgo }, ...(ex ? { userId: ex } : {}) } }),
       prisma.jobApplication.count({ where: { overallGrade: { not: null }, createdAt: { gte: todayStart }, ...(ex ? { userId: ex } : {}) } }),
-      prisma.diagnosticReport.count({ where: ex ? { userId: ex } : {} }),
-      prisma.diagnosticReport.count({ where: { status: 'COMPLETE', ...(ex ? { userId: ex } : {}) } }),
+      prisma.diagnosticReport.count({ where: { createdAt: startFilter, ...(ex ? { userId: ex } : {}) } }),
+      prisma.diagnosticReport.count({ where: { status: 'COMPLETE', createdAt: startFilter, ...(ex ? { userId: ex } : {}) } }),
       prisma.diagnosticReport.count({ where: { createdAt: { gte: weekAgo }, ...(ex ? { userId: ex } : {}) } }),
-      prisma.jobApplication.groupBy({ by: ['status'], _count: { id: true }, ...(ex ? { where: { userId: ex } } : {}) }),
-      prisma.documentFeedback.aggregate({ _avg: { rating: true }, _count: { id: true }, ...(ex ? { where: { userId: ex } } : {}) }),
+      prisma.jobApplication.groupBy({ by: ['status'], _count: { id: true }, where: { createdAt: startFilter, ...(ex ? { userId: ex } : {}) } }),
+      prisma.documentFeedback.aggregate({ _avg: { rating: true }, _count: { id: true }, where: { createdAt: startFilter, ...(ex ? { userId: ex } : {}) } }),
     ]);
 
     const byPlan: Record<string, number> = {};
@@ -232,10 +245,11 @@ router.get('/friday-brief', authenticate, requireAdmin, async (_req, res) => {
       where: { windowStart: from },
     });
 
-    const firstTimeCount = await prisma.diagnosticReport.count({
+    const actualFrom = from.getTime() < ANALYTICS_START_DATE.getTime() ? ANALYTICS_START_DATE : from;
+    const firstTimeCount = actualFrom >= to ? 0 : await prisma.diagnosticReport.count({
       where: {
         status: 'COMPLETE',
-        createdAt: { gte: from, lt: to },
+        createdAt: { gte: actualFrom, lt: to },
         ...(excludedUserIds.length ? { userId: { notIn: excludedUserIds } } : {}),
       },
     });
@@ -314,17 +328,15 @@ router.get('/analysis', authenticate, requireAdmin, async (_req, res) => {
     const ex = excludedUserIds.length ? { notIn: excludedUserIds } : undefined;
 
     const [docsByUser, docsByType, diagnosticUsers, totalUsers, totalOnboarded, profilesRaw] = await Promise.all([
-      prisma.document.groupBy({ by: ['userId'], _count: { id: true }, ...(ex ? { where: { userId: ex } } : {}) }),
-      prisma.document.groupBy({ by: ['type'], _count: { id: true }, ...(ex ? { where: { userId: ex } } : {}) }),
-      prisma.diagnosticReport.findMany({ where: { status: 'COMPLETE', ...(ex ? { userId: ex } : {}) }, select: { userId: true } }),
-      prisma.candidateProfile.count({ where: ex ? { userId: ex } : {} }),
-      prisma.candidateProfile.count({ where: { hasCompletedOnboarding: true, ...(ex ? { userId: ex } : {}) } }),
-      prisma.candidateProfile.findMany({ where: { hasCompletedOnboarding: true, ...(ex ? { userId: ex } : {}) }, select: { userId: true, createdAt: true } }),
+      prisma.document.groupBy({ by: ['userId'], _count: { id: true }, where: { createdAt: { gte: ANALYTICS_START_DATE }, ...(ex ? { userId: ex } : {}) } }),
+      prisma.document.groupBy({ by: ['type'], _count: { id: true }, where: { createdAt: { gte: ANALYTICS_START_DATE }, ...(ex ? { userId: ex } : {}) } }),
+      prisma.diagnosticReport.findMany({ where: { status: 'COMPLETE', createdAt: { gte: ANALYTICS_START_DATE }, ...(ex ? { userId: ex } : {}) }, select: { userId: true } }),
+      prisma.candidateProfile.count({ where: { createdAt: { gte: ANALYTICS_START_DATE }, ...(ex ? { userId: ex } : {}) } }),
+      prisma.candidateProfile.count({ where: { hasCompletedOnboarding: true, createdAt: { gte: ANALYTICS_START_DATE }, ...(ex ? { userId: ex } : {}) } }),
+      prisma.candidateProfile.findMany({ where: { hasCompletedOnboarding: true, createdAt: { gte: ANALYTICS_START_DATE }, ...(ex ? { userId: ex } : {}) }, select: { userId: true, createdAt: true } }),
     ]);
 
-    const exclusionClause = excludedUserIds.length
-      ? Prisma.sql`WHERE "userId" NOT IN (${Prisma.join(excludedUserIds)})`
-      : Prisma.sql`WHERE 1=1`;
+    const exclusionClause = Prisma.sql`WHERE "createdAt" >= ${ANALYTICS_START_DATE} ${excludedUserIds.length ? Prisma.sql`AND "userId" NOT IN (${Prisma.join(excludedUserIds)})` : Prisma.empty}`;
 
     const firstDocDates = await prisma.$queryRaw<Array<{ userId: string; minCreatedAt: Date }>>`
       SELECT "userId", MIN("createdAt") as "minCreatedAt" FROM "Document" ${exclusionClause} GROUP BY "userId"
@@ -377,6 +389,230 @@ Be direct. Be specific to this data. No generic SaaS advice — only what the nu
   } catch (err) {
     console.error('[admin/analysis] error:', err);
     return res.status(500).json({ error: 'Failed to generate analysis' });
+  }
+});
+
+// ─── Expenses dashboard ────────────────────────────────────────────────────────
+
+type ExpenseStatus = 'live' | 'manual' | 'error';
+type ExpenseUrgency = 'good' | 'warning' | 'critical' | 'unknown';
+
+interface ExpenseEntry {
+  id: string;
+  name: string;
+  category: string;
+  status: ExpenseStatus;
+  balance?: number;
+  used?: number;
+  limit?: number;
+  usedPct?: number;
+  monthlyCostAUD?: number;
+  billingCycle: 'monthly' | 'annual' | 'per-transaction' | 'free';
+  description: string;
+  urgency: ExpenseUrgency;
+  lastFetched?: string;
+  error?: string;
+}
+
+interface ExpensesResponse {
+  services: ExpenseEntry[];
+  totalMonthlyAUD: number;
+  fetchedAt: string;
+}
+
+const expensesCache: { data: ExpensesResponse | null; fetchedAt: number } = { data: null, fetchedAt: 0 };
+const EXPENSES_CACHE_TTL_MS = 60 * 60 * 1000;
+const USD_TO_AUD = 1.55;
+
+function computeUrgency(entry: Partial<ExpenseEntry>): ExpenseUrgency {
+  if (entry.status === 'error') return 'unknown';
+  if (entry.usedPct !== undefined) {
+    if (entry.usedPct >= 90) return 'critical';
+    if (entry.usedPct >= 70) return 'warning';
+    return 'good';
+  }
+  if (entry.balance !== undefined && entry.limit === undefined) {
+    if (entry.balance < 2) return 'critical';
+    if (entry.balance < 5) return 'warning';
+    return 'good';
+  }
+  return 'unknown';
+}
+
+async function fetchOpenRouter(): Promise<Partial<ExpenseEntry>> {
+  try {
+    const res = await fetch('https://openrouter.ai/api/v1/auth/key', {
+      headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}` },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json() as any;
+    const balance = json?.data?.limit_remaining ?? null;
+    const usage = json?.data?.usage ?? null;
+    const limit = json?.data?.limit ?? null;
+    const usedPct = limit && usage !== null ? Math.round((usage / limit) * 100) : undefined;
+    return {
+      status: 'live',
+      balance: balance !== null ? Math.round(balance * 100) / 100 : undefined,
+      used: usage !== null ? Math.round(usage * 100) / 100 : undefined,
+      limit: limit !== null ? Math.round(limit * 100) / 100 : undefined,
+      usedPct,
+      lastFetched: new Date().toISOString(),
+    };
+  } catch (err: any) {
+    return { status: 'error', error: err.message };
+  }
+}
+
+async function fetchApify(): Promise<Partial<ExpenseEntry>> {
+  try {
+    const key = process.env.APIFY_API_KEY?.trim();
+    const res = await fetch(`https://api.apify.com/v2/users/me?token=${key}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json() as any;
+    const used = json?.data?.plan?.monthlyUsageCredits ?? null;
+    const limit = json?.data?.plan?.maxMonthlyUsageCredits ?? null;
+    const usedPct = limit && used !== null ? Math.round((used / limit) * 100) : undefined;
+    return {
+      status: 'live',
+      used: used !== null ? used : undefined,
+      limit: limit !== null ? limit : undefined,
+      usedPct,
+      lastFetched: new Date().toISOString(),
+    };
+  } catch (err: any) {
+    return { status: 'error', error: err.message };
+  }
+}
+
+async function fetchSerpApi(): Promise<Partial<ExpenseEntry>> {
+  try {
+    const res = await fetch(`https://serpapi.com/account.json?api_key=${process.env.SERPAPI_KEY}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json() as any;
+    const monthly = json?.searches_per_month ?? null;
+    const left = json?.plan_searches_left ?? null;
+    const used = monthly !== null && left !== null ? monthly - left : null;
+    const usedPct = monthly && used !== null ? Math.round((used / monthly) * 100) : undefined;
+    return {
+      status: 'live',
+      balance: left !== null ? left : undefined,
+      used: used !== null ? used : undefined,
+      limit: monthly !== null ? monthly : undefined,
+      usedPct,
+      lastFetched: new Date().toISOString(),
+    };
+  } catch (err: any) {
+    return { status: 'error', error: err.message };
+  }
+}
+
+async function buildExpensesData(): Promise<ExpensesResponse> {
+  const [orResult, apifyResult, serpResult] = await Promise.allSettled([
+    fetchOpenRouter(),
+    fetchApify(),
+    fetchSerpApi(),
+  ]);
+
+  const orData  = orResult.status    === 'fulfilled' ? orResult.value    : { status: 'error' as ExpenseStatus, error: 'Fetch failed' };
+  const apifyData = apifyResult.status === 'fulfilled' ? apifyResult.value : { status: 'error' as ExpenseStatus, error: 'Fetch failed' };
+  const serpData  = serpResult.status  === 'fulfilled' ? serpResult.value  : { status: 'error' as ExpenseStatus, error: 'Fetch failed' };
+
+  const services: ExpenseEntry[] = [
+    {
+      id: 'openrouter', name: 'OpenRouter', category: 'AI / LLM',
+      ...orData, monthlyCostAUD: undefined, billingCycle: 'per-transaction',
+      description: 'LLM API gateway — pay per token (USD credits)',
+      urgency: computeUrgency(orData),
+    } as ExpenseEntry,
+    {
+      id: 'railway', name: 'Railway', category: 'Hosting',
+      status: 'manual', monthlyCostAUD: Math.round(5 * USD_TO_AUD),
+      billingCycle: 'monthly', description: 'Hobby plan — usage-based (~$5 base). Agent usage limit: $5 — monitor closely.',
+      urgency: 'warning',
+    },
+    {
+      id: 'godaddy', name: 'GoDaddy', category: 'Domain',
+      status: 'manual', monthlyCostAUD: 2.08,
+      billingCycle: 'annual', description: 'Domain registration (billed annually)',
+      urgency: 'good',
+    },
+    {
+      id: 'apify', name: 'Apify', category: 'Scraping',
+      ...apifyData, monthlyCostAUD: undefined, billingCycle: 'monthly',
+      description: 'Job board scraping — monthly compute credits',
+      urgency: computeUrgency(apifyData),
+    } as ExpenseEntry,
+    {
+      id: 'serpapi', name: 'SERP API', category: 'Search',
+      ...serpData, monthlyCostAUD: undefined, billingCycle: 'monthly',
+      description: 'Search lookups — free 100/mo tier',
+      urgency: computeUrgency(serpData),
+    } as ExpenseEntry,
+    {
+      id: 'resend', name: 'Resend', category: 'Email',
+      status: 'manual', billingCycle: 'free',
+      description: 'Transactional email — free tier (3,000/mo)',
+      urgency: 'good',
+    },
+    {
+      id: 'pinecone', name: 'Pinecone', category: 'Vector DB',
+      status: 'manual', billingCycle: 'free',
+      description: 'Vector search for achievements — free tier',
+      urgency: 'good',
+    },
+    {
+      id: 'skool', name: 'Skool', category: 'Community',
+      status: 'manual', monthlyCostAUD: Math.round(99 * USD_TO_AUD),
+      billingCycle: 'monthly', description: 'Community platform subscription',
+      urgency: 'good',
+    },
+    {
+      id: 'nanobanana', name: 'Nano Banana', category: 'Marketing',
+      status: 'manual',
+      billingCycle: 'per-transaction', description: 'Marketing / outreach tool — pay per use, no flat monthly fee',
+      urgency: 'good',
+    },
+    {
+      id: 'stripe', name: 'Stripe', category: 'Payments',
+      status: 'manual', billingCycle: 'per-transaction',
+      description: '2.9% + $0.30 per transaction (AU cards slightly higher)',
+      urgency: 'good',
+    },
+    {
+      id: 'llamacloud', name: 'LlamaCloud', category: 'AI / Parse',
+      status: 'manual', billingCycle: 'per-transaction',
+      description: 'Document parsing — pay per page processed',
+      urgency: 'unknown',
+    },
+  ];
+
+  const totalMonthlyAUD = services.reduce((sum, s) => {
+    if (s.monthlyCostAUD && (s.billingCycle === 'monthly' || s.billingCycle === 'annual')) {
+      return sum + s.monthlyCostAUD;
+    }
+    return sum;
+  }, 0);
+
+  return { services, totalMonthlyAUD, fetchedAt: new Date().toISOString() };
+}
+
+// GET /api/admin/expenses
+router.get('/expenses', authenticate, requireAdmin, async (req, res) => {
+  const forceRefresh = req.query.refresh === '1';
+  const now = Date.now();
+
+  if (!forceRefresh && expensesCache.data && (now - expensesCache.fetchedAt) < EXPENSES_CACHE_TTL_MS) {
+    return res.json({ ...expensesCache.data, cached: true });
+  }
+
+  try {
+    const data = await buildExpensesData();
+    expensesCache.data = data;
+    expensesCache.fetchedAt = now;
+    return res.json({ ...data, cached: false });
+  } catch (err) {
+    console.error('[admin/expenses] error:', err);
+    return res.status(500).json({ error: 'Failed to fetch expenses' });
   }
 });
 

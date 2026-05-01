@@ -233,21 +233,23 @@ function FileDropZone({ label, subtext, required, file, onFile }: {
 
 // ── Shared buttons ────────────────────────────────────────────────────────────
 
-function PrimaryButton({ onClick, disabled, label }: { onClick: () => void; disabled?: boolean; label: string }) {
+function PrimaryButton({ onClick, disabled, loading, label }: { onClick: () => void; disabled?: boolean; loading?: boolean; label: string }) {
   const { T } = useTheme();
+  const isDisabled = disabled || loading;
   return (
-    <motion.button onClick={onClick} disabled={disabled}
+    <motion.button onClick={onClick} disabled={isDisabled}
       style={{
         flex: 1, padding: '14px 20px', borderRadius: 14, border: 'none',
         background: T.btnBg, color: T.btnText, fontWeight: 800, fontSize: 15,
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.3 : 1, boxShadow: disabled ? 'none' : T.btnShadow,
+        cursor: isDisabled ? 'not-allowed' : 'pointer',
+        opacity: isDisabled ? (loading ? 0.7 : 0.3) : 1,
+        boxShadow: isDisabled ? 'none' : T.btnShadow,
         transition: 'opacity 0.2s, box-shadow 0.2s', fontFamily: 'inherit', letterSpacing: '-0.01em',
       }}
-      whileHover={!disabled ? { scale: 1.02, boxShadow: '0 8px 40px rgba(0,0,0,0.25)' } : {}}
-      whileTap={!disabled ? { scale: 0.97 } : {}}
+      whileHover={!isDisabled ? { scale: 1.02, boxShadow: '0 8px 40px rgba(0,0,0,0.25)' } : {}}
+      whileTap={!isDisabled ? { scale: 0.97 } : {}}
     >
-      {label}
+      {loading ? 'Building your diagnosis…' : label}
     </motion.button>
   );
 }
@@ -609,13 +611,14 @@ function StepResponses({ answers, onChange, onNext, onBack }: {
 
 // ── Step: Files ───────────────────────────────────────────────────────────────
 
-function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, onBack, marketingConsent, onMarketingConsentChange, answers }: {
+function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, onBack, marketingConsent, onMarketingConsentChange, answers, submitting }: {
   resume: File | null; setResume: (f: File | null) => void;
   cl1: File | null; setCl1: (f: File | null) => void;
   cl2: File | null; setCl2: (f: File | null) => void;
   onSubmit: () => void; onBack: () => void;
   marketingConsent: boolean; onMarketingConsentChange: (v: boolean) => void;
   answers: IntakeAnswers;
+  submitting: boolean;
 }) {
   const { T } = useTheme();
   return (
@@ -648,7 +651,7 @@ function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, onBa
 
       <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
         <BackButton onBack={onBack} />
-        <PrimaryButton onClick={onSubmit} disabled={!resume} label="Build my diagnosis →" />
+        <PrimaryButton onClick={onSubmit} disabled={!resume} loading={submitting} label="Build my diagnosis →" />
       </div>
     </div>
   );
@@ -656,19 +659,17 @@ function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, onBa
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean }) {
-  const [step, setStep]           = useState(0);
+export function OnboardingIntake({ resumeMode: _resumeMode = false, initialStep }: { resumeMode?: boolean; initialStep?: number }) {
+  const [step, setStep]           = useState(initialStep ?? 0);
   const [submitting, setSubmitting] = useState(false);
   const { T, isDark, toggle: toggleDark } = useAppTheme();
-  const { user, signOut } = useAuth();
+  const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
 
-  // If there's already a report being processed (e.g. user refreshed mid-way), go straight to the processing screen
-  useEffect(() => {
-    api.get('/onboarding/report').then(({ data }) => {
-      if (data.status === 'PROCESSING' || data.status === 'FAILED') setStep(5);
-    }).catch(() => {});
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const isAuthenticated = !!user && !(user as any).is_anonymous;
+
+  // Compute the visible step synchronously — if already authenticated, never render Welcome or Auth
+  const visibleStep = isAuthenticated && step < 2 ? 2 : step;
 
   const [answers, setAnswers] = useState<IntakeAnswers>({
     targetRole: '', seniority: '', industry: '', visaStatus: '',
@@ -747,12 +748,13 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
       cl2={cl2} setCl2={setCl2}
       onSubmit={handleFilesSubmit}
       onBack={goBack}
+      submitting={submitting}
       marketingConsent={answers.marketingConsent}
       onMarketingConsentChange={v => setAnswers(prev => ({ ...prev, marketingConsent: v }))}
     />,
   ];
 
-  const SignOutBtn = user && !(user as any).is_anonymous && step > 1 ? (
+  const SignOutBtn = user && !(user as any).is_anonymous && visibleStep > 1 ? (
     <motion.button
       onClick={async () => { await signOut(); navigate('/', { replace: true }); }}
       whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
@@ -770,7 +772,13 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
     </motion.button>
   ) : null;
 
-  if (step === 5 || (resumeMode && submitting)) {
+  if (authLoading) return (
+    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: T.bg }}>
+      <div className="w-10 h-10 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
+    </div>
+  );
+
+  if (visibleStep === 5 || submitting) {
     return (
       <div style={{ backgroundColor: T.bg, minHeight: '100vh', transition: 'background-color 0.4s' }}>
         <Scene />
@@ -779,6 +787,7 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
         <ProcessingScreen
           isDark={isDark} theme={T}
           email={user?.email ?? answers.marketingEmail}
+          targetRole={answers.targetRole || undefined}
           onComplete={() => {}}
           onRetry={handleRetry}
         />
@@ -794,7 +803,7 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
       <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 48, paddingBottom: 48, paddingLeft: 16, paddingRight: 16, minHeight: '100%', justifyContent: 'center' }}>
         <div style={{ width: '100%', maxWidth: 520 }}>
           <AnimatePresence mode="wait">
-            <motion.div key={step}
+            <motion.div key={visibleStep}
               initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }}
               transition={{ duration: 0.26, ease: [0.25, 1, 0.5, 1] }}
             >
@@ -805,7 +814,7 @@ export function OnboardingIntake({ resumeMode = false }: { resumeMode?: boolean 
                 padding: 'clamp(24px, 5vw, 44px)',
                 transition: 'background 0.4s, border-color 0.4s',
               }}>
-                {STEPS[step]}
+                {STEPS[visibleStep]}
               </div>
             </motion.div>
           </AnimatePresence>

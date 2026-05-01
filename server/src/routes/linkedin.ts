@@ -17,7 +17,11 @@ async function requirePaid(req: AuthRequest, res: any): Promise<boolean> {
   const isPaid = plan !== 'free' && (planStatus === 'active' || planStatus === 'trialing' || planStatus === 'past_due');
   const isThreeMonth = plan === 'three_month' && profile?.accessExpiresAt && profile.accessExpiresAt > new Date();
   if (!isPaid && !isThreeMonth) {
-    res.status(403).json({ error: 'LinkedIn features require an active subscription.' });
+    res.status(402).json({
+      error: 'upgrade_required',
+      message: 'LinkedIn generation requires a paid plan.',
+      upgradeUrl: '/pricing',
+    });
     return false;
   }
   return true;

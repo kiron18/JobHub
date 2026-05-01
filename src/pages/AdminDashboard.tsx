@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import {
   Users, FileText, BarChart2, Activity,
   TrendingUp, Star, ClipboardList,
-  RefreshCcw, Mail, Copy, Check, Zap, ExternalLink,
+  RefreshCcw, Mail, Copy, Check, Zap, ExternalLink, DollarSign, AlertTriangle, Wifi, WifiOff,
 } from 'lucide-react';
 import api from '../lib/api';
 
@@ -26,6 +26,30 @@ interface Stats {
   diagnostics: { total: number; complete: number; thisWeek: number };
   applications: { byStatus: Record<string, number> };
   feedback: { total: number; avgRating: number | null };
+}
+
+interface ExpenseEntry {
+  id: string;
+  name: string;
+  category: string;
+  status: 'live' | 'manual' | 'error';
+  balance?: number;
+  used?: number;
+  limit?: number;
+  usedPct?: number;
+  monthlyCostAUD?: number;
+  billingCycle: 'monthly' | 'annual' | 'per-transaction' | 'free';
+  description: string;
+  urgency: 'good' | 'warning' | 'critical' | 'unknown';
+  lastFetched?: string;
+  error?: string;
+}
+
+interface ExpensesData {
+  services: ExpenseEntry[];
+  totalMonthlyAUD: number;
+  fetchedAt: string;
+  cached?: boolean;
 }
 
 interface BriefData {
@@ -642,10 +666,238 @@ function FunnelTab({ stats }: { stats: Stats }) {
   );
 }
 
+// ─── Expenses tab ─────────────────────────────────────────────────────────────
+
+const URGENCY_COLOR: Record<string, string> = {
+  good: S.green, warning: S.amber, critical: S.red, unknown: S.dim,
+};
+const CATEGORY_COLOR: Record<string, string> = {
+  'AI / LLM': S.purple, 'Hosting': S.teal, 'Domain': S.blue,
+  'Scraping': S.amber, 'Search': S.green, 'Email': S.blue,
+  'Vector DB': S.teal, 'Community': '#f472b6', 'Marketing': '#fb923c',
+  'Payments': S.green, 'AI / Parse': S.purple,
+};
+
+function UsageBar({ usedPct, urgency }: { usedPct: number; urgency: string }) {
+  const colour = URGENCY_COLOR[urgency] ?? S.dim;
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+        <span style={{ fontSize: 11, color: S.dim }}>Usage</span>
+        <span style={{ fontSize: 11, fontWeight: 700, color: colour }}>{usedPct}%</span>
+      </div>
+      <div style={{ height: 4, borderRadius: 99, background: 'rgba(255,255,255,0.07)', overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${usedPct}%`, background: colour, borderRadius: 99, transition: 'width 0.5s' }} />
+      </div>
+    </div>
+  );
+}
+
+function ExpenseCard({ entry }: { entry: ExpenseEntry }) {
+  const urgencyColor = URGENCY_COLOR[entry.urgency] ?? S.dim;
+  const catColor = CATEGORY_COLOR[entry.category] ?? S.dim;
+  const isLive = entry.status === 'live';
+  const isError = entry.status === 'error';
+
+  return (
+    <div style={{
+      background: S.card, border: `1px solid ${S.border}`, borderRadius: 14,
+      padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10,
+      borderTop: `3px solid ${urgencyColor}`,
+    }}>
+      {/* Name row */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ minWidth: 0 }}>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: S.main, letterSpacing: '-0.01em' }}>{entry.name}</p>
+          <span style={{
+            display: 'inline-block', marginTop: 4,
+            fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
+            background: `${catColor}15`, border: `1px solid ${catColor}30`,
+            color: catColor, borderRadius: 6, padding: '2px 7px',
+          }}>
+            {entry.category}
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+          {isLive ? (
+            <Wifi size={11} style={{ color: S.teal }} />
+          ) : isError ? (
+            <WifiOff size={11} style={{ color: S.red }} />
+          ) : null}
+          <span style={{ fontSize: 10, color: isLive ? S.teal : isError ? S.red : S.dim, fontWeight: 600 }}>
+            {isLive ? 'live' : isError ? 'error' : 'manual'}
+          </span>
+        </div>
+      </div>
+
+      {/* Cost / balance */}
+      <div>
+        {entry.monthlyCostAUD != null && (
+          <p style={{ margin: 0, fontSize: 20, fontWeight: 900, color: S.main, lineHeight: 1 }}>
+            A${entry.monthlyCostAUD.toFixed(0)}
+            <span style={{ fontSize: 11, fontWeight: 500, color: S.dim, marginLeft: 4 }}>
+              /{entry.billingCycle === 'annual' ? 'mo (annual)' : 'mo'}
+            </span>
+          </p>
+        )}
+        {entry.billingCycle === 'free' && (
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: S.green }}>Free tier</p>
+        )}
+        {entry.billingCycle === 'per-transaction' && entry.monthlyCostAUD == null && (
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: S.dim }}>Per transaction</p>
+        )}
+        {entry.balance != null && entry.limit == null && (
+          <p style={{ margin: '4px 0 0', fontSize: 12, color: S.sub }}>
+            Balance: <strong style={{ color: S.main }}>{typeof entry.balance === 'number' && entry.balance < 1000 ? `$${entry.balance.toFixed(2)}` : fmt(entry.balance)}</strong>
+          </p>
+        )}
+        {entry.used != null && entry.limit != null && (
+          <p style={{ margin: '4px 0 0', fontSize: 12, color: S.sub }}>
+            {fmt(entry.used)} / {fmt(entry.limit)} used
+          </p>
+        )}
+      </div>
+
+      {/* Usage bar */}
+      {entry.usedPct != null && <UsageBar usedPct={entry.usedPct} urgency={entry.urgency} />}
+
+      {/* Description */}
+      <p style={{ margin: 0, fontSize: 11, color: S.dim, lineHeight: 1.5 }}>{entry.description}</p>
+
+      {/* Error */}
+      {isError && entry.error && (
+        <p style={{ margin: 0, fontSize: 11, color: S.red }}>{entry.error}</p>
+      )}
+
+      {/* Last fetched */}
+      {entry.lastFetched && (
+        <p style={{ margin: 0, fontSize: 10, color: S.dim }}>
+          Updated {new Date(entry.lastFetched).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function ExpensesTab() {
+  const queryClient = useQueryClient();
+
+  const { data, isLoading, isError, isFetching } = useQuery<ExpensesData>({
+    queryKey: ['admin-expenses'],
+    queryFn: async () => { const { data } = await api.get('/admin/expenses'); return data; },
+    staleTime: 60 * 60 * 1000,
+  });
+
+  function refresh() {
+    queryClient.invalidateQueries({ queryKey: ['admin-expenses'] });
+    api.get('/admin/expenses?refresh=1').then(({ data: fresh }) => {
+      queryClient.setQueryData(['admin-expenses'], fresh);
+    });
+  }
+
+  if (isLoading) return <p style={{ color: S.dim, fontSize: 14 }}>Fetching live data...</p>;
+  if (isError || !data) return <p style={{ color: S.red, fontSize: 14 }}>Failed to load expenses.</p>;
+
+  const needsAttention = data.services.filter(s => s.urgency === 'critical' || s.urgency === 'warning');
+  const monthlyServices = data.services.filter(s => s.monthlyCostAUD != null && (s.billingCycle === 'monthly' || s.billingCycle === 'annual'));
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+      {/* Burn banner */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16,
+        background: 'linear-gradient(135deg, rgba(251,191,36,0.08), rgba(251,191,36,0.04))',
+        border: `1px solid rgba(251,191,36,0.22)`, borderRadius: 14,
+        padding: '18px 22px',
+      }}>
+        <div>
+          <p style={{ margin: '0 0 4px', fontSize: 10, fontWeight: 900, letterSpacing: '0.12em', textTransform: 'uppercase', color: S.amber }}>
+            Monthly burn (known fixed costs)
+          </p>
+          <p style={{ margin: 0, fontSize: 36, fontWeight: 900, color: S.main, lineHeight: 1, letterSpacing: '-0.03em' }}>
+            A${data.totalMonthlyAUD.toFixed(0)}
+            <span style={{ fontSize: 14, fontWeight: 500, color: S.dim, marginLeft: 8 }}>/mo</span>
+          </p>
+          <p style={{ margin: '5px 0 0', fontSize: 12, color: S.dim }}>
+            Excludes per-transaction costs (OpenRouter, Stripe, LlamaCloud)
+          </p>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
+          {monthlyServices.map(s => (
+            <div key={s.id} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: S.sub }}>{s.name}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: S.main }}>A${s.monthlyCostAUD!.toFixed(0)}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+          <button
+            onClick={refresh}
+            disabled={isFetching}
+            style={{ ...btnStyle(S.amber), opacity: isFetching ? 0.5 : 1 }}
+          >
+            <RefreshCcw size={12} style={{ animation: isFetching ? 'spin 0.8s linear infinite' : 'none' }} />
+            Refresh live data
+          </button>
+        </div>
+      </div>
+
+      {/* Needs attention */}
+      {needsAttention.length > 0 && (
+        <div style={{
+          background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.20)',
+          borderRadius: 14, padding: '16px 20px',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <AlertTriangle size={14} style={{ color: S.red }} />
+            <p style={{ margin: 0, fontSize: 11, fontWeight: 900, letterSpacing: '0.12em', textTransform: 'uppercase', color: S.red }}>
+              Needs attention
+            </p>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {needsAttention.map(s => (
+              <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 7, height: 7, borderRadius: '50%', background: URGENCY_COLOR[s.urgency], flexShrink: 0 }} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: S.main }}>{s.name}</span>
+                <span style={{ fontSize: 12, color: S.sub, flex: 1 }}>{s.description}</span>
+                {s.usedPct != null && (
+                  <span style={{ fontSize: 12, fontWeight: 700, color: URGENCY_COLOR[s.urgency] }}>{s.usedPct}% used</span>
+                )}
+                {s.balance != null && s.limit == null && (
+                  <span style={{ fontSize: 12, fontWeight: 700, color: URGENCY_COLOR[s.urgency] }}>
+                    ${typeof s.balance === 'number' ? s.balance.toFixed(2) : s.balance} remaining
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Service grid */}
+      <div>
+        <SectionHead label="All services" />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
+          {data.services.map(entry => (
+            <ExpenseCard key={entry.id} entry={entry} />
+          ))}
+        </div>
+      </div>
+
+      {data.fetchedAt && (
+        <p style={{ fontSize: 11, color: S.dim, margin: 0 }}>
+          {data.cached ? 'Cached' : 'Fetched'} at {new Date(data.fetchedAt).toLocaleString('en-AU')}
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function AdminDashboard() {
-  const [tab, setTab] = useState<'overview' | 'funnel' | 'friday'>('overview');
+  const [tab, setTab] = useState<'overview' | 'funnel' | 'friday' | 'expenses'>('overview');
 
   const { data: stats, isLoading, isError, refetch, isFetching } = useQuery<Stats>({
     queryKey: ['admin-stats'],
@@ -669,7 +921,10 @@ export function AdminDashboard() {
               </span>
             </div>
             <h1 style={{ margin: 0, fontSize: 30, fontWeight: 900, letterSpacing: '-0.02em' }}>Dashboard</h1>
-            <p style={{ margin: '4px 0 0', fontSize: 13, color: S.dim }}>{today}</p>
+            <p style={{ margin: '4px 0 0', fontSize: 13, color: S.dim }}>
+              {today} <span style={{ margin: '0 8px', opacity: 0.5 }}>|</span>
+              <span style={{ color: S.teal, fontWeight: 600 }}>Data since 27 April 2026</span>
+            </p>
           </div>
           <button
             onClick={() => refetch()}
@@ -690,7 +945,7 @@ export function AdminDashboard() {
           display: 'inline-flex', background: 'rgba(255,255,255,0.04)',
           border: `1px solid ${S.border}`, borderRadius: 12, padding: 4, marginBottom: 28,
         }}>
-          {([['overview', 'Overview', BarChart2], ['funnel', 'Funnel', TrendingUp], ['friday', 'Friday Brief', ClipboardList]] as const).map(([key, label, Icon]) => (
+          {([['overview', 'Overview', BarChart2], ['funnel', 'Funnel', TrendingUp], ['friday', 'Friday Brief', ClipboardList], ['expenses', 'Expenses', DollarSign]] as const).map(([key, label, Icon]) => (
             <button key={key} onClick={() => setTab(key)}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -719,6 +974,7 @@ export function AdminDashboard() {
         )}
 
         {tab === 'friday' && <FridayBriefTab />}
+        {tab === 'expenses' && <ExpensesTab />}
 
       </div>
     </div>

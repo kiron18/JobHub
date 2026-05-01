@@ -386,6 +386,7 @@ CONSTRAINTS:
 - Output ONLY the Markdown content. Nothing before it, nothing after it.
 - Do NOT fabricate any data not present in CANDIDATE DATA above.
 - The DIRECTOR'S BRIEF takes precedence. Where the brief specifies framing, use it. Where it specifies the opening hook, use it. Do not substitute your own interpretation.
+${type === 'RESUME' ? `- JD KEYWORD INTEGRATION (mandatory): Identify the most important technical skills, tools, certifications, role titles, and industry terminology from the JD above. Embed these naturally throughout the professional summary, skills section, and experience bullets where the candidate's actual experience supports them. Every term must be contextually accurate — do NOT insert keywords the candidate cannot substantiate. Do NOT stuff the company name into the resume. Goal: a recruiter reading both documents should feel they were built for each other.` : ''}
 ${analysisContext?.regenerateFeedback ? `
 ==============================================================
 USER IMPROVEMENT REQUEST (HIGHEST PRIORITY — apply this)

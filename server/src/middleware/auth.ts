@@ -14,8 +14,8 @@ export interface AuthRequest extends Request {
   user?: { id: string; email?: string };
 }
 
-const DEV_BYPASS_USER_ID = '00ddaaef-1799-4591-bbb5-536f6f81769e';
-const DEV_BYPASS_EMAIL   = 'kiron182@gmail.com';
+const DEV_BYPASS_USER_ID = 'dev-test-00000000-0000-0000-0000-000000000001';
+const DEV_BYPASS_EMAIL   = 'dev-test@jobhub.local';
 
 // Verify a Supabase JWT locally using HMAC-SHA256 — no network call, no race conditions.
 // Supabase tokens are standard signed JWTs; we just need the project JWT secret.

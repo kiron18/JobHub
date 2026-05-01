@@ -165,6 +165,8 @@ async function ensureColumns() {
         ADD COLUMN IF NOT EXISTS "dimensions" JSONB,
         ADD COLUMN IF NOT EXISTS "matchedIdentityCard" TEXT,
         ADD COLUMN IF NOT EXISTS "overallGrade" TEXT;
+    `);
+    await prisma.$executeRawUnsafe(`
       ALTER TABLE "CandidateProfile"
         ADD COLUMN IF NOT EXISTS "achievementCountAtDerivation" INTEGER,
         ADD COLUMN IF NOT EXISTS "identityCards" JSONB,

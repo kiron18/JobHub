@@ -6,9 +6,9 @@ const router = Router();
 
 // PATCH /api/education/:id
 router.patch('/education/:id', authenticate, async (req, res) => {
-  const { id } = req.params;
+  const id = req.params['id'] as string;
   const userId = (req as any).user.id;
-  const { institution, degree, field, year } = req.body;
+  const { institution, degree, field, year } = req.body as { institution?: string; degree?: string; field?: string; year?: string };
   try {
     const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
     if (!profile) return res.status(404).json({ error: 'Profile not found' });
@@ -25,7 +25,7 @@ router.patch('/education/:id', authenticate, async (req, res) => {
 // POST /api/education
 router.post('/education', authenticate, async (req, res) => {
   const userId = (req as any).user.id;
-  const { institution, degree, field, year } = req.body;
+  const { institution, degree, field, year } = req.body as { institution?: string; degree?: string; field?: string; year?: string };
   if (!institution || !degree) return res.status(400).json({ error: 'institution and degree required' });
   try {
     const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
@@ -41,7 +41,7 @@ router.post('/education', authenticate, async (req, res) => {
 
 // DELETE /api/education/:id
 router.delete('/education/:id', authenticate, async (req, res) => {
-  const { id } = req.params;
+  const id = req.params['id'] as string;
   const userId = (req as any).user.id;
   try {
     const profile = await prisma.candidateProfile.findUnique({ where: { userId } });

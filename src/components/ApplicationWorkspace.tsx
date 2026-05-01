@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
     ChevronLeft,
     ChevronRight,
+    ChevronDown,
     FileText,
     Download,
     Database,
@@ -20,6 +21,8 @@ import {
     ExternalLink,
     ShieldAlert,
     X,
+    Pencil,
+    Sparkles,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../lib/api';
@@ -33,9 +36,7 @@ import type { CompanyResearch } from './CompanyResearchPanel';
 import { CriteriaInputPanel } from './CriteriaInputPanel';
 import { InterviewQuestionsPanel } from './InterviewQuestionsPanel';
 import { JDSummaryBar } from './JDSummaryBar';
-import { ATSCoveragePanel } from './ATSCoveragePanel';
 import { ToneRewritePanel } from './ToneRewritePanel';
-import { ResumeScorecardPanel } from './ResumeScorecardPanel';
 import { CoverLetterPersonalisationPanel } from './CoverLetterPersonalisationPanel';
 import { exportDocx } from '../lib/exportDocx';
 import type { DocType } from '../lib/exportDocx';
@@ -118,24 +119,6 @@ const HighlightedJD: React.FC<{ text: string; keywords: string[] }> = ({ text, k
     );
 };
 
-// Inline amber pill for [VERIFY: ...] tags produced by the LLM.
-const VerifyTag: React.FC<{ description: string }> = ({ description }) => {
-    const [expanded, setExpanded] = useState(false);
-    return (
-        <span className="inline-block mx-1">
-            <span
-                role="button"
-                tabIndex={0}
-                aria-label={`Verify: ${description}`}
-                onClick={() => setExpanded(prev => !prev)}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setExpanded(prev => !prev); }}
-                className="bg-amber-100 text-amber-800 border border-amber-300 rounded-full px-2 py-0.5 text-xs font-medium cursor-pointer hover:bg-amber-200 transition-colors select-none"
-            >
-                {expanded ? description : '✓ verify'}
-            </span>
-        </span>
-    );
-};
 
 export const ApplicationWorkspace: React.FC = () => {
     const location = useLocation();
@@ -226,6 +209,8 @@ export const ApplicationWorkspace: React.FC = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [isConfirmingRegen, setIsConfirmingRegen] = useState(false);
     const [violationsBannerDismissed, setViolationsBannerDismissed] = useState(false);
+    const [violationsExpanded, setViolationsExpanded] = useState(false);
+    const [coachingExpanded, setCoachingExpanded] = useState(false);
     const [regenerateFeedback, setRegenerateFeedback] = useState('');
     const [rateLimitError, setRateLimitError] = useState(false);
     const [exportingPdf, setExportingPdf] = useState(false);
@@ -491,6 +476,8 @@ export const ApplicationWorkspace: React.FC = () => {
 
     const [abortController, setAbortController] = useState<AbortController | null>(null);
     const [isFetchingDocs, setIsFetchingDocs] = useState(false);
+    const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+    const previewRef = useRef<HTMLDivElement>(null);
 
     const handleGenerate = async (type: WorkspaceState['activeTab'], regenerate = false) => {
         if (state.hasFailed[type] && !regenerate) return;
@@ -556,6 +543,11 @@ export const ApplicationWorkspace: React.FC = () => {
             if (err?.response?.status === 429) {
                 setRateLimitError(true);
                 setState(prev => ({ ...prev, isGenerating: false }));
+                return;
+            }
+            if (err?.response?.status === 402) {
+                setState(prev => ({ ...prev, isGenerating: false }));
+                setShowUpgradeModal(true);
                 return;
             }
             console.error('Generation failed:', err);
@@ -648,6 +640,51 @@ export const ApplicationWorkspace: React.FC = () => {
 
     const handleBack = () => navigate('/');
 
+    /** Derive a short back-label from job title */
+    const backLabel = (() => {
+        const raw = state.metadata?.role;
+        if (!raw) return 'Back to Dashboard';
+        return raw.length > 20 ? raw.slice(0, 20).trimEnd() + '…' : raw;
+    })();
+
+    /** Parse VERIFY tokens from markdown, return { pills, stripped } */
+    const parseVerifyTokens = useCallback((markdown: string): { pills: string[]; stripped: string } => {
+        const pills: string[] = [];
+        const stripped = markdown.replace(/\[VERIFY:\s*([^\]]+)\]/g, (_match, text) => {
+            pills.push(text.trim());
+            return '';
+        });
+        return { pills, stripped };
+    }, []);
+
+    /** Map a verify text to a coaching message */
+    const getCoachingMessage = (text: string): string => {
+        const lower = text.toLowerCase();
+        if (lower.includes('job title') || lower.includes('title')) {
+            return 'Exact job titles help ATS systems match your application — a wrong title can cost you the filter.';
+        }
+        if (lower.includes('number') || lower.includes('team size') || lower.includes('people') || /\d/.test(lower)) {
+            return 'Specific numbers make achievements credible. Hiring managers mentally assign you scope based on team size.';
+        }
+        if (lower.includes('company') || lower.includes('company name') || lower.includes('organisation')) {
+            return 'Company-specific details show you\'ve done your homework and aren\'t copy-pasting applications.';
+        }
+        return 'Verifying this detail makes your application more credible and harder to dismiss.';
+    };
+
+    /** Scroll to first occurrence of verify text in the document preview */
+    const scrollToVerify = (text: string) => {
+        if (!previewRef.current) return;
+        const walker = document.createTreeWalker(previewRef.current, NodeFilter.SHOW_TEXT);
+        let node: Node | null;
+        while ((node = walker.nextNode())) {
+            if (node.textContent && node.textContent.toLowerCase().includes(text.toLowerCase().slice(0, 15))) {
+                (node.parentElement as HTMLElement)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+            }
+        }
+    };
+
     // CommonMark collapses consecutive lines into one <p> unless separated by a blank line.
     // Enforce double line-breaks between skill categories and between cover letter paragraphs.
     const normaliseMarkdown = (md: string): string => {
@@ -671,11 +708,15 @@ export const ApplicationWorkspace: React.FC = () => {
             <Toaster position="top-center" richColors />
             <header className="h-16 border-b border-slate-800 bg-slate-900/50 backdrop-blur-xl flex items-center justify-between px-6 shrink-0">
                 <div className="flex items-center gap-4">
-                    <button 
+                    <button
                         onClick={handleBack}
-                        className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 transition-colors"
+                        aria-label={`Back to ${backLabel}`}
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-slate-200 transition-colors group"
                     >
-                        <ChevronLeft size={20} />
+                        <ChevronLeft size={16} className="shrink-0" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest max-w-[120px] truncate hidden sm:block">
+                            {backLabel}
+                        </span>
                     </button>
                     <div>
                         <h1 className="text-sm font-bold text-slate-200">
@@ -947,27 +988,6 @@ export const ApplicationWorkspace: React.FC = () => {
                         </div>
                     )}
 
-                    {/* ATS Coverage Panel — shown when resume or cover-letter is ready */}
-                    {(state.documents.resume || state.documents['cover-letter']) && !state.isGenerating && (
-                        <div className="p-4 border-b border-slate-800 shrink-0">
-                            <ATSCoveragePanel
-                                document={state.documents[state.activeTab as 'resume' | 'cover-letter'] || state.documents.resume || state.documents['cover-letter']}
-                                jobDescription={state.jobDescription}
-                                docType={state.activeTab}
-                            />
-                        </div>
-                    )}
-
-                    {/* Resume Scorecard — shown when resume is generated */}
-                    {state.documents.resume && !state.isGenerating && (
-                        <div className="p-4 border-b border-slate-800 shrink-0">
-                            <ResumeScorecardPanel
-                                document={state.documents.resume}
-                                jobDescription={state.jobDescription}
-                            />
-                        </div>
-                    )}
-
                     {/* Cover Letter Personalisation — shown when cover letter is generated */}
                     {state.documents['cover-letter'] && !state.isGenerating && (
                         <div className="p-4 border-b border-slate-800 shrink-0">
@@ -1083,8 +1103,13 @@ export const ApplicationWorkspace: React.FC = () => {
                                 const contentLower = content.toLowerCase();
                                 const found = state.keywords.filter(k => contentLower.includes(k.toLowerCase())).length;
                                 const pct = Math.round((found / state.keywords.length) * 100);
-                                atsLabel = `${pct}% ATS coverage`;
-                                atsColor = pct >= 70 ? 'text-emerald-400' : pct >= 50 ? 'text-amber-400' : 'text-red-400';
+                                if (pct >= 80) {
+                                    atsLabel = `${pct}% ATS COVERAGE`;
+                                    atsColor = 'text-emerald-400';
+                                } else {
+                                    atsLabel = 'JD MATCHED';
+                                    atsColor = 'text-indigo-400';
+                                }
                             }
 
                             return (
@@ -1198,43 +1223,310 @@ export const ApplicationWorkspace: React.FC = () => {
                         <AnimatePresence>
                             {!violationsBannerDismissed && (state.profileViolations?.length ?? 0) > 0 && !state.isGenerating && (
                                 <motion.div
-                                    initial={{ opacity: 0, y: -8 }}
-                                    animate={{ opacity: 1, y: 0 }}
+                                    initial={{ opacity: 0, y: -8, x: 0 }}
+                                    animate={{ opacity: 1, y: 0, x: [0, -4, 4, -4, 4, -2, 2, 0] }}
                                     exit={{ opacity: 0, y: -8 }}
-                                    transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
-                                    className="w-full max-w-3xl mb-3 rounded-xl border border-amber-500/30 bg-amber-500/8 p-4"
+                                    transition={{
+                                        opacity: { duration: 0.2, ease: [0.25, 1, 0.5, 1] },
+                                        y: { duration: 0.2, ease: [0.25, 1, 0.5, 1] },
+                                        x: { duration: 0.4, delay: 0.5 },
+                                    }}
+                                    className="w-full max-w-3xl mb-3 rounded-xl border border-amber-500/30 bg-amber-500/8 overflow-hidden"
                                 >
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div className="flex items-start gap-3 min-w-0">
-                                            <ShieldAlert size={16} className="text-amber-400 mt-0.5 shrink-0" />
-                                            <div className="min-w-0">
-                                                <p className="text-[11px] font-black text-amber-300 uppercase tracking-wider mb-1">Review before sending</p>
-                                                <p className="text-[11px] text-amber-200/70 leading-relaxed mb-2.5">The AI accuracy check flagged these claims — confirm each one matches your actual experience.</p>
-                                                <ul className="space-y-1">
-                                                    {state.profileViolations!.map((v, i) => (
-                                                        <li key={i} className="flex items-start gap-2 text-[11px] text-amber-200/80">
-                                                            <span className="text-amber-500 mt-0.5 shrink-0">·</span>
-                                                            {v}
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-                                        </div>
-                                        <button
-                                            onClick={() => setViolationsBannerDismissed(true)}
-                                            className="shrink-0 text-amber-500/50 hover:text-amber-400 transition-colors mt-0.5"
+                                    <button
+                                        onClick={() => setViolationsExpanded(v => !v)}
+                                        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-amber-500/5 transition-colors text-left"
+                                    >
+                                        <ShieldAlert size={13} className="text-amber-400 shrink-0" />
+                                        <span className="text-[10px] font-black text-amber-300 uppercase tracking-wider flex-1">Review Before Sending</span>
+                                        <span className="text-[10px] font-bold text-amber-500/60 mr-1">
+                                            {state.profileViolations!.length} flag{state.profileViolations!.length !== 1 ? 's' : ''}
+                                        </span>
+                                        <motion.span animate={{ rotate: violationsExpanded ? 180 : 0 }} transition={{ duration: 0.15 }} className="inline-flex">
+                                            <ChevronDown size={12} className="text-amber-500/50" />
+                                        </motion.span>
+                                        <span
+                                            role="button"
+                                            onClick={(e) => { e.stopPropagation(); setViolationsBannerDismissed(true); }}
+                                            className="ml-1 text-amber-500/40 hover:text-amber-400 transition-colors"
                                             aria-label="Dismiss"
                                         >
-                                            <X size={14} />
-                                        </button>
-                                    </div>
+                                            <X size={12} />
+                                        </span>
+                                    </button>
+                                    <AnimatePresence initial={false}>
+                                        {violationsExpanded && (
+                                            <motion.div
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: 'auto', opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+                                                className="overflow-hidden"
+                                            >
+                                                <div className="px-4 pb-3.5 pt-0.5 border-t border-amber-500/20">
+                                                    <p className="text-[11px] text-amber-200/60 leading-relaxed mb-2 mt-2">The AI accuracy check flagged these claims — confirm each one matches your actual experience.</p>
+                                                    <ul className="space-y-1">
+                                                        {state.profileViolations!.map((v, i) => (
+                                                            <li key={i} className="flex items-start gap-2 text-[11px] text-amber-200/80">
+                                                                <span className="text-amber-500 mt-0.5 shrink-0">·</span>
+                                                                {v}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
                                 </motion.div>
                             )}
                         </AnimatePresence>
-                        <div className="w-full max-w-3xl bg-white text-slate-900 shadow-2xl rounded-sm min-h-[900px]" style={{ fontFamily: 'Calibri, Arial, "Helvetica Neue", sans-serif' }}>
+                        {/* Coaching notes bar — VERIFY pills extracted from document */}
+                        {(() => {
+                            const raw = state.documents[state.activeTab] || '';
+                            const { pills } = parseVerifyTokens(raw);
+                            if (!pills.length || state.isGenerating) return null;
+                            return (
+                                <AnimatePresence>
+                                    <motion.div
+                                        key="coaching-bar"
+                                        initial={{ opacity: 0, y: -6, x: 0 }}
+                                        animate={{ opacity: 1, y: 0, x: [0, -4, 4, -4, 4, -2, 2, 0] }}
+                                        exit={{ opacity: 0, y: -6 }}
+                                        transition={{
+                                            opacity: { duration: 0.22, ease: [0.25, 1, 0.5, 1] },
+                                            y: { duration: 0.22, ease: [0.25, 1, 0.5, 1] },
+                                            x: { duration: 0.4, delay: 0.7 },
+                                        }}
+                                        className="w-full max-w-3xl mb-3 rounded-xl border border-amber-400/20 bg-amber-400/5 overflow-hidden"
+                                    >
+                                        <button
+                                            onClick={() => setCoachingExpanded(v => !v)}
+                                            className="w-full flex items-center gap-2 px-3.5 py-2.5 hover:bg-amber-400/5 transition-colors text-left"
+                                        >
+                                            <Pencil size={10} className="text-amber-400 shrink-0" />
+                                            <span className="text-[9px] font-black text-amber-400 uppercase tracking-widest flex-1">Coaching Notes</span>
+                                            <span className="text-[9px] font-bold text-amber-500/60 mr-1">{pills.length} item{pills.length !== 1 ? 's' : ''}</span>
+                                            <motion.span animate={{ rotate: coachingExpanded ? 180 : 0 }} transition={{ duration: 0.15 }} className="inline-flex">
+                                                <ChevronDown size={11} className="text-amber-500/40" />
+                                            </motion.span>
+                                        </button>
+                                        <AnimatePresence initial={false}>
+                                            {coachingExpanded && (
+                                                <motion.div
+                                                    initial={{ height: 0, opacity: 0 }}
+                                                    animate={{ height: 'auto', opacity: 1 }}
+                                                    exit={{ height: 0, opacity: 0 }}
+                                                    transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+                                                    className="overflow-hidden"
+                                                >
+                                                    <div className="px-3.5 pb-3 pt-0.5 border-t border-amber-400/15 flex flex-wrap gap-2 mt-1">
+                                                        {pills.map((text, i) => (
+                                                            <button
+                                                                key={i}
+                                                                onClick={() => scrollToVerify(text)}
+                                                                title={getCoachingMessage(text)}
+                                                                aria-label={`Coaching note: ${text}`}
+                                                                className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium transition-all hover:opacity-80 active:scale-95 group"
+                                                                style={{
+                                                                    background: 'rgba(251,191,36,0.10)',
+                                                                    border: '1px solid rgba(251,191,36,0.30)',
+                                                                    color: '#fbbf24',
+                                                                }}
+                                                            >
+                                                                <Pencil size={9} />
+                                                                <span className="max-w-[160px] truncate">{text}</span>
+                                                                <span
+                                                                    className="ml-1 hidden group-hover:inline text-[9px] opacity-70 max-w-[200px] truncate"
+                                                                    style={{ color: '#fbbf24' }}
+                                                                >
+                                                                    — {getCoachingMessage(text)}
+                                                                </span>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </motion.div>
+                                </AnimatePresence>
+                            );
+                        })()}
+
+                        {/* Interview prep — structured section cards built from interview_prep_rules.md format */}
+                        {state.activeTab === 'interview-prep' && !state.isGenerating && state.documents['interview-prep'] && (() => {
+                            const raw = state.documents['interview-prep'];
+
+                            // Split on any markdown heading (### 1. Company Intelligence, etc.)
+                            const sectionBlocks = raw.split(/\n(?=#{1,3}\s)/i).filter(Boolean);
+                            if (sectionBlocks.length < 2) return null;
+
+                            const getSectionType = (block: string): 'company' | 'looking-for' | 'qa' | 'ask-them' | 'watchouts' | 'other' => {
+                                const fl = block.split('\n')[0].toLowerCase();
+                                if (fl.includes('company intelligence')) return 'company';
+                                if (fl.includes("what they're looking") || fl.includes('looking for')) return 'looking-for';
+                                if (fl.includes('questions & answers') || fl.includes('questions and answers') || fl.includes('questions &')) return 'qa';
+                                if (fl.includes('ask them') || fl.includes('questions to ask')) return 'ask-them';
+                                if (fl.includes('watch-out') || fl.includes('watchout') || fl.includes('watch out')) return 'watchouts';
+                                return 'other';
+                            };
+
+                            const getBlockContent = (block: string) =>
+                                block.split('\n').slice(1).join('\n').trim();
+
+                            // Parse individual Q&A pairs — LLM uses **Q: [text]** per interview_prep_rules.md
+                            const parseQAs = (block: string) => {
+                                const content = getBlockContent(block);
+                                const qaBlocks = content.split(/\n(?=\*{1,2}Q[:\s])/i).filter(s => s.trim());
+                                return qaBlocks.map(qb => {
+                                    const lines = qb.split('\n');
+                                    let question = '';
+                                    let followUp = '';
+                                    const answerLines: string[] = [];
+                                    let coachingNote = '';
+
+                                    for (const line of lines) {
+                                        const trim = line.trim();
+                                        const lower = trim.toLowerCase();
+                                        if (!trim) { answerLines.push(''); continue; }
+
+                                        if (trim.match(/^\*{1,2}Q[:\s]/i) && !question) {
+                                            question = trim.replace(/^\*{1,2}Q[:\s]+/i, '').replace(/\*{1,2}$/, '').trim();
+                                            continue;
+                                        }
+                                        if (lower.includes('follow-up they might') || lower.includes('follow up they might') || (lower.startsWith('*follow') && lower.includes('follow-up'))) {
+                                            followUp = trim.replace(/^\*+/, '').replace(/\*+$/, '').replace(/^follow.up[^:]*:\s*/i, '').trim();
+                                            continue;
+                                        }
+                                        if (lower.includes('coaching note')) {
+                                            coachingNote = trim.replace(/^\*+/, '').replace(/\*+$/, '').replace(/^coaching note[:\s]*/i, '').trim();
+                                            continue;
+                                        }
+                                        if (lower.match(/^your answer framework[:\s]*$/)) continue;
+                                        answerLines.push(trim);
+                                    }
+
+                                    while (answerLines.length && !answerLines[0]) answerLines.shift();
+                                    while (answerLines.length && !answerLines[answerLines.length - 1]) answerLines.pop();
+
+                                    return { question, followUp, answerContent: answerLines.join('\n'), coachingNote };
+                                }).filter(qa => qa.question.length > 0);
+                            };
+
+                            const renderedSections: React.ReactNode[] = [];
+
+                            sectionBlocks.forEach((block, idx) => {
+                                const type = getSectionType(block);
+                                const heading = block.split('\n')[0].replace(/^#+\s*\d*\.?\s*/, '').trim();
+                                const content = getBlockContent(block);
+
+                                if (type === 'company' || type === 'looking-for') {
+                                    renderedSections.push(
+                                        <motion.div
+                                            key={idx}
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ duration: 0.25, delay: idx * 0.04, ease: [0.25, 1, 0.5, 1] }}
+                                            className="rounded-xl border border-slate-700/50 bg-slate-900/40 overflow-hidden"
+                                        >
+                                            <div className="px-5 py-2.5 border-b border-slate-800 bg-slate-900/60">
+                                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">{heading}</span>
+                                            </div>
+                                            <div className="p-5">
+                                                <div className="prose prose-sm prose-invert max-w-none [&_li]:text-slate-300 [&_li]:text-sm [&_li]:leading-relaxed [&_li]:my-0.5 [&_p]:text-slate-300 [&_p]:text-sm [&_p]:leading-relaxed [&_p]:my-1 [&_strong]:text-slate-200 [&_ul]:my-1.5 [&_ul]:space-y-0.5">
+                                                    <ReactMarkdown>{content}</ReactMarkdown>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    );
+                                } else if (type === 'qa') {
+                                    const qas = parseQAs(block);
+                                    qas.forEach((qa, qIdx) => {
+                                        renderedSections.push(
+                                            <motion.div
+                                                key={`qa-${qIdx}`}
+                                                initial={{ opacity: 0, y: 12 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ duration: 0.28, delay: (idx + qIdx) * 0.045, ease: [0.25, 1, 0.5, 1] }}
+                                                className="rounded-xl border border-slate-800 bg-slate-900/60 overflow-hidden"
+                                            >
+                                                <div className="px-5 py-3.5 border-b border-slate-800 bg-slate-900/40">
+                                                    <div className="flex items-start gap-3">
+                                                        <span className="shrink-0 text-[8px] font-black uppercase tracking-widest text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 rounded px-1.5 py-0.5 mt-0.5">Q</span>
+                                                        <p className="text-sm font-bold text-slate-100 leading-relaxed">{qa.question}</p>
+                                                    </div>
+                                                    {qa.followUp && (
+                                                        <p className="mt-2 text-[11px] italic text-slate-500 leading-relaxed pl-8">{qa.followUp}</p>
+                                                    )}
+                                                </div>
+                                                <div className="p-5 space-y-3">
+                                                    {qa.answerContent && (
+                                                        <div>
+                                                            <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest block mb-2.5">Your Answer Framework</span>
+                                                            <div className="prose prose-sm prose-invert max-w-none [&_li]:text-slate-300 [&_li]:leading-relaxed [&_li]:my-0.5 [&_strong]:text-slate-200 [&_strong]:font-bold [&_p]:text-slate-300 [&_p]:leading-relaxed [&_p]:my-1.5 [&_ul]:space-y-1 [&_ul]:my-1.5">
+                                                                <ReactMarkdown>{qa.answerContent}</ReactMarkdown>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {qa.coachingNote && (
+                                                        <div className="flex items-start gap-2.5 rounded-lg px-3 py-2.5 mt-1" style={{ background: 'rgba(251,191,36,0.06)', border: '1px solid rgba(251,191,36,0.18)' }}>
+                                                            <span className="text-[8px] font-black rounded px-1.5 py-0.5 shrink-0 mt-0.5" style={{ background: 'rgba(251,191,36,0.18)', color: '#fbbf24' }}>COACHING</span>
+                                                            <p className="text-[11px] text-amber-200/80 leading-relaxed">{qa.coachingNote}</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </motion.div>
+                                        );
+                                    });
+                                    if (qas.length === 0 && content) {
+                                        renderedSections.push(
+                                            <motion.div key={idx} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: idx * 0.04, ease: [0.25, 1, 0.5, 1] }} className="rounded-xl border border-slate-800 bg-slate-900/40 overflow-hidden">
+                                                <div className="px-5 py-2.5 border-b border-slate-800 bg-slate-900/60"><span className="text-[9px] font-black uppercase tracking-widest text-slate-500">{heading}</span></div>
+                                                <div className="p-5"><div className="prose prose-sm prose-invert max-w-none [&_p]:text-slate-300 [&_p]:leading-relaxed [&_p]:my-1 [&_strong]:text-slate-200"><ReactMarkdown>{content}</ReactMarkdown></div></div>
+                                            </motion.div>
+                                        );
+                                    }
+                                } else if (type === 'ask-them' || type === 'watchouts') {
+                                    renderedSections.push(
+                                        <motion.div
+                                            key={idx}
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ duration: 0.25, delay: idx * 0.04, ease: [0.25, 1, 0.5, 1] }}
+                                            className={`rounded-xl border overflow-hidden ${type === 'watchouts' ? 'border-amber-500/20 bg-amber-500/5' : 'border-slate-800 bg-slate-900/40'}`}
+                                        >
+                                            <div className={`px-5 py-2.5 border-b ${type === 'watchouts' ? 'border-amber-500/20' : 'border-slate-800'} bg-slate-900/40`}>
+                                                <span className={`text-[9px] font-black uppercase tracking-widest ${type === 'watchouts' ? 'text-amber-400' : 'text-slate-500'}`}>{heading}</span>
+                                            </div>
+                                            <div className="p-5">
+                                                <div className={`prose prose-sm prose-invert max-w-none [&_li]:text-sm [&_li]:leading-relaxed [&_li]:my-0.5 [&_p]:text-sm [&_p]:leading-relaxed [&_p]:my-1 [&_strong]:font-semibold ${type === 'watchouts' ? '[&_li]:text-amber-200/80 [&_p]:text-amber-200/80 [&_strong]:text-amber-200' : '[&_li]:text-slate-300 [&_p]:text-slate-300 [&_strong]:text-slate-200'}`}>
+                                                    <ReactMarkdown>{content}</ReactMarkdown>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    );
+                                }
+                                // 'other' type: skip (doc intro / title block)
+                            });
+
+                            if (renderedSections.length === 0) return null;
+
+                            return (
+                                <div className="w-full max-w-3xl space-y-4">
+                                    {renderedSections}
+                                </div>
+                            );
+                        })()}
+
+                        {/* Standard document renderer (resume, cover letter, SC, and interview-prep fallback) */}
+                        {(state.activeTab !== 'interview-prep' || state.isGenerating || !state.documents['interview-prep'] || (() => {
+                            const raw = state.documents['interview-prep'];
+                            const sectionBlocks = raw.split(/\n(?=#{1,3}\s)/i).filter(Boolean);
+                            return sectionBlocks.length < 2;
+                        })()) && (
+                        <div className="w-full max-w-3xl bg-white text-slate-900 shadow-2xl rounded-sm" style={{ fontFamily: 'Calibri, Arial, "Helvetica Neue", sans-serif' }}>
                             <div className="p-12">
                                 {rateLimitError ? (
-                                    <div className="flex flex-col items-center justify-center h-full py-40 space-y-4">
+                                    <div className="flex flex-col items-center justify-center py-40 space-y-4">
                                         <div className="flex items-start gap-3 max-w-md w-full bg-amber-50 border border-amber-200 rounded-xl p-5">
                                             <AlertCircle size={18} className="text-amber-600 mt-0.5 shrink-0" />
                                             <div className="space-y-1">
@@ -1248,7 +1540,7 @@ export const ApplicationWorkspace: React.FC = () => {
                                         </div>
                                     </div>
                                 ) : state.isGenerating ? (
-                                    <div className="flex flex-col items-center justify-center h-full py-40 space-y-6">
+                                    <div className="flex flex-col items-center justify-center py-40 space-y-6">
                                         <div className="relative">
                                             <div className="animate-spin text-brand-600">
                                                 <RefreshCcw size={48} />
@@ -1262,7 +1554,7 @@ export const ApplicationWorkspace: React.FC = () => {
                                                 {"Drafting your " + state.activeTab.replace('-', ' ') + "..."}
                                             </p>
                                             <div className="w-48 h-1 bg-slate-100 rounded-full overflow-hidden mx-auto">
-                                                <motion.div 
+                                                <motion.div
                                                     className="h-full bg-brand-600"
                                                     initial={{ width: "0%" }}
                                                     animate={{ width: "100%" }}
@@ -1270,7 +1562,7 @@ export const ApplicationWorkspace: React.FC = () => {
                                                 />
                                             </div>
                                         </div>
-                                        <button 
+                                        <button
                                             onClick={handleStopGeneration}
                                             className="mt-8 px-6 py-2 bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-500 border border-slate-200 hover:border-red-200 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all"
                                         >
@@ -1285,18 +1577,19 @@ export const ApplicationWorkspace: React.FC = () => {
                                         placeholder={`Start typing your ${state.activeTab}...`}
                                     />
                                 ) : (
-                                    <article id="resume-preview-content" className={`prose prose-slate max-w-none [&_ul]:my-1 [&_li]:my-0.5 [&_li]:leading-snug [&_h1]:text-[18pt] [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-1 [&_h1]:tracking-tight [&_h2]:text-[10.5pt] [&_h2]:font-bold [&_h2]:mt-4 [&_h2]:mb-1 [&_h2]:uppercase [&_h2]:tracking-wide [&_h2]:border-b [&_h2]:border-slate-300 [&_h2]:pb-0.5 [&_h3]:text-[10.5pt] [&_h3]:font-bold [&_h3]:mt-2.5 [&_h3]:mb-0.5 [&_strong]:font-semibold text-[10.5pt] leading-[1.45] ${state.activeTab === 'cover-letter' ? '[&_p]:my-4 [&_p]:leading-[1.6]' : '[&_p]:my-0.5'}`} style={{ fontFamily: 'Calibri, Arial, "Helvetica Neue", sans-serif', fontSize: '10.5pt' }}>
+                                    <article
+                                        id="resume-preview-content"
+                                        ref={previewRef}
+                                        className={`prose prose-slate max-w-none [&_ul]:my-1 [&_li]:my-0.5 [&_li]:leading-snug [&_h1]:text-[18pt] [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-1 [&_h1]:tracking-tight [&_h2]:text-[10.5pt] [&_h2]:font-bold [&_h2]:mt-4 [&_h2]:mb-1 [&_h2]:uppercase [&_h2]:tracking-wide [&_h2]:border-b [&_h2]:border-slate-300 [&_h2]:pb-0.5 [&_h3]:text-[10.5pt] [&_h3]:font-bold [&_h3]:mt-2.5 [&_h3]:mb-0.5 [&_strong]:font-semibold text-[10.5pt] leading-[1.45] ${state.activeTab === 'cover-letter' ? '[&_p]:my-4 [&_p]:leading-[1.6]' : '[&_p]:my-0.5'}`}
+                                        style={{ fontFamily: 'Calibri, Arial, "Helvetica Neue", sans-serif', fontSize: '10.5pt' }}
+                                    >
                                         <ReactMarkdown
-                                            children={normaliseMarkdown(state.documents[state.activeTab] || '')}
+                                            children={normaliseMarkdown(parseVerifyTokens(state.documents[state.activeTab] || '').stripped)}
                                             components={{
                                                 text: ({ children }) => {
                                                     if (typeof children !== 'string') return <>{children}</>;
-                                                    const hasMissing = children.includes('[MISSING:');
-                                                    const hasVerify = children.includes('[VERIFY:');
-                                                    if (!hasMissing && !hasVerify) return <>{children}</>;
-
-                                                    // Split on both tag types in a single pass
-                                                    const parts = children.split(/(\[MISSING:[^\]]+\]|\[VERIFY:[^\]]+\])/g);
+                                                    if (!children.includes('[MISSING:')) return <>{children}</>;
+                                                    const parts = children.split(/(\[MISSING:[^\]]+\])/g);
                                                     return (
                                                         <>
                                                             {parts.map((part, i) => {
@@ -1311,10 +1604,6 @@ export const ApplicationWorkspace: React.FC = () => {
                                                                         />
                                                                     );
                                                                 }
-                                                                if (part.startsWith('[VERIFY:')) {
-                                                                    const description = part.replace(/^\[VERIFY:\s*/, '').replace(/\]$/, '').trim();
-                                                                    return <VerifyTag key={i} description={description} />;
-                                                                }
                                                                 return part;
                                                             })}
                                                         </>
@@ -1326,6 +1615,7 @@ export const ApplicationWorkspace: React.FC = () => {
                                 )}
                             </div>
                         </div>
+                        )}
                         {applyContext && !state.isGenerating && state.documents[state.activeTab] && (
                             <div className="w-full max-w-3xl mt-4 rounded-xl border border-teal-500/20 bg-teal-500/5 p-5">
                                 <div className="flex items-center gap-2 mb-4">
@@ -1431,7 +1721,7 @@ export const ApplicationWorkspace: React.FC = () => {
                 </section>
             </main>
 
-            <AchievementSelector 
+            <AchievementSelector
                 isOpen={state.isDrawerOpen}
                 onClose={() => setState(prev => ({ ...prev, isDrawerOpen: false }))}
                 achievements={state.rankedAchievements}
@@ -1442,6 +1732,61 @@ export const ApplicationWorkspace: React.FC = () => {
                     handleGenerate(state.activeTab, true);
                 }}
             />
+
+            {/* Upgrade Modal — 402 response */}
+            <AnimatePresence>
+                {showUpgradeModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.18 }}
+                        className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm px-4"
+                        onClick={(e) => { if (e.target === e.currentTarget) setShowUpgradeModal(false); }}
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 16 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 16 }}
+                            transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
+                            className="w-full max-w-md bg-slate-900 border border-indigo-500/30 rounded-2xl shadow-2xl overflow-hidden"
+                        >
+                            <div className="px-6 py-5 border-b border-slate-800 flex items-center justify-between">
+                                <div className="flex items-center gap-2.5">
+                                    <Sparkles size={16} className="text-indigo-400" />
+                                    <span className="text-sm font-bold text-slate-200">Upgrade to continue</span>
+                                </div>
+                                <button
+                                    onClick={() => setShowUpgradeModal(false)}
+                                    aria-label="Close"
+                                    className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-slate-300 transition-colors"
+                                >
+                                    <X size={14} />
+                                </button>
+                            </div>
+                            <div className="px-6 py-6 space-y-5">
+                                <p className="text-sm text-slate-300 leading-relaxed">
+                                    You've used your free generations. Upgrade to get unlimited document generation, ATS checking, and full workspace access.
+                                </p>
+                                <div className="flex flex-col gap-2.5">
+                                    <button
+                                        onClick={() => { setShowUpgradeModal(false); navigate('/pricing'); }}
+                                        className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold transition-all shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-2"
+                                    >
+                                        View plans →
+                                    </button>
+                                    <button
+                                        onClick={() => setShowUpgradeModal(false)}
+                                        className="w-full py-2.5 rounded-xl text-slate-400 text-sm font-medium hover:text-slate-200 hover:bg-slate-800 transition-all"
+                                    >
+                                        Maybe later
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

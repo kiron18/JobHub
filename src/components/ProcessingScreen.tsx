@@ -14,6 +14,8 @@ interface ProcessingScreenProps {
   isDark: boolean;
   theme: Theme;
   email?: string;
+  name?: string;
+  targetRole?: string;
   onComplete: () => void;
   onRetry: () => void;
 }
@@ -41,7 +43,7 @@ const BAR_DURATION_MS = 150_000;
 const POLL_INTERVAL_MS = 3_000;
 const MESSAGE_INTERVAL_MS = 10_000;
 
-export function ProcessingScreen({ isDark: _isDark, theme: T, email, onComplete, onRetry }: ProcessingScreenProps) {
+export function ProcessingScreen({ isDark: _isDark, theme: T, email, name, targetRole, onComplete, onRetry }: ProcessingScreenProps) {
   const queryClient = useQueryClient();
   const [barWidth, setBarWidth] = useState(100);
   const [msgIndex, setMsgIndex] = useState(0);
@@ -123,8 +125,46 @@ export function ProcessingScreen({ isDark: _isDark, theme: T, email, onComplete,
       alignItems: 'center',
       justifyContent: 'center',
       padding: 24,
+      position: 'relative',
+      overflow: 'hidden',
     }}>
+      <style>{`
+        @keyframes lava1 {
+          0%, 100% { transform: translate(0px, 0px) scale(1); }
+          25% { transform: translate(70px, -90px) scale(1.18); }
+          50% { transform: translate(-30px, 60px) scale(0.88); }
+          75% { transform: translate(50px, 20px) scale(1.05); }
+        }
+        @keyframes lava2 {
+          0%, 100% { transform: translate(0px, 0px) scale(1); }
+          33% { transform: translate(-80px, 50px) scale(0.85); }
+          66% { transform: translate(60px, -70px) scale(1.2); }
+        }
+        @keyframes lava3 {
+          0%, 100% { transform: translate(0px, 0px) scale(1); }
+          40% { transform: translate(40px, 80px) scale(1.1); }
+          80% { transform: translate(-50px, -30px) scale(0.9); }
+        }
+      `}</style>
+
+      {/* Lava lamp blobs */}
+      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+        {([
+          { size: 480, color: 'rgba(88,80,236,0.13)', anim: 'lava1 14s ease-in-out infinite', top: '-10%', left: '-8%', bottom: undefined, right: undefined },
+          { size: 380, color: 'rgba(139,92,246,0.09)', anim: 'lava2 17s ease-in-out infinite', top: undefined, left: undefined, bottom: '-8%', right: '-6%' },
+          { size: 300, color: 'rgba(99,102,241,0.07)', anim: 'lava3 11s ease-in-out infinite', top: '35%', left: '45%', bottom: undefined, right: undefined },
+        ] as const).map((b, i) => (
+          <div key={i} style={{
+            position: 'absolute', width: b.size, height: b.size, borderRadius: '50%',
+            background: `radial-gradient(circle at 40% 35%, ${b.color} 0%, transparent 68%)`,
+            animation: b.anim,
+            top: b.top, left: b.left, bottom: b.bottom, right: b.right,
+          }} />
+        ))}
+      </div>
+
       <div style={{
+        position: 'relative', zIndex: 1,
         width: '100%',
         maxWidth: 520,
         background: T.card,
@@ -153,6 +193,22 @@ export function ProcessingScreen({ isDark: _isDark, theme: T, email, onComplete,
               : 'width 0.2s linear',
           }} />
         </div>
+
+        {/* Name / role header */}
+        {(name || targetRole) && (
+          <div style={{ textAlign: 'center', marginBottom: 20 }}>
+            {name && (
+              <p style={{ fontSize: 13, fontWeight: 700, color: T.textMuted, margin: '0 0 4px', letterSpacing: '0.01em' }}>
+                {name}
+              </p>
+            )}
+            {targetRole && (
+              <p style={{ fontSize: 11, fontWeight: 600, color: T.textFaint, margin: 0, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                {targetRole}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Message */}
         {status === 'processing' && (

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildClusterKey } from '../../services/seekScraper'
+import { buildSeekClusterKey as buildClusterKey } from '../../services/seekScraper'
 
 describe('buildClusterKey', () => {
   it('trims whitespace and lowercases city', () => {

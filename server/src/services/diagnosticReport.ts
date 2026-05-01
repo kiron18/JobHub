@@ -33,6 +33,8 @@ function buildDiagnosticPrompt(input: DiagnosticReportInput): string {
 
 Your output is a structured markdown report with exactly 6 sections. Each section must be honest, specific, and warm. Every problem you identify must be immediately followed by a concrete fix. The emotional arc the candidate should feel reading this report is: recognition → relief → excitement. Never imply a character flaw. "Duty-led resume" is fine. "Weak resume" is not.
 
+PROSE FORMATTING RULE: Write in short paragraphs of 3–4 lines maximum. After every 3–4 lines of prose, insert a blank line and start a new paragraph. Never write a block of text longer than 4 lines without a paragraph break. This applies everywhere in the report.
+
 ---
 
 CANDIDATE INTAKE DATA:
@@ -50,17 +52,41 @@ ${coverLetterSection ? `COVER LETTERS:\n${coverLetterSection}` : 'No cover lette
 
 ---
 
-Write the report now. Use this EXACT structure with these EXACT markdown headings:
+Write the report now. Use this EXACT structure with these EXACT markdown headings.
+
+CRITICAL FORMAT RULE: Within each section, write the diagnosis/problem first, then a line containing only "---", then the fix/action. This separator is mandatory in every section so the candidate sees what is wrong AND what to do about it as distinct parts.
+
+Example structure for every section:
+## Section Heading
+[diagnosis — what is happening and why it is costing them results]
+
+---
+
+[concrete fix — what to do, specific and actionable]
 
 ## Targeting Assessment
 
-Is the role + city combination realistic given their experience? Are they too broad or too narrow? Does their resume actually reflect the roles they want? Be specific about any misalignment. Then tell them exactly how to fix it.
+Is the role + city combination realistic given their experience? Are they too broad or too narrow? Does their resume actually reflect the roles they want? Be specific about any misalignment.
+
+---
+
+Tell them exactly how to fix it. Specific role titles, seniority level, or positioning shift they should make.
 
 ## Document Audit
 
-Resume: Is it achievement-led or duty-led? Does the opening hook pass a 6-second scan? Are there quantifiable outcomes? Identify 1–2 specific improvements with exact examples.
+Most resumes describe what the candidate *did* — their responsibilities. What employers actually need to see is what the candidate *caused* — the outcomes. The difference between "Managed a team of 5 developers" and "Grew engineering team capacity by 40%, enabling us to ship two product lines in parallel" is the difference between a resume that looks like a job description and one that builds a picture of someone they want to hire.
 
-${coverLetterSection ? 'Cover letters: Is the opening line generic or compelling? Is there a positioning narrative? Does the tone match the target industry?' : 'No cover letters were provided — note this as a gap and explain what it signals.'}
+Look at the resume with that lens. Is the language describing duties (what the role required) or outcomes (what this person specifically achieved)? Where does the opening hook land — does it make a recruiter stop and read, or scan past? Identify 1–2 specific examples from their actual resume text where this shift would have the biggest impact.
+
+${coverLetterSection ? 'Cover letters: Does the opening line start with the candidate or with the role? A line that opens with "I am applying for..." signals a transactional mindset. A line that opens with a specific insight about the company or a direct value statement signals someone who did the work. Evaluate whether the cover letter positions them or just summarises the resume.' : 'No cover letters were provided — note this as a gap. Recruiters at competitive firms use the cover letter to filter for written communication, motivation, and cultural fit. Not having one means leaving that round unplayed.'}
+
+---
+
+Give 1–2 specific, actionable rewrites they can apply today. Use blockquote format for before/after comparisons like this:
+> Before: "Managed a team of 5 developers"
+> After: "Led 5-person engineering team to ship 3 product features in Q2, reducing time-to-market by 30%"
+
+Quote their actual resume text, then show the improved version. Make the rewrite feel achievable — one specific change, not an overhaul.
 
 ## Pipeline Diagnosis
 
@@ -70,16 +96,30 @@ Based on their response pattern ("${input.responsePattern}"), diagnose what stag
 - Interviews that stall → presentation or expectation gap
 - Interviews but no offers → closing, compensation, or interview technique
 
+---
+
+Name exactly what to change and how. One concrete action per diagnosed problem.
+
 ## The Honest Assessment
 
 ${input.perceivedBlocker
   ? `Cross-reference their self-identified blocker ("${input.perceivedBlocker}") against what their documents actually reveal. If they are right, validate it and say why. If the documents reveal a different problem, say so warmly and specifically.`
-  : `Based purely on their documents, identify the single biggest thing that is costing them results. Be direct but warm. Every candidate has a primary lever — name it clearly and immediately follow it with the fix.`
+  : `Based purely on their documents, identify the single biggest thing that is costing them results. Be direct but warm. Every candidate has a primary lever — name it clearly.`
 }
+
+---
+
+Give the immediate fix for this primary blocker. Make it feel achievable, not overwhelming.
 
 ## The 3-Step Fix
 
-Three concrete, prioritised actions they can take this week. Not "improve your resume." For example: "Your resume opens with a 4-line objective. Replace it with a 2-line summary that names your speciality and your biggest proof point." Each fix should be something they can act on today.
+Three concrete, prioritised actions they can take this week. Not "improve your resume." Each should be specific enough to act on today — name the exact line, section, or phrase. Number them 1, 2, 3. For any before/after example, use blockquote format:
+> Before: [their actual text]
+> After: [the improved version]
+
+---
+
+For each step, include one line estimating the likely impact: what this change will unlock for them in their search.
 
 ## What JobHub Will Do For You
 

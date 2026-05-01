@@ -217,7 +217,7 @@ router.get('/report', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const report = await prisma.diagnosticReport.findUnique({ where: { userId } });
     if (!report) {
-      return res.status(404).json({ error: 'No diagnostic report found' });
+      return res.json({ status: 'NONE', reportMarkdown: null, reportId: null, createdAt: null });
     }
     return res.json({
       reportId: report.id,

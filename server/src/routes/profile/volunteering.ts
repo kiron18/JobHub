@@ -6,7 +6,7 @@ const router = Router();
 
 router.post('/volunteering', authenticate, async (req, res) => {
   const userId = (req as any).user.id;
-  const { organization, role, description } = req.body;
+  const { organization, role, description } = req.body as { organization?: string; role?: string; description?: string };
   if (!organization || !role) return res.status(400).json({ error: 'organization and role required' });
   try {
     const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
@@ -21,9 +21,9 @@ router.post('/volunteering', authenticate, async (req, res) => {
 });
 
 router.patch('/volunteering/:id', authenticate, async (req, res) => {
-  const { id } = req.params;
+  const id = req.params['id'] as string;
   const userId = (req as any).user.id;
-  const { organization, role, description } = req.body;
+  const { organization, role, description } = req.body as { organization?: string; role?: string; description?: string };
   try {
     const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
     if (!profile) return res.status(404).json({ error: 'Profile not found' });
@@ -39,7 +39,7 @@ router.patch('/volunteering/:id', authenticate, async (req, res) => {
 });
 
 router.delete('/volunteering/:id', authenticate, async (req, res) => {
-  const { id } = req.params;
+  const id = req.params['id'] as string;
   const userId = (req as any).user.id;
   try {
     const profile = await prisma.candidateProfile.findUnique({ where: { userId } });

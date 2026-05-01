@@ -33,10 +33,16 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [claiming, setClaiming] = useState(false);
+  // Track whether an in-progress report exists. Checked here (during the loading
+  // gate spinner) so OnboardingIntake never has to fire its own API call and risk
+  // a mid-step state jump.
+  const [reportStatus, setReportStatus] = useState<'checking' | 'processing' | 'failed' | 'none'>('checking');
   // BUG FIX: Prevent re-render loop. Without this ref, the claim effect re-fires whenever
   // isLoading toggles (which happens on every invalidateQueries call), causing an infinite
   // cycle of: claim → invalidate → isLoading flips → claim again.
   const claimFiredRef = useRef(false);
+
+  const isAuthenticated = !!user && !(user as any).is_anonymous;
 
   const { data: profile, isLoading, isError } = useQuery({
     queryKey: ['profile'],
@@ -46,10 +52,30 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
       console.log('[OnboardingGate] profile fetched — hasCompletedOnboarding:', data?.hasCompletedOnboarding, '| userId:', data?.userId);
       return data;
     },
+    enabled: isAuthenticated,
     staleTime: 30_000,
     retry: 1,
     retryDelay: 1000,
   });
+
+  // Check for an existing in-progress report once profile is loaded and onboarding is incomplete.
+  // Done here (behind the loading spinner) so OnboardingIntake never races against this check.
+  useEffect(() => {
+    if (!isAuthenticated || isLoading || profile?.hasCompletedOnboarding) {
+      setReportStatus('none');
+      return;
+    }
+    let cancelled = false;
+    api.get('/onboarding/report')
+      .then(({ data }) => {
+        if (cancelled) return;
+        if (data.status === 'PROCESSING') setReportStatus('processing');
+        else if (data.status === 'FAILED') setReportStatus('failed');
+        else setReportStatus('none');
+      })
+      .catch(() => { if (!cancelled) setReportStatus('none'); });
+    return () => { cancelled = true; };
+  }, [isAuthenticated, isLoading, profile?.hasCompletedOnboarding]);
 
   // When a returning user logs in via magic link they get a new userId.
   // Attempt to claim their previous profile (matched by email) before
@@ -107,7 +133,8 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.hasCompletedOnboarding, user?.email]);
 
-  if (isLoading || claiming) {
+  // Show spinner while profile is loading OR while we're checking report status
+  if (isLoading || (isAuthenticated && !profile?.hasCompletedOnboarding && reportStatus === 'checking')) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950">
         <div className="w-12 h-12 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
@@ -120,7 +147,10 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
   // (placed there before a Google OAuth redirect), resume mode auto-submits.
   if (isError || !profile?.hasCompletedOnboarding) {
     const resumeMode = !!user && hasPendingOnboarding();
-    return <OnboardingIntake resumeMode={resumeMode} />;
+    // Pass the pre-checked report status so OnboardingIntake doesn't need to re-check.
+    // If there's already a processing/failed report, start at step 5 immediately.
+    const initialStep = (reportStatus === 'processing' || reportStatus === 'failed') ? 5 : undefined;
+    return <OnboardingIntake resumeMode={resumeMode} initialStep={initialStep} />;
   }
 
   return <>{children}</>;

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import { prisma } from '../index';
 import { authenticate } from '../middleware/auth';
-import { extractTextFromPDF } from '../services/pdf';
+import { extractTextFromBuffer } from '../services/pdf';
 
 const router = Router();
 const upload = multer({
@@ -60,7 +60,7 @@ router.post('/documents/upload', authenticate, upload.single('file'), async (req
 
         let content = '';
         if (req.file.mimetype === 'application/pdf') {
-            content = await extractTextFromPDF(req.file.buffer);
+            content = await extractTextFromBuffer(req.file.buffer, req.file.mimetype, req.file.originalname);
         } else {
             content = req.file.buffer.toString('utf-8');
         }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 import { useAppTheme } from '../contexts/ThemeContext';
 import api from '../lib/api';
 import { ProfileStrip } from '../components/linkedin/ProfileStrip';
@@ -24,6 +25,7 @@ export const LinkedInPage: React.FC = () => {
   const { T } = useAppTheme();
   const { profile } = useProfile();
 
+  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('profile');
   const [targetRole, setTargetRole] = useState('');
   const [generating, setGenerating] = useState(false);
@@ -53,8 +55,12 @@ export const LinkedInPage: React.FC = () => {
         }));
       }
       toast.success('LinkedIn profile generated');
-    } catch {
-      toast.error('Generation failed — try again.');
+    } catch (err: any) {
+      if (err?.response?.status === 402) {
+        navigate('/pricing');
+      } else {
+        toast.error('Generation failed — try again.');
+      }
     } finally {
       setGenerating(false);
     }
@@ -69,8 +75,12 @@ export const LinkedInPage: React.FC = () => {
       });
       const key = section as keyof LinkedInProfileData;
       setProfileData(prev => prev ? { ...prev, [key]: data[key] } : data);
-    } catch {
-      toast.error('Regeneration failed — try again.');
+    } catch (err: any) {
+      if (err?.response?.status === 402) {
+        navigate('/pricing');
+      } else {
+        toast.error('Regeneration failed — try again.');
+      }
     } finally {
       setRegeneratingSection(null);
     }

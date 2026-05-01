@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Loader2, Copy, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import { useAppTheme } from '../../contexts/ThemeContext';
 import type { OutreachData } from './types';
@@ -105,6 +106,7 @@ function TemplateCard({ label, content, tip, charLimit, editableNote }: {
 
 export const OutreachTemplates: React.FC = () => {
   const { T } = useAppTheme();
+  const navigate = useNavigate();
   const [targetFirstName, setTargetFirstName] = useState('');
   const [targetCompany, setTargetCompany] = useState('');
   const [targetTopicOrPost, setTargetTopicOrPost] = useState('');
@@ -124,8 +126,12 @@ export const OutreachTemplates: React.FC = () => {
       });
       setOutreach(data);
       setGenId(g => g + 1);
-    } catch {
-      toast.error('Generation failed — try again.');
+    } catch (err: any) {
+      if (err?.response?.status === 402) {
+        navigate('/pricing');
+      } else {
+        toast.error('Generation failed — try again.');
+      }
     } finally {
       setGenerating(false);
     }
@@ -145,13 +151,18 @@ export const OutreachTemplates: React.FC = () => {
   return (
     <div>
       {/* Playbook guide */}
-      <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 14, padding: 16, marginBottom: 20 }}>
+      <div style={{
+        background: T.card,
+        border: showPlaybook ? '1px solid rgba(239,68,68,0.25)' : '1px solid rgba(239,68,68,0.35)',
+        borderRadius: 14, padding: 16, marginBottom: 20,
+        boxShadow: showPlaybook ? 'none' : '0 0 14px rgba(239,68,68,0.12)',
+      }}>
         <button
           onClick={() => setShowPlaybook(v => !v)}
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             width: '100%', background: 'none', border: 'none', cursor: 'pointer',
-            color: T.text, fontWeight: 700, fontSize: 14,
+            color: showPlaybook ? T.text : '#f87171', fontWeight: 700, fontSize: 14,
           }}
         >
           Before you start — The 7-Step Networking Playbook

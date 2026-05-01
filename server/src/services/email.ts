@@ -93,6 +93,55 @@ export async function sendWelcomeEmail(to: string): Promise<void> {
   });
 }
 
+export async function sendStatusEmail(params: {
+  to: string;
+  status: 'APPLIED' | 'REJECTED';
+  jobTitle: string;
+  company: string;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[email] RESEND_API_KEY not set — skipping status email');
+    return;
+  }
+  const { to, status, jobTitle, company } = params;
+  const role = `${jobTitle} at ${company}`;
+
+  const applied = {
+    subject: `Following up on your ${jobTitle} application — a reminder`,
+    text: [
+      'Nice work submitting.',
+      '',
+      `We'll remind you to follow up on your ${role} application in 7 days if you haven't heard back. A short, polite check-in is often all it takes to stay top of mind.`,
+      '',
+      'Keep the momentum going — every application is a rep.',
+      '',
+      'The Aussie Grad Careers team',
+    ].join('\n'),
+  };
+
+  const rejected = {
+    subject: 'It happens — here\'s what to do next',
+    text: [
+      `The ${role} application didn't go your way this time — that's genuinely tough, and it's okay to feel it.`,
+      '',
+      'One move worth making: send a short, gracious email to the hiring manager asking for feedback. Most candidates don\'t do this. It shows maturity, and occasionally it even reverses the decision.',
+      '',
+      'Keep going — the right role is still out there.',
+      '',
+      'The Aussie Grad Careers team',
+    ].join('\n'),
+  };
+
+  const template = status === 'APPLIED' ? applied : rejected;
+
+  await resend.emails.send({
+    from: FROM_ADDRESS,
+    to,
+    subject: template.subject,
+    text: template.text,
+  });
+}
+
 export async function sendTrialReminderEmail(to: string, name: string): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
     console.warn('[email] RESEND_API_KEY not set — skipping trial reminder');

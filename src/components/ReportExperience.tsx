@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
-import { Sun, Moon, Copy, Check, X, Star } from 'lucide-react';
+import { Sun, Moon, Copy, Check, X, Star, ChevronDown } from 'lucide-react';
 import api from '../lib/api';
 import { parseReportSections, splitProblemFix } from '../lib/parseReport';
 
@@ -29,20 +29,21 @@ const SECTION_META: Record<string, {
 const SECTION_ORDER    = ['targeting', 'document_audit', 'pipeline', 'honest', 'fix', 'what_jobhub_does'];
 const CARDS_TO_RENDER  = ['targeting', 'document_audit', 'pipeline', 'honest', 'fix'];
 
-const SECTION_INTROS: Record<string, string> = {
-  targeting:      'Whether you\'re targeting the right roles and seniority for your experience.',
-  document_audit: 'How your resume and cover letter land with a recruiter in the first 6 seconds.',
-  pipeline:       'Where in the process — applications, interviews, offers — things are breaking.',
-  honest:         'What your documents reveal versus what you think the problem is.',
-  fix:            'Three concrete actions ranked by impact, written for your situation.',
+
+const SECTION_TEASERS: Record<string, string> = {
+  targeting:      'The roles you target and how you frame yourself for them determines everything that follows.',
+  document_audit: 'Your resume has 6 seconds. What happens in those 6 seconds decides if a human ever reads your name.',
+  pipeline:       '"No response" is a data point — it tells you exactly where in the process you\'re being filtered out.',
+  honest:         'The real blocker is almost never what it looks like from the inside. This section names it directly.',
+  fix:            'Three actions, ranked by impact. Built from what your documents actually show — not generic advice.',
 };
 
 const RESPONSE_INTROS: Record<string, string> = {
-  mostly_silence:    'Your applications are going out — but nothing is coming back.',
-  mostly_rejections: 'You\'re getting responses, but they all end the same way.',
-  interviews_stall:  'You\'re getting in the room. The problem is what happens next.',
-  no_offers:         'You\'re making it to the final stages. Something is breaking at the close.',
-  mix:               'The pattern isn\'t consistent — which usually means the issue is structural.',
+  mostly_silence:    'You\'re not clearing the initial filter. That means something in your targeting, resume, or positioning is stopping you before a human ever reads it.',
+  mostly_rejections: 'You\'re visible — but not compelling enough on paper. The gap is usually how your experience is framed, not the experience itself.',
+  interviews_stall:  'You\'re getting in the room, which means your documents work. The issue is how you\'re presenting your value once you\'re there.',
+  no_offers:         'You\'re making the shortlist. The difference between you and whoever they pick is narrow — and almost always specific and fixable.',
+  mix:               'An inconsistent pattern usually means the core positioning isn\'t locked in. Fix that first and the rest tends to follow.',
 };
 
 // ── Theme ──────────────────────────────────────────────────────────────────────
@@ -99,32 +100,49 @@ function makeTheme(isDark: boolean) {
 }
 
 // ── Inline markdown renderer ───────────────────────────────────────────────────
-function renderInline(text: string): React.ReactNode {
+function renderInline(text: string, headingColor?: string): React.ReactNode {
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
   if (parts.length === 1) return text;
   return (
     <>
       {parts.map((part, i) =>
         part.startsWith('**') && part.endsWith('**')
-          ? <strong key={i} style={{ fontWeight: 700, color: 'inherit' }}>{part.slice(2, -2)}</strong>
+          ? <strong key={i} style={{ fontWeight: 700, color: headingColor ?? '#f3f4f6' }}>{part.slice(2, -2)}</strong>
           : <span key={i}>{part}</span>
       )}
     </>
   );
 }
 
-function RenderContent({ text, color }: { text: string; color: string }) {
+function RenderContent({ text, color, headingColor }: { text: string; color: string; headingColor?: string }) {
   const lines = text.split('\n').filter(l => { const t = l.trim(); return t && t !== '---'; });
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
       {lines.map((line, i) => {
         const t = line.trim();
+        if (t.startsWith('> ') || t.startsWith('>')) {
+          const quote = t.replace(/^>\s?/, '');
+          return (
+            <div key={i} style={{
+              borderLeft: `3px solid ${color}`,
+              paddingLeft: 14,
+              margin: '2px 0',
+              background: `${color}08`,
+              borderRadius: '0 6px 6px 0',
+              padding: '8px 12px 8px 14px',
+            }}>
+              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: 'inherit', fontStyle: 'italic', fontWeight: 450 }}>
+                {renderInline(quote, headingColor)}
+              </p>
+            </div>
+          );
+        }
         if (t.startsWith('- ') || t.startsWith('• ')) {
           return (
             <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
               <span style={{ color, fontWeight: 800, marginTop: 3, flexShrink: 0, fontSize: 14 }}>·</span>
               <p style={{ margin: 0, fontSize: 15, lineHeight: 1.75, color: 'inherit', fontWeight: 500 }}>
-                {renderInline(t.replace(/^[-•]\s/, ''))}
+                {renderInline(t.replace(/^[-•]\s/, ''), headingColor)}
               </p>
             </div>
           );
@@ -138,7 +156,7 @@ function RenderContent({ text, color }: { text: string; color: string }) {
         }
         return (
           <p key={i} style={{ margin: 0, fontSize: 15, lineHeight: 1.8, fontWeight: 450 }}>
-            {renderInline(t)}
+            {renderInline(t, headingColor)}
           </p>
         );
       })}
@@ -292,6 +310,8 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
   const [isDark, setIsDark] = useState(true);
   const theme = makeTheme(isDark);
   const [processingMs, setProcessingMs] = useState(0);
+  const [openSection, setOpenSection] = useState<string | null>(null);
+  const [showCommunityBox, setShowCommunityBox] = useState(false);
   const [showSticky, setShowSticky] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [msgCopied, setMsgCopied] = useState(false);
@@ -318,6 +338,12 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
   }, [data?.status]);
 
   useEffect(() => {
+    if (data?.status !== 'PROCESSING') return;
+    const t = setTimeout(() => setShowCommunityBox(true), 5000);
+    return () => clearTimeout(t);
+  }, [data?.status]);
+
+  useEffect(() => {
     const el = ctaRef.current;
     if (!el) return;
     const obs = new IntersectionObserver(
@@ -339,11 +365,6 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
   const referralLink = `https://aussiegradcareers.com.au?ref=${refSlug}`;
   const shareMsg = `I just found this free tool that analyzed exactly why my applications weren't getting responses. Takes 5 minutes and the report is genuinely useful — ${referralLink}`;
 
-  // Extract what_jobhub_does content for use in CTA section
-  const whatJobHubSection = sections.find(s => s.key === 'what_jobhub_does');
-  const whatJobHubSnippet = whatJobHubSection
-    ? whatJobHubSection.content.split('\n').filter(l => l.trim() && !l.trim().startsWith('#')).slice(0, 2).join(' ')
-    : '';
 
   const cardSections = sections
     .filter(s => CARDS_TO_RENDER.includes(s.key))
@@ -352,6 +373,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
       const bi = SECTION_ORDER.indexOf(b.key);
       return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
     });
+
 
   const BLOCKER_PRIORITY = ['document_audit', 'honest', 'targeting', 'pipeline'];
   const BLOCKER_HEADLINES: Record<string, string> = {
@@ -362,6 +384,17 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
   };
   const topKey = BLOCKER_PRIORITY.find(k => sections.some(s => s.key === k));
   const stickyHeadline = topKey ? BLOCKER_HEADLINES[topKey] : 'Your job search has a clear blocker.';
+
+  const overviewSource = sections.find(s => s.key === 'honest')
+    ?? cardSections.find(s => SECTION_META[s.key]?.isCritical)
+    ?? cardSections[0];
+  const overviewText = (() => {
+    if (!overviewSource) return '';
+    const clean = overviewSource.content.replace(/\*\*/g, '').replace(/\n+/g, ' ');
+    const sentences = clean.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(Boolean);
+    const excerpt = sentences.slice(0, 2).join(' ');
+    return excerpt.length > 0 ? excerpt : '';
+  })();
 
   return (
     <>
@@ -411,30 +444,68 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
         {/* Content */}
         <div style={{ position: 'relative', zIndex: 1, maxWidth: 720, margin: '0 auto', padding: '72px 24px 160px' }}>
 
-          {/* ── Personalized header ── */}
+          {/* ── Personalized header — hidden while report is still generating ── */}
+          {!(status === 'PROCESSING' && sections.length === 0) && (
           <motion.div
             initial={{ opacity: 0, y: -16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
             style={{ marginBottom: 48, textAlign: 'center' }}
           >
-            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: theme.sub, marginBottom: 12 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: theme.sub, marginBottom: 16 }}>
               Your diagnosis
             </p>
-            <h1 style={{ fontSize: 'clamp(26px, 5vw, 38px)', fontWeight: 900, color: theme.heading, margin: '0 0 12px', lineHeight: 1.15, letterSpacing: '-0.025em' }}>
-              {firstName && targetRole
-                ? <>Here's what's holding back<br />your <span style={{ color: INDIGO }}>{targetRole}</span> search, {firstName}.</>
-                : firstName
-                ? <>Here's what's holding back<br />your search, {firstName}.</>
-                : <>Here's what's actually going on.</>
+            {firstName && (
+              <p style={{ fontSize: 'clamp(28px, 5.5vw, 42px)', fontWeight: 900, color: theme.heading, margin: '0 0 6px', lineHeight: 1.12, letterSpacing: '-0.03em' }}>
+                Hey {firstName},
+              </p>
+            )}
+            <h1 style={{ fontSize: 'clamp(28px, 5.5vw, 42px)', fontWeight: 900, color: theme.heading, margin: '0 0 20px', lineHeight: 1.12, letterSpacing: '-0.03em' }}>
+              {targetRole
+                ? <>here's what's holding back<br />your{' '}
+                    <span style={{
+                      background: 'linear-gradient(90deg, #f97316 0%, #eab308 28%, #ec4899 62%, #8b5cf6 100%)',
+                      WebkitBackgroundClip: 'text',
+                      backgroundClip: 'text',
+                      color: 'transparent',
+                      display: 'inline-block',
+                    }}>{targetRole}</span>
+                    {' '}search.
+                  </>
+                : <>here's what's actually holding you back.</>
               }
             </h1>
             {responsePattern && RESPONSE_INTROS[responsePattern] && (
-              <p style={{ fontSize: 16, color: theme.sub, lineHeight: 1.6, maxWidth: 460, margin: '0 auto 0' }}>
-                {RESPONSE_INTROS[responsePattern]}
-              </p>
+              <div style={{
+                display: 'inline-block',
+                margin: '12px auto 0',
+                padding: '10px 20px',
+                borderRadius: 99,
+                background: isDark ? 'rgba(99,102,241,0.08)' : 'rgba(99,102,241,0.06)',
+                border: `1px solid ${isDark ? 'rgba(99,102,241,0.25)' : 'rgba(99,102,241,0.18)'}`,
+              }}>
+                <p style={{ fontSize: 14, color: isDark ? '#c7d2fe' : '#4338ca', lineHeight: 1.65, margin: 0, fontWeight: 500 }}>
+                  {RESPONSE_INTROS[responsePattern]}
+                </p>
+              </div>
+            )}
+            {cardSections.length > 0 && (
+              <div style={{ marginTop: 20, maxWidth: 460, margin: '20px auto 0' }}>
+                <div style={{
+                  padding: '12px 16px',
+                  borderRadius: 10,
+                  background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
+                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'}`,
+                }}>
+                  <p style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.14em', color: isDark ? '#4b5563' : '#9ca3af', margin: '0 0 5px' }}>How to read this</p>
+                  <p style={{ fontSize: 12, color: theme.intro, lineHeight: 1.75, margin: 0 }}>
+                    {cardSections.length} sections, ranked by impact. Each covers: what's happening, why it's costing you results, and what to do instead. Read in order — the first section is where the most is lost.
+                  </p>
+                </div>
+              </div>
             )}
           </motion.div>
+          )}
 
           {/* ── Loading / processing ── */}
           {(isLoading || status === 'PROCESSING') && sections.length === 0 && processingMs < 60000 && (
@@ -475,34 +546,44 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                 <p style={{ fontSize: 12, color: theme.sub, margin: 0 }}>Usually 30–60 seconds — hang tight.</p>
               </div>
 
-              <div style={{
-                background: `linear-gradient(135deg, rgba(15,118,110,0.12) 0%, rgba(19,78,74,0.08) 100%)`,
-                border: '1px solid rgba(15,118,110,0.25)', borderRadius: 20, padding: '24px 28px',
-              }}>
-                <p style={{ margin: '0 0 6px', fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: TEAL }}>
-                  While you wait
-                </p>
-                <p style={{ margin: '0 0 8px', fontSize: 17, fontWeight: 800, color: theme.heading, lineHeight: 1.3, letterSpacing: '-0.01em' }}>
-                  Join the free community while your report generates.
-                </p>
-                <p style={{ margin: '0 0 16px', fontSize: 14, color: theme.sub, lineHeight: 1.7 }}>
-                  The{' '}
-                  <a href="https://www.skool.com/aussiegradcareers" target="_blank" rel="noopener noreferrer" style={{ color: '#2dd4bf', textDecoration: 'underline', textUnderlineOffset: 3 }}>
-                    Aussie Grad Careers community
-                  </a>
-                  {' '}has the frameworks, templates, and live coaching calls that map directly to what's in your report.
-                </p>
-                <a
-                  href="https://www.skool.com/aussiegradcareers" target="_blank" rel="noopener noreferrer"
-                  style={{
-                    display: 'inline-block', background: `linear-gradient(135deg, ${TEAL}, #134E4A)`,
-                    color: 'white', borderRadius: 10, padding: '10px 22px', fontSize: 14, fontWeight: 800,
-                    textDecoration: 'none', boxShadow: `0 4px 16px rgba(15,118,110,0.28)`,
-                  }}
-                >
-                  Join free on Skool →
-                </a>
-              </div>
+              <AnimatePresence>
+                {showCommunityBox && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    transition={{ duration: 0.5, ease: [0.25, 1, 0.5, 1] }}
+                    style={{
+                      background: `linear-gradient(135deg, rgba(15,118,110,0.12) 0%, rgba(19,78,74,0.08) 100%)`,
+                      border: '1px solid rgba(15,118,110,0.25)', borderRadius: 20, padding: '24px 28px',
+                    }}
+                  >
+                    <p style={{ margin: '0 0 6px', fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: TEAL }}>
+                      While you wait
+                    </p>
+                    <p style={{ margin: '0 0 8px', fontSize: 17, fontWeight: 800, color: theme.heading, lineHeight: 1.3, letterSpacing: '-0.01em' }}>
+                      Join the free community while your report generates.
+                    </p>
+                    <p style={{ margin: '0 0 16px', fontSize: 14, color: theme.sub, lineHeight: 1.7 }}>
+                      The{' '}
+                      <a href="https://www.skool.com/aussiegradcareers" target="_blank" rel="noopener noreferrer" style={{ color: '#2dd4bf', textDecoration: 'underline', textUnderlineOffset: 3 }}>
+                        Aussie Grad Careers community
+                      </a>
+                      {' '}has the frameworks, templates, and live coaching calls that map directly to what's in your report.
+                    </p>
+                    <a
+                      href="https://www.skool.com/aussiegradcareers" target="_blank" rel="noopener noreferrer"
+                      style={{
+                        display: 'inline-block', background: `linear-gradient(135deg, ${TEAL}, #134E4A)`,
+                        color: 'white', borderRadius: 10, padding: '10px 22px', fontSize: 14, fontWeight: 800,
+                        textDecoration: 'none', boxShadow: `0 4px 16px rgba(15,118,110,0.28)`,
+                      }}
+                    >
+                      Join free on Skool →
+                    </a>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           )}
 
@@ -550,92 +631,176 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
             </div>
           )}
 
-          {/* ── Section cards (always visible) ── */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* ── Overview snapshot ── */}
+          {sections.length > 0 && overviewText && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+              style={{
+                background: isDark ? 'rgba(255,255,255,0.025)' : 'rgba(255,255,255,0.7)',
+                border: `1px solid ${theme.cardBorder}`,
+                borderRadius: 16,
+                padding: '18px 22px',
+                marginBottom: 20,
+              }}
+            >
+              <p style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: theme.sub, margin: '0 0 8px' }}>
+                What we found
+              </p>
+              <p style={{ fontSize: 15, color: theme.body, lineHeight: 1.75, margin: '0 0 14px' }}>
+                {overviewText}
+              </p>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {cardSections.map(s => {
+                  const m = SECTION_META[s.key];
+                  if (!m) return null;
+                  return (
+                    <button
+                      key={s.key}
+                      onClick={() => {
+                        setOpenSection(s.key);
+                        setTimeout(() => document.getElementById(`section-${s.key}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+                      }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 5,
+                        fontSize: 11, fontWeight: 700, color: m.color,
+                        background: `${m.color}12`, border: `1px solid ${m.color}28`,
+                        borderRadius: 8, padding: '5px 10px', cursor: 'pointer',
+                      }}
+                    >
+                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: m.color, display: 'inline-block', flexShrink: 0 }} />
+                      {m.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+
+          {/* ── Section cards (progressive disclosure) ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {cardSections.map((section, idx) => {
               const meta = SECTION_META[section.key];
               if (!meta) return null;
               const { problem, fix } = splitProblemFix(section.content);
-              const intro = SECTION_INTROS[section.key] ?? '';
               const sectionNum = String(idx + 1).padStart(2, '0');
+              const isOpen = openSection === section.key;
+              const teaser = SECTION_TEASERS[section.key] ?? '';
 
               return (
-                <div key={section.key}>
+                <div key={section.key} id={`section-${section.key}`}>
                   <motion.div
                     className="print-card"
-                    initial={{ opacity: 0, y: 28 }}
+                    initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: '-60px' }}
-                    transition={{ delay: 0, duration: 0.45, ease: [0.25, 1, 0.5, 1] }}
-                    whileHover={{ y: -2, transition: { duration: 0.2 } }}
+                    viewport={{ once: true, margin: '-40px' }}
+                    transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
                     style={{
                       background: theme.card,
-                      borderRadius: 20,
-                      border: `1px solid ${theme.cardBorder}`,
+                      borderRadius: 18,
+                      border: `1px solid ${isOpen ? `${meta.color}30` : theme.cardBorder}`,
                       borderLeft: `4px solid ${meta.color}`,
                       backdropFilter: 'blur(24px)',
                       WebkitBackdropFilter: 'blur(24px)',
                       overflow: 'hidden',
-                      boxShadow: meta.isCritical
+                      boxShadow: isOpen && meta.isCritical
                         ? `0 4px 24px ${meta.color}12`
-                        : '0 2px 12px rgba(0,0,0,0.06)',
-                      transition: 'box-shadow 0.2s',
+                        : '0 2px 8px rgba(0,0,0,0.05)',
+                      transition: 'border-color 0.25s, box-shadow 0.25s',
                     }}
                   >
-                    {/* Card header */}
-                    <div style={{ padding: '22px 24px 0' }}>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-                          <span style={{ fontSize: 11, fontWeight: 900, color: meta.color, opacity: 0.4, letterSpacing: '-0.01em', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-                            {sectionNum}
-                          </span>
-                          <div>
-                            <p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: theme.heading, letterSpacing: '-0.01em' }}>{meta.label}</p>
-                            <p style={{ margin: '3px 0 0', fontSize: 12, color: theme.intro, lineHeight: 1.4 }}>{intro}</p>
-                          </div>
-                        </div>
-                        <span style={{
-                          fontSize: 9, fontWeight: 900, letterSpacing: '0.12em', textTransform: 'uppercase',
-                          color: meta.color, background: meta.bg,
-                          borderRadius: 6, padding: '4px 9px', flexShrink: 0,
-                          border: `1px solid ${meta.color}25`,
-                          ...(meta.isCritical ? { animation: 'criticalPulse 3s ease-in-out infinite' } : {}),
-                        }}>
-                          {meta.severity}
-                        </span>
-                      </div>
-                      <div style={{ height: 1, background: theme.divider, marginBottom: 18 }} />
-                    </div>
-
-                    {/* Problem content */}
-                    <div style={{ padding: '0 24px', color: theme.body }}>
-                      <RenderContent text={problem} color={meta.color} />
-                    </div>
-
-                    {/* Fix band */}
-                    {fix && (
-                      <div style={{
-                        margin: '20px 0 0',
-                        padding: '18px 24px 22px',
-                        background: isDark ? `${meta.color}08` : meta.bg,
-                        borderTop: `1px solid ${meta.color}20`,
-                      }}>
-                        <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.16em', textTransform: 'uppercase', color: meta.color, margin: '0 0 12px' }}>
-                          {section.key === 'fix' ? 'Your 3-Step Plan' : 'Your Fix'}
+                    {/* Clickable header — always visible */}
+                    <button
+                      onClick={() => setOpenSection(isOpen ? null : section.key)}
+                      style={{
+                        width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+                        padding: '18px 20px',
+                        background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
+                        minHeight: 62,
+                      }}
+                    >
+                      <span style={{ fontSize: 10, fontWeight: 900, color: meta.color, opacity: 0.45, letterSpacing: '-0.01em', fontVariantNumeric: 'tabular-nums', flexShrink: 0, minWidth: 18 }}>
+                        {sectionNum}
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: theme.heading, letterSpacing: '-0.015em', lineHeight: 1.2 }}>
+                          {meta.label}
                         </p>
-                        <div style={{ color: theme.body }}>
-                          <RenderContent text={fix} color={meta.color} />
-                        </div>
+                        {!isOpen && teaser && (
+                          <p style={{ margin: '3px 0 0', fontSize: 13, color: theme.sub, lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {teaser}.
+                          </p>
+                        )}
                       </div>
-                    )}
+                      <div style={{
+                        width: 7, height: 7, borderRadius: '50%', background: meta.color, flexShrink: 0,
+                        ...(meta.isCritical ? { boxShadow: `0 0 6px ${meta.color}70`, animation: 'criticalPulse 3s ease-in-out infinite' } : {}),
+                      }} />
+                      <motion.span
+                        animate={{ rotate: isOpen ? 180 : 0 }}
+                        transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+                        style={{ color: theme.sub, flexShrink: 0, display: 'flex' }}
+                      >
+                        <ChevronDown size={16} />
+                      </motion.span>
+                    </button>
+
+                    {/* Expandable content */}
+                    <AnimatePresence initial={false}>
+                      {isOpen && (
+                        <motion.div
+                          key="body"
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+                          style={{ overflow: 'hidden' }}
+                        >
+                          <div style={{ height: 1, background: theme.divider, margin: '0 20px' }} />
+
+                          {/* Problem zone */}
+                          <div style={{ padding: '18px 20px 16px', color: theme.body }}>
+                            <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.14em', textTransform: 'uppercase', color: meta.color, margin: '0 0 12px', opacity: 0.75 }}>
+                              What's happening
+                            </p>
+                            <RenderContent text={problem} color={meta.color} headingColor={theme.heading} />
+                          </div>
+
+                          {/* Fix zone */}
+                          {fix && fix.split('\n').some(l => { const t = l.trim(); return t && t !== '---'; }) && (
+                            <div style={{
+                              padding: '18px 20px 22px',
+                              background: isDark ? `${meta.color}08` : meta.bg,
+                              borderTop: `1px solid ${meta.color}20`,
+                            }}>
+                              <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.16em', textTransform: 'uppercase', color: meta.color, margin: '0 0 12px' }}>
+                                {section.key === 'fix' ? 'Your 3-step plan' : 'What you should do'}
+                              </p>
+                              <div style={{ color: theme.body }}>
+                                <RenderContent text={fix} color={meta.color} headingColor={theme.heading} />
+                              </div>
+                            </div>
+                          )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </motion.div>
 
-                  {/* Social proof widget — appears after card 4 (honest truth) */}
-                  {section.key === 'honest' && (
-                    <div style={{ marginTop: 16 }}>
-                      <SocialProofWidget isDark={isDark} theme={theme} />
-                    </div>
-                  )}
+                  {/* Social proof after honest section — only when expanded */}
+                  <AnimatePresence>
+                    {section.key === 'honest' && isOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 4 }}
+                        transition={{ duration: 0.25 }}
+                        style={{ marginTop: 12 }}
+                      >
+                        <SocialProofWidget isDark={isDark} theme={theme} />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               );
             })}
@@ -660,16 +825,10 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                 <h2 style={{ fontSize: 'clamp(24px, 4vw, 32px)', fontWeight: 900, color: theme.heading, margin: '0 0 12px', lineHeight: 1.15, letterSpacing: '-0.025em' }}>
                   You now know exactly<br />what's holding you back.
                 </h2>
-                {whatJobHubSnippet ? (
-                  <p style={{ fontSize: 15, color: theme.sub, lineHeight: 1.7, maxWidth: 480, margin: '0 auto 0' }}>
-                    {whatJobHubSnippet.length > 220 ? whatJobHubSnippet.slice(0, 220).replace(/\s\S+$/, '…') : whatJobHubSnippet}
-                  </p>
-                ) : (
-                  <p style={{ fontSize: 15, color: theme.sub, lineHeight: 1.7, maxWidth: 480, margin: '0 auto 0' }}>
-                    Our AI platform addresses each of these blockers directly — resume optimisation,
-                    application tracking, and interview prep built from your achievement bank.
-                  </p>
-                )}
+                <p style={{ fontSize: 15, color: theme.sub, lineHeight: 1.7, maxWidth: 480, margin: '0 auto 0' }}>
+                  {firstName ? `${firstName}, you` : 'You'} have what it takes — the issue is how it's being packaged.
+                  The platform turns your diagnosis into action: resume rewrites, targeted applications, and the exact changes your report identified.
+                </p>
               </div>
 
               {/* Urgency note */}
@@ -707,7 +866,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                   Rebuild Your Strategy with AI — Free for 7 Days →
                 </motion.button>
                 <p style={{ margin: 0, fontSize: 12, color: theme.sub, textAlign: 'center' }}>
-                  No charge until day 8 · Cancel any time · No credit card upfront
+                  Start free for 7 days · No charge until day 8 · Cancel any time
                 </p>
                 <div style={{ textAlign: 'center' }}>
                   <a

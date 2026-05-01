@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../../index';
 import { authenticate } from '../../middleware/auth';
+import { sendStatusEmail } from '../../services/email';
 
 const router = Router();
 
@@ -60,6 +61,12 @@ router.patch('/jobs/:id', authenticate, async (req, res) => {
     const { status, dateApplied, notes, priority, closingDate } = req.body;
 
     try {
+        // Fetch current status before update so we can detect a genuine transition.
+        const existing = await prisma.jobApplication.findFirst({
+            where: { id, candidateProfile: { userId } },
+            select: { status: true, title: true, company: true },
+        });
+
         const job = await prisma.jobApplication.update({
             where: {
                 id,
@@ -74,6 +81,24 @@ router.patch('/jobs/:id', authenticate, async (req, res) => {
             },
             include: { documents: true }
         });
+
+        // Fire status-triggered email — best-effort, never blocks the response.
+        const statusChanged = status && existing && status !== existing.status;
+        if (statusChanged && (status === 'APPLIED' || status === 'REJECTED')) {
+            // Resolve the user's email from their auth record.
+            const userEmail: string | undefined = (req as any).user?.email;
+            if (userEmail) {
+                sendStatusEmail({
+                    to: userEmail,
+                    status,
+                    jobTitle: existing!.title,
+                    company: existing!.company,
+                }).catch((err: any) => {
+                    console.error('[jobs] Status email failed (non-fatal):', err?.message ?? err);
+                });
+            }
+        }
+
         res.json(job);
     } catch (error) {
         console.error('Update Job Error:', error);
