@@ -546,7 +546,7 @@ export const ApplicationWorkspace: React.FC = () => {
                 return;
             }
             if (err?.response?.status === 402) {
-                setState(prev => ({ ...prev, isGenerating: false }));
+                setState(prev => ({ ...prev, isGenerating: false, hasFailed: { ...prev.hasFailed, [type]: true } }));
                 setShowUpgradeModal(true);
                 return;
             }
@@ -1754,7 +1754,7 @@ export const ApplicationWorkspace: React.FC = () => {
                             <div className="px-6 py-5 border-b border-slate-800 flex items-center justify-between">
                                 <div className="flex items-center gap-2.5">
                                     <Sparkles size={16} className="text-indigo-400" />
-                                    <span className="text-sm font-bold text-slate-200">Upgrade to continue</span>
+                                    <span className="text-sm font-bold text-slate-200">Start your 7-day free trial</span>
                                 </div>
                                 <button
                                     onClick={() => setShowUpgradeModal(false)}
@@ -1766,14 +1766,17 @@ export const ApplicationWorkspace: React.FC = () => {
                             </div>
                             <div className="px-6 py-6 space-y-5">
                                 <p className="text-sm text-slate-300 leading-relaxed">
-                                    You've used your free generations. Upgrade to get unlimited document generation, ATS checking, and full workspace access.
+                                    You've used your free generations — but the work is just getting started.
+                                </p>
+                                <p className="text-sm text-slate-400 leading-relaxed">
+                                    Try JobHub free for 7 days: unlimited document generation, full workspace access, and every premium feature. You'll need to enter your card details to start — you won't be charged until the trial ends, and you can cancel any time.
                                 </p>
                                 <div className="flex flex-col gap-2.5">
                                     <button
                                         onClick={() => { setShowUpgradeModal(false); navigate('/pricing'); }}
                                         className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold transition-all shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-2"
                                     >
-                                        View plans →
+                                        Start free trial →
                                     </button>
                                     <button
                                         onClick={() => setShowUpgradeModal(false)}
