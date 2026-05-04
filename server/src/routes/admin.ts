@@ -23,13 +23,7 @@ const ANALYTICS_START_DATE = new Date('2026-04-27T00:00:00Z');
 
 async function getExcludedUserIds(): Promise<string[]> {
   const profiles = await prisma.candidateProfile.findMany({
-    where: {
-      OR: [
-        { email: { in: EXCLUDED_EMAILS } },
-        { email: null },
-        { email: '' },
-      ]
-    },
+    where: { email: { in: EXCLUDED_EMAILS } },
     select: { userId: true },
   });
   return profiles.map(p => p.userId);
