@@ -1,7 +1,12 @@
-import { callLLM } from './llm';
+import { callLLMWithRetry } from '../utils/callLLMWithRetry';
 import { prisma } from '../index';
 import fs from 'fs';
 import path from 'path';
+
+const RESUME_RULES = fs.readFileSync(
+  path.join(__dirname, '..', '..', 'rules', 'resume_rules.md'),
+  'utf-8'
+);
 
 export async function generateBaselineResume(
   userId: string,
@@ -17,15 +22,10 @@ export async function generateBaselineResume(
       return;
     }
 
-    const rules = fs.readFileSync(
-      path.join(__dirname, '..', '..', 'rules', 'resume_rules.md'),
-      'utf-8'
-    );
-
     const prompt = `You are a professional Australian resume writer rewriting a candidate's resume based on a diagnostic report that identified exactly what is wrong with it.
 
 RESUME RULES — follow every rule in this document:
-${rules}
+${RESUME_RULES}
 
 DIAGNOSTIC FINDINGS — these identify exactly what needs fixing. Address every issue directly:
 ${reportMarkdown}
@@ -43,8 +43,11 @@ ADDITIONAL RULES:
 - Australian English throughout (organisation, programme, behaviour, recognise, etc.)
 - Output the complete resume in clean markdown only. No preamble, no meta-commentary, no explanations — just the resume.`;
 
-    const raw = await callLLM(prompt, false);
-    const content = typeof raw === 'string' ? raw : JSON.stringify(raw);
+    const raw = await callLLMWithRetry(prompt, false);
+    const content = typeof raw === 'string' ? raw : String(raw ?? '');
+    if (!content.trim()) {
+      throw new Error('LLM returned empty or non-string response');
+    }
 
     await prisma.document.create({
       data: {
