@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import StripeLib from 'stripe';
 import { prisma } from '../index';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { sendAdminPaymentAlert } from '../services/email';
 
 export const EXEMPT_EMAILS = [
   'kamiproject2021@gmail.com',
@@ -122,7 +123,7 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
           data: {
             planStatus: sub.status,
             trialEndDate: trialEndDate ?? null,
-            dashboardAccess: isActive || isTrialing || isPastDue,
+            dashboardAccess: isActive || isTrialing,
           },
         });
         console.log(`[stripe/webhook] Subscription ${sub.id} → status=${sub.status}`);
@@ -161,7 +162,6 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
           && profile.plan !== 'free';
 
         if (isFirstPayment) {
-          // Trial ended, card declined — downgrade immediately
           await prisma.candidateProfile.update({
             where: { id: profile.id },
             data: { plan: 'free', planStatus: 'expired', dashboardAccess: false },
@@ -174,6 +174,12 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
           });
           console.log(`[stripe/webhook] Payment failed for ${subId} — marked past_due`);
         }
+        sendAdminPaymentAlert({
+          event: 'payment_failed',
+          userEmail: invoice.customer_email ?? profile.email ?? 'unknown',
+          plan: profile.plan,
+          subscriptionId: subId,
+        }).catch(() => {});
         break;
       }
 
@@ -190,6 +196,12 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
           data: { planStatus: 'active', dashboardAccess: true },
         });
         console.log(`[stripe/webhook] Payment succeeded for ${subId} — plan active`);
+        sendAdminPaymentAlert({
+          event: 'payment_succeeded',
+          userEmail: invoice.customer_email ?? profile.email ?? 'unknown',
+          plan: profile.plan,
+          subscriptionId: subId,
+        }).catch(() => {});
         break;
       }
 

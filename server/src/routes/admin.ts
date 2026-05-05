@@ -169,6 +169,9 @@ router.get('/stats', authenticate, requireAdmin, async (_req, res) => {
       diagnosticsThisWeek,
       appsByStatus,
       feedbackStats,
+      trialingCount,
+      activePaidCount,
+      pastDueCount,
     ] = await Promise.all([
       prisma.candidateProfile.count({ where: { createdAt: startFilter, ...(ex ? { userId: ex } : {}) } }),
       prisma.candidateProfile.count({ where: { hasCompletedOnboarding: true, createdAt: startFilter, ...(ex ? { userId: ex } : {}) } }),
@@ -189,6 +192,9 @@ router.get('/stats', authenticate, requireAdmin, async (_req, res) => {
       prisma.diagnosticReport.count({ where: { createdAt: { gte: weekAgo }, ...(ex ? { userId: ex } : {}) } }),
       prisma.jobApplication.groupBy({ by: ['status'], _count: { id: true }, where: { createdAt: startFilter, ...(ex ? { userId: ex } : {}) } }),
       prisma.documentFeedback.aggregate({ _avg: { rating: true }, _count: { id: true }, where: { createdAt: startFilter, ...(ex ? { userId: ex } : {}) } }),
+      prisma.candidateProfile.count({ where: { planStatus: 'trialing', ...(ex ? { userId: ex } : {}) } }),
+      prisma.candidateProfile.count({ where: { plan: { not: 'free' }, planStatus: 'active', ...(ex ? { userId: ex } : {}) } }),
+      prisma.candidateProfile.count({ where: { planStatus: { in: ['past_due', 'unpaid'] }, ...(ex ? { userId: ex } : {}) } }),
     ]);
 
     const byPlan: Record<string, number> = {};
@@ -206,6 +212,9 @@ router.get('/stats', authenticate, requireAdmin, async (_req, res) => {
         total: totalProfiles,
         onboarded: onboardedProfiles,
         paid: paidCount,
+        trialing: trialingCount,
+        activePaid: activePaidCount,
+        pastDue: pastDueCount,
         free: totalProfiles - paidCount,
         newToday,
         newThisWeek,

@@ -13,6 +13,7 @@ import api from '../lib/api';
 interface Stats {
   users: {
     total: number; onboarded: number; paid: number; free: number;
+    trialing: number; activePaid: number; pastDue: number;
     newToday: number; newThisWeek: number;
     byPlan: Record<string, number>;
     daily: { date: string; count: number }[];
@@ -324,11 +325,12 @@ function OverviewTab({ stats }: { stats: Stats }) {
       {/* Hero numbers */}
       <div>
         <SectionHead label="Users" />
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12 }}>
           <StatCard label="Total users" value={stats.users.total} sub={`${fmt(stats.users.onboarded)} onboarded`} icon={Users} colour={S.teal} />
-          <StatCard label="Paid" value={stats.users.paid} sub={pct(stats.users.paid, stats.users.total) + ' conversion'} icon={Star} colour={S.amber} />
-          <StatCard label="New this week" value={stats.users.newThisWeek} sub={`${fmt(stats.users.newToday)} today`} icon={TrendingUp} colour={S.green} />
-          <StatCard label="Free tier" value={stats.users.free} sub="not yet converted" icon={Users} colour={S.dim} />
+          <StatCard label="On trial" value={stats.users.trialing} sub={pct(stats.users.trialing, stats.users.total) + ' of users'} icon={Star} colour={S.amber} />
+          <StatCard label="Active paid" value={stats.users.activePaid} sub={pct(stats.users.activePaid, stats.users.paid || 1) + ' trial→paid'} icon={Star} colour={S.green} />
+          <StatCard label="New this week" value={stats.users.newThisWeek} sub={`${fmt(stats.users.newToday)} today`} icon={TrendingUp} colour={S.blue} />
+          <StatCard label="Free tier" value={stats.users.free} sub={stats.users.pastDue > 0 ? `${stats.users.pastDue} past due` : 'not yet converted'} icon={Users} colour={stats.users.pastDue > 0 ? S.red : S.dim} />
         </div>
       </div>
 

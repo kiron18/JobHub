@@ -142,6 +142,37 @@ export async function sendStatusEmail(params: {
   });
 }
 
+export async function sendAdminPaymentAlert(params: {
+  event: 'payment_succeeded' | 'payment_failed';
+  userEmail: string;
+  plan: string;
+  subscriptionId: string;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) return;
+  const { event, userEmail, plan, subscriptionId } = params;
+  const succeeded = event === 'payment_succeeded';
+  await resend.emails.send({
+    from: FROM_ADDRESS,
+    to: ADMIN_EMAIL,
+    subject: succeeded
+      ? `[JobHub] Payment succeeded — ${userEmail}`
+      : `[JobHub] PAYMENT FAILED — ${userEmail}`,
+    text: [
+      succeeded ? 'A subscription payment was collected.' : 'A subscription payment failed.',
+      '',
+      `Customer:       ${userEmail}`,
+      `Plan:           ${plan}`,
+      `Subscription:   ${subscriptionId}`,
+      '',
+      succeeded
+        ? 'Access remains active. No action needed.'
+        : 'Access has been revoked and the user downgraded to free.',
+      '',
+      `Stripe: https://dashboard.stripe.com/subscriptions/${subscriptionId}`,
+    ].join('\n'),
+  });
+}
+
 export async function sendTrialReminderEmail(to: string, name: string): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
     console.warn('[email] RESEND_API_KEY not set — skipping trial reminder');
