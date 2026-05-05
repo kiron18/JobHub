@@ -7,6 +7,7 @@ import { generateDiagnosticReport, DiagnosticReportInput } from '../services/dia
 import { sendWelcomeEmail } from '../services/email';
 import { autoExtractAchievements } from '../services/autoExtract';
 import { buildDailyFeed } from '../services/jobFeed';
+import { generateBaselineResume } from '../services/baselineResume';
 
 const router = Router();
 
@@ -192,6 +193,9 @@ router.post(
               data: { marketingEmailSent: true },
             });
           }
+          generateBaselineResume(userId, resumeText, markdown).catch(err =>
+            console.error('[Onboarding] Baseline resume failed:', err)
+          );
           console.log(`[Onboarding] Diagnostic complete for userId: ${userId}`);
         })
         .catch(async (err) => {
