@@ -3,6 +3,7 @@ import { prisma } from '../../index';
 import { authenticate } from '../../middleware/auth';
 import { indexAchievement } from '../../services/vector';
 import { EXEMPT_EMAILS } from '../stripe';
+import { generateBaselineResume } from '../../services/baselineResume';
 
 const router = Router();
 
@@ -486,6 +487,56 @@ router.post('/profile/claim', authenticate, async (req: any, res: any) => {
   } catch (error) {
     console.error('[ProfileClaim] Error:', error);
     return res.status(500).json({ error: 'Failed to claim profile' });
+  }
+});
+
+// GET /api/profile/baseline-resume — check if ready
+router.get('/profile/baseline-resume', authenticate, async (req, res) => {
+  const userId = (req as any).user.id;
+  try {
+    const doc = await prisma.document.findFirst({
+      where: { userId, type: 'BASELINE_RESUME' },
+      select: { id: true },
+    });
+    if (doc) {
+      return res.json({ status: 'ready', documentId: doc.id });
+    }
+    return res.json({ status: 'pending' });
+  } catch (err) {
+    console.error('[BaselineResume] Status check failed:', err);
+    return res.status(500).json({ error: 'Failed to check baseline resume status' });
+  }
+});
+
+// POST /api/profile/baseline-resume/generate — on-demand fallback trigger
+router.post('/profile/baseline-resume/generate', authenticate, async (req, res) => {
+  const userId = (req as any).user.id;
+  try {
+    const existing = await prisma.document.findFirst({
+      where: { userId, type: 'BASELINE_RESUME' },
+      select: { id: true },
+    });
+    if (existing) {
+      return res.json({ status: 'ready', documentId: existing.id });
+    }
+
+    const [profile, report] = await Promise.all([
+      prisma.candidateProfile.findUnique({ where: { userId }, select: { resumeRawText: true } }),
+      prisma.diagnosticReport.findUnique({ where: { userId }, select: { reportMarkdown: true, status: true } }),
+    ]);
+
+    if (!profile?.resumeRawText || !report?.reportMarkdown) {
+      return res.status(400).json({ error: 'Resume or diagnostic report not available' });
+    }
+
+    generateBaselineResume(userId, profile.resumeRawText, report.reportMarkdown).catch(err =>
+      console.error('[BaselineResume] On-demand generation failed:', err)
+    );
+
+    return res.json({ status: 'generating' });
+  } catch (err) {
+    console.error('[BaselineResume] On-demand trigger failed:', err);
+    return res.status(500).json({ error: 'Failed to start generation' });
   }
 });
 
