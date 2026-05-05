@@ -157,7 +157,8 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
         if (!profile) break;
 
         const isFirstPayment = invoice.billing_reason === 'subscription_cycle'
-          && profile.planStatus === 'trialing';
+          && (profile.planStatus === 'trialing' || profile.planStatus === 'past_due')
+          && profile.plan !== 'free';
 
         if (isFirstPayment) {
           // Trial ended, card declined — downgrade immediately
