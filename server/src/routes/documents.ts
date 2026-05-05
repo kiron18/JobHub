@@ -125,6 +125,21 @@ router.post('/tracker/finalize', authenticate, async (req, res) => {
     }
 });
 
+router.get('/documents/:id', authenticate, async (req, res) => {
+    const { id } = req.params as any;
+    const userId = (req as any).user.id;
+    try {
+        const doc = await prisma.document.findFirst({
+            where: { id: id as string, userId: userId as string },
+        });
+        if (!doc) return res.status(404).json({ error: 'Document not found' });
+        res.json(doc);
+    } catch (error) {
+        console.error('Get Document Error:', error);
+        res.status(500).json({ error: 'Failed to fetch document' });
+    }
+});
+
 router.delete('/documents/:id', authenticate, async (req, res) => {
     const { id } = req.params as any;
     const userId = (req as any).user.id;
