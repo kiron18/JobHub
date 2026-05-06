@@ -36,24 +36,57 @@ const MESSAGES = [
   "This is the diagnosis most people never get to see...",
   "Get ready. This one hits hard.",
 ];
+
+const HUMAN_ASIDES = [
+  "Oh, that's an interesting way to frame it...",
+  "Most people undersell this section. Let's see.",
+  "OK — the structure here is going to tell us a lot.",
+  "This bit matters more than most realise.",
+  "Reading between the lines now.",
+  "There's something worth flagging here — noting it.",
+  "Not many candidates get this part right. Checking yours.",
+  "This is the section recruiters spend the least time on. That's telling.",
+  "Actually, this is doing more heavy lifting than it looks.",
+  "Hm. There's a pattern forming here.",
+  "This is where it usually gets interesting.",
+  "Checking how this reads to someone who's seen hundreds of these.",
+];
+
+function getRoleAsides(role: string): string[] {
+  const r = role.toLowerCase();
+  return [
+    `${role} roles in Australia shortlist fast — checking how clearly yours signals fit...`,
+    `Comparing against what actually gets ${r}s to interview stage...`,
+    `There's a gap between what ${r}s write and what hiring managers look for. Measuring yours.`,
+  ];
+}
+
 const FALLBACK_MESSAGE = "Still running — this one's thorough...";
 const FAILED_MESSAGE   = "Something went sideways, but we've got your data.";
 
 const BAR_DURATION_MS = 150_000;
 const POLL_INTERVAL_MS = 3_000;
 const MESSAGE_INTERVAL_MS = 10_000;
+const ASIDE_INTERVAL_MS   = 13_000;
 
 export function ProcessingScreen({ isDark: _isDark, theme: T, email, name, targetRole, onComplete, onRetry }: ProcessingScreenProps) {
   const queryClient = useQueryClient();
-  const [barWidth, setBarWidth] = useState(100);
-  const [msgIndex, setMsgIndex] = useState(0);
-  const [status, setStatus] = useState<'processing' | 'failed' | 'done'>('processing');
-  const [msgVisible, setMsgVisible] = useState(true);
+  const [barWidth, setBarWidth]     = useState(100);
+  const [msgIndex, setMsgIndex]     = useState(0);
+  const [asideIndex, setAsideIndex] = useState(0);
+  const [status, setStatus]         = useState<'processing' | 'failed' | 'done'>('processing');
+  const [msgVisible, setMsgVisible]     = useState(true);
+  const [asideVisible, setAsideVisible] = useState(false);
 
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const msgRef  = useRef<ReturnType<typeof setInterval> | null>(null);
-  const barRef  = useRef<ReturnType<typeof setInterval> | null>(null);
-  const startMs = useRef(Date.now());
+  const allAsides = targetRole
+    ? [...getRoleAsides(targetRole), ...HUMAN_ASIDES]
+    : HUMAN_ASIDES;
+
+  const pollRef  = useRef<ReturnType<typeof setInterval> | null>(null);
+  const msgRef   = useRef<ReturnType<typeof setInterval> | null>(null);
+  const asideRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const barRef   = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startMs  = useRef(Date.now());
 
   // Bar depletion
   useEffect(() => {
@@ -65,7 +98,7 @@ export function ProcessingScreen({ isDark: _isDark, theme: T, email, name, targe
     return () => { if (barRef.current) clearInterval(barRef.current); };
   }, []);
 
-  // Message rotation
+  // Main message rotation
   useEffect(() => {
     msgRef.current = setInterval(() => {
       setMsgVisible(false);
@@ -77,6 +110,24 @@ export function ProcessingScreen({ isDark: _isDark, theme: T, email, name, targe
     return () => { if (msgRef.current) clearInterval(msgRef.current); };
   }, []);
 
+  // Aside rotation — starts after 5 s delay, then every 13 s, offset from main messages
+  useEffect(() => {
+    const delay = setTimeout(() => {
+      setAsideVisible(true);
+      asideRef.current = setInterval(() => {
+        setAsideVisible(false);
+        setTimeout(() => {
+          setAsideIndex(i => i + 1);
+          setAsideVisible(true);
+        }, 400);
+      }, ASIDE_INTERVAL_MS);
+    }, 5_000);
+    return () => {
+      clearTimeout(delay);
+      if (asideRef.current) clearInterval(asideRef.current);
+    };
+  }, []);
+
   // Polling
   useEffect(() => {
     pollRef.current = setInterval(async () => {
@@ -86,6 +137,7 @@ export function ProcessingScreen({ isDark: _isDark, theme: T, email, name, targe
         if (data.status === 'COMPLETE') {
           clearInterval(pollRef.current!);
           clearInterval(msgRef.current!);
+          clearInterval(asideRef.current!);
           clearInterval(barRef.current!);
           setBarWidth(0);
           // BUG FIX: Clear reportSeen BEFORE invalidating queries. If we clear it after,
@@ -103,6 +155,7 @@ export function ProcessingScreen({ isDark: _isDark, theme: T, email, name, targe
         } else if (data.status === 'FAILED') {
           clearInterval(pollRef.current!);
           clearInterval(msgRef.current!);
+          clearInterval(asideRef.current!);
           clearInterval(barRef.current!);
           setStatus('failed');
         }
@@ -116,6 +169,8 @@ export function ProcessingScreen({ isDark: _isDark, theme: T, email, name, targe
   const currentMessage = msgIndex < MESSAGES.length
     ? MESSAGES[msgIndex]
     : FALLBACK_MESSAGE;
+
+  const currentAside = allAsides[asideIndex % allAsides.length];
 
   return (
     <div style={{
@@ -222,8 +277,21 @@ export function ProcessingScreen({ isDark: _isDark, theme: T, email, name, targe
               opacity: msgVisible ? 1 : 0,
               transition: 'opacity 0.3s ease',
               minHeight: 52,
+              marginBottom: 8,
             }}>
               {currentMessage}
+            </p>
+            <p style={{
+              fontSize: 13,
+              fontStyle: 'italic',
+              color: T.textFaint,
+              textAlign: 'center',
+              minHeight: 22,
+              opacity: asideVisible ? 1 : 0,
+              transition: 'opacity 0.4s ease',
+              marginBottom: 20,
+            }}>
+              {currentAside}
             </p>
             {email && (
               <p style={{
