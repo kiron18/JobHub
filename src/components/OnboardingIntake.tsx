@@ -671,6 +671,15 @@ export function OnboardingIntake({ resumeMode: _resumeMode = false, initialStep 
   // Compute the visible step synchronously — if already authenticated, never render Welcome or Auth
   const visibleStep = isAuthenticated && step < 2 ? 2 : step;
 
+  // Sync internal step to visibleStep once auth resolves so that goNext advances
+  // from the correct position (avoids needing multiple clicks to leave step 2).
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && step < 2) {
+      setStep(2);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, isAuthenticated]);
+
   const [answers, setAnswers] = useState<IntakeAnswers>({
     targetRole: '', seniority: '', industry: '', visaStatus: '',
     responsePattern: '', marketingEmail: '', marketingConsent: false,
