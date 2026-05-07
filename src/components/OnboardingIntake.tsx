@@ -8,6 +8,12 @@ import { useAppTheme } from '../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import {
+  trackOnboardingStepViewed,
+  trackOnboardingStepCompleted,
+  trackOnboardingSubmitted,
+  trackDiagnosticReportViewed,
+} from '../lib/analytics';
 
 const useTheme = () => useAppTheme();
 
@@ -706,6 +712,7 @@ export function OnboardingIntake({ resumeMode: _resumeMode = false, initialStep 
     if (coverLetter2) fd.append('coverLetter2', coverLetter2);
 
     try {
+      trackOnboardingSubmitted();
       await api.post('/onboarding/submit', fd, { timeout: 30000 });
       setSubmitting(false);
       setStep(5);
@@ -740,8 +747,19 @@ export function OnboardingIntake({ resumeMode: _resumeMode = false, initialStep 
     catch { toast.error('Retry failed. Please refresh and try again.'); }
   };
 
-  const goNext = () => setStep(s => s + 1);
+  const STEP_NAMES = ['welcome', 'auth', 'role', 'responses', 'files', 'processing'];
+
+  const goNext = () => {
+    trackOnboardingStepCompleted(visibleStep, STEP_NAMES[visibleStep] ?? `step_${visibleStep}`);
+    setStep(s => s + 1);
+  };
   const goBack = () => setStep(s => Math.max(0, s - 1));
+
+  // Track when each step becomes visible
+  useEffect(() => {
+    trackOnboardingStepViewed(visibleStep, STEP_NAMES[visibleStep] ?? `step_${visibleStep}`);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleStep]);
 
   // Step order: Welcome(0) → Auth(1) → Role(2) → Responses(3) → Files(4) → ProcessingScreen(5)
   const STEPS = [
@@ -797,7 +815,7 @@ export function OnboardingIntake({ resumeMode: _resumeMode = false, initialStep 
           isDark={isDark} theme={T}
           email={user?.email ?? answers.marketingEmail}
           targetRole={answers.targetRole || undefined}
-          onComplete={() => {}}
+          onComplete={() => { trackDiagnosticReportViewed(); }}
           onRetry={handleRetry}
         />
       </div>

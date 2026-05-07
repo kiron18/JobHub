@@ -4,6 +4,9 @@ import { createRoot } from 'react-dom/client'
 import { Analytics } from '@vercel/analytics/react'
 import './index.css'
 import App from './App.tsx'
+import { initAnalytics } from './lib/analytics'
+
+initAnalytics();
 
 Sentry.init({
   dsn: import.meta.env.VITE_SENTRY_DSN,

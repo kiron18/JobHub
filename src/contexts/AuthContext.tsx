@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { identifyUser, resetAnalytics } from '../lib/analytics';
 
 interface AuthContextType {
   user: User | null;
@@ -25,14 +26,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
-      // Track authenticated (non-anonymous) users so ProtectedRoute can redirect
-      // them to /auth on session expiry instead of starting a fresh anon session.
-      if (session?.user && !(session.user as any).is_anonymous && session.user.email) {
-        localStorage.setItem('jobhub_auth_email', session.user.email);
+      const u = session?.user;
+      if (u && !(u as any).is_anonymous && u.email) {
+        // Persist email for ProtectedRoute redirect on session expiry
+        localStorage.setItem('jobhub_auth_email', u.email);
+        // Identify real signed-in users in PostHog
+        identifyUser(u.id, { email: u.email });
+      }
+      if (event === 'SIGNED_OUT') {
+        resetAnalytics();
       }
     });
 

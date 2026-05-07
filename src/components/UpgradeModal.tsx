@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Zap } from 'lucide-react';
 import api from '../lib/api';
+import { trackUpgradeModalOpened, trackCheckoutStarted, trackFreeLimitHit } from '../lib/analytics';
 
 export type UpgradeTrigger = 'generation' | 'analysis' | 'job_search' | 'match_score';
 
@@ -78,7 +79,13 @@ function PlanCard({ name, price, weekly, billing, trial, cta, recommended, onSel
 export const UpgradeModal: React.FC<Props> = ({ trigger, onClose }) => {
   const [loading, setLoading] = useState<string | null>(null);
 
+  useEffect(() => {
+    trackUpgradeModalOpened(trigger);
+    trackFreeLimitHit(trigger);
+  }, [trigger]);
+
   const handleCheckout = async (plan: 'monthly' | 'annual' | 'three_month') => {
+    trackCheckoutStarted(plan);
     setLoading(plan);
     try {
       const { data } = await api.post('/stripe/checkout', { plan });

@@ -40,6 +40,7 @@ import { ToneRewritePanel } from './ToneRewritePanel';
 import { CoverLetterPersonalisationPanel } from './CoverLetterPersonalisationPanel';
 import { exportDocx } from '../lib/exportDocx';
 import type { DocType } from '../lib/exportDocx';
+import { trackDocumentGenerated, trackDocumentCopied } from '../lib/analytics';
 import { exportPdf } from '../lib/exportPdf';
 import { ApplyContextBanner, type ApplyContext } from './ApplyContextBanner';
 import { getPlatformConfig, getApplyInstructions } from '../lib/platforms';
@@ -512,7 +513,7 @@ export const ApplicationWorkspace: React.FC = () => {
                 // Employer framework hint for SC (APS ILS, QLD LC4Q, etc.)
                 employerFramework: type === 'selection-criteria' ? employerFramework : null,
             }, { signal: controller.signal });
-            
+            trackDocumentGenerated(type, regenerate);
             setState(prev => ({
                 ...prev,
                 documents: {
@@ -634,6 +635,7 @@ export const ApplicationWorkspace: React.FC = () => {
     const copyEmailField = async (field: 'subject' | 'body') => {
         if (!emailVersion) return;
         await navigator.clipboard.writeText(field === 'subject' ? emailVersion.emailSubject : emailVersion.emailBody);
+        trackDocumentCopied(`email-cover-letter-${field}`);
         setCopiedEmailField(field);
         setTimeout(() => setCopiedEmailField(null), 1800);
     };

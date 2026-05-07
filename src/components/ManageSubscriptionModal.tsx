@@ -1,9 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ArrowRight, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../lib/api';
 import { useAppTheme } from '../contexts/ThemeContext';
+import {
+  trackManageSubscriptionOpened,
+  trackCancellationReasonSelected,
+  trackCancellationPortalOpened,
+} from '../lib/analytics';
 
 interface Props {
   isOpen: boolean;
@@ -80,10 +85,14 @@ const slideDown = {
   transition: { duration: 0.2, ease: [0.25, 1, 0.5, 1] as [number, number, number, number] },
 };
 
-export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan, planStatus }) => {
+export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan, planStatus: _planStatus }) => {
   const { isDark } = useAppTheme();
   const [selected, setSelected] = useState<ReasonKey | null>(null);
   const [cancelling, setCancelling] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) trackManageSubscriptionOpened();
+  }, [isOpen]);
 
   const bg        = isDark ? '#0f1117' : '#ffffff';
   const border    = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
@@ -95,6 +104,7 @@ export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan
   const responseBg     = isDark ? 'rgba(99,102,241,0.07)' : 'rgba(99,102,241,0.05)';
 
   async function handleCancel() {
+    trackCancellationPortalOpened();
     setCancelling(true);
     try {
       const { data } = await api.post('/stripe/portal');
@@ -184,7 +194,11 @@ export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan
                   return (
                     <button
                       key={key}
-                      onClick={() => setSelected(isActive ? null : key)}
+                      onClick={() => {
+                        const next = isActive ? null : key;
+                        setSelected(next);
+                        if (next) trackCancellationReasonSelected(next);
+                      }}
                       style={{
                         width: '100%', textAlign: 'left',
                         padding: '10px 14px',

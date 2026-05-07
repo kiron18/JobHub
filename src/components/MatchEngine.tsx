@@ -4,6 +4,7 @@ import { Target, Loader2, Zap, AlertTriangle, FileText, Mail, List, XCircle, Tre
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../lib/api';
 import { useAppTheme } from '../contexts/ThemeContext';
+import { trackMatchAnalysisRun, trackFreeLimitHit } from '../lib/analytics';
 
 interface AnalysisResult {
     matchScore: number;
@@ -248,6 +249,7 @@ export const MatchEngine: React.FC = () => {
         try {
             localStorage.setItem('jobhub_current_jd', jobDescription);
             const { data } = await api.post('/analyze/job', { jobDescription });
+            trackMatchAnalysisRun();
             setResult(data);
             localStorage.setItem('jobhub_current_analysis', JSON.stringify(data));
             if (data.citizenshipWarning) {
@@ -256,6 +258,9 @@ export const MatchEngine: React.FC = () => {
         } catch (err: any) {
             console.error('Analysis failed:', err);
             const serverError = err.response?.data?.error;
+            if (err.response?.status === 429) {
+                trackFreeLimitHit('analysis');
+            }
             if (err.response?.status === 401) {
                 setError('Your session has expired. Please refresh the page and log in again.');
             } else {
