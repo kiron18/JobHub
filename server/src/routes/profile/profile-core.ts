@@ -413,9 +413,10 @@ router.post('/profile', authenticate, async (req, res) => {
 // PATCH /api/profile
 router.patch('/profile', authenticate, async (req, res) => {
   const userId = (req as any).user.id;
-  const { name, phone, linkedin, location, professionalSummary } = req.body;
+  const { name, email, phone, linkedin, location, professionalSummary } = req.body;
   const data: Record<string, any> = {};
   if (name !== undefined) data.name = name;
+  if (email !== undefined) data.email = email;
   if (phone !== undefined) data.phone = phone;
   if (linkedin !== undefined) data.linkedin = linkedin;
   if (location !== undefined) data.location = location;

@@ -473,6 +473,7 @@ const PersonalDetailsIsland: React.FC<PersonalDetailsIslandProps> = ({ profile, 
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     name: profile.name ?? '',
+    email: profile.email ?? '',
     phone: profile.phone ?? '',
     linkedin: profile.linkedin ?? '',
     location: profile.location ?? '',
@@ -503,14 +504,18 @@ const PersonalDetailsIsland: React.FC<PersonalDetailsIslandProps> = ({ profile, 
         {editing ? (
           <motion.div key="edit" {...slideIn}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 16px' }}>
-              {(['name', 'phone', 'linkedin', 'location'] as const).map(field => (
+              {(['name', 'email', 'phone', 'linkedin', 'location'] as const).map(field => (
                 <div key={field}>
                   <label style={labelStyle}>{field.charAt(0).toUpperCase() + field.slice(1)}</label>
                   <input
                     style={inp}
                     value={form[field]}
                     onChange={e => setForm(f => ({ ...f, [field]: e.target.value }))}
-                    placeholder={field === 'linkedin' ? 'linkedin.com/in/yourhandle' : ''}
+                    placeholder={
+                      field === 'linkedin' ? 'linkedin.com/in/yourhandle' :
+                      field === 'email' ? 'your@email.com' : ''
+                    }
+                    type={field === 'email' ? 'email' : 'text'}
                   />
                 </div>
               ))}
