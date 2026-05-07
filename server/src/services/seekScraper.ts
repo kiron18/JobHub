@@ -99,11 +99,11 @@ export async function fetchSeekJobsForCluster(cluster: ClusterKey): Promise<RawJ
       {
         searchTerm: cluster.role,
         location: cluster.city,
-        maxResults: 50,
-        sortBy: 'ListedDate',
+        maxResults: 30,
+        sortBy: 'date',
         dateRange: 7,
       },
-      { waitSecs: 60 }
+      { waitSecs: 180 }
     );
     const dataset = await client.dataset(run.defaultDatasetId).listItems();
     items = dataset.items;
