@@ -19,6 +19,7 @@ export const JobFeedPage: React.FC = () => {
   const [profileIncomplete, setProfileIncomplete] = useState(false);
   const [building, setBuilding] = useState(false);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollCount = useRef(0);
 
   const { data: profile } = useQuery({
     queryKey: ['profile'],
@@ -43,12 +44,17 @@ export const JobFeedPage: React.FC = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  // When the server says it's building, poll every 20s until jobs appear
+  // Poll every 60s while building, up to 8 attempts (~8 minutes total)
   useEffect(() => {
     if (building && !isLoading) {
-      pollRef.current = setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['job-feed'] });
-      }, 20_000);
+      if (pollCount.current < 8) {
+        pollRef.current = setTimeout(() => {
+          pollCount.current += 1;
+          queryClient.invalidateQueries({ queryKey: ['job-feed'] });
+        }, 60_000);
+      }
+    } else {
+      pollCount.current = 0;
     }
     return () => {
       if (pollRef.current) clearTimeout(pollRef.current);
@@ -138,10 +144,11 @@ export const JobFeedPage: React.FC = () => {
               in <span className="text-slate-300">{profile?.targetCity}</span> across Seek, LinkedIn, and Adzuna.
             </p>
             <p className="text-xs text-slate-600 mt-2">
-              This takes 1–2 minutes on first load. Grab a coffee — we'll check back automatically.
+              {pollCount.current >= 8
+                ? "Taking longer than usual — try refreshing manually."
+                : "This takes 1–2 minutes on first load. Grab a coffee — we'll check back automatically."}
             </p>
           </div>
-          <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">Auto-refreshing every 20 seconds…</p>
         </div>
       )}
 
