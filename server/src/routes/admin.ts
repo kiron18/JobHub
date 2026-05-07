@@ -6,27 +6,42 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 import { callClaude } from '../services/llm';
 import { sendFridayBriefEmail } from '../services/email';
 import { EXEMPT_EMAILS } from './stripe';
+import { supabase } from '../lib/supabase';
 
 const router = Router();
 
 // Admin/test accounts excluded from all platform stats
-const EXCLUDED_EMAILS = [
+const EXCLUDED_EMAILS = new Set([
   'kiron182@gmail.com',
   'yornorik281@gmail.com',
   'kamiproject2021@gmail.com',
   'kironorik182@gmail.com',
   'kironorik@gmail.com',
   'kironoriktest@gmail.com',
-];
+]);
 
 const ANALYTICS_START_DATE = new Date('2026-04-27T00:00:00Z');
 
-async function getExcludedUserIds(): Promise<string[]> {
-  const profiles = await prisma.candidateProfile.findMany({
-    where: { email: { in: EXCLUDED_EMAILS } },
-    select: { userId: true },
-  });
-  return profiles.map(p => p.userId);
+/**
+ * Returns the userIds of real, currently-active Supabase auth users,
+ * excluding internal test/admin accounts.
+ * Cross-referencing with Supabase ensures deleted accounts are never counted —
+ * even if their candidateProfile row was not cleaned up in Postgres.
+ */
+async function getRealUserIds(): Promise<string[]> {
+  const { data, error } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+  if (error || !data?.users) {
+    // Fall back to profile-level exclusion if Supabase admin call fails
+    console.warn('[admin] supabase.auth.admin.listUsers failed, falling back to email exclusion:', error?.message);
+    const profiles = await prisma.candidateProfile.findMany({
+      where: { email: { notIn: [...EXCLUDED_EMAILS] } },
+      select: { userId: true },
+    });
+    return profiles.map(p => p.userId);
+  }
+  return data.users
+    .filter(u => !u.email || !EXCLUDED_EMAILS.has(u.email.toLowerCase()))
+    .map(u => u.id);
 }
 
 /**
@@ -62,7 +77,7 @@ async function requireAdmin(req: AuthRequest, res: Response, next: NextFunction)
   next();
 }
 
-async function getFirstTimeReportsForWindow(from: Date, to: Date, excludedUserIds: string[]) {
+async function getFirstTimeReportsForWindow(from: Date, to: Date, realUserIds: string[]) {
   const actualFrom = from.getTime() < ANALYTICS_START_DATE.getTime() ? ANALYTICS_START_DATE : from;
   if (actualFrom >= to) return [];
 
@@ -70,7 +85,7 @@ async function getFirstTimeReportsForWindow(from: Date, to: Date, excludedUserId
     where: {
       status: 'COMPLETE',
       createdAt: { gte: actualFrom, lt: to },
-      ...(excludedUserIds.length ? { userId: { notIn: excludedUserIds } } : {}),
+      ...(realUserIds.length ? { userId: { in: realUserIds } } : {}),
     },
     include: {
       candidateProfile: {
@@ -145,8 +160,11 @@ router.get('/stats', authenticate, requireAdmin, async (_req, res) => {
   }
 
   try {
-    const excludedUserIds = await getExcludedUserIds();
-    const ex = excludedUserIds.length ? { notIn: excludedUserIds } : undefined;
+    const realUserIds = await getRealUserIds();
+    // Scope every query to only real, currently-active Supabase users.
+    // This ensures deleted test accounts never inflate stats, even if their
+    // candidateProfile row was not cleaned up in Postgres.
+    const userFilter = { in: realUserIds };
     const startFilter = { gte: ANALYTICS_START_DATE };
 
     const [
@@ -173,28 +191,28 @@ router.get('/stats', authenticate, requireAdmin, async (_req, res) => {
       activePaidCount,
       pastDueCount,
     ] = await Promise.all([
-      prisma.candidateProfile.count({ where: { createdAt: startFilter, ...(ex ? { userId: ex } : {}) } }),
-      prisma.candidateProfile.count({ where: { hasCompletedOnboarding: true, createdAt: startFilter, ...(ex ? { userId: ex } : {}) } }),
-      prisma.candidateProfile.count({ where: { createdAt: { gte: todayStart }, ...(ex ? { userId: ex } : {}) } }),
-      prisma.candidateProfile.count({ where: { createdAt: { gte: weekAgo }, ...(ex ? { userId: ex } : {}) } }),
-      prisma.candidateProfile.groupBy({ by: ['plan'] as any, _count: { id: true }, where: { createdAt: startFilter, ...(ex ? { userId: ex } : {}) } }),
-      prisma.document.count({ where: { createdAt: startFilter, ...(ex ? { userId: ex } : {}) } }),
-      prisma.document.count({ where: { createdAt: { gte: todayStart }, ...(ex ? { userId: ex } : {}) } }),
-      prisma.document.count({ where: { createdAt: { gte: weekAgo }, ...(ex ? { userId: ex } : {}) } }),
-      prisma.document.groupBy({ by: ['type'], _count: { id: true }, where: { createdAt: startFilter, ...(ex ? { userId: ex } : {}) } }),
-      prisma.candidateProfile.findMany({ where: { createdAt: { gte: twoWeeksAgo }, ...(ex ? { userId: ex } : {}) }, select: { createdAt: true } }),
-      prisma.document.findMany({ where: { createdAt: { gte: twoWeeksAgo }, ...(ex ? { userId: ex } : {}) }, select: { createdAt: true } }),
-      prisma.jobApplication.count({ where: { overallGrade: { not: null }, createdAt: startFilter, ...(ex ? { userId: ex } : {}) } }),
-      prisma.jobApplication.count({ where: { overallGrade: { not: null }, createdAt: { gte: weekAgo }, ...(ex ? { userId: ex } : {}) } }),
-      prisma.jobApplication.count({ where: { overallGrade: { not: null }, createdAt: { gte: todayStart }, ...(ex ? { userId: ex } : {}) } }),
-      prisma.diagnosticReport.count({ where: { createdAt: startFilter, ...(ex ? { userId: ex } : {}) } }),
-      prisma.diagnosticReport.count({ where: { status: 'COMPLETE', createdAt: startFilter, ...(ex ? { userId: ex } : {}) } }),
-      prisma.diagnosticReport.count({ where: { createdAt: { gte: weekAgo }, ...(ex ? { userId: ex } : {}) } }),
-      prisma.jobApplication.groupBy({ by: ['status'], _count: { id: true }, where: { createdAt: startFilter, ...(ex ? { userId: ex } : {}) } }),
-      prisma.documentFeedback.aggregate({ _avg: { rating: true }, _count: { id: true }, where: { createdAt: startFilter, ...(ex ? { userId: ex } : {}) } }),
-      prisma.candidateProfile.count({ where: { planStatus: 'trialing', ...(ex ? { userId: ex } : {}) } }),
-      prisma.candidateProfile.count({ where: { plan: { not: 'free' }, planStatus: 'active', ...(ex ? { userId: ex } : {}) } }),
-      prisma.candidateProfile.count({ where: { planStatus: { in: ['past_due', 'unpaid'] }, ...(ex ? { userId: ex } : {}) } }),
+      prisma.candidateProfile.count({ where: { userId: userFilter, createdAt: startFilter } }),
+      prisma.candidateProfile.count({ where: { userId: userFilter, hasCompletedOnboarding: true, createdAt: startFilter } }),
+      prisma.candidateProfile.count({ where: { userId: userFilter, createdAt: { gte: todayStart } } }),
+      prisma.candidateProfile.count({ where: { userId: userFilter, createdAt: { gte: weekAgo } } }),
+      prisma.candidateProfile.groupBy({ by: ['plan'] as any, _count: { id: true }, where: { userId: userFilter, createdAt: startFilter } }),
+      prisma.document.count({ where: { userId: userFilter, createdAt: startFilter } }),
+      prisma.document.count({ where: { userId: userFilter, createdAt: { gte: todayStart } } }),
+      prisma.document.count({ where: { userId: userFilter, createdAt: { gte: weekAgo } } }),
+      prisma.document.groupBy({ by: ['type'], _count: { id: true }, where: { userId: userFilter, createdAt: startFilter } }),
+      prisma.candidateProfile.findMany({ where: { userId: userFilter, createdAt: { gte: twoWeeksAgo } }, select: { createdAt: true } }),
+      prisma.document.findMany({ where: { userId: userFilter, createdAt: { gte: twoWeeksAgo } }, select: { createdAt: true } }),
+      prisma.jobApplication.count({ where: { userId: userFilter, overallGrade: { not: null }, createdAt: startFilter } }),
+      prisma.jobApplication.count({ where: { userId: userFilter, overallGrade: { not: null }, createdAt: { gte: weekAgo } } }),
+      prisma.jobApplication.count({ where: { userId: userFilter, overallGrade: { not: null }, createdAt: { gte: todayStart } } }),
+      prisma.diagnosticReport.count({ where: { userId: userFilter, createdAt: startFilter } }),
+      prisma.diagnosticReport.count({ where: { userId: userFilter, status: 'COMPLETE', createdAt: startFilter } }),
+      prisma.diagnosticReport.count({ where: { userId: userFilter, createdAt: { gte: weekAgo } } }),
+      prisma.jobApplication.groupBy({ by: ['status'], _count: { id: true }, where: { userId: userFilter, createdAt: startFilter } }),
+      prisma.documentFeedback.aggregate({ _avg: { rating: true }, _count: { id: true }, where: { userId: userFilter, createdAt: startFilter } }),
+      prisma.candidateProfile.count({ where: { userId: userFilter, planStatus: 'trialing' } }),
+      prisma.candidateProfile.count({ where: { userId: userFilter, plan: { not: 'free' }, planStatus: 'active' } }),
+      prisma.candidateProfile.count({ where: { userId: userFilter, planStatus: { in: ['past_due', 'unpaid'] } } }),
     ]);
 
     const byPlan: Record<string, number> = {};
@@ -243,7 +261,7 @@ router.get('/stats', authenticate, requireAdmin, async (_req, res) => {
 router.get('/friday-brief', authenticate, requireAdmin, async (_req, res) => {
   const { from, to } = getCurrentWindow();
   try {
-    const excludedUserIds = await getExcludedUserIds();
+    const realUserIds = await getRealUserIds();
     const cached = await prisma.fridayBrief.findUnique({
       where: { windowStart: from },
     });
@@ -253,7 +271,7 @@ router.get('/friday-brief', authenticate, requireAdmin, async (_req, res) => {
       where: {
         status: 'COMPLETE',
         createdAt: { gte: actualFrom, lt: to },
-        ...(excludedUserIds.length ? { userId: { notIn: excludedUserIds } } : {}),
+        ...(realUserIds.length ? { userId: { in: realUserIds } } : {}),
       },
     });
 
@@ -284,8 +302,8 @@ router.get('/friday-brief', authenticate, requireAdmin, async (_req, res) => {
 router.post('/friday-brief/generate', authenticate, requireAdmin, async (_req, res) => {
   const { from, to } = getCurrentWindow();
   try {
-    const excludedUserIds = await getExcludedUserIds();
-    const reports = await getFirstTimeReportsForWindow(from, to, excludedUserIds);
+    const realUserIds = await getRealUserIds();
+    const reports = await getFirstTimeReportsForWindow(from, to, realUserIds);
 
     if (reports.length === 0) {
       return res.json({ script: 'No first-time reports in this window yet.', reportCount: 0 });
@@ -327,22 +345,24 @@ router.post('/friday-brief/email', authenticate, requireAdmin, async (_req, res)
 // GET /api/admin/analysis — LLM growth intelligence on platform engagement metrics
 router.get('/analysis', authenticate, requireAdmin, async (_req, res) => {
   try {
-    const excludedUserIds = await getExcludedUserIds();
-    const ex = excludedUserIds.length ? { notIn: excludedUserIds } : undefined;
+    const realUserIds = await getRealUserIds();
+    const userFilter = realUserIds.length ? { in: realUserIds } : undefined;
 
     const [docsByUser, docsByType, diagnosticUsers, totalUsers, totalOnboarded, profilesRaw] = await Promise.all([
-      prisma.document.groupBy({ by: ['userId'], _count: { id: true }, where: { createdAt: { gte: ANALYTICS_START_DATE }, ...(ex ? { userId: ex } : {}) } }),
-      prisma.document.groupBy({ by: ['type'], _count: { id: true }, where: { createdAt: { gte: ANALYTICS_START_DATE }, ...(ex ? { userId: ex } : {}) } }),
-      prisma.diagnosticReport.findMany({ where: { status: 'COMPLETE', createdAt: { gte: ANALYTICS_START_DATE }, ...(ex ? { userId: ex } : {}) }, select: { userId: true } }),
-      prisma.candidateProfile.count({ where: { createdAt: { gte: ANALYTICS_START_DATE }, ...(ex ? { userId: ex } : {}) } }),
-      prisma.candidateProfile.count({ where: { hasCompletedOnboarding: true, createdAt: { gte: ANALYTICS_START_DATE }, ...(ex ? { userId: ex } : {}) } }),
-      prisma.candidateProfile.findMany({ where: { hasCompletedOnboarding: true, createdAt: { gte: ANALYTICS_START_DATE }, ...(ex ? { userId: ex } : {}) }, select: { userId: true, createdAt: true } }),
+      prisma.document.groupBy({ by: ['userId'], _count: { id: true }, where: { createdAt: { gte: ANALYTICS_START_DATE }, ...(userFilter ? { userId: userFilter } : {}) } }),
+      prisma.document.groupBy({ by: ['type'], _count: { id: true }, where: { createdAt: { gte: ANALYTICS_START_DATE }, ...(userFilter ? { userId: userFilter } : {}) } }),
+      prisma.diagnosticReport.findMany({ where: { status: 'COMPLETE', createdAt: { gte: ANALYTICS_START_DATE }, ...(userFilter ? { userId: userFilter } : {}) }, select: { userId: true } }),
+      prisma.candidateProfile.count({ where: { createdAt: { gte: ANALYTICS_START_DATE }, ...(userFilter ? { userId: userFilter } : {}) } }),
+      prisma.candidateProfile.count({ where: { hasCompletedOnboarding: true, createdAt: { gte: ANALYTICS_START_DATE }, ...(userFilter ? { userId: userFilter } : {}) } }),
+      prisma.candidateProfile.findMany({ where: { hasCompletedOnboarding: true, createdAt: { gte: ANALYTICS_START_DATE }, ...(userFilter ? { userId: userFilter } : {}) }, select: { userId: true, createdAt: true } }),
     ]);
 
-    const exclusionClause = Prisma.sql`WHERE "createdAt" >= ${ANALYTICS_START_DATE} ${excludedUserIds.length ? Prisma.sql`AND "userId" NOT IN (${Prisma.join(excludedUserIds)})` : Prisma.empty}`;
+    const inclusionClause = realUserIds.length
+      ? Prisma.sql`WHERE "createdAt" >= ${ANALYTICS_START_DATE} AND "userId" IN (${Prisma.join(realUserIds)})`
+      : Prisma.sql`WHERE "createdAt" >= ${ANALYTICS_START_DATE}`;
 
     const firstDocDates = await prisma.$queryRaw<Array<{ userId: string; minCreatedAt: Date }>>`
-      SELECT "userId", MIN("createdAt") as "minCreatedAt" FROM "Document" ${exclusionClause} GROUP BY "userId"
+      SELECT "userId", MIN("createdAt") as "minCreatedAt" FROM "Document" ${inclusionClause} GROUP BY "userId"
     `;
 
     const docUserIds = new Set(docsByUser.map(d => d.userId));
