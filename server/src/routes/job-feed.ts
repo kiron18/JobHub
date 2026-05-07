@@ -122,6 +122,13 @@ router.get('/feed', async (req: any, res: any) => {
       take: 10,
     });
 
+    // Enrich items with application status from the tracker (matched by sourceUrl)
+    const applications = await prisma.jobApplication.findMany({
+      where: { userId },
+      select: { sourceUrl: true, status: true },
+    });
+    const appStatusMap = new Map(applications.map(a => [a.sourceUrl, a.status]));
+
     // Generate bullets for any items that don't have them
     const nullBulletItems = items.filter(i => i.bullets === null);
     if (nullBulletItems.length > 0) {
@@ -167,7 +174,10 @@ router.get('/feed', async (req: any, res: any) => {
       .catch(() => {/* silent */});
 
     return res.json({
-      jobs: items,
+      jobs: items.map(item => ({
+        ...item,
+        applicationStatus: appStatusMap.get(item.sourceUrl) ?? null,
+      })),
       total,
       hasMore: offset + items.length < total,
       feedDate: today.toISOString().slice(0, 10),

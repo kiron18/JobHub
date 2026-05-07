@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ExternalLink, ChevronDown, ChevronUp, Loader2, BookmarkPlus, BookmarkCheck, Zap, AlertTriangle, User } from 'lucide-react';
+import { ExternalLink, ChevronDown, ChevronUp, Loader2, BookmarkPlus, BookmarkCheck, AlertTriangle, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
@@ -25,6 +25,7 @@ export interface JobFeedItem {
   matchDetails: { overallGrade?: string; gaps?: string[]; keywords?: string[] } | null;
   isRead: boolean;
   isSaved: boolean;
+  applicationStatus: string | null;
 }
 
 
@@ -34,12 +35,6 @@ function daysAgo(iso: string | null): string {
   if (d === 0) return 'Today';
   if (d === 1) return 'Yesterday';
   return `${d}d ago`;
-}
-
-function scoreColor(score: number): string {
-  if (score >= 75) return '#4ade80';
-  if (score >= 50) return '#fbbf24';
-  return '#f87171';
 }
 
 const CRITERIA_KEYWORDS = ['selection criteria', 'key criteria', 'essential criteria', 'desirable criteria', 'address the criteria'];
@@ -52,7 +47,6 @@ interface Props {
 export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
-  const [scoring, setScoring] = useState(false);
   const [saving, setSaving] = useState(false);
   const [addresseeLoading, setAddresseeLoading] = useState(false);
   const [addresseeFailed, setAddresseeFailed] = useState(false);
@@ -93,20 +87,6 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
       } finally {
         setAddresseeLoading(false);
       }
-    }
-  };
-
-  const handleScore = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (scoring || item.matchScore !== null) return;
-    setScoring(true);
-    try {
-      const { data } = await api.post(`/job-feed/${item.id}/score`);
-      onUpdate({ id: item.id, matchScore: data.matchScore, matchDetails: data.matchDetails });
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error ?? 'Scoring failed — try again.');
-    } finally {
-      setScoring(false);
     }
   };
 
@@ -191,23 +171,30 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
           </div>
 
           <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-            {item.matchScore !== null ? (
+            {item.applicationStatus && item.applicationStatus !== 'SAVED' && (
               <span
-                className="text-[10px] font-black px-2 py-0.5 rounded-full"
-                style={{ color: scoreColor(item.matchScore), background: `${scoreColor(item.matchScore)}18` }}
+                className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full"
+                style={{
+                  color: item.applicationStatus === 'REJECTED' ? '#f87171'
+                    : item.applicationStatus === 'OFFER' ? '#4ade80'
+                    : item.applicationStatus === 'INTERVIEW' ? '#fbbf24'
+                    : '#2dd4bf',
+                  background: item.applicationStatus === 'REJECTED' ? 'rgba(248,113,113,0.12)'
+                    : item.applicationStatus === 'OFFER' ? 'rgba(74,222,128,0.12)'
+                    : item.applicationStatus === 'INTERVIEW' ? 'rgba(251,191,36,0.12)'
+                    : 'rgba(45,212,191,0.12)',
+                }}
               >
-                {item.matchScore}/100 match
+                {item.applicationStatus === 'APPLIED' ? 'Applied'
+                  : item.applicationStatus === 'INTERVIEW' ? 'Interviewing'
+                  : item.applicationStatus === 'OFFER' ? 'Offer'
+                  : item.applicationStatus === 'REJECTED' ? 'Rejected'
+                  : item.applicationStatus}
               </span>
-            ) : (
-              <button
-                onClick={handleScore}
-                disabled={scoring}
-                className="flex items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-brand-400 transition-colors disabled:opacity-40"
-              >
-                {scoring ? <Loader2 size={11} className="animate-spin" /> : <Zap size={11} />}
-                {scoring ? 'Analysing…' : 'Analyse match'}
-              </button>
             )}
+            {(item.isSaved && !item.applicationStatus) || item.applicationStatus === 'SAVED' ? (
+              <span className="text-[9px] font-bold text-slate-500">Saved</span>
+            ) : null}
             {expanded ? <ChevronUp size={14} className="text-slate-500" /> : <ChevronDown size={14} className="text-slate-500" />}
           </div>
         </div>
@@ -252,16 +239,6 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
           </div>
         )}
 
-        {/* Match gaps (shown after scoring) */}
-        {item.matchDetails?.gaps && item.matchDetails.gaps.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {item.matchDetails.gaps.slice(0, 4).map((gap, i) => (
-              <span key={i} className="text-[9px] font-bold text-slate-500 bg-slate-800/60 px-1.5 py-0.5 rounded border border-slate-700/50">
-                gap: {gap}
-              </span>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* ── Expanded section ── */}

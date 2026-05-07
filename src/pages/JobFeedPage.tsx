@@ -11,7 +11,6 @@ export const JobFeedPage: React.FC = () => {
   const queryClient = useQueryClient();
   const [jobs, setJobs] = useState<JobFeedItem[]>([]);
   const [total, setTotal] = useState(0);
-  const [feedDate, setFeedDate] = useState('');
   const [hasMore, setHasMore] = useState(false);
   const [offset, setOffset] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -34,7 +33,6 @@ export const JobFeedPage: React.FC = () => {
       setJobs(data.jobs ?? []);
       setTotal(data.total ?? 0);
       setHasMore(data.hasMore ?? false);
-      setFeedDate(data.feedDate ?? '');
       setProfileIncomplete(data.profileIncomplete ?? false);
       setBuilding(data.building ?? false);
       setOffset(0);
@@ -113,15 +111,6 @@ export const JobFeedPage: React.FC = () => {
       <header className="flex items-start justify-between gap-4">
         <div className="space-y-1">
           <h2 className="text-4xl font-extrabold tracking-tight text-white">Job Feed</h2>
-          {feedDate && !profileIncomplete && !building && (
-            <p className="text-base text-slate-400 font-medium">
-              {total} jobs for{' '}
-              <span className="text-slate-200">{profile?.targetRole ?? 'your role'}</span>{' '}
-              in{' '}
-              <span className="text-slate-200">{profile?.targetCity ?? 'your city'}</span>
-              {' · '}Updated {feedDate === new Date().toISOString().slice(0, 10) ? 'today' : feedDate}
-            </p>
-          )}
         </div>
         {!profileIncomplete && !building && (
           <button
