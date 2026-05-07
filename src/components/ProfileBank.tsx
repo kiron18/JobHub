@@ -13,6 +13,7 @@ import { useAppTheme } from '../contexts/ThemeContext';
 import { ProfileAdvisorPanel } from './ProfileAdvisorPanel';
 import { ActivityWidget } from './ActivityWidget';
 import { BaselineResumeBanner } from './BaselineResumeBanner';
+import { ManageSubscriptionModal } from './ManageSubscriptionModal';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -1285,11 +1286,16 @@ interface CompletionSidebarProps {
   completion: ProfileData['completion'];
   isDark: boolean;
   targetRole?: string;
+  plan?: string;
+  planStatus?: string;
 }
 
-const CompletionSidebar: React.FC<CompletionSidebarProps> = ({ completion, isDark, targetRole }) => {
+const CompletionSidebar: React.FC<CompletionSidebarProps> = ({ completion, isDark, targetRole, plan, planStatus }) => {
   const navigate = useNavigate();
+  const [showManage, setShowManage] = useState(false);
   const { score, isReady, missingFields } = completion;
+
+  const hasActiveSubscription = !!plan && plan !== 'free' && !!planStatus && !['cancelled', 'expired', 'free'].includes(planStatus);
 
   const radius = 42;
   const stroke = 7;
@@ -1398,6 +1404,35 @@ const CompletionSidebar: React.FC<CompletionSidebarProps> = ({ completion, isDar
           </p>
         )}
       </div>
+
+      {/* Subscription management */}
+      {hasActiveSubscription && (
+        <>
+          <div style={{ height: 1, background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }} />
+          <button
+            onClick={() => setShowManage(true)}
+            style={{
+              width: '100%', padding: '9px 0',
+              background: 'transparent', border: 'none',
+              color: isDark ? '#6b7280' : '#9ca3af',
+              fontSize: 12, cursor: 'pointer',
+              transition: 'color 0.14s ease',
+              textAlign: 'center',
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = isDark ? '#9ca3af' : '#6b7280'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = isDark ? '#6b7280' : '#9ca3af'; }}
+          >
+            Manage subscription
+          </button>
+        </>
+      )}
+
+      <ManageSubscriptionModal
+        isOpen={showManage}
+        onClose={() => setShowManage(false)}
+        plan={plan ?? 'monthly'}
+        planStatus={planStatus ?? 'active'}
+      />
     </div>
   );
 };
@@ -1586,7 +1621,13 @@ export const ProfileBank: React.FC = () => {
           </div>
 
           {/* Sidebar */}
-          <CompletionSidebar completion={profile.completion} isDark={isDark} targetRole={profile.targetRole ?? undefined} />
+          <CompletionSidebar
+            completion={profile.completion}
+            isDark={isDark}
+            targetRole={profile.targetRole ?? undefined}
+            plan={(profile as any).plan}
+            planStatus={(profile as any).planStatus}
+          />
         </div>
       </div>
     </div>
