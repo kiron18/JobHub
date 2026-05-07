@@ -17,9 +17,9 @@ interface ATSCoveragePanelProps {
 }
 
 function ScoreArc({ score }: { score: number }) {
-    // Simple horizontal score bar
-    const color = score >= 75 ? '#34d399' : score >= 50 ? '#fbbf24' : '#f87171';
-    const label = score >= 75 ? 'Strong' : score >= 50 ? 'Moderate' : 'Weak';
+    const color = score >= 80 ? '#34d399' : score >= 60 ? '#fbbf24' : '#f87171';
+    const label = score >= 80 ? 'Strong' : score >= 60 ? 'Moderate' : 'Needs work';
+    const [showTip, setShowTip] = useState(false);
     return (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{
@@ -31,10 +31,19 @@ function ScoreArc({ score }: { score: number }) {
             }}>
                 {score}
             </div>
-            <div>
-                <p style={{ fontSize: 10, fontWeight: 800, color, textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>
-                    {label} ATS Coverage
-                </p>
+            <div style={{ position: 'relative' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <p style={{ fontSize: 10, fontWeight: 800, color, textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0 }}>
+                        {label} ATS Coverage
+                    </p>
+                    <button
+                        onMouseEnter={() => setShowTip(true)}
+                        onMouseLeave={() => setShowTip(false)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#4b5563', lineHeight: 1, fontSize: 11 }}
+                    >
+                        ⓘ
+                    </button>
+                </div>
                 <div style={{ marginTop: 4, height: 4, width: 120, borderRadius: 9, background: 'rgba(255,255,255,0.06)' }}>
                     <motion.div
                         initial={{ width: 0 }}
@@ -43,6 +52,30 @@ function ScoreArc({ score }: { score: number }) {
                         style={{ height: '100%', borderRadius: 9, background: color }}
                     />
                 </div>
+                <AnimatePresence>
+                    {showTip && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 4 }}
+                            transition={{ duration: 0.15 }}
+                            style={{
+                                position: 'absolute', bottom: '100%', left: 0, marginBottom: 8,
+                                width: 220, background: '#1e2433', border: '1px solid rgba(255,255,255,0.12)',
+                                borderRadius: 10, padding: '10px 12px', zIndex: 50,
+                                boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                            }}
+                        >
+                            <p style={{ fontSize: 11, fontWeight: 700, color: '#f3f4f6', margin: '0 0 5px' }}>What is ATS coverage?</p>
+                            <p style={{ fontSize: 10, color: '#9ca3af', margin: '0 0 6px', lineHeight: 1.6 }}>
+                                Most companies use software to filter resumes before a human reads them. It scans for keywords from the job description. Low coverage = filtered out before anyone sees your name.
+                            </p>
+                            <p style={{ fontSize: 10, color: color, margin: 0, fontWeight: 700 }}>
+                                Target: 80%+ for competitive roles. Every missing term is a filter risk.
+                            </p>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         </div>
     );

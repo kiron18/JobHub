@@ -167,8 +167,11 @@ router.get('/stats', authenticate, requireAdmin, async (_req, res) => {
     const userFilter = { in: realUserIds };
     const startFilter = { gte: ANALYTICS_START_DATE };
 
+    // totalAccounts comes directly from Supabase — the authoritative source of truth.
+    // No Postgres query needed; deleted accounts are already excluded by getRealUserIds().
+    const totalAccounts = realUserIds.length;
+
     const [
-      totalProfiles,
       onboardedProfiles,
       newToday,
       newThisWeek,
@@ -191,11 +194,12 @@ router.get('/stats', authenticate, requireAdmin, async (_req, res) => {
       activePaidCount,
       pastDueCount,
     ] = await Promise.all([
-      prisma.candidateProfile.count({ where: { userId: userFilter, createdAt: startFilter } }),
-      prisma.candidateProfile.count({ where: { userId: userFilter, hasCompletedOnboarding: true, createdAt: startFilter } }),
+      // No date filter on state-based counts — reflects current reality, not activity window
+      prisma.candidateProfile.count({ where: { userId: userFilter, hasCompletedOnboarding: true } }),
       prisma.candidateProfile.count({ where: { userId: userFilter, createdAt: { gte: todayStart } } }),
       prisma.candidateProfile.count({ where: { userId: userFilter, createdAt: { gte: weekAgo } } }),
-      prisma.candidateProfile.groupBy({ by: ['plan'] as any, _count: { id: true }, where: { userId: userFilter, createdAt: startFilter } }),
+      prisma.candidateProfile.groupBy({ by: ['plan'] as any, _count: { id: true }, where: { userId: userFilter } }),
+      // Activity metrics keep the launch-date filter to exclude pre-launch noise
       prisma.document.count({ where: { userId: userFilter, createdAt: startFilter } }),
       prisma.document.count({ where: { userId: userFilter, createdAt: { gte: todayStart } } }),
       prisma.document.count({ where: { userId: userFilter, createdAt: { gte: weekAgo } } }),
@@ -206,7 +210,7 @@ router.get('/stats', authenticate, requireAdmin, async (_req, res) => {
       prisma.jobApplication.count({ where: { userId: userFilter, overallGrade: { not: null }, createdAt: { gte: weekAgo } } }),
       prisma.jobApplication.count({ where: { userId: userFilter, overallGrade: { not: null }, createdAt: { gte: todayStart } } }),
       prisma.diagnosticReport.count({ where: { userId: userFilter, createdAt: startFilter } }),
-      prisma.diagnosticReport.count({ where: { userId: userFilter, status: 'COMPLETE', createdAt: startFilter } }),
+      prisma.diagnosticReport.count({ where: { userId: userFilter, status: 'COMPLETE' } }),
       prisma.diagnosticReport.count({ where: { userId: userFilter, createdAt: { gte: weekAgo } } }),
       prisma.jobApplication.groupBy({ by: ['status'], _count: { id: true }, where: { userId: userFilter, createdAt: startFilter } }),
       prisma.documentFeedback.aggregate({ _avg: { rating: true }, _count: { id: true }, where: { userId: userFilter, createdAt: startFilter } }),
@@ -227,13 +231,13 @@ router.get('/stats', authenticate, requireAdmin, async (_req, res) => {
 
     return res.json({
       users: {
-        total: totalProfiles,
+        total: totalAccounts,
         onboarded: onboardedProfiles,
         paid: paidCount,
         trialing: trialingCount,
         activePaid: activePaidCount,
         pastDue: pastDueCount,
-        free: totalProfiles - paidCount,
+        free: totalAccounts - paidCount,
         newToday,
         newThisWeek,
         byPlan,
@@ -618,6 +622,61 @@ async function buildExpensesData(): Promise<ExpensesResponse> {
 
   return { services, totalMonthlyAUD, fetchedAt: new Date().toISOString() };
 }
+
+// GET /api/admin/posthog-stats
+router.get('/posthog-stats', authenticate, requireAdmin, async (_req, res) => {
+  const key = process.env.POSTHOG_PERSONAL_API_KEY;
+  const projectId = process.env.POSTHOG_PROJECT_ID;
+
+  if (!key || !projectId) {
+    return res.status(503).json({ error: 'PostHog not configured — set POSTHOG_PERSONAL_API_KEY and POSTHOG_PROJECT_ID in Railway env vars' });
+  }
+
+  async function hogql(query: string): Promise<any> {
+    const r = await fetch(`https://us.posthog.com/api/projects/${projectId}/query`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: { kind: 'HogQLQuery', query } }),
+    });
+    if (!r.ok) {
+      const body = await r.text().catch(() => '');
+      throw new Error(`PostHog ${r.status}: ${body.slice(0, 200)}`);
+    }
+    return r.json();
+  }
+
+  function rows(result: PromiseSettledResult<any>): { key: string; count: number }[] {
+    if (result.status === 'rejected') return [];
+    return (result.value?.results ?? [])
+      .filter((row: any[]) => row[0] != null && row[0] !== '')
+      .map((row: any[]) => ({ key: String(row[0]), count: Number(row[1]) }));
+  }
+
+  try {
+    const [events7d, onboardingSteps, docTypes, features, cancelReasons, activeUsers] = await Promise.allSettled([
+      hogql(`SELECT event, count() as cnt FROM events WHERE timestamp >= now() - interval 7 day GROUP BY event ORDER BY cnt DESC LIMIT 20`),
+      hogql(`SELECT properties.step, count() as cnt FROM events WHERE event = 'onboarding_step_viewed' AND timestamp >= now() - interval 30 day GROUP BY properties.step ORDER BY cnt DESC`),
+      hogql(`SELECT properties.type, count() as cnt FROM events WHERE event = 'document_generated' AND timestamp >= now() - interval 30 day GROUP BY properties.type ORDER BY cnt DESC`),
+      hogql(`SELECT properties.feature, count() as cnt FROM events WHERE event = 'feature_opened' AND timestamp >= now() - interval 30 day GROUP BY properties.feature ORDER BY cnt DESC`),
+      hogql(`SELECT properties.reason, count() as cnt FROM events WHERE event = 'cancellation_reason_selected' GROUP BY properties.reason ORDER BY cnt DESC`),
+      hogql(`SELECT count(distinct person_id) as cnt FROM events WHERE timestamp >= now() - interval 7 day`),
+    ]);
+
+    return res.json({
+      activeUsers7d: activeUsers.status === 'fulfilled'
+        ? Number(activeUsers.value?.results?.[0]?.[0] ?? 0)
+        : null,
+      events7d: rows(events7d),
+      onboardingSteps: rows(onboardingSteps),
+      docTypes: rows(docTypes),
+      features: rows(features),
+      cancelReasons: rows(cancelReasons),
+    });
+  } catch (err) {
+    console.error('[admin/posthog-stats] error:', err);
+    return res.status(500).json({ error: 'Failed to fetch PostHog data' });
+  }
+});
 
 // GET /api/admin/expenses
 router.get('/expenses', authenticate, requireAdmin, async (req, res) => {
