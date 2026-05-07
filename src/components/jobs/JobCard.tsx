@@ -71,21 +71,37 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
     const nowExpanded = !expanded;
     setExpanded(nowExpanded);
 
-    if (nowExpanded && !addresseeFetched && !addresseeLoading && !addresseeFailed) {
-      setAddresseeLoading(true);
-      try {
-        const { data } = await api.post(`/job-feed/${item.id}/find-addressee`);
-        onUpdate({
-          id: item.id,
-          suggestedAddressee: data.suggestedAddressee,
-          addresseeTitle: data.addresseeTitle,
-          addresseeConfidence: data.addresseeConfidence,
-          addresseeSource: data.addresseeSource,
-        });
-      } catch {
-        setAddresseeFailed(true);
-      } finally {
-        setAddresseeLoading(false);
+    if (nowExpanded) {
+      // Silently fetch full description if we only have a preview
+      if (isTruncated && !loadingFullDesc && !fullDescFailed) {
+        setLoadingFullDesc(true);
+        try {
+          const { data } = await api.post(`/job-feed/${item.id}/fetch-description`);
+          onUpdate({ id: item.id, description: data.description });
+          setFullDescLoaded(true);
+        } catch {
+          setFullDescFailed(true);
+        } finally {
+          setLoadingFullDesc(false);
+        }
+      }
+
+      if (!addresseeFetched && !addresseeLoading && !addresseeFailed) {
+        setAddresseeLoading(true);
+        try {
+          const { data } = await api.post(`/job-feed/${item.id}/find-addressee`);
+          onUpdate({
+            id: item.id,
+            suggestedAddressee: data.suggestedAddressee,
+            addresseeTitle: data.addresseeTitle,
+            addresseeConfidence: data.addresseeConfidence,
+            addresseeSource: data.addresseeSource,
+          });
+        } catch {
+          setAddresseeFailed(true);
+        } finally {
+          setAddresseeLoading(false);
+        }
       }
     }
   };
@@ -102,22 +118,6 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
       toast.error('Failed to save');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleLoadFullDesc = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setLoadingFullDesc(true);
-    setFullDescFailed(false);
-    try {
-      const { data } = await api.post(`/job-feed/${item.id}/fetch-description`);
-      onUpdate({ id: item.id, description: data.description });
-      setFullDescLoaded(true);
-    } catch (err: any) {
-      setFullDescFailed(true);
-      toast.error(err?.response?.data?.error ?? 'Could not load full description');
-    } finally {
-      setLoadingFullDesc(false);
     }
   };
 
@@ -270,34 +270,20 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
                 </div>
               )}
 
-              {/* Truncation warning */}
-              {isTruncated && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/8 border border-amber-500/20">
-                  <AlertTriangle size={13} className="text-amber-400 flex-shrink-0" />
-                  <p className="text-xs text-amber-300 flex-1">
-                    Description is a preview — cover letter quality may suffer without the full text.
-                  </p>
-                  {!fullDescFailed && (
-                    <button
-                      onClick={handleLoadFullDesc}
-                      disabled={loadingFullDesc}
-                      className="text-[10px] font-black text-amber-300 hover:text-amber-100 border border-amber-500/30 rounded px-2 py-0.5 transition-colors whitespace-nowrap disabled:opacity-50"
-                    >
-                      {loadingFullDesc ? <Loader2 size={10} className="animate-spin inline" /> : 'Load full →'}
-                    </button>
-                  )}
-                  {fullDescFailed && (
-                    <a
-                      href={item.sourceUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={e => e.stopPropagation()}
-                      className="text-[10px] font-black text-amber-300 hover:text-amber-100 border border-amber-500/30 rounded px-2 py-0.5 transition-colors whitespace-nowrap"
-                    >
-                      Open listing →
-                    </a>
-                  )}
-                </div>
+              {/* Truncation fallback — only shown when silent auto-fetch failed */}
+              {isTruncated && fullDescFailed && (
+                <p className="text-xs text-slate-500">
+                  Full description unavailable —{' '}
+                  <a
+                    href={item.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}
+                    className="text-slate-400 hover:text-slate-200 underline underline-offset-2 transition-colors"
+                  >
+                    open the listing for complete details →
+                  </a>
+                </p>
               )}
 
               {/* Full description */}

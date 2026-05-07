@@ -26,21 +26,27 @@ export const JobFeedPage: React.FC = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { isLoading, isError } = useQuery({
+  const { data: feedData, isLoading, isError } = useQuery({
     queryKey: ['job-feed', 0],
     queryFn: async () => {
       const { data } = await api.get('/job-feed/feed?offset=0');
-      setJobs(data.jobs ?? []);
-      setTotal(data.total ?? 0);
-      setHasMore(data.hasMore ?? false);
-      setProfileIncomplete(data.profileIncomplete ?? false);
-      setBuilding(data.building ?? false);
-      setOffset(0);
       return data;
     },
-    refetchOnMount: false,
     staleTime: 5 * 60 * 1000,
   });
+
+  // Sync query data into local state — runs on both fresh fetch AND cache hit on remount.
+  // Guard with offset===0 so paginated results don't get wiped by a background refetch.
+  useEffect(() => {
+    if (!feedData) return;
+    if (offset === 0) {
+      setJobs(feedData.jobs ?? []);
+      setTotal(feedData.total ?? 0);
+      setHasMore(feedData.hasMore ?? false);
+      setProfileIncomplete(feedData.profileIncomplete ?? false);
+      setBuilding(feedData.building ?? false);
+    }
+  }, [feedData]);
 
   // Poll every 60s while building, up to 8 attempts (~8 minutes total)
   useEffect(() => {

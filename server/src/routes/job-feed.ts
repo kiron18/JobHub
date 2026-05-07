@@ -373,6 +373,7 @@ const JOB_BOARD_HOSTS = [
   /^(www\.)?indeed\.com\.au$/,
   /^(www\.)?jora\.com$/,
   /^(www\.)?apsjobs\.gov\.au$/,
+  /^(www\.)?adzuna\.com\.au$/,
   /^[a-z0-9-]+\.lever\.co$/,
   /^[a-z0-9-]+\.greenhouse\.io$/,
   /^[a-z0-9-]+\.workday\.com$/,
