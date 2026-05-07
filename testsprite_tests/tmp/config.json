@@ -1,18 +1,20 @@
 {
-  "status": "init",
-  "scope": "codebase",
+  "status": "commited",
   "type": "frontend",
-  "localEndpoint": "http://localhost:5173/",
-  "serverPort": 64541,
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:5174",
+  "loginUser": "kironorik@gmail.com",
+  "loginPassword": "nitins@182",
   "executionArgs": {
     "projectName": "JobHub",
     "projectPath": "E:\\AntiGravity\\JobHub",
     "testIds": [],
-    "additionalInstruction": "The app is served locally on http://localhost:5173. Use this as the base URL for all navigation. Test credentials for login: use a valid test account if available. The app uses Supabase auth — magic link and email/password modes are supported.",
+    "additionalInstruction": "Login with email kironorik@gmail.com and password nitins@182. For headshot upload use image at C:\\Users\\Kiron\\Downloads\\image.jpg (1).jpg. Download all downloadable files (docx, pdf, headshot). The app may already have a completed profile — if onboarding is already done, skip to testing features. Dev server at http://localhost:5174 connected to production backend at https://jobhub-production-f138.up.railway.app",
     "serverMode": "production",
     "envs": {
       "API_KEY": "sk-user-mEHh9CVHxOCAZClYXA2Bhm0tAfSQ5od1kJrJxR1N1RWHZkU6i4dP__8VmjAS3VUgXfWb_oOAO7m60v3mKflbm1l2cIi3cERHD2OtAVQlU0AMAkslYuKYLggAYP_mD3QJEJM"
     }
   },
-  "proxy": "http://70b2b143-230c-4e96-ae4f-d0ef99e8e7ce:XJDKKkWhHeo3klGCAMOZsLRS42H7CB2o@tun.testsprite.com:8080"
+  "serverPort": 60666,
+  "proxy": "http://9af3eebd-16d6-4376-9049-5a142c29d221:AR6ennUzYfPfmoMvJGlL8QJripDLwNl3@tun.testsprite.com:8080"
 }

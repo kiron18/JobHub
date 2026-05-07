@@ -1,86 +1,8 @@
 [
   {
     "id": "TC001",
-    "title": "Log in and access dashboard",
-    "description": "Verifies an existing user can sign in with email and password and land on the authenticated dashboard.",
-    "category": "Authentication (email/password)",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /auth"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the email field with {{LOGIN_USER}}"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
-      },
-      {
-        "type": "action",
-        "description": "Submit the login form"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the user lands on the dashboard"
-      }
-    ],
-    "priority": "High"
-  },
-  {
-    "id": "TC002",
-    "title": "Generate resume with selected achievements and save to library",
-    "description": "Verifies a job seeker can select achievements, generate a resume, make an inline edit, and save the document to the library successfully.",
-    "category": "Application Workspace (Document generation & tools)",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /auth"
-      },
-      {
-        "type": "action",
-        "description": "Fill {{LOGIN_USER}} into the email field"
-      },
-      {
-        "type": "action",
-        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
-      },
-      {
-        "type": "action",
-        "description": "Submit the login form"
-      },
-      {
-        "type": "action",
-        "description": "Navigate to /application-workspace"
-      },
-      {
-        "type": "action",
-        "description": "Select at least one achievement in the achievement selector"
-      },
-      {
-        "type": "action",
-        "description": "Generate a resume"
-      },
-      {
-        "type": "action",
-        "description": "Edit the generated resume content inline by adding a short unique phrase"
-      },
-      {
-        "type": "action",
-        "description": "Save the resume to the document library"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify a success confirmation is visible"
-      }
-    ],
-    "priority": "High"
-  },
-  {
-    "id": "TC003",
-    "title": "Submit onboarding intake and enter processing screen",
-    "description": "Verifies submitting the final onboarding step transitions into the full-screen processing experience.",
+    "title": "Complete onboarding intake end-to-end and reach diagnostic report on dashboard",
+    "description": "Verifies a first-time user can complete all 4 intake steps including required resume upload, then finishes processing and sees the diagnostic report on the dashboard.",
     "category": "Onboarding Intake",
     "steps": [
       {
@@ -89,134 +11,15 @@
       },
       {
         "type": "action",
-        "description": "Fill in the email field with {{LOGIN_USER}}"
+        "description": "Fill a new unique email into the email field"
       },
       {
         "type": "action",
-        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+        "description": "Fill a valid password into the password field"
       },
       {
         "type": "action",
-        "description": "Submit the login form"
-      },
-      {
-        "type": "action",
-        "description": "Complete onboarding steps 1–3 with valid values and advance to the upload step"
-      },
-      {
-        "type": "action",
-        "description": "Upload a valid resume file in the resume upload control"
-      },
-      {
-        "type": "action",
-        "description": "Submit the intake"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the onboarding processing screen is displayed"
-      }
-    ],
-    "priority": "High"
-  },
-  {
-    "id": "TC004",
-    "title": "Analyse a pasted job description and see match score with ranked achievements",
-    "description": "Verifies the user can analyse a job description from the dashboard and see a match score plus ranked achievements.",
-    "category": "Dashboard",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /auth"
-      },
-      {
-        "type": "action",
-        "description": "Fill {{LOGIN_USER}} into the email field"
-      },
-      {
-        "type": "action",
-        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
-      },
-      {
-        "type": "action",
-        "description": "Submit the login form"
-      },
-      {
-        "type": "action",
-        "description": "Fill a realistic job description into the match engine job description field"
-      },
-      {
-        "type": "action",
-        "description": "Submit the match analysis"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify an overall match score is displayed"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify ranked achievements with strength labels are displayed"
-      }
-    ],
-    "priority": "High"
-  },
-  {
-    "id": "TC005",
-    "title": "Run onboarding processing until report completes",
-    "description": "Verifies the processing screen continues until completion and the diagnostic report is displayed on the dashboard.",
-    "category": "Processing Screen (Onboarding)",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /auth"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the email field with {{LOGIN_USER}}"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
-      },
-      {
-        "type": "action",
-        "description": "Submit the login form"
-      },
-      {
-        "type": "action",
-        "description": "Complete onboarding steps 1–4 with a valid resume upload and submit intake to enter processing"
-      },
-      {
-        "type": "action",
-        "description": "Wait for the processing flow to finish"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify a diagnostic report is displayed on the dashboard"
-      }
-    ],
-    "priority": "High"
-  },
-  {
-    "id": "TC006",
-    "title": "Complete onboarding steps 1–3 and reach resume upload step",
-    "description": "Verifies a first-time user can progress through onboarding steps 1–3 by providing required inputs and arrive at the final upload step.",
-    "category": "Onboarding Intake",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /auth"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the email field with {{LOGIN_USER}}"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
-      },
-      {
-        "type": "action",
-        "description": "Submit the login form"
+        "description": "Submit the sign-up form"
       },
       {
         "type": "action",
@@ -232,11 +35,11 @@
       },
       {
         "type": "action",
-        "description": "Select a valid seniority level"
+        "description": "Select a seniority level"
       },
       {
         "type": "action",
-        "description": "Select a valid industry"
+        "description": "Select an industry"
       },
       {
         "type": "action",
@@ -244,11 +47,11 @@
       },
       {
         "type": "action",
-        "description": "Fill a valid job search timeline into the timeline field"
+        "description": "Select a job search timeline"
       },
       {
         "type": "action",
-        "description": "Fill a valid applications count into the applications count field"
+        "description": "Fill an applications count into the applications count field"
       },
       {
         "type": "action",
@@ -260,27 +63,190 @@
       },
       {
         "type": "action",
-        "description": "Fill a valid response pattern into the response pattern field"
+        "description": "Select a response pattern"
       },
       {
         "type": "action",
-        "description": "Fill a perceived blocker description into the perceived blocker field"
+        "description": "Fill a perceived blocker description into the blocker field"
       },
       {
         "type": "action",
         "description": "Submit the step to advance"
       },
       {
+        "type": "action",
+        "description": "Upload a valid resume file"
+      },
+      {
+        "type": "action",
+        "description": "Submit the intake"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the processing screen to complete"
+      },
+      {
         "type": "assertion",
-        "description": "Verify the resume upload step is displayed"
+        "description": "Verify a diagnostic report is displayed on the dashboard"
       }
     ],
     "priority": "High"
   },
   {
-    "id": "TC007",
-    "title": "View application pipeline counts on dashboard",
-    "description": "Verifies an authenticated job seeker can access the dashboard and see application counts grouped by status.",
+    "id": "TC002",
+    "title": "Log in with email and password and reach the dashboard",
+    "description": "Verifies a user can sign in using email/password and is taken to the dashboard on success.",
+    "category": "Authentication (email/password)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user lands on the dashboard"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC003",
+    "title": "Processing screen completes after onboarding submission and transitions to report display",
+    "description": "Verifies that after submitting onboarding, the processing screen runs and then completes into the report view on the dashboard.",
+    "category": "Processing Screen (Onboarding)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill a new unique email into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid password into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-up form"
+      },
+      {
+        "type": "action",
+        "description": "Proceed from the onboarding welcome screen"
+      },
+      {
+        "type": "action",
+        "description": "Fill a target role into the target role field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a target city into the target city field"
+      },
+      {
+        "type": "action",
+        "description": "Select a seniority level"
+      },
+      {
+        "type": "action",
+        "description": "Select an industry"
+      },
+      {
+        "type": "action",
+        "description": "Submit the step to advance"
+      },
+      {
+        "type": "action",
+        "description": "Select a job search timeline"
+      },
+      {
+        "type": "action",
+        "description": "Fill an applications count into the applications count field"
+      },
+      {
+        "type": "action",
+        "description": "Select at least one channel used"
+      },
+      {
+        "type": "action",
+        "description": "Submit the step to advance"
+      },
+      {
+        "type": "action",
+        "description": "Select a response pattern"
+      },
+      {
+        "type": "action",
+        "description": "Fill a perceived blocker description into the blocker field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the step to advance"
+      },
+      {
+        "type": "action",
+        "description": "Upload a valid resume file"
+      },
+      {
+        "type": "action",
+        "description": "Submit the intake"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the processing screen to complete"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a diagnostic report is displayed on the dashboard"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC004",
+    "title": "Sign up with email and password and enter onboarding intake",
+    "description": "Verifies a new user can create an account using email/password and is routed into onboarding intake afterward.",
+    "category": "Authentication (email/password)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill a new unique email into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid password into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-up form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the onboarding intake welcome is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC005",
+    "title": "Run match analysis from dashboard and view score and ranked achievements",
+    "description": "Verifies that submitting a pasted job description from the dashboard produces a visible match score and ranked achievements.",
     "category": "Dashboard",
     "steps": [
       {
@@ -289,11 +255,11 @@
       },
       {
         "type": "action",
-        "description": "Fill {{LOGIN_USER}} into the email field"
+        "description": "Fill in the email field with {{LOGIN_USER}}"
       },
       {
         "type": "action",
-        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
       },
       {
         "type": "action",
@@ -301,19 +267,169 @@
       },
       {
         "type": "action",
-        "description": "Wait for the dashboard to finish loading"
+        "description": "Click the match engine area"
+      },
+      {
+        "type": "action",
+        "description": "Fill a job description into the match engine input"
+      },
+      {
+        "type": "action",
+        "description": "Submit analysis"
       },
       {
         "type": "assertion",
-        "description": "Verify application counts grouped by status are displayed"
+        "description": "Verify an overall match score percentage is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a ranked achievements list with strength labels is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC006",
+    "title": "Onboarding prevents submission without required resume and allows submission after upload",
+    "description": "Verifies the intake cannot be submitted without a resume, and after uploading a resume the user can submit and reach processing.",
+    "category": "Onboarding Intake",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill a new unique email into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid password into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-up form"
+      },
+      {
+        "type": "action",
+        "description": "Proceed from the onboarding welcome screen"
+      },
+      {
+        "type": "action",
+        "description": "Fill a target role into the target role field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a target city into the target city field"
+      },
+      {
+        "type": "action",
+        "description": "Select a seniority level"
+      },
+      {
+        "type": "action",
+        "description": "Select an industry"
+      },
+      {
+        "type": "action",
+        "description": "Submit the step to advance"
+      },
+      {
+        "type": "action",
+        "description": "Select a job search timeline"
+      },
+      {
+        "type": "action",
+        "description": "Fill an applications count into the applications count field"
+      },
+      {
+        "type": "action",
+        "description": "Select at least one channel used"
+      },
+      {
+        "type": "action",
+        "description": "Submit the step to advance"
+      },
+      {
+        "type": "action",
+        "description": "Select a response pattern"
+      },
+      {
+        "type": "action",
+        "description": "Fill a perceived blocker description into the blocker field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the step to advance"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to submit the intake without uploading a resume"
+      },
+      {
+        "type": "action",
+        "description": "Upload a valid resume file"
+      },
+      {
+        "type": "action",
+        "description": "Submit the intake"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the full-screen processing screen is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC007",
+    "title": "Analyse pasted job description to view score and achievement strengths",
+    "description": "Verifies that analysing a job description produces an overall match score and a ranked list of achievements with strength labels.",
+    "category": "Match Engine",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the match engine area"
+      },
+      {
+        "type": "action",
+        "description": "Fill a job description into the match engine input"
+      },
+      {
+        "type": "action",
+        "description": "Submit analysis"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an overall match score percentage is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify ranked achievements are displayed with STRONG, MODERATE, or WEAK labels"
       }
     ],
     "priority": "High"
   },
   {
     "id": "TC008",
-    "title": "Generate cover letter, run personalisation, adjust tone, and save",
-    "description": "Verifies a job seeker can generate a cover letter, run the personalisation check, rewrite tone, and save the final document to the library.",
+    "title": "Generate resume, edit, preview, and export as DOCX",
+    "description": "Verifies a user can generate a resume in the workspace, make an inline edit, preview the output, and export a DOCX successfully.",
     "category": "Application Workspace (Document generation & tools)",
     "steps": [
       {
@@ -322,11 +438,11 @@
       },
       {
         "type": "action",
-        "description": "Fill {{LOGIN_USER}} into the email field"
+        "description": "Fill in the email field with {{LOGIN_USER}}"
       },
       {
         "type": "action",
-        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
       },
       {
         "type": "action",
@@ -334,11 +450,516 @@
       },
       {
         "type": "action",
-        "description": "Navigate to /application-workspace"
+        "description": "Click the link to open the application workspace"
       },
       {
         "type": "action",
-        "description": "Generate a cover letter"
+        "description": "Select multiple achievements from the achievement selector"
+      },
+      {
+        "type": "action",
+        "description": "Generate the resume document"
+      },
+      {
+        "type": "action",
+        "description": "Edit the generated resume content inline"
+      },
+      {
+        "type": "action",
+        "description": "Preview the rendered resume document"
+      },
+      {
+        "type": "action",
+        "description": "Export the document as DOCX"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an export success confirmation is visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC009",
+    "title": "Open analysed job in application workspace preloaded from match results",
+    "description": "Verifies that opening the workspace from match results loads the application workspace with the matched job context already selected.",
+    "category": "Match Engine",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the match engine area"
+      },
+      {
+        "type": "action",
+        "description": "Fill a job description into the match engine input"
+      },
+      {
+        "type": "action",
+        "description": "Submit analysis"
+      },
+      {
+        "type": "action",
+        "description": "Open the matched job in the application workspace"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user lands on the application workspace"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the workspace shows the matched job details as the active context"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC010",
+    "title": "Navigate from dashboard deadline to its job in tracker",
+    "description": "Verifies that selecting an upcoming deadline item from the dashboard opens the related application details in the tracker.",
+    "category": "Dashboard",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the match engine area"
+      },
+      {
+        "type": "action",
+        "description": "Fill a job description into the match engine input"
+      },
+      {
+        "type": "action",
+        "description": "Submit analysis"
+      },
+      {
+        "type": "action",
+        "description": "Save the analyzed job to the tracker"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the tracker"
+      },
+      {
+        "type": "action",
+        "description": "Open the saved job from the application list"
+      },
+      {
+        "type": "action",
+        "description": "Set a closing date within the next 7 days"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to return to the dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Click a deadline item from the upcoming deadlines list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the tracker shows the related application details view for the selected job"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC011",
+    "title": "Advance a job through pipeline stage and see funnel update",
+    "description": "Verifies a user can advance an application to the next stage and the pipeline funnel counts update accordingly.",
+    "category": "Application Tracker",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the application tracker"
+      },
+      {
+        "type": "action",
+        "description": "Open a job card"
+      },
+      {
+        "type": "action",
+        "description": "Advance the application status using the status control"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the pipeline funnel reflects the updated stage counts"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC012",
+    "title": "Save analysed job to tracker from match results",
+    "description": "Verifies that saving an analysed job from the match engine adds it to the application tracker list.",
+    "category": "Match Engine",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the match engine area"
+      },
+      {
+        "type": "action",
+        "description": "Fill a job description into the match engine input"
+      },
+      {
+        "type": "action",
+        "description": "Submit analysis"
+      },
+      {
+        "type": "action",
+        "description": "Save the analyzed job to the tracker"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the tracker"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new job appears in the application list"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC013",
+    "title": "Create upcoming deadline via tracker and see it listed on dashboard",
+    "description": "Verifies that setting a closing date within 7 days on a tracked job makes it appear in the dashboard upcoming deadlines list.",
+    "category": "Dashboard",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the match engine area"
+      },
+      {
+        "type": "action",
+        "description": "Fill a job description into the match engine input"
+      },
+      {
+        "type": "action",
+        "description": "Submit analysis"
+      },
+      {
+        "type": "action",
+        "description": "Save the analyzed job to the tracker"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the tracker"
+      },
+      {
+        "type": "action",
+        "description": "Open the saved job from the application list"
+      },
+      {
+        "type": "action",
+        "description": "Set a closing date within the next 7 days"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to return to the dashboard"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the upcoming deadlines list displays at least one deadline item"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC014",
+    "title": "Filter tracker by status and sort by match score",
+    "description": "Verifies a user can filter applications by a chosen status and sort the resulting list by match score.",
+    "category": "Application Tracker",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the application tracker"
+      },
+      {
+        "type": "action",
+        "description": "Filter applications by a non-ALL status"
+      },
+      {
+        "type": "action",
+        "description": "Sort applications by match score"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify only applications for the selected status are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC015",
+    "title": "Advance through onboarding steps 1–3 with required fields",
+    "description": "Verifies the user can progress through the first three onboarding steps by providing the required information for each step.",
+    "category": "Onboarding Intake",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill a new unique email into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid password into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-up form"
+      },
+      {
+        "type": "action",
+        "description": "Proceed from the onboarding welcome screen"
+      },
+      {
+        "type": "action",
+        "description": "Fill a target role into the target role field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a target city into the target city field"
+      },
+      {
+        "type": "action",
+        "description": "Select a seniority level"
+      },
+      {
+        "type": "action",
+        "description": "Select an industry"
+      },
+      {
+        "type": "action",
+        "description": "Submit the step to advance"
+      },
+      {
+        "type": "action",
+        "description": "Select a job search timeline"
+      },
+      {
+        "type": "action",
+        "description": "Fill an applications count into the applications count field"
+      },
+      {
+        "type": "action",
+        "description": "Select at least one channel used"
+      },
+      {
+        "type": "action",
+        "description": "Submit the step to advance"
+      },
+      {
+        "type": "action",
+        "description": "Select a response pattern"
+      },
+      {
+        "type": "action",
+        "description": "Fill a perceived blocker description into the blocker field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the step to advance"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the upload step is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC016",
+    "title": "Use status card on dashboard to jump to filtered tracker view",
+    "description": "Verifies that selecting a pipeline status summary on the dashboard deep-links into the tracker filtered to that status.",
+    "category": "Dashboard",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the match engine area"
+      },
+      {
+        "type": "action",
+        "description": "Fill a job description into the match engine input"
+      },
+      {
+        "type": "action",
+        "description": "Submit analysis"
+      },
+      {
+        "type": "action",
+        "description": "Save the analyzed job to the tracker"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the tracker"
+      },
+      {
+        "type": "action",
+        "description": "Open the saved job from the application list"
+      },
+      {
+        "type": "action",
+        "description": "Set the job status to SAVED"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to return to the dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Click the SAVED status summary card"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user lands on the tracker view filtered to the selected status"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC017",
+    "title": "Generate cover letter and run personalization and tone rewrite then save to library",
+    "description": "Verifies a user can generate a cover letter, run personalization and tone rewrite, and save the final document to the document library.",
+    "category": "Application Workspace (Document generation & tools)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the application workspace"
+      },
+      {
+        "type": "action",
+        "description": "Generate the cover letter document"
       },
       {
         "type": "action",
@@ -354,327 +975,16 @@
       },
       {
         "type": "assertion",
-        "description": "Verify a success confirmation is visible"
+        "description": "Verify a save-to-library confirmation is visible"
       }
     ],
     "priority": "High"
   },
   {
-    "id": "TC009",
-    "title": "Sign up and start onboarding",
-    "description": "Verifies a new user can create an account with email and password and is taken into the onboarding intake flow.",
-    "category": "Authentication (email/password)",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /auth"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the email field with a unique new email value"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the password field with a valid password value"
-      },
-      {
-        "type": "action",
-        "description": "Submit the sign-up form"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the onboarding intake is displayed"
-      }
-    ],
-    "priority": "High"
-  },
-  {
-    "id": "TC010",
-    "title": "Open workspace for an analysed job and see it preloaded",
-    "description": "Verifies the user can open the application workspace from match results and the selected job is preloaded.",
-    "category": "Match Engine",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /auth"
-      },
-      {
-        "type": "action",
-        "description": "Fill {{LOGIN_USER}} into the email field"
-      },
-      {
-        "type": "action",
-        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
-      },
-      {
-        "type": "action",
-        "description": "Submit the login form"
-      },
-      {
-        "type": "action",
-        "description": "Fill a realistic job description into the match engine job description field"
-      },
-      {
-        "type": "action",
-        "description": "Submit the match analysis"
-      },
-      {
-        "type": "action",
-        "description": "Open the matched job in the application workspace"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the application workspace is displayed"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the analysed job is shown as the active job context in the workspace"
-      }
-    ],
-    "priority": "High"
-  },
-  {
-    "id": "TC011",
-    "title": "Generate resume and export as DOCX from preview",
-    "description": "Verifies a job seeker can generate a resume, preview it, and export it as a DOCX successfully.",
-    "category": "Application Workspace (Document generation & tools)",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /auth"
-      },
-      {
-        "type": "action",
-        "description": "Fill {{LOGIN_USER}} into the email field"
-      },
-      {
-        "type": "action",
-        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
-      },
-      {
-        "type": "action",
-        "description": "Submit the login form"
-      },
-      {
-        "type": "action",
-        "description": "Navigate to /application-workspace"
-      },
-      {
-        "type": "action",
-        "description": "Select at least one achievement in the achievement selector"
-      },
-      {
-        "type": "action",
-        "description": "Generate a resume"
-      },
-      {
-        "type": "action",
-        "description": "Preview the rendered document"
-      },
-      {
-        "type": "action",
-        "description": "Export the document as DOCX"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify a DOCX export action completes successfully"
-      }
-    ],
-    "priority": "High"
-  },
-  {
-    "id": "TC012",
-    "title": "Advance a job through pipeline and see funnel update",
-    "description": "Verifies a job seeker can advance an application status and the job relocates to the next stage while the pipeline funnel updates accordingly.",
-    "category": "Application Tracker",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /auth"
-      },
-      {
-        "type": "action",
-        "description": "Fill {{LOGIN_USER}} into the email field"
-      },
-      {
-        "type": "action",
-        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
-      },
-      {
-        "type": "action",
-        "description": "Submit the login form"
-      },
-      {
-        "type": "action",
-        "description": "Navigate to /tracker"
-      },
-      {
-        "type": "action",
-        "description": "Create a new application from the tracker"
-      },
-      {
-        "type": "action",
-        "description": "Open the newly created job card"
-      },
-      {
-        "type": "action",
-        "description": "Advance the application status using the status control"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the application appears in the next pipeline stage"
-      }
-    ],
-    "priority": "High"
-  },
-  {
-    "id": "TC013",
-    "title": "Save an analysed job to the application tracker",
-    "description": "Verifies the user can save an analysed job from the match engine and then find it in the tracker list.",
-    "category": "Match Engine",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /auth"
-      },
-      {
-        "type": "action",
-        "description": "Fill {{LOGIN_USER}} into the email field"
-      },
-      {
-        "type": "action",
-        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
-      },
-      {
-        "type": "action",
-        "description": "Submit the login form"
-      },
-      {
-        "type": "action",
-        "description": "Fill a realistic job description into the match engine job description field"
-      },
-      {
-        "type": "action",
-        "description": "Submit the match analysis"
-      },
-      {
-        "type": "action",
-        "description": "Save the matched job to the tracker"
-      },
-      {
-        "type": "action",
-        "description": "Click the link to open the application tracker"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the newly saved job appears in the application list"
-      }
-    ],
-    "priority": "High"
-  },
-  {
-    "id": "TC014",
+    "id": "TC018",
     "title": "Export generated document as PDF from preview",
-    "description": "Verifies a job seeker can generate a document, preview it, and export it as a PDF successfully.",
+    "description": "Verifies a user can preview a generated document and export it as a PDF successfully.",
     "category": "Document Export & Feedback",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /auth"
-      },
-      {
-        "type": "action",
-        "description": "Fill {{LOGIN_USER}} into the email field"
-      },
-      {
-        "type": "action",
-        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
-      },
-      {
-        "type": "action",
-        "description": "Submit the login form"
-      },
-      {
-        "type": "action",
-        "description": "Navigate to /application-workspace"
-      },
-      {
-        "type": "action",
-        "description": "Generate a cover letter"
-      },
-      {
-        "type": "action",
-        "description": "Preview the rendered document"
-      },
-      {
-        "type": "action",
-        "description": "Export the document as PDF"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify a PDF export action completes successfully"
-      }
-    ],
-    "priority": "High"
-  },
-  {
-    "id": "TC015",
-    "title": "Set closing date, generate follow-up email, and copy output",
-    "description": "Verifies a job seeker can set a closing date that appears in upcoming deadlines, generate a follow-up email draft, and copy it successfully.",
-    "category": "Application Tracker",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /auth"
-      },
-      {
-        "type": "action",
-        "description": "Fill {{LOGIN_USER}} into the email field"
-      },
-      {
-        "type": "action",
-        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
-      },
-      {
-        "type": "action",
-        "description": "Submit the login form"
-      },
-      {
-        "type": "action",
-        "description": "Navigate to /tracker"
-      },
-      {
-        "type": "action",
-        "description": "Create a new application from the tracker"
-      },
-      {
-        "type": "action",
-        "description": "Open the newly created job card"
-      },
-      {
-        "type": "action",
-        "description": "Set a valid closing date for the job"
-      },
-      {
-        "type": "action",
-        "description": "Generate a follow-up email draft for the job"
-      },
-      {
-        "type": "action",
-        "description": "Copy the generated email content"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the job is listed in the upcoming deadlines area"
-      }
-    ],
-    "priority": "High"
-  },
-  {
-    "id": "TC016",
-    "title": "Require resume before submitting onboarding intake",
-    "description": "Verifies the onboarding intake cannot be submitted without a resume and shows an inline validation error until a resume is provided.",
-    "category": "Onboarding Intake",
     "steps": [
       {
         "type": "action",
@@ -694,23 +1004,72 @@
       },
       {
         "type": "action",
-        "description": "Complete onboarding steps 1–3 with valid values and advance to the upload step"
+        "description": "Click the link to open the application workspace"
       },
       {
         "type": "action",
-        "description": "Attempt to submit the intake without uploading a resume"
+        "description": "Generate a document"
+      },
+      {
+        "type": "action",
+        "description": "Preview the generated content"
+      },
+      {
+        "type": "action",
+        "description": "Export the document as PDF"
       },
       {
         "type": "assertion",
-        "description": "Verify a resume-required validation error is visible"
+        "description": "Verify an export success confirmation is visible"
       }
     ],
     "priority": "High"
   },
   {
-    "id": "TC017",
-    "title": "Filter applications by status and sort by match score",
-    "description": "Verifies a job seeker can filter applications by status and sort results by match score to find relevant jobs.",
+    "id": "TC019",
+    "title": "Proceed from diagnostic report islands into dashboard",
+    "description": "Verifies that progressing through the diagnostic report islands allows the user to continue into the dashboard to start applying.",
+    "category": "Diagnostic Report",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the diagnostic report islands view to be displayed"
+      },
+      {
+        "type": "action",
+        "description": "Scroll through the report islands sequentially"
+      },
+      {
+        "type": "action",
+        "description": "Proceed from the report experience into the dashboard"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the dashboard content is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC020",
+    "title": "Set closing date and generate follow-up email draft",
+    "description": "Verifies a user can set a closing date for a job, see it listed in upcoming deadlines, generate a follow-up email draft, and copy it.",
     "category": "Application Tracker",
     "steps": [
       {
@@ -719,52 +1078,11 @@
       },
       {
         "type": "action",
-        "description": "Fill {{LOGIN_USER}} into the email field"
+        "description": "Fill in the email field with {{LOGIN_USER}}"
       },
       {
         "type": "action",
-        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
-      },
-      {
-        "type": "action",
-        "description": "Submit the login form"
-      },
-      {
-        "type": "action",
-        "description": "Navigate to /tracker"
-      },
-      {
-        "type": "action",
-        "description": "Filter applications by a non-default status"
-      },
-      {
-        "type": "action",
-        "description": "Sort applications by match score"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify only applications matching the selected status are displayed"
-      }
-    ],
-    "priority": "High"
-  },
-  {
-    "id": "TC018",
-    "title": "Generate selection criteria, edit, and save to library",
-    "description": "Verifies a job seeker can generate selection criteria responses, edit a response inline, and save the document to the library.",
-    "category": "Application Workspace (Document generation & tools)",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /auth"
-      },
-      {
-        "type": "action",
-        "description": "Fill {{LOGIN_USER}} into the email field"
-      },
-      {
-        "type": "action",
-        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
       },
       {
         "type": "action",
@@ -772,31 +1090,35 @@
       },
       {
         "type": "action",
-        "description": "Navigate to /application-workspace"
+        "description": "Click the link to open the application tracker"
       },
       {
         "type": "action",
-        "description": "Generate selection criteria responses"
+        "description": "Open a job card"
       },
       {
         "type": "action",
-        "description": "Edit one generated response inline by adding a short unique phrase"
+        "description": "Set a valid future closing date"
       },
       {
         "type": "action",
-        "description": "Save the selection criteria document to the document library"
+        "description": "Generate a follow-up email draft for the job"
+      },
+      {
+        "type": "action",
+        "description": "Copy the generated email draft"
       },
       {
         "type": "assertion",
-        "description": "Verify a success confirmation is visible"
+        "description": "Verify the job appears in the upcoming deadlines list"
       }
     ],
     "priority": "High"
   },
   {
-    "id": "TC019",
-    "title": "Open a deadline item from dashboard to view application details in tracker",
-    "description": "Verifies the user can open an upcoming deadline item from the dashboard and land in the tracker viewing the related application.",
+    "id": "TC021",
+    "title": "Dashboard displays pipeline counts by status",
+    "description": "Verifies that the dashboard shows application counts grouped by the standard pipeline statuses.",
     "category": "Dashboard",
     "steps": [
       {
@@ -805,84 +1127,6 @@
       },
       {
         "type": "action",
-        "description": "Fill {{LOGIN_USER}} into the email field"
-      },
-      {
-        "type": "action",
-        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
-      },
-      {
-        "type": "action",
-        "description": "Submit the login form"
-      },
-      {
-        "type": "action",
-        "description": "Click a deadline item in the upcoming deadlines list"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the tracker view opens showing a specific application’s details"
-      }
-    ],
-    "priority": "High"
-  },
-  {
-    "id": "TC020",
-    "title": "Expand and collapse a diagnostic report section and submit relevance feedback",
-    "description": "Verifies the user can expand/collapse a diagnostic report section and submit a relevance rating.",
-    "category": "Diagnostic Report",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /auth"
-      },
-      {
-        "type": "action",
-        "description": "Fill {{LOGIN_USER}} into the email field"
-      },
-      {
-        "type": "action",
-        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
-      },
-      {
-        "type": "action",
-        "description": "Submit the login form"
-      },
-      {
-        "type": "action",
-        "description": "Scroll to the diagnostic report panel on the dashboard"
-      },
-      {
-        "type": "action",
-        "description": "Expand the Targeting Assessment section"
-      },
-      {
-        "type": "action",
-        "description": "Collapse the Targeting Assessment section"
-      },
-      {
-        "type": "action",
-        "description": "Select a relevance rating for the section"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the selected relevance feedback state is shown for that section"
-      }
-    ],
-    "priority": "Medium"
-  },
-  {
-    "id": "TC021",
-    "title": "Preview a document in markdown",
-    "description": "Verifies a user can open a document from the library and view its content rendered as a markdown preview.",
-    "category": "Document Library",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /auth"
-      },
-      {
-        "type": "action",
         "description": "Fill in the email field with {{LOGIN_USER}}"
       },
       {
@@ -894,372 +1138,16 @@
         "description": "Submit the login form"
       },
       {
-        "type": "action",
-        "description": "Click the navigation link to open the Document Library"
-      },
-      {
-        "type": "action",
-        "description": "Click a document from the list to open its preview"
-      },
-      {
         "type": "assertion",
-        "description": "Verify a markdown document preview is displayed"
+        "description": "Verify application counts grouped by status are displayed"
       }
     ],
     "priority": "Medium"
   },
   {
     "id": "TC022",
-    "title": "Block sign-in with invalid credentials",
-    "description": "Verifies the app prevents sign-in with invalid email/password and shows an authentication error state without navigating to the dashboard.",
-    "category": "Authentication (email/password)",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /auth"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the email field with invalid.user@example.com"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the password field with wrong-password"
-      },
-      {
-        "type": "action",
-        "description": "Submit the login form"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify an authentication error is visible"
-      }
-    ],
-    "priority": "Medium"
-  },
-  {
-    "id": "TC023",
-    "title": "Analyse a job description and view extracted metadata and AU-specific flags",
-    "description": "Verifies the user can run match analysis and see extracted role/company metadata and Australian-specific flags.",
-    "category": "Match Engine",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /auth"
-      },
-      {
-        "type": "action",
-        "description": "Fill {{LOGIN_USER}} into the email field"
-      },
-      {
-        "type": "action",
-        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
-      },
-      {
-        "type": "action",
-        "description": "Submit the login form"
-      },
-      {
-        "type": "action",
-        "description": "Fill a realistic job description into the match engine job description field"
-      },
-      {
-        "type": "action",
-        "description": "Submit the match analysis"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify extracted job metadata is displayed"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify Australian-specific flags are displayed"
-      }
-    ],
-    "priority": "Medium"
-  },
-  {
-    "id": "TC024",
-    "title": "Add achievement and link it to an experience entry",
-    "description": "Verifies a user can create a new achievement and associate it with a selected work experience entry.",
-    "category": "Profile Bank",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /auth"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the email field with {{LOGIN_USER}}"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
-      },
-      {
-        "type": "action",
-        "description": "Submit the login form"
-      },
-      {
-        "type": "action",
-        "description": "Click the navigation link to open the Profile Bank"
-      },
-      {
-        "type": "action",
-        "description": "Start adding a new achievement"
-      },
-      {
-        "type": "action",
-        "description": "Fill \"Achievement UI Test\" into the achievement title field"
-      },
-      {
-        "type": "action",
-        "description": "Fill \"Delivered a measurable result in a project\" into the achievement description field"
-      },
-      {
-        "type": "action",
-        "description": "Fill \"15%\" into the achievement metrics field"
-      },
-      {
-        "type": "action",
-        "description": "Select a work experience entry to link the achievement to"
-      },
-      {
-        "type": "action",
-        "description": "Save the new achievement"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify an achievement titled \"Achievement UI Test\" is visible in the achievement list"
-      }
-    ],
-    "priority": "Medium"
-  },
-  {
-    "id": "TC025",
-    "title": "Proceed from diagnostic report islands into the dashboard apply experience",
-    "description": "Verifies the user can progress through the diagnostic report islands and reach the main dashboard ready to start applying.",
-    "category": "Diagnostic Report",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /auth"
-      },
-      {
-        "type": "action",
-        "description": "Fill {{LOGIN_USER}} into the email field"
-      },
-      {
-        "type": "action",
-        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
-      },
-      {
-        "type": "action",
-        "description": "Submit the login form"
-      },
-      {
-        "type": "action",
-        "description": "Scroll through the diagnostic report islands sequentially"
-      },
-      {
-        "type": "action",
-        "description": "Proceed from the report experience into the dashboard"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the dashboard match engine area is displayed"
-      }
-    ],
-    "priority": "Medium"
-  },
-  {
-    "id": "TC026",
-    "title": "View documents grouped by recency",
-    "description": "Verifies an authenticated user can open the Document Library and see documents organized into recency groups.",
-    "category": "Document Library",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /auth"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the email field with {{LOGIN_USER}}"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
-      },
-      {
-        "type": "action",
-        "description": "Submit the login form"
-      },
-      {
-        "type": "action",
-        "description": "Click the navigation link to open the Document Library"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify document groups by recency are displayed"
-      }
-    ],
-    "priority": "Medium"
-  },
-  {
-    "id": "TC027",
-    "title": "Retry processing from processing screen",
-    "description": "Verifies the user can trigger the retry action on the processing screen and the processing state resumes.",
-    "category": "Processing Screen (Onboarding)",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /auth"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the email field with {{LOGIN_USER}}"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
-      },
-      {
-        "type": "action",
-        "description": "Submit the login form"
-      },
-      {
-        "type": "action",
-        "description": "Complete onboarding steps 1–4 with a valid resume upload and submit intake to enter processing"
-      },
-      {
-        "type": "action",
-        "description": "Wait for the retry option to be available"
-      },
-      {
-        "type": "action",
-        "description": "Trigger the retry action"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the processing screen indicates processing has resumed"
-      }
-    ],
-    "priority": "Medium"
-  },
-  {
-    "id": "TC028",
-    "title": "Edit and save professional summary",
-    "description": "Verifies an authenticated job seeker can update their professional summary and see the updated content persisted on the Profile Bank page.",
-    "category": "Profile Bank",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /auth"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the email field with {{LOGIN_USER}}"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
-      },
-      {
-        "type": "action",
-        "description": "Submit the login form"
-      },
-      {
-        "type": "action",
-        "description": "Click the navigation link to open the Profile Bank"
-      },
-      {
-        "type": "action",
-        "description": "Enter edit mode for the professional summary"
-      },
-      {
-        "type": "action",
-        "description": "Fill \"Updated summary for UI test\" into the professional summary field"
-      },
-      {
-        "type": "action",
-        "description": "Save the summary changes"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the professional summary displays \"Updated summary for UI test\""
-      }
-    ],
-    "priority": "Medium"
-  },
-  {
-    "id": "TC029",
-    "title": "Delete a document with confirmation",
-    "description": "Verifies a user can delete a document from the Document Library after confirming and that it no longer appears in the list.",
-    "category": "Document Library",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /auth"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the email field with {{LOGIN_USER}}"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
-      },
-      {
-        "type": "action",
-        "description": "Submit the login form"
-      },
-      {
-        "type": "action",
-        "description": "Click the navigation link to open the Application Workspace"
-      },
-      {
-        "type": "action",
-        "description": "Start generating a new document"
-      },
-      {
-        "type": "action",
-        "description": "Select a document type to generate"
-      },
-      {
-        "type": "action",
-        "description": "Wait for the generated document content to appear"
-      },
-      {
-        "type": "action",
-        "description": "Save the generated document to the Document Library"
-      },
-      {
-        "type": "action",
-        "description": "Click the navigation link to open the Document Library"
-      },
-      {
-        "type": "action",
-        "description": "Locate the most recently created document in the list"
-      },
-      {
-        "type": "action",
-        "description": "Initiate deletion for that document"
-      },
-      {
-        "type": "action",
-        "description": "Confirm the deletion"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the deleted document is not present in the document list"
-      }
-    ],
-    "priority": "Medium"
-  },
-  {
-    "id": "TC030",
-    "title": "Prevent generation when no achievements are selected",
-    "description": "Verifies the workspace blocks generation when required achievement selection is missing and shows a validation prompt.",
+    "title": "Generate selection criteria responses, edit, and save to library",
+    "description": "Verifies a user can generate selection criteria (STAR) responses, edit them inline, and save the output to the document library.",
     "category": "Application Workspace (Document generation & tools)",
     "steps": [
       {
@@ -1268,11 +1156,11 @@
       },
       {
         "type": "action",
-        "description": "Fill {{LOGIN_USER}} into the email field"
+        "description": "Fill in the email field with {{LOGIN_USER}}"
       },
       {
         "type": "action",
-        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
       },
       {
         "type": "action",
@@ -1280,27 +1168,76 @@
       },
       {
         "type": "action",
-        "description": "Navigate to /application-workspace"
+        "description": "Click the link to open the application workspace"
       },
       {
         "type": "action",
-        "description": "Ensure no achievements are selected in the achievement selector"
+        "description": "Generate the selection criteria responses document"
       },
       {
         "type": "action",
-        "description": "Attempt to generate a resume"
+        "description": "Edit at least one response inline"
+      },
+      {
+        "type": "action",
+        "description": "Save the selection criteria document to the document library"
       },
       {
         "type": "assertion",
-        "description": "Verify a selection validation error is visible"
+        "description": "Verify a save-to-library confirmation is visible"
       }
     ],
     "priority": "Medium"
   },
   {
-    "id": "TC031",
-    "title": "Polish an achievement wording via AI and keep changes",
-    "description": "Verifies a user can request AI polishing for an achievement and then save the updated wording in the Profile Bank.",
+    "id": "TC023",
+    "title": "Provide per-section relevance feedback on Targeting Assessment",
+    "description": "Verifies that the user can expand Targeting Assessment, read content, and submit a per-section relevance rating that is visibly recorded.",
+    "category": "Diagnostic Report",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the diagnostic report panel to be displayed on the dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Expand the Targeting Assessment section"
+      },
+      {
+        "type": "action",
+        "description": "Scroll within the section content"
+      },
+      {
+        "type": "action",
+        "description": "Select a relevance rating option for the section"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the selected relevance rating is shown as applied for the Targeting Assessment section"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC024",
+    "title": "Edit and save professional summary",
+    "description": "Verifies a signed-in user can update their professional summary on the Profile Bank and see the saved content reflected in the UI.",
     "category": "Profile Bank",
     "steps": [
       {
@@ -1317,52 +1254,36 @@
       },
       {
         "type": "action",
-        "description": "Submit the login form"
+        "description": "Submit the sign-in form"
       },
       {
         "type": "action",
-        "description": "Click the navigation link to open the Profile Bank"
+        "description": "Click the link to open the profile workspace"
       },
       {
         "type": "action",
-        "description": "Start adding a new achievement"
+        "description": "Enter edit mode for the professional summary"
       },
       {
         "type": "action",
-        "description": "Fill \"Polish Source\" into the achievement title field"
+        "description": "Fill \"Senior Operations Analyst summary v1\" into the summary field"
       },
       {
         "type": "action",
-        "description": "Fill \"Did stuff to help the team\" into the achievement description field"
-      },
-      {
-        "type": "action",
-        "description": "Save the new achievement"
-      },
-      {
-        "type": "action",
-        "description": "Trigger AI polish for the \"Polish Source\" achievement"
-      },
-      {
-        "type": "action",
-        "description": "Wait for the polishing result to appear"
-      },
-      {
-        "type": "action",
-        "description": "Save the polished achievement"
+        "description": "Save the summary changes"
       },
       {
         "type": "assertion",
-        "description": "Verify the \"Polish Source\" achievement shows updated polished content"
+        "description": "Verify the updated professional summary text is displayed"
       }
     ],
     "priority": "Medium"
   },
   {
-    "id": "TC032",
-    "title": "Reject sign-up with invalid email format",
-    "description": "Verifies the sign-up form enforces basic email format validation and does not proceed when the email is invalid.",
-    "category": "Authentication (email/password)",
+    "id": "TC025",
+    "title": "Add achievement, link to experience, and polish wording",
+    "description": "Verifies a signed-in user can create an achievement, link it to an experience entry, polish it via AI, and see the polished achievement content in the UI.",
+    "category": "Profile Bank",
     "steps": [
       {
         "type": "action",
@@ -1370,77 +1291,182 @@
       },
       {
         "type": "action",
-        "description": "Fill in the email field with invalid-email-format"
+        "description": "Fill in the email field with {{LOGIN_USER}}"
       },
       {
         "type": "action",
-        "description": "Fill in the password field with a valid password value"
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
       },
       {
         "type": "action",
-        "description": "Submit the sign-up form"
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the profile workspace"
+      },
+      {
+        "type": "action",
+        "description": "Add a new work experience entry"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"JobHub Test Company\" into the employer field"
+      },
+      {
+        "type": "action",
+        "description": "Save the experience entry"
+      },
+      {
+        "type": "action",
+        "description": "Add a new achievement"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Cost reduction initiative\" into the achievement title field"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Reduced processing time by 20%\" into the achievement description field"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"20\" into the achievement metrics field"
+      },
+      {
+        "type": "action",
+        "description": "Link the achievement to the \"JobHub Test Company\" experience entry"
+      },
+      {
+        "type": "action",
+        "description": "Run AI polish for the achievement"
       },
       {
         "type": "assertion",
-        "description": "Verify an email validation error is visible"
+        "description": "Verify the achievement shows polished wording in the achievements list"
       }
     ],
     "priority": "Medium"
   },
   {
-    "id": "TC033",
-    "title": "Handle low match score warning modal via continue path",
-    "description": "Verifies that when the match score is low, a warning modal appears and continuing allows the user to proceed to the next action.",
-    "category": "Match Engine",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /auth"
-      },
-      {
-        "type": "action",
-        "description": "Fill {{LOGIN_USER}} into the email field"
-      },
-      {
-        "type": "action",
-        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
-      },
-      {
-        "type": "action",
-        "description": "Submit the login form"
-      },
-      {
-        "type": "action",
-        "description": "Fill a job description that is clearly unrelated to the user’s profile into the match engine job description field"
-      },
-      {
-        "type": "action",
-        "description": "Submit the match analysis"
-      },
-      {
-        "type": "action",
-        "description": "Continue from the low match-score warning modal"
-      },
-      {
-        "type": "action",
-        "description": "Save the matched job to the tracker"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify a save confirmation is visible"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the job is now tracked as saved in the UI state"
-      }
-    ],
-    "priority": "Medium"
-  },
-  {
-    "id": "TC034",
-    "title": "Filter documents by type and search by title",
-    "description": "Verifies a user can narrow the document list by selecting a document type and searching by title.",
+    "id": "TC026",
+    "title": "Filter by document type and search by title",
+    "description": "Verifies a signed-in user can narrow the Document Library list by type and search query and see only matching results.",
     "category": "Document Library",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the application workspace"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Document Lifecycle Job\" into the job title field"
+      },
+      {
+        "type": "action",
+        "description": "Generate a resume document"
+      },
+      {
+        "type": "action",
+        "description": "Save the generated document to the document library"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the document library"
+      },
+      {
+        "type": "action",
+        "description": "Select the Resume document type filter"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Document Lifecycle Job\" into the search field"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify only documents matching the selected type and search query are shown"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC027",
+    "title": "Delete a document with confirmation",
+    "description": "Verifies a signed-in user can delete a document only after confirming and that the document is removed from the library list.",
+    "category": "Document Library",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the application workspace"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Delete Doc Job\" into the job title field"
+      },
+      {
+        "type": "action",
+        "description": "Generate a selection criteria document"
+      },
+      {
+        "type": "action",
+        "description": "Save the generated document to the document library"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the document library"
+      },
+      {
+        "type": "action",
+        "description": "Initiate delete for the most recent document"
+      },
+      {
+        "type": "action",
+        "description": "Confirm the deletion"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the deleted document no longer appears in the document list"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC028",
+    "title": "Display extracted job metadata and Australian-specific flags after analysis",
+    "description": "Verifies that match analysis shows extracted job metadata and any Australian-specific requirement flags when present.",
+    "category": "Match Engine",
     "steps": [
       {
         "type": "action",
@@ -1460,27 +1486,31 @@
       },
       {
         "type": "action",
-        "description": "Click the navigation link to open the Document Library"
+        "description": "Click the match engine area"
       },
       {
         "type": "action",
-        "description": "Select a document type filter"
+        "description": "Fill a job description into the match engine input that includes role title, company name, and at least one Australian-specific requirement such as citizenship or clearance"
       },
       {
         "type": "action",
-        "description": "Fill \"Test\" into the document search field"
+        "description": "Submit analysis"
       },
       {
         "type": "assertion",
-        "description": "Verify the document list updates to match the selected type and search term"
+        "description": "Verify extracted job metadata such as role title and company name is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify at least one Australian-specific flag is displayed"
       }
     ],
     "priority": "Medium"
   },
   {
-    "id": "TC035",
+    "id": "TC029",
     "title": "Submit post-generation feedback with rating and comment",
-    "description": "Verifies a job seeker can rate a generated document, optionally indicate the weakest section, submit feedback, and see confirmation it was saved.",
+    "description": "Verifies a user can rate a generated output, optionally flag a weakest section, add a comment, and submit feedback with a visible confirmation.",
     "category": "Document Export & Feedback",
     "steps": [
       {
@@ -1489,11 +1519,11 @@
       },
       {
         "type": "action",
-        "description": "Fill {{LOGIN_USER}} into the email field"
+        "description": "Fill in the email field with {{LOGIN_USER}}"
       },
       {
         "type": "action",
-        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
       },
       {
         "type": "action",
@@ -1501,15 +1531,19 @@
       },
       {
         "type": "action",
-        "description": "Navigate to /application-workspace"
+        "description": "Click the link to open the application workspace"
       },
       {
         "type": "action",
-        "description": "Generate a resume"
+        "description": "Generate a document"
       },
       {
         "type": "action",
-        "description": "Select a star rating from 1 to 5 in the feedback UI"
+        "description": "Open the feedback UI for the generated output"
+      },
+      {
+        "type": "action",
+        "description": "Select a rating from 1–5 stars"
       },
       {
         "type": "action",
@@ -1531,218 +1565,9 @@
     "priority": "Medium"
   },
   {
-    "id": "TC036",
-    "title": "Reject submit with missing required login fields",
-    "description": "Verifies the login form requires email and password and does not submit when required fields are empty.",
-    "category": "Authentication (email/password)",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /auth"
-      },
-      {
-        "type": "action",
-        "description": "Submit the login form"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify required field validation errors are visible"
-      }
-    ],
-    "priority": "Medium"
-  },
-  {
-    "id": "TC037",
-    "title": "Delete an achievement with confirmation",
-    "description": "Verifies a user can delete an achievement and it is removed from the Profile Bank list after confirming deletion.",
-    "category": "Profile Bank",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /auth"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the email field with {{LOGIN_USER}}"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
-      },
-      {
-        "type": "action",
-        "description": "Submit the login form"
-      },
-      {
-        "type": "action",
-        "description": "Click the navigation link to open the Profile Bank"
-      },
-      {
-        "type": "action",
-        "description": "Start adding a new achievement"
-      },
-      {
-        "type": "action",
-        "description": "Fill \"Delete Me\" into the achievement title field"
-      },
-      {
-        "type": "action",
-        "description": "Fill \"Temporary achievement for deletion\" into the achievement description field"
-      },
-      {
-        "type": "action",
-        "description": "Save the new achievement"
-      },
-      {
-        "type": "action",
-        "description": "Initiate deletion for the \"Delete Me\" achievement"
-      },
-      {
-        "type": "action",
-        "description": "Confirm the deletion"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the achievement titled \"Delete Me\" is not present in the achievement list"
-      }
-    ],
-    "priority": "Medium"
-  },
-  {
-    "id": "TC038",
-    "title": "Regenerate identity card and see refreshed output",
-    "description": "Verifies a user can regenerate their identity card and see identity card content displayed in the Profile Bank.",
-    "category": "Profile Bank",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /auth"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the email field with {{LOGIN_USER}}"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
-      },
-      {
-        "type": "action",
-        "description": "Submit the login form"
-      },
-      {
-        "type": "action",
-        "description": "Click the navigation link to open the Profile Bank"
-      },
-      {
-        "type": "action",
-        "description": "Trigger identity card regeneration"
-      },
-      {
-        "type": "action",
-        "description": "Wait for regeneration to complete"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify identity card content is displayed"
-      }
-    ],
-    "priority": "Medium"
-  },
-  {
-    "id": "TC039",
-    "title": "Browse email templates by category",
-    "description": "Verifies a user can open the Email Templates Library and see templates grouped into categories for browsing.",
-    "category": "Email Templates Library",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /auth"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the email field with {{LOGIN_USER}}"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
-      },
-      {
-        "type": "action",
-        "description": "Submit the login form"
-      },
-      {
-        "type": "action",
-        "description": "Click the navigation link to open the Email Templates Library"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify email templates are displayed grouped by category"
-      }
-    ],
-    "priority": "Low"
-  },
-  {
-    "id": "TC040",
-    "title": "Cancel deletion of an achievement",
-    "description": "Verifies a user can cancel an achievement deletion and the achievement remains visible in the Profile Bank.",
-    "category": "Profile Bank",
-    "steps": [
-      {
-        "type": "action",
-        "description": "Navigate to /auth"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the email field with {{LOGIN_USER}}"
-      },
-      {
-        "type": "action",
-        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
-      },
-      {
-        "type": "action",
-        "description": "Submit the login form"
-      },
-      {
-        "type": "action",
-        "description": "Click the navigation link to open the Profile Bank"
-      },
-      {
-        "type": "action",
-        "description": "Start adding a new achievement"
-      },
-      {
-        "type": "action",
-        "description": "Fill \"Keep Me\" into the achievement title field"
-      },
-      {
-        "type": "action",
-        "description": "Fill \"Temporary achievement to verify cancel path\" into the achievement description field"
-      },
-      {
-        "type": "action",
-        "description": "Save the new achievement"
-      },
-      {
-        "type": "action",
-        "description": "Initiate deletion for the \"Keep Me\" achievement"
-      },
-      {
-        "type": "action",
-        "description": "Cancel the deletion"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify an achievement titled \"Keep Me\" is visible in the achievement list"
-      }
-    ],
-    "priority": "Low"
-  },
-  {
-    "id": "TC041",
-    "title": "Cancel deletion of a document",
-    "description": "Verifies a user can cancel a document deletion and the document remains available in the Document Library.",
+    "id": "TC030",
+    "title": "View documents grouped by recency",
+    "description": "Verifies a signed-in user can open the Document Library and see documents organized into recency groups.",
     "category": "Document Library",
     "steps": [
       {
@@ -1759,56 +1584,24 @@
       },
       {
         "type": "action",
-        "description": "Submit the login form"
+        "description": "Submit the sign-in form"
       },
       {
         "type": "action",
-        "description": "Click the navigation link to open the Application Workspace"
-      },
-      {
-        "type": "action",
-        "description": "Start generating a new document"
-      },
-      {
-        "type": "action",
-        "description": "Select a document type to generate"
-      },
-      {
-        "type": "action",
-        "description": "Wait for the generated document content to appear"
-      },
-      {
-        "type": "action",
-        "description": "Save the generated document to the Document Library"
-      },
-      {
-        "type": "action",
-        "description": "Click the navigation link to open the Document Library"
-      },
-      {
-        "type": "action",
-        "description": "Locate the most recently created document in the list"
-      },
-      {
-        "type": "action",
-        "description": "Initiate deletion for that document"
-      },
-      {
-        "type": "action",
-        "description": "Cancel the deletion"
+        "description": "Click the link to open the document library"
       },
       {
         "type": "assertion",
-        "description": "Verify the document remains present in the document list"
+        "description": "Verify documents are displayed grouped by recency"
       }
     ],
-    "priority": "Low"
+    "priority": "Medium"
   },
   {
-    "id": "TC042",
-    "title": "Expand a template to view full content and personalization tips",
-    "description": "Verifies a user can expand an email template card to view the full template content and its personalization guidance.",
-    "category": "Email Templates Library",
+    "id": "TC031",
+    "title": "Delete an application with confirmation and verify removal",
+    "description": "Verifies a user can delete an application after confirming the destructive action and the job is removed from the tracker list.",
+    "category": "Application Tracker",
     "steps": [
       {
         "type": "action",
@@ -1828,7 +1621,357 @@
       },
       {
         "type": "action",
-        "description": "Click the navigation link to open the Email Templates Library"
+        "description": "Click the link to open the application tracker"
+      },
+      {
+        "type": "action",
+        "description": "Create a new application from within the tracker"
+      },
+      {
+        "type": "action",
+        "description": "Confirm the new application appears in the list"
+      },
+      {
+        "type": "action",
+        "description": "Initiate delete on the new application"
+      },
+      {
+        "type": "action",
+        "description": "Confirm the deletion in the confirmation UI"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the deleted application no longer appears in the tracker list"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC032",
+    "title": "Preview a document in markdown and copy content",
+    "description": "Verifies a signed-in user can open a document preview, view markdown-rendered content, and copy the document text.",
+    "category": "Document Library",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the application workspace"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Preview Copy Job\" into the job title field"
+      },
+      {
+        "type": "action",
+        "description": "Generate a cover letter document"
+      },
+      {
+        "type": "action",
+        "description": "Save the generated document to the document library"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the document library"
+      },
+      {
+        "type": "action",
+        "description": "Open the document preview for the most recent document"
+      },
+      {
+        "type": "action",
+        "description": "Copy the document content"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a copy confirmation is visible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC033",
+    "title": "Re-open saved diagnosis overlay from dashboard summary and update feedback",
+    "description": "Verifies that the user can open the saved diagnosis overlay from the dashboard, re-read sections, and change relevance feedback.",
+    "category": "Diagnostic Report",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the dashboard summary to be displayed"
+      },
+      {
+        "type": "action",
+        "description": "Open the saved diagnosis overlay from the dashboard summary"
+      },
+      {
+        "type": "action",
+        "description": "Expand a report section"
+      },
+      {
+        "type": "action",
+        "description": "Change the relevance rating for the section"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the diagnosis overlay remains open and shows the updated relevance rating state"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC034",
+    "title": "Regenerate identity card",
+    "description": "Verifies a signed-in user can trigger identity card regeneration and sees identity card content displayed after completion.",
+    "category": "Profile Bank",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the profile workspace"
+      },
+      {
+        "type": "action",
+        "description": "Trigger identity card regeneration"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the regeneration to complete"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify identity card content is displayed in the profile"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC035",
+    "title": "Processing screen shows retry control after a user-triggered restart and resumes processing",
+    "description": "Verifies that when a retry option is presented during processing, the user can trigger retry and processing continues.",
+    "category": "Processing Screen (Onboarding)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill a new unique email into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid password into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-up form"
+      },
+      {
+        "type": "action",
+        "description": "Proceed from the onboarding welcome screen"
+      },
+      {
+        "type": "action",
+        "description": "Fill a target role into the target role field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a target city into the target city field"
+      },
+      {
+        "type": "action",
+        "description": "Select a seniority level"
+      },
+      {
+        "type": "action",
+        "description": "Select an industry"
+      },
+      {
+        "type": "action",
+        "description": "Submit the step to advance"
+      },
+      {
+        "type": "action",
+        "description": "Select a job search timeline"
+      },
+      {
+        "type": "action",
+        "description": "Fill an applications count into the applications count field"
+      },
+      {
+        "type": "action",
+        "description": "Select at least one channel used"
+      },
+      {
+        "type": "action",
+        "description": "Submit the step to advance"
+      },
+      {
+        "type": "action",
+        "description": "Select a response pattern"
+      },
+      {
+        "type": "action",
+        "description": "Fill a perceived blocker description into the blocker field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the step to advance"
+      },
+      {
+        "type": "action",
+        "description": "Upload a valid resume file"
+      },
+      {
+        "type": "action",
+        "description": "Submit the intake"
+      },
+      {
+        "type": "action",
+        "description": "Wait for a retry option to become available on the processing screen"
+      },
+      {
+        "type": "action",
+        "description": "Click the retry control to restart processing"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the processing screen remains active and indicates processing has resumed"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC036",
+    "title": "Delete an achievement with confirmation",
+    "description": "Verifies a signed-in user can delete an achievement only after confirming and that the achievement is removed from the list.",
+    "category": "Profile Bank",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the profile workspace"
+      },
+      {
+        "type": "action",
+        "description": "Add a new achievement"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Temporary achievement to delete\" into the achievement title field"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"This will be deleted\" into the achievement description field"
+      },
+      {
+        "type": "action",
+        "description": "Save the achievement"
+      },
+      {
+        "type": "action",
+        "description": "Initiate delete for the \"Temporary achievement to delete\" achievement"
+      },
+      {
+        "type": "action",
+        "description": "Confirm the deletion"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the deleted achievement no longer appears in the achievements list"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC037",
+    "title": "Browse email templates by category and expand a template",
+    "description": "Verifies a signed-in user can browse the Email Templates Library categories and expand a template to view full content and tips.",
+    "category": "Email Templates Library",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the email templates library"
+      },
+      {
+        "type": "action",
+        "description": "Scroll through the template categories"
       },
       {
         "type": "action",
@@ -1842,11 +1985,130 @@
     "priority": "Low"
   },
   {
-    "id": "TC043",
-    "title": "Import resume to backfill profile data",
-    "description": "Verifies the resume importer can be opened and a resume can be selected to start the backfill process from the Profile Bank.",
+    "id": "TC038",
+    "title": "Copy an email template to clipboard",
+    "description": "Verifies a signed-in user can copy an email template from the Email Templates Library and sees a copy confirmation.",
+    "category": "Email Templates Library",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the email templates library"
+      },
+      {
+        "type": "action",
+        "description": "Expand a template card"
+      },
+      {
+        "type": "action",
+        "description": "Copy the template content"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a copy confirmation is visible"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC039",
+    "title": "Show low-score warning when match score is below threshold",
+    "description": "Verifies that a low match score triggers a warning modal to inform the user before proceeding.",
+    "category": "Match Engine",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the match engine area"
+      },
+      {
+        "type": "action",
+        "description": "Fill a job description into the match engine input that is clearly unrelated to the user profile to encourage a low match score"
+      },
+      {
+        "type": "action",
+        "description": "Submit analysis"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a low-score warning modal is displayed"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC040",
+    "title": "Validate required fields when adding an achievement",
+    "description": "Verifies the Profile Bank prevents saving a new achievement when required fields are missing and shows a validation error.",
     "category": "Profile Bank",
-    "steps": [],
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open the profile workspace"
+      },
+      {
+        "type": "action",
+        "description": "Add a new achievement"
+      },
+      {
+        "type": "action",
+        "description": "Leave the required achievement fields empty"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to save the achievement"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a form validation error is visible for the missing required fields"
+      }
+    ],
     "priority": "Low"
   }
 ]

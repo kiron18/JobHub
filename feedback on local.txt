@@ -1,0 +1,65 @@
+ (1) onboarding buttons on form 1 and final form were slow to load...it resolves after ten seconds   
+  or so but there is a delay on onboarding screen 1 i was seeing this error in console - failed to    
+  load the resource the server responded with a status of 404 not found
+  :3002/api/onboarding/report:1   (2) for some reason there is a delay in the name loading in too     
+  [Image #35] (3) "your not clearing....." lets try to form text into neat boxes its not essential    
+  ...like dont change it if its going to make it ugly in another way..."how to read this" this is an  
+  eduactaional tip and can be visually distinct im thnking dark text on a white box with slightly     
+  rounded corners  (4) this pillow//tab (document audit) was open before i touched it.. (5) again     
+  [Image #36] what you should do seems misaligned...this was happening earlier too (6) this is        
+  actually a recurring theme with a majority of candidates and one of the quickest wins we can give   
+  them...we dont need to solve their problem but just give them the "aha" of oh this is how outcomes  
+  achieved beats out duties performed and why hiring managers want to read them...maybe use a
+  personalised tone of voice like "When i spoke to hiring managers and recruiters i found out that    
+  too many applications they saw were .... and that outcomes achieved built trust.." something like   
+  that and then give an example using their language i.e. circumstance [Image #37] again what you     
+  shoud do is misaligned (7) [Image #38] im wondering if we can have this pop out when users are      
+  midway scroll so it really catches their eye...it should alwasy be be before the next pill is       
+  opened so that its not an interruption..again i give you agency to fight me on decisions. (8)       
+  [Image #39] again "your 3 step plan" is at the bottom (9) this is a great exampe [Image #40] in     
+  point number 2: however i would seperate the example visually so that it stands out like dog        
+  balls. (10)lets make the pdf downloadable (11) [Image #41] lets have a modal pop up on this page    
+  as soon as they enter which breifly and clearly explains what this page is and what their first     
+  steps should be dont overload them with tasks i guess the main one would be to verify the
+  candidate profile and rewrite what needs to be rewritten...advise them to use the downloaded        
+  report as a guide for e.g. when i go to job feed i see this [Image #42] ..so i guess this first     
+  modal can really be a tutorial type page...use best practices so that its clear and easy to
+  understand, hmm shouldnt it collect place in onboarding ..i think thats the second question, also   
+  even after updating the location i dont see jobs...even in previous iterations the job board was    
+  fragile and had persistance issues...my understanding of the flow is this...we record the persons   
+  professionin onboarding and when their report is being generated we do a scrape and gather X        
+  number of jobs..we then run a cron everyday at a time when the user is unlikely to be using the     
+  site...regardless. from the first scrape we should have a cache of jobs stored somewhere in
+  supabase or anywhere so that they can be accessed easily again i would like this feature to be      
+  persistent and snappy..(12) [Image #43] this is happening again...what i have identified in the     
+  elements is this is the code highlighted [Image #44] its currently 900 but i think it should be a   
+  dynamic value that ends at the end of the text[Image #45] reasonably of course so that it looks     
+  like well formatted. [Image #46] im not sure what 54% ats coverage means but it doesnt sound good   
+  why is it not higher..(13)[Image #47] we cant be having this in the cover letter, it can be above   
+  like how it is in the resume but not actual text, i understand its from the missing context but we  
+  should provide users with a prompt that identifies this clearly so that (a) they can fix it
+  inline on the spot (b) they can set up their candidate profile for future generations..this
+  approach shuld be incorporated for the resumes as well(14) [Image #48] clearly define where their   
+  answer begins...use "your Answer" .dont include the follow up after the question but rather after   
+  the first part of the answer simulating a real conversation [Image #49] again dont keep {verify}    
+  in the text but add it as pills above...also as with the cover letter and resume dont just tell     
+  people to add it but add context briefly and clearly as to why this takes them to the next level.   
+  [Image #50] coaching note as well can be on a new line to improve readability. [Image #51] overall  
+  this section content is fine ...i cant evaluate it too well as it reads like a wall of text...we    
+  need distinct visual sections and clearly defined heirarchies.[Image #52] same page end problem     
+  here. (15) this section has potential to improve trust and is authentic peek beneath the hood       
+  [Image #53] have a pop out modal/tooltip type information box that appears on hover which explains  
+  how important the hook is, this is a concept so explain with clarity and brevity (16) my page got   
+  stuck i.e. i couldnt scroll down and had to refresh which started to regenerate the documents,      
+  this is not good...we should have the documents stored somehow till the users regenerate (17)       
+  [Image #54] this back button could have some context (maybe) to say where we are going back?        
+  (18)[Image #55] also why is there no tab here for the workspace? its one of the most important      
+  parts of this whole app.(18) [Image #56] this follow up is 100% the one that should be used, if     
+  you can even fill up the details for them but ask them to verify of course. (19) also trigger       
+  messages to send emails based on when the application tracker is used...e.g. when applied is        
+  clicked send a brief message "hey we will remind you to follow up on this job in x days" when they  
+  click "rejected" trigger a message saying "hey good job but sometimes things dont work out yada     
+  yada but suggest that they can send a rejection follow up as well" (20) Linkedingeneration
+  outright failed - [Image #57] [Image #58] same on the outreach page [Image #59] also in the
+  default examples we have an example about hiring which i feel is one we want to stay away from      
+  ...[Image #60] have a subtle red glow outline on this to get people to open it 
