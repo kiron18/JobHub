@@ -78,16 +78,18 @@ export const JobFeedPage: React.FC = () => {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    setJobs([]);
     setOffset(0);
     try {
       await api.post('/job-feed/refresh');
+      setJobs([]);
       queryClient.invalidateQueries({ queryKey: ['job-feed'] });
       toast.success('Feed refreshed');
     } catch (err: any) {
       const msg = err?.response?.data?.error ?? 'Could not refresh';
       const retry = err?.response?.data?.retryAfter;
       toast.error(retry ? `${msg} Try again in ${Math.ceil(retry / 60)} min.` : msg);
+      // Re-fetch existing data so the UI isn't left empty
+      queryClient.invalidateQueries({ queryKey: ['job-feed'] });
     } finally {
       setRefreshing(false);
     }
