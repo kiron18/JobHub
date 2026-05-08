@@ -357,7 +357,14 @@ ${selectionCriteriaText ? `
 ==============================================================
 SELECTION CRITERIA TO ADDRESS
 ==============================================================
-The candidate has provided the following selection criteria. Generate a separate STAR response for each criterion, headed with the criterion text. Address them in the order listed. Do not skip any criterion.
+The candidate has pasted their selection criteria below. Read it carefully before generating.
+
+PARSING RULE — CRITICAL:
+The pasted text may contain section headings such as "Required Qualifications", "Required Experience", "Required Skills", "Essential Criteria", "Desirable Criteria", or similar. These headings are NOT criteria — they are category labels.
+The ACTUAL criteria are the individual bullet points, numbered items, or sentences listed UNDER those headings.
+Generate one STAR response per individual criterion item (bullet/numbered point/sentence), NOT per section heading.
+If you see "Required Experience" followed by three dot points, generate three separate STAR responses — one for each dot point.
+NEVER generate a response where the heading is "Required Qualifications/Certificates" or "Required Experience" — those are not criteria, they are containers.
 
 STAR ALLOCATION: Situation (10-15%) → Task (10-15%) → Action (40-50%) → Result (20-25%).
 Write in flowing prose, first person, active voice. Do NOT label STAR components as subheadings.

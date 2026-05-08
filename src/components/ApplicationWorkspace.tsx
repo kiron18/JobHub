@@ -891,8 +891,9 @@ export const ApplicationWorkspace: React.FC = () => {
                                 company={state.metadata?.company}
                                 employerFramework={employerFramework}
                             />
-                            {selectionCriteriaText.trim().length > 20 && !state.isGenerating && (
+                            {!state.isGenerating && (
                                 <button
+                                    disabled={selectionCriteriaText.trim().length < 20}
                                     onClick={() => {
                                         if (state.documents['selection-criteria']) {
                                             setState(s => ({
@@ -903,10 +904,10 @@ export const ApplicationWorkspace: React.FC = () => {
                                         }
                                         setScConfirmed(true);
                                     }}
-                                    className="w-full mt-2 py-2.5 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+                                    className="w-full mt-2 py-2.5 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
                                 >
                                     <List size={14} />
-                                    {state.documents['selection-criteria'] ? 'Regenerate SC Responses' : 'Generate SC Responses'}
+                                    Generate SC Responses
                                 </button>
                             )}
                         </div>
