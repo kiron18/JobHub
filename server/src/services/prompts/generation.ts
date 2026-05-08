@@ -45,13 +45,13 @@ export const QUALITY_GATE_PROMPT = (
         ? `CHECK 1 — OPENING HOOK: Does the cover letter open with (or very closely paraphrase) the required hook? A close paraphrase passes. A generic opener that ignores the hook fails.\nHook required: "${blueprint.openingHook}"`
         : docType === 'RESUME'
         ? `CHECK 1 — PROFESSIONAL SUMMARY: Does the resume professional summary read as a scannable credential block (years of experience + outcomes + capability)? FAIL if the summary begins with the exact company-specific hook "${blueprint.openingHook}" or any near-verbatim restatement of it. PASS if the summary is role-focused and does not echo the cover letter opener.`
-        : `CHECK 1 — NARRATIVE VOICE: Does each criterion response address the criterion directly without beginning with the company-specific hook "${blueprint.openingHook}"? Selection criteria must open on-criterion, not with a generic narrative hook. PASS if each response opens with a relevant claim or evidence.`;
+        : `CHECK 1 — CRITERION OPENING: Does each criterion response open by directly restating the criterion or echoing its key terms in the first sentence? FAIL if any response opens with: (a) the company-specific hook "${blueprint.openingHook}", (b) a generic opener like "I am a dedicated professional" or "I have always had a passion for", or (c) a sentence with no connection to the criterion being addressed. PASS if each response's first sentence names the capability or echoes the criterion language.`;
 
     const formatCheck = docType === 'RESUME'
         ? `The document must use bullet points / short statements for experience and skills. FAIL if the professional summary or any experience section contains multi-sentence narrative paragraphs that read like a cover letter pitch. Scannable structure required.`
         : docType === 'COVER_LETTER'
         ? `The document must be written in flowing narrative paragraphs. FAIL if any section opens with a bullet-point list or reads like a resume bullet (e.g. "Led X achieving Y" as a standalone line with no surrounding prose). Cover letters must not replicate resume structure.`
-        : `Each selection criterion response must open by directly addressing the criterion — not with a resume-style bullet or a cover letter narrative hook. FAIL if any criterion response is a bullet list or opens with a generic paragraph unrelated to the criterion.`;
+        : `Each selection criterion response must: (1) open on-criterion (first sentence echoes the criterion), (2) use flowing prose not bullet lists, (3) have an Action section that is the longest component and names specific tools/methods/decisions, (4) end with a quantified or qualitatively evidenced result. FAIL if any response ends with a vague completion statement like "the project was completed successfully" or lacks any specific result.`;
 
     const profileGroundingBlock = profileSnapshot && (profileSnapshot.employers.length > 0 || profileSnapshot.jobTitles.length > 0)
         ? `
@@ -359,9 +359,29 @@ SELECTION CRITERIA TO ADDRESS
 ==============================================================
 The candidate has provided the following selection criteria. Generate a separate STAR response for each criterion, headed with the criterion text. Address them in the order listed. Do not skip any criterion.
 
-STAR ALLOCATION: Situation (10-15%) → Task (10-15%) → Action (60-70%) → Result (15-20%).
+STAR ALLOCATION: Situation (10-15%) → Task (10-15%) → Action (40-50%) → Result (20-25%).
 Write in flowing prose, first person, active voice. Do NOT label STAR components as subheadings.
 Target 250-400 words per criterion unless the role specifies a different limit.
+
+MANDATORY OPENING: Each response MUST open by directly restating the criterion or echoing its key terms in the first sentence. This signals to the assessment panel that you are addressing their specific criterion.
+CORRECT: "My experience managing competing stakeholder priorities has developed across three programme delivery roles..."
+WRONG: Opening with the cover letter hook, a generic "I am a dedicated professional", or a sentence unrelated to the criterion.
+
+ACTION SECTION STANDARD — this is where applications are won or lost:
+- Name the specific tool, system, methodology, or approach you used and WHY you chose it
+- Describe the decision-making behind your actions: "Recognising that X, I chose Y rather than Z because..."
+- Sequence actions logically — show the candidate directing events, not just responding to them
+- Write: "I designed a milestone tracker in Excel that surfaced conflicts 3 weeks in advance" — not "I managed project timelines"
+- The Action section MUST be the longest component
+
+MULTI-EXAMPLE OPTION: For broad criteria (communication, collaboration, stakeholder engagement, problem-solving), use TWO mini-STARs showing consistent capability across different contexts rather than a single example. Same total word count applies.
+
+RESULT STANDARD: State organisational impact, not just task completion.
+- Quantify wherever possible: %, $, time saved, headcount impacted, error rate reduced, satisfaction score
+- If no metric exists, use qualitative evidence: senior endorsement, policy adopted, award, team feedback, process continued after the candidate's involvement
+- Do NOT end a response with "The project was completed successfully" — that is not a result
+
+QUALITY BENCHMARK: The worked example in the FORMATTING RULES section is the reference standard. Every response must match or exceed that level of specificity. Ask yourself: "Could this response have been written by any candidate, or does it clearly reflect this specific person's experience?" If the former — rewrite with more detail.
 
 ${employerFramework && FRAMEWORK_INSTRUCTIONS[employerFramework] ? `
 ${FRAMEWORK_INSTRUCTIONS[employerFramework]}
@@ -502,8 +522,16 @@ ${selectionCriteriaText ? `
 SELECTION CRITERIA TO ADDRESS:
 The candidate has provided the following criteria. Generate a separate STAR response for each, headed with the criterion text. Address ALL criteria in the order listed.
 
-STAR ALLOCATION: Situation (10-15%) → Task (10-15%) → Action (60-70%) → Result (15-20%).
+STAR ALLOCATION: Situation (10-15%) → Task (10-15%) → Action (40-50%) → Result (20-25%).
 Write in flowing prose, first person, active voice. Target 250-400 words per criterion.
+
+MANDATORY OPENING: Each response MUST open by restating the criterion or echoing its key terms in the first sentence. Do not open with a generic statement or the cover letter hook.
+
+ACTION SECTION: Name the specific tool, system, or method used and WHY. Describe decision-making. Write "I designed X using Y because Z" — not "I managed the project." Action must be the longest component.
+
+MULTI-EXAMPLE: For broad criteria (communication, collaboration, stakeholder engagement), use two mini-STARs from different contexts at the same total word count.
+
+RESULT: State organisational impact with quantified evidence (%, $, time, headcount). If no metric, use qualitative evidence: senior endorsement, policy adopted, feedback score. Never end with "the project was completed successfully."
 
 ${employerFramework && FRAMEWORK_INSTRUCTIONS[employerFramework] ? FRAMEWORK_INSTRUCTIONS[employerFramework] + '\n' : ''}
 
