@@ -264,10 +264,14 @@ export const ApplicationWorkspace: React.FC = () => {
     const [generatingEmail, setGeneratingEmail] = useState(false);
     const [copiedEmailField, setCopiedEmailField] = useState<'subject' | 'body' | null>(null);
 
-    // Reset SC confirmed flag when user leaves SC tab
+    // Reset SC confirmed flag when user leaves the SC tab or when they change the criteria text
     useEffect(() => {
         if (state.activeTab !== 'selection-criteria') setScConfirmed(false);
     }, [state.activeTab]);
+
+    useEffect(() => {
+        setScConfirmed(false);
+    }, [selectionCriteriaText]);
 
     // Auto-detect employer framework when SC tab is first activated
     useEffect(() => {
@@ -887,13 +891,22 @@ export const ApplicationWorkspace: React.FC = () => {
                                 company={state.metadata?.company}
                                 employerFramework={employerFramework}
                             />
-                            {selectionCriteriaText.trim().length > 20 && !state.documents['selection-criteria'] && !state.isGenerating && (
+                            {selectionCriteriaText.trim().length > 20 && !state.isGenerating && (
                                 <button
-                                    onClick={() => setScConfirmed(true)}
+                                    onClick={() => {
+                                        if (state.documents['selection-criteria']) {
+                                            setState(s => ({
+                                                ...s,
+                                                documents: { ...s.documents, 'selection-criteria': '' },
+                                                documentIds: { ...s.documentIds, 'selection-criteria': null },
+                                            }));
+                                        }
+                                        setScConfirmed(true);
+                                    }}
                                     className="w-full mt-2 py-2.5 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2"
                                 >
                                     <List size={14} />
-                                    Generate SC Responses
+                                    {state.documents['selection-criteria'] ? 'Regenerate SC Responses' : 'Generate SC Responses'}
                                 </button>
                             )}
                         </div>

@@ -383,6 +383,13 @@ RESULT STANDARD: State organisational impact, not just task completion.
 
 QUALITY BENCHMARK: The worked example in the FORMATTING RULES section is the reference standard. Every response must match or exceed that level of specificity. Ask yourself: "Could this response have been written by any candidate, or does it clearly reflect this specific person's experience?" If the former — rewrite with more detail.
 
+PRE-WRITING STEP — do this silently before drafting each response:
+For each criterion, identify:
+  a) The core capability being assessed (e.g. "stakeholder management", "financial governance") — often different from the criterion's surface wording
+  b) Which achievement from TARGETED EVIDENCE most directly proves that specific capability
+  c) The single most specific detail from that achievement — a tool, a decision, a number, a method — that the Action section MUST anchor around
+Only then write. If you find yourself writing generically, stop — return to (c) and build the response outward from that concrete detail.
+
 ${employerFramework && FRAMEWORK_INSTRUCTIONS[employerFramework] ? `
 ${FRAMEWORK_INSTRUCTIONS[employerFramework]}
 ` : ''}
