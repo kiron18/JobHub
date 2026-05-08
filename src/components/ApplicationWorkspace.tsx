@@ -964,7 +964,6 @@ export const ApplicationWorkspace: React.FC = () => {
                         </div>
                     )}
 
-                    <div className="flex-1 overflow-y-auto custom-scrollbar">
                     {/* Cover Letter Personalisation — shown when cover letter is generated, not on interview prep */}
                     {state.documents['cover-letter'] && !state.isGenerating && state.activeTab !== 'interview-prep' && (
                         <div className="p-4 border-b border-slate-800">
@@ -986,6 +985,7 @@ export const ApplicationWorkspace: React.FC = () => {
                         </div>
                     )}
 
+                    <div className="flex-1 overflow-y-auto custom-scrollbar">
                     <div className="px-4 pt-4 border-b border-slate-800">
                         <div className="flex items-center justify-between mb-0.5">
                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Job Description</span>
