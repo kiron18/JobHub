@@ -994,8 +994,8 @@ export const ApplicationWorkspace: React.FC = () => {
                     )}
 
                     <div className="flex-1 overflow-y-auto custom-scrollbar">
-                    {/* Cover Letter Personalisation — shown when cover letter is generated */}
-                    {state.documents['cover-letter'] && !state.isGenerating && (
+                    {/* Cover Letter Personalisation — shown when cover letter is generated, not on interview prep */}
+                    {state.documents['cover-letter'] && !state.isGenerating && state.activeTab !== 'interview-prep' && (
                         <div className="p-4 border-b border-slate-800">
                             <CoverLetterPersonalisationPanel
                                 document={state.documents['cover-letter']}
@@ -1005,8 +1005,8 @@ export const ApplicationWorkspace: React.FC = () => {
                         </div>
                     )}
 
-                    {/* Tone Rewrite Panel — shown when any document is ready */}
-                    {Object.values(state.documents).some(Boolean) && !state.isGenerating && (
+                    {/* Tone Rewrite Panel — shown when any document is ready, not on interview prep */}
+                    {Object.values(state.documents).some(Boolean) && !state.isGenerating && state.activeTab !== 'interview-prep' && (
                         <div className="p-4 border-b border-slate-800">
                             <ToneRewritePanel
                                 document={state.documents[state.activeTab as keyof typeof state.documents] || ''}
@@ -1358,6 +1358,24 @@ export const ApplicationWorkspace: React.FC = () => {
                                 </AnimatePresence>
                             );
                         })()}
+
+                        {/* Interview prep — generating spinner */}
+                        {state.activeTab === 'interview-prep' && state.isGenerating && (
+                            <div className="flex flex-col items-center justify-center py-40 space-y-6">
+                                <div className="relative">
+                                    <div className="animate-spin text-amber-500"><RefreshCcw size={48} /></div>
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <div className="w-2 h-2 bg-amber-500 rounded-full animate-ping" />
+                                    </div>
+                                </div>
+                                <div className="text-center space-y-2">
+                                    <p className="text-slate-500 font-bold text-sm tracking-tight">Building your interview prep...</p>
+                                    <div className="w-48 h-1 bg-slate-800 rounded-full overflow-hidden mx-auto">
+                                        <motion.div className="h-full bg-amber-500" initial={{ width: '0%' }} animate={{ width: '100%' }} transition={{ duration: 20, ease: 'linear' }} />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Interview prep — new structured view */}
                         {state.activeTab === 'interview-prep' && !state.isGenerating && state.documents['interview-prep'] && (
