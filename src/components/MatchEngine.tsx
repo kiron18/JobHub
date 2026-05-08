@@ -421,6 +421,12 @@ export const MatchEngine: React.FC = () => {
                             <span className="text-[9px] font-bold text-purple-500/70 uppercase tracking-wider">Tailored for this role</span>
                         </button>
                     </div>
+                    <button
+                        onClick={() => navigateTo('resume')}
+                        className="w-full glass-card py-4 px-6 flex items-center justify-center gap-2 text-sm font-black uppercase tracking-wider text-white hover:border-brand-500/50 hover:bg-brand-500/5 transition-all"
+                    >
+                        Prepare &amp; Apply →
+                    </button>
                 )}
             </div>
         </>
