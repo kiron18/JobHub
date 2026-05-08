@@ -34,7 +34,7 @@ import { StrategistDebrief } from './StrategistDebrief';
 import { CompanyResearchPanel } from './CompanyResearchPanel';
 import type { CompanyResearch } from './CompanyResearchPanel';
 import { CriteriaInputPanel } from './CriteriaInputPanel';
-import { InterviewQuestionsPanel } from './InterviewQuestionsPanel';
+import { InterviewPrepView } from './InterviewPrepView';
 import { JDSummaryBar } from './JDSummaryBar';
 import { ToneRewritePanel } from './ToneRewritePanel';
 import { CoverLetterPersonalisationPanel } from './CoverLetterPersonalisationPanel';
@@ -906,9 +906,9 @@ export const ApplicationWorkspace: React.FC = () => {
                         </div>
                     )}
 
-                    {/* Interview prep tab: context panel + question extractor */}
+                    {/* Interview prep tab: generate button only */}
                     {state.activeTab === 'interview-prep' && (
-                        <div className="p-4 border-b border-slate-800 shrink-0 overflow-y-auto max-h-[65%] custom-scrollbar space-y-4">
+                        <div className="p-4 border-b border-slate-800 shrink-0">
                             <div className="rounded-xl border border-slate-700/50 bg-slate-900/60 overflow-hidden">
                                 <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-800 bg-slate-900/40">
                                     <ChevronRight size={13} className="text-amber-400" />
@@ -918,7 +918,7 @@ export const ApplicationWorkspace: React.FC = () => {
                                     <div className="flex items-start gap-2.5 p-3 bg-amber-500/5 rounded-lg border border-amber-500/15">
                                         <AlertCircle size={12} className="text-amber-400 mt-0.5 shrink-0" />
                                         <p className="text-[10px] text-slate-400 leading-relaxed">
-                                            Generates likely interview questions for this role with STAR answer frameworks built from your achievement bank. Use it to prepare, not to script.
+                                            Builds your story bank and question coaching from your achievement profile. Use it to prepare, not to script.
                                             {state.metadata?.company && ` Tailored for ${state.metadata.company}.`}
                                         </p>
                                     </div>
@@ -932,10 +932,6 @@ export const ApplicationWorkspace: React.FC = () => {
                                         </button>
                                     )}
                                 </div>
-                            </div>
-                            {/* Quick question extractor */}
-                            <div className="rounded-xl border border-brand-500/20 bg-brand-500/5 overflow-hidden p-4">
-                                <InterviewQuestionsPanel jobDescription={state.jobDescription} />
                             </div>
                         </div>
                     )}
@@ -1363,177 +1359,17 @@ export const ApplicationWorkspace: React.FC = () => {
                             );
                         })()}
 
-                        {/* Interview prep — structured section cards built from interview_prep_rules.md format */}
-                        {state.activeTab === 'interview-prep' && !state.isGenerating && state.documents['interview-prep'] && (() => {
-                            const raw = state.documents['interview-prep'];
+                        {/* Interview prep — new structured view */}
+                        {state.activeTab === 'interview-prep' && !state.isGenerating && state.documents['interview-prep'] && (
+                            <InterviewPrepView
+                                doc={state.documents['interview-prep']}
+                                company={state.metadata?.company || ''}
+                                role={state.metadata?.role || ''}
+                            />
+                        )}
 
-                            // Split on any markdown heading (### 1. Company Intelligence, etc.)
-                            const sectionBlocks = raw.split(/\n(?=#{1,3}\s)/i).filter(Boolean);
-                            if (sectionBlocks.length < 2) return null;
-
-                            const getSectionType = (block: string): 'company' | 'looking-for' | 'qa' | 'ask-them' | 'watchouts' | 'other' => {
-                                const fl = block.split('\n')[0].toLowerCase();
-                                if (fl.includes('company intelligence')) return 'company';
-                                if (fl.includes("what they're looking") || fl.includes('looking for')) return 'looking-for';
-                                if (fl.includes('questions & answers') || fl.includes('questions and answers') || fl.includes('questions &')) return 'qa';
-                                if (fl.includes('ask them') || fl.includes('questions to ask')) return 'ask-them';
-                                if (fl.includes('watch-out') || fl.includes('watchout') || fl.includes('watch out')) return 'watchouts';
-                                return 'other';
-                            };
-
-                            const getBlockContent = (block: string) =>
-                                block.split('\n').slice(1).join('\n').trim();
-
-                            // Parse individual Q&A pairs — LLM uses **Q: [text]** per interview_prep_rules.md
-                            const parseQAs = (block: string) => {
-                                const content = getBlockContent(block);
-                                const qaBlocks = content.split(/\n(?=\*{1,2}Q[:\s])/i).filter(s => s.trim());
-                                return qaBlocks.map(qb => {
-                                    const lines = qb.split('\n');
-                                    let question = '';
-                                    let followUp = '';
-                                    const answerLines: string[] = [];
-                                    let coachingNote = '';
-
-                                    for (const line of lines) {
-                                        const trim = line.trim();
-                                        const lower = trim.toLowerCase();
-                                        if (!trim) { answerLines.push(''); continue; }
-
-                                        if (trim.match(/^\*{1,2}Q[:\s]/i) && !question) {
-                                            question = trim.replace(/^\*{1,2}Q[:\s]+/i, '').replace(/\*{1,2}$/, '').trim();
-                                            continue;
-                                        }
-                                        if (lower.includes('follow-up they might') || lower.includes('follow up they might') || (lower.startsWith('*follow') && lower.includes('follow-up'))) {
-                                            followUp = trim.replace(/^\*+/, '').replace(/\*+$/, '').replace(/^follow.up[^:]*:\s*/i, '').trim();
-                                            continue;
-                                        }
-                                        if (lower.includes('coaching note')) {
-                                            coachingNote = trim.replace(/^\*+/, '').replace(/\*+$/, '').replace(/^coaching note[:\s]*/i, '').trim();
-                                            continue;
-                                        }
-                                        if (lower.match(/^your answer framework[:\s]*$/)) continue;
-                                        answerLines.push(trim);
-                                    }
-
-                                    while (answerLines.length && !answerLines[0]) answerLines.shift();
-                                    while (answerLines.length && !answerLines[answerLines.length - 1]) answerLines.pop();
-
-                                    return { question, followUp, answerContent: answerLines.join('\n'), coachingNote };
-                                }).filter(qa => qa.question.length > 0);
-                            };
-
-                            const renderedSections: React.ReactNode[] = [];
-
-                            sectionBlocks.forEach((block, idx) => {
-                                const type = getSectionType(block);
-                                const heading = block.split('\n')[0].replace(/^#+\s*\d*\.?\s*/, '').trim();
-                                const content = getBlockContent(block);
-
-                                if (type === 'company' || type === 'looking-for') {
-                                    renderedSections.push(
-                                        <motion.div
-                                            key={idx}
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            transition={{ duration: 0.25, delay: idx * 0.04, ease: [0.25, 1, 0.5, 1] }}
-                                            className="rounded-xl border border-slate-700/50 bg-slate-900/40 overflow-hidden"
-                                        >
-                                            <div className="px-5 py-2.5 border-b border-slate-800 bg-slate-900/60">
-                                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">{heading}</span>
-                                            </div>
-                                            <div className="p-5">
-                                                <div className="prose prose-sm prose-invert max-w-none [&_li]:text-slate-300 [&_li]:text-sm [&_li]:leading-relaxed [&_li]:my-0.5 [&_p]:text-slate-300 [&_p]:text-sm [&_p]:leading-relaxed [&_p]:my-1 [&_strong]:text-slate-200 [&_ul]:my-1.5 [&_ul]:space-y-0.5">
-                                                    <ReactMarkdown>{content}</ReactMarkdown>
-                                                </div>
-                                            </div>
-                                        </motion.div>
-                                    );
-                                } else if (type === 'qa') {
-                                    const qas = parseQAs(block);
-                                    qas.forEach((qa, qIdx) => {
-                                        renderedSections.push(
-                                            <motion.div
-                                                key={`qa-${qIdx}`}
-                                                initial={{ opacity: 0, y: 12 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                transition={{ duration: 0.28, delay: (idx + qIdx) * 0.045, ease: [0.25, 1, 0.5, 1] }}
-                                                className="rounded-xl border border-slate-800 bg-slate-900/60 overflow-hidden"
-                                            >
-                                                <div className="px-5 py-3.5 border-b border-slate-800 bg-slate-900/40">
-                                                    <div className="flex items-start gap-3">
-                                                        <span className="shrink-0 text-[8px] font-black uppercase tracking-widest text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 rounded px-1.5 py-0.5 mt-0.5">Q</span>
-                                                        <p className="text-sm font-bold text-slate-100 leading-relaxed">{qa.question}</p>
-                                                    </div>
-                                                    {qa.followUp && (
-                                                        <p className="mt-2 text-[11px] italic text-slate-500 leading-relaxed pl-8">{qa.followUp}</p>
-                                                    )}
-                                                </div>
-                                                <div className="p-5 space-y-3">
-                                                    {qa.answerContent && (
-                                                        <div>
-                                                            <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest block mb-2.5">Your Answer Framework</span>
-                                                            <div className="prose prose-sm prose-invert max-w-none [&_li]:text-slate-300 [&_li]:leading-relaxed [&_li]:my-0.5 [&_strong]:text-slate-200 [&_strong]:font-bold [&_p]:text-slate-300 [&_p]:leading-relaxed [&_p]:my-1.5 [&_ul]:space-y-1 [&_ul]:my-1.5">
-                                                                <ReactMarkdown>{qa.answerContent}</ReactMarkdown>
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                    {qa.coachingNote && (
-                                                        <div className="flex items-start gap-2.5 rounded-lg px-3 py-2.5 mt-1" style={{ background: 'rgba(251,191,36,0.06)', border: '1px solid rgba(251,191,36,0.18)' }}>
-                                                            <span className="text-[8px] font-black rounded px-1.5 py-0.5 shrink-0 mt-0.5" style={{ background: 'rgba(251,191,36,0.18)', color: '#fbbf24' }}>COACHING</span>
-                                                            <p className="text-[11px] text-amber-200/80 leading-relaxed">{qa.coachingNote}</p>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </motion.div>
-                                        );
-                                    });
-                                    if (qas.length === 0 && content) {
-                                        renderedSections.push(
-                                            <motion.div key={idx} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: idx * 0.04, ease: [0.25, 1, 0.5, 1] }} className="rounded-xl border border-slate-800 bg-slate-900/40 overflow-hidden">
-                                                <div className="px-5 py-2.5 border-b border-slate-800 bg-slate-900/60"><span className="text-[9px] font-black uppercase tracking-widest text-slate-500">{heading}</span></div>
-                                                <div className="p-5"><div className="prose prose-sm prose-invert max-w-none [&_p]:text-slate-300 [&_p]:leading-relaxed [&_p]:my-1 [&_strong]:text-slate-200"><ReactMarkdown>{content}</ReactMarkdown></div></div>
-                                            </motion.div>
-                                        );
-                                    }
-                                } else if (type === 'ask-them' || type === 'watchouts') {
-                                    renderedSections.push(
-                                        <motion.div
-                                            key={idx}
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            transition={{ duration: 0.25, delay: idx * 0.04, ease: [0.25, 1, 0.5, 1] }}
-                                            className={`rounded-xl border overflow-hidden ${type === 'watchouts' ? 'border-amber-500/20 bg-amber-500/5' : 'border-slate-800 bg-slate-900/40'}`}
-                                        >
-                                            <div className={`px-5 py-2.5 border-b ${type === 'watchouts' ? 'border-amber-500/20' : 'border-slate-800'} bg-slate-900/40`}>
-                                                <span className={`text-[9px] font-black uppercase tracking-widest ${type === 'watchouts' ? 'text-amber-400' : 'text-slate-500'}`}>{heading}</span>
-                                            </div>
-                                            <div className="p-5">
-                                                <div className={`prose prose-sm prose-invert max-w-none [&_li]:text-sm [&_li]:leading-relaxed [&_li]:my-0.5 [&_p]:text-sm [&_p]:leading-relaxed [&_p]:my-1 [&_strong]:font-semibold ${type === 'watchouts' ? '[&_li]:text-amber-200/80 [&_p]:text-amber-200/80 [&_strong]:text-amber-200' : '[&_li]:text-slate-300 [&_p]:text-slate-300 [&_strong]:text-slate-200'}`}>
-                                                    <ReactMarkdown>{content}</ReactMarkdown>
-                                                </div>
-                                            </div>
-                                        </motion.div>
-                                    );
-                                }
-                                // 'other' type: skip (doc intro / title block)
-                            });
-
-                            if (renderedSections.length === 0) return null;
-
-                            return (
-                                <div className="w-full max-w-3xl space-y-4">
-                                    {renderedSections}
-                                </div>
-                            );
-                        })()}
-
-                        {/* Standard document renderer (resume, cover letter, SC, and interview-prep fallback) */}
-                        {(state.activeTab !== 'interview-prep' || state.isGenerating || !state.documents['interview-prep'] || (() => {
-                            const raw = state.documents['interview-prep'];
-                            const sectionBlocks = raw.split(/\n(?=#{1,3}\s)/i).filter(Boolean);
-                            return sectionBlocks.length < 2;
-                        })()) && (
+                        {/* Standard document renderer (resume, cover letter, SC) */}
+                        {(state.activeTab !== 'interview-prep') && (
                         <div className="w-full max-w-3xl bg-white text-slate-900 shadow-2xl rounded-sm" style={{ fontFamily: 'Calibri, Arial, "Helvetica Neue", sans-serif' }}>
                             <div className="p-12">
                                 {rateLimitError ? (
