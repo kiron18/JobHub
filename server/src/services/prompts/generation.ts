@@ -51,7 +51,7 @@ export const QUALITY_GATE_PROMPT = (
         ? `The document must use bullet points / short statements for experience and skills. FAIL if the professional summary or any experience section contains multi-sentence narrative paragraphs that read like a cover letter pitch. Scannable structure required.`
         : docType === 'COVER_LETTER'
         ? `The document must be written in flowing narrative paragraphs. FAIL if any section opens with a bullet-point list or reads like a resume bullet (e.g. "Led X achieving Y" as a standalone line with no surrounding prose). Cover letters must not replicate resume structure.`
-        : `Each selection criterion response must: (1) open on-criterion (first sentence echoes the criterion), (2) use flowing prose not bullet lists, (3) have an Action section that is the longest component and names specific tools/methods/decisions, (4) end with a quantified or qualitatively evidenced result. FAIL if any response ends with a vague completion statement like "the project was completed successfully" or lacks any specific result.`;
+        : `Each selection criterion response must: (1) open on-criterion (first sentence echoes the criterion), (2) include bold STAR labels (**Situation**, **Task**, **Action**, **Result**) as inline section markers before each component, (3) have an Action section that is the longest component and names specific tools/methods/decisions, (4) end with a quantified or qualitatively evidenced result. FAIL if STAR labels are absent or if any response ends with a vague completion statement like "the project was completed successfully".`;
 
     const profileGroundingBlock = profileSnapshot && (profileSnapshot.employers.length > 0 || profileSnapshot.jobTitles.length > 0)
         ? `
@@ -366,9 +366,26 @@ Generate one STAR response per individual criterion item (bullet/numbered point/
 If you see "Required Experience" followed by three dot points, generate three separate STAR responses — one for each dot point.
 NEVER generate a response where the heading is "Required Qualifications/Certificates" or "Required Experience" — those are not criteria, they are containers.
 
+WORD LIMIT CHECK: Before writing, scan the criteria text and job description for any stated word limit, page limit, or character limit per criterion (e.g. "maximum 300 words", "no more than half a page"). If found, apply it strictly and note it at the top of the document as: [Word limit: X words per criterion — applied per application instructions]. If no limit is stated, use the defaults below.
+
 STAR ALLOCATION: Situation (10-15%) → Task (10-15%) → Action (40-50%) → Result (20-25%).
-Write in flowing prose, first person, active voice. Do NOT label STAR components as subheadings.
-Target 250-400 words per criterion unless the role specifies a different limit.
+Write in flowing prose, first person, active voice.
+Target 250-400 words per criterion unless a limit was found above.
+
+STAR LABELS (mandatory): Each STAR component must be introduced with its label in bold on its own line, immediately before the prose for that component. Use exactly this format:
+**Situation**
+[prose...]
+
+**Task**
+[prose...]
+
+**Action**
+[prose...]
+
+**Result**
+[prose...]
+
+Do NOT use these as subheadings with ## — use bold inline labels only. The labels make the structure transparent to assessment panels and signal a methodical, professional response.
 
 MANDATORY OPENING: Each response MUST open by directly restating the criterion or echoing its key terms in the first sentence. This signals to the assessment panel that you are addressing their specific criterion.
 CORRECT: "My experience managing competing stakeholder priorities has developed across three programme delivery roles..."

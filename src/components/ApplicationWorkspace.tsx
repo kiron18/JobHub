@@ -995,9 +995,10 @@ export const ApplicationWorkspace: React.FC = () => {
                         </div>
                     )}
 
+                    <div className="flex-1 overflow-y-auto custom-scrollbar">
                     {/* Cover Letter Personalisation — shown when cover letter is generated */}
                     {state.documents['cover-letter'] && !state.isGenerating && (
-                        <div className="p-4 border-b border-slate-800 shrink-0">
+                        <div className="p-4 border-b border-slate-800">
                             <CoverLetterPersonalisationPanel
                                 document={state.documents['cover-letter']}
                                 jobDescription={state.jobDescription}
@@ -1008,7 +1009,7 @@ export const ApplicationWorkspace: React.FC = () => {
 
                     {/* Tone Rewrite Panel — shown when any document is ready */}
                     {Object.values(state.documents).some(Boolean) && !state.isGenerating && (
-                        <div className="p-4 border-b border-slate-800 shrink-0">
+                        <div className="p-4 border-b border-slate-800">
                             <ToneRewritePanel
                                 document={state.documents[state.activeTab as keyof typeof state.documents] || ''}
                                 docType={state.activeTab}
@@ -1016,7 +1017,7 @@ export const ApplicationWorkspace: React.FC = () => {
                         </div>
                     )}
 
-                    <div className="px-4 pt-4 border-b border-slate-800 shrink-0">
+                    <div className="px-4 pt-4 border-b border-slate-800">
                         <div className="flex items-center justify-between mb-0.5">
                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Job Description</span>
                             {state.keywords && state.keywords.length > 0 && (
@@ -1027,6 +1028,7 @@ export const ApplicationWorkspace: React.FC = () => {
                             <JDSummaryBar jobDescription={state.jobDescription} />
                         )}
                     </div>
+                    </div>{/* end scrollable tools section */}
                     <div className="flex-1 overflow-y-auto p-6 text-sm text-slate-400 leading-relaxed custom-scrollbar">
                         <HighlightedJD text={state.jobDescription} keywords={state.keywords || []} />
                     </div>
