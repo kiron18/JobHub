@@ -1,8 +1,11 @@
-import { List } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { List, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import api from '../lib/api';
 
 interface CriteriaInputPanelProps {
     criteriaText: string;
     onChange: (text: string) => void;
+    onExtracted: (criteria: string[]) => void;
     company?: string;
     employerFramework?: string | null;
 }
@@ -17,8 +20,40 @@ const FRAMEWORK_LABELS: Record<string, { label: string; color: string }> = {
     general: { label: 'General Criteria', color: 'text-slate-400' },
 };
 
-export function CriteriaInputPanel({ criteriaText, onChange, employerFramework }: CriteriaInputPanelProps) {
+export function CriteriaInputPanel({ criteriaText, onChange, onExtracted, employerFramework }: CriteriaInputPanelProps) {
     const framework = employerFramework ? FRAMEWORK_LABELS[employerFramework] : null;
+    const [extracting, setExtracting] = useState(false);
+    const [extracted, setExtracted] = useState<string[]>([]);
+    const [extractError, setExtractError] = useState(false);
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    useEffect(() => {
+        if (criteriaText.trim().length < 30) {
+            setExtracted([]);
+            setExtractError(false);
+            onExtracted([]);
+            return;
+        }
+
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(async () => {
+            setExtracting(true);
+            setExtractError(false);
+            try {
+                const { data } = await api.post('/generate/extract-criteria', { rawText: criteriaText });
+                setExtracted(data.criteria);
+                onExtracted(data.criteria);
+            } catch {
+                setExtractError(true);
+                setExtracted([]);
+                onExtracted([]);
+            } finally {
+                setExtracting(false);
+            }
+        }, 600);
+
+        return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+    }, [criteriaText]);
 
     return (
         <div className="rounded-xl border border-slate-700/50 bg-slate-900/60 overflow-hidden mb-4">
@@ -42,7 +77,7 @@ export function CriteriaInputPanel({ criteriaText, onChange, employerFramework }
                             'Go back to the job listing',
                             'Look for any attached Position Description or Application Pack PDF',
                             'Find the selection criteria section',
-                            'Copy and paste it below',
+                            'Copy and paste it below — we\'ll extract the criteria automatically',
                         ].map((step, i) => (
                             <li key={i} className="flex items-start gap-2">
                                 <span className="text-[10px] font-black text-purple-400 shrink-0 mt-0.5">{i + 1}.</span>
@@ -56,10 +91,45 @@ export function CriteriaInputPanel({ criteriaText, onChange, employerFramework }
                 <textarea
                     value={criteriaText}
                     onChange={e => onChange(e.target.value)}
-                    placeholder={`Paste your selection criteria here. For example:\n\n1. Demonstrated ability to lead and manage teams in complex environments\n2. Strong communication and stakeholder engagement skills\n3. Proven experience in project management and delivery`}
+                    placeholder={`Paste the full criteria section here — even the whole position description. We'll extract the criteria automatically.\n\nFor example:\n1. Demonstrated ability to lead and manage teams\n2. Strong communication and stakeholder engagement skills`}
                     rows={8}
                     className="w-full bg-slate-800/60 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-300 outline-none focus:border-purple-500 transition-colors resize-none leading-relaxed placeholder:text-slate-600"
                 />
+
+                {/* Extraction status */}
+                {extracting && (
+                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                        <Loader2 size={11} className="animate-spin text-purple-400" />
+                        Reading your criteria…
+                    </div>
+                )}
+
+                {extractError && (
+                    <div className="flex items-center gap-2 text-[11px] text-amber-500/80">
+                        <AlertCircle size={11} />
+                        Couldn't extract criteria automatically — generation will use the raw text.
+                    </div>
+                )}
+
+                {/* Extracted criteria list */}
+                {!extracting && extracted.length > 0 && (
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                            <CheckCircle2 size={12} className="text-emerald-400" />
+                            <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">
+                                {extracted.length} {extracted.length === 1 ? 'criterion' : 'criteria'} found — one response per item
+                            </p>
+                        </div>
+                        <div className="space-y-1.5">
+                            {extracted.map((criterion, i) => (
+                                <div key={i} className="flex items-start gap-2.5 p-2.5 bg-slate-800/40 rounded-lg border border-slate-700/30">
+                                    <span className="text-[10px] font-black text-purple-400 mt-0.5 shrink-0 w-4">{i + 1}.</span>
+                                    <p className="text-[11px] text-slate-300 leading-snug">{criterion}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

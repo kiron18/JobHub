@@ -217,7 +217,7 @@ export const ApplicationWorkspace: React.FC = () => {
     const [exportingPdf, setExportingPdf] = useState(false);
     const [companyResearch, setCompanyResearch] = useState<CompanyResearch | null>(null);
     const [selectionCriteriaText, setSelectionCriteriaText] = useState('');
-    const [scConfirmed, setScConfirmed] = useState(false);
+    const [extractedCriteria, setExtractedCriteria] = useState<string[]>([]);
     const [employerFramework, setEmployerFramework] = useState<string | null>(null);
 
     const [applyContext, setApplyContext] = useState<ApplyContext | null>(() => {
@@ -263,15 +263,6 @@ export const ApplicationWorkspace: React.FC = () => {
     const [emailVersion, setEmailVersion] = useState<{ emailSubject: string; emailBody: string } | null>(null);
     const [generatingEmail, setGeneratingEmail] = useState(false);
     const [copiedEmailField, setCopiedEmailField] = useState<'subject' | 'body' | null>(null);
-
-    // Reset SC confirmed flag when user leaves the SC tab or when they change the criteria text
-    useEffect(() => {
-        if (state.activeTab !== 'selection-criteria') setScConfirmed(false);
-    }, [state.activeTab]);
-
-    useEffect(() => {
-        setScConfirmed(false);
-    }, [selectionCriteriaText]);
 
     // Auto-detect employer framework when SC tab is first activated
     useEffect(() => {
@@ -512,8 +503,12 @@ export const ApplicationWorkspace: React.FC = () => {
                 },
                 // Company research context for cover letters (hiring manager, highlights)
                 companyResearch: type === 'cover-letter' ? companyResearch : null,
-                // Pasted selection criteria for SC responses
-                selectionCriteriaText: type === 'selection-criteria' ? selectionCriteriaText : null,
+                // For SC: use extracted (cleaned) criteria if available, fall back to raw text
+                selectionCriteriaText: type === 'selection-criteria'
+                    ? (extractedCriteria.length > 0
+                        ? extractedCriteria.map((c, i) => `${i + 1}. ${c}`).join('\n')
+                        : selectionCriteriaText)
+                    : null,
                 // Employer framework hint for SC (APS ILS, QLD LC4Q, etc.)
                 employerFramework: type === 'selection-criteria' ? employerFramework : null,
             }, { signal: controller.signal });
@@ -584,16 +579,14 @@ export const ApplicationWorkspace: React.FC = () => {
         const hasDoc = !!state.documents[state.activeTab];
         const hasDocId = !!state.documentIds[state.activeTab];
 
-        // For SC, don't auto-generate until the user has pasted criteria
-        // For interview-prep, auto-generate is fine (just needs the JD)
-        const scReady = state.activeTab !== 'selection-criteria' || (selectionCriteriaText.trim().length > 20 && scConfirmed);
+        // SC never auto-generates — user must click the button explicitly
+        if (state.activeTab === 'selection-criteria') return;
 
         // Don't auto-generate while we're still fetching existing docs from the server (prevents race condition)
-        if (state.jobDescription && !hasDoc && !hasDocId && !state.isGenerating && !isFetchingDocs && !state.hasFailed[state.activeTab] && scReady) {
-            console.log('Triggering generation for:', state.activeTab);
+        if (state.jobDescription && !hasDoc && !hasDocId && !state.isGenerating && !isFetchingDocs && !state.hasFailed[state.activeTab]) {
             handleGenerate(state.activeTab);
         }
-    }, [state.activeTab, state.jobDescription, state.documents, state.documentIds, state.isGenerating, state.hasFailed, selectionCriteriaText, scConfirmed, isFetchingDocs]);
+    }, [state.activeTab, state.jobDescription, state.documents, state.documentIds, state.isGenerating, state.hasFailed, isFetchingDocs]);
 
 
     const handleGenerateAcademic = async (docType: 'teaching-philosophy' | 'research-statement') => {
@@ -887,29 +880,27 @@ export const ApplicationWorkspace: React.FC = () => {
                             )}
                             <CriteriaInputPanel
                                 criteriaText={selectionCriteriaText}
-                                onChange={setSelectionCriteriaText}
+                                onChange={text => { setSelectionCriteriaText(text); setExtractedCriteria([]); }}
+                                onExtracted={setExtractedCriteria}
                                 company={state.metadata?.company}
                                 employerFramework={employerFramework}
                             />
-                            {!state.isGenerating && (
-                                <button
-                                    disabled={selectionCriteriaText.trim().length < 20}
-                                    onClick={() => {
-                                        if (state.documents['selection-criteria']) {
-                                            setState(s => ({
-                                                ...s,
-                                                documents: { ...s.documents, 'selection-criteria': '' },
-                                                documentIds: { ...s.documentIds, 'selection-criteria': null },
-                                            }));
-                                        }
-                                        setScConfirmed(true);
-                                    }}
-                                    className="w-full mt-2 py-2.5 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
-                                >
-                                    <List size={14} />
-                                    Generate SC Responses
-                                </button>
-                            )}
+                            <button
+                                disabled={selectionCriteriaText.trim().length < 20 || state.isGenerating}
+                                onClick={() => {
+                                    setState(s => ({
+                                        ...s,
+                                        documents: { ...s.documents, 'selection-criteria': '' },
+                                        documentIds: { ...s.documentIds, 'selection-criteria': null },
+                                        hasFailed: { ...s.hasFailed, 'selection-criteria': false },
+                                    }));
+                                    handleGenerate('selection-criteria');
+                                }}
+                                className="w-full mt-2 py-2.5 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                                <List size={14} />
+                                Generate SC Responses
+                            </button>
                         </div>
                     )}
 

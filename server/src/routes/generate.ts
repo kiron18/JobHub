@@ -3,6 +3,7 @@ import { prisma } from '../index';
 import { authenticate } from '../middleware/auth';
 import { checkAccess } from '../middleware/accessControl';
 import { callLLMWithRetry } from '../utils/callLLMWithRetry';
+import { callClaude } from '../services/llm';
 import { DOCUMENT_GENERATION_PROMPT_WITH_BLUEPRINT, DOCUMENT_GENERATION_PROMPT, buildSearchContextBlock } from '../services/prompts';
 import { generateBlueprint } from '../services/strategy';
 import { setCachedBlueprint } from '../services/blueprint-cache';
@@ -268,6 +269,52 @@ router.post('/:type', authenticate, async (req, res) => {
     } catch (error) {
         console.error(`Generation Error (${type}):`, error);
         res.status(500).json({ error: `Failed to generate ${type}` });
+    }
+});
+
+// POST /generate/extract-criteria — pull clean criteria from messy pasted text
+router.post('/extract-criteria', authenticate, async (req: any, res: any) => {
+    const { rawText } = req.body;
+    if (!rawText || typeof rawText !== 'string' || rawText.trim().length < 10) {
+        return res.status(400).json({ error: 'rawText is required' });
+    }
+
+    const prompt = `You are extracting selection criteria from a pasted position description or application document.
+
+The user has pasted the following text. It may contain: job title, organisation name, document headers, section labels like "Required Qualifications" or "Desirable Skills", introductory paragraphs, and the actual criteria.
+
+Your job: extract ONLY the individual criteria statements that a candidate must address in their application. These are the specific bullet points, numbered items, or sentences that describe a required or desirable skill, experience, qualification, or attribute.
+
+STRIP completely:
+- Document title (e.g. "Position Description")
+- Job title / role name
+- Organisation name
+- Section category headers (e.g. "Required Qualifications", "Required Experience", "Required Skills", "Desirable Skills", "Essential Criteria", "Desirable Criteria")
+- Introductory or instructional text (e.g. "Criteria to be addressed in your application", "Please address the following")
+- Any text that is not itself a criterion
+
+KEEP:
+- Every individual bullet point or numbered sub-item that states a specific requirement
+- The full text of each criterion, including any "OR" conditions
+- Desirable criteria (label them as [Desirable] at the end)
+
+Return a JSON array of strings, one string per criterion, in the order they appear.
+Return ONLY the JSON array. No preamble. No explanation.
+
+PASTED TEXT:
+"""
+${rawText.slice(0, 4000)}
+"""`;
+
+    try {
+        const { content: raw } = await callClaude(prompt, true);
+        const cleaned = raw.trim().replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+        const criteria: string[] = JSON.parse(cleaned);
+        if (!Array.isArray(criteria)) throw new Error('Not an array');
+        return res.json({ criteria: criteria.filter(c => typeof c === 'string' && c.trim().length > 5) });
+    } catch (err: any) {
+        console.error('[extract-criteria]', err.message);
+        return res.status(500).json({ error: 'Could not extract criteria' });
     }
 });
 
