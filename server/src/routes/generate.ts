@@ -264,7 +264,7 @@ router.post('/:type', authenticate, async (req, res) => {
         let profileViolations: string[] = [];
         let stage3Info: { triggered: boolean; tokens?: { input: number; output: number; cost_usd: number } } = { triggered: false };
 
-        if (QUALITY_GATE_ENABLED && blueprintResult) {
+        if (QUALITY_GATE_ENABLED && blueprintResult && type !== 'interview-prep') {
             console.log('[Generation] Stage 3: running quality gate...');
             try {
                 const review = await reviewDocument(blueprintResult.blueprint, stage2Raw, docType, profile);

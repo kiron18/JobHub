@@ -35,7 +35,7 @@ Keep it factual. No padding.
 
 ### 2. Story Bank
 
-Select 5-6 achievements from the candidate's profile that best cover the competencies this role requires. For each, build a CAR story card.
+Select 4 achievements from the candidate's profile that best cover the competencies this role requires. Choose the 4 most distinct and relevant. For each, build a CAR story card.
 
 Format each story exactly as follows:
 
@@ -52,7 +52,7 @@ Write 5-6 story blocks. Prioritise variety across competencies. Draw details fro
 
 ### 3. Prove It
 
-Generate 3-4 questions per type. Each question must be genuinely likely for this specific role — not generic. Map each type to the most relevant Story Bank entry.
+Generate 3 questions per type. Each question must be genuinely likely for this specific role — not generic. Map each type to the most relevant Story Bank entry.
 
 #### Behavioural
 **What these are:** Past behaviour predicts future performance. Expect "Tell me about a time when..."
