@@ -477,6 +477,8 @@ export const ApplicationWorkspace: React.FC = () => {
 
     const handleGenerate = async (type: WorkspaceState['activeTab'], regenerate = false) => {
         if (state.hasFailed[type] && !regenerate) return;
+        // SC must never generate without criteria — hard guard regardless of how this was called
+        if (type === 'selection-criteria' && selectionCriteriaText.trim().length < 20) return;
 
         const controller = new AbortController();
         setAbortController(controller);

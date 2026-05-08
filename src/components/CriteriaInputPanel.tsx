@@ -26,14 +26,19 @@ export function CriteriaInputPanel({ criteriaText, onChange, onExtracted, employ
     const [extracted, setExtracted] = useState<string[]>([]);
     const [extractError, setExtractError] = useState(false);
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const lastExtractedTextRef = useRef<string>('');
 
     useEffect(() => {
         if (criteriaText.trim().length < 30) {
             setExtracted([]);
             setExtractError(false);
             onExtracted([]);
+            lastExtractedTextRef.current = '';
             return;
         }
+
+        // Don't re-extract if text hasn't changed since last successful extraction (prevents re-fire on remount)
+        if (criteriaText === lastExtractedTextRef.current && extracted.length > 0) return;
 
         if (debounceRef.current) clearTimeout(debounceRef.current);
         debounceRef.current = setTimeout(async () => {
@@ -43,6 +48,7 @@ export function CriteriaInputPanel({ criteriaText, onChange, onExtracted, employ
                 const { data } = await api.post('/generate/extract-criteria', { rawText: criteriaText });
                 setExtracted(data.criteria);
                 onExtracted(data.criteria);
+                lastExtractedTextRef.current = criteriaText;
             } catch {
                 setExtractError(true);
                 setExtracted([]);
