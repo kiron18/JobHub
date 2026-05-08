@@ -330,7 +330,7 @@ ${type === 'COVER_LETTER' ? `METRICS RULE (mandatory): You MUST include at least
 4. ${isAcademicDoc
         ? 'ACADEMIC DOCUMENT FORMAT: Follow the specific format and structure rules in the FORMATTING RULES section above exactly. Do NOT apply STAR framework. Write as first-person narrative prose as specified.'
         : type === 'STAR_RESPONSE'
-        ? 'STAR FORMAT: Situation (10-15%) → Task (10-15%) → Action (40-50%) → Result (20-25%). Flowing prose. First person active voice. Do NOT use Situation/Task/Action/Result as subheadings.'
+        ? 'STAR FORMAT: Situation (10-15%) → Task (10-15%) → Action (40-50%) → Result (20-25%). Flowing prose. First person active voice. Each component MUST be introduced with its bold label on its own line: **Situation**, **Task**, **Action**, **Result** — written exactly like that, before the prose for each component.'
         : type === 'COVER_LETTER'
             ? `COVER LETTER FORMAT: No headers or subheadings. 3-5 paragraphs separated by a blank line.
    SALUTATION: ${companyResearch?.salutation ?? 'Dear Hiring Manager,'}
@@ -385,7 +385,21 @@ STAR LABELS (mandatory): Each STAR component must be introduced with its label i
 **Result**
 [prose...]
 
-Do NOT use these as subheadings with ## — use bold inline labels only. The labels make the structure transparent to assessment panels and signal a methodical, professional response.
+Do NOT use ## for these labels. Each criterion response must look exactly like this structure:
+
+**Situation**
+[prose for situation]
+
+**Task**
+[prose for task]
+
+**Action**
+[prose for action]
+
+**Result**
+[prose for result]
+
+This is mandatory. Every single criterion response must have all four labels.
 
 MANDATORY OPENING: Each response MUST open by directly restating the criterion or echoing its key terms in the first sentence. This signals to the assessment panel that you are addressing their specific criterion.
 CORRECT: "My experience managing competing stakeholder priorities has developed across three programme delivery roles..."
@@ -527,7 +541,7 @@ Generate the ${type} as high-impact Markdown.
 4. ${isAcademicDoc
     ? 'ACADEMIC DOCUMENT FORMAT: Follow the specific format and structure rules in the FORMATTING RULES section above exactly. Do NOT apply STAR framework. Write as first-person narrative prose as specified.'
     : type === 'STAR_RESPONSE'
-    ? `STAR FORMAT REQUIRED: Each criterion response must follow Situation (10-15%) → Task (10-15%) → Action (40-50%) → Result (20-25%). Do NOT label these components as subheadings. Write in flowing prose, first person, active voice.`
+    ? `STAR FORMAT REQUIRED: Each criterion response must follow Situation (10-15%) → Task (10-15%) → Action (40-50%) → Result (20-25%). Write in flowing prose, first person, active voice. Each component MUST be introduced with its bold label on its own line (**Situation**, **Task**, **Action**, **Result**) before the prose for that component.`
     : type === 'COVER_LETTER'
     ? `COVER LETTER FORMAT: No headers or subheadings. 3-4 paragraphs separated by a blank line.
    SALUTATION: ${companyResearch?.salutation ?? 'Dear Hiring Manager,'}
