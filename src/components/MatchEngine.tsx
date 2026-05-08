@@ -389,6 +389,7 @@ export const MatchEngine: React.FC = () => {
 
                 {/* Quick Actions Panel */}
                 {result && (
+                    <>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-in slide-in-from-top-4 duration-500">
                         <button
                             onClick={() => navigateTo('resume')}
@@ -427,6 +428,7 @@ export const MatchEngine: React.FC = () => {
                     >
                         Prepare &amp; Apply →
                     </button>
+                    </>
                 )}
             </div>
         </>
