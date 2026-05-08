@@ -985,8 +985,7 @@ export const ApplicationWorkspace: React.FC = () => {
                         </div>
                     )}
 
-                    <div className="flex-1 overflow-y-auto custom-scrollbar">
-                    <div className="px-4 pt-4 border-b border-slate-800">
+                    <div className="shrink-0 px-4 pt-4 border-b border-slate-800">
                         <div className="flex items-center justify-between mb-0.5">
                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Job Description</span>
                             {state.keywords && state.keywords.length > 0 && (
@@ -997,7 +996,6 @@ export const ApplicationWorkspace: React.FC = () => {
                             <JDSummaryBar jobDescription={state.jobDescription} />
                         )}
                     </div>
-                    </div>{/* end scrollable tools section */}
                     <div className="flex-1 overflow-y-auto p-6 text-sm text-slate-400 leading-relaxed custom-scrollbar">
                         <HighlightedJD text={state.jobDescription} keywords={state.keywords || []} />
                     </div>
