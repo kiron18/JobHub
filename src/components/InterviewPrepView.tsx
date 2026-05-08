@@ -390,8 +390,11 @@ export function InterviewPrepView({ doc, company, role }: { doc: string; company
 
     if (!hasKnow && !hasStories && !hasProve) {
         return (
-            <div className="prose prose-sm prose-invert max-w-none p-4 text-slate-300">
-                <pre className="whitespace-pre-wrap text-xs">{doc}</pre>
+            <div className="flex flex-col items-center justify-center py-24 space-y-4 max-w-sm mx-auto text-center">
+                <p className="text-slate-300 font-bold text-sm">Format updated</p>
+                <p className="text-slate-500 text-[13px] leading-relaxed">
+                    This prep was generated in an older format. Hit Re-generate to build your Story Bank and question coaching.
+                </p>
             </div>
         );
     }

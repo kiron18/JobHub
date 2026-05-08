@@ -906,35 +906,6 @@ export const ApplicationWorkspace: React.FC = () => {
                         </div>
                     )}
 
-                    {/* Interview prep tab: generate button only */}
-                    {state.activeTab === 'interview-prep' && (
-                        <div className="p-4 border-b border-slate-800 shrink-0">
-                            <div className="rounded-xl border border-slate-700/50 bg-slate-900/60 overflow-hidden">
-                                <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-800 bg-slate-900/40">
-                                    <ChevronRight size={13} className="text-amber-400" />
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Interview Prep</span>
-                                </div>
-                                <div className="p-4">
-                                    <div className="flex items-start gap-2.5 p-3 bg-amber-500/5 rounded-lg border border-amber-500/15">
-                                        <AlertCircle size={12} className="text-amber-400 mt-0.5 shrink-0" />
-                                        <p className="text-[10px] text-slate-400 leading-relaxed">
-                                            Builds your story bank and question coaching from your achievement profile. Use it to prepare, not to script.
-                                            {state.metadata?.company && ` Tailored for ${state.metadata.company}.`}
-                                        </p>
-                                    </div>
-                                    {!state.documents['interview-prep'] && !state.isGenerating && (
-                                        <button
-                                            onClick={() => handleGenerate('interview-prep')}
-                                            className="w-full mt-3 py-2.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2"
-                                        >
-                                            <ChevronRight size={14} />
-                                            Generate Interview Prep
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    )}
 
                     {/* Academic Toolkit — shown for university framework */}
                     {(employerFramework === 'university_academic' || employerFramework === 'university_professional') && (
@@ -1358,6 +1329,28 @@ export const ApplicationWorkspace: React.FC = () => {
                                 </AnimatePresence>
                             );
                         })()}
+
+                        {/* Interview prep — empty state */}
+                        {state.activeTab === 'interview-prep' && !state.isGenerating && !state.documents['interview-prep'] && (
+                            <div className="flex flex-col items-center justify-center py-32 space-y-6 max-w-sm mx-auto text-center">
+                                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                                    <ChevronRight size={22} className="text-amber-400" />
+                                </div>
+                                <div className="space-y-2">
+                                    <p className="text-slate-200 font-bold text-base">Interview Prep</p>
+                                    <p className="text-slate-500 text-sm leading-relaxed">
+                                        Builds your story bank and question coaching from your achievement profile.{state.metadata?.company ? ` Tailored for ${state.metadata.company}.` : ''}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => handleGenerate('interview-prep')}
+                                    className="px-6 py-2.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-2"
+                                >
+                                    <ChevronRight size={14} />
+                                    Generate Interview Prep
+                                </button>
+                            </div>
+                        )}
 
                         {/* Interview prep — generating spinner */}
                         {state.activeTab === 'interview-prep' && state.isGenerating && (
