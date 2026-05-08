@@ -265,7 +265,10 @@ function StoryCardItem({ story }: { story: StoryCard }) {
                             )}
                             {story.actions.length > 0 && (
                                 <div>
-                                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">A — Action</span>
+                                    <div className="flex items-baseline gap-2">
+                                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">A — Action</span>
+                                        <span className="text-[9px] text-slate-600 italic">pick the most relevant one</span>
+                                    </div>
                                     <ul className="mt-1.5 space-y-1">
                                         {story.actions.map((a, i) => (
                                             <li key={i} className="flex items-start gap-2">
