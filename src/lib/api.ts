@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3002/api',
-  timeout: 70000,
+  timeout: 120000,
 });
 
 // Inject Supabase JWT on every request
