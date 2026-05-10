@@ -1477,6 +1477,7 @@ const CompletionSidebar: React.FC<CompletionSidebarProps> = ({ completion, isDar
 
 export const ProfileBank: React.FC = () => {
   const { isDark } = useAppTheme();
+  const navigate = useNavigate();
 
   const { data: profile, isLoading, isError } = useQuery<ProfileData>({
     queryKey: ['profile'],
@@ -1576,17 +1577,18 @@ export const ProfileBank: React.FC = () => {
         {showWelcomeModal && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={dismissWelcomeModal}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+            style={{ position: 'fixed', inset: 0, background: isDark ? '#080b12' : '#f8fafc', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 16 }}
+              initial={{ opacity: 0, scale: 0.97, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 8 }}
-              transition={{ duration: 0.25, ease: [0.25, 1, 0.5, 1] }}
-              onClick={(e) => e.stopPropagation()}
-              style={{ background: isDark ? '#0d1117' : '#fff', border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`, borderRadius: 20, padding: '32px 36px', maxWidth: 460, width: '100%' }}
+              exit={{ opacity: 0, scale: 0.97, y: 8 }}
+              transition={{ duration: 0.28, ease: [0.25, 1, 0.5, 1] }}
+              style={{ background: isDark ? '#0d1117' : '#fff', border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`, borderRadius: 24, padding: '40px 44px', maxWidth: 520, width: '100%', position: 'relative' }}
             >
+              <button onClick={dismissWelcomeModal} style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', cursor: 'pointer', color: isDark ? '#4b5563' : '#9ca3af', padding: 4, lineHeight: 1 }}>
+                <X size={16} />
+              </button>
               {(profile as any)?.hasCompletedOnboarding ? (
                 /* Baseline resume gift — reciprocity moment */
                 <>
@@ -1621,7 +1623,7 @@ export const ProfileBank: React.FC = () => {
                       {baselineDownloading ? 'Downloading…' : 'Download my resume'}
                     </button>
                     <button
-                      onClick={dismissWelcomeModal}
+                      onClick={() => { dismissWelcomeModal(); navigate('/setup'); }}
                       style={{ width: '100%', padding: '12px 0', borderRadius: 10, background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.09)'}`, color: isDark ? '#9ca3af' : '#6b7280', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
                     >
                       Let's sharpen it instead →
