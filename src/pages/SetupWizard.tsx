@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, CheckCircle, ArrowRight, ExternalLink, Briefcase, FileText, Award, GraduationCap, Zap, Heart } from 'lucide-react';
+import { ChevronRight, CheckCircle, ArrowRight, Briefcase, FileText, Award, GraduationCap, Zap, Heart } from 'lucide-react';
 import api from '../lib/api';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -60,9 +60,6 @@ interface WizardStep {
   type: StepType;
   label: string;
   optional: boolean;
-  experienceEntry?: ExperienceEntry;
-  experienceIndex?: number;
-  experienceTotal?: number;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -77,35 +74,22 @@ function parseSkills(raw: string): string {
   return raw;
 }
 
-function buildSteps(profile: ProfileData): WizardStep[] {
-  const steps: WizardStep[] = [];
+function buildSteps(_profile: ProfileData): WizardStep[] {
+  return [
+    { type: 'summary',        label: 'Summary',        optional: false },
+    { type: 'experience',     label: 'Work Experience', optional: false },
+    { type: 'achievements',   label: 'Achievements',    optional: true  },
+    { type: 'education',      label: 'Education',       optional: true  },
+    { type: 'certifications', label: 'Certifications',  optional: true  },
+    { type: 'volunteering',   label: 'Volunteering',    optional: true  },
+    { type: 'skills',         label: 'Skills',          optional: false },
+    { type: 'complete',       label: 'Complete',        optional: false },
+  ];
+}
 
-  steps.push({ type: 'summary', label: 'Summary', optional: false });
-
-  const experiences = profile.experience ?? [];
-  if (experiences.length > 0) {
-    experiences.forEach((exp, i) => {
-      steps.push({
-        type: 'experience',
-        label: exp.company ?? `Job ${i + 1}`,
-        optional: false,
-        experienceEntry: exp,
-        experienceIndex: i,
-        experienceTotal: experiences.length,
-      });
-    });
-  } else {
-    steps.push({ type: 'experience', label: 'Work Experience', optional: true });
-  }
-
-  steps.push({ type: 'achievements', label: 'Achievements', optional: true });
-  steps.push({ type: 'education', label: 'Education', optional: true });
-  steps.push({ type: 'certifications', label: 'Certifications', optional: true });
-  steps.push({ type: 'volunteering', label: 'Volunteering', optional: true });
-  steps.push({ type: 'skills', label: 'Skills', optional: false });
-  steps.push({ type: 'complete', label: 'Complete', optional: false });
-
-  return steps;
+function parseBullets(description: string): string[] {
+  const lines = (description ?? '').split('\n').map(l => l.trim()).filter(Boolean);
+  return lines.length > 0 ? lines : [''];
 }
 
 // ─── Coaching content ────────────────────────────────────────────────────────
@@ -132,8 +116,8 @@ const COACHING: Record<string, { headline: string; body: string; tipsLabel?: str
     ],
   },
   achievements: {
-    headline: 'A metric turns a duty into evidence.',
-    body: "'Helped grow the team' and 'grew the team from 4 to 11 in 9 months' describe the same work. One proves it. Add a number — revenue, percentage, headcount, time saved. An estimate is better than nothing.",
+    headline: "We've isolated your achievements.",
+    body: "These stand-out moments have been pulled from your work experience. Now add a metric to each — 'Helped grow the team' and 'grew the team from 4 to 11 in 9 months' describe the same work. One proves it. An estimate is better than nothing.",
     tipsLabel: "IF YOU'RE STUCK",
     tips: [
       'How many people were involved or affected?',
@@ -265,74 +249,127 @@ function SummaryForm({
   );
 }
 
-function ExperienceForm({
-  value,
+function ExperienceEntryCard({
+  entry,
   onChange,
+  showDivider,
 }: {
-  value: ExperienceEntry;
-  onChange: (v: ExperienceEntry) => void;
+  entry: ExperienceEntry;
+  onChange: (updated: ExperienceEntry) => void;
+  showDivider: boolean;
 }) {
-  const set = (field: keyof ExperienceEntry) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-    onChange({ ...value, [field]: e.target.value });
+  const [bullets, setBullets] = useState<string[]>(() => parseBullets(entry.description ?? ''));
+
+  const set = (field: keyof ExperienceEntry) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    onChange({ ...entry, [field]: e.target.value });
+
+  const updateBullet = (i: number, val: string) => {
+    const updated = bullets.map((b, idx) => idx === i ? val : b);
+    setBullets(updated);
+    onChange({ ...entry, description: updated.filter(Boolean).join('\n') });
+  };
+
+  const addBullet = () => setBullets(prev => [...prev, '']);
+
+  const removeBullet = (i: number) => {
+    const updated = bullets.filter((_, idx) => idx !== i);
+    const final = updated.length > 0 ? updated : [''];
+    setBullets(final);
+    onChange({ ...entry, description: final.filter(Boolean).join('\n') });
+  };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+    <div style={{ paddingBottom: showDivider ? 24 : 0, marginBottom: showDivider ? 24 : 0, borderBottom: showDivider ? '1px solid rgba(255,255,255,0.07)' : 'none' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
         <div>
           <label style={labelStyle}>Company</label>
-          <input
-            type="text"
-            value={value.company ?? ''}
-            onChange={set('company')}
-            style={inputStyle}
-            aria-label="Company name"
-          />
+          <input type="text" value={entry.company ?? ''} onChange={set('company')} style={inputStyle} aria-label="Company name" />
         </div>
         <div>
           <label style={labelStyle}>Role / Title</label>
-          <input
-            type="text"
-            value={value.role ?? ''}
-            onChange={set('role')}
-            style={inputStyle}
-            aria-label="Role or title"
-          />
+          <input type="text" value={entry.role ?? ''} onChange={set('role')} style={inputStyle} aria-label="Role or title" />
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
         <div>
           <label style={labelStyle}>Start Date</label>
-          <input
-            type="text"
-            value={value.startDate ?? ''}
-            onChange={set('startDate')}
-            placeholder="e.g. Jan 2022"
-            style={inputStyle}
-            aria-label="Start date"
-          />
+          <input type="text" value={entry.startDate ?? ''} onChange={set('startDate')} placeholder="e.g. Jan 2022" style={inputStyle} aria-label="Start date" />
         </div>
         <div>
           <label style={labelStyle}>End Date</label>
-          <input
-            type="text"
-            value={value.endDate ?? ''}
-            onChange={set('endDate')}
-            placeholder="e.g. Mar 2024 or Present"
-            style={inputStyle}
-            aria-label="End date"
-          />
+          <input type="text" value={entry.endDate ?? ''} onChange={set('endDate')} placeholder="e.g. Mar 2024 or Present" style={inputStyle} aria-label="End date" />
         </div>
       </div>
       <div>
-        <label style={labelStyle}>Description / Bullets</label>
-        <textarea
-          value={value.description ?? ''}
-          onChange={set('description')}
-          rows={6}
-          style={{ ...inputStyle, resize: 'vertical' }}
-          aria-label="Job description and bullet points"
-        />
+        <label style={labelStyle}>What you delivered — one outcome per line</label>
+        <p style={{ margin: '0 0 10px', fontSize: 11, color: '#6b7280', lineHeight: 1.55 }}>
+          Start each bullet with an action verb. Add a number wherever you can — even an estimate.
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {bullets.map((bullet, i) => (
+            <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <span style={{ color: '#6366f1', fontWeight: 800, fontSize: 14, flexShrink: 0, marginTop: 1 }}>·</span>
+              <input
+                type="text"
+                value={bullet}
+                onChange={e => updateBullet(i, e.target.value)}
+                placeholder="e.g. Grew Instagram from 4k to 22k followers in 6 months"
+                style={{ ...inputStyle, flex: 1 }}
+                aria-label={`Bullet ${i + 1}`}
+              />
+              {bullets.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeBullet(i)}
+                  style={{ background: 'none', border: 'none', color: '#4b5563', cursor: 'pointer', fontSize: 16, padding: '0 4px', lineHeight: 1 }}
+                  aria-label="Remove bullet"
+                >×</button>
+              )}
+            </div>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={addBullet}
+          style={{ marginTop: 10, background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 700, color: '#a5b4fc', cursor: 'pointer' }}
+        >
+          + Add bullet
+        </button>
       </div>
+    </div>
+  );
+}
+
+function ExperienceForm({
+  entries,
+  onChange,
+}: {
+  entries: ExperienceEntry[];
+  onChange: (id: string, updated: ExperienceEntry) => void;
+}) {
+  if (entries.length === 0) {
+    return (
+      <div style={{ textAlign: 'center', padding: '16px 0' }}>
+        <p style={{ fontSize: 14, color: '#6b7280', lineHeight: 1.65, margin: '0 0 4px' }}>
+          We didn't find work experience in your resume.
+        </p>
+        <p style={{ fontSize: 13, color: '#4b5563', lineHeight: 1.6 }}>
+          You can add it in your Profile Bank and revisit the wizard to refine it.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {entries.map((entry, i) => (
+        <ExperienceEntryCard
+          key={entry.id}
+          entry={entry}
+          onChange={updated => onChange(entry.id, updated)}
+          showDivider={i < entries.length - 1}
+        />
+      ))}
     </div>
   );
 }
@@ -768,18 +805,18 @@ export function SetupWizard() {
       if (type === 'summary') {
         await api.patch('/profile', { professionalSummary: summaryText });
 
-      } else if (type === 'experience' && currentStep.experienceEntry) {
-        const id = currentStep.experienceEntry.id;
-        const edits = experienceEdits[id];
-        if (edits) {
-          await api.patch(`/experience/${id}`, {
-            company: edits.company,
-            role: edits.role,
-            startDate: edits.startDate,
-            endDate: edits.endDate,
-            description: edits.description,
-          });
-        }
+      } else if (type === 'experience') {
+        await Promise.all(
+          Object.entries(experienceEdits).map(([id, edits]) =>
+            api.patch(`/experience/${id}`, {
+              company: edits.company,
+              role: edits.role,
+              startDate: edits.startDate,
+              endDate: edits.endDate,
+              description: edits.description,
+            })
+          )
+        );
 
       } else if (type === 'achievements') {
         await Promise.all(
@@ -868,38 +905,9 @@ export function SetupWizard() {
     : `PROFILE SETUP · Step ${currentIndex + 1} of ${totalSteps - 1}`;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#080b12', paddingBottom: 80 }}>
+    <div style={{ height: '100vh', overflowY: 'auto', background: '#080b12', paddingBottom: 80 }}>
       {/* Reward overlay */}
       <RewardOverlay visible={rewardVisible} message={rewardMessage} />
-
-      {/* Top banner */}
-      <div style={{
-        background: 'rgba(99,102,241,0.08)',
-        borderBottom: '1px solid rgba(99,102,241,0.18)',
-        padding: '11px 24px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-      }}>
-        <p style={{ margin: 0, fontSize: 13, color: '#a5b4fc', fontWeight: 600 }}>
-          Already have a specific job to apply to?
-        </p>
-        <a
-          href="/application-workspace"
-          style={{
-            color: '#818cf8',
-            fontSize: 13,
-            fontWeight: 700,
-            textDecoration: 'none',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 4,
-          }}
-        >
-          Go to workspace <ExternalLink size={12} />
-        </a>
-      </div>
 
       {/* Progress bar */}
       <div style={{ height: 3, background: 'rgba(255,255,255,0.04)', width: '100%' }}>
@@ -966,9 +974,7 @@ export function SetupWizard() {
                   color: '#f3f4f6',
                   letterSpacing: '-0.02em',
                 }}>
-                  {currentStep?.type === 'experience'
-                    ? `${currentStep.experienceEntry?.company ?? 'Work Experience'}${(currentStep.experienceTotal ?? 0) > 1 ? ` (${(currentStep.experienceIndex ?? 0) + 1} of ${currentStep.experienceTotal})` : ''}`
-                    : currentStep?.label}
+                  {currentStep?.label}
                 </h1>
               </div>
             )}
@@ -990,23 +996,13 @@ export function SetupWizard() {
                 {currentStep?.type === 'summary' && (
                   <SummaryForm value={summaryText} onChange={setSummaryText} />
                 )}
-                {currentStep?.type === 'experience' && currentStep.experienceEntry && (
+                {currentStep?.type === 'experience' && (
                   <ExperienceForm
-                    value={experienceEdits[currentStep.experienceEntry.id] ?? currentStep.experienceEntry}
-                    onChange={(updated) =>
-                      setExperienceEdits((prev) => ({ ...prev, [currentStep.experienceEntry!.id]: updated }))
+                    entries={Object.values(experienceEdits)}
+                    onChange={(id, updated) =>
+                      setExperienceEdits(prev => ({ ...prev, [id]: updated }))
                     }
                   />
-                )}
-                {currentStep?.type === 'experience' && !currentStep.experienceEntry && (
-                  <div style={{ textAlign: 'center', padding: '16px 0' }}>
-                    <p style={{ fontSize: 14, color: '#6b7280', lineHeight: 1.65, margin: '0 0 4px' }}>
-                      We didn't find work experience in your resume.
-                    </p>
-                    <p style={{ fontSize: 13, color: '#4b5563', lineHeight: 1.6 }}>
-                      You can add it here, or skip ahead and update it later in your Profile Bank.
-                    </p>
-                  </div>
                 )}
                 {currentStep?.type === 'achievements' && (
                   <AchievementsForm
@@ -1144,8 +1140,11 @@ function CompleteScreen({ onComplete }: { onComplete: () => void }) {
       >
         Find my first job to apply to <ArrowRight size={16} />
       </button>
-      <p style={{ margin: 0, fontSize: 12, color: '#4b5563' }}>
+      <p style={{ margin: '0 0 16px', fontSize: 12, color: '#4b5563' }}>
         Takes you to the workspace — paste any job description and we'll handle the rest.
+      </p>
+      <p style={{ margin: 0, fontSize: 12, color: '#374151' }}>
+        You can revisit this wizard anytime from the Profile & Achievements section.
       </p>
     </div>
   );
