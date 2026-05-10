@@ -1529,12 +1529,14 @@ export const ProfileBank: React.FC = () => {
         const { data: doc } = await api.get(`/documents/${data.documentId}`);
         const { exportDocx } = await import('../lib/exportDocx');
         await exportDocx(doc.content, 'resume', '');
+        setBaselineDownloaded(true);
+      } else {
+        toast.error('Resume not ready yet — check back in a moment.');
       }
     } catch {
-      // silent
+      toast.error('Download failed — please try again.');
     } finally {
       setBaselineDownloading(false);
-      setBaselineDownloaded(true);
     }
   };
 

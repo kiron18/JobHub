@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, CheckCircle, ArrowRight, ExternalLink, Briefcase, FileText, Award, GraduationCap, Zap } from 'lucide-react';
+import { ChevronRight, CheckCircle, ArrowRight, ExternalLink, Briefcase, FileText, Award, GraduationCap, Zap, Heart } from 'lucide-react';
 import api from '../lib/api';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -13,6 +13,8 @@ interface ProfileData {
   experience?: ExperienceEntry[];
   achievements?: AchievementEntry[];
   education?: EducationEntry[];
+  certifications?: CertEntry[];
+  volunteering?: VolEntry[];
 }
 
 interface ExperienceEntry {
@@ -38,7 +40,21 @@ interface EducationEntry {
   year?: string;
 }
 
-type StepType = 'summary' | 'experience' | 'achievements' | 'education' | 'skills' | 'complete';
+interface CertEntry {
+  id: string;
+  name?: string;
+  issuingBody?: string;
+  year?: string;
+}
+
+interface VolEntry {
+  id: string;
+  organization?: string;
+  role?: string;
+  description?: string;
+}
+
+type StepType = 'summary' | 'experience' | 'achievements' | 'education' | 'certifications' | 'volunteering' | 'skills' | 'complete';
 
 interface WizardStep {
   type: StepType;
@@ -67,25 +83,25 @@ function buildSteps(profile: ProfileData): WizardStep[] {
   steps.push({ type: 'summary', label: 'Summary', optional: false });
 
   const experiences = profile.experience ?? [];
-  experiences.forEach((exp, i) => {
-    steps.push({
-      type: 'experience',
-      label: exp.company ?? `Job ${i + 1}`,
-      optional: false,
-      experienceEntry: exp,
-      experienceIndex: i,
-      experienceTotal: experiences.length,
+  if (experiences.length > 0) {
+    experiences.forEach((exp, i) => {
+      steps.push({
+        type: 'experience',
+        label: exp.company ?? `Job ${i + 1}`,
+        optional: false,
+        experienceEntry: exp,
+        experienceIndex: i,
+        experienceTotal: experiences.length,
+      });
     });
-  });
-
-  if ((profile.achievements ?? []).length > 0) {
-    steps.push({ type: 'achievements', label: 'Achievements', optional: true });
+  } else {
+    steps.push({ type: 'experience', label: 'Work Experience', optional: true });
   }
 
-  if ((profile.education ?? []).length > 0) {
-    steps.push({ type: 'education', label: 'Education', optional: true });
-  }
-
+  steps.push({ type: 'achievements', label: 'Achievements', optional: true });
+  steps.push({ type: 'education', label: 'Education', optional: true });
+  steps.push({ type: 'certifications', label: 'Certifications', optional: true });
+  steps.push({ type: 'volunteering', label: 'Volunteering', optional: true });
   steps.push({ type: 'skills', label: 'Skills', optional: false });
   steps.push({ type: 'complete', label: 'Complete', optional: false });
 
@@ -129,6 +145,14 @@ const COACHING: Record<string, { headline: string; body: string; tipsLabel?: str
     headline: 'Spelling errors here are automatic red flags.',
     body: "ATS systems filter on exact institution and degree names. A typo in 'University of Melbourne' or 'Bachelor of Commerce' can invisibly exclude your application. Confirm these are exact.",
   },
+  certifications: {
+    headline: 'Certifications signal initiative.',
+    body: "A relevant certification — whether it's a Google Analytics badge or a PMP — tells a recruiter you invested in your own skills. If you have any, add them. If not, skip ahead.",
+  },
+  volunteering: {
+    headline: "Volunteering reveals character.",
+    body: "Hiring managers use this section to understand who you are outside of work. It also demonstrates skills you may not have had the chance to use professionally yet. If you have nothing to add, that's completely fine — skip ahead.",
+  },
   skills: {
     headline: 'Generic skills are invisible.',
     body: "'Communication' means nothing to a recruiter who reads it 300 times a day. 'Stakeholder reporting to C-suite across 5 departments' is evidence. Be specific. Include tools, software, platforms, and methodologies you actually use.",
@@ -146,6 +170,8 @@ const REWARD_MESSAGES: Record<StepType, string> = {
   experience: 'Good. That role tells a story now.',
   achievements: 'These will make a difference. Metrics are what make screening software and humans stop.',
   education: 'Confirmed. Clean and accurate.',
+  certifications: 'Good. Any credential on your profile reinforces your credibility.',
+  volunteering: 'Done. Character on the page.',
   skills: 'Done. Your profile is ready.',
   complete: '',
 };
@@ -382,6 +408,14 @@ function EducationForm({
     onChange(education.map((ed) => (ed.id === id ? { ...ed, [field]: e.target.value } : ed)));
   };
 
+  if (education.length === 0) {
+    return (
+      <p style={{ color: '#6b7280', fontSize: 14, margin: 0 }}>
+        No education records found. You can skip this step or add entries in your Profile Bank later.
+      </p>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
       {education.map((ed, i) => (
@@ -427,6 +461,132 @@ function EducationForm({
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+function CertificationsForm({
+  value,
+  onChange,
+}: {
+  value: CertEntry[];
+  onChange: (v: CertEntry[]) => void;
+}) {
+  const updateField = (id: string, field: keyof CertEntry) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    onChange(value.map(c => c.id === id ? { ...c, [field]: e.target.value } : c));
+  };
+
+  const addNew = () => {
+    onChange([...value, { id: `new-${Date.now()}`, name: '', issuingBody: '', year: '' }]);
+  };
+
+  if (value.length === 0) {
+    return (
+      <div style={{ textAlign: 'center', padding: '24px 0' }}>
+        <p style={{ fontSize: 14, color: '#6b7280', margin: '0 0 16px', lineHeight: 1.65 }}>
+          No certifications on file. If you have any, add them below — or skip ahead if not.
+        </p>
+        <button
+          type="button"
+          onClick={addNew}
+          style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)', borderRadius: 8, padding: '9px 18px', fontSize: 13, fontWeight: 700, color: '#a5b4fc', cursor: 'pointer' }}
+        >
+          + Add a certification
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {value.map((cert, i) => (
+        <div key={cert.id} style={{ marginBottom: i < value.length - 1 ? 20 : 0, paddingBottom: i < value.length - 1 ? 20 : 0, borderBottom: i < value.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 10 }}>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={labelStyle}>Certification name</label>
+              <input type="text" value={cert.name ?? ''} onChange={updateField(cert.id, 'name')} placeholder="e.g. Google Analytics Certified" style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Issuing body</label>
+              <input type="text" value={cert.issuingBody ?? ''} onChange={updateField(cert.id, 'issuingBody')} placeholder="e.g. Google" style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Year</label>
+              <input type="text" value={cert.year ?? ''} onChange={updateField(cert.id, 'year')} placeholder="e.g. 2023" style={inputStyle} />
+            </div>
+          </div>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={addNew}
+        style={{ marginTop: 12, background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 8, padding: '8px 16px', fontSize: 12, fontWeight: 700, color: '#a5b4fc', cursor: 'pointer' }}
+      >
+        + Add another
+      </button>
+    </div>
+  );
+}
+
+function VolunteeringForm({
+  value,
+  onChange,
+}: {
+  value: VolEntry[];
+  onChange: (v: VolEntry[]) => void;
+}) {
+  const updateField = (id: string, field: keyof VolEntry) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    onChange(value.map(v => v.id === id ? { ...v, [field]: e.target.value } : v));
+  };
+
+  const addNew = () => {
+    onChange([...value, { id: `new-${Date.now()}`, organization: '', role: '', description: '' }]);
+  };
+
+  if (value.length === 0) {
+    return (
+      <div style={{ textAlign: 'center', padding: '24px 0' }}>
+        <p style={{ fontSize: 14, color: '#6b7280', margin: '0 0 16px', lineHeight: 1.65 }}>
+          No volunteering on file. If you have any, add it below — or skip ahead if not.
+        </p>
+        <button
+          type="button"
+          onClick={addNew}
+          style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)', borderRadius: 8, padding: '9px 18px', fontSize: 13, fontWeight: 700, color: '#a5b4fc', cursor: 'pointer' }}
+        >
+          + Add volunteering
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {value.map((vol, i) => (
+        <div key={vol.id} style={{ marginBottom: i < value.length - 1 ? 20 : 0, paddingBottom: i < value.length - 1 ? 20 : 0, borderBottom: i < value.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 10 }}>
+            <div>
+              <label style={labelStyle}>Organisation</label>
+              <input type="text" value={vol.organization ?? ''} onChange={updateField(vol.id, 'organization')} placeholder="e.g. Red Cross" style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Role</label>
+              <input type="text" value={vol.role ?? ''} onChange={updateField(vol.id, 'role')} placeholder="e.g. Fundraising coordinator" style={inputStyle} />
+            </div>
+          </div>
+          <div>
+            <label style={labelStyle}>What you did (optional)</label>
+            <textarea value={vol.description ?? ''} onChange={updateField(vol.id, 'description')} rows={3} placeholder="e.g. Organised monthly fundraising events, managed a team of 8 volunteers" style={{ ...inputStyle, resize: 'vertical' }} />
+          </div>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={addNew}
+        style={{ marginTop: 12, background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 8, padding: '8px 16px', fontSize: 12, fontWeight: 700, color: '#a5b4fc', cursor: 'pointer' }}
+      >
+        + Add another
+      </button>
     </div>
   );
 }
@@ -518,6 +678,8 @@ const STEP_ICONS: Record<StepType, React.ReactNode> = {
   experience: <Briefcase size={14} />,
   achievements: <Award size={14} />,
   education: <GraduationCap size={14} />,
+  certifications: <Award size={14} />,
+  volunteering: <Heart size={14} />,
   skills: <Zap size={14} />,
   complete: <CheckCircle size={14} />,
 };
@@ -540,6 +702,8 @@ export function SetupWizard() {
   const [experienceEdits, setExperienceEdits] = useState<Record<string, ExperienceEntry>>({});
   const [achievementEdits, setAchievementEdits] = useState<AchievementEntry[]>([]);
   const [educationEdits, setEducationEdits] = useState<EducationEntry[]>([]);
+  const [certEdits, setCertEdits] = useState<CertEntry[]>([]);
+  const [volEdits, setVolEdits] = useState<VolEntry[]>([]);
   const [skillsText, setSkillsText] = useState('');
 
   const isReturning = localStorage.getItem('jobhub_setup_complete') === '1';
@@ -563,6 +727,8 @@ export function SetupWizard() {
 
         setAchievementEdits((data.achievements ?? []).map((a: AchievementEntry) => ({ ...a })));
         setEducationEdits((data.education ?? []).map((e: EducationEntry) => ({ ...e })));
+        setCertEdits((data.certifications ?? []).map((c: CertEntry) => ({ ...c })));
+        setVolEdits((data.volunteering ?? []).map((v: VolEntry) => ({ ...v })));
       })
       .catch(() => navigate('/'));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -633,6 +799,26 @@ export function SetupWizard() {
           )
         );
 
+      } else if (type === 'certifications') {
+        await Promise.all(
+          certEdits
+            .filter(c => c.name?.trim())
+            .map(c => c.id.startsWith('new-')
+              ? api.post('/certifications', { name: c.name, issuingBody: c.issuingBody || 'Self', year: c.year })
+              : api.patch(`/certifications/${c.id}`, { name: c.name, issuingBody: c.issuingBody, year: c.year })
+            )
+        );
+
+      } else if (type === 'volunteering') {
+        await Promise.all(
+          volEdits
+            .filter(v => v.organization?.trim() && v.role?.trim())
+            .map(v => v.id.startsWith('new-')
+              ? api.post('/volunteering', { organization: v.organization, role: v.role, description: v.description })
+              : api.patch(`/volunteering/${v.id}`, { organization: v.organization, role: v.role, description: v.description })
+            )
+        );
+
       } else if (type === 'skills') {
         await api.patch('/profile', { skills: skillsText });
       }
@@ -644,7 +830,7 @@ export function SetupWizard() {
     } finally {
       setSaving(false);
     }
-  }, [currentStep, saving, summaryText, experienceEdits, achievementEdits, educationEdits, skillsText, showReward, advance]);
+  }, [currentStep, saving, summaryText, experienceEdits, achievementEdits, educationEdits, certEdits, volEdits, skillsText, showReward, advance]);
 
   const handleSkip = useCallback(() => {
     advance();
@@ -812,6 +998,16 @@ export function SetupWizard() {
                     }
                   />
                 )}
+                {currentStep?.type === 'experience' && !currentStep.experienceEntry && (
+                  <div style={{ textAlign: 'center', padding: '16px 0' }}>
+                    <p style={{ fontSize: 14, color: '#6b7280', lineHeight: 1.65, margin: '0 0 4px' }}>
+                      We didn't find work experience in your resume.
+                    </p>
+                    <p style={{ fontSize: 13, color: '#4b5563', lineHeight: 1.6 }}>
+                      You can add it here, or skip ahead and update it later in your Profile Bank.
+                    </p>
+                  </div>
+                )}
                 {currentStep?.type === 'achievements' && (
                   <AchievementsForm
                     achievements={achievementEdits}
@@ -823,6 +1019,12 @@ export function SetupWizard() {
                     education={educationEdits}
                     onChange={setEducationEdits}
                   />
+                )}
+                {currentStep?.type === 'certifications' && (
+                  <CertificationsForm value={certEdits} onChange={setCertEdits} />
+                )}
+                {currentStep?.type === 'volunteering' && (
+                  <VolunteeringForm value={volEdits} onChange={setVolEdits} />
                 )}
                 {currentStep?.type === 'skills' && (
                   <SkillsForm value={skillsText} onChange={setSkillsText} />
