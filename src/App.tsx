@@ -8,6 +8,7 @@ import { motion } from 'framer-motion';
 import { DashboardLayout } from './layouts/DashboardLayout';
 import { OnboardingGate } from './components/OnboardingGate';
 import { FirstVisitTip } from './components/FirstVisitTips';
+import { ProfileGate } from './components/ProfileGate';
 
 const MatchEngine          = React.lazy(() => import('./components/MatchEngine').then(m => ({ default: m.MatchEngine })));
 const ApplicationWorkspace = React.lazy(() => import('./components/ApplicationWorkspace').then(m => ({ default: m.ApplicationWorkspace })));
@@ -543,14 +544,14 @@ function ReportOrDashboard() {
             <DashboardLayout>
               <React.Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" /></div>}>
                 <Routes>
-                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/" element={<ProfileGate><Dashboard /></ProfileGate>} />
                   <Route path="/tracker" element={<ApplicationTracker />} />
-                  <Route path="/application-workspace" element={<ApplicationWorkspace />} />
+                  <Route path="/application-workspace" element={<ProfileGate><ApplicationWorkspace /></ProfileGate>} />
                   <Route path="/workspace" element={<Workspace />} />
                   <Route path="/documents" element={<DocumentLibrary />} />
                   <Route path="/email-templates" element={<EmailTemplatesLibrary />} />
                   <Route path="/linkedin" element={<LinkedInPage />} />
-                  <Route path="/jobs" element={<JobFeedPage />} />
+                  <Route path="/jobs" element={<ProfileGate><JobFeedPage /></ProfileGate>} />
                   <Route path="/admin" element={<AdminDashboard />} />
                   <Route path="/admin/friday-brief" element={<FridayBriefPage />} />
                   <Route path="*" element={<Dashboard />} />

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   Pencil, Check, X, AlertTriangle, CheckCircle2,
-  ChevronRight, User, Briefcase, GraduationCap,
+  User, Briefcase, GraduationCap,
   Award, Heart, Wrench, Star, FileText, UploadCloud, RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -1298,7 +1298,7 @@ interface CompletionSidebarProps {
 const CompletionSidebar: React.FC<CompletionSidebarProps> = ({ completion, isDark, targetRole, plan, planStatus }) => {
   const navigate = useNavigate();
   const [showManage, setShowManage] = useState(false);
-  const { score, isReady, missingFields } = completion;
+  const { score, missingFields } = completion;
 
   const hasActiveSubscription = !!plan && plan !== 'free' && !!planStatus && !['cancelled', 'expired', 'free'].includes(planStatus);
 
@@ -1322,12 +1322,12 @@ const CompletionSidebar: React.FC<CompletionSidebarProps> = ({ completion, isDar
       flexDirection: 'column',
       gap: 20,
     }}>
-      {/* Score ring */}
+      {/* Score ring — pulses when score < 50 to signal open loop */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
         <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width={radius * 2} height={radius * 2} style={{ transform: 'rotate(-90deg)' }}>
             <circle stroke={isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)'} fill="transparent" strokeWidth={stroke} r={nr} cx={radius} cy={radius} />
-            <circle
+            <motion.circle
               stroke={scoreColor}
               fill="transparent"
               strokeWidth={stroke}
@@ -1335,29 +1335,28 @@ const CompletionSidebar: React.FC<CompletionSidebarProps> = ({ completion, isDar
               style={{ strokeDashoffset: offset, transition: 'stroke-dashoffset 1s cubic-bezier(0.25,1,0.5,1)' }}
               strokeLinecap="round"
               r={nr} cx={radius} cy={radius}
+              animate={score < 50 ? { opacity: [1, 0.3, 1] } : { opacity: 1 }}
+              transition={score < 50 ? { duration: 2.4, repeat: Infinity, ease: 'easeInOut' } : {}}
             />
           </svg>
           <span style={{ position: 'absolute', fontSize: 20, fontWeight: 800, color: scoreColor, fontVariantNumeric: 'tabular-nums' }}>
             {score}
           </span>
         </div>
-        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: isDark ? '#6b7280' : '#9ca3af', textAlign: 'center' }}>
-          Profile Strength
-        </p>
-      </div>
-
-      {/* Status */}
-      <div style={{
-        padding: '10px 14px', borderRadius: 10,
-        background: isReady ? 'rgba(22,163,74,0.08)' : 'rgba(217,119,6,0.08)',
-        border: `1px solid ${isReady ? 'rgba(22,163,74,0.2)' : 'rgba(217,119,6,0.2)'}`,
-      }}>
-        <p style={{ fontSize: 12, fontWeight: 700, color: isReady ? '#16a34a' : '#d97706', marginBottom: 3 }}>
-          {isReady ? 'Ready for applications' : 'Needs more detail'}
-        </p>
-        <p style={{ fontSize: 11, color: isDark ? '#9ca3af' : '#6b7280', lineHeight: 1.5 }}>
-          {isReady ? 'Your profile is strong enough to generate high-quality documents.' : 'Reach 70 to unlock document generation.'}
-        </p>
+        {/* Identity label at 90%+ */}
+        {score >= 90 ? (
+          <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#7c3aed', textAlign: 'center' }}>
+            Exceptional Profile
+          </p>
+        ) : score >= 70 ? (
+          <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#6366f1', textAlign: 'center' }}>
+            Prepared Candidate
+          </p>
+        ) : (
+          <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: isDark ? '#6b7280' : '#9ca3af', textAlign: 'center' }}>
+            Profile Strength
+          </p>
+        )}
       </div>
 
       {/* Missing fields */}
@@ -1382,33 +1381,32 @@ const CompletionSidebar: React.FC<CompletionSidebarProps> = ({ completion, isDar
         <ProfileAdvisorPanel targetRole={targetRole} />
       </div>
 
-      {/* CTA */}
-      <div style={{ position: 'relative' }}>
-        <button
-          onClick={() => isReady && navigate('/')}
-          disabled={!isReady}
-          aria-label={isReady ? 'Go to Dashboard' : `Profile score ${score}/100 — reach 70 to unlock`}
-          style={{
-            width: '100%',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            padding: '12px 16px',
-            borderRadius: 10, border: 'none',
-            background: isReady ? '#6366f1' : (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'),
-            color: isReady ? '#fff' : (isDark ? '#4b5563' : '#9ca3af'),
-            fontSize: 13, fontWeight: 700,
-            cursor: isReady ? 'pointer' : 'not-allowed',
-            transition: 'all 0.15s ease',
-          }}
-        >
-          Go to Dashboard
-          <ChevronRight size={14} />
-        </button>
-        {!isReady && (
-          <p style={{ fontSize: 11, color: isDark ? '#4b5563' : '#9ca3af', textAlign: 'center', marginTop: 6 }}>
-            Score {score}/100 — need 70 to proceed
-          </p>
-        )}
-      </div>
+      {/* Dynamic CTA — copy and colour shift with score tier */}
+      {(() => {
+        const tier = score >= 90 ? 'exceptional' : score >= 70 ? 'ready' : score >= 50 ? 'close' : 'building';
+        const pointsAway = Math.max(0, 70 - score);
+        const cfg = {
+          exceptional: { label: 'Your profile is exceptional. Go get hired.', bg: '#7c3aed', color: '#fff', active: true },
+          ready:       { label: "You're ready. Find your next role.", bg: '#6366f1', color: '#fff', active: true },
+          close:       { label: `${pointsAway} point${pointsAway !== 1 ? 's' : ''} to unlock the job board. Keep going.`, bg: isDark ? 'rgba(217,119,6,0.12)' : 'rgba(217,119,6,0.1)', color: '#d97706', active: false },
+          building:    { label: "Complete your profile to unlock the platform.", bg: isDark ? 'rgba(220,38,38,0.1)' : 'rgba(220,38,38,0.07)', color: '#dc2626', active: false },
+        }[tier];
+        return (
+          <button
+            onClick={() => cfg.active && navigate('/')}
+            style={{
+              width: '100%', padding: '12px 16px', borderRadius: 10, border: 'none',
+              background: cfg.bg, color: cfg.color,
+              fontSize: 13, fontWeight: 700,
+              cursor: cfg.active ? 'pointer' : 'default',
+              lineHeight: 1.4, textAlign: 'center',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            {cfg.label}
+          </button>
+        );
+      })()}
 
       {/* Subscription management */}
       {hasActiveSubscription && (

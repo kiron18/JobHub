@@ -40,22 +40,40 @@ router.get('/profile', authenticate, async (req, res) => {
         const isAdmin = EXEMPT_EMAILS.includes(authEmail);
 
         // Compute profile completion score
-        let score = 0;
+        // Weights are calibrated so 70 requires: diagnostic + basic fields + 3 achievements.
+        // Metrics quality (10 pts) and optional fields push toward 90+.
+        let rawScore = 0;
         const missingFields: string[] = [];
-        if (profile.name) score += 15; else missingFields.push('name');
-        if (profile.email) score += 10; else missingFields.push('email');
-        if (profile.location) score += 10; else missingFields.push('location');
-        if (profile.professionalSummary) score += 15; else missingFields.push('summary');
-        if (profile.experience?.length > 0) score += 20; else missingFields.push('experience');
-        if (profile.education?.length > 0) score += 10; else missingFields.push('education');
-        if (profile.achievements?.length >= 3) score += 15; else missingFields.push('3+ achievements');
-        if (profile.skills) score += 5; else missingFields.push('skills');
+
+        if (profile.name) rawScore += 5; else missingFields.push('name');
+        if (profile.email || (profile as any).phone) rawScore += 5; else missingFields.push('contact details');
+        if (profile.location) rawScore += 5; else missingFields.push('location');
+        if (profile.professionalSummary) rawScore += 10; else missingFields.push('professional summary');
+        if (profile.experience?.length > 0) rawScore += 15; else missingFields.push('work experience');
+        if (profile.education?.length > 0) rawScore += 5; else missingFields.push('education');
+        if (profile.skills) rawScore += 3; else missingFields.push('skills');
+        if ((profile as any).targetRole) rawScore += 2; else missingFields.push('target role');
+
+        const achCount = profile.achievements?.length ?? 0;
+        if (achCount >= 3) rawScore += 20; else missingFields.push('3+ achievements');
+
+        // Achievement quality: bonus when >50% of achievements have a metric
+        if (achCount > 0) {
+            const withMetric = profile.achievements.filter((a: any) => a.metric?.trim()).length;
+            if (withMetric / achCount >= 0.5) rawScore += 10;
+            else if (achCount >= 3) missingFields.push('add metrics to more achievements');
+        }
+
+        // Endowed progress: completing the diagnostic is worth 20 displayed points
+        const endowedBonus = profile.hasCompletedOnboarding ? 20 : 0;
+        const score = Math.min(100, rawScore + endowedBonus);
 
         res.json({
             ...profile,
             isAdmin,
             completion: {
                 score,
+                rawScore,
                 isReady: score >= 70,
                 missingFields
             }
