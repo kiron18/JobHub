@@ -212,6 +212,7 @@ export const ApplicationWorkspace: React.FC = () => {
     const [violationsBannerDismissed, setViolationsBannerDismissed] = useState(false);
     const [violationsExpanded, setViolationsExpanded] = useState(false);
     const [coachingExpanded, setCoachingExpanded] = useState(false);
+    const [scBannerDismissed, setScBannerDismissed] = useState(false);
     const [regenerateFeedback, setRegenerateFeedback] = useState('');
     const [rateLimitError, setRateLimitError] = useState(false);
     const [exportingPdf, setExportingPdf] = useState(false);
@@ -255,6 +256,11 @@ export const ApplicationWorkspace: React.FC = () => {
     });
     const [generatingAcademic, setGeneratingAcademic] = useState<'teaching-philosophy' | 'research-statement' | null>(null);
     const [academicViewerType, setAcademicViewerType] = useState<'teaching-philosophy' | 'research-statement' | null>(null);
+
+    const handleNewApplication = () => {
+        ['jobhub_current_jd', 'jobhub_current_analysis', 'jobhub_current_docs', 'jobhub_current_docids', 'jobhub_current_tab'].forEach(k => localStorage.removeItem(k));
+        navigate('/');
+    };
 
     // Cover letter tone preference
     const [coverLetterTone, setCoverLetterTone] = useState<'professional' | 'warm' | 'concise'>('professional');
@@ -1196,6 +1202,30 @@ export const ApplicationWorkspace: React.FC = () => {
                                 )}
                             </div>
                         )}
+                        {/* Selection criteria alert — shown whenever analysis flags SC required */}
+                        {!scBannerDismissed && (state.requiresSelectionCriteria || ['selection criteria', 'key selection criteria', 'duty statement', 'address the criteria'].some(kw => state.jobDescription?.toLowerCase().includes(kw))) && !!state.dimensions && !state.isGenerating && (
+                            <div className="w-full max-w-3xl mb-3 rounded-xl border border-purple-500/30 bg-purple-500/8 overflow-hidden">
+                                <div className="flex items-start gap-3 px-4 py-3">
+                                    <span className="text-purple-400 shrink-0 mt-0.5 text-base font-black">!</span>
+                                    <div className="flex-1">
+                                        <p className="text-[11px] font-black text-purple-300 uppercase tracking-wider mb-1">Selection Criteria Required</p>
+                                        <p className="text-xs text-purple-200/70 leading-relaxed mb-2">
+                                            This role requires a separate Selection Criteria response — most applicants don't know to submit one, and most get screened out for skipping it. Find the <strong className="text-purple-200/90">"Position Description"</strong> or <strong className="text-purple-200/90">"Job Information Pack"</strong> download on the job listing. The criteria questions are inside.
+                                        </p>
+                                        <button
+                                            onClick={() => setState(s => ({ ...s, activeTab: 'selection-criteria' }))}
+                                            className="text-[11px] font-bold text-purple-300 hover:text-purple-100 transition-colors"
+                                        >
+                                            Write my SC responses →
+                                        </button>
+                                    </div>
+                                    <button onClick={() => setScBannerDismissed(true)} className="text-purple-500/40 hover:text-purple-400 transition-colors ml-1 shrink-0" aria-label="Dismiss">
+                                        <span className="text-sm">×</span>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
                         <AnimatePresence>
                             {!violationsBannerDismissed && (state.profileViolations?.length ?? 0) > 0 && !state.isGenerating && (
                                 <motion.div
@@ -1472,6 +1502,33 @@ export const ApplicationWorkspace: React.FC = () => {
                             </div>
                         </div>
                         )}
+                        {/* Cover letter prompt — shown after resume is generated, before cover letter is */}
+                        {state.activeTab === 'resume' && !state.isGenerating && !!state.documents['resume'] && !state.documents['cover-letter'] && (
+                            <div className="w-full max-w-3xl mt-3 rounded-xl border border-indigo-500/20 bg-indigo-500/6 px-4 py-3 flex items-center justify-between gap-4">
+                                <p className="text-xs text-indigo-300/80 leading-relaxed">
+                                    Resume ready. <span className="font-semibold text-indigo-200">Applications with both a resume and cover letter get read first.</span>
+                                </p>
+                                <button
+                                    onClick={() => setState(s => ({ ...s, activeTab: 'cover-letter' }))}
+                                    className="shrink-0 text-[11px] font-bold text-indigo-300 border border-indigo-500/30 rounded-lg px-3 py-1.5 hover:bg-indigo-500/10 transition-colors whitespace-nowrap"
+                                >
+                                    Generate cover letter →
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Next application nudge */}
+                        {!state.isGenerating && !!state.documents[state.activeTab] && (
+                            <div className="w-full max-w-3xl mt-3 flex justify-center">
+                                <button
+                                    onClick={handleNewApplication}
+                                    className="text-[11px] font-semibold text-slate-500 hover:text-slate-300 transition-colors py-2 px-4"
+                                >
+                                    Done with this one? Apply to another role →
+                                </button>
+                            </div>
+                        )}
+
                         {applyContext && !state.isGenerating && state.documents[state.activeTab] && (
                             <div className="w-full max-w-3xl mt-4 rounded-xl border border-teal-500/20 bg-teal-500/5 p-5">
                                 <div className="flex items-center gap-2 mb-4">

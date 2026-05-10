@@ -160,6 +160,16 @@ const REWARD_MESSAGES: Record<StepType, string> = {
   complete: '',
 };
 
+const COMPETITIVE_PROGRESS: Partial<Record<StepType, { strength: string; label: string }>> = {
+  summary:        { strength: '5/10', label: "Summary done. You're ahead of applicants who skip this." },
+  experience:     { strength: '6/10', label: "You're now ahead of 50% of applicants." },
+  achievements:   { strength: '8/10', label: "This step alone moves you from bottom 50% to top 25%." },
+  education:      { strength: '8/10', label: "Most applicants stop here. You're going further." },
+  certifications: { strength: '8.5/10', label: "Any credential adds credibility — and most don't have one." },
+  volunteering:   { strength: '9/10', label: "Hiring managers notice this section. Most candidates leave it blank." },
+  skills:         { strength: '9.5/10', label: "Your application now outperforms 85% of other candidates." },
+};
+
 // ─── Sub-components ─────────────────────────────────────────────────────────
 
 function CoachingPanel({ type }: { type: StepType }) {
@@ -279,7 +289,7 @@ function ExperienceEntryCard({
   };
 
   return (
-    <div style={{ paddingBottom: showDivider ? 24 : 0, marginBottom: showDivider ? 24 : 0, borderBottom: showDivider ? '1px solid rgba(255,255,255,0.07)' : 'none' }}>
+    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '20px', marginBottom: showDivider ? 16 : 0 }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
         <div>
           <label style={labelStyle}>Company</label>
@@ -307,21 +317,21 @@ function ExperienceEntryCard({
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {bullets.map((bullet, i) => (
-            <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <span style={{ color: '#6366f1', fontWeight: 800, fontSize: 14, flexShrink: 0, marginTop: 1 }}>·</span>
-              <input
-                type="text"
+            <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+              <span style={{ color: '#6366f1', fontWeight: 800, fontSize: 14, flexShrink: 0, marginTop: 12 }}>·</span>
+              <textarea
                 value={bullet}
                 onChange={e => updateBullet(i, e.target.value)}
                 placeholder="e.g. Grew Instagram from 4k to 22k followers in 6 months"
-                style={{ ...inputStyle, flex: 1 }}
+                rows={2}
+                style={{ ...inputStyle, flex: 1, resize: 'none', lineHeight: 1.5 }}
                 aria-label={`Bullet ${i + 1}`}
               />
               {bullets.length > 1 && (
                 <button
                   type="button"
                   onClick={() => removeBullet(i)}
-                  style={{ background: 'none', border: 'none', color: '#4b5563', cursor: 'pointer', fontSize: 16, padding: '0 4px', lineHeight: 1 }}
+                  style={{ background: 'none', border: 'none', color: '#4b5563', cursor: 'pointer', fontSize: 16, padding: '4px', lineHeight: 1, marginTop: 8 }}
                   aria-label="Remove bullet"
                 >×</button>
               )}
@@ -876,7 +886,7 @@ export function SetupWizard() {
   const handleComplete = useCallback(() => {
     localStorage.setItem('jobhub_setup_complete', '1');
     queryClient.invalidateQueries({ queryKey: ['profile'] });
-    navigate('/application-workspace?firstTime=true');
+    navigate('/');
   }, [queryClient, navigate]);
 
   if (!profile || steps.length === 0) {
@@ -923,18 +933,30 @@ export function SetupWizard() {
 
       {/* Content */}
       <div style={{ maxWidth: 620, margin: '0 auto', padding: '40px 24px 0' }}>
-        {/* Step counter */}
+        {/* Step counter + competitive indicator */}
         {stepCountLabel && (
-          <p style={{
-            margin: '0 0 24px',
-            fontSize: 11,
-            fontWeight: 800,
-            letterSpacing: '0.12em',
-            color: '#4b5563',
-            textTransform: 'uppercase',
-          }}>
-            {isReturning ? 'REVIEWING YOUR PROFILE' : stepCountLabel}
-          </p>
+          <div style={{ marginBottom: 24 }}>
+            <p style={{
+              margin: '0 0 6px',
+              fontSize: 11,
+              fontWeight: 800,
+              letterSpacing: '0.12em',
+              color: '#4b5563',
+              textTransform: 'uppercase',
+            }}>
+              {isReturning ? 'REVIEWING YOUR PROFILE' : stepCountLabel}
+            </p>
+            {currentIndex > 0 && (() => {
+              const prevStep = steps[currentIndex - 1];
+              const prog = prevStep ? COMPETITIVE_PROGRESS[prevStep.type] : null;
+              if (!prog) return null;
+              return (
+                <p style={{ margin: 0, fontSize: 12, color: '#6366f1', fontWeight: 700 }}>
+                  Application strength: {prog.strength} · {prog.label}
+                </p>
+              );
+            })()}
+          </div>
         )}
 
         {/* Animated step content */}
@@ -1101,27 +1123,36 @@ function CompleteScreen({ onComplete }: { onComplete: () => void }) {
         <CheckCircle size={36} color="#6366f1" />
       </div>
       <h1 style={{
-        margin: '0 0 12px',
+        margin: '0 0 10px',
         fontSize: 26,
         fontWeight: 800,
         color: '#f3f4f6',
         letterSpacing: '-0.02em',
       }}>
-        Your profile is ready.
+        Your profile is ready. Time to put it to work.
       </h1>
       <p style={{
+        margin: '0 0 8px',
+        fontSize: 13,
+        fontWeight: 700,
+        color: '#6366f1',
+        letterSpacing: '-0.01em',
+      }}>
+        Application strength: 9.5/10 · Your application now outperforms 85% of other candidates.
+      </p>
+      <p style={{
         margin: '0 0 36px',
-        fontSize: 15,
+        fontSize: 14,
         color: '#9ca3af',
         lineHeight: 1.65,
         maxWidth: 400,
         marginInline: 'auto',
       }}>
-        Now paste a job description and we'll generate your tailored resume and cover letter in 60 seconds.
+        Paste a job description and we'll generate your tailored resume and cover letter in under 3 minutes.
       </p>
       <button
         onClick={onComplete}
-        aria-label="Find your first job to apply to"
+        aria-label="Start generating applications"
         style={{
           display: 'inline-flex',
           alignItems: 'center',
@@ -1138,10 +1169,10 @@ function CompleteScreen({ onComplete }: { onComplete: () => void }) {
           marginBottom: 14,
         }}
       >
-        Find my first job to apply to <ArrowRight size={16} />
+        Start Generating Applications <ArrowRight size={16} />
       </button>
-      <p style={{ margin: '0 0 16px', fontSize: 12, color: '#4b5563' }}>
-        Takes you to the workspace — paste any job description and we'll handle the rest.
+      <p style={{ margin: '0 0 10px', fontSize: 12, color: '#4b5563' }}>
+        You can update your profile anytime from Profile & Achievements.
       </p>
       <p style={{ margin: 0, fontSize: 12, color: '#374151' }}>
         You can revisit this wizard anytime from the Profile & Achievements section.

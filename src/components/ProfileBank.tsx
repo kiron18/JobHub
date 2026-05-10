@@ -1496,7 +1496,7 @@ export const ProfileBank: React.FC = () => {
   const { isDark } = useAppTheme();
   const navigate = useNavigate();
 
-  const { data: profile, isLoading, isError } = useQuery<ProfileData>({
+  const { data: profile, isLoading, isError, isFetching } = useQuery<ProfileData>({
     queryKey: ['profile'],
     queryFn: async () => {
       const { data } = await api.get('/profile');
@@ -1515,22 +1515,23 @@ export const ProfileBank: React.FC = () => {
   const [baselineDownloaded, setBaselineDownloaded] = useState(false);
   const prevScoreRef = useRef<number | null>(null);
 
-  // Fire milestone modal when score crosses 50 or 70 for the first time
+  // Fire milestone modal only when score crosses threshold due to user action on this page.
+  // Guard against the stale-cache → fresh-fetch false positive: skip while a background
+  // refetch is in progress, and treat the first settled load as the baseline (no modal).
   React.useEffect(() => {
-    if (!profile) return;
+    if (!profile || isFetching) return;
     const score = profile.completion.score;
     const prev = prevScoreRef.current;
-    if (prev !== null) {
-      if (prev < 70 && score >= 70 && !localStorage.getItem('jobhub_milestone_70')) {
-        localStorage.setItem('jobhub_milestone_70', '1');
-        setActiveMilestone(70);
-      } else if (prev < 50 && score >= 50 && !localStorage.getItem('jobhub_milestone_50')) {
-        localStorage.setItem('jobhub_milestone_50', '1');
-        setActiveMilestone(50);
-      }
-    }
     prevScoreRef.current = score;
-  }, [profile]);
+    if (prev === null) return; // First settled load — record baseline, no modal
+    if (prev < 70 && score >= 70 && !localStorage.getItem('jobhub_milestone_70')) {
+      localStorage.setItem('jobhub_milestone_70', '1');
+      setActiveMilestone(70);
+    } else if (prev < 50 && score >= 50 && !localStorage.getItem('jobhub_milestone_50')) {
+      localStorage.setItem('jobhub_milestone_50', '1');
+      setActiveMilestone(50);
+    }
+  }, [profile, isFetching]);
 
   const dismissWelcomeModal = () => {
     localStorage.setItem('jobhub_profile_visited', '1');
@@ -1546,7 +1547,13 @@ export const ProfileBank: React.FC = () => {
         const { data: doc } = await api.get(`/documents/${data.documentId}`);
         const { exportDocx } = await import('../lib/exportDocx');
         await exportDocx(doc.content, 'resume', '');
-        setBaselineDownloaded(true);
+        const score = profile?.completion?.score ?? 0;
+        if (score >= 75) {
+          setBaselineDownloaded(true); // Strong profile — show success state
+        } else {
+          dismissWelcomeModal();
+          navigate('/setup'); // Low/mid score — go straight to wizard
+        }
       } else {
         toast.error('Resume not ready yet — check back in a moment.');
       }
@@ -1611,79 +1618,84 @@ export const ProfileBank: React.FC = () => {
               </button>
               {(profile as any)?.hasCompletedOnboarding ? (
                 baselineDownloaded ? (
-                  /* Post-download state — redirect energy toward completion */
+                  /* Post-download state — only shown for strong profiles (score >= 75) */
                   <>
                     <div style={{ textAlign: 'center', marginBottom: 24 }}>
                       <div style={{ width: 52, height: 52, borderRadius: 16, background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
                         <CheckCircle size={24} style={{ color: '#22c55e' }} />
                       </div>
                       <h3 style={{ fontSize: 20, fontWeight: 900, color: isDark ? '#f3f4f6' : '#111827', margin: '0 0 8px', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-                        That's your resume.
+                        Your resume is ready.
                       </h3>
                       <p style={{ fontSize: 14, color: isDark ? '#9ca3af' : '#6b7280', margin: 0, lineHeight: 1.65 }}>
-                        Right now it's built from what we extracted. The more you tell us, the stronger every document gets — resumes, cover letters, the lot.
-                      </p>
-                    </div>
-                    <div style={{ background: isDark ? 'rgba(99,102,241,0.06)' : 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.18)', borderRadius: 12, padding: '14px 18px', marginBottom: 20 }}>
-                      <p style={{ margin: 0, fontSize: 13, color: isDark ? '#a5b4fc' : '#4f46e5', lineHeight: 1.65, fontWeight: 500 }}>
-                        Takes about 6 minutes. Walk through your profile section by section — we'll coach you on what makes the difference.
+                        Your profile is strong. The workspace will tailor this for every role you apply to.
                       </p>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       <button
-                        onClick={() => { dismissWelcomeModal(); navigate('/setup'); }}
+                        onClick={() => { dismissWelcomeModal(); navigate('/'); }}
                         style={{ width: '100%', padding: '14px 0', borderRadius: 10, background: 'linear-gradient(135deg, #6366f1, #4f46e5)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 800, cursor: 'pointer', letterSpacing: '-0.01em' }}
                       >
-                        Make it stronger →
+                        Start applying →
                       </button>
                       <button
                         onClick={dismissWelcomeModal}
                         style={{ width: '100%', padding: '12px 0', borderRadius: 10, background: 'none', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`, color: isDark ? '#4b5563' : '#9ca3af', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
                       >
-                        I'll come back to it
+                        Stay here
                       </button>
                     </div>
                   </>
                 ) : (
                   /* Baseline resume gift — reciprocity moment */
                   <>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
-                      <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(45,212,191,0.15)', border: '1px solid rgba(45,212,191,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <FileText size={20} style={{ color: '#2dd4bf' }} />
-                      </div>
-                      <div>
-                        <h3 style={{ fontSize: 17, fontWeight: 800, color: isDark ? '#f3f4f6' : '#111827', margin: 0, letterSpacing: '-0.01em' }}>
-                          We've prepared a starting point for you.
-                        </h3>
-                        <p style={{ fontSize: 12, color: isDark ? '#6b7280' : '#9ca3af', margin: '3px 0 0' }}>
-                          Restructured using your diagnostic findings.
-                        </p>
-                      </div>
-                    </div>
-                    <div style={{ background: isDark ? 'rgba(45,212,191,0.05)' : 'rgba(45,212,191,0.06)', border: '1px solid rgba(45,212,191,0.18)', borderRadius: 12, padding: '14px 18px', marginBottom: 16 }}>
-                      <p style={{ margin: 0, fontSize: 13, color: isDark ? '#9ca3af' : '#6b7280', lineHeight: 1.65 }}>
-                        We've taken your resume and restructured it based on what the diagnostic found. It's a solid starting point — a complete profile is what turns it into something tailored to each role.
-                      </p>
-                    </div>
-                    <p style={{ fontSize: 12, color: isDark ? '#6b7280' : '#9ca3af', marginBottom: 18, lineHeight: 1.6, textAlign: 'center' }}>
-                      6 minutes of your time here could change the next 6 months.
-                    </p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      <button
-                        onClick={handleBaselineDownload}
-                        disabled={baselineDownloading}
-                        style={{ width: '100%', padding: '13px 0', borderRadius: 10, background: '#2dd4bf', border: 'none', color: '#0d1117', fontSize: 14, fontWeight: 800, cursor: baselineDownloading ? 'wait' : 'pointer', opacity: baselineDownloading ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-                      >
-                        <Download size={15} />
-                        {baselineDownloading ? 'Downloading…' : 'Download my resume'}
-                      </button>
-                      <button
-                        onClick={() => { dismissWelcomeModal(); navigate('/setup'); }}
-                        style={{ width: '100%', padding: '12px 0', borderRadius: 10, background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.09)'}`, color: isDark ? '#9ca3af' : '#6b7280', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-                      >
-                        Let's sharpen it instead →
-                      </button>
-                    </div>
+                    {(() => {
+                      const score = profile?.completion?.score ?? 0;
+                      const isStrong = score >= 75;
+                      const bodyText = isStrong
+                        ? "Your profile is already strong. This is your starting point — the workspace will tailor it for every specific role you apply to."
+                        : score >= 55
+                        ? "This is a solid base. The achievement bank is what takes you from considered to shortlisted. Add it and you'll outperform most applicants before they've even opened the job description."
+                        : "This is half the battle — you have the document. The other half is your achievement bank: the proof points that stop recruiters skimming and get you interviews. Six minutes to build it. We coach you through every section.";
+                      return (
+                        <>
+                          <div style={{ textAlign: 'center', marginBottom: 20 }}>
+                            <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(45,212,191,0.12)', border: '1px solid rgba(45,212,191,0.28)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+                              <FileText size={22} style={{ color: '#2dd4bf' }} />
+                            </div>
+                            <h3 style={{ fontSize: 19, fontWeight: 900, color: isDark ? '#f3f4f6' : '#111827', margin: '0 0 4px', letterSpacing: '-0.02em' }}>
+                              Here's your resume.
+                            </h3>
+                            <p style={{ fontSize: 12, color: isDark ? '#6b7280' : '#9ca3af', margin: 0 }}>
+                              Built from your diagnostic answers.
+                            </p>
+                          </div>
+                          <div style={{ background: isDark ? 'rgba(45,212,191,0.05)' : 'rgba(45,212,191,0.06)', border: '1px solid rgba(45,212,191,0.18)', borderRadius: 12, padding: '14px 18px', marginBottom: 20 }}>
+                            <p style={{ margin: 0, fontSize: 13, color: isDark ? '#a5b4fc' : '#4f46e5', lineHeight: 1.65 }}>
+                              {bodyText}
+                            </p>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            <button
+                              onClick={handleBaselineDownload}
+                              disabled={baselineDownloading}
+                              style={{ width: '100%', padding: '13px 0', borderRadius: 10, background: isStrong ? '#2dd4bf' : 'linear-gradient(135deg, #6366f1, #4f46e5)', border: 'none', color: isStrong ? '#0d1117' : '#fff', fontSize: 14, fontWeight: 800, cursor: baselineDownloading ? 'wait' : 'pointer', opacity: baselineDownloading ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                            >
+                              <Download size={15} />
+                              {baselineDownloading ? 'Downloading…' : isStrong ? 'Download my resume' : 'Download & Build My Profile →'}
+                            </button>
+                            {!isStrong && (
+                              <button
+                                onClick={() => { dismissWelcomeModal(); navigate('/setup'); }}
+                                style={{ width: '100%', padding: '12px 0', borderRadius: 10, background: 'none', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`, color: isDark ? '#6b7280' : '#9ca3af', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                              >
+                                Start building now →
+                              </button>
+                            )}
+                          </div>
+                        </>
+                      );
+                    })()}
                   </>
                 )
               ) : (

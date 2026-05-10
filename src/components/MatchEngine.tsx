@@ -297,6 +297,18 @@ export const MatchEngine: React.FC = () => {
             )}
             <div className="space-y-6">
                 <div className="glass-card p-6 space-y-4">
+                    {/* Beta browse banner */}
+                    <a
+                        href="/job-feed"
+                        className="flex items-center justify-between gap-3 mb-4 px-3.5 py-2.5 rounded-xl border border-teal-500/20 bg-teal-500/5 hover:bg-teal-500/10 transition-colors no-underline"
+                    >
+                        <div className="flex items-center gap-2">
+                            <span className="text-[9px] font-black text-teal-400 bg-teal-500/15 px-2 py-0.5 rounded-full uppercase tracking-wider">NEW</span>
+                            <span className="text-xs font-semibold text-teal-300">Browse curated roles — fresh opportunities added daily</span>
+                        </div>
+                        <span className="text-[10px] text-teal-500/60 font-bold shrink-0">Beta →</span>
+                    </a>
+
                     <div className="flex items-center justify-between border-b border-slate-800 pb-4">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-brand-600/10 rounded-xl flex items-center justify-center text-brand-500">
@@ -314,6 +326,18 @@ export const MatchEngine: React.FC = () => {
                         )}
                     </div>
 
+
+                    {/* Quick-win copy */}
+                    {!jobDescription && !result && (
+                        <div className="mb-3">
+                            <p className="text-sm font-semibold" style={{ color: T.text }}>
+                                Paste any job description below.
+                            </p>
+                            <p className="text-xs mt-1" style={{ color: T.textMuted }}>
+                                In less than 3 minutes you'll have a tailored resume + cover letter that speaks their language.
+                            </p>
+                        </div>
+                    )}
 
                     <div className="relative group">
                         <textarea
