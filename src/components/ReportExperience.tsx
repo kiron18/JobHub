@@ -857,7 +857,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                     letterSpacing: '-0.01em',
                   }}
                 >
-                  Rebuild Your Strategy with AI — Free for 7 Days →
+                  Build your interview-ready resume — Free →
                 </motion.button>
                 <p style={{ margin: 0, fontSize: 12, color: theme.sub, textAlign: 'center' }}>
                   Start free for 7 days · No charge until day 8 · Cancel any time
@@ -980,7 +980,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                   whiteSpace: 'nowrap', minHeight: 44,
                 }}
               >
-                Rebuild your strategy with AI (7-Day Free Trial)
+                Build your interview-ready resume — Free →
               </button>
               <button
                 onClick={() => setShowSticky(false)}

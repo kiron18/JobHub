@@ -27,6 +27,9 @@ const FridayBriefPage = React.lazy(() =>
 const AdminDashboard = React.lazy(() =>
   import('./pages/AdminDashboard').then(m => ({ default: m.AdminDashboard }))
 );
+const SetupWizard = React.lazy(() =>
+  import('./pages/SetupWizard').then(m => ({ default: m.SetupWizard }))
+);
 
 // Auth & Context
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -580,6 +583,15 @@ function App() {
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/legal/:policy" element={<LegalPage />} />
               <Route path="/legal" element={<LegalPage />} />
+
+              {/* Setup wizard — full-screen, authenticated, no sidebar */}
+              <Route path="/setup" element={
+                <ProtectedRoute>
+                  <React.Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center"><div className="w-10 h-10 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" /></div>}>
+                    <SetupWizard />
+                  </React.Suspense>
+                </ProtectedRoute>
+              } />
 
               {/* Protected Application Routes */}
               <Route path="/*" element={

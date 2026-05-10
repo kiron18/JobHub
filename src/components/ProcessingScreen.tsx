@@ -52,12 +52,46 @@ const HUMAN_ASIDES = [
   "Checking how this reads to someone who's seen hundreds of these.",
 ];
 
+const ROLE_DEMONYMS: Record<string, string> = {
+  marketing: 'marketers',
+  sales: 'salespeople',
+  engineering: 'engineers',
+  software: 'software engineers',
+  finance: 'finance professionals',
+  design: 'designers',
+  product: 'product managers',
+  hr: 'HR professionals',
+  'human resources': 'HR professionals',
+  operations: 'operations professionals',
+  accounting: 'accountants',
+  legal: 'lawyers',
+  healthcare: 'healthcare professionals',
+  nursing: 'nurses',
+  education: 'educators',
+  teaching: 'teachers',
+  data: 'data professionals',
+  management: 'managers',
+  administration: 'administrators',
+  logistics: 'logistics professionals',
+  retail: 'retail professionals',
+  hospitality: 'hospitality professionals',
+};
+
+function getRoleDemonym(targetRole: string): string {
+  const key = targetRole.toLowerCase().trim();
+  if (ROLE_DEMONYMS[key]) return ROLE_DEMONYMS[key];
+  for (const [k, v] of Object.entries(ROLE_DEMONYMS)) {
+    if (key.includes(k)) return v;
+  }
+  return `${targetRole} professionals`;
+}
+
 function getRoleAsides(role: string): string[] {
-  const r = role.toLowerCase();
+  const demonym = getRoleDemonym(role);
   return [
     `${role} roles in Australia shortlist fast — checking how clearly yours signals fit...`,
-    `Comparing against what actually gets ${r}s to interview stage...`,
-    `There's a gap between what ${r}s write and what hiring managers look for. Measuring yours.`,
+    `Comparing against what actually gets ${demonym} to interview stage...`,
+    `There's a gap between what ${demonym} write and what hiring managers look for. Measuring yours.`,
   ];
 }
 

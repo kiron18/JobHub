@@ -71,6 +71,7 @@ export function BaselineResumeBanner({ isDark }: Props) {
       const { data } = await api.get(`/documents/${documentId}`);
       const { exportDocx } = await import('../lib/exportDocx');
       await exportDocx(data.content, 'resume', '');
+      dismiss();
       setShowModal(true);
     } catch {
       // silent — user can retry
