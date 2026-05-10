@@ -1717,6 +1717,29 @@ export const ProfileBank: React.FC = () => {
       />
 
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px' }}>
+        {/* Guided setup nudge — shown until wizard is completed */}
+        {!localStorage.getItem('jobhub_setup_complete') && (profile as any)?.hasCompletedOnboarding && (
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+            background: isDark ? 'rgba(99,102,241,0.07)' : 'rgba(99,102,241,0.06)',
+            border: `1px solid ${isDark ? 'rgba(99,102,241,0.2)' : 'rgba(99,102,241,0.18)'}`,
+            borderRadius: 12, padding: '12px 18px', marginBottom: 20, flexWrap: 'wrap',
+          }}>
+            <p style={{ margin: 0, fontSize: 13, color: isDark ? '#a5b4fc' : '#4f46e5', fontWeight: 500 }}>
+              Your guided profile setup is waiting — takes about 6 minutes.
+            </p>
+            <button
+              onClick={() => navigate('/setup')}
+              style={{
+                background: '#6366f1', border: 'none', borderRadius: 8,
+                padding: '7px 16px', fontSize: 13, fontWeight: 700, color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap',
+              }}
+            >
+              Continue setup →
+            </button>
+          </div>
+        )}
+
         {/* Page header */}
         <div style={{ marginBottom: 28 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
