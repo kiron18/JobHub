@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Pencil, Check, X, AlertTriangle, CheckCircle2,
   User, Briefcase, GraduationCap,
-  Award, Heart, Wrench, Star, FileText, UploadCloud, RefreshCw,
+  Award, Heart, Wrench, Star, FileText, UploadCloud, RefreshCw, Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../lib/api';
@@ -14,6 +14,8 @@ import { ProfileAdvisorPanel } from './ProfileAdvisorPanel';
 import { ActivityWidget } from './ActivityWidget';
 import { BaselineResumeBanner } from './BaselineResumeBanner';
 import { ManageSubscriptionModal } from './ManageSubscriptionModal';
+import { AchievementVideoModal } from './AchievementVideoModal';
+import { MilestoneModal } from './MilestoneModal';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -118,7 +120,9 @@ function hintForExperience(exp: Experience, linkedAchievements: Achievement[]): 
 
 function hintForAchievement(ach: Achievement): Hint | null {
   if (!ach.metric || ach.metric.trim() === '')
-    return { type: 'warn', message: 'Without a number here, this achievement looks the same as every other candidate\'s. Add one.' };
+    return { type: 'warn', message: "Without a number here, this achievement looks the same as every other candidate's. Add one." };
+  if (ach.metric === 'qualitative')
+    return null;
   return null;
 }
 
@@ -626,6 +630,7 @@ interface AchievementRowProps {
 const AchievementRow: React.FC<AchievementRowProps> = ({ ach, isDark }) => {
   const qc = useQueryClient();
   const [editing, setEditing] = useState(false);
+  const [showHowModal, setShowHowModal] = useState(false);
   const [form, setForm] = useState({
     title: ach.title,
     description: ach.description,
@@ -642,6 +647,12 @@ const AchievementRow: React.FC<AchievementRowProps> = ({ ach, isDark }) => {
     },
     onError: () => toast.error('Failed to save. Please try again.'),
   });
+
+  const markQualitative = () => {
+    api.patch(`/achievements/${ach.id}`, { metric: 'qualitative', metricType: '' })
+      .then(() => qc.invalidateQueries({ queryKey: ['profile'] }))
+      .catch(() => toast.error('Failed to save. Please try again.'));
+  };
 
   const hint = hintForAchievement(ach);
   const inp = inputStyle(isDark);
@@ -670,7 +681,7 @@ const AchievementRow: React.FC<AchievementRowProps> = ({ ach, isDark }) => {
               <motion.div key="view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <p style={{ fontSize: 13, fontWeight: 700, color: isDark ? '#e5e7eb' : '#1f2937', marginBottom: 3 }}>{ach.title}</p>
                 <p style={{ fontSize: 13, color: isDark ? '#9ca3af' : '#6b7280', lineHeight: 1.6 }}>{ach.description}</p>
-                {ach.metric && (
+                {ach.metric && ach.metric !== 'qualitative' && (
                   <span style={{
                     display: 'inline-block', marginTop: 5,
                     padding: '2px 8px', borderRadius: 5,
@@ -681,7 +692,29 @@ const AchievementRow: React.FC<AchievementRowProps> = ({ ach, isDark }) => {
                     {ach.metric} {ach.metricType && `— ${ach.metricType}`}
                   </span>
                 )}
-                {hint && <CoachHint hint={hint} />}
+                {ach.metric === 'qualitative' && (
+                  <span style={{ display: 'inline-block', marginTop: 5, padding: '2px 8px', borderRadius: 5, fontSize: 11, fontWeight: 600, background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)', color: isDark ? '#6b7280' : '#9ca3af', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}` }}>
+                    Qualitative
+                  </span>
+                )}
+                {hint && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                    <CoachHint hint={hint} />
+                    <button
+                      onClick={() => setShowHowModal(true)}
+                      style={{ fontSize: 11, fontWeight: 700, color: '#d97706', background: 'rgba(217,119,6,0.1)', border: '1px solid rgba(217,119,6,0.2)', borderRadius: 5, padding: '3px 8px', cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}
+                    >
+                      How?
+                    </button>
+                  </div>
+                )}
+                <AchievementVideoModal
+                  isOpen={showHowModal}
+                  onClose={() => setShowHowModal(false)}
+                  isDark={isDark}
+                  achievementDescription={ach.description}
+                  onMarkQualitative={markQualitative}
+                />
               </motion.div>
             )}
           </AnimatePresence>
@@ -1459,10 +1492,48 @@ export const ProfileBank: React.FC = () => {
   const [showWelcomeModal, setShowWelcomeModal] = useState(() =>
     !localStorage.getItem('jobhub_profile_visited')
   );
+  const [activeMilestone, setActiveMilestone] = useState<50 | 70 | null>(null);
+  const [baselineDownloading, setBaselineDownloading] = useState(false);
+  const prevScoreRef = useRef<number | null>(null);
+
+  // Fire milestone modal when score crosses 50 or 70 for the first time
+  React.useEffect(() => {
+    if (!profile) return;
+    const score = profile.completion.score;
+    const prev = prevScoreRef.current;
+    if (prev !== null) {
+      if (prev < 70 && score >= 70 && !localStorage.getItem('jobhub_milestone_70')) {
+        localStorage.setItem('jobhub_milestone_70', '1');
+        setActiveMilestone(70);
+      } else if (prev < 50 && score >= 50 && !localStorage.getItem('jobhub_milestone_50')) {
+        localStorage.setItem('jobhub_milestone_50', '1');
+        setActiveMilestone(50);
+      }
+    }
+    prevScoreRef.current = score;
+  }, [profile]);
 
   const dismissWelcomeModal = () => {
     localStorage.setItem('jobhub_profile_visited', '1');
     setShowWelcomeModal(false);
+  };
+
+  const handleBaselineDownload = async () => {
+    if (baselineDownloading) return;
+    setBaselineDownloading(true);
+    try {
+      const { data } = await api.get('/profile/baseline-resume');
+      if (data.status === 'ready' && data.documentId) {
+        const { data: doc } = await api.get(`/documents/${data.documentId}`);
+        const { exportDocx } = await import('../lib/exportDocx');
+        await exportDocx(doc.content, 'resume', '');
+      }
+    } catch {
+      // silent — banner handles the full download flow
+    } finally {
+      setBaselineDownloading(false);
+      dismissWelcomeModal();
+    }
   };
 
   const handleRegenerateIdentity = async () => {
@@ -1500,13 +1571,11 @@ export const ProfileBank: React.FC = () => {
 
   return (
     <div style={{ background: pageBg, minHeight: '100%', padding: '24px 0', color: textMain, fontFamily: 'system-ui, sans-serif' }}>
-      {/* First-visit welcome modal */}
+      {/* First-visit modal — baseline resume gift for onboarded users, explanation otherwise */}
       <AnimatePresence>
         {showWelcomeModal && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={dismissWelcomeModal}
             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
           >
@@ -1518,40 +1587,93 @@ export const ProfileBank: React.FC = () => {
               onClick={(e) => e.stopPropagation()}
               style={{ background: isDark ? '#0d1117' : '#fff', border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`, borderRadius: 20, padding: '32px 36px', maxWidth: 460, width: '100%' }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24 }}>
-                <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Star size={20} style={{ color: '#818cf8' }} />
-                </div>
-                <div>
-                  <h3 style={{ fontSize: 17, fontWeight: 800, color: isDark ? '#f3f4f6' : '#111827', margin: 0, letterSpacing: '-0.01em' }}>Your Achievement Bank</h3>
-                  <p style={{ fontSize: 12, color: isDark ? '#6b7280' : '#9ca3af', margin: '2px 0 0' }}>How to get the most out of this page</p>
-                </div>
-              </div>
-              {[
-                { num: '1', title: 'Add your experience', desc: 'Enter every role you\'ve held. The AI uses your full work history to find the right story for each application.' },
-                { num: '2', title: 'Link achievements to each role', desc: 'These are the specific wins, metrics, and outcomes — the evidence behind your claims. This is the most important part.' },
-                { num: '3', title: 'Every document draws from this', desc: 'Your resume, cover letters, and interview answers are all built from this bank. Update it once and every generation improves.' },
-              ].map(step => (
-                <div key={step.num} style={{ display: 'flex', gap: 14, marginBottom: 18 }}>
-                  <div style={{ flexShrink: 0, width: 26, height: 26, borderRadius: '50%', background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.28)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, color: '#818cf8' }}>
-                    {step.num}
+              {(profile as any)?.hasCompletedOnboarding ? (
+                /* Baseline resume gift — reciprocity moment */
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
+                    <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(45,212,191,0.15)', border: '1px solid rgba(45,212,191,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <FileText size={20} style={{ color: '#2dd4bf' }} />
+                    </div>
+                    <div>
+                      <h3 style={{ fontSize: 17, fontWeight: 800, color: isDark ? '#f3f4f6' : '#111827', margin: 0, letterSpacing: '-0.01em' }}>
+                        We've prepared a starting point for you.
+                      </h3>
+                      <p style={{ fontSize: 12, color: isDark ? '#6b7280' : '#9ca3af', margin: '3px 0 0' }}>
+                        Restructured using your diagnostic findings.
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p style={{ fontSize: 13, fontWeight: 700, color: isDark ? '#e5e7eb' : '#111827', margin: '2px 0 4px' }}>{step.title}</p>
-                    <p style={{ fontSize: 12, color: isDark ? '#9ca3af' : '#6b7280', margin: 0, lineHeight: 1.55 }}>{step.desc}</p>
+                  <div style={{ background: isDark ? 'rgba(45,212,191,0.05)' : 'rgba(45,212,191,0.06)', border: '1px solid rgba(45,212,191,0.18)', borderRadius: 12, padding: '14px 18px', marginBottom: 16 }}>
+                    <p style={{ margin: 0, fontSize: 13, color: isDark ? '#9ca3af' : '#6b7280', lineHeight: 1.65 }}>
+                      We've taken your resume and restructured it based on what the diagnostic found. It's a solid starting point — a complete profile is what turns it into something tailored to each role.
+                    </p>
                   </div>
-                </div>
-              ))}
-              <button
-                onClick={dismissWelcomeModal}
-                style={{ marginTop: 8, width: '100%', padding: '13px 0', borderRadius: 10, background: 'rgba(99,102,241,0.9)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', letterSpacing: '-0.01em' }}
-              >
-                Got it, let's build →
-              </button>
+                  <p style={{ fontSize: 12, color: isDark ? '#6b7280' : '#9ca3af', marginBottom: 18, lineHeight: 1.6, textAlign: 'center' }}>
+                    6 minutes of your time here could change the next 6 months.
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <button
+                      onClick={handleBaselineDownload}
+                      disabled={baselineDownloading}
+                      style={{ width: '100%', padding: '13px 0', borderRadius: 10, background: '#2dd4bf', border: 'none', color: '#0d1117', fontSize: 14, fontWeight: 800, cursor: baselineDownloading ? 'wait' : 'pointer', opacity: baselineDownloading ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                    >
+                      <Download size={15} />
+                      {baselineDownloading ? 'Downloading…' : 'Download my resume'}
+                    </button>
+                    <button
+                      onClick={dismissWelcomeModal}
+                      style={{ width: '100%', padding: '12px 0', borderRadius: 10, background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.09)'}`, color: isDark ? '#9ca3af' : '#6b7280', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      Let's sharpen it instead →
+                    </button>
+                  </div>
+                </>
+              ) : (
+                /* Original explanation for non-onboarded users */
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24 }}>
+                    <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Star size={20} style={{ color: '#818cf8' }} />
+                    </div>
+                    <div>
+                      <h3 style={{ fontSize: 17, fontWeight: 800, color: isDark ? '#f3f4f6' : '#111827', margin: 0, letterSpacing: '-0.01em' }}>Your Achievement Bank</h3>
+                      <p style={{ fontSize: 12, color: isDark ? '#6b7280' : '#9ca3af', margin: '2px 0 0' }}>How to get the most out of this page</p>
+                    </div>
+                  </div>
+                  {[
+                    { num: '1', title: 'Add your experience', desc: "Enter every role you've held. The AI uses your full work history to find the right story for each application." },
+                    { num: '2', title: 'Link achievements to each role', desc: 'These are the specific wins, metrics, and outcomes — the evidence behind your claims. This is the most important part.' },
+                    { num: '3', title: 'Every document draws from this', desc: 'Your resume, cover letters, and interview answers are all built from this bank. Update it once and every generation improves.' },
+                  ].map(step => (
+                    <div key={step.num} style={{ display: 'flex', gap: 14, marginBottom: 18 }}>
+                      <div style={{ flexShrink: 0, width: 26, height: 26, borderRadius: '50%', background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.28)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, color: '#818cf8' }}>
+                        {step.num}
+                      </div>
+                      <div>
+                        <p style={{ fontSize: 13, fontWeight: 700, color: isDark ? '#e5e7eb' : '#111827', margin: '2px 0 4px' }}>{step.title}</p>
+                        <p style={{ fontSize: 12, color: isDark ? '#9ca3af' : '#6b7280', margin: 0, lineHeight: 1.55 }}>{step.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                  <button
+                    onClick={dismissWelcomeModal}
+                    style={{ marginTop: 8, width: '100%', padding: '13px 0', borderRadius: 10, background: 'rgba(99,102,241,0.9)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', letterSpacing: '-0.01em' }}
+                  >
+                    Got it, let's build →
+                  </button>
+                </>
+              )}
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Milestone celebration modals */}
+      <MilestoneModal
+        milestone={activeMilestone}
+        onClose={() => setActiveMilestone(null)}
+        isDark={isDark}
+      />
 
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px' }}>
         {/* Page header */}

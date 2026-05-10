@@ -57,9 +57,10 @@ router.get('/profile', authenticate, async (req, res) => {
         const achCount = profile.achievements?.length ?? 0;
         if (achCount >= 3) rawScore += 20; else missingFields.push('3+ achievements');
 
-        // Achievement quality: bonus when >50% of achievements have a metric
+        // Achievement quality: bonus when >50% of achievements have a real metric
+        // 'qualitative' sentinel means the user explicitly bypassed — don't count it as a metric
         if (achCount > 0) {
-            const withMetric = profile.achievements.filter((a: any) => a.metric?.trim()).length;
+            const withMetric = profile.achievements.filter((a: any) => a.metric?.trim() && a.metric !== 'qualitative').length;
             if (withMetric / achCount >= 0.5) rawScore += 10;
             else if (achCount >= 3) missingFields.push('add metrics to more achievements');
         }
