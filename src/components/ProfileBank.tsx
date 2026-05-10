@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
-  Pencil, Check, X, AlertTriangle, CheckCircle2,
+  Pencil, Check, X, AlertTriangle, CheckCircle2, CheckCircle,
   User, Briefcase, GraduationCap,
   Award, Heart, Wrench, Star, FileText, UploadCloud, RefreshCw, Download,
 } from 'lucide-react';
@@ -1495,6 +1495,7 @@ export const ProfileBank: React.FC = () => {
   );
   const [activeMilestone, setActiveMilestone] = useState<50 | 70 | null>(null);
   const [baselineDownloading, setBaselineDownloading] = useState(false);
+  const [baselineDownloaded, setBaselineDownloaded] = useState(false);
   const prevScoreRef = useRef<number | null>(null);
 
   // Fire milestone modal when score crosses 50 or 70 for the first time
@@ -1530,10 +1531,10 @@ export const ProfileBank: React.FC = () => {
         await exportDocx(doc.content, 'resume', '');
       }
     } catch {
-      // silent — banner handles the full download flow
+      // silent
     } finally {
       setBaselineDownloading(false);
-      dismissWelcomeModal();
+      setBaselineDownloaded(true);
     }
   };
 
@@ -1590,46 +1591,82 @@ export const ProfileBank: React.FC = () => {
                 <X size={16} />
               </button>
               {(profile as any)?.hasCompletedOnboarding ? (
-                /* Baseline resume gift — reciprocity moment */
-                <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
-                    <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(45,212,191,0.15)', border: '1px solid rgba(45,212,191,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <FileText size={20} style={{ color: '#2dd4bf' }} />
-                    </div>
-                    <div>
-                      <h3 style={{ fontSize: 17, fontWeight: 800, color: isDark ? '#f3f4f6' : '#111827', margin: 0, letterSpacing: '-0.01em' }}>
-                        We've prepared a starting point for you.
+                baselineDownloaded ? (
+                  /* Post-download state — redirect energy toward completion */
+                  <>
+                    <div style={{ textAlign: 'center', marginBottom: 24 }}>
+                      <div style={{ width: 52, height: 52, borderRadius: 16, background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                        <CheckCircle size={24} style={{ color: '#22c55e' }} />
+                      </div>
+                      <h3 style={{ fontSize: 20, fontWeight: 900, color: isDark ? '#f3f4f6' : '#111827', margin: '0 0 8px', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+                        That's your resume.
                       </h3>
-                      <p style={{ fontSize: 12, color: isDark ? '#6b7280' : '#9ca3af', margin: '3px 0 0' }}>
-                        Restructured using your diagnostic findings.
+                      <p style={{ fontSize: 14, color: isDark ? '#9ca3af' : '#6b7280', margin: 0, lineHeight: 1.65 }}>
+                        Right now it's built from what we extracted. The more you tell us, the stronger every document gets — resumes, cover letters, the lot.
                       </p>
                     </div>
-                  </div>
-                  <div style={{ background: isDark ? 'rgba(45,212,191,0.05)' : 'rgba(45,212,191,0.06)', border: '1px solid rgba(45,212,191,0.18)', borderRadius: 12, padding: '14px 18px', marginBottom: 16 }}>
-                    <p style={{ margin: 0, fontSize: 13, color: isDark ? '#9ca3af' : '#6b7280', lineHeight: 1.65 }}>
-                      We've taken your resume and restructured it based on what the diagnostic found. It's a solid starting point — a complete profile is what turns it into something tailored to each role.
+                    <div style={{ background: isDark ? 'rgba(99,102,241,0.06)' : 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.18)', borderRadius: 12, padding: '14px 18px', marginBottom: 20 }}>
+                      <p style={{ margin: 0, fontSize: 13, color: isDark ? '#a5b4fc' : '#4f46e5', lineHeight: 1.65, fontWeight: 500 }}>
+                        Takes about 6 minutes. Walk through your profile section by section — we'll coach you on what makes the difference.
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <button
+                        onClick={() => { dismissWelcomeModal(); navigate('/setup'); }}
+                        style={{ width: '100%', padding: '14px 0', borderRadius: 10, background: 'linear-gradient(135deg, #6366f1, #4f46e5)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 800, cursor: 'pointer', letterSpacing: '-0.01em' }}
+                      >
+                        Make it stronger →
+                      </button>
+                      <button
+                        onClick={dismissWelcomeModal}
+                        style={{ width: '100%', padding: '12px 0', borderRadius: 10, background: 'none', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`, color: isDark ? '#4b5563' : '#9ca3af', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                      >
+                        I'll come back to it
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  /* Baseline resume gift — reciprocity moment */
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
+                      <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(45,212,191,0.15)', border: '1px solid rgba(45,212,191,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <FileText size={20} style={{ color: '#2dd4bf' }} />
+                      </div>
+                      <div>
+                        <h3 style={{ fontSize: 17, fontWeight: 800, color: isDark ? '#f3f4f6' : '#111827', margin: 0, letterSpacing: '-0.01em' }}>
+                          We've prepared a starting point for you.
+                        </h3>
+                        <p style={{ fontSize: 12, color: isDark ? '#6b7280' : '#9ca3af', margin: '3px 0 0' }}>
+                          Restructured using your diagnostic findings.
+                        </p>
+                      </div>
+                    </div>
+                    <div style={{ background: isDark ? 'rgba(45,212,191,0.05)' : 'rgba(45,212,191,0.06)', border: '1px solid rgba(45,212,191,0.18)', borderRadius: 12, padding: '14px 18px', marginBottom: 16 }}>
+                      <p style={{ margin: 0, fontSize: 13, color: isDark ? '#9ca3af' : '#6b7280', lineHeight: 1.65 }}>
+                        We've taken your resume and restructured it based on what the diagnostic found. It's a solid starting point — a complete profile is what turns it into something tailored to each role.
+                      </p>
+                    </div>
+                    <p style={{ fontSize: 12, color: isDark ? '#6b7280' : '#9ca3af', marginBottom: 18, lineHeight: 1.6, textAlign: 'center' }}>
+                      6 minutes of your time here could change the next 6 months.
                     </p>
-                  </div>
-                  <p style={{ fontSize: 12, color: isDark ? '#6b7280' : '#9ca3af', marginBottom: 18, lineHeight: 1.6, textAlign: 'center' }}>
-                    6 minutes of your time here could change the next 6 months.
-                  </p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <button
-                      onClick={handleBaselineDownload}
-                      disabled={baselineDownloading}
-                      style={{ width: '100%', padding: '13px 0', borderRadius: 10, background: '#2dd4bf', border: 'none', color: '#0d1117', fontSize: 14, fontWeight: 800, cursor: baselineDownloading ? 'wait' : 'pointer', opacity: baselineDownloading ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-                    >
-                      <Download size={15} />
-                      {baselineDownloading ? 'Downloading…' : 'Download my resume'}
-                    </button>
-                    <button
-                      onClick={() => { dismissWelcomeModal(); navigate('/setup'); }}
-                      style={{ width: '100%', padding: '12px 0', borderRadius: 10, background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.09)'}`, color: isDark ? '#9ca3af' : '#6b7280', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-                    >
-                      Let's sharpen it instead →
-                    </button>
-                  </div>
-                </>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <button
+                        onClick={handleBaselineDownload}
+                        disabled={baselineDownloading}
+                        style={{ width: '100%', padding: '13px 0', borderRadius: 10, background: '#2dd4bf', border: 'none', color: '#0d1117', fontSize: 14, fontWeight: 800, cursor: baselineDownloading ? 'wait' : 'pointer', opacity: baselineDownloading ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                      >
+                        <Download size={15} />
+                        {baselineDownloading ? 'Downloading…' : 'Download my resume'}
+                      </button>
+                      <button
+                        onClick={() => { dismissWelcomeModal(); navigate('/setup'); }}
+                        style={{ width: '100%', padding: '12px 0', borderRadius: 10, background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.09)'}`, color: isDark ? '#9ca3af' : '#6b7280', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                      >
+                        Let's sharpen it instead →
+                      </button>
+                    </div>
+                  </>
+                )
               ) : (
                 /* Original explanation for non-onboarded users */
                 <>
