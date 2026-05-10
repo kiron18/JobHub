@@ -1441,6 +1441,23 @@ const CompletionSidebar: React.FC<CompletionSidebarProps> = ({ completion, isDar
         );
       })()}
 
+      {/* Guided setup re-entry */}
+      <button
+        onClick={() => navigate('/setup')}
+        style={{
+          width: '100%', padding: '8px 0',
+          background: 'transparent', border: 'none',
+          color: isDark ? '#6b7280' : '#9ca3af',
+          fontSize: 12, fontWeight: 600, cursor: 'pointer',
+          textAlign: 'center',
+          transition: 'color 0.14s ease',
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = isDark ? '#a5b4fc' : '#6366f1'; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = isDark ? '#6b7280' : '#9ca3af'; }}
+      >
+        Use guided setup →
+      </button>
+
       {/* Subscription management */}
       {hasActiveSubscription && (
         <>
