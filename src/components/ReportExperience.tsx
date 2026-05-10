@@ -761,9 +761,6 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
 
                           {/* Problem zone */}
                           <div style={{ padding: '18px 20px 16px', color: theme.body }}>
-                            <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.14em', textTransform: 'uppercase', color: meta.color, margin: '0 0 12px', opacity: 0.75 }}>
-                              What's happening
-                            </p>
                             <RenderContent text={problem} color={meta.color} headingColor={theme.heading} />
                           </div>
 
@@ -774,9 +771,6 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                               background: isDark ? `${meta.color}08` : meta.bg,
                               borderTop: `1px solid ${meta.color}20`,
                             }}>
-                              <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.16em', textTransform: 'uppercase', color: meta.color, margin: '0 0 12px' }}>
-                                {section.key === 'fix' ? 'Your 3-step plan' : 'What you should do'}
-                              </p>
                               <div style={{ color: theme.body }}>
                                 <RenderContent text={fix} color={meta.color} headingColor={theme.heading} />
                               </div>

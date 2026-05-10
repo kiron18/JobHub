@@ -113,13 +113,15 @@ Give the immediate fix for this primary blocker. Make it feel achievable, not ov
 
 ## The 3-Step Fix
 
-Three concrete, prioritised actions they can take this week. Not "improve your resume." Each should be specific enough to act on today — name the exact line, section, or phrase. Number them 1, 2, 3. For any before/after example, use blockquote format:
+Write exactly 3 numbered items. Each item must have a bold action title on the first line, followed by 2-3 sentences of specific advice. Fold the likely impact into the body of each item — do not add a separate section for impact. Number them 1, 2, 3. For any before/after example within an item, use blockquote format:
 > Before: [their actual text]
 > After: [the improved version]
 
+The third item must end with this closing sentence, adapted to reflect the biggest gap you identified (resume, cover letter, or interview): "The fastest way to do this is inside the platform — it has been built around your specific profile and this exact role type. Your first 7 days are free. Use them."
+
 ---
 
-For each step, include one line estimating the likely impact: what this change will unlock for them in their search.
+[Leave this zone empty — the three steps above are the complete plan.]
 
 ## What JobHub Will Do For You
 

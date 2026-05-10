@@ -74,9 +74,11 @@ export const ProfileCompletion: React.FC<ProfileCompletionProps> = ({
               <span className={`text-xs font-black ${colors.text}`}>{score}%</span>
             </div>
             <p className="text-[10px] text-slate-400 leading-relaxed font-medium">
-              {isReady 
-                ? "Your profile is rock-solid. Generation will be high quality." 
-                : "Complete your profile to avoid placeholder results."}
+              {isReady
+                ? "Your profile is sharp. Every document generated from here will reflect your actual work."
+                : score >= 50
+                  ? "Almost there. A complete profile is the difference between a template and a targeted application."
+                  : "Your profile has gaps that ATS filters will catch before a human ever reads it."}
             </p>
             {!isReady && missingFields.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
@@ -129,9 +131,11 @@ export const ProfileCompletion: React.FC<ProfileCompletionProps> = ({
       <div className="flex-1 space-y-1">
         <h4 className="font-bold text-slate-200">Profile Strength</h4>
         <p className="text-sm text-slate-400 leading-tight">
-          {isReady 
-            ? "Your profile is rock-solid. Generation will be high quality." 
-            : "Complete your profile to avoid placeholder results."}
+          {isReady
+            ? "Your profile is sharp. Every document generated from here will reflect your actual work."
+            : score >= 50
+              ? "Almost there. A complete profile is the difference between a template and a targeted application."
+              : "Your profile has gaps that ATS filters will catch before a human ever reads it."}
         </p>
         
         {!isReady && missingFields.length > 0 && (

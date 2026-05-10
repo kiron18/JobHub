@@ -118,7 +118,7 @@ function hintForExperience(exp: Experience, linkedAchievements: Achievement[]): 
 
 function hintForAchievement(ach: Achievement): Hint | null {
   if (!ach.metric || ach.metric.trim() === '')
-    return { type: 'warn', message: 'Add a specific number, %, or $ to quantify impact.' };
+    return { type: 'warn', message: 'Without a number here, this achievement looks the same as every other candidate\'s. Add one.' };
   return null;
 }
 
@@ -1558,9 +1558,21 @@ export const ProfileBank: React.FC = () => {
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px' }}>
         {/* Page header */}
         <div style={{ marginBottom: 28 }}>
-          <h2 style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.02em', color: textMain, margin: 0 }}>
-            Profile Bank
-          </h2>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+            <h2 style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.02em', color: textMain, margin: 0 }}>
+              Profile Bank
+            </h2>
+            <button
+              onClick={() => { window.location.href = '/?view=report'; }}
+              style={{
+                fontSize: 12, fontWeight: 600, color: isDark ? '#6b7280' : '#9ca3af',
+                background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0',
+                textDecoration: 'underline', textUnderlineOffset: 3, flexShrink: 0,
+              }}
+            >
+              {(profile as any)?.hasCompletedOnboarding ? 'View Diagnostic' : 'Run Diagnostic'}
+            </button>
+          </div>
           <p style={{ fontSize: 14, color: isDark ? '#9ca3af' : '#6b7280', marginTop: 4 }}>
             Your achievement bank — the source of truth for every resume and cover letter JobHub generates. Complete it once, use it forever.
           </p>
