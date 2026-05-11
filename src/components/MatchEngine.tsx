@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Target, Loader2, Zap, AlertTriangle, FileText, Mail, List, XCircle, TrendingDown, ArrowLeft } from 'lucide-react';
+import { Target, Loader2, Zap, AlertTriangle, XCircle, TrendingDown, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../lib/api';
 import { useAppTheme } from '../contexts/ThemeContext';
