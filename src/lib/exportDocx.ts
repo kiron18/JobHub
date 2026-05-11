@@ -17,6 +17,11 @@ import {
     PageNumber,
     Footer,
     Header,
+    Table,
+    TableRow,
+    TableCell,
+    WidthType,
+    ShadingType,
 } from 'docx';
 import { saveAs } from 'file-saver';
 
@@ -74,6 +79,64 @@ function parseInline(text: string, font: string, size: number): TextRun[] {
         }
     }
     return runs.length > 0 ? runs : [new TextRun({ text, font, size })];
+}
+
+function buildSetupNotice(font: string): Array<Table | Paragraph> {
+    const textColor = '92400E'; // amber-800
+    const headingColor = '78350F'; // amber-900
+    const linkColor = '1D4ED8'; // blue-700
+    return [
+        new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            borders: {
+                top:              { style: BorderStyle.SINGLE, size: 12, color: 'D97706' },
+                bottom:           { style: BorderStyle.SINGLE, size: 12, color: 'D97706' },
+                left:             { style: BorderStyle.SINGLE, size: 12, color: 'D97706' },
+                right:            { style: BorderStyle.SINGLE, size: 12, color: 'D97706' },
+                insideHorizontal: { style: BorderStyle.NONE,   size: 0,  color: 'FFFFFF' },
+                insideVertical:   { style: BorderStyle.NONE,   size: 0,  color: 'FFFFFF' },
+            },
+            rows: [
+                new TableRow({
+                    children: [
+                        new TableCell({
+                            shading: { type: ShadingType.CLEAR, fill: 'FEF3C7' },
+                            margins: { top: 140, bottom: 140, left: 220, right: 220 },
+                            children: [
+                                new Paragraph({
+                                    children: [new TextRun({
+                                        text: '⚠  REVIEW BEFORE SENDING — DELETE THIS NOTE',
+                                        bold: true, font, size: 18, color: headingColor,
+                                    })],
+                                    spacing: { before: 0, after: 100 },
+                                }),
+                                new Paragraph({
+                                    children: [
+                                        new TextRun({ text: 'This resume was built from your diagnostic answers and contains ', font, size: 18, color: textColor }),
+                                        new TextRun({ text: '"Add…"', bold: true, font, size: 18, color: textColor }),
+                                        new TextRun({ text: ' placeholders throughout. Find every one and replace it with your real content before sending this to anyone.', font, size: 18, color: textColor }),
+                                    ],
+                                    spacing: { before: 0, after: 100 },
+                                }),
+                                new Paragraph({
+                                    children: [
+                                        new TextRun({ text: 'The quickest way to fill the gaps: use the guided wizard at ', font, size: 18, color: textColor }),
+                                        new TextRun({ text: 'aussiegradcareers.com.au/setup', bold: true, font, size: 18, color: linkColor }),
+                                        new TextRun({ text: ' (about 6 minutes) — it coaches you through every section, then you re-download a complete version.', font, size: 18, color: textColor }),
+                                    ],
+                                    spacing: { before: 0, after: 0 },
+                                }),
+                            ],
+                        }),
+                    ],
+                }),
+            ],
+        }),
+        new Paragraph({
+            children: [new TextRun({ text: '' })],
+            spacing: { before: 0, after: 280 },
+        }),
+    ];
 }
 
 function buildParagraphs(markdown: string, docType: DocType): Paragraph[] {
@@ -181,13 +244,19 @@ function buildParagraphs(markdown: string, docType: DocType): Paragraph[] {
     return paragraphs;
 }
 
+function sanitizeForExport(raw: string): string {
+    return raw.replace(/\[VERIFY:[^\]]*\]/g, '').replace(/\s{2,}/g, ' ');
+}
+
 export async function exportDocx(
     content: string,
     docType: DocType,
     candidateName: string,
     jobTitle?: string,
     company?: string,
+    showSetupNotice?: boolean,
 ): Promise<void> {
+    content = sanitizeForExport(content);
     const font = FONTS[docType];
 
     // Page margins: APS = 25mm all sides; default = 20mm sides, 25mm top/bottom
@@ -250,7 +319,9 @@ export async function exportDocx(
                     ],
                 }),
             },
-            children: buildParagraphs(content, docType),
+            children: showSetupNotice
+                ? [...buildSetupNotice(font), ...buildParagraphs(content, docType)]
+                : buildParagraphs(content, docType),
         }],
     });
 

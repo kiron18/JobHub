@@ -162,6 +162,10 @@ const DOC_LABELS: Record<DocType, string> = {
     'research-statement': 'Research_Statement',
 };
 
+function sanitizeForExport(raw: string): string {
+    return raw.replace(/\[VERIFY:[^\]]*\]/g, '').replace(/\s{2,}/g, ' ');
+}
+
 export async function exportPdf(
     content: string,
     docType: DocType,
@@ -169,6 +173,7 @@ export async function exportPdf(
     jobTitle?: string,
     company?: string,
 ): Promise<void> {
+    content = sanitizeForExport(content);
     const doc = buildPdfDocument(content);
     const blob = await pdf(doc as any).toBlob();
     const namePart = candidateName.replace(/\s+/g, '_') || 'document';

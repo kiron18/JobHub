@@ -49,7 +49,6 @@ const queryClient = new QueryClient();
 
 // Dashboard View component
 const Dashboard = () => {
-  const [showReport, setShowReport] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: profile } = useQuery({
@@ -112,46 +111,22 @@ const Dashboard = () => {
   }, [profile?.hasCompletedOnboarding, achievementCount]);
   const applicationCount = jobs?.length || 0;
 
+  const greeting = (() => {
+    const h = new Date().getHours();
+    const seed = new Date().toDateString().split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+    const morning = ['Good morning', 'Morning', 'Rise and shine'];
+    const afternoon = ['Good afternoon', 'Afternoon', 'Good afternoon'];
+    const evening = ['Good evening', 'Evening', 'Still at it'];
+    const opts = h < 12 ? morning : h < 17 ? afternoon : evening;
+    return opts[seed % opts.length];
+  })();
+
   return (
     <div className="space-y-10">
       <header className="space-y-2">
-        <h2 className="text-4xl font-extrabold tracking-tight italic text-white">{(() => { const h = new Date().getHours(); return h < 12 ? 'Good Morning' : h < 17 ? 'Good Afternoon' : 'Good Evening'; })()}, {profile?.name || 'Candidate'}</h2>
-        <p className="text-xl text-slate-400 font-medium">Here's your job application intelligence overview.</p>
+        <h2 className="text-4xl font-extrabold tracking-tight italic text-white">{greeting}, {profile?.name || 'Candidate'}</h2>
+        <p className="text-xl text-slate-400 font-medium">Paste a job description. Get a matched resume in 3 minutes.</p>
       </header>
-
-      {/* Collapsed report summary card */}
-      <div style={{
-        background: 'rgba(252,211,77,0.05)',
-        border: '1px solid rgba(252,211,77,0.15)',
-        borderRadius: 16,
-        padding: '18px 24px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 24,
-      }}>
-        <div>
-          <p style={{ fontSize: 13, fontWeight: 700, color: '#d97706', margin: 0 }}>Your Diagnosis</p>
-          <p style={{ fontSize: 12, color: '#92400e', margin: '2px 0 0' }}>
-            {new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
-          </p>
-        </div>
-        <button
-          onClick={() => setShowReport(true)}
-          style={{
-            background: 'rgba(252,211,77,0.12)',
-            border: '1px solid rgba(252,211,77,0.3)',
-            borderRadius: 10,
-            padding: '8px 18px',
-            fontSize: 13,
-            fontWeight: 700,
-            color: '#92400e',
-            cursor: 'pointer',
-          }}
-        >
-          View report →
-        </button>
-      </div>
 
       {/* Job Feed widget */}
       {feedData?.total > 0 && (
@@ -187,29 +162,6 @@ const Dashboard = () => {
         { id: 'matcher',      text: 'Paste a job description here to get matched and start applying' },
       ]} />
 
-      {/* Return-visit report overlay */}
-      {showReport && (
-        <>
-          <button
-            onClick={() => setShowReport(false)}
-            style={{
-              position: 'fixed', top: 16, left: 20, zIndex: 52,
-              background: 'rgba(255,255,255,0.08)',
-              border: '1px solid rgba(255,255,255,0.15)',
-              borderRadius: 99, padding: '8px 16px',
-              fontSize: 13, fontWeight: 700, color: '#d1d5db', cursor: 'pointer',
-            }}
-          >
-            ← Back to dashboard
-          </button>
-          <div style={{ position: 'fixed', inset: 0, zIndex: 50 }}>
-            <React.Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center"><div className="w-10 h-10 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" /></div>}>
-              <ReportExperience onDone={() => setShowReport(false)} />
-            </React.Suspense>
-          </div>
-        </>
-      )}
-
       {/* Pipeline at-a-glance */}
       {(() => {
         const pipeline = [
@@ -225,23 +177,27 @@ const Dashboard = () => {
           return dLeft >= 0 && dLeft <= 7;
         }).sort((a: any, b: any) => new Date(a.closingDate).getTime() - new Date(b.closingDate).getTime()).slice(0, 3);
 
+        const totalCount = (jobs || []).length;
+
         return (
           <div className="space-y-4">
-            {/* Pipeline stats */}
-            <div className="grid grid-cols-5 gap-3">
+            {/* Pipeline stats — only shown once user has applications */}
+            {totalCount > 0 && (
+            <div className="grid grid-cols-5 gap-2">
               {pipeline.map(p => {
                 const count = (jobs || []).filter((j: any) => j.status === p.status).length;
                 return (
                   <NavLink key={p.status} to="/tracker"
-                    className="glass-card p-4 flex flex-col gap-2 hover:border-slate-700 transition-all no-underline"
-                    style={{ borderColor: count > 0 ? p.border : undefined }}
+                    className="p-3 flex flex-col gap-1.5 rounded-xl border border-slate-800/60 hover:border-slate-700 transition-all no-underline"
+                    style={{ background: count > 0 ? p.bg : 'rgba(255,255,255,0.02)' }}
                   >
-                    <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: p.color }}>{p.label}</p>
-                    <p className="text-3xl font-black tabular-nums" style={{ color: count > 0 ? p.color : '#374151' }}>{count}</p>
+                    <p className="text-[8px] font-black uppercase tracking-widest" style={{ color: count > 0 ? p.color : '#374151' }}>{p.label}</p>
+                    <p className="text-xl font-black tabular-nums" style={{ color: count > 0 ? p.color : '#374151' }}>{count}</p>
                   </NavLink>
                 );
               })}
             </div>
+            )}
 
             {/* Upcoming deadlines */}
             {upcomingDeadlines.length > 0 && (
@@ -275,11 +231,9 @@ const Dashboard = () => {
         </div>
 
         <div className="space-y-8">
-          <div className="glass-card p-8 flex flex-col justify-between h-56 relative overflow-hidden group border-b-4 border-b-brand-600">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-brand-600/10 blur-3xl -mr-16 -mt-16 group-hover:bg-brand-600/20 transition-all"></div>
-            <h3 className="font-bold text-slate-400 text-xs uppercase tracking-[0.2em]">Active Applications</h3>
-            <div className="text-7xl font-black text-brand-400 tabular-nums">{applicationCount}</div>
-            <p className="text-xs text-slate-500 font-bold tracking-wider">SYNCED WITH DATABASE</p>
+          <div className="glass-card p-6 flex flex-col gap-3">
+            <h3 className="font-bold text-slate-500 text-[10px] uppercase tracking-[0.2em]">Active Applications</h3>
+            <div className="text-4xl font-black text-brand-400 tabular-nums">{applicationCount}</div>
           </div>
 
           <div className="glass-card p-8 border-l-4 border-l-emerald-500 space-y-4">

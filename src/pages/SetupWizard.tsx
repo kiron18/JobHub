@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -149,20 +149,19 @@ const COACHING: Record<string, { headline: string; body: string; tipsLabel?: str
   },
 };
 
-const REWARD_MESSAGES: Record<StepType, string> = {
+const FALLBACK_MESSAGES: Partial<Record<StepType, string>> = {
   summary: 'Strong opening. A recruiter reading this knows your value immediately.',
   experience: 'Good. That role tells a story now.',
   achievements: 'These will make a difference. Metrics are what make screening software and humans stop.',
   education: 'Confirmed. Clean and accurate.',
-  certifications: 'Good. Any credential on your profile reinforces your credibility.',
+  certifications: 'Any credential on your profile reinforces your credibility.',
   volunteering: 'Done. Character on the page.',
-  skills: 'Done. Your profile is ready.',
-  complete: '',
+  skills: "Skills logged. Your application now outperforms 85% of other candidates. You're ready.",
 };
 
 const COMPETITIVE_PROGRESS: Partial<Record<StepType, { strength: string; label: string }>> = {
-  summary:        { strength: '5/10', label: "Summary done. You're ahead of applicants who skip this." },
-  experience:     { strength: '6/10', label: "You're now ahead of 50% of applicants." },
+  summary:        { strength: '5/10', label: "Summary added. Recruiters read this in 6 seconds — yours now makes them stop." },
+  experience:     { strength: '6/10', label: "You're now ahead of 60% of applicants. Most stop here." },
   achievements:   { strength: '8/10', label: "This step alone moves you from bottom 50% to top 25%." },
   education:      { strength: '8/10', label: "Most applicants stop here. You're going further." },
   certifications: { strength: '8.5/10', label: "Any credential adds credibility — and most don't have one." },
@@ -665,7 +664,7 @@ function SkillsForm({
 
 // ─── Reward overlay ──────────────────────────────────────────────────────────
 
-function RewardOverlay({ message, visible }: { message: string; visible: boolean }) {
+function RewardOverlay({ message, visible, onDismiss }: { message: string | null; visible: boolean; onDismiss: () => void }) {
   return (
     <AnimatePresence>
       {visible && (
@@ -675,14 +674,11 @@ function RewardOverlay({ message, visible }: { message: string; visible: boolean
           exit={{ opacity: 0 }}
           transition={{ duration: 0.18 }}
           style={{
-            position: 'fixed',
-            inset: 0,
+            position: 'fixed', inset: 0,
             background: 'rgba(8,11,18,0.92)',
             backdropFilter: 'blur(4px)',
             zIndex: 100,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
             padding: 24,
           }}
           aria-live="polite"
@@ -696,21 +692,49 @@ function RewardOverlay({ message, visible }: { message: string; visible: boolean
             style={{ textAlign: 'center', maxWidth: 360 }}
           >
             <div style={{
-              width: 64,
-              height: 64,
-              borderRadius: '50%',
-              background: 'rgba(34,197,94,0.12)',
-              border: '1px solid rgba(34,197,94,0.3)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              width: 64, height: 64, borderRadius: '50%',
+              background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
               margin: '0 auto 20px',
             }}>
-              <CheckCircle size={32} color="#22c55e" />
+              {message ? <CheckCircle size={32} color="#22c55e" /> : (
+                <div style={{
+                  width: 28, height: 28,
+                  border: '3px solid rgba(34,197,94,0.2)',
+                  borderTopColor: '#22c55e',
+                  borderRadius: '50%',
+                  animation: 'spin 0.8s linear infinite',
+                }} />
+              )}
             </div>
-            <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#f3f4f6', lineHeight: 1.5, letterSpacing: '-0.01em' }}>
-              {message}
-            </p>
+            {message ? (
+              <>
+                <motion.p
+                  key={message}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2 }}
+                  style={{ margin: '0 0 24px', fontSize: 16, fontWeight: 700, color: '#f3f4f6', lineHeight: 1.5, letterSpacing: '-0.01em' }}
+                >
+                  {message}
+                </motion.p>
+                <motion.button
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2, delay: 0.15 }}
+                  onClick={onDismiss}
+                  style={{
+                    background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: 10, padding: '10px 24px', fontSize: 13, fontWeight: 700,
+                    color: '#d1d5db', cursor: 'pointer', letterSpacing: '-0.01em',
+                  }}
+                >
+                  Continue →
+                </motion.button>
+              </>
+            ) : (
+              <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>Saving…</p>
+            )}
           </motion.div>
         </motion.div>
       )}
@@ -742,10 +766,12 @@ export function SetupWizard() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [saving, setSaving] = useState(false);
   const [rewardVisible, setRewardVisible] = useState(false);
-  const [rewardMessage, setRewardMessage] = useState('');
+  const [rewardMessage, setRewardMessage] = useState<string | null>(null);
+  const resolveRewardRef = useRef<(() => void) | null>(null);
 
   // Per-step local edit state
   const [summaryText, setSummaryText] = useState('');
+  const [showDutyWarning, setShowDutyWarning] = useState(false);
   const [experienceEdits, setExperienceEdits] = useState<Record<string, ExperienceEntry>>({});
   const [achievementEdits, setAchievementEdits] = useState<AchievementEntry[]>([]);
   const [educationEdits, setEducationEdits] = useState<EducationEntry[]>([]);
@@ -788,21 +814,33 @@ export function SetupWizard() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  const showReward = useCallback((message: string) => {
-    setRewardMessage(message);
+  const showReward = useCallback(async (type: StepType, content: any) => {
+    setRewardMessage(null);
     setRewardVisible(true);
-    return new Promise<void>((resolve) => {
-      setTimeout(() => {
-        setRewardVisible(false);
-        resolve();
-      }, 1300);
+
+    const feedbackPromise = api.post('/wizard/step-feedback', { stepType: type, content })
+      .then((res: any) => res.data?.feedback ?? FALLBACK_MESSAGES[type] ?? '')
+      .catch(() => FALLBACK_MESSAGES[type] ?? '');
+
+    const feedback = await Promise.race([
+      feedbackPromise,
+      new Promise<string>(resolve => setTimeout(() => resolve(FALLBACK_MESSAGES[type] ?? ''), 2000)),
+    ]);
+
+    setRewardMessage(feedback as string);
+
+    await new Promise<void>(resolve => {
+      resolveRewardRef.current = resolve;
     });
+    resolveRewardRef.current = null;
+    setRewardVisible(false);
   }, []);
 
   const advance = useCallback(() => {
     const nextIndex = currentIndex + 1;
     if (nextIndex >= steps.length) return;
     setCurrentIndex(nextIndex);
+    setShowDutyWarning(false);
     scrollTop();
   }, [currentIndex, steps.length, scrollTop]);
 
@@ -816,6 +854,23 @@ export function SetupWizard() {
         await api.patch('/profile', { professionalSummary: summaryText });
 
       } else if (type === 'experience') {
+        // Duty-language gate: check before saving
+        if (!showDutyWarning) {
+          const allDescriptions = Object.values(experienceEdits)
+            .map(e => e.description ?? '')
+            .join(' ');
+          const digitCount = (allDescriptions.match(/\d/g) ?? []).length;
+          const charCount = allDescriptions.replace(/\s/g, '').length;
+          const lowNumberDensity = charCount > 0 && digitCount / charCount < (1 / 80);
+          const dutyWords = ['responsible for', 'managed', 'worked on', 'assisted', 'helped', 'supported', 'was involved'];
+          const hasDutyLanguage = dutyWords.some(w => allDescriptions.toLowerCase().includes(w));
+          if (lowNumberDensity && hasDutyLanguage) {
+            setShowDutyWarning(true);
+            setSaving(false);
+            return;
+          }
+        }
+
         await Promise.all(
           Object.entries(experienceEdits).map(([id, edits]) =>
             api.patch(`/experience/${id}`, {
@@ -870,14 +925,24 @@ export function SetupWizard() {
         await api.patch('/profile', { skills: skillsText });
       }
 
-      await showReward(REWARD_MESSAGES[type]);
+      const contentForCurrentStep: any =
+        type === 'summary' ? summaryText :
+        type === 'experience' ? Object.values(experienceEdits).map(e => ({ company: e.company, role: e.role, description: e.description })) :
+        type === 'achievements' ? achievementEdits.map(a => ({ title: a.title, metric: a.metric, description: a.description })) :
+        type === 'education' ? educationEdits :
+        type === 'certifications' ? certEdits :
+        type === 'volunteering' ? volEdits :
+        type === 'skills' ? skillsText :
+        null;
+
+      await showReward(type, contentForCurrentStep);
       advance();
     } catch {
       // silent — user can retry
     } finally {
       setSaving(false);
     }
-  }, [currentStep, saving, summaryText, experienceEdits, achievementEdits, educationEdits, certEdits, volEdits, skillsText, showReward, advance]);
+  }, [currentStep, saving, summaryText, showDutyWarning, experienceEdits, achievementEdits, educationEdits, certEdits, volEdits, skillsText, showReward, advance]);
 
   const handleSkip = useCallback(() => {
     advance();
@@ -917,7 +982,11 @@ export function SetupWizard() {
   return (
     <div style={{ height: '100vh', overflowY: 'auto', background: '#080b12', paddingBottom: 80 }}>
       {/* Reward overlay */}
-      <RewardOverlay visible={rewardVisible} message={rewardMessage} />
+      <RewardOverlay
+        visible={rewardVisible}
+        message={rewardMessage}
+        onDismiss={() => { resolveRewardRef.current?.(); }}
+      />
 
       {/* Progress bar */}
       <div style={{ height: 3, background: 'rgba(255,255,255,0.04)', width: '100%' }}>
@@ -951,9 +1020,28 @@ export function SetupWizard() {
               const prog = prevStep ? COMPETITIVE_PROGRESS[prevStep.type] : null;
               if (!prog) return null;
               return (
-                <p style={{ margin: 0, fontSize: 12, color: '#6366f1', fontWeight: 700 }}>
-                  Application strength: {prog.strength} · {prog.label}
-                </p>
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, ease: [0, 0, 0.2, 1] }}
+                  style={{
+                    background: 'rgba(99,102,241,0.08)',
+                    border: '1px solid rgba(99,102,241,0.2)',
+                    borderRadius: 10,
+                    padding: '10px 14px',
+                    marginTop: 8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                  }}
+                >
+                  <span style={{ fontSize: 15, fontWeight: 900, color: '#818cf8', letterSpacing: '-0.01em', flexShrink: 0 }}>
+                    {prog.strength}
+                  </span>
+                  <span style={{ fontSize: 12, color: '#a5b4fc', fontWeight: 600, lineHeight: 1.4 }}>
+                    {prog.label}
+                  </span>
+                </motion.div>
               );
             })()}
           </div>
@@ -1048,6 +1136,34 @@ export function SetupWizard() {
                   <SkillsForm value={skillsText} onChange={setSkillsText} />
                 )}
               </div>
+            )}
+
+            {/* Duty language warning (experience step only) */}
+            {currentStep?.type === 'experience' && showDutyWarning && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                style={{
+                  background: 'rgba(245,158,11,0.08)',
+                  border: '1px solid rgba(245,158,11,0.25)',
+                  borderRadius: 12,
+                  padding: '14px 16px',
+                  marginBottom: 16,
+                }}
+              >
+                <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 800, color: '#fbbf24', letterSpacing: '-0.01em' }}>
+                  Hold up — these look like job duties, not achievements.
+                </p>
+                <p style={{ margin: '0 0 10px', fontSize: 12, color: '#d97706', lineHeight: 1.55 }}>
+                  "Managed social media" won't get you interviews. "Grew Instagram from 4k to 22k in 6 months" will. Add a number or outcome to at least one bullet.
+                </p>
+                <button
+                  onClick={() => setShowDutyWarning(false)}
+                  style={{ fontSize: 11, fontWeight: 700, color: '#fbbf24', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                >
+                  I've added outcomes — continue →
+                </button>
+              </motion.div>
             )}
 
             {/* CTAs */}

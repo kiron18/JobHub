@@ -533,7 +533,7 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onStatusChange, onDelete,
                 </div>
             )}
 
-            <div className="p-5">
+            <div className="p-5 cursor-pointer" onClick={() => setExpanded(e => !e)}>
                 <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -544,7 +544,7 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onStatusChange, onDelete,
                             {/* Priority badge — click to cycle */}
                             <div className="relative">
                                 <button
-                                    onClick={() => setPriorityMenuOpen(o => !o)}
+                                    onClick={(e) => { e.stopPropagation(); setPriorityMenuOpen(o => !o); }}
                                     style={job.priority ? {
                                         background: PRIORITY_CONFIG[job.priority].bg,
                                         border: `1px solid ${PRIORITY_CONFIG[job.priority].border}`,
@@ -636,7 +636,7 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onStatusChange, onDelete,
                             </div>
                         )}
                         <button
-                            onClick={() => setExpanded(!expanded)}
+                            onClick={(e) => { e.stopPropagation(); setExpanded(v => !v); }}
                             aria-expanded={expanded}
                             aria-label={expanded ? 'Collapse job details' : 'Expand job details'}
                             className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 transition-colors"

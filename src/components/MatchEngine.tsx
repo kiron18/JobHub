@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Target, Loader2, Zap, AlertTriangle, FileText, Mail, List, XCircle, TrendingDown, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -198,6 +198,7 @@ const CitizenshipWarning: React.FC<CitizenshipWarningProps> = ({ onClose, onProc
 export const MatchEngine: React.FC = () => {
     const navigate = useNavigate();
     const { T } = useAppTheme();
+    const actionsRef = useRef<HTMLDivElement>(null);
     const [jobDescription, setJobDescription] = useState(() => {
         return localStorage.getItem('jobhub_current_jd') || '';
     });
@@ -252,6 +253,7 @@ export const MatchEngine: React.FC = () => {
             trackMatchAnalysisRun();
             setResult(data);
             localStorage.setItem('jobhub_current_analysis', JSON.stringify(data));
+            setTimeout(() => actionsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 150);
             if (data.citizenshipWarning) {
                 setShowCitizenshipWarning(true);
             }
@@ -297,35 +299,38 @@ export const MatchEngine: React.FC = () => {
             )}
             <div className="space-y-6">
                 <div className="glass-card p-6 space-y-4">
-                    {/* Beta browse banner */}
-                    <a
-                        href="/job-feed"
-                        className="flex items-center justify-between gap-3 mb-4 px-3.5 py-2.5 rounded-xl border border-teal-500/20 bg-teal-500/5 hover:bg-teal-500/10 transition-colors no-underline"
-                    >
-                        <div className="flex items-center gap-2">
-                            <span className="text-[9px] font-black text-teal-400 bg-teal-500/15 px-2 py-0.5 rounded-full uppercase tracking-wider">NEW</span>
-                            <span className="text-xs font-semibold text-teal-300">Browse curated roles — fresh opportunities added daily</span>
-                        </div>
-                        <span className="text-[10px] text-teal-500/60 font-bold shrink-0">Beta →</span>
-                    </a>
 
                     <div className="flex items-center justify-between border-b border-slate-800 pb-4">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-brand-600/10 rounded-xl flex items-center justify-center text-brand-500">
                                 <Target size={20} />
                             </div>
-                            <h3 className="text-xl font-bold" style={{ color: T.text }}>Job Match Analysis</h3>
+                            <h3 className="text-2xl font-black tracking-tight" style={{ color: T.text }}>Job Match Analysis</h3>
                         </div>
                         {(jobDescription || result) && (
                             <button
                                 onClick={handleReset}
-                                className="text-[10px] font-bold text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors"
+                                className="text-[9px] font-bold text-slate-600 uppercase tracking-widest hover:text-slate-400 transition-colors"
                             >
                                 Reset
                             </button>
                         )}
                     </div>
 
+
+                    {/* Job Feed banner */}
+                    <div className="mb-4 flex items-center gap-2 px-3 py-2 rounded-lg border border-brand-600/20 bg-brand-600/5">
+                        <span className="text-[8px] font-black uppercase tracking-widest text-brand-400 px-1.5 py-0.5 rounded bg-brand-600/15 shrink-0">NEW</span>
+                        <p className="text-[11px] text-slate-400 leading-snug">
+                            <span className="font-semibold text-slate-200">Job Feed is live.</span> Fresh opportunities added daily — find roles that match your profile and generate documents in one click.
+                        </p>
+                        <button
+                            onClick={() => navigate('/jobs')}
+                            className="shrink-0 text-[10px] font-bold text-brand-400 hover:text-brand-300 transition-colors whitespace-nowrap bg-transparent border-none cursor-pointer p-0"
+                        >
+                            Browse →
+                        </button>
+                    </div>
 
                     {/* Quick-win copy */}
                     {!jobDescription && !result && (
@@ -413,46 +418,33 @@ export const MatchEngine: React.FC = () => {
 
                 {/* Quick Actions Panel */}
                 {result && (
-                    <>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-in slide-in-from-top-4 duration-500">
+                    <div ref={actionsRef} className="space-y-3 animate-in slide-in-from-top-4 duration-500">
                         <button
                             onClick={() => navigateTo('resume')}
-                            className="glass-card p-4 flex flex-col items-center gap-3 hover:border-amber-500/50 transition-all group"
+                            className="w-full py-4 px-6 flex items-center justify-center gap-2 text-sm font-black uppercase tracking-wider text-white rounded-xl transition-all"
+                            style={{
+                                background: 'linear-gradient(135deg, #f97316 0%, #ec4899 50%, #7c3aed 100%)',
+                                boxShadow: '0 4px 20px rgba(236, 72, 153, 0.3)',
+                            }}
                         >
-                            <div className="w-10 h-10 bg-amber-500/10 text-amber-500 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
-                                <FileText size={20} />
-                            </div>
-                            <span className="text-sm font-bold" style={{ color: T.text }}>Custom Resume</span>
-                            <span className="text-[9px] font-bold text-amber-500/70 uppercase tracking-wider">Tailored for this role</span>
+                            Prepare &amp; Apply →
                         </button>
-                        <button
-                            onClick={() => navigateTo('cover-letter')}
-                            className="glass-card p-4 flex flex-col items-center gap-3 hover:border-brand-500/50 transition-all group"
-                        >
-                            <div className="w-10 h-10 bg-blue-500/10 text-blue-500 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
-                                <Mail size={20} />
-                            </div>
-                            <span className="text-sm font-bold" style={{ color: T.text }}>Cover Letter</span>
-                            <span className="text-[9px] font-bold text-blue-500/70 uppercase tracking-wider">Tailored for this role</span>
-                        </button>
-                        <button
-                            onClick={() => navigateTo('selection-criteria')}
-                            className="glass-card p-4 flex flex-col items-center gap-3 hover:border-purple-500/50 transition-all group"
-                        >
-                            <div className="w-10 h-10 bg-purple-500/10 text-purple-500 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
-                                <List size={20} />
-                            </div>
-                            <span className="text-sm font-bold" style={{ color: T.text }}>Selection Criteria</span>
-                            <span className="text-[9px] font-bold text-purple-500/70 uppercase tracking-wider">Tailored for this role</span>
-                        </button>
+                        <div className="grid grid-cols-3 gap-2">
+                            {([
+                                { label: 'Custom Resume', tab: 'resume' },
+                                { label: 'Cover Letter', tab: 'cover-letter' },
+                                { label: 'Selection Criteria', tab: 'selection-criteria' },
+                            ] as const).map(({ label, tab }) => (
+                                <button
+                                    key={tab}
+                                    onClick={() => navigateTo(tab)}
+                                    className="glass-card py-2.5 px-3 flex items-center justify-center text-[11px] font-semibold text-slate-400 hover:text-slate-200 hover:border-slate-600 transition-all"
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                    <button
-                        onClick={() => navigateTo('resume')}
-                        className="w-full glass-card py-4 px-6 flex items-center justify-center gap-2 text-sm font-black uppercase tracking-wider text-white hover:border-brand-500/50 hover:bg-brand-500/5 transition-all"
-                    >
-                        Prepare &amp; Apply →
-                    </button>
-                    </>
                 )}
             </div>
         </>

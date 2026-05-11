@@ -12,7 +12,6 @@ import api from '../lib/api';
 import { useAppTheme } from '../contexts/ThemeContext';
 import { ProfileAdvisorPanel } from './ProfileAdvisorPanel';
 import { ActivityWidget } from './ActivityWidget';
-import { BaselineResumeBanner } from './BaselineResumeBanner';
 import { ManageSubscriptionModal } from './ManageSubscriptionModal';
 import { AchievementVideoModal } from './AchievementVideoModal';
 import { MilestoneModal } from './MilestoneModal';
@@ -1647,89 +1646,89 @@ export const ProfileBank: React.FC = () => {
                     </div>
                   </>
                 ) : (
-                  /* Baseline resume gift — reciprocity moment */
+                  /* Baseline resume gift — competitive framing */
                   <>
-                    {(() => {
-                      const score = profile?.completion?.score ?? 0;
-                      const isStrong = score >= 75;
-                      const bodyText = isStrong
-                        ? "Your profile is already strong. This is your starting point — the workspace will tailor it for every specific role you apply to."
-                        : score >= 55
-                        ? "This is a solid base. The achievement bank is what takes you from considered to shortlisted. Add it and you'll outperform most applicants before they've even opened the job description."
-                        : "This is half the battle — you have the document. The other half is your achievement bank: the proof points that stop recruiters skimming and get you interviews. Six minutes to build it. We coach you through every section.";
-                      return (
-                        <>
-                          <div style={{ textAlign: 'center', marginBottom: 20 }}>
-                            <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(45,212,191,0.12)', border: '1px solid rgba(45,212,191,0.28)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
-                              <FileText size={22} style={{ color: '#2dd4bf' }} />
-                            </div>
-                            <h3 style={{ fontSize: 19, fontWeight: 900, color: isDark ? '#f3f4f6' : '#111827', margin: '0 0 4px', letterSpacing: '-0.02em' }}>
-                              Here's your resume.
-                            </h3>
-                            <p style={{ fontSize: 12, color: isDark ? '#6b7280' : '#9ca3af', margin: 0 }}>
-                              Built from your diagnostic answers.
-                            </p>
-                          </div>
-                          <div style={{ background: isDark ? 'rgba(45,212,191,0.05)' : 'rgba(45,212,191,0.06)', border: '1px solid rgba(45,212,191,0.18)', borderRadius: 12, padding: '14px 18px', marginBottom: 20 }}>
-                            <p style={{ margin: 0, fontSize: 13, color: isDark ? '#a5b4fc' : '#4f46e5', lineHeight: 1.65 }}>
-                              {bodyText}
-                            </p>
-                          </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            <button
-                              onClick={handleBaselineDownload}
-                              disabled={baselineDownloading}
-                              style={{ width: '100%', padding: '13px 0', borderRadius: 10, background: isStrong ? '#2dd4bf' : 'linear-gradient(135deg, #6366f1, #4f46e5)', border: 'none', color: isStrong ? '#0d1117' : '#fff', fontSize: 14, fontWeight: 800, cursor: baselineDownloading ? 'wait' : 'pointer', opacity: baselineDownloading ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-                            >
-                              <Download size={15} />
-                              {baselineDownloading ? 'Downloading…' : isStrong ? 'Download my resume' : 'Download & Build My Profile →'}
-                            </button>
-                            {!isStrong && (
-                              <button
-                                onClick={() => { dismissWelcomeModal(); navigate('/setup'); }}
-                                style={{ width: '100%', padding: '12px 0', borderRadius: 10, background: 'none', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`, color: isDark ? '#6b7280' : '#9ca3af', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-                              >
-                                Start building now →
-                              </button>
-                            )}
-                          </div>
-                        </>
-                      );
-                    })()}
+                    {/* Icon */}
+                    <div style={{ textAlign: 'center', marginBottom: 24 }}>
+                      <div style={{ width: 52, height: 52, borderRadius: 16, background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                        <FileText size={24} style={{ color: '#6366f1' }} />
+                      </div>
+                      <h3 style={{ fontSize: 20, fontWeight: 900, color: isDark ? '#f3f4f6' : '#111827', margin: '0 0 6px', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+                        Here's your resume.
+                      </h3>
+                      <p style={{ fontSize: 13, color: isDark ? '#6b7280' : '#9ca3af', margin: 0 }}>
+                        Built from your diagnostic answers.
+                      </p>
+                    </div>
+
+                    {/* Competitive gap panel */}
+                    <div style={{ background: isDark ? 'rgba(99,102,241,0.07)' : 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.18)', borderRadius: 12, padding: '16px 18px', marginBottom: 20 }}>
+                      <p style={{ margin: '0 0 12px', fontSize: 15, fontWeight: 800, color: isDark ? '#f3f4f6' : '#111827', lineHeight: 1.4, letterSpacing: '-0.01em' }}>
+                        You know it's not working. Ready to fix it?
+                      </p>
+                      <p style={{ margin: 0, fontSize: 13, color: isDark ? '#a5b4fc' : '#4f46e5', lineHeight: 1.55, fontWeight: 600 }}>
+                        In just 7 minutes, we show you exactly what to change and why it matters.
+                      </p>
+                    </div>
+
+                    {/* Primary CTA */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <button
+                        onClick={handleBaselineDownload}
+                        disabled={baselineDownloading}
+                        style={{
+                          width: '100%', padding: '14px 0', borderRadius: 10,
+                          background: 'linear-gradient(135deg, #f97316 0%, #ec4899 50%, #7c3aed 100%)',
+                          border: 'none', color: '#fff', fontSize: 14, fontWeight: 800,
+                          cursor: baselineDownloading ? 'wait' : 'pointer',
+                          opacity: baselineDownloading ? 0.7 : 1,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                          letterSpacing: '-0.01em',
+                          boxShadow: '0 4px 20px rgba(236, 72, 153, 0.3)',
+                        }}
+                      >
+                        <Download size={15} />
+                        {baselineDownloading ? 'Downloading…' : 'Download & Continue Building →'}
+                      </button>
+                    </div>
                   </>
                 )
               ) : (
-                /* Original explanation for non-onboarded users */
+                /* Explanation for non-onboarded users */
                 <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24 }}>
-                    <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <Star size={20} style={{ color: '#818cf8' }} />
+                  <div style={{ textAlign: 'center', marginBottom: 24 }}>
+                    <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+                      <Star size={22} style={{ color: '#818cf8' }} />
                     </div>
-                    <div>
-                      <h3 style={{ fontSize: 17, fontWeight: 800, color: isDark ? '#f3f4f6' : '#111827', margin: 0, letterSpacing: '-0.01em' }}>Your Achievement Bank</h3>
-                      <p style={{ fontSize: 12, color: isDark ? '#6b7280' : '#9ca3af', margin: '2px 0 0' }}>How to get the most out of this page</p>
-                    </div>
+                    <h3 style={{ fontSize: 18, fontWeight: 900, color: isDark ? '#f3f4f6' : '#111827', margin: '0 0 4px', letterSpacing: '-0.02em' }}>
+                      Your Achievement Bank
+                    </h3>
+                    <p style={{ fontSize: 12, color: isDark ? '#6b7280' : '#9ca3af', margin: 0 }}>
+                      The engine behind every document we generate for you.
+                    </p>
                   </div>
-                  {[
-                    { num: '1', title: 'Add your experience', desc: "Enter every role you've held. The AI uses your full work history to find the right story for each application." },
-                    { num: '2', title: 'Link achievements to each role', desc: 'These are the specific wins, metrics, and outcomes — the evidence behind your claims. This is the most important part.' },
-                    { num: '3', title: 'Every document draws from this', desc: 'Your resume, cover letters, and interview answers are all built from this bank. Update it once and every generation improves.' },
-                  ].map(step => (
-                    <div key={step.num} style={{ display: 'flex', gap: 14, marginBottom: 18 }}>
-                      <div style={{ flexShrink: 0, width: 26, height: 26, borderRadius: '50%', background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.28)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, color: '#818cf8' }}>
-                        {step.num}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
+                    {[
+                      { num: '1', title: 'Add your experience', desc: 'Every role, every company. The AI reads your full work history to find the right story for each application.' },
+                      { num: '2', title: 'Add achievements to each role', desc: 'Specific wins, metrics, outcomes — the evidence that stops recruiters skimming. This is the most important part.' },
+                      { num: '3', title: 'Every document draws from this', desc: 'Resume, cover letters, interview prep — all generated from your bank. Update once, everything improves.' },
+                    ].map(s => (
+                      <div key={s.num} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                        <div style={{ width: 22, height: 22, borderRadius: 6, background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
+                          <span style={{ fontSize: 10, fontWeight: 900, color: '#818cf8' }}>{s.num}</span>
+                        </div>
+                        <div>
+                          <p style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 700, color: isDark ? '#e5e7eb' : '#111827' }}>{s.title}</p>
+                          <p style={{ margin: 0, fontSize: 12, color: isDark ? '#6b7280' : '#9ca3af', lineHeight: 1.55 }}>{s.desc}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p style={{ fontSize: 13, fontWeight: 700, color: isDark ? '#e5e7eb' : '#111827', margin: '2px 0 4px' }}>{step.title}</p>
-                        <p style={{ fontSize: 12, color: isDark ? '#9ca3af' : '#6b7280', margin: 0, lineHeight: 1.55 }}>{step.desc}</p>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                   <button
                     onClick={dismissWelcomeModal}
-                    style={{ marginTop: 8, width: '100%', padding: '13px 0', borderRadius: 10, background: 'rgba(99,102,241,0.9)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', letterSpacing: '-0.01em' }}
+                    style={{ width: '100%', padding: '13px 0', borderRadius: 10, background: 'linear-gradient(135deg, #6366f1, #4f46e5)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 800, cursor: 'pointer', letterSpacing: '-0.01em' }}
                   >
-                    Got it, let's build →
+                    Got it — start building →
                   </button>
                 </>
               )}
@@ -1774,9 +1773,6 @@ export const ProfileBank: React.FC = () => {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 24, alignItems: 'start' }}>
           {/* Main column */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {(profile as any)?.hasCompletedOnboarding && ((profile as any)?.freeGenerationsUsed ?? 0) === 0 && (
-              <BaselineResumeBanner isDark={isDark} />
-            )}
             {/* Identity Cards */}
             {Array.isArray((profile as any)?.identityCards) && (profile as any).identityCards.length > 0 && (
               <div className="mb-6">

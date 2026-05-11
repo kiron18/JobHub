@@ -23,6 +23,7 @@ import {
     X,
     Pencil,
     Sparkles,
+    Briefcase,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../lib/api';
@@ -216,6 +217,8 @@ export const ApplicationWorkspace: React.FC = () => {
     const [regenerateFeedback, setRegenerateFeedback] = useState('');
     const [rateLimitError, setRateLimitError] = useState(false);
     const [exportingPdf, setExportingPdf] = useState(false);
+    const [showDownloadReminder, setShowDownloadReminder] = useState(false);
+    const [pendingDownloadFn, setPendingDownloadFn] = useState<(() => void) | null>(null);
     const [companyResearch, setCompanyResearch] = useState<CompanyResearch | null>(null);
     const [selectionCriteriaText, setSelectionCriteriaText] = useState('');
     const [extractedCriteria, setExtractedCriteria] = useState<string[]>([]);
@@ -257,9 +260,34 @@ export const ApplicationWorkspace: React.FC = () => {
     const [generatingAcademic, setGeneratingAcademic] = useState<'teaching-philosophy' | 'research-statement' | null>(null);
     const [academicViewerType, setAcademicViewerType] = useState<'teaching-philosophy' | 'research-statement' | null>(null);
 
+    const [trackerAdded, setTrackerAdded] = useState(false);
+    const [trackerAdding, setTrackerAdding] = useState(false);
+
     const handleNewApplication = () => {
         ['jobhub_current_jd', 'jobhub_current_analysis', 'jobhub_current_docs', 'jobhub_current_docids', 'jobhub_current_tab'].forEach(k => localStorage.removeItem(k));
+        setTrackerAdded(false);
+        setTrackerAdding(false);
         navigate('/');
+    };
+
+    const handleAddToTracker = async () => {
+        if (trackerAdding || trackerAdded) return;
+        const title = state.metadata?.role ?? 'Job Application';
+        const company = state.metadata?.company ?? 'Unknown';
+        setTrackerAdding(true);
+        try {
+            await api.post('/jobs', {
+                title,
+                company,
+                status: 'APPLIED',
+                dateApplied: new Date().toISOString().split('T')[0],
+            });
+            setTrackerAdded(true);
+        } catch {
+            // silent — not critical
+        } finally {
+            setTrackerAdding(false);
+        }
     };
 
     // Cover letter tone preference
@@ -412,7 +440,7 @@ export const ApplicationWorkspace: React.FC = () => {
         }
     };
 
-    const handleDownloadPdf = async () => {
+    const executePdfDownload = async () => {
         const content = state.documents[state.activeTab];
         if (!content) return;
         setExportingPdf(true);
@@ -427,6 +455,21 @@ export const ApplicationWorkspace: React.FC = () => {
             toast.error('PDF export failed - try .docx instead');
         } finally {
             setExportingPdf(false);
+        }
+    };
+
+    const handleDownloadPdf = () => {
+        const content = state.documents[state.activeTab];
+        if (!content) return;
+        triggerDownloadWithReminder(() => executePdfDownload());
+    };
+
+    const triggerDownloadWithReminder = (downloadFn: () => void) => {
+        if (localStorage.getItem('jobhub_skip_download_reminder') === '1') {
+            downloadFn();
+        } else {
+            setPendingDownloadFn(() => downloadFn);
+            setShowDownloadReminder(true);
         }
     };
 
@@ -449,7 +492,7 @@ export const ApplicationWorkspace: React.FC = () => {
             });
         }
 
-        await executeDownload(content);
+        triggerDownloadWithReminder(() => executeDownload(content));
     };
 
     // Auto-save logic
@@ -713,6 +756,57 @@ export const ApplicationWorkspace: React.FC = () => {
     return (
         <div className="fixed inset-0 bg-slate-950 z-50 flex flex-col overflow-hidden text-slate-200">
             <Toaster position="top-center" richColors />
+
+            {/* Download reminder modal */}
+            <AnimatePresence>
+                {showDownloadReminder && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[200] flex items-center justify-center p-6"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.94, opacity: 0, y: 12 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.94, opacity: 0, y: 12 }}
+                            transition={{ duration: 0.2, ease: [0, 0, 0.2, 1] }}
+                            className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-7"
+                        >
+                            <h3 className="text-base font-black text-slate-100 mb-2 tracking-tight">Before you send this</h3>
+                            <p className="text-sm text-slate-400 leading-relaxed mb-1">
+                                Read through your document carefully before submitting. AI-generated content can contain errors, wrong dates, or details that don't reflect your actual experience.
+                            </p>
+                            <p className="text-sm text-slate-400 leading-relaxed mb-6">
+                                A 2-minute review can be the difference between an interview and a rejection.
+                            </p>
+                            <button
+                                onClick={() => {
+                                    setShowDownloadReminder(false);
+                                    pendingDownloadFn?.();
+                                    setPendingDownloadFn(null);
+                                }}
+                                className="w-full py-3 rounded-xl font-black text-sm text-white mb-3 transition-all hover:opacity-90"
+                                style={{ background: 'linear-gradient(135deg, #f97316 0%, #ec4899 50%, #7c3aed 100%)' }}
+                            >
+                                I'll review it — download
+                            </button>
+                            <button
+                                onClick={() => {
+                                    localStorage.setItem('jobhub_skip_download_reminder', '1');
+                                    setShowDownloadReminder(false);
+                                    pendingDownloadFn?.();
+                                    setPendingDownloadFn(null);
+                                }}
+                                className="w-full py-2 text-xs font-bold text-slate-600 hover:text-slate-400 transition-colors"
+                            >
+                                Don't remind me again
+                            </button>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             <header className="h-16 border-b border-slate-800 bg-slate-900/50 backdrop-blur-xl flex items-center justify-between px-6 shrink-0">
                 <div className="flex items-center gap-4">
                     <button
@@ -733,18 +827,6 @@ export const ApplicationWorkspace: React.FC = () => {
                             {state.metadata?.company || 'Drafting Workspace'}
                         </p>
                     </div>
-                    {state.matchScore !== undefined && state.matchScore > 0 && (
-                        <div className="flex items-center gap-1.5 ml-2">
-                            <div className={`relative w-8 h-8 flex items-center justify-center rounded-full border-2 text-[9px] font-black ${
-                                state.matchScore >= 70 ? 'border-emerald-500 text-emerald-400 bg-emerald-500/10'
-                                : state.matchScore >= 50 ? 'border-amber-500 text-amber-400 bg-amber-500/10'
-                                : 'border-red-500 text-red-400 bg-red-500/10'
-                            }`}>
-                                {state.matchScore}
-                            </div>
-                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">match{state.overallGrade ? ` — ${state.overallGrade}` : ''}</span>
-                        </div>
-                    )}
                 </div>
 
                 <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
@@ -780,42 +862,29 @@ export const ApplicationWorkspace: React.FC = () => {
                         />
                     )}
 
-                    <div className="flex items-center gap-2 px-3 py-1 bg-slate-900/50 rounded-lg border border-slate-800">
-                        <div className={`w-1.5 h-1.5 rounded-full ${
-                            state.saveStatus === 'saved' ? 'bg-emerald-500' :
-                            state.saveStatus === 'saving' ? 'bg-amber-500 animate-pulse' :
-                            'bg-slate-500'
-                        }`} />
-                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                            {state.saveStatus === 'saved' ? 'Changes Saved' :
-                             state.saveStatus === 'saving' ? 'Saving...' :
-                             'Unsaved Changes'}
-                        </span>
-                    </div>
-
-                    <button 
+                    <button
                         onClick={() => setState(prev => ({ ...prev, isDrawerOpen: true }))}
                         className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg transition-all"
                     >
                         <Database size={14} />
-                        Edit Selections
+                        Choose Achievements
                     </button>
                     <button
                         onClick={handleDownload}
                         disabled={state.isGenerating || !state.documents[state.activeTab as keyof typeof state.documents]}
                         aria-label="Export document as Word"
-                        className="flex items-center gap-2 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-emerald-600/20"
+                        className="flex items-center gap-1.5 px-3 py-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-[11px] font-bold rounded-lg transition-all shadow-md shadow-emerald-600/20"
                     >
-                        <Download size={14} />
-                        Export .docx
+                        <Download size={12} />
+                        .docx
                     </button>
                     <button
                         onClick={handleDownloadPdf}
                         disabled={exportingPdf}
-                        className="flex items-center gap-2 px-4 py-1.5 bg-rose-700 hover:bg-rose-600 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-rose-700/20"
+                        className="flex items-center gap-1.5 px-3 py-1 bg-rose-700 hover:bg-rose-600 disabled:opacity-50 text-white text-[11px] font-bold rounded-lg transition-all shadow-md shadow-rose-700/20"
                     >
-                        {exportingPdf ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
-                        Export .pdf
+                        {exportingPdf ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />}
+                        .pdf
                     </button>
                 </div>
             </header>
@@ -1439,12 +1508,12 @@ export const ApplicationWorkspace: React.FC = () => {
                                             <p className="text-slate-500 font-bold text-sm tracking-tight">
                                                 {"Drafting your " + state.activeTab.replace('-', ' ') + "..."}
                                             </p>
-                                            <div className="w-48 h-1 bg-slate-100 rounded-full overflow-hidden mx-auto">
+                                            <div className="w-48 h-1 bg-slate-800 rounded-full overflow-hidden mx-auto">
                                                 <motion.div
-                                                    className="h-full bg-brand-600"
-                                                    initial={{ width: "0%" }}
-                                                    animate={{ width: "100%" }}
-                                                    transition={{ duration: 15, ease: "linear" }}
+                                                    className="h-full bg-brand-600 rounded-full"
+                                                    style={{ width: '38%' }}
+                                                    animate={{ x: ['-120%', '320%'] }}
+                                                    transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
                                                 />
                                             </div>
                                         </div>
@@ -1517,17 +1586,79 @@ export const ApplicationWorkspace: React.FC = () => {
                             </div>
                         )}
 
-                        {/* Next application nudge */}
-                        {!state.isGenerating && !!state.documents[state.activeTab] && (
-                            <div className="w-full max-w-3xl mt-3 flex justify-center">
-                                <button
-                                    onClick={handleNewApplication}
-                                    className="text-[11px] font-semibold text-slate-500 hover:text-slate-300 transition-colors py-2 px-4"
-                                >
-                                    Done with this one? Apply to another role →
-                                </button>
-                            </div>
-                        )}
+                        {/* Tracker + next application nudge */}
+                        {!state.isGenerating && !applyContext && (() => {
+                            const hasBoth = !!state.documents['resume'] && !!state.documents['cover-letter'];
+                            const hasAny = !!state.documents[state.activeTab];
+
+                            if (hasBoth && !trackerAdded) {
+                                return (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 6 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ duration: 0.25 }}
+                                        className="w-full max-w-3xl mt-4 rounded-xl border border-teal-500/20 bg-teal-500/5 p-4 flex items-center justify-between gap-4"
+                                    >
+                                        <div>
+                                            <p className="text-sm font-bold text-teal-300 mb-0.5">Documents ready.</p>
+                                            <p className="text-xs text-slate-400 leading-relaxed">
+                                                Add {state.metadata?.company ? `the ${state.metadata.company} role` : 'this application'} to your tracker so you don't lose track.
+                                            </p>
+                                        </div>
+                                        <button
+                                            onClick={handleAddToTracker}
+                                            disabled={trackerAdding}
+                                            className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider border border-teal-500/30 text-teal-400 hover:bg-teal-500/10 transition-colors disabled:opacity-50"
+                                        >
+                                            {trackerAdding ? <Loader2 size={11} className="animate-spin" /> : <Briefcase size={11} />}
+                                            {trackerAdding ? 'Adding…' : 'Track it →'}
+                                        </button>
+                                    </motion.div>
+                                );
+                            }
+
+                            if (trackerAdded) {
+                                return (
+                                    <motion.div
+                                        initial={{ opacity: 0, scale: 0.97 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        transition={{ duration: 0.25 }}
+                                        className="w-full max-w-3xl mt-4 rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-4 flex items-center justify-between gap-4"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <CheckCircle size={16} className="text-green-400 shrink-0" />
+                                            <div>
+                                                <p className="text-sm font-bold text-slate-200 mb-0.5">Added to your tracker.</p>
+                                                <p className="text-xs text-slate-400">
+                                                    We'll remind you to follow up in 7 days.
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={handleNewApplication}
+                                            className="shrink-0 text-[11px] font-bold text-indigo-300 border border-indigo-500/30 rounded-lg px-3 py-1.5 hover:bg-indigo-500/10 transition-colors whitespace-nowrap"
+                                        >
+                                            Start a new application →
+                                        </button>
+                                    </motion.div>
+                                );
+                            }
+
+                            if (hasAny) {
+                                return (
+                                    <div className="w-full max-w-3xl mt-3 flex justify-center">
+                                        <button
+                                            onClick={handleNewApplication}
+                                            className="text-[11px] font-semibold text-slate-500 hover:text-slate-300 transition-colors py-2 px-4"
+                                        >
+                                            Done with this one? Start a new application →
+                                        </button>
+                                    </div>
+                                );
+                            }
+
+                            return null;
+                        })()}
 
                         {applyContext && !state.isGenerating && state.documents[state.activeTab] && (
                             <div className="w-full max-w-3xl mt-4 rounded-xl border border-teal-500/20 bg-teal-500/5 p-5">

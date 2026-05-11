@@ -39,7 +39,7 @@ const SECTION_TEASERS: Record<string, string> = {
 };
 
 const RESPONSE_INTROS: Record<string, string> = {
-  mostly_silence:    'You\'re not clearing the initial filter. That means something in your targeting, resume, or positioning is stopping you before a human ever reads it.',
+  mostly_silence:    'You\'re not clearing the first screening. Applications are going in but nothing is coming back — the block is somewhere in your targeting, resume, or positioning.',
   mostly_rejections: 'You\'re visible — but not compelling enough on paper. The gap is usually how your experience is framed, not the experience itself.',
   interviews_stall:  'You\'re getting in the room, which means your documents work. The issue is how you\'re presenting your value once you\'re there.',
   no_offers:         'You\'re making the shortlist. The difference between you and whoever they pick is narrow — and almost always specific and fixable.',
@@ -470,7 +470,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                       color: 'transparent',
                       display: 'inline-block',
                     }}>{targetRole}</span>
-                    {' '}search.
+                    {' '}job search.
                   </>
                 : <>here's what's actually holding you back.</>
               }
@@ -832,7 +832,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                 borderRadius: 12, padding: '13px 20px', marginBottom: 20, textAlign: 'center',
               }}>
                 <p style={{ margin: 0, fontSize: 14, color: isDark ? '#fcd34d' : '#92400e', lineHeight: 1.65, fontWeight: 500 }}>
-                  Every week you spend manually customising applications is a week Australians with local networks pull ahead.
+                  Every day you delay is another day Australians with connections get the jobs you want.
                 </p>
               </div>
 
@@ -851,16 +851,17 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                   whileHover={{ scale: 1.015 }}
                   whileTap={{ scale: 0.98 }}
                   style={{
-                    width: '100%', background: `linear-gradient(135deg, ${INDIGO}, #4f46e5)`,
+                    width: '100%', background: 'linear-gradient(135deg, #f97316 0%, #ec4899 50%, #7c3aed 100%)',
                     color: 'white', borderRadius: 14, padding: '16px 24px',
                     fontSize: 16, fontWeight: 800, border: 'none', cursor: 'pointer',
                     letterSpacing: '-0.01em',
+                    boxShadow: '0 6px 24px rgba(236, 72, 153, 0.35)',
                   }}
                 >
                   Build your interview-ready resume — Free →
                 </motion.button>
                 <p style={{ margin: 0, fontSize: 12, color: theme.sub, textAlign: 'center' }}>
-                  Start free for 7 days · No charge until day 8 · Cancel any time
+                  First 5 resume applications completely free — no card needed
                 </p>
                 <div style={{ textAlign: 'center' }}>
                   <a
@@ -974,9 +975,9 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
               <button
                 onClick={onDone}
                 style={{
-                  background: `linear-gradient(135deg, ${INDIGO}, #4f46e5)`, color: 'white',
+                  background: 'linear-gradient(135deg, #f97316 0%, #ec4899 50%, #7c3aed 100%)', color: 'white',
                   borderRadius: 10, padding: '10px 18px', fontSize: 13, fontWeight: 800,
-                  border: 'none', cursor: 'pointer', boxShadow: `0 4px 12px ${INDIGO}28`,
+                  border: 'none', cursor: 'pointer', boxShadow: '0 4px 16px rgba(236, 72, 153, 0.3)',
                   whiteSpace: 'nowrap', minHeight: 44,
                 }}
               >
