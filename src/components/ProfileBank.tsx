@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
-  Pencil, Check, X, AlertTriangle, CheckCircle2, CheckCircle,
+  Pencil, Check, X, AlertTriangle, CheckCircle2,
   User, Briefcase, GraduationCap,
   Award, Heart, Wrench, Star, FileText, UploadCloud, RefreshCw, Download,
 } from 'lucide-react';
@@ -1509,7 +1509,6 @@ export const ProfileBank: React.FC = () => {
     !localStorage.getItem('jobhub_profile_visited')
   );
   const [baselineDownloading, setBaselineDownloading] = useState(false);
-  const [baselineDownloaded, setBaselineDownloaded] = useState(false);
 
   const dismissWelcomeModal = () => {
     localStorage.setItem('jobhub_profile_visited', '1');
@@ -1519,24 +1518,52 @@ export const ProfileBank: React.FC = () => {
   const handleBaselineDownload = async () => {
     if (baselineDownloading) return;
     setBaselineDownloading(true);
+
+    const downloadAndAdvance = async (documentId: string) => {
+      const { data: doc } = await api.get(`/documents/${documentId}`);
+      const { exportDocx } = await import('../lib/exportDocx');
+      await exportDocx(doc.content, 'resume', '');
+      dismissWelcomeModal();
+      navigate('/setup');
+    };
+
     try {
       const { data } = await api.get('/profile/baseline-resume');
       if (data.status === 'ready' && data.documentId) {
-        const { data: doc } = await api.get(`/documents/${data.documentId}`);
-        const { exportDocx } = await import('../lib/exportDocx');
-        await exportDocx(doc.content, 'resume', '');
-        const score = profile?.completion?.score ?? 0;
-        if (score >= 75) {
-          setBaselineDownloaded(true); // Strong profile — show success state
-        } else {
-          dismissWelcomeModal();
-          navigate('/setup'); // Low/mid score — go straight to wizard
-        }
-      } else {
-        toast.error('Resume not ready yet — check back in a moment.');
+        await downloadAndAdvance(data.documentId);
+        return;
       }
+
+      try {
+        const { data: genData } = await api.post('/profile/baseline-resume/generate');
+        if (genData.status === 'ready' && genData.documentId) {
+          await downloadAndAdvance(genData.documentId);
+          return;
+        }
+      } catch {
+        // Generation trigger failed — fall through to polling, which will time out and still advance.
+      }
+
+      for (let i = 0; i < 15; i++) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        try {
+          const { data: poll } = await api.get('/profile/baseline-resume');
+          if (poll.status === 'ready' && poll.documentId) {
+            await downloadAndAdvance(poll.documentId);
+            return;
+          }
+        } catch {
+          // Transient error — keep polling
+        }
+      }
+
+      toast('Still preparing your resume — opening your wizard so you can get started.');
+      dismissWelcomeModal();
+      navigate('/setup');
     } catch {
-      toast.error('Download failed — please try again.');
+      toast("Couldn't reach the server — opening your wizard so you can get started.");
+      dismissWelcomeModal();
+      navigate('/setup');
     } finally {
       setBaselineDownloading(false);
     }
@@ -1595,83 +1622,56 @@ export const ProfileBank: React.FC = () => {
                 <X size={16} />
               </button>
               {(profile as any)?.hasCompletedOnboarding ? (
-                baselineDownloaded ? (
-                  /* Post-download state — only shown for strong profiles (score >= 75) */
-                  <>
-                    <div style={{ textAlign: 'center', marginBottom: 24 }}>
-                      <div style={{ width: 52, height: 52, borderRadius: 16, background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                        <CheckCircle size={24} style={{ color: '#22c55e' }} />
-                      </div>
-                      <h3 style={{ fontSize: 20, fontWeight: 900, color: isDark ? '#f3f4f6' : '#111827', margin: '0 0 8px', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-                        Your resume is ready.
-                      </h3>
-                      <p style={{ fontSize: 14, color: isDark ? '#9ca3af' : '#6b7280', margin: 0, lineHeight: 1.65 }}>
-                        Your profile is strong. The workspace will tailor this for every role you apply to.
-                      </p>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      <button
-                        onClick={() => { dismissWelcomeModal(); navigate('/'); }}
-                        style={{ width: '100%', padding: '14px 0', borderRadius: 10, background: 'linear-gradient(135deg, #6366f1, #4f46e5)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 800, cursor: 'pointer', letterSpacing: '-0.01em' }}
-                      >
-                        Start applying →
-                      </button>
-                      <button
-                        onClick={dismissWelcomeModal}
-                        style={{ width: '100%', padding: '12px 0', borderRadius: 10, background: 'none', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`, color: isDark ? '#4b5563' : '#9ca3af', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-                      >
-                        Stay here
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  /* Baseline resume gift — competitive framing */
-                  <>
-                    {/* Icon */}
-                    <div style={{ textAlign: 'center', marginBottom: 24 }}>
-                      <div style={{ width: 52, height: 52, borderRadius: 16, background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                        <FileText size={24} style={{ color: '#6366f1' }} />
-                      </div>
-                      <h3 style={{ fontSize: 20, fontWeight: 900, color: isDark ? '#f3f4f6' : '#111827', margin: '0 0 6px', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-                        Here's your resume.
-                      </h3>
-                      <p style={{ fontSize: 13, color: isDark ? '#6b7280' : '#9ca3af', margin: 0 }}>
-                        Built from your diagnostic answers.
-                      </p>
-                    </div>
+                <>
+                  <div style={{ marginBottom: 20 }}>
+                    <h3 style={{ fontSize: 22, fontWeight: 900, color: isDark ? '#f3f4f6' : '#111827', margin: '0 0 14px', letterSpacing: '-0.02em', lineHeight: 1.25 }}>
+                      Claim your{' '}
+                      <span style={{ background: 'linear-gradient(135deg, #f97316 0%, #ec4899 50%, #7c3aed 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+                        Personalised Resume Draft
+                      </span>
+                      .
+                    </h3>
+                    <p style={{ fontSize: 14, color: isDark ? '#d1d5db' : '#374151', margin: 0, lineHeight: 1.6 }}>
+                      This is your strong foundation, built from your diagnostic and ready to use.
+                    </p>
+                  </div>
 
-                    {/* Competitive gap panel */}
-                    <div style={{ background: isDark ? 'rgba(99,102,241,0.07)' : 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.18)', borderRadius: 12, padding: '16px 18px', marginBottom: 20 }}>
-                      <p style={{ margin: '0 0 12px', fontSize: 15, fontWeight: 800, color: isDark ? '#f3f4f6' : '#111827', lineHeight: 1.4, letterSpacing: '-0.01em' }}>
-                        You know it's not working. Ready to fix it?
-                      </p>
-                      <p style={{ margin: 0, fontSize: 13, color: isDark ? '#a5b4fc' : '#4f46e5', lineHeight: 1.55, fontWeight: 600 }}>
-                        In just 7 minutes, we show you exactly what to change and why it matters.
-                      </p>
-                    </div>
+                  <div style={{ marginBottom: 24 }}>
+                    <p style={{ fontSize: 14, color: isDark ? '#9ca3af' : '#6b7280', margin: '0 0 12px', lineHeight: 1.65 }}>
+                      Want to make it truly exceptional? Our optimisation wizard helps you add specific achievements and formats that get you noticed by hiring managers.
+                    </p>
+                    <p style={{ fontSize: 14, color: isDark ? '#9ca3af' : '#6b7280', margin: 0, lineHeight: 1.65 }}>
+                      Turn a strong start into an unstoppable application.
+                    </p>
+                  </div>
 
-                    {/* Primary CTA */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      <button
-                        onClick={handleBaselineDownload}
-                        disabled={baselineDownloading}
-                        style={{
-                          width: '100%', padding: '14px 0', borderRadius: 10,
-                          background: 'linear-gradient(135deg, #f97316 0%, #ec4899 50%, #7c3aed 100%)',
-                          border: 'none', color: '#fff', fontSize: 14, fontWeight: 800,
-                          cursor: baselineDownloading ? 'wait' : 'pointer',
-                          opacity: baselineDownloading ? 0.7 : 1,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                          letterSpacing: '-0.01em',
-                          boxShadow: '0 4px 20px rgba(236, 72, 153, 0.3)',
-                        }}
-                      >
+                  <button
+                    onClick={handleBaselineDownload}
+                    disabled={baselineDownloading}
+                    style={{
+                      width: '100%', padding: '14px 0', borderRadius: 10,
+                      background: 'linear-gradient(135deg, #f97316 0%, #ec4899 50%, #7c3aed 100%)',
+                      border: 'none', color: '#fff', fontSize: 14, fontWeight: 800,
+                      cursor: baselineDownloading ? 'wait' : 'pointer',
+                      opacity: baselineDownloading ? 0.8 : 1,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                      letterSpacing: '-0.01em',
+                      boxShadow: '0 4px 20px rgba(236, 72, 153, 0.3)',
+                    }}
+                  >
+                    {baselineDownloading ? (
+                      <>
+                        <span style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite', display: 'inline-block' }} />
+                        Preparing your resume…
+                      </>
+                    ) : (
+                      <>
                         <Download size={15} />
-                        {baselineDownloading ? 'Downloading…' : 'Download & Continue Building →'}
-                      </button>
-                    </div>
-                  </>
-                )
+                        Let's get unstoppable
+                      </>
+                    )}
+                  </button>
+                </>
               ) : (
                 /* Explanation for non-onboarded users */
                 <>
