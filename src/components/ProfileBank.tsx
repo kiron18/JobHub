@@ -14,7 +14,6 @@ import { ProfileAdvisorPanel } from './ProfileAdvisorPanel';
 import { ActivityWidget } from './ActivityWidget';
 import { ManageSubscriptionModal } from './ManageSubscriptionModal';
 import { AchievementVideoModal } from './AchievementVideoModal';
-import { MilestoneModal } from './MilestoneModal';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -1495,7 +1494,7 @@ export const ProfileBank: React.FC = () => {
   const { isDark } = useAppTheme();
   const navigate = useNavigate();
 
-  const { data: profile, isLoading, isError, isFetching } = useQuery<ProfileData>({
+  const { data: profile, isLoading, isError } = useQuery<ProfileData>({
     queryKey: ['profile'],
     queryFn: async () => {
       const { data } = await api.get('/profile');
@@ -1509,28 +1508,8 @@ export const ProfileBank: React.FC = () => {
   const [showWelcomeModal, setShowWelcomeModal] = useState(() =>
     !localStorage.getItem('jobhub_profile_visited')
   );
-  const [activeMilestone, setActiveMilestone] = useState<50 | 70 | null>(null);
   const [baselineDownloading, setBaselineDownloading] = useState(false);
   const [baselineDownloaded, setBaselineDownloaded] = useState(false);
-  const prevScoreRef = useRef<number | null>(null);
-
-  // Fire milestone modal only when score crosses threshold due to user action on this page.
-  // Guard against the stale-cache → fresh-fetch false positive: skip while a background
-  // refetch is in progress, and treat the first settled load as the baseline (no modal).
-  React.useEffect(() => {
-    if (!profile || isFetching) return;
-    const score = profile.completion.score;
-    const prev = prevScoreRef.current;
-    prevScoreRef.current = score;
-    if (prev === null) return; // First settled load — record baseline, no modal
-    if (prev < 70 && score >= 70 && !localStorage.getItem('jobhub_milestone_70')) {
-      localStorage.setItem('jobhub_milestone_70', '1');
-      setActiveMilestone(70);
-    } else if (prev < 50 && score >= 50 && !localStorage.getItem('jobhub_milestone_50')) {
-      localStorage.setItem('jobhub_milestone_50', '1');
-      setActiveMilestone(50);
-    }
-  }, [profile, isFetching]);
 
   const dismissWelcomeModal = () => {
     localStorage.setItem('jobhub_profile_visited', '1');
@@ -1736,13 +1715,6 @@ export const ProfileBank: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Milestone celebration modals */}
-      <MilestoneModal
-        milestone={activeMilestone}
-        onClose={() => setActiveMilestone(null)}
-        isDark={isDark}
-      />
 
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px' }}>
         {/* Page header */}
