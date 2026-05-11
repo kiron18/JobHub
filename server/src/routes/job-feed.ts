@@ -83,9 +83,10 @@ router.get('/feed', async (req: any, res: any) => {
     // Pre-check profile completeness before attempting any build
     const profile = await prisma.candidateProfile.findUnique({
       where: { userId },
-      select: { targetRole: true, targetCity: true },
+      select: { targetRole: true, targetCity: true, location: true },
     });
-    if (!profile?.targetRole || !profile?.targetCity) {
+    const effectiveCity = profile?.targetCity || profile?.location;
+    if (!profile?.targetRole || !effectiveCity) {
       return res.json({ jobs: [], total: 0, hasMore: false, feedDate: today.toISOString().slice(0, 10), profileIncomplete: true });
     }
 

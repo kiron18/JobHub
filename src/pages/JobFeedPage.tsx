@@ -154,9 +154,9 @@ export const JobFeedPage: React.FC = () => {
         <div className="glass-card p-8 flex flex-col items-center gap-4 text-center">
           <AlertCircle size={32} className="text-amber-400" />
           <div>
-            <p className="text-base font-bold text-slate-200 mb-1">Target role and city required</p>
+            <p className="text-base font-bold text-slate-200 mb-1">Location required</p>
             <p className="text-sm text-slate-500 mb-4">
-              Set your target role and city in Profile &amp; Achievements to enable your job feed.
+              Add your city to the Location field in Profile &amp; Achievements to enable your job feed.
             </p>
             <NavLink
               to="/workspace"

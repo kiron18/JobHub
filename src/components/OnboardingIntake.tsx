@@ -21,6 +21,7 @@ const useTheme = () => useAppTheme();
 
 interface IntakeAnswers {
   targetRole: string;
+  targetCity: string;
   seniority: string;
   industry: string;
   visaStatus: string;
@@ -537,7 +538,7 @@ function StepRole({ answers, onChange, onNext, onBack }: {
   onNext: () => void; onBack: () => void;
 }) {
   const { T } = useTheme();
-  const valid = answers.targetRole.trim() && answers.seniority && answers.industry && answers.visaStatus;
+  const valid = answers.targetRole.trim() && answers.targetCity.trim() && answers.seniority && answers.industry && answers.visaStatus;
   return (
     <div>
       <ProfileProgress step={1} answers={answers} />
@@ -549,6 +550,9 @@ function StepRole({ answers, onChange, onNext, onBack }: {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <Field label="Role" hint="Vague targets produce vague diagnoses. The more specific you are, the more precisely we can flag what's off.">
           <TInput placeholder="e.g. Senior Product Manager" value={answers.targetRole} onChange={v => onChange('targetRole', v)} />
+        </Field>
+        <Field label="Target city" hint="Your job feed pulls live listings from this city. You can change it later in your profile.">
+          <TInput placeholder="e.g. Sydney, Melbourne, Brisbane" value={answers.targetCity} onChange={v => onChange('targetCity', v)} />
         </Field>
         <Field label="Seniority" hint="We compare your positioning against what employers at this level actually expect to see.">
           <TSelect value={answers.seniority} onChange={v => onChange('seniority', v)} options={SENIORITY_OPTIONS} placeholder="Select level" />
@@ -651,7 +655,7 @@ function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, onBa
         <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
           <input type="checkbox" checked={marketingConsent} onChange={e => onMarketingConsentChange(e.target.checked)}
             style={{ width: 16, height: 16, accentColor: T.btnBg, cursor: 'pointer' }} />
-          <span style={{ fontSize: 13, color: T.textMuted }}>Send me job search tips and product updates</span>
+          <span style={{ fontSize: 13, color: T.textMuted }}>Email my diagnostic report + job search tips to my account email</span>
         </label>
       </div>
 
@@ -687,7 +691,7 @@ export function OnboardingIntake({ resumeMode: _resumeMode = false, initialStep 
   }, [authLoading, isAuthenticated]);
 
   const [answers, setAnswers] = useState<IntakeAnswers>({
-    targetRole: '', seniority: '', industry: '', visaStatus: '',
+    targetRole: '', targetCity: '', seniority: '', industry: '', visaStatus: '',
     responsePattern: '', marketingEmail: '', marketingConsent: false,
   });
   const [resume, setResume] = useState<File | null>(null);

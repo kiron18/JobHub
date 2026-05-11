@@ -184,18 +184,19 @@ function quickScore(skillsJson: any, job: RawJob): number {
 export async function buildDailyFeed(userId: string): Promise<void> {
   const profile = await prisma.candidateProfile.findUnique({
     where: { userId },
-    select: { targetRole: true, targetCity: true, industry: true, skills: true },
+    select: { targetRole: true, targetCity: true, location: true, industry: true, skills: true },
   });
 
-  if (!profile?.targetRole || !profile?.targetCity) {
+  const effectiveCity = profile?.targetCity || profile?.location;
+  if (!profile?.targetRole || !effectiveCity) {
     throw new Error('Profile incomplete — set a target role and city first');
   }
 
-  const seekCluster = buildSeekClusterKey(profile.targetRole, profile.targetCity, profile.industry);
-  const linkedInCluster = buildLinkedInClusterKey(profile.targetRole, profile.targetCity, profile.industry);
+  const seekCluster = buildSeekClusterKey(profile.targetRole, effectiveCity, profile.industry);
+  const linkedInCluster = buildLinkedInClusterKey(profile.targetRole, effectiveCity, profile.industry);
 
   const [adzunaJobs, seekJobs, linkedInJobs] = await Promise.all([
-    fetchAdzunaJobs(profile.targetRole, profile.targetCity).catch((err: Error) => {
+    fetchAdzunaJobs(profile.targetRole, effectiveCity).catch((err: Error) => {
       console.error(`[buildDailyFeed] Adzuna failed for ${userId}:`, err.message);
       return [] as RawJob[];
     }),
