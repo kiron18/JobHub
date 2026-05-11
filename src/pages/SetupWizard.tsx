@@ -258,6 +258,36 @@ function SummaryForm({
   );
 }
 
+// A bullet is "duty-like" when it reads as a job responsibility (no measurable
+// outcome). Heuristic: no digits, no monetary marker, and opens with one of
+// the classic duty phrasings. Kept conservative — better to under-flag than to
+// outline a legitimate achievement.
+function isDutyLikeBullet(bullet: string): boolean {
+  const text = (bullet ?? '').trim();
+  if (text.length < 8) return false;
+  if (/\d/.test(text)) return false;
+  if (/[$%]/.test(text)) return false;
+  const lower = text.toLowerCase();
+  const dutyOpeners = [
+    'responsible for', 'managed', 'worked on', 'assisted', 'helped',
+    'supported', 'was involved', 'collaborated', 'participated', 'contributed',
+    'led', 'conducted', 'provided', 'delivered', 'performed', 'handled',
+    'oversaw', 'coordinated',
+  ];
+  return dutyOpeners.some(opener => lower.startsWith(opener) || lower.includes(' ' + opener + ' '));
+}
+
+// Real metric: not empty, not the literal string "qualitative", and not one of
+// the LLM-extracted placeholders that masquerade as values ("None", "N/A", etc.).
+function isRealMetric(metric: string | null | undefined): boolean {
+  if (!metric) return false;
+  const trimmed = metric.trim().toLowerCase();
+  if (!trimmed) return false;
+  if (trimmed === 'qualitative') return false;
+  if (['none', 'n/a', 'na', '-', '–', 'tbd', 'null', 'undefined'].includes(trimmed)) return false;
+  return true;
+}
+
 function ExperienceEntryCard({
   entry,
   onChange,
@@ -315,27 +345,48 @@ function ExperienceEntryCard({
           Start each bullet with an action verb. Add a number wherever you can — even an estimate.
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {bullets.map((bullet, i) => (
-            <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-              <span style={{ color: '#6366f1', fontWeight: 800, fontSize: 14, flexShrink: 0, marginTop: 12 }}>·</span>
-              <textarea
-                value={bullet}
-                onChange={e => updateBullet(i, e.target.value)}
-                placeholder="e.g. Grew Instagram from 4k to 22k followers in 6 months"
-                rows={2}
-                style={{ ...inputStyle, flex: 1, resize: 'none', lineHeight: 1.5 }}
-                aria-label={`Bullet ${i + 1}`}
-              />
-              {bullets.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeBullet(i)}
-                  style={{ background: 'none', border: 'none', color: '#4b5563', cursor: 'pointer', fontSize: 16, padding: '4px', lineHeight: 1, marginTop: 8 }}
-                  aria-label="Remove bullet"
-                >×</button>
-              )}
-            </div>
-          ))}
+          {bullets.map((bullet, i) => {
+            const flagged = isDutyLikeBullet(bullet);
+            return (
+              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                <span style={{ color: flagged ? '#fbbf24' : '#6366f1', fontWeight: 800, fontSize: 14, flexShrink: 0, marginTop: 12 }}>·</span>
+                <div style={{ flex: 1 }}>
+                  <textarea
+                    value={bullet}
+                    onChange={e => updateBullet(i, e.target.value)}
+                    placeholder="e.g. Grew Instagram from 4k to 22k followers in 6 months"
+                    rows={2}
+                    style={{
+                      ...inputStyle,
+                      width: '100%',
+                      resize: 'none',
+                      lineHeight: 1.5,
+                      ...(flagged ? {
+                        border: '1px solid rgba(251,191,36,0.55)',
+                        boxShadow: '0 0 0 1px rgba(251,191,36,0.18)',
+                        background: 'rgba(245,158,11,0.04)',
+                      } : {}),
+                    }}
+                    aria-label={`Bullet ${i + 1}`}
+                    aria-invalid={flagged}
+                  />
+                  {flagged && (
+                    <p style={{ margin: '4px 0 0', fontSize: 11, color: '#fbbf24', lineHeight: 1.4 }}>
+                      Sounds like a duty — add a number or outcome to turn this into an achievement.
+                    </p>
+                  )}
+                </div>
+                {bullets.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeBullet(i)}
+                    style={{ background: 'none', border: 'none', color: '#4b5563', cursor: 'pointer', fontSize: 16, padding: '4px', lineHeight: 1, marginTop: 8 }}
+                    aria-label="Remove bullet"
+                  >×</button>
+                )}
+              </div>
+            );
+          })}
         </div>
         <button
           type="button"
@@ -425,13 +476,13 @@ function AchievementsForm({
           )}
           <label style={{
             ...labelStyle,
-            color: ach.metric && ach.metric !== 'qualitative' ? '#22c55e' : '#d97706',
+            color: isRealMetric(ach.metric) ? '#22c55e' : '#d97706',
           }}>
-            {ach.metric && ach.metric !== 'qualitative' ? '✓ Metric' : '⚠ Add a metric (e.g. \'Reduced onboarding time by 40%\')'}
+            {isRealMetric(ach.metric) ? '✓ Metric' : '⚠ Add a metric (e.g. \'Reduced onboarding time by 40%\')'}
           </label>
           <input
             type="text"
-            value={ach.metric && ach.metric !== 'qualitative' ? ach.metric : ''}
+            value={isRealMetric(ach.metric) ? (ach.metric ?? '') : ''}
             onChange={(e) => updateMetric(ach.id, e.target.value)}
             placeholder="e.g. Reduced onboarding time by 40%"
             style={inputStyle}

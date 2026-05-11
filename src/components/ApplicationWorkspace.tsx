@@ -1600,9 +1600,9 @@ export const ApplicationWorkspace: React.FC = () => {
                                         className="w-full max-w-3xl mt-4 rounded-xl border border-teal-500/20 bg-teal-500/5 p-4 flex items-center justify-between gap-4"
                                     >
                                         <div>
-                                            <p className="text-sm font-bold text-teal-300 mb-0.5">Documents ready.</p>
+                                            <p className="text-sm font-bold text-teal-300 mb-0.5">Track this application.</p>
                                             <p className="text-xs text-slate-400 leading-relaxed">
-                                                Add {state.metadata?.company ? `the ${state.metadata.company} role` : 'this application'} to your tracker so you don't lose track.
+                                                We'll remind you when to follow up — with a template — to keep you top of mind.
                                             </p>
                                         </div>
                                         <button

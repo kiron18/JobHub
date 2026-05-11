@@ -42,6 +42,9 @@ ADDITIONAL RULES:
 - Do NOT fabricate metrics or details not present in the original resume.
 - Fix every weakness identified in the diagnostic findings.
 - Australian English throughout (organisation, programme, behaviour, recognise, etc.)
+- The Professional Summary must be written in FIRST PERSON (e.g. "Seasoned Business Analyst with 15 years of experience…" or "I bring 10 years of…"). Never write the summary in third person — no "he", "she", "they", and never use the candidate's name within the summary itself.
+- Contact line: include only the contact channels actually present in the candidate's resume above. If no LinkedIn URL is provided in their resume, OMIT LinkedIn entirely — do NOT write the word "LinkedIn" as a bare label. If a LinkedIn URL is provided, render it as the URL itself (e.g. linkedin.com/in/handle), not the word "LinkedIn".
+- Markdown structure: each section header (## Professional Summary, ## Work Experience, ## Education, ## Skills, etc.) MUST be on its own line, with a blank line before and after. Never write a section header on the same line as body text. Use a single blank line between every paragraph and bullet block.
 - The output is a polished draft ready for immediate use as-is. Output the complete resume in clean markdown only. No preamble, no meta-commentary, no explanations — just the resume.`;
 
     const raw = await callLLMWithRetry(prompt, false);

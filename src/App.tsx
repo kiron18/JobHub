@@ -111,20 +111,12 @@ const Dashboard = () => {
   }, [profile?.hasCompletedOnboarding, achievementCount]);
   const applicationCount = jobs?.length || 0;
 
-  const greeting = (() => {
-    const h = new Date().getHours();
-    const seed = new Date().toDateString().split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-    const morning = ['Good morning', 'Morning', 'Rise and shine'];
-    const afternoon = ['Good afternoon', 'Afternoon', 'Good afternoon'];
-    const evening = ['Good evening', 'Evening', 'Still at it'];
-    const opts = h < 12 ? morning : h < 17 ? afternoon : evening;
-    return opts[seed % opts.length];
-  })();
+  const firstName = (profile?.name || 'Candidate').split(' ')[0];
 
   return (
     <div className="space-y-10">
       <header className="space-y-2">
-        <h2 className="text-4xl font-extrabold tracking-tight italic text-white">{greeting}, {profile?.name || 'Candidate'}</h2>
+        <h2 className="text-4xl font-extrabold tracking-tight italic text-white">Welcome back, {firstName}.</h2>
         <p className="text-xl text-slate-400 font-medium">Paste a job description. Get a matched resume in 3 minutes.</p>
       </header>
 

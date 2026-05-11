@@ -245,7 +245,11 @@ function buildParagraphs(markdown: string, docType: DocType): Paragraph[] {
 }
 
 function sanitizeForExport(raw: string): string {
-    return raw.replace(/\[VERIFY:[^\]]*\]/g, '').replace(/\s{2,}/g, ' ');
+    // Force section headers onto their own line. Some LLM outputs glue '## Section'
+    // onto the end of a paragraph; without this, parseLine() treats the whole line
+    // as a paragraph and the literal '##' renders in the document.
+    const normalized = raw.replace(/(\S)\s+(#{1,3}\s+\S)/g, '$1\n\n$2');
+    return normalized.replace(/\[VERIFY:[^\]]*\]/g, '').replace(/[ \t]{2,}/g, ' ');
 }
 
 export async function exportDocx(

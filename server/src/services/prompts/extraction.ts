@@ -20,7 +20,7 @@ Schema:
     "phone": "Phone Number",
     "linkedin": "LinkedIn URL",
     "location": "Suburb, State",
-    "professionalSummary": "3-4 sentences implied third person"
+    "professionalSummary": "3-4 sentences in first person, present tense — never write 'they', 'he', 'she', or refer to the candidate by name. Examples: 'I am a seasoned Business Analyst with 15 years of experience...' or 'Seasoned Business Analyst bringing 15 years of...'. Always speak as the candidate, not about them."
   },
   "skills": {
     "technical": ["Python", "Flask"],
