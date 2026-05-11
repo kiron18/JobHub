@@ -37,11 +37,12 @@ TASK:
 Rewrite the resume above into a polished, ATS-optimised Australian resume. This is a general-purpose version (no job description) targeting the candidate's stated role.
 
 ADDITIONAL RULES:
-- Where a quantified metric is absent, insert a placeholder in this EXACT format: [Add: e.g. reduced processing time by X%]
+- Use only information explicitly present in the candidate's resume above. Do NOT insert placeholder text, bracketed prompts, or fill-in markers of any kind. If a metric is missing, write the bullet without it — clean, factual, action-led.
+- Clean up formatting: consistent dates, proper section hierarchy, ATS-safe markdown headings, parallel bullet structure across roles.
 - Do NOT fabricate metrics or details not present in the original resume.
 - Fix every weakness identified in the diagnostic findings.
 - Australian English throughout (organisation, programme, behaviour, recognise, etc.)
-- Output the complete resume in clean markdown only. No preamble, no meta-commentary, no explanations — just the resume.`;
+- The output is a polished draft ready for immediate use as-is. Output the complete resume in clean markdown only. No preamble, no meta-commentary, no explanations — just the resume.`;
 
     const raw = await callLLMWithRetry(prompt, false);
     const content = typeof raw === 'string' ? raw : String(raw ?? '');
