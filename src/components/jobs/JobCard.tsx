@@ -175,14 +175,14 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
               <span
                 className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full"
                 style={{
-                  color: item.applicationStatus === 'REJECTED' ? '#f87171'
-                    : item.applicationStatus === 'OFFER' ? '#4ade80'
-                    : item.applicationStatus === 'INTERVIEW' ? '#fbbf24'
-                    : '#2dd4bf',
-                  background: item.applicationStatus === 'REJECTED' ? 'rgba(248,113,113,0.12)'
-                    : item.applicationStatus === 'OFFER' ? 'rgba(74,222,128,0.12)'
-                    : item.applicationStatus === 'INTERVIEW' ? 'rgba(251,191,36,0.12)'
-                    : 'rgba(45,212,191,0.12)',
+                  color: item.applicationStatus === 'REJECTED' ? '#A0A4A8'
+                    : item.applicationStatus === 'OFFER' ? '#7DA67D'
+                    : item.applicationStatus === 'INTERVIEW' ? '#C5A059'
+                    : '#7DA67D',
+                  background: item.applicationStatus === 'REJECTED' ? 'rgba(160,164,168,0.10)'
+                    : item.applicationStatus === 'OFFER' ? 'rgba(125,166,125,0.12)'
+                    : item.applicationStatus === 'INTERVIEW' ? 'rgba(197,160,89,0.12)'
+                    : 'rgba(125,166,125,0.10)',
                 }}
               >
                 {item.applicationStatus === 'APPLIED' ? 'Applied'

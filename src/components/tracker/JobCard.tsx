@@ -593,19 +593,17 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onStatusChange, onDelete,
                                     )}
                                 </AnimatePresence>
                             </div>
-                            {/* Grade badge */}
-                            {job.overallGrade && (
-                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black border ${
-                                    job.overallGrade === 'A' ? 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' :
-                                    job.overallGrade === 'B' ? 'text-brand-400 bg-brand-400/10 border-brand-400/20' :
-                                    job.overallGrade === 'C' ? 'text-amber-400 bg-amber-400/10 border-amber-400/20' :
-                                    job.overallGrade === 'D' ? 'text-orange-400 bg-orange-400/10 border-orange-400/20' :
-                                                               'text-red-400 bg-red-400/10 border-red-400/20'
-                                }`}>
-                                    {job.overallGrade}
-                                    {job.matchScore != null && (
-                                        <span className="opacity-60 font-bold">{job.matchScore}</span>
-                                    )}
+                            {/* Match score — gold accent, no letter grade per Strategy Hub palette */}
+                            {job.matchScore != null && (
+                                <span
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black border"
+                                    style={{
+                                        color: '#C5A059',
+                                        background: 'rgba(197,160,89,0.10)',
+                                        borderColor: 'rgba(197,160,89,0.25)',
+                                    }}
+                                >
+                                    {job.matchScore}%
                                 </span>
                             )}
                             {days !== null && job.status !== 'REJECTED' && (
