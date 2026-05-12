@@ -302,7 +302,7 @@ const SourceDocumentsIsland: React.FC<{ profile: ProfileData; isDark: boolean }>
       if (pendingCl2)    fd.append('coverLetter2', pendingCl2);
       await api.post('/profile/source-documents', fd);
       if (pendingResume) {
-        toast.success('Resume uploaded — extracting your profile. Refresh in ~30 seconds.');
+        toast.success('Resume uploaded, extracting your profile. Refresh in ~30 seconds.');
         // Poll after extraction delay
         setTimeout(() => qc.invalidateQueries({ queryKey: ['profile'] }), 30_000);
       } else {
@@ -367,7 +367,7 @@ const SourceDocumentsIsland: React.FC<{ profile: ProfileData; isDark: boolean }>
       />
 
       <p style={{ fontSize: 12, color: mutedText, marginBottom: 16, lineHeight: 1.5 }}>
-        Your resume is the source of truth for profile extraction. Cover letters are diagnostic — they show how you've been positioning yourself and feed the initial analysis, but are not used as templates for generated documents.
+        Your resume is the source of truth for profile extraction. Cover letters are diagnostic, they show how you've been positioning yourself and feed the initial analysis, but are not used as templates for generated documents.
       </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -547,7 +547,7 @@ const PersonalDetailsIsland: React.FC<PersonalDetailsIslandProps> = ({ profile, 
                 </span>
               ))}
             </div>
-            {!profile.phone && <CoachHint hint={{ type: 'warn', message: 'Add your phone number — many recruiters call before emailing.' }} />}
+            {!profile.phone && <CoachHint hint={{ type: 'warn', message: 'Add your phone number, many recruiters call before emailing.' }} />}
             {!profile.linkedin && <CoachHint hint={{ type: 'warn', message: 'Add your LinkedIn URL to give recruiters a quick verification path.' }} />}
           </motion.div>
         )}
@@ -959,7 +959,7 @@ const EducationIsland: React.FC<{ education: Education[]; isDark: boolean }> = (
           <div>
             <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#ef4444' }}>Education missing</p>
             <p style={{ margin: '2px 0 0', fontSize: 12, color: isDark ? '#f87171' : '#dc2626' }}>
-              No education records found. Add your degree so it appears in generated resumes — click <strong>+ Add</strong> above.
+              No education records found. Add your degree so it appears in generated resumes, click <strong>+ Add</strong> above.
             </p>
           </div>
         </div>
@@ -1353,7 +1353,7 @@ const CompletionSidebar: React.FC<CompletionSidebarProps> = ({ completion, isDar
       flexDirection: 'column',
       gap: 20,
     }}>
-      {/* Score ring — pulses when score < 50 to signal open loop */}
+      {/* Score ring, pulses when score < 50 to signal open loop */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
         <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width={radius * 2} height={radius * 2} style={{ transform: 'rotate(-90deg)' }}>
@@ -1412,7 +1412,7 @@ const CompletionSidebar: React.FC<CompletionSidebarProps> = ({ completion, isDar
         <ProfileAdvisorPanel targetRole={targetRole} />
       </div>
 
-      {/* Dynamic CTA — copy and colour shift with score tier */}
+      {/* Dynamic CTA, copy and colour shift with score tier */}
       {(() => {
         const tier = score >= 90 ? 'exceptional' : score >= 70 ? 'ready' : score >= 50 ? 'close' : 'building';
         const pointsAway = Math.max(0, 70 - score);
@@ -1541,7 +1541,7 @@ export const ProfileBank: React.FC = () => {
           return;
         }
       } catch {
-        // Generation trigger failed — fall through to polling, which will time out and still advance.
+        // Generation trigger failed, fall through to polling, which will time out and still advance.
       }
 
       for (let i = 0; i < 15; i++) {
@@ -1553,15 +1553,15 @@ export const ProfileBank: React.FC = () => {
             return;
           }
         } catch {
-          // Transient error — keep polling
+          // Transient error, keep polling
         }
       }
 
-      toast('Still preparing your resume — opening your wizard so you can get started.');
+      toast('Still preparing your resume, opening your wizard so you can get started.');
       dismissWelcomeModal();
       navigate('/setup');
     } catch {
-      toast("Couldn't reach the server — opening your wizard so you can get started.");
+      toast("Couldn't reach the server, opening your wizard so you can get started.");
       dismissWelcomeModal();
       navigate('/setup');
     } finally {
@@ -1604,7 +1604,7 @@ export const ProfileBank: React.FC = () => {
 
   return (
     <div style={{ background: pageBg, minHeight: '100%', padding: '24px 0', color: textMain, fontFamily: 'system-ui, sans-serif' }}>
-      {/* First-visit modal — baseline resume gift for onboarded users, explanation otherwise */}
+      {/* First-visit modal, baseline resume gift for onboarded users, explanation otherwise */}
       <AnimatePresence>
         {showWelcomeModal && (
           <motion.div
@@ -1689,8 +1689,8 @@ export const ProfileBank: React.FC = () => {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
                     {[
                       { num: '1', title: 'Add your experience', desc: 'Every role, every company. The AI reads your full work history to find the right story for each application.' },
-                      { num: '2', title: 'Add achievements to each role', desc: 'Specific wins, metrics, outcomes — the evidence that stops recruiters skimming. This is the most important part.' },
-                      { num: '3', title: 'Every document draws from this', desc: 'Resume, cover letters, interview prep — all generated from your bank. Update once, everything improves.' },
+                      { num: '2', title: 'Add achievements to each role', desc: 'Specific wins, metrics, outcomes, the evidence that stops recruiters skimming. This is the most important part.' },
+                      { num: '3', title: 'Every document draws from this', desc: 'Resume, cover letters, interview prep, all generated from your bank. Update once, everything improves.' },
                     ].map(s => (
                       <div key={s.num} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                         <div style={{ width: 22, height: 22, borderRadius: 6, background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
@@ -1707,7 +1707,7 @@ export const ProfileBank: React.FC = () => {
                     onClick={dismissWelcomeModal}
                     style={{ width: '100%', padding: '13px 0', borderRadius: 10, background: 'linear-gradient(135deg, #6366f1, #4f46e5)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 800, cursor: 'pointer', letterSpacing: '-0.01em' }}
                   >
-                    Got it — start building →
+                    Got it, start building →
                   </button>
                 </>
               )}
@@ -1735,7 +1735,7 @@ export const ProfileBank: React.FC = () => {
             </button>
           </div>
           <p style={{ fontSize: 14, color: isDark ? '#9ca3af' : '#6b7280', marginTop: 4 }}>
-            Your achievement bank — the source of truth for every resume and cover letter JobHub generates. Complete it once, use it forever.
+            Your achievement bank, the source of truth for every resume and cover letter JobHub generates. Complete it once, use it forever.
           </p>
         </div>
 

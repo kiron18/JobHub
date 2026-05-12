@@ -91,7 +91,7 @@ const DocumentViewerModal: React.FC<{
             await exportDocx(doc.content, docTypeMap[doc.type], company, jobTitle);
             toast.success('Downloaded as .docx');
         } catch {
-            toast.error('Download failed — copy the content instead.');
+            toast.error('Download failed, copy the content instead.');
         }
     };
 
@@ -178,7 +178,7 @@ const EmailFinderTutorial: React.FC<{ onClose: () => void }> = ({ onClose }) => 
             </p>
             <div className="space-y-3">
                 <div className="bg-slate-800/60 rounded-xl p-4 border border-slate-700/50">
-                    <p className="text-xs font-bold text-teal-400 mb-1">Hunter.io — fastest option</p>
+                    <p className="text-xs font-bold text-teal-400 mb-1">Hunter.io, fastest option</p>
                     <ol className="text-xs text-slate-300 space-y-1 list-decimal list-inside">
                         <li>Go to <span className="text-teal-400 font-mono">hunter.io</span></li>
                         <li>Enter the company's website domain (e.g. <span className="font-mono">accenture.com</span>)</li>
@@ -187,7 +187,7 @@ const EmailFinderTutorial: React.FC<{ onClose: () => void }> = ({ onClose }) => 
                     </ol>
                 </div>
                 <div className="bg-slate-800/60 rounded-xl p-4 border border-slate-700/50">
-                    <p className="text-xs font-bold text-purple-400 mb-1">RocketReach — by name + company</p>
+                    <p className="text-xs font-bold text-purple-400 mb-1">RocketReach, by name + company</p>
                     <ol className="text-xs text-slate-300 space-y-1 list-decimal list-inside">
                         <li>Go to <span className="text-purple-400 font-mono">rocketreach.co</span></li>
                         <li>Search for the person's name + company</li>
@@ -195,9 +195,9 @@ const EmailFinderTutorial: React.FC<{ onClose: () => void }> = ({ onClose }) => 
                     </ol>
                 </div>
                 <div className="bg-slate-800/60 rounded-xl p-4 border border-slate-700/50">
-                    <p className="text-xs font-bold text-amber-400 mb-1">LinkedIn — if you can't find an email</p>
+                    <p className="text-xs font-bold text-amber-400 mb-1">LinkedIn, if you can't find an email</p>
                     <p className="text-xs text-slate-300">
-                        Send a connection request with a short note — "Hi [Name], I recently applied for [Role] at [Company] and wanted to connect." Many recruiters respond to direct LinkedIn messages.
+                        Send a connection request with a short note, "Hi [Name], I recently applied for [Role] at [Company] and wanted to connect." Many recruiters respond to direct LinkedIn messages.
                     </p>
                 </div>
             </div>
@@ -245,7 +245,7 @@ export const FollowUpNudge: React.FC<{ jobs: JobApplication[] }> = ({ jobs }) =>
             });
             setAiEmails(prev => ({ ...prev, [job.id]: data.content }));
         } catch {
-            toast.error('Could not generate email — using template instead.');
+            toast.error('Could not generate email, using template instead.');
         } finally {
             setGeneratingFor(null);
         }
@@ -266,7 +266,7 @@ export const FollowUpNudge: React.FC<{ jobs: JobApplication[] }> = ({ jobs }) =>
                         Follow-up Reminder
                     </p>
                     <p className="text-xs text-amber-400/70 font-medium mt-0.5">
-                        These applications are 7+ days old. Time to reach out — click to generate an email.
+                        These applications are 7+ days old. Time to reach out, click to generate an email.
                     </p>
                 </div>
                 <button
@@ -418,7 +418,7 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onStatusChange, onDelete,
             });
             setThankYouEmail(data.content);
         } catch {
-            toast.error('Could not generate email — try again.');
+            toast.error('Could not generate email, try again.');
             setThankYouOpen(false);
         } finally {
             setGeneratingEmail(false);
@@ -473,7 +473,7 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onStatusChange, onDelete,
             });
             setColdOutreach(data.content);
         } catch {
-            toast.error('Could not generate outreach — try again.');
+            toast.error('Could not generate outreach, try again.');
             setOutreachOpen(false);
         } finally {
             setGeneratingOutreach(false);
@@ -492,7 +492,7 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onStatusChange, onDelete,
             });
             setRejectionResponse(data.content);
         } catch {
-            toast.error('Could not generate response — try again.');
+            toast.error('Could not generate response, try again.');
             setRejectionOpen(false);
         } finally {
             setGeneratingRejection(false);
@@ -541,7 +541,7 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onStatusChange, onDelete,
                                 <StatusIcon size={10} />
                                 {config.label}
                             </span>
-                            {/* Priority badge — click to cycle */}
+                            {/* Priority badge, click to cycle */}
                             <div className="relative">
                                 <button
                                     onClick={(e) => { e.stopPropagation(); setPriorityMenuOpen(o => !o); }}
@@ -593,7 +593,7 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onStatusChange, onDelete,
                                     )}
                                 </AnimatePresence>
                             </div>
-                            {/* Match score — gold accent, no letter grade per Strategy Hub palette */}
+                            {/* Match score, gold accent, no letter grade per Strategy Hub palette */}
                             {job.matchScore != null && (
                                 <span
                                     className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black border"
@@ -853,7 +853,7 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onStatusChange, onDelete,
                                 </div>
                             )}
 
-                            {/* Rejection response — REJECTED jobs only */}
+                            {/* Rejection response, REJECTED jobs only */}
                             {job.status === 'REJECTED' && (
                                 <div className="border border-slate-600/30 rounded-xl overflow-hidden bg-slate-800/20">
                                     <button
@@ -906,7 +906,7 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onStatusChange, onDelete,
                                 </div>
                             )}
 
-                            {/* Cold outreach generator — SAVED jobs only */}
+                            {/* Cold outreach generator, SAVED jobs only */}
                             {job.status === 'SAVED' && (
                                 <div className="border border-sky-500/20 rounded-xl overflow-hidden bg-sky-500/5">
                                     <button

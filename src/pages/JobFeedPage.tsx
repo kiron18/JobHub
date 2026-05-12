@@ -35,7 +35,7 @@ export const JobFeedPage: React.FC = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Sync query data into local state — runs on both fresh fetch AND cache hit on remount.
+  // Sync query data into local state, runs on both fresh fetch AND cache hit on remount.
   // Guard with offset===0 so paginated results don't get wiped by a background refetch.
   useEffect(() => {
     if (!feedData) return;
@@ -142,8 +142,8 @@ export const JobFeedPage: React.FC = () => {
             </p>
             <p className="text-xs text-slate-600 mt-2">
               {pollCount.current >= 8
-                ? "Taking longer than usual — try refreshing manually."
-                : "This takes 1–2 minutes on first load. Grab a coffee — we'll check back automatically."}
+                ? "Taking longer than usual, try refreshing manually."
+                : "This takes 1–2 minutes on first load. Grab a coffee, we'll check back automatically."}
             </p>
           </div>
         </div>

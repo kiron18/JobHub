@@ -246,13 +246,13 @@ export const ApplicationWorkspace: React.FC = () => {
             setApplyContext(null);
             toast.success('Marked as Applied in your tracker');
         } catch {
-            toast.error('Could not update tracker — please mark it manually');
+            toast.error('Could not update tracker, please mark it manually');
         } finally {
             setMarkingApplied(false);
         }
     };
 
-    // Academic documents — generated on demand, stored separately (not in main documents map)
+    // Academic documents, generated on demand, stored separately (not in main documents map)
     const [academicDocs, setAcademicDocs] = useState<{ 'teaching-philosophy': string; 'research-statement': string }>({
         'teaching-philosophy': '',
         'research-statement': '',
@@ -284,7 +284,7 @@ export const ApplicationWorkspace: React.FC = () => {
             });
             setTrackerAdded(true);
         } catch {
-            // silent — not critical
+            // silent, not critical
         } finally {
             setTrackerAdding(false);
         }
@@ -312,7 +312,7 @@ export const ApplicationWorkspace: React.FC = () => {
                 });
                 if (data.framework) setEmployerFramework(data.framework);
             } catch {
-                // Silent — framework label is optional UI decoration
+                // Silent, framework label is optional UI decoration
             }
         };
         detect();
@@ -526,7 +526,7 @@ export const ApplicationWorkspace: React.FC = () => {
 
     const handleGenerate = async (type: WorkspaceState['activeTab'], regenerate = false) => {
         if (state.hasFailed[type] && !regenerate) return;
-        // SC must never generate without criteria — hard guard regardless of how this was called
+        // SC must never generate without criteria, hard guard regardless of how this was called
         if (type === 'selection-criteria' && selectionCriteriaText.trim().length < 20) return;
 
         const controller = new AbortController();
@@ -630,7 +630,7 @@ export const ApplicationWorkspace: React.FC = () => {
         const hasDoc = !!state.documents[state.activeTab];
         const hasDocId = !!state.documentIds[state.activeTab];
 
-        // SC never auto-generates — user must click the button explicitly
+        // SC never auto-generates, user must click the button explicitly
         if (state.activeTab === 'selection-criteria') return;
 
         // Don't auto-generate while we're still fetching existing docs from the server (prevents race condition)
@@ -655,7 +655,7 @@ export const ApplicationWorkspace: React.FC = () => {
             setAcademicDocs(prev => ({ ...prev, [docType]: data.content }));
             toast.success(`${docType === 'teaching-philosophy' ? 'Teaching Philosophy' : 'Research Statement'} generated`);
         } catch {
-            toast.error('Generation failed — try again.');
+            toast.error('Generation failed, try again.');
         } finally {
             setGeneratingAcademic(null);
         }
@@ -674,7 +674,7 @@ export const ApplicationWorkspace: React.FC = () => {
             });
             setEmailVersion(data);
         } catch {
-            toast.error('Could not generate email version — try again.');
+            toast.error('Could not generate email version, try again.');
         } finally {
             setGeneratingEmail(false);
         }
@@ -711,7 +711,7 @@ export const ApplicationWorkspace: React.FC = () => {
     const getCoachingMessage = (text: string): string => {
         const lower = text.toLowerCase();
         if (lower.includes('job title') || lower.includes('title')) {
-            return 'Exact job titles help ATS systems match your application — a wrong title can cost you the filter.';
+            return 'Exact job titles help ATS systems match your application, a wrong title can cost you the filter.';
         }
         if (lower.includes('number') || lower.includes('team size') || lower.includes('people') || /\d/.test(lower)) {
             return 'Specific numbers make achievements credible. Hiring managers mentally assign you scope based on team size.';
@@ -789,7 +789,7 @@ export const ApplicationWorkspace: React.FC = () => {
                                 className="w-full py-3 rounded-xl font-black text-sm text-white mb-3 transition-all hover:opacity-90"
                                 style={{ background: 'linear-gradient(135deg, #f97316 0%, #ec4899 50%, #7c3aed 100%)' }}
                             >
-                                I'll review it — download
+                                I'll review it, download
                             </button>
                             <button
                                 onClick={() => {
@@ -982,7 +982,7 @@ export const ApplicationWorkspace: React.FC = () => {
                     )}
 
 
-                    {/* Academic Toolkit — shown for university framework */}
+                    {/* Academic Toolkit, shown for university framework */}
                     {(employerFramework === 'university_academic' || employerFramework === 'university_professional') && (
                         <div className="p-4 border-b border-slate-800 shrink-0">
                             <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 overflow-hidden">
@@ -1039,7 +1039,7 @@ export const ApplicationWorkspace: React.FC = () => {
                         </div>
                     )}
 
-                    {/* Cover Letter Personalisation — shown when cover letter is generated, not on interview prep */}
+                    {/* Cover Letter Personalisation, shown when cover letter is generated, not on interview prep */}
                     {state.documents['cover-letter'] && !state.isGenerating && state.activeTab !== 'interview-prep' && (
                         <div className="p-4 border-b border-slate-800">
                             <CoverLetterPersonalisationPanel
@@ -1050,7 +1050,7 @@ export const ApplicationWorkspace: React.FC = () => {
                         </div>
                     )}
 
-                    {/* Tone Rewrite Panel — shown when any document is ready, not on interview prep */}
+                    {/* Tone Rewrite Panel, shown when any document is ready, not on interview prep */}
                     {Object.values(state.documents).some(Boolean) && !state.isGenerating && state.activeTab !== 'interview-prep' && (
                         <div className="p-4 border-b border-slate-800">
                             <ToneRewritePanel
@@ -1178,7 +1178,7 @@ export const ApplicationWorkspace: React.FC = () => {
                             );
                         })()}
 
-                        {/* Email version button — only for cover letter */}
+                        {/* Email version button, only for cover letter */}
                         {state.activeTab === 'cover-letter' && state.documents['cover-letter'] && (
                             <button
                                 onClick={handleGetEmailVersion}
@@ -1271,7 +1271,7 @@ export const ApplicationWorkspace: React.FC = () => {
                                 )}
                             </div>
                         )}
-                        {/* Selection criteria alert — shown whenever analysis flags SC required */}
+                        {/* Selection criteria alert, shown whenever analysis flags SC required */}
                         {!scBannerDismissed && (state.requiresSelectionCriteria || ['selection criteria', 'key selection criteria', 'duty statement', 'address the criteria'].some(kw => state.jobDescription?.toLowerCase().includes(kw))) && !!state.dimensions && !state.isGenerating && (
                             <div className="w-full max-w-3xl mb-3 rounded-xl border border-purple-500/30 bg-purple-500/8 overflow-hidden">
                                 <div className="flex items-start gap-3 px-4 py-3">
@@ -1279,7 +1279,7 @@ export const ApplicationWorkspace: React.FC = () => {
                                     <div className="flex-1">
                                         <p className="text-[11px] font-black text-purple-300 uppercase tracking-wider mb-1">Selection Criteria Required</p>
                                         <p className="text-xs text-purple-200/70 leading-relaxed mb-2">
-                                            This role requires a separate Selection Criteria response — most applicants don't know to submit one, and most get screened out for skipping it. Find the <strong className="text-purple-200/90">"Position Description"</strong> or <strong className="text-purple-200/90">"Job Information Pack"</strong> download on the job listing. The criteria questions are inside.
+                                            This role requires a separate Selection Criteria response, most applicants don't know to submit one, and most get screened out for skipping it. Find the <strong className="text-purple-200/90">"Position Description"</strong> or <strong className="text-purple-200/90">"Job Information Pack"</strong> download on the job listing. The criteria questions are inside.
                                         </p>
                                         <button
                                             onClick={() => setState(s => ({ ...s, activeTab: 'selection-criteria' }))}
@@ -1339,7 +1339,7 @@ export const ApplicationWorkspace: React.FC = () => {
                                                 className="overflow-hidden"
                                             >
                                                 <div className="px-4 pb-3.5 pt-0.5 border-t border-amber-500/20">
-                                                    <p className="text-[11px] text-amber-200/60 leading-relaxed mb-2 mt-2">The AI accuracy check flagged these claims — confirm each one matches your actual experience.</p>
+                                                    <p className="text-[11px] text-amber-200/60 leading-relaxed mb-2 mt-2">The AI accuracy check flagged these claims, confirm each one matches your actual experience.</p>
                                                     <ul className="space-y-1">
                                                         {state.profileViolations!.map((v, i) => (
                                                             <li key={i} className="flex items-start gap-2 text-[11px] text-amber-200/80">
@@ -1355,7 +1355,7 @@ export const ApplicationWorkspace: React.FC = () => {
                                 </motion.div>
                             )}
                         </AnimatePresence>
-                        {/* Coaching notes bar — VERIFY pills extracted from document */}
+                        {/* Coaching notes bar, VERIFY pills extracted from document */}
                         {(() => {
                             const raw = state.documents[state.activeTab] || '';
                             const { pills } = parseVerifyTokens(raw);
@@ -1414,7 +1414,7 @@ export const ApplicationWorkspace: React.FC = () => {
                                                                     className="ml-1 hidden group-hover:inline text-[9px] opacity-70 max-w-[200px] truncate"
                                                                     style={{ color: '#fbbf24' }}
                                                                 >
-                                                                    — {getCoachingMessage(text)}
+                                                                   , {getCoachingMessage(text)}
                                                                 </span>
                                                             </button>
                                                         ))}
@@ -1427,7 +1427,7 @@ export const ApplicationWorkspace: React.FC = () => {
                             );
                         })()}
 
-                        {/* Interview prep — empty state */}
+                        {/* Interview prep, empty state */}
                         {state.activeTab === 'interview-prep' && !state.isGenerating && !state.documents['interview-prep'] && (
                             <div className="flex flex-col items-center justify-center py-32 space-y-6 max-w-sm mx-auto text-center">
                                 <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
@@ -1449,7 +1449,7 @@ export const ApplicationWorkspace: React.FC = () => {
                             </div>
                         )}
 
-                        {/* Interview prep — generating spinner */}
+                        {/* Interview prep, generating spinner */}
                         {state.activeTab === 'interview-prep' && state.isGenerating && (
                             <div className="flex flex-col items-center justify-center py-40 space-y-6">
                                 <div className="relative">
@@ -1467,7 +1467,7 @@ export const ApplicationWorkspace: React.FC = () => {
                             </div>
                         )}
 
-                        {/* Interview prep — new structured view */}
+                        {/* Interview prep, new structured view */}
                         {state.activeTab === 'interview-prep' && !state.isGenerating && state.documents['interview-prep'] && (
                             <InterviewPrepView
                                 doc={state.documents['interview-prep']}
@@ -1571,7 +1571,7 @@ export const ApplicationWorkspace: React.FC = () => {
                             </div>
                         </div>
                         )}
-                        {/* Cover letter prompt — shown after resume is generated, before cover letter is */}
+                        {/* Cover letter prompt, shown after resume is generated, before cover letter is */}
                         {state.activeTab === 'resume' && !state.isGenerating && !!state.documents['resume'] && !state.documents['cover-letter'] && (
                             <div className="w-full max-w-3xl mt-3 rounded-xl border border-indigo-500/20 bg-indigo-500/6 px-4 py-3 flex items-center justify-between gap-4">
                                 <p className="text-xs text-indigo-300/80 leading-relaxed">
@@ -1602,7 +1602,7 @@ export const ApplicationWorkspace: React.FC = () => {
                                         <div>
                                             <p className="text-sm font-bold text-teal-300 mb-0.5">Track this application.</p>
                                             <p className="text-xs text-slate-400 leading-relaxed">
-                                                We'll remind you when to follow up — with a template — to keep you top of mind.
+                                                We'll remind you when to follow up, with a template, to keep you top of mind.
                                             </p>
                                         </div>
                                         <button
@@ -1700,7 +1700,7 @@ export const ApplicationWorkspace: React.FC = () => {
 
                     </div>
 
-                    {/* Strategist's Notes — docked below scroll area, never overlaps document */}
+                    {/* Strategist's Notes, docked below scroll area, never overlaps document */}
                     {state.blueprint && !state.isGenerating && (
                         <div className="shrink-0 border-t border-slate-800/60 bg-slate-950">
                             <StrategistDebrief
@@ -1777,7 +1777,7 @@ export const ApplicationWorkspace: React.FC = () => {
                 }}
             />
 
-            {/* Upgrade Modal — 402 response */}
+            {/* Upgrade Modal, 402 response */}
             <AnimatePresence>
                 {showUpgradeModal && (
                     <motion.div
@@ -1810,10 +1810,10 @@ export const ApplicationWorkspace: React.FC = () => {
                             </div>
                             <div className="px-6 py-6 space-y-5">
                                 <p className="text-sm text-slate-300 leading-relaxed">
-                                    You've used your free generations — but the work is just getting started.
+                                    You've used your free generations, but the work is just getting started.
                                 </p>
                                 <p className="text-sm text-slate-400 leading-relaxed">
-                                    Try JobHub free for 7 days: unlimited document generation, full workspace access, and every premium feature. You'll need to enter your card details to start — you won't be charged until the trial ends, and you can cancel any time.
+                                    Try JobHub free for 7 days: unlimited document generation, full workspace access, and every premium feature. You'll need to enter your card details to start, you won't be charged until the trial ends, and you can cancel any time.
                                 </p>
                                 <div className="flex flex-col gap-2.5">
                                     <button

@@ -8,6 +8,7 @@ import { motion } from 'framer-motion';
 import { DashboardLayout } from './layouts/DashboardLayout';
 import { OnboardingGate } from './components/OnboardingGate';
 import { ProfileGate } from './components/ProfileGate';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const MatchEngine          = React.lazy(() => import('./components/MatchEngine').then(m => ({ default: m.MatchEngine })));
 const ApplicationWorkspace = React.lazy(() => import('./components/ApplicationWorkspace').then(m => ({ default: m.ApplicationWorkspace })));
@@ -303,6 +304,7 @@ function ReportOrDashboard() {
             transition={{ duration: 0.3, ease: [0, 0, 0.2, 1] }}
           >
             <DashboardLayout>
+              <ErrorBoundary>
               <React.Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" /></div>}>
                 <Routes>
                   <Route path="/" element={<StrategyHub />} />
@@ -319,6 +321,7 @@ function ReportOrDashboard() {
                   <Route path="*" element={<StrategyHub />} />
                 </Routes>
               </React.Suspense>
+              </ErrorBoundary>
             </DashboardLayout>
           </motion.div>
         </DashboardGate>

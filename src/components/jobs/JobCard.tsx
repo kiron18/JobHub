@@ -59,7 +59,7 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
   const platform = getPlatformConfig(item.sourcePlatform);
   const hasCriteriaHint = CRITERIA_KEYWORDS.some(k => item.description.toLowerCase().includes(k));
   const addresseeFetched = item.addresseeSource !== null;
-  // Adzuna truncates descriptions — warn and offer to fetch the full version
+  // Adzuna truncates descriptions, warn and offer to fetch the full version
   // Only flag as truncated when it ends with ellipsis (explicit truncation signal) or
   // is from a platform known to truncate (sourcePlatform 'other' = Adzuna) with a short description
   const isTruncated = !fullDescLoaded && (
@@ -141,7 +141,7 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
     navigate('/application-workspace', {
       state: { jobDescription: item.description, analysis: null, initialTab: 'cover-letter' },
     });
-    toast.success('Job loaded — generate your documents, then apply');
+    toast.success('Job loaded, generate your documents, then apply');
   };
 
   return (
@@ -256,7 +256,7 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
               {hasCriteriaHint && (
                 <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-500/8 border border-amber-500/20">
                   <AlertTriangle size={13} className="text-amber-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-xs text-amber-300">This role may require a selection criteria response — check the full listing for details.</p>
+                  <p className="text-xs text-amber-300">This role may require a selection criteria response, check the full listing for details.</p>
                 </div>
               )}
 
@@ -265,12 +265,12 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
                 <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-600/40">
                   <AlertTriangle size={13} className="text-slate-400 flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-slate-400">
-                    Employers on Seek often add screening questions during the application process that don't appear in the listing — worth reviewing before you apply.
+                    Employers on Seek often add screening questions during the application process that don't appear in the listing, worth reviewing before you apply.
                   </p>
                 </div>
               )}
 
-              {/* Truncation fallback — only shown when silent auto-fetch failed */}
+              {/* Truncation fallback, only shown when silent auto-fetch failed */}
               {isTruncated && fullDescFailed && (
                 <p className="text-xs text-slate-500">
                   Full description unavailable —{' '}
@@ -298,7 +298,7 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
               <div className="rounded-xl bg-slate-800/40 border border-slate-700/50 p-3 space-y-2">
                 <div className="flex items-center gap-2">
                   <User size={12} className="text-slate-500" />
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">Cover letter — who to address</span>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">Cover letter, who to address</span>
                 </div>
 
                 {addresseeLoading && (
@@ -341,7 +341,7 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
                       </div>
                     )
                   ) : (
-                    <p className="text-xs text-slate-500">No specific contact found — we'll use "Hiring Manager"</p>
+                    <p className="text-xs text-slate-500">No specific contact found, we'll use "Hiring Manager"</p>
                   )
                 )}
 
@@ -354,7 +354,7 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
               <div className="rounded-xl bg-slate-800/30 border border-slate-700/40 p-3 space-y-2">
                 <p className="text-xs text-slate-400 leading-relaxed">
                   <span className="font-semibold text-slate-200">We build the documents. You make the move.</span>{' '}
-                  Applying directly signals genuine intent — hiring managers notice candidates who submit personally.
+                  Applying directly signals genuine intent, hiring managers notice candidates who submit personally.
                 </p>
                 <div className="flex items-center gap-2 flex-wrap">
                   <button

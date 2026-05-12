@@ -17,7 +17,7 @@ function getPointedQuestions(description: string): string[] {
   if (d.match(/improv|increas|reduc|decreas|grow|boost|cut|optimis|streamlin/))
     questions.push('By what percentage or amount did it improve?');
   if (d.match(/project|launch|deliver|implement|deploy|roll/))
-    questions.push('What was the scope — budget, timeline, or number of stakeholders?');
+    questions.push('What was the scope, budget, timeline, or number of stakeholders?');
 
   if (questions.length < 2) {
     questions.push('How many people were involved or affected?');
@@ -115,7 +115,7 @@ export const AchievementVideoModal: React.FC<Props> = ({
             />
 
             <p style={{ margin: '0 0 14px', fontSize: 12, color: sub, lineHeight: 1.6, textAlign: 'center' }}>
-              Even an estimate lands better than nothing — "reduced handling time by roughly 30%" beats a blank field every time.
+              Even an estimate lands better than nothing, "reduced handling time by roughly 30%" beats a blank field every time.
             </p>
 
             {/* Qualitative bypass */}
@@ -132,7 +132,7 @@ export const AchievementVideoModal: React.FC<Props> = ({
                     textDecoration: 'underline', textUnderlineOffset: 3, padding: 0,
                   }}
                 >
-                  Mark as qualitative — skip the metric warning
+                  Mark as qualitative, skip the metric warning
                 </button>
               </div>
             )}

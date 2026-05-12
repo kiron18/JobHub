@@ -127,7 +127,7 @@ export const UpgradeModal: React.FC<Props> = ({ trigger, onClose }) => {
           </div>
           <h2 className="text-xl font-black text-white mb-1">{TRIGGER_HEADLINES[trigger]}</h2>
           <p className="text-sm text-slate-400 mb-6">
-            Start your 7-day free trial — no charge until day 8, cancel anytime.
+            Start your 7-day free trial, no charge until day 8, cancel anytime.
           </p>
 
           <div className="grid grid-cols-3 gap-3 mb-5">

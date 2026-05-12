@@ -34,7 +34,7 @@ function HubHeader({ profile }: { profile?: ProfileLite }) {
     const identityLine = [role, city].filter(Boolean).join(' · ');
 
     return (
-        <header style={{ marginBottom: 48 }}>
+        <header style={{ marginBottom: 40 }}>
             {identityLine && (
                 <p
                     style={{
@@ -51,26 +51,38 @@ function HubHeader({ profile }: { profile?: ProfileLite }) {
             )}
             <h1
                 style={{
-                    margin: '0 0 8px',
-                    fontSize: 36,
+                    margin: '0 0 10px',
+                    fontSize: 34,
                     fontWeight: 700,
                     letterSpacing: '-0.02em',
                     color: T.text,
                     lineHeight: 1.15,
                 }}
             >
-                Take Control of Your Australian Career
+                Your Profile is Locked and Loaded!
             </h1>
+            <p
+                style={{
+                    margin: '0 0 6px',
+                    fontSize: 15,
+                    fontWeight: 600,
+                    color: T.accentSuccess,
+                    letterSpacing: '-0.01em',
+                    lineHeight: 1.5,
+                }}
+            >
+                Every section a recruiter checks? Done. Optimised. Ready.
+            </p>
             <p
                 style={{
                     margin: 0,
                     fontSize: 15,
                     fontWeight: 500,
-                    color: T.accentSuccess,
+                    color: T.textMuted,
                     letterSpacing: '-0.01em',
                 }}
             >
-                Strategic moves start here.
+                Now let's get you hired.
             </p>
         </header>
     );
@@ -111,7 +123,7 @@ function AnalysisHeroCard() {
         >
             <p
                 style={{
-                    margin: '0 0 16px',
+                    margin: '0 0 6px',
                     fontSize: 11,
                     fontWeight: 700,
                     letterSpacing: '0.14em',
@@ -120,6 +132,16 @@ function AnalysisHeroCard() {
                 }}
             >
                 Analyse a role
+            </p>
+            <p
+                style={{
+                    margin: '0 0 16px',
+                    fontSize: 13,
+                    color: T.textMuted,
+                    lineHeight: 1.6,
+                }}
+            >
+                Paste any job description below. We'll generate a tailored resume and cover letter that cuts through the noise, in under 3 minutes.
             </p>
 
             <textarea
@@ -148,7 +170,7 @@ function AnalysisHeroCard() {
 
             {showHint && (
                 <p style={{ margin: '8px 0 0', fontSize: 12, color: T.textFaint, lineHeight: 1.5 }}>
-                    Paste the full job description — the more text, the sharper the analysis.
+                    Paste the full job description. The more text, the sharper the analysis.
                 </p>
             )}
 

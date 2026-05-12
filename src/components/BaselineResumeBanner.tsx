@@ -32,7 +32,7 @@ export function BaselineResumeBanner({ isDark }: Props) {
     }
   }, []);
 
-  // Initial check — skip entirely if already dismissed
+  // Initial check, skip entirely if already dismissed
   useEffect(() => {
     if (localStorage.getItem(DISMISSED_KEY)) {
       setStatus('dismissed');
@@ -74,7 +74,7 @@ export function BaselineResumeBanner({ isDark }: Props) {
       dismiss();
       setShowModal(true);
     } catch {
-      // silent — user can retry
+      // silent, user can retry
     } finally {
       setDownloading(false);
     }
@@ -122,7 +122,7 @@ export function BaselineResumeBanner({ isDark }: Props) {
             </p>
             <p style={{ margin: '2px 0 0', fontSize: 12, color: sub }}>
               {status === 'ready'
-                ? 'Rewritten based on your diagnostic findings — free to download'
+                ? 'Rewritten based on your diagnostic findings, free to download'
                 : 'We’re rewriting it based on your diagnostic findings'}
             </p>
           </div>
@@ -199,7 +199,7 @@ export function BaselineResumeBanner({ isDark }: Props) {
               Your resume is downloading
             </h3>
             <p style={{ margin: '0 0 24px', fontSize: 14, color: sub, lineHeight: 1.6 }}>
-              Want to tailor it to a real job? You have 5 free generations — resumes and cover letters included.
+              Want to tailor it to a real job? You have 5 free generations, resumes and cover letters included.
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

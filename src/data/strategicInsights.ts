@@ -16,7 +16,7 @@ export interface StrategicInsight {
 export const STRATEGIC_INSIGHTS: StrategicInsight[] = [
   {
     id: 'apac-focus',
-    text: 'Target APAC-focused firms — they value international perspective and often have built-in cultural diversity.',
+    text: 'Target APAC-focused firms. They value international perspective and often have built-in cultural diversity.',
     category: 'market',
   },
   {
@@ -31,7 +31,7 @@ export const STRATEGIC_INSIGHTS: StrategicInsight[] = [
   },
   {
     id: 'aps-format',
-    text: 'Government roles (APS) reward selection-criteria detail. Treat them as a different application format entirely — separate document, structured answers.',
+    text: 'Government roles (APS) reward selection-criteria detail. Treat them as a different application format entirely: separate document, structured answers.',
     category: 'process',
   },
   {
@@ -41,7 +41,7 @@ export const STRATEGIC_INSIGHTS: StrategicInsight[] = [
   },
   {
     id: 'pr-citizenship',
-    text: 'PR or citizenship requirements are common in government and some private-sector roles. Check this before tailoring — saves wasted effort.',
+    text: 'PR or citizenship requirements are common in government and some private-sector roles. Check this before tailoring. Saves wasted effort.',
     category: 'market',
   },
   {
@@ -66,7 +66,7 @@ export const STRATEGIC_INSIGHTS: StrategicInsight[] = [
   },
   {
     id: 'personal-interests',
-    text: 'Australian resumes can include a brief personal-interests line. It is not unprofessional here — and can humanise an otherwise dense CV.',
+    text: 'Australian resumes can include a brief personal-interests line. It is not unprofessional here, and can humanise an otherwise dense CV.',
     category: 'framing',
   },
   {

@@ -11,7 +11,7 @@ const TEAL   = '#0F766E';
 const RED    = '#ef4444';
 const AMBER  = '#f59e0b';
 
-// ── Section metadata (replaces SECTION_ICONS — simplified 2-color palette) ────
+// ── Section metadata (replaces SECTION_ICONS, simplified 2-color palette) ────
 const SECTION_META: Record<string, {
   label: string;
   severity: string;
@@ -33,16 +33,16 @@ const CARDS_TO_RENDER  = ['targeting', 'document_audit', 'pipeline', 'honest', '
 const SECTION_TEASERS: Record<string, string> = {
   targeting:      'The roles you target and how you frame yourself for them determines everything that follows.',
   document_audit: 'Your resume has 6 seconds. What happens in those 6 seconds decides if a human ever reads your name.',
-  pipeline:       '"No response" is a data point — it tells you exactly where in the process you\'re being filtered out.',
+  pipeline:       '"No response" is a data point, it tells you exactly where in the process you\'re being filtered out.',
   honest:         'The real blocker is almost never what it looks like from the inside. This section names it directly.',
-  fix:            'Three actions, ranked by impact. Built from what your documents actually show — not generic advice.',
+  fix:            'Three actions, ranked by impact. Built from what your documents actually show, not generic advice.',
 };
 
 const RESPONSE_INTROS: Record<string, string> = {
-  mostly_silence:    'You\'re not clearing the first screening. Applications are going in but nothing is coming back — the block is somewhere in your targeting, resume, or positioning.',
-  mostly_rejections: 'You\'re visible — but not compelling enough on paper. The gap is usually how your experience is framed, not the experience itself.',
+  mostly_silence:    'You\'re not clearing the first screening. Applications are going in but nothing is coming back, the block is somewhere in your targeting, resume, or positioning.',
+  mostly_rejections: 'You\'re visible, but not compelling enough on paper. The gap is usually how your experience is framed, not the experience itself.',
   interviews_stall:  'You\'re getting in the room, which means your documents work. The issue is how you\'re presenting your value once you\'re there.',
-  no_offers:         'You\'re making the shortlist. The difference between you and whoever they pick is narrow — and almost always specific and fixable.',
+  no_offers:         'You\'re making the shortlist. The difference between you and whoever they pick is narrow, and almost always specific and fixable.',
   mix:               'An inconsistent pattern usually means the core positioning isn\'t locked in. Fix that first and the rest tends to follow.',
 };
 
@@ -363,7 +363,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
 
   const refSlug = (profile?.name ?? '').split(/\s/)[0].toLowerCase().replace(/[^a-z0-9]/g, '') || 'friend';
   const referralLink = `https://aussiegradcareers.com.au?ref=${refSlug}`;
-  const shareMsg = `I just found this free tool that analyzed exactly why my applications weren't getting responses. Takes 5 minutes and the report is genuinely useful — ${referralLink}`;
+  const shareMsg = `I just found this free tool that analyzed exactly why my applications weren't getting responses. Takes 5 minutes and the report is genuinely useful, ${referralLink}`;
 
 
   const cardSections = sections
@@ -444,7 +444,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
         {/* Content */}
         <div style={{ position: 'relative', zIndex: 1, maxWidth: 720, margin: '0 auto', padding: '72px 24px 160px' }}>
 
-          {/* ── Personalized header — hidden while report is still generating ── */}
+          {/* ── Personalized header, hidden while report is still generating ── */}
           {!(status === 'PROCESSING' && sections.length === 0) && (
           <motion.div
             initial={{ opacity: 0, y: -16 }}
@@ -499,7 +499,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                 }}>
                   <p style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.14em', color: isDark ? '#4b5563' : '#9ca3af', margin: '0 0 5px' }}>How to read this</p>
                   <p style={{ fontSize: 12, color: theme.intro, lineHeight: 1.75, margin: 0 }}>
-                    {cardSections.length} sections, ranked by impact. Each covers: what's happening, why it's costing you results, and what to do instead. Read in order — the first section is where the most is lost.
+                    {cardSections.length} sections, ranked by impact. Each covers: what's happening, why it's costing you results, and what to do instead. Read in order, the first section is where the most is lost.
                   </p>
                 </div>
               </div>
@@ -507,83 +507,20 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
           </motion.div>
           )}
 
-          {/* ── Loading / processing ── */}
+          {/* ── Loading / processing — minimal placeholder. The rich shuffling-message
+              loading experience lives in ProcessingScreen (shown during onboarding).
+              If a user lands here while the report is still generating, give them a
+              calm one-line spinner rather than a competing loading UI. ── */}
           {(isLoading || status === 'PROCESSING') && sections.length === 0 && processingMs < 60000 && (
-            <div style={{ padding: '8px 0 40px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, padding: '64px 0', textAlign: 'center' }}>
               <div style={{
-                background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.7)',
-                border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'}`,
-                borderRadius: 20, padding: '36px 32px 32px', marginBottom: 20,
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 28 }}>
-                  <div style={{
-                    width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
-                    border: `3px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
-                    borderTopColor: TEAL, animation: 'spin 0.9s linear infinite',
-                  }} />
-                  <div>
-                    <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: theme.heading, lineHeight: 1.3 }}>
-                      Writing your diagnosis…
-                    </p>
-                    <p style={{ margin: '3px 0 0', fontSize: 13, color: theme.sub }}>
-                      {processingMs < 8000  ? 'Reading your intake answers'
-                      : processingMs < 20000 ? 'Analysing your resume and target role'
-                      : processingMs < 36000 ? 'Identifying the gaps in your approach'
-                      : processingMs < 50000 ? 'Writing your personalised diagnosis'
-                      : 'Finalising your report'}
-                    </p>
-                  </div>
-                </div>
-                <div style={{ width: '100%', height: 4, borderRadius: 99, background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)', overflow: 'hidden', marginBottom: 10 }}>
-                  <div style={{
-                    height: '100%', borderRadius: 99,
-                    width: `${Math.min(88, 5 + (processingMs / 60000) * 83)}%`,
-                    background: `linear-gradient(90deg, ${TEAL} 0%, #2dd4bf 50%, ${TEAL} 100%)`,
-                    backgroundSize: '200% auto', animation: 'shimmer 2s linear infinite',
-                    transition: 'width 3.5s ease-out',
-                  }} />
-                </div>
-                <p style={{ fontSize: 12, color: theme.sub, margin: 0 }}>Usually 30–60 seconds — hang tight.</p>
-              </div>
-
-              <AnimatePresence>
-                {showCommunityBox && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    transition={{ duration: 0.5, ease: [0.25, 1, 0.5, 1] }}
-                    style={{
-                      background: `linear-gradient(135deg, rgba(15,118,110,0.12) 0%, rgba(19,78,74,0.08) 100%)`,
-                      border: '1px solid rgba(15,118,110,0.25)', borderRadius: 20, padding: '24px 28px',
-                    }}
-                  >
-                    <p style={{ margin: '0 0 6px', fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: TEAL }}>
-                      While you wait
-                    </p>
-                    <p style={{ margin: '0 0 8px', fontSize: 17, fontWeight: 800, color: theme.heading, lineHeight: 1.3, letterSpacing: '-0.01em' }}>
-                      Join the free community while your report generates.
-                    </p>
-                    <p style={{ margin: '0 0 16px', fontSize: 14, color: theme.sub, lineHeight: 1.7 }}>
-                      The{' '}
-                      <a href="https://www.skool.com/aussiegradcareers" target="_blank" rel="noopener noreferrer" style={{ color: '#2dd4bf', textDecoration: 'underline', textUnderlineOffset: 3 }}>
-                        Aussie Grad Careers community
-                      </a>
-                      {' '}has the frameworks, templates, and live coaching calls that map directly to what's in your report.
-                    </p>
-                    <a
-                      href="https://www.skool.com/aussiegradcareers" target="_blank" rel="noopener noreferrer"
-                      style={{
-                        display: 'inline-block', background: `linear-gradient(135deg, ${TEAL}, #134E4A)`,
-                        color: 'white', borderRadius: 10, padding: '10px 22px', fontSize: 14, fontWeight: 800,
-                        textDecoration: 'none', boxShadow: `0 4px 16px rgba(15,118,110,0.28)`,
-                      }}
-                    >
-                      Join free on Skool →
-                    </a>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                border: `2px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                borderTopColor: TEAL, animation: 'spin 0.9s linear infinite',
+              }} />
+              <p style={{ margin: 0, fontSize: 14, color: theme.sub, lineHeight: 1.5 }}>
+                Finalising your report. This usually takes about a minute.
+              </p>
             </div>
           )}
 
@@ -605,7 +542,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
           {(isError || (!isLoading && !data)) && (
             <div style={{ textAlign: 'center', padding: '60px 0' }}>
               <p style={{ color: '#f87171', fontSize: 15, marginBottom: 8 }}>Couldn't load your report.</p>
-              <p style={{ color: theme.sub, fontSize: 13, marginBottom: 24 }}>Your intake answers are saved — try regenerating.</p>
+              <p style={{ color: theme.sub, fontSize: 13, marginBottom: 24 }}>Your intake answers are saved, try regenerating.</p>
               <button
                 onClick={async () => { await api.post('/onboarding/retry'); refetch(); }}
                 style={{ background: '#FCD34D', color: '#111827', border: 'none', borderRadius: 10, padding: '10px 24px', fontWeight: 700, cursor: 'pointer' }}
@@ -621,7 +558,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
               <p style={{ color: '#f87171', fontSize: 15, marginBottom: 8 }}>
                 {status === 'FAILED' ? 'Report generation failed.' : 'Your report couldn\'t be parsed.'}
               </p>
-              <p style={{ color: theme.sub, fontSize: 13, marginBottom: 24 }}>Please try again — it only takes a minute.</p>
+              <p style={{ color: theme.sub, fontSize: 13, marginBottom: 24 }}>Please try again, it only takes a minute.</p>
               <button
                 onClick={async () => { await api.post('/onboarding/retry'); refetch(); }}
                 style={{ background: '#FCD34D', color: '#111827', border: 'none', borderRadius: 10, padding: '10px 24px', fontWeight: 700, cursor: 'pointer' }}
@@ -710,7 +647,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                       transition: 'border-color 0.25s, box-shadow 0.25s',
                     }}
                   >
-                    {/* Clickable header — always visible */}
+                    {/* Clickable header, always visible */}
                     <button
                       onClick={() => setOpenSection(isOpen ? null : section.key)}
                       style={{
@@ -781,7 +718,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                     </AnimatePresence>
                   </motion.div>
 
-                  {/* Social proof after honest section — only when expanded */}
+                  {/* Social proof after honest section, only when expanded */}
                   <AnimatePresence>
                     {section.key === 'honest' && isOpen && (
                       <motion.div
@@ -820,7 +757,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                   You now know exactly<br />what's holding you back.
                 </h2>
                 <p style={{ fontSize: 15, color: theme.sub, lineHeight: 1.7, maxWidth: 480, margin: '0 auto 0' }}>
-                  {firstName ? `${firstName}, you` : 'You'} have what it takes — the issue is how it's being packaged.
+                  {firstName ? `${firstName}, you` : 'You'} have what it takes, the issue is how it's being packaged.
                   The platform turns your diagnosis into action: resume rewrites, targeted applications, and the exact changes your report identified.
                 </p>
               </div>
@@ -858,17 +795,17 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                     boxShadow: '0 6px 24px rgba(236, 72, 153, 0.35)',
                   }}
                 >
-                  Build your interview-ready resume — Free →
+                  Build your interview-ready resume, Free →
                 </motion.button>
                 <p style={{ margin: 0, fontSize: 12, color: theme.sub, textAlign: 'center' }}>
-                  First 5 resume applications completely free — no card needed
+                  First 5 resume applications completely free, no card needed
                 </p>
                 <div style={{ textAlign: 'center' }}>
                   <a
                     href="https://www.skool.com/aussiegradcareers" target="_blank" rel="noopener noreferrer"
                     style={{ fontSize: 13, color: isDark ? '#2dd4bf' : TEAL, textDecoration: 'underline', textUnderlineOffset: 3, fontWeight: 600 }}
                   >
-                    Or join the free community (Skool) — frameworks, templates & weekly guidance →
+                    Or join the free community (Skool), frameworks, templates & weekly guidance →
                   </a>
                 </div>
               </div>
@@ -883,7 +820,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                   Know someone in the same boat?
                 </p>
                 <p style={{ fontSize: 18, fontWeight: 800, color: theme.heading, margin: '0 0 5px', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-                  Share this — they get a free diagnosis.
+                  Share this, they get a free diagnosis.
                 </p>
                 <p style={{ fontSize: 13, color: theme.sub, lineHeight: 1.6, margin: '0 0 14px' }}>
                   Every international grad you refer gets clarity on exactly what's holding their applications back.
@@ -894,7 +831,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                   borderRadius: 10, padding: '11px 14px', marginBottom: 12,
                   fontSize: 13, color: theme.sub, lineHeight: 1.7, fontStyle: 'italic',
                 }}>
-                  "I just found this free tool that analyzed exactly why my applications weren't getting responses — takes 5 minutes and the report is genuinely useful —{' '}
+                  "I just found this free tool that analyzed exactly why my applications weren't getting responses, takes 5 minutes and the report is genuinely useful.{' '}
                   <span style={{ color: isDark ? '#5eead4' : TEAL, fontStyle: 'normal', fontWeight: 600 }}>{referralLink}</span>"
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -981,7 +918,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                   whiteSpace: 'nowrap', minHeight: 44,
                 }}
               >
-                Build your interview-ready resume — Free →
+                Build your interview-ready resume, Free →
               </button>
               <button
                 onClick={() => setShowSticky(false)}

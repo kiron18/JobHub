@@ -97,12 +97,12 @@ function parseBullets(description: string): string[] {
 const COACHING: Record<string, { headline: string; body: string; tipsLabel?: string; tips?: string[] }> = {
   summary: {
     headline: 'The 6-second filter.',
-    body: "A recruiter scans your summary before reading anything else. Numbers stand out on a wall of text — drop in one concrete figure (a %, $, headcount, or timeframe) and you've already beaten most candidates. Lead with your title and seniority, anchor with that proof point, end with where you're heading.",
+    body: "A recruiter scans your summary before reading anything else. Numbers stand out on a wall of text, drop in one concrete figure (a %, $, headcount, or timeframe) and you've already beaten most candidates. Lead with your title and seniority, anchor with that proof point, end with where you're heading.",
     tipsLabel: 'WHAT MAKES IT LAND',
     tips: [
       'A number that proves your impact (%, $, scale, or time)',
       "Specific role + level (not just 'professional')",
-      "Forward-facing — what you're targeting next",
+      "Forward-facing, what you're targeting next",
     ],
   },
   experience: {
@@ -112,17 +112,17 @@ const COACHING: Record<string, { headline: string; body: string; tipsLabel?: str
     tips: [
       "Replace 'responsible for' with what you delivered",
       'Start every bullet with an action verb',
-      'Add a number wherever you can — even an estimate',
+      'Add a number wherever you can, even an estimate',
     ],
   },
   achievements: {
     headline: "We've isolated your achievements.",
-    body: "These stand-out moments have been pulled from your work experience. Now add a metric to each — 'Helped grow the team' and 'grew the team from 4 to 11 in 9 months' describe the same work. One proves it. An estimate is better than nothing.",
+    body: "These stand-out moments have been pulled from your work experience. Now add a metric to each, 'Helped grow the team' and 'grew the team from 4 to 11 in 9 months' describe the same work. One proves it. An estimate is better than nothing.",
     tipsLabel: "IF YOU'RE STUCK",
     tips: [
       'How many people were involved or affected?',
-      'What changed — percentage, volume, or time?',
-      'What was the scope — budget, timeline, or stakeholders?',
+      'What changed, percentage, volume, or time?',
+      'What was the scope, budget, timeline, or stakeholders?',
     ],
   },
   education: {
@@ -131,11 +131,11 @@ const COACHING: Record<string, { headline: string; body: string; tipsLabel?: str
   },
   certifications: {
     headline: 'Certifications signal initiative.',
-    body: "A relevant certification — whether it's a Google Analytics badge or a PMP — tells a recruiter you invested in your own skills. If you have any, add them. If not, skip ahead.",
+    body: "A relevant certification, whether it's a Google Analytics badge or a PMP, tells a recruiter you invested in your own skills. If you have any, add them. If not, skip ahead.",
   },
   volunteering: {
     headline: "Volunteering reveals character.",
-    body: "Hiring managers use this section to understand who you are outside of work. It also demonstrates skills you may not have had the chance to use professionally yet. If you have nothing to add, that's completely fine — skip ahead.",
+    body: "Hiring managers use this section to understand who you are outside of work. It also demonstrates skills you may not have had the chance to use professionally yet. If you have nothing to add, that's completely fine, skip ahead.",
   },
   skills: {
     headline: 'Generic skills are invisible.',
@@ -160,13 +160,13 @@ const FALLBACK_MESSAGES: Partial<Record<StepType, string>> = {
 };
 
 const COMPETITIVE_PROGRESS: Partial<Record<StepType, { strength: string; label: string }>> = {
-  summary:        { strength: '5/10', label: "Summary added. Recruiters read this in 6 seconds — yours now makes them stop." },
+  summary:        { strength: '5/10', label: "Summary added. Recruiters read this in 6 seconds, yours now makes them stop." },
   experience:     { strength: '6/10', label: "You're now ahead of 60% of applicants. Most stop here." },
   achievements:   { strength: '8/10', label: "This step alone moves you from bottom 50% to top 25%." },
   education:      { strength: '8/10', label: "Most applicants stop here. You're going further." },
-  certifications: { strength: '8.5/10', label: "Any credential adds credibility — and most don't have one." },
+  certifications: { strength: '8.5/10', label: "Any credential adds credibility, and most don't have one." },
   volunteering:   { strength: '9/10', label: "Hiring managers notice this section. Most candidates leave it blank." },
-  skills:         { strength: '9.5/10', label: "Profile complete — every section a recruiter looks for is filled in." },
+  skills:         { strength: '9.5/10', label: "Profile complete. Every section a recruiter looks for is filled in." },
 };
 
 // ─── Sub-components ─────────────────────────────────────────────────────────
@@ -260,7 +260,7 @@ function SummaryForm({
 
 // A bullet is "duty-like" when it reads as a job responsibility (no measurable
 // outcome). Heuristic: no digits, no monetary marker, and opens with one of
-// the classic duty phrasings. Kept conservative — better to under-flag than to
+// the classic duty phrasings. Kept conservative, better to under-flag than to
 // outline a legitimate achievement.
 function isDutyLikeBullet(bullet: string): boolean {
   const text = (bullet ?? '').trim();
@@ -340,9 +340,9 @@ function ExperienceEntryCard({
         </div>
       </div>
       <div>
-        <label style={labelStyle}>What you delivered — one outcome per line</label>
+        <label style={labelStyle}>What you delivered, one outcome per line</label>
         <p style={{ margin: '0 0 10px', fontSize: 11, color: '#6b7280', lineHeight: 1.55 }}>
-          Start each bullet with an action verb. Add a number wherever you can — even an estimate.
+          Start each bullet with an action verb. Add a number wherever you can, even an estimate.
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {bullets.map((bullet, i) => {
@@ -372,7 +372,7 @@ function ExperienceEntryCard({
                   />
                   {flagged && (
                     <p style={{ margin: '4px 0 0', fontSize: 11, color: '#fbbf24', lineHeight: 1.4 }}>
-                      Sounds like a duty — add a number or outcome to turn this into an achievement.
+                      Sounds like a duty, add a number or outcome to turn this into an achievement.
                     </p>
                   )}
                 </div>
@@ -487,7 +487,7 @@ function AchievementsForm({
             ...labelStyle,
             color: isRealMetric(ach.metric) ? '#22c55e' : '#d97706',
           }}>
-            {isRealMetric(ach.metric) ? '✓ Metric' : '⚠ Add a measurable result — a %, time saved, $ impact, or count'}
+            {isRealMetric(ach.metric) ? '✓ Metric' : '⚠ Add a measurable result, a %, time saved, $ impact, or count'}
           </label>
           <input
             type="text"
@@ -590,7 +590,7 @@ function CertificationsForm({
     return (
       <div style={{ textAlign: 'center', padding: '24px 0' }}>
         <p style={{ fontSize: 14, color: '#6b7280', margin: '0 0 16px', lineHeight: 1.65 }}>
-          No certifications on file. If you have any, add them below — or skip ahead if not.
+          No certifications on file. If you have any, add them below, or skip ahead if not.
         </p>
         <button
           type="button"
@@ -653,7 +653,7 @@ function VolunteeringForm({
     return (
       <div style={{ textAlign: 'center', padding: '24px 0' }}>
         <p style={{ fontSize: 14, color: '#6b7280', margin: '0 0 16px', lineHeight: 1.65 }}>
-          No volunteering on file. If you have any, add it below — or skip ahead if not.
+          No volunteering on file. If you have any, add it below, or skip ahead if not.
         </p>
         <button
           type="button"
@@ -1025,7 +1025,7 @@ export function SetupWizard() {
       }
       advance();
     } catch {
-      // silent — user can retry
+      // silent, user can retry
     } finally {
       setSaving(false);
     }
@@ -1239,7 +1239,7 @@ export function SetupWizard() {
                 }}
               >
                 <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 800, color: '#fbbf24', letterSpacing: '-0.01em' }}>
-                  Hold up — these look like job duties, not achievements.
+                  Hold up, these look like job duties, not achievements.
                 </p>
                 <p style={{ margin: '0 0 10px', fontSize: 12, color: '#d97706', lineHeight: 1.55 }}>
                   "Managed social media" won't get you interviews. "Grew Instagram from 4k to 22k in 6 months" will. Add a number or outcome to at least one bullet.
@@ -1248,7 +1248,7 @@ export function SetupWizard() {
                   onClick={() => setShowDutyWarning(false)}
                   style={{ fontSize: 11, fontWeight: 700, color: '#fbbf24', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                 >
-                  I've added outcomes — continue →
+                  I've added outcomes, continue →
                 </button>
               </motion.div>
             )}
@@ -1367,7 +1367,7 @@ function CompleteScreen({ onComplete }: { onComplete: () => void }) {
         color: '#6366f1',
         letterSpacing: '-0.01em',
       }}>
-        Profile complete — every section a recruiter checks is filled in.
+        Profile complete. Every section a recruiter checks is filled in.
       </p>
       <p style={{
         margin: '0 0 36px',

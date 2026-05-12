@@ -32,7 +32,7 @@ const MESSAGES = [
   "Building your three-step fix, ranked by impact...",
   "Writing the section most candidates find confronting...",
   "The hard part: being specific without softening it...",
-  "Almost there — pulling everything together now...",
+  "Almost there, pulling everything together now...",
   "This is the diagnosis most people never get to see...",
   "Get ready. This one hits hard.",
 ];
@@ -40,10 +40,10 @@ const MESSAGES = [
 const HUMAN_ASIDES = [
   "Oh, that's an interesting way to frame it...",
   "Most people undersell this section. Let's see.",
-  "OK — the structure here is going to tell us a lot.",
+  "OK, the structure here is going to tell us a lot.",
   "This bit matters more than most realise.",
   "Reading between the lines now.",
-  "There's something worth flagging here — noting it.",
+  "There's something worth flagging here, noting it.",
   "Not many candidates get this part right. Checking yours.",
   "This is the section recruiters spend the least time on. That's telling.",
   "Actually, this is doing more heavy lifting than it looks.",
@@ -89,13 +89,13 @@ function getRoleDemonym(targetRole: string): string {
 function getRoleAsides(role: string): string[] {
   const demonym = getRoleDemonym(role);
   return [
-    `${role} roles in Australia shortlist fast — checking how clearly yours signals fit...`,
+    `${role} roles in Australia shortlist fast, checking how clearly yours signals fit...`,
     `Comparing against what actually gets ${demonym} to interview stage...`,
     `There's a gap between what ${demonym} write and what hiring managers look for. Measuring yours.`,
   ];
 }
 
-const FALLBACK_MESSAGE = "Still running — this one's thorough...";
+const FALLBACK_MESSAGE = "Still running, this one's thorough...";
 const FAILED_MESSAGE   = "Something went sideways, but we've got your data.";
 
 const BAR_DURATION_MS = 150_000;
@@ -144,7 +144,7 @@ export function ProcessingScreen({ isDark: _isDark, theme: T, email, name, targe
     return () => { if (msgRef.current) clearInterval(msgRef.current); };
   }, []);
 
-  // Aside rotation — starts after 5 s delay, then every 13 s, offset from main messages
+  // Aside rotation, starts after 5 s delay, then every 13 s, offset from main messages
   useEffect(() => {
     const delay = setTimeout(() => {
       setAsideVisible(true);
@@ -167,7 +167,7 @@ export function ProcessingScreen({ isDark: _isDark, theme: T, email, name, targe
     pollRef.current = setInterval(async () => {
       try {
         const { data } = await api.get<{ status: string }>('/onboarding/report');
-        console.log('[ProcessingScreen] poll response — status:', data.status);
+        console.log('[ProcessingScreen] poll response, status:', data.status);
         if (data.status === 'COMPLETE') {
           clearInterval(pollRef.current!);
           clearInterval(msgRef.current!);
@@ -177,11 +177,11 @@ export function ProcessingScreen({ isDark: _isDark, theme: T, email, name, targe
           // BUG FIX: Clear reportSeen BEFORE invalidating queries. If we clear it after,
           // the profile refetch can complete and mount ReportOrDashboard while the flag
           // still says 'true', causing it to show the Dashboard instead of the Report.
-          console.log('[ProcessingScreen] COMPLETE — clearing reportSeen BEFORE invalidating queries');
+          console.log('[ProcessingScreen] COMPLETE, clearing reportSeen BEFORE invalidating queries');
           localStorage.removeItem('jobhub_report_seen');
           await queryClient.invalidateQueries({ queryKey: ['profile'] });
           await queryClient.invalidateQueries({ queryKey: ['report'] });
-          console.log('[ProcessingScreen] queries invalidated — calling onComplete in 500ms');
+          console.log('[ProcessingScreen] queries invalidated, calling onComplete in 500ms');
           setTimeout(() => {
             setStatus('done');
             onComplete();
@@ -194,7 +194,7 @@ export function ProcessingScreen({ isDark: _isDark, theme: T, email, name, targe
           setStatus('failed');
         }
       } catch {
-        // Network hiccup — keep polling
+        // Network hiccup, keep polling
       }
     }, POLL_INTERVAL_MS);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };

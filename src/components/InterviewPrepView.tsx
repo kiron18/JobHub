@@ -259,14 +259,14 @@ function StoryCardItem({ story }: { story: StoryCard }) {
                         <div className="px-4 pb-4 pt-0 space-y-3 border-t border-brand-600/20">
                             {story.context && (
                                 <div className="pt-3">
-                                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">C — Context</span>
+                                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">C, Context</span>
                                     <p className="text-[12px] text-slate-400 leading-relaxed mt-1">{story.context}</p>
                                 </div>
                             )}
                             {story.actions.length > 0 && (
                                 <div>
                                     <div className="flex items-baseline gap-2">
-                                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">A — Action</span>
+                                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">A, Action</span>
                                         <span className="text-[9px] text-slate-600 italic">pick the most relevant one</span>
                                     </div>
                                     <ul className="mt-1.5 space-y-1">
@@ -281,7 +281,7 @@ function StoryCardItem({ story }: { story: StoryCard }) {
                             )}
                             {story.result && (
                                 <div>
-                                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">R — Result</span>
+                                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">R, Result</span>
                                     <p className="text-[12px] text-emerald-400/90 leading-relaxed mt-1 font-medium">{story.result}</p>
                                 </div>
                             )}
@@ -405,10 +405,10 @@ export function InterviewPrepView({ doc, company, role }: { doc: string; company
     return (
         <div className="w-full max-w-3xl space-y-4">
 
-            {/* Section 1 — Know the Stage */}
+            {/* Section 1, Know the Stage */}
             {hasKnow && (
                 <div className="space-y-2">
-                    <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest px-1">01 — Know the Stage</p>
+                    <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest px-1">01, Know the Stage</p>
                     {data.companyIntelligence.length > 0 && (
                         <CollapsibleSection title="Company Intelligence" defaultOpen={true}>
                             <ul className="space-y-2">
@@ -441,10 +441,10 @@ export function InterviewPrepView({ doc, company, role }: { doc: string; company
                 </div>
             )}
 
-            {/* Section 2 — Story Bank */}
+            {/* Section 2, Story Bank */}
             {hasStories && (
                 <div className="space-y-2">
-                    <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest px-1">02 — Your Story Bank</p>
+                    <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest px-1">02, Your Story Bank</p>
 
                     {/* Educational panel */}
                     <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-3">
@@ -499,10 +499,10 @@ export function InterviewPrepView({ doc, company, role }: { doc: string; company
                 </div>
             )}
 
-            {/* Section 3 — Prove It */}
+            {/* Section 3, Prove It */}
             {hasProve && (
                 <div className="space-y-2">
-                    <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest px-1">03 — Prove It</p>
+                    <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest px-1">03, Prove It</p>
                     <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3">
                         <p className="text-[11px] text-slate-400 leading-relaxed">
                             Open each question type, read the question, then reveal the answer.
@@ -524,10 +524,10 @@ export function InterviewPrepView({ doc, company, role }: { doc: string; company
                 </div>
             )}
 
-            {/* Section 4 — Questions to Ask */}
+            {/* Section 4, Questions to Ask */}
             {hasAsk && (
                 <div className="space-y-2">
-                    <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest px-1">04 — Questions to Ask</p>
+                    <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest px-1">04, Questions to Ask</p>
                     <CollapsibleSection title="Your Questions">
                         <ul className="space-y-2">
                             {data.questionsToAsk.map((q, i) => (

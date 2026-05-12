@@ -161,7 +161,7 @@ const CitizenshipWarning: React.FC<CitizenshipWarningProps> = ({ onClose, onProc
                             </div>
                             <div>
                                 <h2 className="text-xl font-black text-amber-300">This role requires Australian citizenship.</h2>
-                                <p className="text-sm text-amber-400/70 mt-0.5">Hard boundary — not a preference</p>
+                                <p className="text-sm text-amber-400/70 mt-0.5">Hard boundary, not a preference</p>
                             </div>
                         </div>
                     </div>
@@ -185,7 +185,7 @@ const CitizenshipWarning: React.FC<CitizenshipWarningProps> = ({ onClose, onProc
                                 onClick={onProceed}
                                 className="w-full py-2 rounded-xl text-slate-600 hover:text-slate-400 text-xs font-medium transition-colors"
                             >
-                                Proceed anyway — I understand
+                                Proceed anyway, I understand
                             </button>
                         </div>
                     </div>
@@ -322,7 +322,7 @@ export const MatchEngine: React.FC = () => {
                     <div className="mb-4 flex items-center gap-2 px-3 py-2 rounded-lg border border-brand-600/20 bg-brand-600/5">
                         <span className="text-[8px] font-black uppercase tracking-widest text-brand-400 px-1.5 py-0.5 rounded bg-brand-600/15 shrink-0">NEW</span>
                         <p className="text-[11px] text-slate-400 leading-snug">
-                            <span className="font-semibold text-slate-200">Job Feed is live.</span> Fresh opportunities added daily — find roles that match your profile and generate documents in one click.
+                            <span className="font-semibold text-slate-200">Job Feed is live.</span> Fresh opportunities added daily, find roles that match your profile and generate documents in one click.
                         </p>
                         <button
                             onClick={() => navigate('/jobs')}

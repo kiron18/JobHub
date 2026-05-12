@@ -25,7 +25,7 @@ interface Reason {
 }
 
 const REASONS: Reason[] = [
-  { key: 'confusing',  label: "Too confusing — I don't know where to start" },
+  { key: 'confusing',  label: "Too confusing, I don't know where to start" },
   { key: 'no_time',   label: "Not enough time to use it properly" },
   { key: 'no_results',label: "Not seeing results fast enough" },
   { key: 'price',     label: "Price feels too high right now" },
@@ -35,31 +35,31 @@ const REASONS: Reason[] = [
 const RESPONSES: Record<ReasonKey, React.ReactNode> = {
   confusing: (
     <>
-      <p>The fastest path: go to the dashboard, paste any job description, and hit analyse. One action gets you a ranked match, a skills gap, and a tailored resume draft. Start there — nothing else matters yet.</p>
+      <p>The fastest path: go to the dashboard, paste any job description, and hit analyse. One action gets you a ranked match, a skills gap, and a tailored resume draft. Start there, nothing else matters yet.</p>
       <p>A full walkthrough video is coming shortly. If you want a hand now, reply to any email from us.</p>
     </>
   ),
   no_time: (
     <>
-      <p>You don't need a dedicated session — you need 15 minutes. Pick one role you actually want, paste the description, generate the resume, apply. That's a complete application cycle.</p>
+      <p>You don't need a dedicated session, you need 15 minutes. Pick one role you actually want, paste the description, generate the resume, apply. That's a complete application cycle.</p>
       <p>Most users who apply once come back because they see how fast it is. Give it one application before you go.</p>
     </>
   ),
   no_results: (
     <>
-      <p>Most users get their first interview invite in week 3. Your diagnostic is already done — that's the hard part. What's left is sending applications with documents that are actually matched to the role, not generic ones.</p>
-      <p>You're closer than you think. The infrastructure is built — you just need to use it on the next three roles you apply to.</p>
+      <p>Most users get their first interview invite in week 3. Your diagnostic is already done, that's the hard part. What's left is sending applications with documents that are actually matched to the role, not generic ones.</p>
+      <p>You're closer than you think. The infrastructure is built, you just need to use it on the next three roles you apply to.</p>
     </>
   ),
   price: (
     <>
-      <p>Our most popular plan is around $65 a month. One interview call — let alone an offer — is worth more than a year of that.</p>
+      <p>Our most popular plan is around $65 a month. One interview call, let alone an offer, is worth more than a year of that.</p>
       <p>If the current plan isn't the right fit, you can switch without losing anything you've already built. Your profile, achievements, and documents stay exactly where they are.</p>
     </>
   ),
   other: (
     <>
-      <p>We'd genuinely like to understand what's not working. Hit reply on any email from us — it goes directly to the team, not a support queue.</p>
+      <p>We'd genuinely like to understand what's not working. Hit reply on any email from us, it goes directly to the team, not a support queue.</p>
     </>
   ),
 };
@@ -175,12 +175,12 @@ export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan
               </button>
             </div>
 
-            {/* Video placeholder — reserved for personalised video */}
+            {/* Video placeholder, reserved for personalised video */}
             <div style={{ margin: '18px 24px 0', borderRadius: 10, background: cardBg, border: `1px solid ${border}`, height: 52, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
               <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(99,102,241,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <div style={{ width: 0, height: 0, borderTop: '5px solid transparent', borderBottom: '5px solid transparent', borderLeft: '8px solid #6366f1', marginLeft: 2 }} />
               </div>
-              <span style={{ fontSize: 12, color: textMuted }}>Personalised video message — coming soon</span>
+              <span style={{ fontSize: 12, color: textMuted }}>Personalised video message, coming soon</span>
             </div>
 
             {/* Reason selector */}

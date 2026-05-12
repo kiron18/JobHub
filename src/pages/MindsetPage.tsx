@@ -24,7 +24,7 @@ const SECTIONS: Section[] = [
     heading: "Silence isn't rejection.",
     body: [
       'Most silence after an application is not personal and not a verdict.',
-      "The role gets frozen. Internal candidates emerge. The recruiter goes on leave. A hiring manager changes priorities. A reorg quietly kills the headcount. None of those reach you as an email — they just look like no reply.",
+      "The role gets frozen. Internal candidates emerge. The recruiter goes on leave. A hiring manager changes priorities. A reorg quietly kills the headcount. None of those reach you as an email. They just look like no reply.",
       "If you've sent the application and followed up once, you've done your part. The next move belongs to them. Don't fill the silence with stories about what you did wrong.",
     ],
   },
@@ -33,15 +33,15 @@ const SECTIONS: Section[] = [
     body: [
       "Time-to-offer for international graduates in Australia varies wildly. Three weeks for some roles. Eight months for others. The median is somewhere around four months, and that figure hides everyone who paused, changed direction, or took an interim role on the way through.",
       "Your timeline is not the average and the average is not a deadline.",
-      "If you are still applying, still tightening your profile, still showing up — you are not behind. You are in the middle of a process that was always going to take time.",
+      "If you are still applying, still tightening your profile, still showing up, you are not behind. You are in the middle of a process that was always going to take time.",
     ],
   },
   {
     heading: "What to do when nothing is moving.",
     body: [
       'When the pipeline is silent and the calendar feels heavy, pick three things and stop there:',
-      "1. Tighten one application you've already sent — refine the cover letter, sharpen one bullet. Quality work on something you've already produced.",
-      '2. Send one short message — a former colleague, a connection two roles deep, someone you admire. Not asking for a job. Asking a single, specific question.',
+      "1. Tighten one application you've already sent. Refine the cover letter, sharpen one bullet. Quality work on something you've already produced.",
+      '2. Send one short message to a former colleague, a connection two roles deep, or someone you admire. Not asking for a job. Asking a single, specific question.',
       '3. Take a real rest day. Not a guilt-rest. A planned one.',
       "The temptation in dead weeks is to apply to more roles. That rarely changes the outcome. Sharpening one thing, talking to one person, and resting properly will move you further than another twenty applications you don't believe in.",
     ],
@@ -50,10 +50,10 @@ const SECTIONS: Section[] = [
     heading: 'When to step back.',
     body: [
       'There are signs that the hunt has shifted from work to compulsion:',
-      "— You're applying to roles you wouldn't take.",
-      "— You can't remember which company you've spoken to.",
-      "— The first thing you do in the morning is check email for replies that aren't there.",
-      "— You're being short with the people you live with.",
+      "• You're applying to roles you wouldn't take.",
+      "• You can't remember which company you've spoken to.",
+      "• The first thing you do in the morning is check email for replies that aren't there.",
+      "• You're being short with the people you live with.",
       'When you notice two or more, the right move is to stop for two or three days. Not to push through. The cost of stopping is small. The cost of burning out mid-search is months.',
       'Stepping back is part of the process, not a failure of it.',
     ],
@@ -62,15 +62,15 @@ const SECTIONS: Section[] = [
     heading: 'On rejection emails.',
     body: [
       'Most rejection emails say very little. "We\'ve decided to progress with other candidates." That is the whole sentence.',
-      "What it does not say: that you weren't qualified, that you weren't a good candidate, that there was something visibly wrong. It says one thing — that this company, on this day, went with someone else.",
-      "You will not get a real reason. Asking is fine but rarely productive. The most useful thing you can do with a rejection is write down one line about it — what you learned, what you'd frame differently next time — and move on. You can save the line in your tracker. Over months, those lines become a real record of what's working and what isn't.",
+      "What it does not say: that you weren't qualified, that you weren't a good candidate, that there was something visibly wrong. It says one thing only. That this company, on this day, went with someone else.",
+      "You will not get a real reason. Asking is fine but rarely productive. The most useful thing you can do with a rejection is write down one line about it: what you learned, what you'd frame differently next time, and then move on. You can save the line in your tracker. Over months, those lines become a real record of what's working and what isn't.",
     ],
   },
   {
     heading: 'A note on visa stress.',
     body: [
       'If your visa is tied to your search, your urgency is real and not in your head. The deadline pressure is structural, not psychological.',
-      'Two things worth saying. First: panic narrows your thinking — the roles you can see when you\'re stressed are a smaller subset than the roles that actually exist. Second: visa advice is specialist work. We are not migration agents. If your situation is changing, talk to a registered migration agent before you make decisions you can\'t reverse.',
+      'Two things worth saying. First: panic narrows your thinking. The roles you can see when you\'re stressed are a smaller subset than the roles that actually exist. Second: visa advice is specialist work. We are not migration agents. If your situation is changing, talk to a registered migration agent before you make decisions you can\'t reverse.',
       'You can carry the stress without letting it drive every choice.',
     ],
   },
@@ -78,7 +78,7 @@ const SECTIONS: Section[] = [
     heading: "You've already done the hard part.",
     body: [
       "You moved countries. You built a profile in a system that didn't know you. You're doing a job hunt in a market that has its own conventions and you're learning them in real time.",
-      "The fact that you're still pushing on means most of the hard work is behind you, not ahead. The role you land won't feel like a reward for that work — it'll just feel like a Tuesday, like any other start date.",
+      "The fact that you're still pushing on means most of the hard work is behind you, not ahead. The role you land won't feel like a reward for that work. It'll just feel like a Tuesday, like any other start date.",
       'What you\'ve done to get here is the part that counts. Whatever comes next is the easier half.',
     ],
   },

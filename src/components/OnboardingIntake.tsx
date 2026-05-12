@@ -301,7 +301,7 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
       </h1>
 
       <p style={{ color: T.textMuted, fontSize: 14, lineHeight: 1.65, maxWidth: 420, margin: '0 auto 18px' }}>
-        Take this free 3-minute diagnostic to find out exactly which part of your application process is costing you interviews — and what to fix first.
+        Take this free 3-minute diagnostic to find out exactly which part of your application process is costing you interviews, and what to fix first.
       </p>
 
       <div style={{ marginBottom: 18, textAlign: 'left' }}>
@@ -339,7 +339,7 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
         textAlign: 'left',
       }}>
         <p style={{ fontSize: 13, fontWeight: 700, color: '#fde047', margin: '0 0 4px' }}>
-          Before you start — grab your resume.
+          Before you start, grab your resume.
         </p>
         <p style={{ fontSize: 12, color: T.textMuted, margin: 0, lineHeight: 1.5 }}>
           This diagnostic reads your actual documents to identify what's costing you interviews. Resume is required. Cover letters help if you have them.
@@ -372,7 +372,7 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
   );
 }
 
-// ── Step: Auth (step 1 — before questions) ────────────────────────────────────
+// ── Step: Auth (step 1, before questions) ────────────────────────────────────
 
 function StepAuth({ onAuthSuccess, onBack }: {
   onAuthSuccess: () => void;
@@ -435,7 +435,7 @@ function StepAuth({ onAuthSuccess, onBack }: {
           const msg = signUpError.message.toLowerCase();
           if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('already been registered')) {
             setMode('signin');
-            toast.error('Account already exists — sign in below.');
+            toast.error('Account already exists, sign in below.');
           } else {
             toast.error(signUpError.message || 'Sign up failed');
           }
@@ -444,7 +444,7 @@ function StepAuth({ onAuthSuccess, onBack }: {
         if (!data.session) {
           if (!data.user?.identities || data.user.identities.length === 0) {
             setMode('signin');
-            toast.error('Account already exists — sign in below.');
+            toast.error('Account already exists, sign in below.');
           } else {
             setAwaitingConfirmation(true);
           }
@@ -470,7 +470,7 @@ function StepAuth({ onAuthSuccess, onBack }: {
       </h2>
       <p style={{ color: T.textMuted, fontSize: 13, lineHeight: 1.6, marginBottom: 24 }}>
         {isSignup
-          ? 'Enter your email to receive your full results — and access them anytime.'
+          ? 'Enter your email to receive your full results, and access them anytime.'
           : 'Sign in to continue your diagnosis.'}
       </p>
 
@@ -545,7 +545,7 @@ function StepRole({ answers, onChange, onNext, onBack }: {
       <h2 style={{ fontSize: 24, fontWeight: 900, color: T.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
         What role are you targeting?
       </h2>
-      <p style={{ color: T.textFaint, fontSize: 13, marginBottom: 24 }}>Be specific — this anchors your entire diagnosis to real Australian hiring conditions.</p>
+      <p style={{ color: T.textFaint, fontSize: 13, marginBottom: 24 }}>Be specific, this anchors your entire diagnosis to real Australian hiring conditions.</p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <Field label="Role" hint="Vague targets produce vague diagnoses. The more specific you are, the more precisely we can flag what's off.">
@@ -557,7 +557,7 @@ function StepRole({ answers, onChange, onNext, onBack }: {
         <Field label="Seniority" hint="We compare your positioning against what employers at this level actually expect to see.">
           <TSelect value={answers.seniority} onChange={v => onChange('seniority', v)} options={SENIORITY_OPTIONS} placeholder="Select level" />
         </Field>
-        <Field label="Industry" hint="Different industries have different filtering patterns — this helps us spot what's specific to your market.">
+        <Field label="Industry" hint="Different industries have different filtering patterns, this helps us spot what's specific to your market.">
           <TSelect value={answers.industry} onChange={v => onChange('industry', v)} options={INDUSTRY_OPTIONS} placeholder="Select industry" />
         </Field>
         <Field label="Work rights in Australia" hint="Visa status is often a quiet screening filter. We flag when it's likely affecting your results before you even get a look.">
@@ -598,7 +598,7 @@ function StepResponses({ answers, onChange, onNext, onBack }: {
         What are you getting back?
       </h2>
       <p style={{ color: T.textFaint, fontSize: 13, marginBottom: 20 }}>
-        The pattern tells us exactly where in the funnel things break down — before the interview, in it, or after.
+        The pattern tells us exactly where in the funnel things break down, before the interview, in it, or after.
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
         {RESPONSE_OPTIONS.map(opt => (
@@ -638,13 +638,13 @@ function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, onBa
         Now upload your documents.
       </h2>
       <p style={{ color: T.textMuted, fontSize: 13, lineHeight: 1.6, marginBottom: 6 }}>
-        We're not judging them — we're reading them to find exactly what's holding you back.
+        We're not judging them, we're reading them to find exactly what's holding you back.
       </p>
       <p style={{ color: T.textFaint, fontSize: 12, marginBottom: 16 }}>PDF or Word accepted.</p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <FileDropZone label="Your resume (required)" required file={resume} onFile={setResume}
-          subtext="We extract how you position yourself — structure, tone, and targeting all feed into the diagnosis." />
+          subtext="We extract how you position yourself, structure, tone, and targeting all feed into the diagnosis." />
         <FileDropZone label="A recent cover letter" file={cl1} onFile={setCl1}
           subtext="Shows how you personalise applications. If you don't have one, that itself tells us something." />
         <FileDropZone label="A second cover letter (optional)" file={cl2} onFile={setCl2}
@@ -678,7 +678,7 @@ export function OnboardingIntake({ resumeMode: _resumeMode = false, initialStep 
 
   const isAuthenticated = !!user && !(user as any).is_anonymous;
 
-  // Compute the visible step synchronously — if already authenticated, never render Welcome or Auth
+  // Compute the visible step synchronously, if already authenticated, never render Welcome or Auth
   const visibleStep = isAuthenticated && step < 2 ? 2 : step;
 
   // Sync internal step to visibleStep once auth resolves so that goNext advances
@@ -729,7 +729,7 @@ export function OnboardingIntake({ resumeMode: _resumeMode = false, initialStep 
       } else if (err?.code === 'ECONNABORTED' || err?.message?.includes('timeout')) {
         toast.error('Request timed out. Try a smaller PDF.');
       } else if (!err?.response) {
-        toast.error('Network error — check your connection and try again.');
+        toast.error('Network error, check your connection and try again.');
       } else {
         toast.error(`Upload failed (${status ?? 'error'}): ${detail}`);
       }

@@ -83,7 +83,7 @@ export function CriteriaInputPanel({ criteriaText, onChange, onExtracted, employ
                             'Go back to the job listing',
                             'Look for any attached Position Description or Application Pack PDF',
                             'Find the selection criteria section',
-                            'Copy and paste it below — we\'ll extract the criteria automatically',
+                            'Copy and paste it below, we\'ll extract the criteria automatically',
                         ].map((step, i) => (
                             <li key={i} className="flex items-start gap-2">
                                 <span className="text-[10px] font-black text-purple-400 shrink-0 mt-0.5">{i + 1}.</span>
@@ -97,7 +97,7 @@ export function CriteriaInputPanel({ criteriaText, onChange, onExtracted, employ
                 <textarea
                     value={criteriaText}
                     onChange={e => onChange(e.target.value)}
-                    placeholder={`Paste the full criteria section here — even the whole position description. We'll extract the criteria automatically.\n\nFor example:\n1. Demonstrated ability to lead and manage teams\n2. Strong communication and stakeholder engagement skills`}
+                    placeholder={`Paste the full criteria section here, even the whole position description. We'll extract the criteria automatically.\n\nFor example:\n1. Demonstrated ability to lead and manage teams\n2. Strong communication and stakeholder engagement skills`}
                     rows={8}
                     className="w-full bg-slate-800/60 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-300 outline-none focus:border-purple-500 transition-colors resize-none leading-relaxed placeholder:text-slate-600"
                 />
@@ -113,7 +113,7 @@ export function CriteriaInputPanel({ criteriaText, onChange, onExtracted, employ
                 {extractError && (
                     <div className="flex items-center gap-2 text-[11px] text-amber-500/80">
                         <AlertCircle size={11} />
-                        Couldn't extract criteria automatically — generation will use the raw text.
+                        Couldn't extract criteria automatically, generation will use the raw text.
                     </div>
                 )}
 
@@ -123,7 +123,7 @@ export function CriteriaInputPanel({ criteriaText, onChange, onExtracted, employ
                         <div className="flex items-center gap-2">
                             <CheckCircle2 size={12} className="text-emerald-400" />
                             <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">
-                                {extracted.length} {extracted.length === 1 ? 'criterion' : 'criteria'} found — one response per item
+                                {extracted.length} {extracted.length === 1 ? 'criterion' : 'criteria'} found, one response per item
                             </p>
                         </div>
                         <div className="space-y-1.5">
