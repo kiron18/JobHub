@@ -4,6 +4,7 @@ import { authenticate } from '../../middleware/auth';
 import { indexAchievement } from '../../services/vector';
 import { EXEMPT_EMAILS } from '../stripe';
 import { generateBaselineResume } from '../../services/baselineResume';
+import { derivePositioningStatement, type PositioningStatement } from '../../services/positioningStatement';
 
 const router = Router();
 
@@ -69,8 +70,46 @@ router.get('/profile', authenticate, async (req, res) => {
         const endowedBonus = profile.hasCompletedOnboarding ? 20 : 0;
         const score = Math.min(100, rawScore + endowedBonus);
 
+        // Derive positioning statement (Floor signal for Dual-Signal analysis).
+        // Pure rule-based, no LLM. Recompute on every GET and persist if the
+        // derived shape has drifted from what we last stored.
+        const profileVersion = profile.updatedAt ? profile.updatedAt.getTime() : Date.now();
+        const sortedExperience = [...(profile.experience ?? [])].sort((a, b) => {
+            const aDate = a.endDate ?? (a.isCurrent ? '9999' : a.startDate);
+            const bDate = b.endDate ?? (b.isCurrent ? '9999' : b.startDate);
+            return bDate.localeCompare(aDate);
+        });
+        const derivedPositioning = derivePositioningStatement(
+            {
+                experience: sortedExperience.map((e) => ({
+                    role: e.role,
+                    company: e.company,
+                    startDate: e.startDate,
+                    endDate: e.endDate,
+                    isCurrent: e.isCurrent,
+                })),
+                education: (profile.education ?? []).map((e) => ({
+                    degree: e.degree,
+                    institution: e.institution,
+                })),
+            },
+            profileVersion,
+        );
+        const storedPositioning = profile.positioningStatement as PositioningStatement | null;
+        if (derivedPositioning && (!storedPositioning || storedPositioning.raw !== derivedPositioning.raw)) {
+            try {
+                await prisma.candidateProfile.update({
+                    where: { id: profile.id },
+                    data: { positioningStatement: derivedPositioning as any },
+                });
+            } catch (err) {
+                console.warn('[profile] failed to persist positioningStatement:', err);
+            }
+        }
+
         res.json({
             ...profile,
+            positioningStatement: derivedPositioning ?? storedPositioning,
             isAdmin,
             completion: {
                 score,
