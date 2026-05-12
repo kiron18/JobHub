@@ -1342,42 +1342,53 @@ function CompleteScreen({ onComplete }: { onComplete: () => void }) {
         width: 72,
         height: 72,
         borderRadius: '50%',
-        background: 'rgba(99,102,241,0.12)',
-        border: '1px solid rgba(99,102,241,0.25)',
+        background: 'rgba(197,160,89,0.14)',
+        border: '1px solid rgba(197,160,89,0.32)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         margin: '0 auto 28px',
       }}>
-        <CheckCircle size={36} color="#6366f1" />
+        <CheckCircle size={36} color="#C5A059" />
       </div>
       <h1 style={{
         margin: '0 0 10px',
-        fontSize: 26,
+        fontSize: 28,
         fontWeight: 800,
-        color: '#f3f4f6',
+        color: '#E0E0E0',
         letterSpacing: '-0.02em',
+        lineHeight: 1.2,
       }}>
-        Your profile is ready. Time to put it to work.
+        Your Profile is Locked and Loaded!
       </h1>
       <p style={{
-        margin: '0 0 8px',
-        fontSize: 13,
+        margin: '0 0 6px',
+        fontSize: 15,
         fontWeight: 700,
-        color: '#6366f1',
+        color: '#C5A059',
+        letterSpacing: '-0.01em',
+        lineHeight: 1.45,
+      }}>
+        Every section a recruiter checks? Done. Optimised. Ready.
+      </p>
+      <p style={{
+        margin: '0 0 14px',
+        fontSize: 14,
+        fontWeight: 600,
+        color: '#A0A4A8',
         letterSpacing: '-0.01em',
       }}>
-        Profile complete. Every section a recruiter checks is filled in.
+        Now let's get you hired.
       </p>
       <p style={{
         margin: '0 0 36px',
         fontSize: 14,
-        color: '#9ca3af',
+        color: '#A0A4A8',
         lineHeight: 1.65,
-        maxWidth: 400,
+        maxWidth: 440,
         marginInline: 'auto',
       }}>
-        Paste a job description and we'll generate your tailored resume and cover letter in under 3 minutes.
+        Paste any job description below. We'll generate a tailored resume and cover letter that cuts through the noise, in under 3 minutes.
       </p>
       <button
         onClick={onComplete}
@@ -1386,8 +1397,8 @@ function CompleteScreen({ onComplete }: { onComplete: () => void }) {
           display: 'inline-flex',
           alignItems: 'center',
           gap: 8,
-          background: '#6366f1',
-          color: '#fff',
+          background: '#2D5A6E',
+          color: '#E0E0E0',
           border: 'none',
           borderRadius: 12,
           padding: '15px 28px',
@@ -1396,6 +1407,7 @@ function CompleteScreen({ onComplete }: { onComplete: () => void }) {
           cursor: 'pointer',
           letterSpacing: '-0.01em',
           marginBottom: 14,
+          boxShadow: '0 4px 24px rgba(45,90,110,0.35)',
         }}
       >
         Start Generating Applications <ArrowRight size={16} />

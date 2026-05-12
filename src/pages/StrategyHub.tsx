@@ -59,30 +59,18 @@ function HubHeader({ profile }: { profile?: ProfileLite }) {
                     lineHeight: 1.15,
                 }}
             >
-                Your Profile is Locked and Loaded!
+                Land Your Next Australian Role Faster
             </h1>
-            <p
-                style={{
-                    margin: '0 0 6px',
-                    fontSize: 15,
-                    fontWeight: 600,
-                    color: T.accentSuccess,
-                    letterSpacing: '-0.01em',
-                    lineHeight: 1.5,
-                }}
-            >
-                Every section a recruiter checks? Done. Optimised. Ready.
-            </p>
             <p
                 style={{
                     margin: 0,
                     fontSize: 15,
                     fontWeight: 500,
-                    color: T.textMuted,
+                    color: T.accentSuccess,
                     letterSpacing: '-0.01em',
                 }}
             >
-                Now let's get you hired.
+                Paste any job description. Get a tailored resume and cover letter in 3 minutes.
             </p>
         </header>
     );
@@ -123,7 +111,7 @@ function AnalysisHeroCard() {
         >
             <p
                 style={{
-                    margin: '0 0 6px',
+                    margin: '0 0 16px',
                     fontSize: 11,
                     fontWeight: 700,
                     letterSpacing: '0.14em',
@@ -132,16 +120,6 @@ function AnalysisHeroCard() {
                 }}
             >
                 Analyse a role
-            </p>
-            <p
-                style={{
-                    margin: '0 0 16px',
-                    fontSize: 13,
-                    color: T.textMuted,
-                    lineHeight: 1.6,
-                }}
-            >
-                Paste any job description below. We'll generate a tailored resume and cover letter that cuts through the noise, in under 3 minutes.
             </p>
 
             <textarea
