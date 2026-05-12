@@ -7,26 +7,39 @@ import ReactMarkdown from 'react-markdown';
 import api from '../lib/api';
 import type { DocType } from '../lib/exportDocx';
 
+type KnownDocumentType = 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE' | 'BASELINE_RESUME';
+
 interface Document {
     id: string;
     title: string;
-    type: 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE';
+    // The backend can return any string here; we narrow to known types via
+    // resolveDocType below. Falling back to RESUME for unknown types means
+    // a new doc type never crashes the library.
+    type: string;
     content: string;
     createdAt: string;
     jobApplicationId: string | null;
 }
 
-const TYPE_CONFIG: Record<Document['type'], { label: string; color: string; pill: string }> = {
-    RESUME:       { label: 'Resume',            color: '#818cf8', pill: 'bg-brand-500/10 text-brand-400 border-brand-500/20' },
-    COVER_LETTER: { label: 'Cover Letter',       color: '#34d399', pill: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-    STAR_RESPONSE:{ label: 'Selection Criteria', color: '#fbbf24', pill: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
+interface TypeConfigEntry { label: string; color: string; pill: string; }
+
+const TYPE_CONFIG: Record<KnownDocumentType, TypeConfigEntry> = {
+    RESUME:          { label: 'Resume',             color: '#7DA67D', pill: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20' },
+    COVER_LETTER:    { label: 'Cover Letter',       color: '#C5A059', pill: 'bg-amber-500/10 text-amber-300 border-amber-500/20' },
+    STAR_RESPONSE:   { label: 'Selection Criteria', color: '#2D5A6E', pill: 'bg-sky-500/10 text-sky-300 border-sky-500/20' },
+    BASELINE_RESUME: { label: 'Starter Resume',     color: '#7DA67D', pill: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20' },
 };
 
-const DOC_TYPE_MAP: Record<Document['type'], DocType> = {
+const DOC_TYPE_MAP: Record<KnownDocumentType, DocType> = {
     RESUME: 'resume',
     COVER_LETTER: 'cover-letter',
     STAR_RESPONSE: 'selection-criteria',
+    BASELINE_RESUME: 'resume',
 };
+
+function resolveDocType(type: string): KnownDocumentType {
+    return (type in TYPE_CONFIG ? type : 'RESUME') as KnownDocumentType;
+}
 
 function formatDate(iso: string): string {
     return new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -55,7 +68,8 @@ interface DocCardProps {
 const DocCard: React.FC<DocCardProps> = ({ doc, onDelete, deleting }) => {
     const [viewerOpen, setViewerOpen] = useState(false);
     const [copied, setCopied] = useState(false);
-    const cfg = TYPE_CONFIG[doc.type];
+    const resolvedType = resolveDocType(doc.type);
+    const cfg = TYPE_CONFIG[resolvedType];
 
     const handleCopy = () => {
         navigator.clipboard.writeText(doc.content);
@@ -70,20 +84,20 @@ const DocCard: React.FC<DocCardProps> = ({ doc, onDelete, deleting }) => {
             const company = parts[0] || '';
             const role = parts[1] || '';
             const { exportDocx } = await import('../lib/exportDocx');
-            await exportDocx(doc.content, DOC_TYPE_MAP[doc.type], company, role);
+            await exportDocx(doc.content, DOC_TYPE_MAP[resolvedType], company, role);
             toast.success('Downloaded as .docx');
         } catch {
-            toast.error('Download failed — copy the content instead.');
+            toast.error('Download failed. Copy the content instead.');
         }
     };
 
     const handleDownloadPdf = async () => {
         try {
             const { exportPdf } = await import('../lib/exportPdf');
-            await exportPdf(doc.content, DOC_TYPE_MAP[doc.type] as any, '', '');
+            await exportPdf(doc.content, DOC_TYPE_MAP[resolvedType] as any, '', '');
             toast.success('Downloaded as PDF');
         } catch {
-            toast.error('PDF download failed — try .docx instead.');
+            toast.error('PDF download failed. Try .docx instead.');
         }
     };
 
@@ -214,7 +228,7 @@ const DocCard: React.FC<DocCardProps> = ({ doc, onDelete, deleting }) => {
 export const DocumentLibrary: React.FC = () => {
     const queryClient = useQueryClient();
     const [search, setSearch] = useState('');
-    const [typeFilter, setTypeFilter] = useState<Document['type'] | 'ALL'>('ALL');
+    const [typeFilter, setTypeFilter] = useState<KnownDocumentType | 'ALL'>('ALL');
     const [deletingId, setDeletingId] = useState<string | null>(null);
 
     const { data: documents = [], isLoading } = useQuery<Document[]>({
@@ -257,8 +271,11 @@ export const DocumentLibrary: React.FC = () => {
     const grouped = useMemo(() => groupByDate(filtered), [filtered]);
 
     const counts: Record<string, number> = useMemo(() => {
-        const c: Record<string, number> = { ALL: documents.length, RESUME: 0, COVER_LETTER: 0, STAR_RESPONSE: 0 };
-        for (const d of documents) c[d.type] = (c[d.type] || 0) + 1;
+        const c: Record<string, number> = { ALL: documents.length, RESUME: 0, COVER_LETTER: 0, STAR_RESPONSE: 0, BASELINE_RESUME: 0 };
+        for (const d of documents) {
+            const key = resolveDocType(d.type);
+            c[key] = (c[key] || 0) + 1;
+        }
         return c;
     }, [documents]);
 
@@ -289,17 +306,17 @@ export const DocumentLibrary: React.FC = () => {
                     )}
                 </div>
                 <div className="flex items-center gap-2">
-                    {(['ALL', 'RESUME', 'COVER_LETTER', 'STAR_RESPONSE'] as const).map(t => (
+                    {(['ALL', 'RESUME', 'COVER_LETTER', 'STAR_RESPONSE', 'BASELINE_RESUME'] as const).map(t => (
                         <button
                             key={t}
                             onClick={() => setTypeFilter(t)}
                             className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all ${
                                 typeFilter === t
-                                    ? (t === 'ALL' ? 'bg-slate-700 border-slate-600 text-slate-200' : `${TYPE_CONFIG[t as Document['type']]?.pill || ''}`)
+                                    ? (t === 'ALL' ? 'bg-slate-700 border-slate-600 text-slate-200' : `${TYPE_CONFIG[t as KnownDocumentType]?.pill || ''}`)
                                     : 'bg-slate-900 border-slate-800 text-slate-500 hover:border-slate-700 hover:text-slate-400'
                             }`}
                         >
-                            {t === 'ALL' ? 'All' : TYPE_CONFIG[t as Document['type']].label}
+                            {t === 'ALL' ? 'All' : TYPE_CONFIG[t as KnownDocumentType].label}
                             <span className="ml-1.5 opacity-60">{counts[t] || 0}</span>
                         </button>
                     ))}
