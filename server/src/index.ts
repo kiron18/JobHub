@@ -24,8 +24,10 @@ import skoolRouter from './routes/skool';
 import jobFeedRouter from './routes/job-feed';
 import adminRouter from './routes/admin';
 import stripeRouter, { stripeWebhookHandler } from './routes/stripe';
+import wizardRouter from './routes/wizard';
 import { startJobFeedCron } from './cron/jobFeedCron';
 import { startTrialReminderCron } from './cron/trialReminderCron';
+import { startFollowUpReminderCron } from './cron/followUpReminderCron';
 import { analyzeRateLimit } from './middleware/analyzeRateLimit';
 
 dotenv.config();
@@ -143,6 +145,7 @@ app.use('/api/skool', skoolRouter);
 app.use('/api/job-feed', jobFeedRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/stripe', stripeRouter);
+app.use('/api/wizard', wizardRouter);
 
 // Sentry error handler - must be before any other error handling middleware
 Sentry.setupExpressErrorHandler(app);
@@ -164,7 +167,8 @@ async function ensureColumns() {
         ADD COLUMN IF NOT EXISTS "australianFlags" JSONB,
         ADD COLUMN IF NOT EXISTS "dimensions" JSONB,
         ADD COLUMN IF NOT EXISTS "matchedIdentityCard" TEXT,
-        ADD COLUMN IF NOT EXISTS "overallGrade" TEXT;
+        ADD COLUMN IF NOT EXISTS "overallGrade" TEXT,
+        ADD COLUMN IF NOT EXISTS "followUpSentAt" TIMESTAMP(3);
     `);
     await prisma.$executeRawUnsafe(`
       ALTER TABLE "CandidateProfile"
@@ -172,7 +176,11 @@ async function ensureColumns() {
         ADD COLUMN IF NOT EXISTS "identityCards" JSONB,
         ADD COLUMN IF NOT EXISTS "identityCardsUpdatedAt" TIMESTAMP(3),
         ADD COLUMN IF NOT EXISTS "profileAdvisorCallsToday" INTEGER NOT NULL DEFAULT 0,
-        ADD COLUMN IF NOT EXISTS "profileAdvisorCallsDate" TIMESTAMP(3);
+        ADD COLUMN IF NOT EXISTS "profileAdvisorCallsDate" TIMESTAMP(3),
+        ADD COLUMN IF NOT EXISTS "marketingEmail" TEXT,
+        ADD COLUMN IF NOT EXISTS "marketingConsent" BOOLEAN NOT NULL DEFAULT false,
+        ADD COLUMN IF NOT EXISTS "marketingEmailSent" BOOLEAN NOT NULL DEFAULT false,
+        ADD COLUMN IF NOT EXISTS "visaStatus" TEXT;
     `);
     console.log('[startup] schema columns verified');
   } catch (err) {
@@ -185,6 +193,8 @@ app.listen(PORT, async () => {
     await ensureColumns();
     startJobFeedCron();
     startTrialReminderCron();
+    startFollowUpReminderCron();
     console.log('[cron] Job feed cron scheduled (21:00 UTC daily)');
     console.log('[cron] Trial reminder cron scheduled (10:00 UTC daily)');
+    console.log('[cron] Follow-up reminder cron scheduled (09:00 UTC daily)');
 });

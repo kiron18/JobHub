@@ -142,6 +142,36 @@ export async function sendStatusEmail(params: {
   });
 }
 
+export async function sendFollowUpReminderEmail(params: {
+  to: string;
+  jobTitle: string;
+  company: string;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[email] RESEND_API_KEY not set — skipping follow-up email');
+    return;
+  }
+  const { to, jobTitle, company } = params;
+  const role = `${jobTitle} at ${company}`;
+
+  await resend.emails.send({
+    from: FROM_ADDRESS,
+    to,
+    subject: `Time to follow up — ${jobTitle} at ${company}`,
+    text: [
+      `It's been 7 days since you applied for ${role}.`,
+      '',
+      "If you haven't heard back, now is the right time for a short follow-up.",
+      '',
+      "Keep it to 3-4 lines: confirm your interest, reference something specific about the role, and ask if there's anything else they need from you.",
+      '',
+      "Most candidates don't follow up. You should.",
+      '',
+      'The JobReady team',
+    ].join('\n'),
+  });
+}
+
 export async function sendAdminPaymentAlert(params: {
   event: 'payment_succeeded' | 'payment_failed';
   userEmail: string;

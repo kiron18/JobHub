@@ -20,6 +20,21 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
         staleTime: 5 * 60 * 1000,
     });
 
+    const { data: followUpCount } = useQuery({
+        queryKey: ['follow-up-count'],
+        queryFn: async () => {
+            const { data } = await api.get('/jobs');
+            const now = Date.now();
+            return (data as any[]).filter(j => {
+                if (j.status !== 'APPLIED' || !j.dateApplied) return false;
+                const days = Math.floor((now - new Date(j.dateApplied).getTime()) / (1000 * 60 * 60 * 24));
+                return days >= 7;
+            }).length;
+        },
+        staleTime: 5 * 60 * 1000,
+        refetchOnWindowFocus: true,
+    });
+
     const navItems = [
         { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/jobs', icon: Sparkles, label: 'Job Feed' },
@@ -74,7 +89,12 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                             style={({ isActive }) => isActive ? {} : { color: T.textMuted }}
                         >
                             <item.icon size={20} />
-                            <span className="font-medium">{item.label}</span>
+                            <span className="font-medium flex-1">{item.label}</span>
+                            {item.to === '/tracker' && (followUpCount ?? 0) > 0 && (
+                                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-amber-500 text-[10px] font-black text-black leading-none">
+                                    {(followUpCount ?? 0) > 9 ? '9+' : followUpCount}
+                                </span>
+                            )}
                         </NavLink>
                     ))}
                 </nav>
