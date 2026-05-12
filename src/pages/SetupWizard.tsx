@@ -447,13 +447,18 @@ function AchievementsForm({
     onChange(achievements.map((a) => (a.id === id ? { ...a, metric } : a)));
   };
 
+  // Framing questions, not examples. We're trying to steer the user's
+  // thinking toward their own outcome, not have them copy a generic
+  // sentence that doesn't match their achievement. The label above
+  // already lists the metric types (%, time, $, count); the placeholder
+  // is now a coaching prompt.
   const metricPlaceholders = [
-    'e.g. 30% faster page loads',
-    'e.g. $200K saved annually',
-    'e.g. 5 hrs/week reclaimed',
-    'e.g. 12 → 3 production incidents',
-    'e.g. 40% fewer support tickets',
-    'e.g. Cut deploy time in half',
+    'What changed because of you, by how much?',
+    'How many people, teams, or stakeholders did this affect?',
+    'Compared to before: what improved, grew, or shrank?',
+    'How much time or money was saved?',
+    'What was the scale: budget, reach, or volume?',
+    'What dropped, rose, or got faster?',
   ];
 
   if (visible.length === 0) {
@@ -1359,7 +1364,7 @@ function CompleteScreen({ onComplete }: { onComplete: () => void }) {
         letterSpacing: '-0.02em',
         lineHeight: 1.2,
       }}>
-        Your Profile is Locked and Loaded!
+        Your Profile is All Set!
       </h1>
       <p style={{
         margin: '0 0 6px',

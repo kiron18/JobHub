@@ -299,7 +299,7 @@ export function AnalysisResult({ result, onContinue, onSkip }: Props) {
                         letterSpacing: '-0.01em',
                     }}
                 >
-                    {dominantBand === 'hardGap' ? 'Continue anyway' : 'Continue to workspace'}
+                    {dominantBand === 'hardGap' ? 'Apply anyway' : 'Apply'}
                     <ArrowRight size={16} />
                 </button>
                 {dominantBand === 'hardGap' && onSkip && (
