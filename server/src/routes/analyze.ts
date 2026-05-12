@@ -13,11 +13,13 @@ import { analyzeRateLimit } from '../middleware/analyzeRateLimit';
 import { callLLM } from '../services/llm';
 import { callLLMWithRetry } from '../utils/callLLMWithRetry';
 import { searchAchievements } from '../services/vector';
-import { JOB_ANALYSIS_PROMPT } from '../services/prompts';
+import { JOB_ANALYSIS_PROMPT, DUAL_SIGNAL_PROMPT } from '../services/prompts';
 import { parseLLMJson } from '../utils/parseLLMResponse';
 import { addGrades, computeComposite } from '../services/compositeScoring';
 import { EXEMPT_EMAILS } from './stripe';
 import type { DimensionScores } from '../services/compositeScoring';
+import { derivePositioningStatement, type PositioningStatement } from '../services/positioningStatement';
+import { detectHardGapHints, detectSelectionCriteria } from '../data/hardGapKeywords';
 
 const router = Router();
 
@@ -367,6 +369,148 @@ Return ONLY valid JSON. Use null for anything not explicitly in the JD.`;
     } catch (err: any) {
         console.error('[JD Summary] Error:', err.message);
         res.status(500).json({ error: 'Failed to parse job description.' });
+    }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// POST /api/analyze/dual — Dual-Signal analysis (Strategy Hub hero card)
+// ════════════════════════════════════════════════════════════════════════════
+//
+// Returns the Distance-to-Match output described in the Strategy Hub spec:
+//   - directMatch:    what the candidate has PROVED (achievements)
+//   - bridgeableGap:  what they likely have but haven't named (positioning)
+//   - hardGap:        credentialled requirements they don't claim
+//   - insights:       3 calm qualitative observations
+//   - scDetected:     whether the JD mentions selection criteria
+//
+// Does NOT persist a JobApplication (the Strategy Hub flow is analysis-first;
+// saving the application happens when the user proceeds to the workspace).
+// Caching, duplicate-job detection, and the LLM-based SC verifier are
+// deferred to follow-up commits in Phase 2.
+
+router.post('/dual', async (req: any, res: any) => {
+    try {
+        const userId = req.user.id;
+        const { jobDescription } = req.body as { jobDescription?: string };
+
+        if (!jobDescription || jobDescription.trim().length < 50) {
+            return res.status(400).json({ error: 'Job description is too short (min 50 chars).' });
+        }
+
+        const profile = await prisma.candidateProfile.findUnique({
+            where: { userId } as any,
+            include: { achievements: true, experience: true, education: true }
+        }) as any;
+
+        if (!profile) {
+            return res.status(404).json({ error: 'Please set up your profile first.' });
+        }
+
+        // ── Access control (shares the same gating as /job) ─────────────────
+        const userEmail = ((req as any).user?.email ?? '').toLowerCase();
+        const { checkAccess } = await import('../middleware/accessControl');
+        const access = await checkAccess(userId, 'analysis', userEmail);
+        if (!access.allowed) {
+            return res.status(402).json({ error: 'Analysis limit reached', upgradeRequired: true, remaining: 0 });
+        }
+
+        // ── Positioning Statement (Floor) ──────────────────────────────────
+        // Prefer the stored value (refreshed on every /profile GET). Fall back
+        // to a fresh derivation in case the profile was never fetched.
+        let positioningStatement: PositioningStatement | null = profile.positioningStatement ?? null;
+        if (!positioningStatement && profile.experience?.length) {
+            const profileVersion = profile.updatedAt ? new Date(profile.updatedAt).getTime() : Date.now();
+            positioningStatement = derivePositioningStatement(
+                {
+                    experience: profile.experience.map((e: any) => ({
+                        role: e.role, company: e.company, startDate: e.startDate, endDate: e.endDate, isCurrent: e.isCurrent,
+                    })),
+                    education: (profile.education ?? []).map((e: any) => ({ degree: e.degree, institution: e.institution })),
+                },
+                profileVersion,
+            );
+        }
+
+        // ── Achievement Bank (Ceiling) ─────────────────────────────────────
+        const achievementBank = (profile.achievements ?? []).map((a: any) => ({
+            id: a.id,
+            title: a.title ?? null,
+            description: a.description ?? null,
+            metric: a.metric ?? null,
+        }));
+
+        // ── Hard-gap hints + SC detection ──────────────────────────────────
+        const hardGapHints = detectHardGapHints(jobDescription);
+        const scDetected = detectSelectionCriteria(jobDescription);
+
+        // ── Build prompt + invoke LLM ──────────────────────────────────────
+        const prompt = DUAL_SIGNAL_PROMPT({ jobDescription, positioningStatement, achievements: achievementBank, hardGapHints });
+
+        let raw;
+        try {
+            raw = await callLLMWithRetry(prompt, true);
+        } catch (err: any) {
+            console.error('[analyze/dual] LLM call failed:', err.message);
+            return res.status(503).json({ error: 'Analysis is temporarily unavailable. Please try again in 30 seconds.' });
+        }
+
+        let analysis: any;
+        try {
+            analysis = parseLLMJson(raw);
+        } catch (err: any) {
+            console.error('[analyze/dual] failed to parse LLM JSON:', err?.message);
+            return res.status(500).json({ error: 'Failed to process analysis. Please retry.' });
+        }
+
+        // ── Normalise + safety-clamp ───────────────────────────────────────
+        const directPct = Math.max(0, Math.min(100, Math.round(analysis?.directMatch?.pct ?? 0)));
+        const bridgeablePct = Math.max(0, Math.min(100, Math.round(analysis?.bridgeableGap?.pct ?? 0)));
+
+        const evidence: string[] = Array.isArray(analysis?.directMatch?.evidence)
+            ? analysis.directMatch.evidence.slice(0, 5).filter((s: any) => typeof s === 'string')
+            : [];
+
+        const bridgeableItems = Array.isArray(analysis?.bridgeableGap?.items)
+            ? analysis.bridgeableGap.items
+                  .filter((it: any) => it && typeof it.skill === 'string' && typeof it.suggestion === 'string')
+                  .slice(0, 6)
+            : [];
+
+        const hardGapItems = Array.isArray(analysis?.hardGap?.items)
+            ? analysis.hardGap.items.filter((s: any) => typeof s === 'string').slice(0, 5)
+            : [];
+
+        const insights = Array.isArray(analysis?.insights)
+            ? analysis.insights.filter((s: any) => typeof s === 'string').slice(0, 3)
+            : [];
+
+        const company = (analysis?.extractedMetadata?.company || 'Unknown Company').toString();
+        const role = (analysis?.extractedMetadata?.role || 'Unknown Position').toString();
+
+        // Determine the dominant band for the result-state UI to pick which card to lead with.
+        // Hard Gap wins iff it has items (rare). Otherwise Direct vs Bridgeable by pct.
+        const dominantBand: 'directMatch' | 'bridgeableGap' | 'hardGap' =
+            hardGapItems.length > 0 && directPct < 60
+                ? 'hardGap'
+                : directPct >= bridgeablePct
+                  ? 'directMatch'
+                  : 'bridgeableGap';
+
+        return res.json({
+            positioningStatement: positioningStatement?.raw ?? null,
+            extractedMetadata: { company, role },
+            fitBands: {
+                directMatch: { pct: directPct, evidence },
+                bridgeableGap: { pct: bridgeablePct, items: bridgeableItems },
+                hardGap: { items: hardGapItems },
+            },
+            dominantBand,
+            insights,
+            scDetected,
+        });
+    } catch (err: any) {
+        console.error('[analyze/dual] unexpected error:', err);
+        return res.status(500).json({ error: 'Analysis failed due to a server error.' });
     }
 });
 

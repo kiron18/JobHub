@@ -3,20 +3,21 @@
  *
  * Single-purpose: anchor identity, surface the analysis primary action, give
  * a rotating qualitative insight, and orient the user against their pipeline.
- * No widgets, no carousels, no tip pills. Four cards plus a footer link.
  *
- * Phase 1: the hero card collects JD + SC toggle and routes to the existing
- * /application-workspace flow. No real analysis yet — that's Phase 2 (Dual-
- * Signal analysis with Distance-to-Match output).
+ * Phase 2: clicking Analyse calls /api/analyze/dual and renders an inline
+ * Distance-to-Match result (Direct Match / Bridgeable Gap / Hard Gap +
+ * insights) below the hero card. No navigation away.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, NavLink } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import api from '../lib/api';
 import { useAppTheme } from '../contexts/ThemeContext';
 import { DimRegion, DimTarget, DimPeer } from '../components/Dim';
 import { pickInsights } from '../data/strategicInsights';
+import { AnalysisResult, type DualSignalResult } from '../components/strategy/AnalysisResult';
 
 // ─── HubHeader ───────────────────────────────────────────────────────────────
 
@@ -83,20 +84,63 @@ function AnalysisHeroCard() {
     const navigate = useNavigate();
     const [jd, setJd] = useState('');
     const [scToggle, setScToggle] = useState(false);
+    const [scAutoFlipped, setScAutoFlipped] = useState(false);
+    const [scUserOverride, setScUserOverride] = useState(false);
+    const [analysing, setAnalysing] = useState(false);
+    const [result, setResult] = useState<DualSignalResult | null>(null);
 
     const trimmed = jd.trim();
-    const canSubmit = trimmed.length > 0;
-    const showHint = trimmed.length > 0 && trimmed.length < 100;
+    const tooShort = trimmed.length > 0 && trimmed.length < 100;
+    const canSubmit = trimmed.length >= 50 && !analysing;
 
-    const handleAnalyse = () => {
+    // When a new analysis arrives, auto-flip SC toggle on (unless the user
+    // has manually overridden it). Surface a single dismissible notification.
+    useEffect(() => {
+        if (!result) return;
+        if (result.scDetected && !scToggle && !scUserOverride) {
+            setScToggle(true);
+            setScAutoFlipped(true);
+        }
+    }, [result, scToggle, scUserOverride]);
+
+    const handleScToggle = () => {
+        setScUserOverride(true);
+        setScAutoFlipped(false);
+        setScToggle((v) => !v);
+    };
+
+    const handleAnalyse = async () => {
         if (!canSubmit) return;
-        // Phase 1: route to the existing workspace with the JD as a query param.
-        // Phase 2 will replace this with an in-place Dual-Signal analysis.
-        const params = new URLSearchParams({
-            jd: trimmed,
-            sc: scToggle ? '1' : '0',
-        });
+        setAnalysing(true);
+        setResult(null);
+        try {
+            const { data } = await api.post<DualSignalResult>('/analyze/dual', { jobDescription: trimmed });
+            setResult(data);
+        } catch (err: any) {
+            const status = err?.response?.status;
+            const message =
+                status === 402 ? 'Analysis limit reached. Upgrade to keep analysing roles.'
+                : status === 400 ? 'That job description looks too short. Paste the full posting.'
+                : status === 404 ? 'Set up your profile first.'
+                : status === 503 ? 'Analysis is temporarily unavailable. Please try again in 30 seconds.'
+                : 'Analysis failed. Please retry.';
+            toast.error(message);
+        } finally {
+            setAnalysing(false);
+        }
+    };
+
+    const handleContinue = () => {
+        const params = new URLSearchParams({ jd: trimmed, sc: scToggle ? '1' : '0' });
         navigate(`/application-workspace?${params.toString()}`);
+    };
+
+    const handleSkip = () => {
+        setResult(null);
+        setJd('');
+        setScToggle(false);
+        setScUserOverride(false);
+        setScAutoFlipped(false);
     };
 
     return (
@@ -146,7 +190,7 @@ function AnalysisHeroCard() {
                 onBlur={(e) => (e.currentTarget.style.borderColor = T.inputBorder)}
             />
 
-            {showHint && (
+            {tooShort && (
                 <p style={{ margin: '8px 0 0', fontSize: 12, color: T.textFaint, lineHeight: 1.5 }}>
                     Paste the full job description. The more text, the sharper the analysis.
                 </p>
@@ -176,11 +220,11 @@ function AnalysisHeroCard() {
                     <span
                         role="switch"
                         aria-checked={scToggle}
-                        onClick={() => setScToggle((v) => !v)}
+                        onClick={handleScToggle}
                         onKeyDown={(e) => {
                             if (e.key === ' ' || e.key === 'Enter') {
                                 e.preventDefault();
-                                setScToggle((v) => !v);
+                                handleScToggle();
                             }
                         }}
                         tabIndex={0}
@@ -226,16 +270,68 @@ function AnalysisHeroCard() {
                         background: canSubmit ? T.btnBg : 'rgba(45,90,110,0.4)',
                         border: 'none',
                         borderRadius: 12,
-                        cursor: canSubmit ? 'pointer' : 'not-allowed',
+                        cursor: canSubmit ? 'pointer' : analysing ? 'wait' : 'not-allowed',
                         opacity: canSubmit ? 1 : 0.6,
                         boxShadow: canSubmit ? T.btnShadow : 'none',
                         transition: 'opacity 200ms, background 200ms',
                     }}
                 >
-                    Analyse
-                    <ChevronRight size={16} />
+                    {analysing ? (
+                        <>
+                            <Loader2 size={16} className="animate-spin" />
+                            Analysing…
+                        </>
+                    ) : (
+                        <>
+                            Analyse
+                            <ChevronRight size={16} />
+                        </>
+                    )}
                 </button>
             </div>
+
+            {/* SC auto-flip notification */}
+            {scAutoFlipped && (
+                <div style={{
+                    marginTop: 14,
+                    padding: '10px 14px',
+                    background: 'rgba(125,166,125,0.08)',
+                    border: '1px solid rgba(125,166,125,0.25)',
+                    borderRadius: 10,
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                }}>
+                    <p style={{ margin: 0, fontSize: 12, color: T.text, lineHeight: 1.55 }}>
+                        This role lists selection criteria. We'll generate responses as a separate document.
+                    </p>
+                    <button
+                        onClick={() => setScAutoFlipped(false)}
+                        style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: T.textFaint,
+                            fontSize: 14,
+                            cursor: 'pointer',
+                            padding: 0,
+                            lineHeight: 1,
+                        }}
+                        aria-label="Dismiss notification"
+                    >
+                        ×
+                    </button>
+                </div>
+            )}
+
+            {/* Inline result */}
+            {result && (
+                <AnalysisResult
+                    result={result}
+                    onContinue={handleContinue}
+                    onSkip={handleSkip}
+                />
+            )}
         </div>
     );
 }
