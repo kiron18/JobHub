@@ -13,13 +13,14 @@ import { analyzeRateLimit } from '../middleware/analyzeRateLimit';
 import { callLLM } from '../services/llm';
 import { callLLMWithRetry } from '../utils/callLLMWithRetry';
 import { searchAchievements } from '../services/vector';
-import { JOB_ANALYSIS_PROMPT, DUAL_SIGNAL_PROMPT } from '../services/prompts';
+import { JOB_ANALYSIS_PROMPT, DUAL_SIGNAL_PROMPT, ACHIEVEMENT_DRAFT_PROMPT } from '../services/prompts';
 import { parseLLMJson } from '../utils/parseLLMResponse';
 import { addGrades, computeComposite } from '../services/compositeScoring';
 import { EXEMPT_EMAILS } from './stripe';
 import type { DimensionScores } from '../services/compositeScoring';
 import { derivePositioningStatement, type PositioningStatement } from '../services/positioningStatement';
 import { detectHardGapHints, detectSelectionCriteria } from '../data/hardGapKeywords';
+import { findDuplicateApplication } from '../services/duplicateDetection';
 
 const router = Router();
 
@@ -487,6 +488,12 @@ router.post('/dual', async (req: any, res: any) => {
         const company = (analysis?.extractedMetadata?.company || 'Unknown Company').toString();
         const role = (analysis?.extractedMetadata?.role || 'Unknown Position').toString();
 
+        // ── Duplicate-job detection ────────────────────────────────────────
+        // Soft warning only — never blocks. Fires when the candidate has an
+        // existing JobApplication in the last 180 days with overlapping
+        // company + role tokens.
+        const duplicate = await findDuplicateApplication({ userId, company, role });
+
         // Determine the dominant band for the result-state UI to pick which card to lead with.
         // Hard Gap wins iff it has items (rare). Otherwise Direct vs Bridgeable by pct.
         const dominantBand: 'directMatch' | 'bridgeableGap' | 'hardGap' =
@@ -507,10 +514,76 @@ router.post('/dual', async (req: any, res: any) => {
             dominantBand,
             insights,
             scDetected,
+            duplicate,
         });
     } catch (err: any) {
         console.error('[analyze/dual] unexpected error:', err);
         return res.status(500).json({ error: 'Analysis failed due to a server error.' });
+    }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// POST /api/analyze/draft-achievement — LLM-drafted achievement from a gap
+// ════════════════════════════════════════════════════════════════════════════
+//
+// Given a Bridgeable Gap (skill + seed suggestion + role context), returns a
+// polished first-person draft achievement the candidate can edit and save.
+// We do NOT auto-save — the user reviews the draft in the modal first.
+
+router.post('/draft-achievement', async (req: any, res: any) => {
+    try {
+        const userId = req.user.id;
+        const { skill, suggestion, jobRole, jobCompany } = req.body as {
+            skill?: string;
+            suggestion?: string;
+            jobRole?: string;
+            jobCompany?: string;
+        };
+
+        if (!skill || !suggestion) {
+            return res.status(400).json({ error: 'skill and suggestion are required.' });
+        }
+
+        const profile = await prisma.candidateProfile.findUnique({
+            where: { userId } as any,
+        }) as any;
+        if (!profile) {
+            return res.status(404).json({ error: 'Profile not found.' });
+        }
+
+        const positioningStatement: PositioningStatement | null = profile.positioningStatement ?? null;
+
+        const prompt = ACHIEVEMENT_DRAFT_PROMPT({
+            skill,
+            suggestion,
+            positioningStatement,
+            jobRole: jobRole ?? 'this role',
+            jobCompany: jobCompany ?? 'the target employer',
+        });
+
+        let raw;
+        try {
+            raw = await callLLMWithRetry(prompt, true);
+        } catch (err: any) {
+            console.error('[analyze/draft-achievement] LLM call failed:', err.message);
+            return res.status(503).json({ error: 'Draft generation is temporarily unavailable. Please try again.' });
+        }
+
+        let draft: any;
+        try {
+            draft = parseLLMJson(raw);
+        } catch {
+            return res.status(500).json({ error: 'Failed to parse draft. Please retry.' });
+        }
+
+        return res.json({
+            title: typeof draft?.title === 'string' ? draft.title : skill,
+            description: typeof draft?.description === 'string' ? draft.description : suggestion,
+            metricPlaceholder: typeof draft?.metricPlaceholder === 'string' ? draft.metricPlaceholder : '',
+        });
+    } catch (err: any) {
+        console.error('[analyze/draft-achievement] unexpected error:', err);
+        return res.status(500).json({ error: 'Draft generation failed due to a server error.' });
     }
 });
 

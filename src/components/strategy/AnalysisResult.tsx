@@ -14,9 +14,20 @@
  * the user to /workspace where they can edit achievements directly. Phase
  * 2i will replace this with an inline LLM-draft modal.
  */
-import { useNavigate } from 'react-router-dom';
-import { ArrowRight, CheckCircle2, Sparkles, Lock } from 'lucide-react';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowRight, CheckCircle2, Sparkles, Lock, Pencil, AlertCircle } from 'lucide-react';
 import { useAppTheme } from '../../contexts/ThemeContext';
+import { AchievementDraftModal } from './AchievementDraftModal';
+
+export interface DuplicateInfo {
+    applicationId: string;
+    title: string;
+    company: string;
+    status: string;
+    dateApplied: string | null;
+    createdAt: string;
+}
 
 export interface DualSignalResult {
     positioningStatement: string | null;
@@ -29,6 +40,7 @@ export interface DualSignalResult {
     dominantBand: 'directMatch' | 'bridgeableGap' | 'hardGap';
     insights: string[];
     scDetected: boolean;
+    duplicate?: DuplicateInfo | null;
 }
 
 interface Props {
@@ -39,9 +51,11 @@ interface Props {
 
 export function AnalysisResult({ result, onContinue, onSkip }: Props) {
     const { T } = useAppTheme();
-    const navigate = useNavigate();
-    const { fitBands, extractedMetadata, dominantBand, insights } = result;
+    const { fitBands, extractedMetadata, dominantBand, insights, duplicate } = result;
     const { directMatch, bridgeableGap, hardGap } = fitBands;
+
+    const [draftIndex, setDraftIndex] = useState<number | null>(null);
+    const draftItem = draftIndex !== null ? bridgeableGap.items[draftIndex] ?? null : null;
 
     const headline =
         dominantBand === 'directMatch'
@@ -52,6 +66,41 @@ export function AnalysisResult({ result, onContinue, onSkip }: Props) {
 
     return (
         <div style={{ marginTop: 32, display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {/* Duplicate warning — soft, never blocks */}
+            {duplicate && (
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 12,
+                    padding: '14px 18px',
+                    background: 'rgba(197,160,89,0.08)',
+                    border: '1px solid rgba(197,160,89,0.25)',
+                    borderRadius: 12,
+                }}>
+                    <AlertCircle size={18} style={{ color: T.accentSuccess, flexShrink: 0, marginTop: 2 }} />
+                    <div style={{ flex: 1 }}>
+                        <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 700, color: T.text }}>
+                            You analysed a similar role on {formatDate(duplicate.createdAt)}.
+                        </p>
+                        <p style={{ margin: '0 0 8px', fontSize: 12, color: T.textMuted, lineHeight: 1.55 }}>
+                            {duplicate.title} at {duplicate.company} · status: {humaniseStatus(duplicate.status)}
+                            {duplicate.dateApplied && ` · applied ${formatDate(duplicate.dateApplied)}`}
+                        </p>
+                        <Link
+                            to="/tracker"
+                            style={{
+                                fontSize: 12,
+                                fontWeight: 700,
+                                color: T.accentSuccess,
+                                textDecoration: 'none',
+                            }}
+                        >
+                            View existing application →
+                        </Link>
+                    </div>
+                </div>
+            )}
+
             {/* Headline + role/company */}
             <div>
                 <p style={{
@@ -118,41 +167,52 @@ export function AnalysisResult({ result, onContinue, onSkip }: Props) {
                     body={
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 4 }}>
                             <p style={{ margin: 0, fontSize: 12, color: T.textFaint, lineHeight: 1.55 }}>
-                                Based on your role and experience you likely have these. They just aren't named on your profile yet.
+                                Based on your role and experience you likely have these. They just aren't named on your profile yet. Draft and save each one to strengthen your match for future analyses.
                             </p>
                             <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
                                 {bridgeableGap.items.map((item, i) => (
                                     <li key={i} style={{
-                                        padding: '10px 12px',
+                                        padding: '12px 14px',
                                         background: 'rgba(125,166,125,0.06)',
                                         border: '1px solid rgba(125,166,125,0.18)',
                                         borderRadius: 10,
+                                        display: 'flex',
+                                        alignItems: 'flex-start',
+                                        justifyContent: 'space-between',
+                                        gap: 12,
                                     }}>
-                                        <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 700, color: T.text }}>
-                                            {item.skill}
-                                        </p>
-                                        <p style={{ margin: 0, fontSize: 12, color: T.textMuted, lineHeight: 1.55, fontStyle: 'italic' }}>
-                                            “{item.suggestion}”
-                                        </p>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 700, color: T.text }}>
+                                                {item.skill}
+                                            </p>
+                                            <p style={{ margin: 0, fontSize: 12, color: T.textMuted, lineHeight: 1.55, fontStyle: 'italic' }}>
+                                                "{item.suggestion}"
+                                            </p>
+                                        </div>
+                                        <button
+                                            onClick={() => setDraftIndex(i)}
+                                            style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: 4,
+                                                padding: '6px 10px',
+                                                fontSize: 11,
+                                                fontWeight: 700,
+                                                color: T.accentSecondary,
+                                                background: 'rgba(125,166,125,0.10)',
+                                                border: '1px solid rgba(125,166,125,0.30)',
+                                                borderRadius: 8,
+                                                cursor: 'pointer',
+                                                flexShrink: 0,
+                                                whiteSpace: 'nowrap',
+                                            }}
+                                        >
+                                            <Pencil size={11} />
+                                            Draft this
+                                        </button>
                                     </li>
                                 ))}
                             </ul>
-                            <button
-                                onClick={() => navigate('/workspace')}
-                                style={{
-                                    alignSelf: 'flex-start',
-                                    padding: '8px 14px',
-                                    fontSize: 12,
-                                    fontWeight: 700,
-                                    color: T.accentSecondary,
-                                    background: 'rgba(125,166,125,0.10)',
-                                    border: '1px solid rgba(125,166,125,0.30)',
-                                    borderRadius: 8,
-                                    cursor: 'pointer',
-                                }}
-                            >
-                                Open Profile to add these →
-                            </button>
                         </div>
                     }
                 />
@@ -260,8 +320,40 @@ export function AnalysisResult({ result, onContinue, onSkip }: Props) {
                     </button>
                 )}
             </div>
+
+            {/* Achievement draft modal — fired from Bridgeable Gap items */}
+            <AchievementDraftModal
+                open={draftItem !== null}
+                onClose={() => setDraftIndex(null)}
+                skill={draftItem?.skill ?? ''}
+                suggestion={draftItem?.suggestion ?? ''}
+                jobRole={extractedMetadata.role}
+                jobCompany={extractedMetadata.company}
+                onSaved={() => setDraftIndex(null)}
+            />
         </div>
     );
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function formatDate(iso: string): string {
+    try {
+        return new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch {
+        return iso;
+    }
+}
+
+function humaniseStatus(status: string): string {
+    const map: Record<string, string> = {
+        SAVED: 'Saved',
+        APPLIED: 'Applied',
+        INTERVIEW: 'Interview',
+        OFFER: 'Offer',
+        REJECTED: 'Rejected',
+    };
+    return map[status] ?? status;
 }
 
 // ─── Internal ResultCard ────────────────────────────────────────────────────
