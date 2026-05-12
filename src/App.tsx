@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route, NavLink, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { motion } from 'framer-motion';
@@ -7,10 +7,8 @@ import { motion } from 'framer-motion';
 // Components — layout/gate loaded eagerly, page-level components lazy
 import { DashboardLayout } from './layouts/DashboardLayout';
 import { OnboardingGate } from './components/OnboardingGate';
-import { ProfileGate } from './components/ProfileGate';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
-const MatchEngine          = React.lazy(() => import('./components/MatchEngine').then(m => ({ default: m.MatchEngine })));
 const ApplicationWorkspace = React.lazy(() => import('./components/ApplicationWorkspace').then(m => ({ default: m.ApplicationWorkspace })));
 const ApplicationTracker   = React.lazy(() => import('./components/ApplicationTracker').then(m => ({ default: m.ApplicationTracker })));
 const ProfileBank          = React.lazy(() => import('./components/ProfileBank').then(m => ({ default: m.ProfileBank })));

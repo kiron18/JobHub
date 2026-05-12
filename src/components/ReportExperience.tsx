@@ -311,7 +311,6 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
   const theme = makeTheme(isDark);
   const [processingMs, setProcessingMs] = useState(0);
   const [openSection, setOpenSection] = useState<string | null>(null);
-  const [showCommunityBox, setShowCommunityBox] = useState(false);
   const [showSticky, setShowSticky] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [msgCopied, setMsgCopied] = useState(false);
@@ -335,12 +334,6 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
     if (data?.status !== 'PROCESSING') { setProcessingMs(0); return; }
     const t = setInterval(() => setProcessingMs(ms => ms + 4000), 4000);
     return () => clearInterval(t);
-  }, [data?.status]);
-
-  useEffect(() => {
-    if (data?.status !== 'PROCESSING') return;
-    const t = setTimeout(() => setShowCommunityBox(true), 5000);
-    return () => clearTimeout(t);
   }, [data?.status]);
 
   useEffect(() => {

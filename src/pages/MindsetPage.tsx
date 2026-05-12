@@ -9,7 +9,6 @@
  * energy. If a section reads like a wellness blog or a LinkedIn post,
  * rewrite it toward "letter from a friend who has seen this before."
  */
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useAppTheme } from '../contexts/ThemeContext';

@@ -9,7 +9,7 @@
  * /application-workspace flow. No real analysis yet — that's Phase 2 (Dual-
  * Signal analysis with Distance-to-Match output).
  */
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate, NavLink } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ChevronRight } from 'lucide-react';
