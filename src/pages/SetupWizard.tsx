@@ -447,6 +447,15 @@ function AchievementsForm({
     onChange(achievements.map((a) => (a.id === id ? { ...a, metric } : a)));
   };
 
+  const metricPlaceholders = [
+    'e.g. 30% faster page loads',
+    'e.g. $200K saved annually',
+    'e.g. 5 hrs/week reclaimed',
+    'e.g. 12 → 3 production incidents',
+    'e.g. 40% fewer support tickets',
+    'e.g. Cut deploy time in half',
+  ];
+
   if (visible.length === 0) {
     return (
       <p style={{ color: '#6b7280', fontSize: 14, margin: 0 }}>
@@ -478,13 +487,13 @@ function AchievementsForm({
             ...labelStyle,
             color: isRealMetric(ach.metric) ? '#22c55e' : '#d97706',
           }}>
-            {isRealMetric(ach.metric) ? '✓ Metric' : '⚠ Add a metric (e.g. \'Reduced onboarding time by 40%\')'}
+            {isRealMetric(ach.metric) ? '✓ Metric' : '⚠ Add a measurable result — a %, time saved, $ impact, or count'}
           </label>
           <input
             type="text"
             value={isRealMetric(ach.metric) ? (ach.metric ?? '') : ''}
             onChange={(e) => updateMetric(ach.id, e.target.value)}
-            placeholder="e.g. Reduced onboarding time by 40%"
+            placeholder={metricPlaceholders[i % metricPlaceholders.length]}
             style={inputStyle}
             aria-label={`Metric for ${ach.title ?? 'achievement'}`}
           />
