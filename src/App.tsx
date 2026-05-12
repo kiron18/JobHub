@@ -29,6 +29,12 @@ const AdminDashboard = React.lazy(() =>
 const SetupWizard = React.lazy(() =>
   import('./pages/SetupWizard').then(m => ({ default: m.SetupWizard }))
 );
+const MindsetPage = React.lazy(() =>
+  import('./pages/MindsetPage').then(m => ({ default: m.MindsetPage }))
+);
+const StrategyHub = React.lazy(() =>
+  import('./pages/StrategyHub').then(m => ({ default: m.StrategyHub }))
+);
 
 // Auth & Context
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -46,196 +52,9 @@ const queryClient = new QueryClient();
 
 // --- Sub-components (could be moved to separate files later) ---
 
-// Dashboard View component
-const Dashboard = () => {
-  const queryClient = useQueryClient();
+// Legacy Dashboard removed — replaced by StrategyHub on `/`. Pipeline /
+// MatchEngine logic remains reachable via git history if needed.
 
-  const { data: profile } = useQuery({
-    queryKey: ['profile'],
-    queryFn: async () => {
-      const { data } = await api.get('/profile');
-      return data;
-    },
-    refetchOnMount: true
-  });
-
-  const { data: jobs } = useQuery({
-    queryKey: ['jobs'],
-    queryFn: async () => {
-      const { data } = await api.get('/jobs');
-      return data;
-    },
-    refetchOnMount: true
-  });
-
-  const { data: countData } = useQuery({
-    queryKey: ['achievements', 'count'],
-    queryFn: async () => {
-      const { data } = await api.get('/achievements/count');
-      return data;
-    },
-    refetchOnMount: true
-  });
-
-  const { data: feedData } = useQuery({
-    queryKey: ['job-feed', 0],
-    queryFn: async () => {
-      const { data } = await api.get('/job-feed/feed?offset=0');
-      return data;
-    },
-    staleTime: 5 * 60 * 1000,
-    enabled: !!(profile?.dashboardAccess),
-  });
-
-  const achievementCount = countData?.count ?? profile?.achievements?.length ?? 0;
-
-  console.log('[Dashboard] profile:', { userId: profile?.userId, hasCompleted: profile?.hasCompletedOnboarding, achievementsLength: profile?.achievements?.length });
-  console.log('[Dashboard] achievementCount from /achievements/count:', countData?.count, '| fallback:', profile?.achievements?.length, '| final:', achievementCount);
-
-  // Backfill achievement bank for users who completed onboarding before
-  // auto-extraction was introduced. Runs once when count is 0 and profile exists.
-  useEffect(() => {
-    if (profile?.hasCompletedOnboarding && achievementCount === 0) {
-      api.post('/onboarding/backfill-achievements')
-        .then(({ data }) => {
-          if (data.status === 'started') {
-            // Poll briefly to pick up extracted achievements
-            setTimeout(() => {
-              queryClient.invalidateQueries({ queryKey: ['achievements', 'count'] });
-            }, 15_000);
-          }
-        })
-        .catch(() => {/* silent — backfill is best-effort */});
-    }
-  }, [profile?.hasCompletedOnboarding, achievementCount]);
-  const applicationCount = jobs?.length || 0;
-
-  const firstName = (profile?.name || 'Candidate').split(' ')[0];
-
-  return (
-    <div className="space-y-10">
-      <header className="space-y-2">
-        <h2 className="text-4xl font-extrabold tracking-tight italic text-white">Welcome back, {firstName}.</h2>
-        <p className="text-xl text-slate-400 font-medium">Paste a job description. Get a matched resume in 3 minutes.</p>
-      </header>
-
-      {/* Job Feed widget */}
-      {feedData?.total > 0 && (
-        <NavLink
-          to="/jobs"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            background: 'rgba(99,102,241,0.06)',
-            border: '1px solid rgba(99,102,241,0.15)',
-            borderRadius: 16,
-            padding: '18px 24px',
-            textDecoration: 'none',
-            marginBottom: 0,
-          }}
-        >
-          <div>
-            <p style={{ fontSize: 13, fontWeight: 700, color: '#818cf8', margin: 0 }}>
-              ✦ {feedData.total} new jobs today
-            </p>
-            <p style={{ fontSize: 12, color: '#6366f1', margin: '2px 0 0', opacity: 0.8 }}>
-              {profile?.targetRole} · {profile?.targetCity}
-            </p>
-          </div>
-          <p style={{ fontSize: 13, fontWeight: 700, color: '#818cf8' }}>View feed →</p>
-        </NavLink>
-      )}
-
-      {/* Pipeline at-a-glance */}
-      {(() => {
-        const pipeline = [
-          { status: 'SAVED',     label: 'Saved',     color: '#64748b', bg: 'rgba(100,116,139,0.08)', border: 'rgba(100,116,139,0.2)' },
-          { status: 'APPLIED',   label: 'Applied',   color: '#60a5fa', bg: 'rgba(96,165,250,0.08)',  border: 'rgba(96,165,250,0.2)' },
-          { status: 'INTERVIEW', label: 'Interview', color: '#fbbf24', bg: 'rgba(251,191,36,0.08)',  border: 'rgba(251,191,36,0.2)' },
-          { status: 'OFFER',     label: 'Offer',     color: '#34d399', bg: 'rgba(52,211,153,0.08)',  border: 'rgba(52,211,153,0.2)' },
-          { status: 'REJECTED',  label: 'Rejected',  color: '#f87171', bg: 'rgba(248,113,113,0.08)', border: 'rgba(248,113,113,0.2)' },
-        ];
-        const upcomingDeadlines = (jobs || []).filter((j: any) => {
-          if (!j.closingDate) return false;
-          const dLeft = Math.ceil((new Date(j.closingDate).getTime() - Date.now()) / 86_400_000);
-          return dLeft >= 0 && dLeft <= 7;
-        }).sort((a: any, b: any) => new Date(a.closingDate).getTime() - new Date(b.closingDate).getTime()).slice(0, 3);
-
-        const totalCount = (jobs || []).length;
-
-        return (
-          <div className="space-y-4">
-            {/* Pipeline stats — only shown once user has applications */}
-            {totalCount > 0 && (
-            <div className="grid grid-cols-5 gap-2">
-              {pipeline.map(p => {
-                const count = (jobs || []).filter((j: any) => j.status === p.status).length;
-                return (
-                  <NavLink key={p.status} to="/tracker"
-                    className="p-3 flex flex-col gap-1.5 rounded-xl border border-slate-800/60 hover:border-slate-700 transition-all no-underline"
-                    style={{ background: count > 0 ? p.bg : 'rgba(255,255,255,0.02)' }}
-                  >
-                    <p className="text-[8px] font-black uppercase tracking-widest" style={{ color: count > 0 ? p.color : '#374151' }}>{p.label}</p>
-                    <p className="text-xl font-black tabular-nums" style={{ color: count > 0 ? p.color : '#374151' }}>{count}</p>
-                  </NavLink>
-                );
-              })}
-            </div>
-            )}
-
-            {/* Upcoming deadlines */}
-            {upcomingDeadlines.length > 0 && (
-              <div className="glass-card p-4 border-l-4 border-l-red-500/60">
-                <p className="text-[10px] font-black text-red-400 uppercase tracking-widest mb-3">Deadlines This Week</p>
-                <div className="space-y-2">
-                  {upcomingDeadlines.map((j: any) => {
-                    const dLeft = Math.ceil((new Date(j.closingDate).getTime() - Date.now()) / 86_400_000);
-                    return (
-                      <NavLink key={j.id} to="/tracker" className="flex items-center justify-between gap-3 no-underline group">
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-slate-200 truncate group-hover:text-white transition-colors">{j.title}</p>
-                          <p className="text-xs text-slate-500">{j.company}</p>
-                        </div>
-                        <span className={`text-[10px] font-black px-2 py-1 rounded border shrink-0 ${dLeft <= 1 ? 'text-red-400 bg-red-500/10 border-red-500/20' : 'text-amber-400 bg-amber-500/10 border-amber-500/20'}`}>
-                          {dLeft === 0 ? 'Today' : dLeft === 1 ? 'Tomorrow' : `${dLeft}d`}
-                        </span>
-                      </NavLink>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      })()}
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
-          <MatchEngine />
-        </div>
-
-        <div className="space-y-8">
-          <div className="glass-card p-6 flex flex-col gap-3">
-            <h3 className="font-bold text-slate-500 text-[10px] uppercase tracking-[0.2em]">Active Applications</h3>
-            <div className="text-4xl font-black text-brand-400 tabular-nums">{applicationCount}</div>
-          </div>
-
-          <div className="glass-card p-8 border-l-4 border-l-emerald-500 space-y-4">
-            <h3 className="font-bold text-slate-400 text-xs uppercase tracking-[0.2em]">Achievement Bank</h3>
-            <p className="text-slate-300 leading-relaxed font-medium">
-              You have <span className="text-emerald-400 font-black text-lg">{achievementCount}</span> saved achievements.
-              {achievementCount === 0 ? " Import your resume to build your database." : " Ready for semantic matching."}
-            </p>
-            <NavLink to="/workspace" className="inline-flex items-center gap-2 font-bold text-brand-500 hover:text-brand-400 transition-colors uppercase text-xs tracking-[0.2em]">
-              Manage Bank →
-            </NavLink>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 // Workspace Component — now hosts ProfileBank
 const Workspace = () => {
@@ -486,17 +305,18 @@ function ReportOrDashboard() {
             <DashboardLayout>
               <React.Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" /></div>}>
                 <Routes>
-                  <Route path="/" element={<ProfileGate><Dashboard /></ProfileGate>} />
+                  <Route path="/" element={<StrategyHub />} />
                   <Route path="/tracker" element={<ApplicationTracker />} />
-                  <Route path="/application-workspace" element={<ProfileGate><ApplicationWorkspace /></ProfileGate>} />
+                  <Route path="/application-workspace" element={<ApplicationWorkspace />} />
                   <Route path="/workspace" element={<Workspace />} />
                   <Route path="/documents" element={<DocumentLibrary />} />
                   <Route path="/email-templates" element={<EmailTemplatesLibrary />} />
                   <Route path="/linkedin" element={<LinkedInPage />} />
-                  <Route path="/jobs" element={<ProfileGate><JobFeedPage /></ProfileGate>} />
+                  <Route path="/jobs" element={<JobFeedPage />} />
+                  <Route path="/mindset" element={<MindsetPage />} />
                   <Route path="/admin" element={<AdminDashboard />} />
                   <Route path="/admin/friday-brief" element={<FridayBriefPage />} />
-                  <Route path="*" element={<Dashboard />} />
+                  <Route path="*" element={<StrategyHub />} />
                 </Routes>
               </React.Suspense>
             </DashboardLayout>
