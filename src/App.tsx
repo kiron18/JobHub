@@ -34,6 +34,9 @@ const MindsetPage = React.lazy(() =>
 const StrategyHub = React.lazy(() =>
   import('./pages/StrategyHub').then(m => ({ default: m.StrategyHub }))
 );
+const StepperWorkspace = React.lazy(() =>
+  import('./pages/StepperWorkspace').then(m => ({ default: m.StepperWorkspace }))
+);
 
 // Auth & Context
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -307,6 +310,7 @@ function ReportOrDashboard() {
                 <Routes>
                   <Route path="/" element={<StrategyHub />} />
                   <Route path="/tracker" element={<ApplicationTracker />} />
+                  <Route path="/apply" element={<StepperWorkspace />} />
                   <Route path="/application-workspace" element={<ApplicationWorkspace />} />
                   <Route path="/workspace" element={<Workspace />} />
                   <Route path="/documents" element={<DocumentLibrary />} />

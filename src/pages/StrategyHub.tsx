@@ -131,14 +131,12 @@ function AnalysisHeroCard() {
     };
 
     const handleContinue = () => {
-        // Pass the JD via navigate state — ApplicationWorkspace reads
-        // location.state.jobDescription. Query params would land in an empty
-        // workspace (no JD context) and feel like a page refresh.
-        navigate('/application-workspace', {
+        navigate('/apply', {
             state: {
                 jobDescription: trimmed,
-                analysis: null,
-                initialTab: 'resume',
+                sc: scToggle,
+                company: result?.extractedMetadata?.company,
+                role: result?.extractedMetadata?.role,
             },
         });
     };

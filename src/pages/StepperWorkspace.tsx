@@ -1,0 +1,655 @@
+/**
+ * StepperWorkspace — Phase 3 sequential application flow.
+ *
+ * Resume → Cover Letter → [Selection Criteria] → Track
+ *
+ * Hard rules:
+ *   - Back never regenerates. Reads the persisted artifact from localStorage.
+ *   - Each step persists per (workspaceKey, stepType). workspaceKey is the
+ *     SHA-ish hash of the JD; new JD = new workspace.
+ *   - SC step only renders when sc=1 came in from the analysis flow.
+ *   - Interview prep is intentionally NOT a step here. It triggers from the
+ *     tracker when an application moves to INTERVIEW (retention roadmap #1).
+ *
+ * Reuses the existing /api/generate endpoints. Document content is rendered
+ * as markdown via ReactMarkdown. Inline editing is out of scope for this
+ * commit; users copy or download for now.
+ */
+import { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import {
+    ArrowLeft,
+    ArrowRight,
+    Check,
+    ChevronRight,
+    Copy,
+    Download,
+    FileText,
+    Loader2,
+    Mail,
+    PenLine,
+    RefreshCw,
+    ListChecks,
+    Briefcase,
+} from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import { toast } from 'sonner';
+import api from '../lib/api';
+import { useAppTheme } from '../contexts/ThemeContext';
+
+type StepId = 'resume' | 'cover-letter' | 'selection-criteria' | 'track';
+type GenerateType = 'resume' | 'cover-letter' | 'selection-criteria';
+
+interface StepDef {
+    id: StepId;
+    label: string;
+    icon: React.ReactNode;
+    optional?: boolean;
+}
+
+interface PersistedDraft {
+    content: string;
+    generatedAt: string;
+    edited: boolean;
+}
+
+// ── Workspace key ───────────────────────────────────────────────────────────
+
+function workspaceKeyFor(jd: string): string {
+    // Stable, non-cryptographic hash so the key is short and deterministic.
+    let h = 5381;
+    for (let i = 0; i < jd.length; i++) {
+        h = ((h << 5) + h + jd.charCodeAt(i)) & 0xffffffff;
+    }
+    return `ws_${(h >>> 0).toString(36)}`;
+}
+
+function draftStorageKey(workspaceKey: string, step: StepId): string {
+    return `jobhub_stepper_${workspaceKey}_${step}`;
+}
+
+function loadDraft(workspaceKey: string, step: StepId): PersistedDraft | null {
+    try {
+        const raw = localStorage.getItem(draftStorageKey(workspaceKey, step));
+        return raw ? JSON.parse(raw) : null;
+    } catch {
+        return null;
+    }
+}
+
+function saveDraft(workspaceKey: string, step: StepId, draft: PersistedDraft): void {
+    try {
+        localStorage.setItem(draftStorageKey(workspaceKey, step), JSON.stringify(draft));
+    } catch {
+        /* localStorage might be unavailable */
+    }
+}
+
+// ── Page ────────────────────────────────────────────────────────────────────
+
+export function StepperWorkspace() {
+    const { T } = useAppTheme();
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    const state = (location.state ?? {}) as { jobDescription?: string; sc?: boolean; company?: string; role?: string };
+    const jobDescription = state.jobDescription ?? '';
+    const wantsSC = state.sc === true;
+    const jdEmpty = jobDescription.trim().length === 0;
+
+    const workspaceKey = useMemo(() => workspaceKeyFor(jobDescription), [jobDescription]);
+
+    const steps: StepDef[] = useMemo(() => {
+        const base: StepDef[] = [
+            { id: 'resume',        label: 'Resume',          icon: <FileText size={14} /> },
+            { id: 'cover-letter',  label: 'Cover Letter',    icon: <Mail size={14} /> },
+        ];
+        if (wantsSC) {
+            base.push({ id: 'selection-criteria', label: 'Selection Criteria', icon: <ListChecks size={14} />, optional: true });
+        }
+        base.push({ id: 'track', label: 'Track', icon: <Briefcase size={14} /> });
+        return base;
+    }, [wantsSC]);
+
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const [jdExpanded, setJdExpanded] = useState(false);
+
+    const currentStep = steps[currentIndex];
+    const isFinalStep = currentStep?.id === 'track';
+
+    // No JD = nothing to do here. Send back to the hub.
+    useEffect(() => {
+        if (jdEmpty) navigate('/', { replace: true });
+    }, [jdEmpty, navigate]);
+
+    if (jdEmpty) return null;
+
+    return (
+        <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', minHeight: 'calc(100vh - 120px)' }}>
+            {/* Collapsible JD strip */}
+            <aside
+                onMouseEnter={() => setJdExpanded(true)}
+                onMouseLeave={() => setJdExpanded(false)}
+                style={{
+                    flexShrink: 0,
+                    width: jdExpanded ? 360 : 36,
+                    transition: 'width 220ms ease',
+                    background: T.card,
+                    border: `1px solid ${T.cardBorder}`,
+                    borderRadius: 14,
+                    padding: jdExpanded ? '18px 20px' : '18px 8px',
+                    maxHeight: 'calc(100vh - 140px)',
+                    overflow: 'hidden',
+                    position: 'sticky',
+                    top: 8,
+                }}
+            >
+                {jdExpanded ? (
+                    <>
+                        <p style={{
+                            margin: '0 0 12px',
+                            fontSize: 10,
+                            fontWeight: 700,
+                            letterSpacing: '0.14em',
+                            textTransform: 'uppercase',
+                            color: T.textMuted,
+                        }}>
+                            Job description
+                        </p>
+                        <div style={{
+                            fontSize: 12,
+                            lineHeight: 1.65,
+                            color: T.textMuted,
+                            whiteSpace: 'pre-wrap',
+                            maxHeight: 'calc(100vh - 200px)',
+                            overflowY: 'auto',
+                        }}>
+                            {jobDescription}
+                        </div>
+                    </>
+                ) : (
+                    <div style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: T.textMuted }}>
+                        Job description
+                    </div>
+                )}
+            </aside>
+
+            {/* Main column */}
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 24 }}>
+                <Stepper
+                    steps={steps}
+                    currentIndex={currentIndex}
+                    onSelect={(i) => {
+                        // Allow jumping to any step that has a draft, or the next un-drafted step.
+                        if (i <= currentIndex) {
+                            setCurrentIndex(i);
+                        } else {
+                            const drafted = loadDraft(workspaceKey, steps[currentIndex].id) != null;
+                            if (drafted) setCurrentIndex(i);
+                        }
+                    }}
+                />
+
+                {isFinalStep ? (
+                    <TrackStep
+                        jobDescription={jobDescription}
+                        wantsSC={wantsSC}
+                        company={state.company}
+                        role={state.role}
+                        workspaceKey={workspaceKey}
+                        onBack={() => setCurrentIndex(currentIndex - 1)}
+                    />
+                ) : (
+                    <DocumentStep
+                        key={currentStep.id}
+                        stepId={currentStep.id as GenerateType}
+                        workspaceKey={workspaceKey}
+                        jobDescription={jobDescription}
+                        onBack={currentIndex > 0 ? () => setCurrentIndex(currentIndex - 1) : null}
+                        onContinue={() => setCurrentIndex(currentIndex + 1)}
+                        isLast={currentIndex === steps.length - 1}
+                    />
+                )}
+            </div>
+        </div>
+    );
+}
+
+// ── Stepper ─────────────────────────────────────────────────────────────────
+
+function Stepper({
+    steps,
+    currentIndex,
+    onSelect,
+}: {
+    steps: StepDef[];
+    currentIndex: number;
+    onSelect: (i: number) => void;
+}) {
+    const { T } = useAppTheme();
+    return (
+        <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '14px 18px',
+            background: T.card,
+            border: `1px solid ${T.cardBorder}`,
+            borderRadius: 12,
+        }}>
+            {steps.map((step, i) => {
+                const isActive = i === currentIndex;
+                const isDone = i < currentIndex;
+                const color = isActive ? T.accentSuccess : isDone ? T.accentSecondary : T.textFaint;
+                return (
+                    <button
+                        key={step.id}
+                        onClick={() => onSelect(i)}
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            padding: '6px 12px',
+                            fontSize: 12,
+                            fontWeight: 700,
+                            letterSpacing: '0.04em',
+                            color,
+                            background: isActive ? 'rgba(197,160,89,0.12)' : 'transparent',
+                            border: `1px solid ${isActive ? 'rgba(197,160,89,0.30)' : 'transparent'}`,
+                            borderRadius: 8,
+                            cursor: 'pointer',
+                            transition: 'background 200ms, color 200ms',
+                        }}
+                    >
+                        {isDone ? <Check size={13} /> : step.icon}
+                        {step.label}
+                        {i < steps.length - 1 && (
+                            <ChevronRight size={12} style={{ color: T.textFaint, marginLeft: 4 }} />
+                        )}
+                    </button>
+                );
+            })}
+        </div>
+    );
+}
+
+// ── DocumentStep ────────────────────────────────────────────────────────────
+
+function DocumentStep({
+    stepId,
+    workspaceKey,
+    jobDescription,
+    onBack,
+    onContinue,
+    isLast,
+}: {
+    stepId: GenerateType;
+    workspaceKey: string;
+    jobDescription: string;
+    onBack: (() => void) | null;
+    onContinue: () => void;
+    isLast: boolean;
+}) {
+    const { T } = useAppTheme();
+    const [content, setContent] = useState<string>('');
+    const [generating, setGenerating] = useState(false);
+    const [hasDraft, setHasDraft] = useState(false);
+
+    // Load the persisted draft on step entry. Never regenerates on navigation.
+    useEffect(() => {
+        const draft = loadDraft(workspaceKey, stepId);
+        if (draft) {
+            setContent(draft.content);
+            setHasDraft(true);
+        } else {
+            setContent('');
+            setHasDraft(false);
+        }
+    }, [workspaceKey, stepId]);
+
+    const generate = async (regenerate = false) => {
+        if (generating) return;
+        if (regenerate && hasDraft && !confirm('Regenerate this document? The current draft will be replaced.')) return;
+
+        setGenerating(true);
+        try {
+            const { data } = await api.post<{ content: string }>(`/generate/${stepId}`, {
+                jobDescription,
+            });
+            const text = typeof data?.content === 'string' ? data.content : '';
+            setContent(text);
+            saveDraft(workspaceKey, stepId, {
+                content: text,
+                generatedAt: new Date().toISOString(),
+                edited: false,
+            });
+            setHasDraft(true);
+        } catch (err: any) {
+            const status = err?.response?.status;
+            const msg = status === 402 ? 'Generation limit reached.' :
+                        status === 404 ? 'Profile not found.' :
+                        'Generation failed. Please retry.';
+            toast.error(msg);
+        } finally {
+            setGenerating(false);
+        }
+    };
+
+    const handleCopy = () => {
+        if (!content) return;
+        navigator.clipboard.writeText(content);
+        toast.success('Copied');
+    };
+
+    const handleDownloadDocx = async () => {
+        if (!content) return;
+        try {
+            const { exportDocx } = await import('../lib/exportDocx');
+            await exportDocx(content, stepId === 'cover-letter' ? 'cover-letter' : stepId === 'selection-criteria' ? 'selection-criteria' : 'resume', '');
+            toast.success('Downloaded');
+        } catch {
+            toast.error('Download failed. Copy the content instead.');
+        }
+    };
+
+    return (
+        <div style={{
+            background: T.card,
+            border: `1px solid ${T.cardBorder}`,
+            borderRadius: 14,
+            padding: 28,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 16,
+            minHeight: 420,
+        }}>
+            <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <div>
+                    <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: T.textMuted }}>
+                        {stepId === 'resume' ? 'Tailored Resume' : stepId === 'cover-letter' ? 'Cover Letter' : 'Selection Criteria'}
+                    </p>
+                    <p style={{ margin: 0, fontSize: 13, color: T.textFaint, lineHeight: 1.55 }}>
+                        {hasDraft
+                            ? 'Draft saved locally. Going back never regenerates.'
+                            : 'No draft yet. Generate to create the first version.'}
+                    </p>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {hasDraft && (
+                        <>
+                            <ToolbarButton icon={<Copy size={13} />} label="Copy" onClick={handleCopy} />
+                            <ToolbarButton icon={<Download size={13} />} label=".docx" onClick={handleDownloadDocx} />
+                        </>
+                    )}
+                </div>
+            </header>
+
+            {/* Body */}
+            <div style={{
+                flex: 1,
+                background: T.inputBg,
+                border: `1px solid ${T.inputBorder}`,
+                borderRadius: 10,
+                padding: '20px 24px',
+                minHeight: 280,
+                overflow: 'auto',
+            }}>
+                {generating ? (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '60px 0', color: T.textMuted, fontSize: 13 }}>
+                        <Loader2 size={16} className="animate-spin" />
+                        Drafting your {stepId === 'cover-letter' ? 'cover letter' : stepId === 'selection-criteria' ? 'selection-criteria responses' : 'resume'}…
+                    </div>
+                ) : content ? (
+                    <div className="prose prose-invert max-w-none" style={{ color: T.text, fontSize: 13.5, lineHeight: 1.7 }}>
+                        <ReactMarkdown>{content}</ReactMarkdown>
+                    </div>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, padding: '40px 0', color: T.textFaint, textAlign: 'center' }}>
+                        <PenLine size={28} />
+                        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>
+                            Click Generate to draft this from your profile and the job description.
+                        </p>
+                    </div>
+                )}
+            </div>
+
+            {/* CTAs */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {onBack && (
+                        <button
+                            onClick={onBack}
+                            disabled={generating}
+                            style={ghostButtonStyle(T, generating)}
+                        >
+                            <ArrowLeft size={14} />
+                            Back
+                        </button>
+                    )}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {hasDraft && (
+                        <button
+                            onClick={() => generate(true)}
+                            disabled={generating}
+                            style={ghostButtonStyle(T, generating)}
+                            title="Regenerate this document"
+                        >
+                            <RefreshCw size={13} />
+                            Regenerate
+                        </button>
+                    )}
+                    {!hasDraft && (
+                        <button
+                            onClick={() => generate(false)}
+                            disabled={generating}
+                            style={primaryButtonStyle(T, generating)}
+                        >
+                            {generating ? (<><Loader2 size={14} className="animate-spin" /> Generating…</>) : (<>Generate<ArrowRight size={14} /></>)}
+                        </button>
+                    )}
+                    {hasDraft && (
+                        <button
+                            onClick={onContinue}
+                            disabled={generating}
+                            style={primaryButtonStyle(T, generating)}
+                        >
+                            {isLast ? 'Finish' : 'Save & continue'}
+                            <ArrowRight size={14} />
+                        </button>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ── TrackStep ───────────────────────────────────────────────────────────────
+
+function TrackStep({
+    jobDescription,
+    wantsSC,
+    company,
+    role,
+    workspaceKey,
+    onBack,
+}: {
+    jobDescription: string;
+    wantsSC: boolean;
+    company?: string;
+    role?: string;
+    workspaceKey: string;
+    onBack: () => void;
+}) {
+    const { T } = useAppTheme();
+    const navigate = useNavigate();
+    const [saving, setSaving] = useState(false);
+    const [saved, setSaved] = useState(false);
+
+    const drafted = {
+        resume: loadDraft(workspaceKey, 'resume') !== null,
+        cover: loadDraft(workspaceKey, 'cover-letter') !== null,
+        sc: loadDraft(workspaceKey, 'selection-criteria') !== null,
+    };
+
+    const handleAddToTracker = async () => {
+        setSaving(true);
+        try {
+            await api.post('/jobs', {
+                title: role ?? 'Untitled role',
+                company: company ?? 'Unknown company',
+                description: jobDescription,
+                status: 'APPLIED',
+                dateApplied: new Date().toISOString(),
+            });
+            setSaved(true);
+            toast.success('Saved to your tracker');
+        } catch {
+            toast.error('Could not save. Please retry.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div style={{
+            background: T.card,
+            border: `1px solid ${T.cardBorder}`,
+            borderRadius: 14,
+            padding: 28,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 18,
+        }}>
+            <div>
+                <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: T.accentSuccess }}>
+                    Last step
+                </p>
+                <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: T.text, letterSpacing: '-0.01em' }}>
+                    Save this to your tracker.
+                </h2>
+                <p style={{ margin: '8px 0 0', fontSize: 13, color: T.textMuted, lineHeight: 1.6 }}>
+                    Adds this role to your applications. You can still come back here for any of the documents.
+                </p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <DraftRow label="Resume" ready={drafted.resume} T={T} />
+                <DraftRow label="Cover letter" ready={drafted.cover} T={T} />
+                {wantsSC && <DraftRow label="Selection criteria" ready={drafted.sc} T={T} />}
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 4 }}>
+                <button onClick={onBack} style={ghostButtonStyle(T, false)}>
+                    <ArrowLeft size={14} />
+                    Back
+                </button>
+                <div style={{ display: 'flex', gap: 10 }}>
+                    {!saved ? (
+                        <button onClick={handleAddToTracker} disabled={saving} style={primaryButtonStyle(T, saving)}>
+                            {saving ? (<><Loader2 size={14} className="animate-spin" /> Saving…</>) : (<>Save to tracker<ArrowRight size={14} /></>)}
+                        </button>
+                    ) : (
+                        <button onClick={() => navigate('/tracker')} style={primaryButtonStyle(T, false)}>
+                            View in tracker
+                            <ArrowRight size={14} />
+                        </button>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function DraftRow({ label, ready, T }: { label: string; ready: boolean; T: ReturnType<typeof useAppTheme>['T'] }) {
+    return (
+        <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '10px 14px',
+            background: ready ? 'rgba(125,166,125,0.08)' : 'rgba(255,255,255,0.03)',
+            border: `1px solid ${ready ? 'rgba(125,166,125,0.25)' : T.cardBorder}`,
+            borderRadius: 10,
+            fontSize: 13,
+        }}>
+            <span style={{ color: T.text, fontWeight: 600 }}>{label}</span>
+            <span style={{
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                color: ready ? T.accentSecondary : T.textFaint,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+            }}>
+                {ready ? (<><Check size={12} /> Draft saved</>) : 'Not generated'}
+            </span>
+        </div>
+    );
+}
+
+// ── Button helpers ──────────────────────────────────────────────────────────
+
+function ToolbarButton({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
+    const { T } = useAppTheme();
+    return (
+        <button
+            onClick={onClick}
+            style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 10px',
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: '0.06em',
+                color: T.textMuted,
+                background: 'transparent',
+                border: `1px solid ${T.cardBorder}`,
+                borderRadius: 8,
+                cursor: 'pointer',
+            }}
+        >
+            {icon}
+            {label}
+        </button>
+    );
+}
+
+function primaryButtonStyle(T: ReturnType<typeof useAppTheme>['T'], busy: boolean): React.CSSProperties {
+    return {
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '10px 18px',
+        fontSize: 13,
+        fontWeight: 700,
+        letterSpacing: '-0.01em',
+        color: T.btnText,
+        background: T.btnBg,
+        border: 'none',
+        borderRadius: 10,
+        cursor: busy ? 'wait' : 'pointer',
+        opacity: busy ? 0.7 : 1,
+        boxShadow: T.btnShadow,
+    };
+}
+
+function ghostButtonStyle(T: ReturnType<typeof useAppTheme>['T'], disabled: boolean): React.CSSProperties {
+    return {
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '9px 14px',
+        fontSize: 12,
+        fontWeight: 600,
+        color: T.textMuted,
+        background: 'transparent',
+        border: `1px solid ${T.cardBorder}`,
+        borderRadius: 10,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.5 : 1,
+    };
+}
