@@ -7,7 +7,6 @@ import { motion } from 'framer-motion';
 // Components — layout/gate loaded eagerly, page-level components lazy
 import { DashboardLayout } from './layouts/DashboardLayout';
 import { OnboardingGate } from './components/OnboardingGate';
-import { FirstVisitTip } from './components/FirstVisitTips';
 import { ProfileGate } from './components/ProfileGate';
 
 const MatchEngine          = React.lazy(() => import('./components/MatchEngine').then(m => ({ default: m.MatchEngine })));
@@ -147,12 +146,6 @@ const Dashboard = () => {
           <p style={{ fontSize: 13, fontWeight: 700, color: '#818cf8' }}>View feed →</p>
         </NavLink>
       )}
-
-      {/* First-visit tips */}
-      <FirstVisitTip tips={[
-        { id: 'achievements', text: 'All your achievements are logged here. Hit Manage to edit them.' },
-        { id: 'matcher',      text: 'Paste a job description here to get matched and start applying' },
-      ]} />
 
       {/* Pipeline at-a-glance */}
       {(() => {

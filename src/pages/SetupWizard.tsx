@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, CheckCircle, ArrowRight, Briefcase, FileText, Award, GraduationCap, Zap, Heart } from 'lucide-react';
+import { ChevronRight, ChevronLeft, CheckCircle, ArrowRight, Briefcase, FileText, Award, GraduationCap, Zap, Heart } from 'lucide-react';
 import api from '../lib/api';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -97,11 +97,11 @@ function parseBullets(description: string): string[] {
 const COACHING: Record<string, { headline: string; body: string; tipsLabel?: string; tips?: string[] }> = {
   summary: {
     headline: 'The 6-second filter.',
-    body: "A recruiter scans your summary before reading anything else. If it doesn't immediately signal your value, they move on. Lead with your title and seniority. Add your strongest proof point. End with where you're heading.",
+    body: "A recruiter scans your summary before reading anything else. Numbers stand out on a wall of text — drop in one concrete figure (a %, $, headcount, or timeframe) and you've already beaten most candidates. Lead with your title and seniority, anchor with that proof point, end with where you're heading.",
     tipsLabel: 'WHAT MAKES IT LAND',
     tips: [
+      'A number that proves your impact (%, $, scale, or time)',
       "Specific role + level (not just 'professional')",
-      'One measurable result from your career',
       "Forward-facing — what you're targeting next",
     ],
   },
@@ -156,7 +156,7 @@ const FALLBACK_MESSAGES: Partial<Record<StepType, string>> = {
   education: 'Confirmed. Clean and accurate.',
   certifications: 'Any credential on your profile reinforces your credibility.',
   volunteering: 'Done. Character on the page.',
-  skills: "Skills logged. Your application now outperforms 85% of other candidates. You're ready.",
+  skills: "Skills logged. Your profile is complete and ready to match against roles.",
 };
 
 const COMPETITIVE_PROGRESS: Partial<Record<StepType, { strength: string; label: string }>> = {
@@ -166,7 +166,7 @@ const COMPETITIVE_PROGRESS: Partial<Record<StepType, { strength: string; label: 
   education:      { strength: '8/10', label: "Most applicants stop here. You're going further." },
   certifications: { strength: '8.5/10', label: "Any credential adds credibility — and most don't have one." },
   volunteering:   { strength: '9/10', label: "Hiring managers notice this section. Most candidates leave it blank." },
-  skills:         { strength: '9.5/10', label: "Your application now outperforms 85% of other candidates." },
+  skills:         { strength: '9.5/10', label: "Profile complete — every section a recruiter looks for is filled in." },
 };
 
 // ─── Sub-components ─────────────────────────────────────────────────────────
@@ -828,6 +828,7 @@ export function SetupWizard() {
   const [rewardVisible, setRewardVisible] = useState(false);
   const [rewardMessage, setRewardMessage] = useState<string | null>(null);
   const resolveRewardRef = useRef<(() => void) | null>(null);
+  const initialContentRef = useRef<Partial<Record<StepType, string>>>({});
 
   // Per-step local edit state
   const [summaryText, setSummaryText] = useState('');
@@ -862,6 +863,20 @@ export function SetupWizard() {
         setEducationEdits((data.education ?? []).map((e: EducationEntry) => ({ ...e })));
         setCertEdits((data.certifications ?? []).map((c: CertEntry) => ({ ...c })));
         setVolEdits((data.volunteering ?? []).map((v: VolEntry) => ({ ...v })));
+
+        // Snapshot initial content per step so we can detect "no changes" on save
+        // and skip the reward screen when the user simply clicked through.
+        const initialExp = Object.values(expMap).map(e => ({ company: e.company, role: e.role, description: e.description }));
+        const initialAch = (data.achievements ?? []).map((a: AchievementEntry) => ({ title: a.title, metric: a.metric, description: a.description }));
+        initialContentRef.current = {
+          summary: JSON.stringify(data.professionalSummary ?? ''),
+          experience: JSON.stringify(initialExp),
+          achievements: JSON.stringify(initialAch),
+          education: JSON.stringify(data.education ?? []),
+          certifications: JSON.stringify(data.certifications ?? []),
+          volunteering: JSON.stringify(data.volunteering ?? []),
+          skills: JSON.stringify(parseSkills(data.skills ?? '')),
+        };
       })
       .catch(() => navigate('/'));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -903,6 +918,13 @@ export function SetupWizard() {
     setShowDutyWarning(false);
     scrollTop();
   }, [currentIndex, steps.length, scrollTop]);
+
+  const goBack = useCallback(() => {
+    if (currentIndex <= 0 || saving) return;
+    setCurrentIndex(currentIndex - 1);
+    setShowDutyWarning(false);
+    scrollTop();
+  }, [currentIndex, saving, scrollTop]);
 
   const handleSave = useCallback(async () => {
     if (!currentStep || saving) return;
@@ -995,7 +1017,12 @@ export function SetupWizard() {
         type === 'skills' ? skillsText :
         null;
 
-      await showReward(type, contentForCurrentStep);
+      const currentSnapshot = JSON.stringify(contentForCurrentStep);
+      const hasChanges = initialContentRef.current[type] !== currentSnapshot;
+      if (hasChanges) {
+        await showReward(type, contentForCurrentStep);
+        initialContentRef.current[type] = currentSnapshot;
+      }
       advance();
     } catch {
       // silent — user can retry
@@ -1229,6 +1256,32 @@ export function SetupWizard() {
             {/* CTAs */}
             {currentStep?.type !== 'complete' && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                {currentIndex > 0 && (
+                  <button
+                    onClick={goBack}
+                    disabled={saving}
+                    aria-label="Go back to previous step"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      background: 'none',
+                      color: '#9ca3af',
+                      border: '1px solid rgba(255,255,255,0.12)',
+                      borderRadius: 11,
+                      padding: '12px 16px',
+                      fontSize: 13,
+                      fontWeight: 700,
+                      cursor: saving ? 'not-allowed' : 'pointer',
+                      opacity: saving ? 0.5 : 1,
+                      letterSpacing: '-0.01em',
+                      transition: 'opacity 0.15s, color 0.15s',
+                    }}
+                  >
+                    <ChevronLeft size={16} />
+                    Back
+                  </button>
+                )}
                 <button
                   onClick={handleSave}
                   disabled={saving}
@@ -1314,7 +1367,7 @@ function CompleteScreen({ onComplete }: { onComplete: () => void }) {
         color: '#6366f1',
         letterSpacing: '-0.01em',
       }}>
-        Application strength: 9.5/10 · Your application now outperforms 85% of other candidates.
+        Profile complete — every section a recruiter checks is filled in.
       </p>
       <p style={{
         margin: '0 0 36px',
