@@ -180,7 +180,8 @@ async function ensureColumns() {
         ADD COLUMN IF NOT EXISTS "marketingEmail" TEXT,
         ADD COLUMN IF NOT EXISTS "marketingConsent" BOOLEAN NOT NULL DEFAULT false,
         ADD COLUMN IF NOT EXISTS "marketingEmailSent" BOOLEAN NOT NULL DEFAULT false,
-        ADD COLUMN IF NOT EXISTS "visaStatus" TEXT;
+        ADD COLUMN IF NOT EXISTS "visaStatus" TEXT,
+        ADD COLUMN IF NOT EXISTS "positioningStatement" JSONB;
     `);
     console.log('[startup] schema columns verified');
   } catch (err) {

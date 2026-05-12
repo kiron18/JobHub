@@ -1,15 +1,14 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, FileText, Briefcase, LogOut, User, Sun, Moon, Library, Mail, Linkedin, Sparkles, PenLine } from 'lucide-react';
+import { LayoutDashboard, FileText, Briefcase, LogOut, User, Library, Mail, Linkedin, Sparkles, PenLine } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppTheme } from '../contexts/ThemeContext';
-import { HuePicker } from '../components/HuePicker';
 import api from '../lib/api';
 
 export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { user, signOut } = useAuth();
-    const { T, isDark, toggle } = useAppTheme();
+    const { T, isDark } = useAppTheme();
 
     useQuery({
         queryKey: ['profile'],
@@ -120,34 +119,15 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                             </div>
                         </div>
 
-                        {/* Theme toggle + Hue + Sign Out row */}
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={toggle}
-                                title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-                                className="flex items-center justify-center rounded-lg transition-all"
-                                style={{
-                                    width: 36,
-                                    height: 36,
-                                    background: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)',
-                                    color: isDark ? '#e5e7eb' : '#374151',
-                                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'}`,
-                                    cursor: 'pointer',
-                                    flexShrink: 0,
-                                }}
-                            >
-                                {isDark ? <Sun size={15} /> : <Moon size={15} />}
-                            </button>
-                            <HuePicker isDark={isDark} />
-                            <button
-                                onClick={() => signOut()}
-                                className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all border border-transparent hover:border-red-500/20 hover:bg-red-500/10 hover:text-red-400"
-                                style={{ color: T.textFaint }}
-                            >
-                                <LogOut size={14} />
-                                Sign Out
-                            </button>
-                        </div>
+                        {/* Sign Out — theme toggle and hue picker hidden until Strategy Hub redesign settles */}
+                        <button
+                            onClick={() => signOut()}
+                            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all border border-transparent hover:border-white/10 hover:bg-white/5"
+                            style={{ color: T.textFaint }}
+                        >
+                            <LogOut size={14} />
+                            Sign Out
+                        </button>
                     </div>
                 </div>
             </aside>

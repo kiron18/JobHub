@@ -17,6 +17,13 @@ export interface Theme {
   blobGrad: string; blobShadow: string;
   toggleBg: string; toggleIcon: string;
   fileBg: string; fileBorder: string;
+  // New palette (Strategy Hub redesign — 2026-05-12).
+  // accentSuccess  → gold (match scores, value indicators, "achievement" tone)
+  // accentSecondary → sage (highlights, calm progress)
+  // errorMuted     → muted red, reserved for genuine errors and destructive confirms only
+  accentSuccess: string;
+  accentSecondary: string;
+  errorMuted: string;
 }
 
 export const LIGHT: Theme = {
@@ -25,45 +32,54 @@ export const LIGHT: Theme = {
   cardShadow: '0 8px 80px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.95)',
   text: '#111827', textMuted: '#6b7280', textFaint: '#9ca3af',
   inputBg: 'rgba(255,255,255,0.78)', inputBorder: 'rgba(0,0,0,0.1)', inputText: '#111827',
-  btnBg: '#111827', btnText: '#ffffff', btnShadow: '0 4px 24px rgba(0,0,0,0.2)',
-  progressBg: 'rgba(0,0,0,0.08)', progressFill: '#111827',
+  btnBg: '#2D5A6E', btnText: '#FFFFFF', btnShadow: '0 4px 24px rgba(45,90,110,0.25)',
+  progressBg: 'rgba(0,0,0,0.08)', progressFill: '#2D5A6E',
   chipBg: 'rgba(17,24,39,0.07)', chipText: '#374151',
   optBg: 'rgba(255,255,255,0.55)', optBorder: 'rgba(0,0,0,0.1)', optText: '#374151',
-  optActiveBg: '#111827', optActiveBorder: '#111827', optActiveText: '#ffffff',
+  optActiveBg: '#2D5A6E', optActiveBorder: '#2D5A6E', optActiveText: '#FFFFFF',
   pillBg: 'rgba(255,255,255,0.6)', pillBorder: 'rgba(0,0,0,0.12)', pillText: '#6b7280',
-  pillActiveBg: '#111827', pillActiveBorder: '#111827', pillActiveText: '#ffffff',
+  pillActiveBg: '#2D5A6E', pillActiveBorder: '#2D5A6E', pillActiveText: '#FFFFFF',
   blobGrad: 'radial-gradient(circle at 33% 28%, #ffffff 0%, #dde1ec 55%, #c4c9d9 100%)',
   blobShadow: 'inset -10px -10px 28px rgba(0,0,0,0.07), inset 5px 5px 18px rgba(255,255,255,0.95), 20px 32px 80px rgba(0,0,0,0.14)',
   toggleBg: 'rgba(0,0,0,0.08)', toggleIcon: '#6b7280',
   fileBg: 'rgba(255,255,255,0.5)', fileBorder: 'rgba(0,0,0,0.12)',
+  accentSuccess: '#C5A059', accentSecondary: '#7DA67D', errorMuted: '#B85C5C',
 };
 
 export const DARK: Theme = {
-  bg: '#0d1117', dotColor: '#1b2030',
-  card: 'rgba(255,255,255,0.05)', cardBorder: 'rgba(255,255,255,0.1)',
-  cardShadow: '0 8px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)',
-  text: '#f3f4f6', textMuted: '#9ca3af', textFaint: '#64748b',
-  inputBg: 'rgba(255,255,255,0.07)', inputBorder: 'rgba(255,255,255,0.11)', inputText: '#f3f4f6',
-  btnBg: '#f3f4f6', btnText: '#111827', btnShadow: '0 4px 24px rgba(0,0,0,0.4)',
-  progressBg: 'rgba(255,255,255,0.1)', progressFill: '#f3f4f6',
-  chipBg: 'rgba(255,255,255,0.08)', chipText: '#d1d5db',
-  optBg: 'rgba(255,255,255,0.04)', optBorder: 'rgba(255,255,255,0.1)', optText: '#d1d5db',
-  optActiveBg: '#f3f4f6', optActiveBorder: '#f3f4f6', optActiveText: '#111827',
-  pillBg: 'rgba(255,255,255,0.06)', pillBorder: 'rgba(255,255,255,0.12)', pillText: '#9ca3af',
-  pillActiveBg: '#f3f4f6', pillActiveBorder: '#f3f4f6', pillActiveText: '#111827',
-  blobGrad: 'radial-gradient(circle at 33% 28%, #1e2535 0%, #131924 55%, #0d1117 100%)',
+  bg: '#1A1C1E', dotColor: '#22262a',
+  card: '#25282B', cardBorder: 'rgba(255,255,255,0.06)',
+  cardShadow: '0 8px 60px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.04)',
+  text: '#E0E0E0', textMuted: '#A0A4A8', textFaint: '#6B6F73',
+  inputBg: 'rgba(255,255,255,0.04)', inputBorder: 'rgba(255,255,255,0.08)', inputText: '#E0E0E0',
+  btnBg: '#2D5A6E', btnText: '#E0E0E0', btnShadow: '0 4px 24px rgba(45,90,110,0.35)',
+  progressBg: 'rgba(255,255,255,0.06)', progressFill: '#2D5A6E',
+  chipBg: 'rgba(255,255,255,0.05)', chipText: '#C8CCD0',
+  optBg: 'rgba(255,255,255,0.03)', optBorder: 'rgba(255,255,255,0.08)', optText: '#C8CCD0',
+  optActiveBg: '#2D5A6E', optActiveBorder: '#2D5A6E', optActiveText: '#E0E0E0',
+  pillBg: 'rgba(255,255,255,0.04)', pillBorder: 'rgba(255,255,255,0.08)', pillText: '#A0A4A8',
+  pillActiveBg: '#2D5A6E', pillActiveBorder: '#2D5A6E', pillActiveText: '#E0E0E0',
+  blobGrad: 'radial-gradient(circle at 33% 28%, #2a2e32 0%, #1f2326 55%, #1A1C1E 100%)',
   blobShadow: 'inset -10px -10px 28px rgba(0,0,0,0.6), inset 5px 5px 18px rgba(255,255,255,0.03), 20px 32px 80px rgba(0,0,0,0.5)',
-  toggleBg: 'rgba(255,255,255,0.1)', toggleIcon: '#9ca3af',
-  fileBg: 'rgba(255,255,255,0.05)', fileBorder: 'rgba(255,255,255,0.12)',
+  toggleBg: 'rgba(255,255,255,0.06)', toggleIcon: '#A0A4A8',
+  fileBg: 'rgba(255,255,255,0.04)', fileBorder: 'rgba(255,255,255,0.08)',
+  accentSuccess: '#C5A059', accentSecondary: '#7DA67D', errorMuted: '#B85C5C',
 };
 
 // ── Semantic token injection ──────────────────────────────────────────────────
 
 function applySemanticTokens(isDark: boolean): void {
   const root = document.documentElement;
-  root.style.setProperty('--text',       isDark ? '#F1F5F9' : '#0F172A');
-  root.style.setProperty('--text-muted', isDark ? '#94A3B8' : '#64748B');
-  root.style.setProperty('--text-faint', isDark ? '#64748b' : '#94A3B8');
+  root.style.setProperty('--text',       isDark ? '#E0E0E0' : '#0F172A');
+  root.style.setProperty('--text-muted', isDark ? '#A0A4A8' : '#64748B');
+  root.style.setProperty('--text-faint', isDark ? '#6B6F73' : '#94A3B8');
+  // Strategy Hub palette — exposed as CSS vars for Tailwind-side and pure-CSS use.
+  root.style.setProperty('--bg-app',           isDark ? '#1A1C1E' : '#F8FAFC');
+  root.style.setProperty('--bg-surface',       isDark ? '#25282B' : 'rgba(255,255,255,0.62)');
+  root.style.setProperty('--accent-primary',   '#2D5A6E');
+  root.style.setProperty('--accent-success',   '#C5A059');
+  root.style.setProperty('--accent-secondary', '#7DA67D');
+  root.style.setProperty('--error-muted',      '#B85C5C');
   root.style.setProperty('--radius-card',  '20px');
   root.style.setProperty('--radius-input', '12px');
   root.style.setProperty('--space-card',   '24px');

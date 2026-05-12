@@ -19,6 +19,7 @@ instagram_analysis.xlsx
 
 # Git worktrees
 .worktrees/
+.claude/worktrees/
 screenshots/
 Report/
 server/scripts/qa_report.md

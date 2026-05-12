@@ -64,6 +64,7 @@ model CandidateProfile {
   coverLetterFilename          String?
   coverLetterFilename2         String?
   documentsUpdatedAt           DateTime?
+  positioningStatement         Json?
   achievements                 Achievement[]
   certifications               Certification[]
   diagnosticReport             DiagnosticReport?
