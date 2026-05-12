@@ -245,10 +245,18 @@ function buildParagraphs(markdown: string, docType: DocType): Paragraph[] {
 }
 
 function sanitizeForExport(raw: string): string {
-    // Force section headers onto their own line. Some LLM outputs glue '## Section'
-    // onto the end of a paragraph; without this, parseLine() treats the whole line
-    // as a paragraph and the literal '##' renders in the document.
-    const normalized = raw.replace(/(\S)\s+(#{1,3}\s+\S)/g, '$1\n\n$2');
+    // 1. Force section headers onto their own line. Some LLM outputs glue
+    //    '## Section' onto the end of a paragraph; without this, parseLine()
+    //    treats the whole line as a paragraph and the literal '##' renders.
+    let normalized = raw.replace(/(\S)\s+(#{1,3}\s+\S)/g, '$1\n\n$2');
+
+    // 2. Re-attach orphan heading markers. Some LLM outputs emit a bare '##'
+    //    on its own line followed by the heading text on the next non-blank
+    //    line (often with a blank line between). parseLine() only recognises
+    //    '## Title' on one line, so without this fix the literal '##' renders
+    //    as a paragraph and the title below loses its heading style.
+    normalized = normalized.replace(/^(#{1,3})\s*$\n+(?=\S)/gm, '$1 ');
+
     return normalized.replace(/\[VERIFY:[^\]]*\]/g, '').replace(/[ \t]{2,}/g, ' ');
 }
 
