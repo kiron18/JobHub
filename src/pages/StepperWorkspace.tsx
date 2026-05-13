@@ -37,9 +37,82 @@ import {
 } from 'lucide-react';
 import { DraftCritiquePanel, type CritiqueResult } from '../components/strategy/DraftCritiquePanel';
 import ReactMarkdown from 'react-markdown';
+import React from 'react';
 import { toast } from 'sonner';
 import api from '../lib/api';
 import { useAppTheme } from '../contexts/ThemeContext';
+
+// ── Placeholder marker rendering ────────────────────────────────────────────
+//
+// The generator emits placeholder tokens (`[VERIFY: ...]`, `[ADD: ...]`,
+// `[TBD]`, etc.) wherever it lacks confidence. Showing the literal bracket
+// syntax inline is ugly; this helper rewrites them to a small gold chip with
+// the underlying note exposed via a tooltip. The raw markers stay in the
+// stored content so .docx / .pdf exports still surface them for clean-up.
+
+const VERIFY_MARKER_RE = /\[(?:VERIFY|Verify|verify|ADD|Add|INSERT|Insert|TBD|PLACEHOLDER)(?:[:\s]\s*([^\]]*))?\]/g;
+
+function VerifyMarker({ note }: { note: string }) {
+    return (
+        <span
+            title={note ? `Needs verification: ${note}` : 'Needs verification'}
+            style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 18,
+                height: 18,
+                marginInline: 2,
+                background: 'rgba(197,160,89,0.18)',
+                color: '#C5A059',
+                borderRadius: 4,
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: 'help',
+                verticalAlign: 'baseline',
+                userSelect: 'none',
+                border: '1px solid rgba(197,160,89,0.32)',
+                lineHeight: 1,
+            }}
+            aria-label={note ? `Verify: ${note}` : 'Verify'}
+        >
+            !
+        </span>
+    );
+}
+
+function replaceVerifyMarkersInString(text: string): React.ReactNode {
+    VERIFY_MARKER_RE.lastIndex = 0;
+    const out: React.ReactNode[] = [];
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = VERIFY_MARKER_RE.exec(text)) !== null) {
+        if (match.index > lastIndex) out.push(text.slice(lastIndex, match.index));
+        out.push(<VerifyMarker key={`v-${match.index}`} note={(match[1] || '').trim()} />);
+        lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex < text.length) out.push(text.slice(lastIndex));
+    return out.length > 0 ? <>{out}</> : text;
+}
+
+function processMarkers(children: React.ReactNode): React.ReactNode {
+    return React.Children.map(children, (child) => {
+        if (typeof child === 'string') return replaceVerifyMarkersInString(child);
+        return child;
+    });
+}
+
+const MARKDOWN_COMPONENTS = {
+    p: ({ children }: { children?: React.ReactNode }) => <p>{processMarkers(children)}</p>,
+    li: ({ children }: { children?: React.ReactNode }) => <li>{processMarkers(children)}</li>,
+    strong: ({ children }: { children?: React.ReactNode }) => <strong>{processMarkers(children)}</strong>,
+    em: ({ children }: { children?: React.ReactNode }) => <em>{processMarkers(children)}</em>,
+    td: ({ children }: { children?: React.ReactNode }) => <td>{processMarkers(children)}</td>,
+    h1: ({ children }: { children?: React.ReactNode }) => <h1>{processMarkers(children)}</h1>,
+    h2: ({ children }: { children?: React.ReactNode }) => <h2>{processMarkers(children)}</h2>,
+    h3: ({ children }: { children?: React.ReactNode }) => <h3>{processMarkers(children)}</h3>,
+    h4: ({ children }: { children?: React.ReactNode }) => <h4>{processMarkers(children)}</h4>,
+};
 
 type StepId = 'resume' | 'cover-letter' | 'selection-criteria' | 'track';
 type GenerateType = 'resume' | 'cover-letter' | 'selection-criteria';
@@ -418,10 +491,17 @@ function DocumentStep({
         toast.success('Copied');
     };
 
-    // VERIFY tokens are inserted by the generator wherever the AI lacks
+    // Placeholder tokens — inserted by the generator wherever the AI lacks
     // confidence (job title gaps, fabricated metrics, etc.) and needs human
-    // review. We warn on continue rather than block — calm-ally, not gatekeeper.
-    const hasVerifyTokens = useMemo(() => /\[VERIFY:[^\]]*\]/i.test(content), [content]);
+    // review. The regex catches the full set of variants the generator emits
+    // across resume / cover letter / SC: VERIFY/Verify/verify, ADD/Add,
+    // INSERT/Insert, TBD, PLACEHOLDER. Resume drafts use these interchangeably,
+    // which is why the previous narrow `[VERIFY:` check missed them.
+    // We warn on continue rather than block — calm-ally, not gatekeeper.
+    const hasVerifyTokens = useMemo(
+        () => /\[(?:VERIFY|Verify|verify|ADD|Add|INSERT|Insert|TBD|PLACEHOLDER)(?:[:\s][^\]]*)?\]/.test(content),
+        [content],
+    );
 
     const handleContinueWithVerifyCheck = () => {
         if (hasVerifyTokens) {
@@ -605,7 +685,7 @@ function DocumentStep({
                     />
                 ) : content ? (
                     <div className="prose prose-invert max-w-none" style={{ color: T.text, fontSize: 13.5, lineHeight: 1.7 }}>
-                        <ReactMarkdown>{content}</ReactMarkdown>
+                        <ReactMarkdown components={MARKDOWN_COMPONENTS as any}>{content}</ReactMarkdown>
                     </div>
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, padding: '40px 0', color: T.textFaint, textAlign: 'center' }}>
