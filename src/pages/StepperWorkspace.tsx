@@ -16,7 +16,7 @@
  * commit; users copy or download for now.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     ArrowLeft,
@@ -47,36 +47,146 @@ import { useAppTheme } from '../contexts/ThemeContext';
 // The generator emits placeholder tokens (`[VERIFY: ...]`, `[ADD: ...]`,
 // `[TBD]`, etc.) wherever it lacks confidence. Showing the literal bracket
 // syntax inline is ugly; this helper rewrites them to a small gold chip with
-// the underlying note exposed via a tooltip. The raw markers stay in the
-// stored content so .docx / .pdf exports still surface them for clean-up.
+// a rich hover/click popover explaining what the chip means and how the
+// user prevents it next time (by adding the missing detail to their
+// candidate profile). Raw markers stay in the stored content; on .docx /
+// .pdf export they are stripped entirely by the shared sanitizer.
 
 const VERIFY_MARKER_RE = /\[(?:VERIFY|Verify|verify|ADD|Add|INSERT|Insert|TBD|PLACEHOLDER)(?:[:\s]\s*([^\]]*))?\]/g;
 
 function VerifyMarker({ note }: { note: string }) {
+    const { T } = useAppTheme();
+    const [open, setOpen] = React.useState(false);
+
     return (
         <span
-            title={note ? `Needs verification: ${note}` : 'Needs verification'}
             style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 18,
-                height: 18,
-                marginInline: 2,
-                background: 'rgba(197,160,89,0.18)',
-                color: '#C5A059',
-                borderRadius: 4,
-                fontSize: 11,
-                fontWeight: 700,
-                cursor: 'help',
+                position: 'relative',
+                display: 'inline-block',
                 verticalAlign: 'baseline',
-                userSelect: 'none',
-                border: '1px solid rgba(197,160,89,0.32)',
-                lineHeight: 1,
+                marginInline: 2,
+                lineHeight: 0,
             }}
-            aria-label={note ? `Verify: ${note}` : 'Verify'}
+            onMouseEnter={() => setOpen(true)}
+            onMouseLeave={() => setOpen(false)}
         >
-            !
+            <span
+                role="button"
+                tabIndex={0}
+                onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setOpen((v) => !v);
+                    } else if (e.key === 'Escape') {
+                        setOpen(false);
+                    }
+                }}
+                aria-label={note ? `Placeholder: ${note}` : 'Placeholder'}
+                aria-expanded={open}
+                style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 18,
+                    height: 18,
+                    background: 'rgba(197,160,89,0.18)',
+                    color: '#C5A059',
+                    borderRadius: 4,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: 'help',
+                    userSelect: 'none',
+                    border: '1px solid rgba(197,160,89,0.32)',
+                    lineHeight: 1,
+                    verticalAlign: 'baseline',
+                }}
+            >
+                !
+            </span>
+
+            {open && (
+                <span
+                    role="tooltip"
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                        position: 'absolute',
+                        bottom: 'calc(100% + 10px)',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        width: 280,
+                        background: T.card,
+                        border: `1px solid ${T.cardBorder}`,
+                        borderRadius: 12,
+                        padding: '12px 14px 14px',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.45)',
+                        zIndex: 100,
+                        textAlign: 'left',
+                        cursor: 'auto',
+                        lineHeight: 1.55,
+                        // Reset inherited inline-block context for clean text.
+                        whiteSpace: 'normal',
+                        display: 'block',
+                    }}
+                >
+                    <span style={{
+                        display: 'block',
+                        fontSize: 10,
+                        fontWeight: 800,
+                        letterSpacing: '0.14em',
+                        textTransform: 'uppercase',
+                        color: '#C5A059',
+                        marginBottom: 6,
+                    }}>
+                        Placeholder, needs filling in
+                    </span>
+                    {note && (
+                        <span style={{
+                            display: 'block',
+                            fontSize: 12,
+                            color: T.text,
+                            fontStyle: 'italic',
+                            marginBottom: 10,
+                            background: 'rgba(197,160,89,0.06)',
+                            padding: '6px 10px',
+                            borderRadius: 6,
+                            border: '1px solid rgba(197,160,89,0.18)',
+                        }}>
+                            "{note}"
+                        </span>
+                    )}
+                    <span style={{ display: 'block', fontSize: 12, color: T.textMuted, marginBottom: 10 }}>
+                        We added this because your profile didn't have the specific detail the role asked for. Adding it to your profile means future drafts use the real value instead of a placeholder.
+                    </span>
+                    <Link
+                        to="/workspace"
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            fontSize: 12,
+                            fontWeight: 700,
+                            color: '#7DA67D',
+                            textDecoration: 'underline',
+                            textUnderlineOffset: 3,
+                        }}
+                    >
+                        Open profile to add this →
+                    </Link>
+                    {/* Pointer arrow */}
+                    <span style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        width: 0,
+                        height: 0,
+                        borderLeft: '6px solid transparent',
+                        borderRight: '6px solid transparent',
+                        borderTop: `6px solid ${T.card}`,
+                    }} />
+                </span>
+            )}
         </span>
     );
 }

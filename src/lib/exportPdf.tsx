@@ -163,7 +163,12 @@ const DOC_LABELS: Record<DocType, string> = {
 };
 
 function sanitizeForExport(raw: string): string {
-    return raw.replace(/\[VERIFY:[^\]]*\]/g, '').replace(/\s{2,}/g, ' ');
+    // Mirrors the docx sanitiser — strip every placeholder marker variant so
+    // the exported PDF never carries the AI's review notes through to the
+    // recruiter. Matches: VERIFY/Verify/verify, ADD/Add, INSERT/Insert, TBD,
+    // PLACEHOLDER. Both [TOKEN: note] and [TOKEN note] forms.
+    const PLACEHOLDER_RE = /\[(?:VERIFY|Verify|verify|ADD|Add|INSERT|Insert|TBD|PLACEHOLDER)(?:[:\s][^\]]*)?\]/g;
+    return raw.replace(PLACEHOLDER_RE, '').replace(/\s{2,}/g, ' ').replace(/[ \t]+([.,;:!?])/g, '$1');
 }
 
 export async function exportPdf(
