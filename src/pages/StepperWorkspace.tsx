@@ -21,6 +21,7 @@ import {
     ArrowLeft,
     ArrowRight,
     Check,
+    ChevronDown,
     ChevronRight,
     Copy,
     Download,
@@ -294,6 +295,17 @@ function DocumentStep({
     const [content, setContent] = useState<string>('');
     const [generating, setGenerating] = useState(false);
     const [hasDraft, setHasDraft] = useState(false);
+    const [editing, setEditing] = useState(false);
+    const [editBuffer, setEditBuffer] = useState('');
+    const [downloadFormat, setDownloadFormat] = useState<'docx' | 'pdf'>(() => {
+        try {
+            const stored = localStorage.getItem('jobhub_download_format');
+            return stored === 'pdf' ? 'pdf' : 'docx';
+        } catch {
+            return 'docx';
+        }
+    });
+    const [formatMenuOpen, setFormatMenuOpen] = useState(false);
 
     // Load the persisted draft on step entry. Never regenerates on navigation.
     useEffect(() => {
@@ -305,6 +317,7 @@ function DocumentStep({
             setContent('');
             setHasDraft(false);
         }
+        setEditing(false);
     }, [workspaceKey, stepId]);
 
     const generate = async (regenerate = false) => {
@@ -341,16 +354,54 @@ function DocumentStep({
         toast.success('Copied');
     };
 
-    const handleDownloadDocx = async () => {
+    const handleEditToggle = () => {
+        if (editing) {
+            // Save edits
+            const trimmed = editBuffer.trim();
+            if (trimmed.length > 0 && trimmed !== content) {
+                setContent(trimmed);
+                saveDraft(workspaceKey, stepId, {
+                    content: trimmed,
+                    generatedAt: new Date().toISOString(),
+                    edited: true,
+                });
+                toast.success('Edits saved');
+            }
+            setEditing(false);
+        } else {
+            setEditBuffer(content);
+            setEditing(true);
+        }
+    };
+
+    const exportType = stepId === 'cover-letter' ? 'cover-letter' : stepId === 'selection-criteria' ? 'selection-criteria' : 'resume';
+
+    const setFormatPref = (next: 'docx' | 'pdf') => {
+        setDownloadFormat(next);
+        try { localStorage.setItem('jobhub_download_format', next); } catch { /* noop */ }
+    };
+
+    const handleDownload = async (formatOverride?: 'docx' | 'pdf') => {
         if (!content) return;
+        const fmt = formatOverride ?? downloadFormat;
+        if (formatOverride) setFormatPref(formatOverride);
+        setFormatMenuOpen(false);
         try {
-            const { exportDocx } = await import('../lib/exportDocx');
-            await exportDocx(content, stepId === 'cover-letter' ? 'cover-letter' : stepId === 'selection-criteria' ? 'selection-criteria' : 'resume', '');
-            toast.success('Downloaded');
+            if (fmt === 'pdf') {
+                const { exportPdf } = await import('../lib/exportPdf');
+                await exportPdf(content, exportType as any, '', '');
+            } else {
+                const { exportDocx } = await import('../lib/exportDocx');
+                await exportDocx(content, exportType as any, '');
+            }
+            toast.success(`Downloaded as .${fmt}`);
         } catch {
             toast.error('Download failed. Copy the content instead.');
         }
     };
+
+    const stepLabel = stepId === 'resume' ? 'Tailored Resume' : stepId === 'cover-letter' ? 'Cover Letter' : 'Selection Criteria';
+    const coverLetterNote = 'Most candidates skip the cover letter. Australian recruiters use it to filter genuine interest from automated applications, a tailored cover letter measurably increases callback rates.';
 
     return (
         <div style={{
@@ -364,28 +415,37 @@ function DocumentStep({
             minHeight: 420,
         }}>
             <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                <div>
-                    <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: T.textMuted }}>
-                        {stepId === 'resume' ? 'Tailored Resume' : stepId === 'cover-letter' ? 'Cover Letter' : 'Selection Criteria'}
-                    </p>
-                    <p style={{ margin: 0, fontSize: 13, color: T.textFaint, lineHeight: 1.55 }}>
-                        {hasDraft
-                            ? 'Draft saved locally. Going back never regenerates.'
-                            : 'No draft yet. Generate to create the first version.'}
-                    </p>
-                </div>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: T.textMuted }}>
+                    {stepLabel}
+                </p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {hasDraft && (
+                    {hasDraft && !editing && (
                         <>
                             <ToolbarButton icon={<Copy size={13} />} label="Copy" onClick={handleCopy} />
-                            <ToolbarButton icon={<Download size={13} />} label=".docx" onClick={handleDownloadDocx} />
+                            <DownloadSplit
+                                format={downloadFormat}
+                                open={formatMenuOpen}
+                                onToggleMenu={() => setFormatMenuOpen((v) => !v)}
+                                onCloseMenu={() => setFormatMenuOpen(false)}
+                                onDownload={() => handleDownload()}
+                                onChoose={(f) => handleDownload(f)}
+                                T={T}
+                            />
                         </>
                     )}
                 </div>
             </header>
 
+            {/* Cover letter educational note */}
+            {stepId === 'cover-letter' && (
+                <p style={{ margin: 0, fontSize: 12, color: T.textMuted, lineHeight: 1.6, fontStyle: 'italic' }}>
+                    {coverLetterNote}
+                </p>
+            )}
+
             {/* Body */}
             <div style={{
+                position: 'relative',
                 flex: 1,
                 background: T.inputBg,
                 border: `1px solid ${T.inputBorder}`,
@@ -394,11 +454,58 @@ function DocumentStep({
                 minHeight: 280,
                 overflow: 'auto',
             }}>
+                {/* Edit toggle — top-right underline */}
+                {hasDraft && !generating && (
+                    <button
+                        onClick={handleEditToggle}
+                        style={{
+                            position: 'absolute',
+                            top: 12,
+                            right: 16,
+                            background: 'transparent',
+                            border: 'none',
+                            color: editing ? T.accentSuccess : T.textMuted,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            letterSpacing: '0.02em',
+                            textDecoration: 'underline',
+                            textUnderlineOffset: 4,
+                            cursor: 'pointer',
+                            padding: 0,
+                            zIndex: 1,
+                        }}
+                        title={editing ? 'Save edits' : 'Edit inline'}
+                    >
+                        {editing ? 'Done' : 'Edit'}
+                    </button>
+                )}
+
                 {generating ? (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '60px 0', color: T.textMuted, fontSize: 13 }}>
                         <Loader2 size={16} className="animate-spin" />
                         Drafting your {stepId === 'cover-letter' ? 'cover letter' : stepId === 'selection-criteria' ? 'selection-criteria responses' : 'resume'}…
                     </div>
+                ) : editing ? (
+                    <textarea
+                        value={editBuffer}
+                        onChange={(e) => setEditBuffer(e.target.value)}
+                        spellCheck
+                        style={{
+                            width: '100%',
+                            minHeight: 360,
+                            padding: 0,
+                            paddingRight: 56,
+                            background: 'transparent',
+                            border: 'none',
+                            outline: 'none',
+                            color: T.text,
+                            fontSize: 13.5,
+                            lineHeight: 1.7,
+                            fontFamily: 'inherit',
+                            resize: 'vertical',
+                            boxSizing: 'border-box',
+                        }}
+                    />
                 ) : content ? (
                     <div className="prose prose-invert max-w-none" style={{ color: T.text, fontSize: 13.5, lineHeight: 1.7 }}>
                         <ReactMarkdown>{content}</ReactMarkdown>
@@ -483,8 +590,7 @@ function TrackStep({
 }) {
     const { T } = useAppTheme();
     const navigate = useNavigate();
-    const [saving, setSaving] = useState(false);
-    const [saved, setSaved] = useState(false);
+    const [autoSaveError, setAutoSaveError] = useState(false);
 
     const drafted = {
         resume: loadDraft(workspaceKey, 'resume') !== null,
@@ -492,24 +598,32 @@ function TrackStep({
         sc: loadDraft(workspaceKey, 'selection-criteria') !== null,
     };
 
-    const handleAddToTracker = async () => {
-        setSaving(true);
-        try {
-            await api.post('/jobs', {
-                title: role ?? 'Untitled role',
-                company: company ?? 'Unknown company',
-                description: jobDescription,
-                status: 'APPLIED',
-                dateApplied: new Date().toISOString(),
-            });
-            setSaved(true);
-            toast.success('Saved to your tracker');
-        } catch {
-            toast.error('Could not save. Please retry.');
-        } finally {
-            setSaving(false);
-        }
-    };
+    // Auto-save the application on mount. One-shot per workspaceKey using a
+    // local flag so revisiting the step doesn't duplicate the row.
+    useEffect(() => {
+        const flag = `jobhub_tracker_saved_${workspaceKey}`;
+        if (localStorage.getItem(flag) === '1') return;
+        let cancelled = false;
+        (async () => {
+            try {
+                await api.post('/jobs', {
+                    title: role ?? 'Untitled role',
+                    company: company ?? 'Unknown company',
+                    description: jobDescription,
+                    status: 'APPLIED',
+                    dateApplied: new Date().toISOString(),
+                });
+                if (!cancelled) {
+                    localStorage.setItem(flag, '1');
+                    // Notify dashboard to show goal-counter onboarding if first ever
+                    localStorage.setItem('jobhub_last_apply_at', new Date().toISOString());
+                }
+            } catch {
+                if (!cancelled) setAutoSaveError(true);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [workspaceKey, jobDescription, role, company]);
 
     return (
         <div style={{
@@ -523,13 +637,15 @@ function TrackStep({
         }}>
             <div>
                 <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: T.accentSuccess }}>
-                    Last step
+                    {autoSaveError ? 'Almost there' : 'Saved to your tracker'}
                 </p>
                 <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: T.text, letterSpacing: '-0.01em' }}>
-                    Save this to your tracker.
+                    {autoSaveError ? 'Your application is ready, but the tracker save failed.' : 'Nice work. This one is in your tracker.'}
                 </h2>
                 <p style={{ margin: '8px 0 0', fontSize: 13, color: T.textMuted, lineHeight: 1.6 }}>
-                    Adds this role to your applications. You can still come back here for any of the documents.
+                    {autoSaveError
+                        ? 'We could not save automatically. Retry below, or come back from the dashboard.'
+                        : `${role ?? 'This role'}${company ? ` at ${company}` : ''} is now under Applications, with today's date set.`}
                 </p>
             </div>
 
@@ -539,24 +655,160 @@ function TrackStep({
                 {wantsSC && <DraftRow label="Selection criteria" ready={drafted.sc} T={T} />}
             </div>
 
+            {/* Education chunk — tracker capabilities, presented as one cohesive idea */}
+            <div style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 14,
+                padding: '16px 18px',
+                background: 'rgba(45,90,110,0.10)',
+                border: '1px solid rgba(45,90,110,0.30)',
+                borderRadius: 12,
+            }}>
+                <div style={{
+                    width: 36,
+                    height: 36,
+                    flexShrink: 0,
+                    borderRadius: 10,
+                    background: 'rgba(45,90,110,0.20)',
+                    color: T.accentSuccess,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                }}>
+                    <Briefcase size={18} />
+                </div>
+                <div style={{ flex: 1 }}>
+                    <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 700, color: T.text }}>
+                        Your tracker handles the next moves.
+                    </p>
+                    <p style={{ margin: 0, fontSize: 12.5, color: T.textMuted, lineHeight: 1.65 }}>
+                        It quietly nudges you to follow up after a week of silence and unlocks the
+                        Interview Prep generator the moment you mark a role as Interview. Find it
+                        anytime under <span style={{ color: T.text, fontWeight: 600 }}><Briefcase size={11} style={{ display: 'inline', marginRight: 3, verticalAlign: '-1px' }} />Applications</span> in the sidebar.
+                    </p>
+                </div>
+            </div>
+
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 4 }}>
                 <button onClick={onBack} style={ghostButtonStyle(T, false)}>
                     <ArrowLeft size={14} />
                     Back
                 </button>
                 <div style={{ display: 'flex', gap: 10 }}>
-                    {!saved ? (
-                        <button onClick={handleAddToTracker} disabled={saving} style={primaryButtonStyle(T, saving)}>
-                            {saving ? (<><Loader2 size={14} className="animate-spin" /> Saving…</>) : (<>Save to tracker<ArrowRight size={14} /></>)}
-                        </button>
-                    ) : (
-                        <button onClick={() => navigate('/tracker')} style={primaryButtonStyle(T, false)}>
-                            View in tracker
-                            <ArrowRight size={14} />
-                        </button>
-                    )}
+                    <button onClick={() => navigate('/tracker')} style={ghostButtonStyle(T, false)}>
+                        Open tracker
+                    </button>
+                    <button onClick={() => navigate('/')} style={primaryButtonStyle(T, false)}>
+                        Apply for another role
+                        <ArrowRight size={14} />
+                    </button>
                 </div>
             </div>
+        </div>
+    );
+}
+
+// ── DownloadSplit (format dropdown) ─────────────────────────────────────────
+
+function DownloadSplit({
+    format,
+    open,
+    onToggleMenu,
+    onCloseMenu,
+    onDownload,
+    onChoose,
+    T,
+}: {
+    format: 'docx' | 'pdf';
+    open: boolean;
+    onToggleMenu: () => void;
+    onCloseMenu: () => void;
+    onDownload: () => void;
+    onChoose: (next: 'docx' | 'pdf') => void;
+    T: ReturnType<typeof useAppTheme>['T'];
+}) {
+    return (
+        <div style={{ position: 'relative', display: 'inline-flex' }} onMouseLeave={onCloseMenu}>
+            <button
+                onClick={onDownload}
+                style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '6px 10px',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: '0.06em',
+                    color: T.textMuted,
+                    background: 'transparent',
+                    border: `1px solid ${T.cardBorder}`,
+                    borderRight: 'none',
+                    borderTopLeftRadius: 8,
+                    borderBottomLeftRadius: 8,
+                    cursor: 'pointer',
+                }}
+            >
+                <Download size={13} />
+                {`.${format}`}
+            </button>
+            <button
+                onClick={onToggleMenu}
+                aria-label="Choose download format"
+                style={{
+                    padding: '6px 8px',
+                    background: 'transparent',
+                    border: `1px solid ${T.cardBorder}`,
+                    borderTopRightRadius: 8,
+                    borderBottomRightRadius: 8,
+                    color: T.textMuted,
+                    cursor: 'pointer',
+                }}
+            >
+                <ChevronDown size={13} />
+            </button>
+            {open && (
+                <div style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 4px)',
+                    right: 0,
+                    minWidth: 140,
+                    background: T.card,
+                    border: `1px solid ${T.cardBorder}`,
+                    borderRadius: 10,
+                    boxShadow: T.cardShadow,
+                    padding: 6,
+                    zIndex: 10,
+                }}>
+                    {(['docx', 'pdf'] as const).map((f) => (
+                        <button
+                            key={f}
+                            onClick={() => onChoose(f)}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                width: '100%',
+                                padding: '8px 12px',
+                                fontSize: 12,
+                                fontWeight: 600,
+                                color: T.text,
+                                background: f === format ? 'rgba(125,166,125,0.08)' : 'transparent',
+                                border: 'none',
+                                borderRadius: 6,
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                            }}
+                        >
+                            <span>.{f}</span>
+                            {f === format && <Check size={12} style={{ color: T.accentSecondary }} />}
+                        </button>
+                    ))}
+                    <p style={{ margin: '6px 8px 4px', fontSize: 10, color: T.textFaint, lineHeight: 1.5 }}>
+                        Choice persists for next time.
+                    </p>
+                </div>
+            )}
         </div>
     );
 }

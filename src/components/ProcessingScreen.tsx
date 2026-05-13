@@ -342,6 +342,23 @@ export function ProcessingScreen({ isDark: _isDark, theme: T, email, name, targe
                 Your report and personalised recommendations will be sent to <strong style={{ color: T.text }}>{email}</strong> once ready.
               </p>
             )}
+            <p style={{
+              fontSize: 12,
+              color: T.textFaint,
+              textAlign: 'center',
+              marginTop: 16,
+              lineHeight: 1.6,
+            }}>
+              While you wait,{' '}
+              <a
+                href="https://www.skool.com/aussiegradcareers"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: '#7DA67D', textDecoration: 'underline', textUnderlineOffset: 3, fontWeight: 600 }}
+              >
+                join the free Aussie Grad Careers community →
+              </a>
+            </p>
           </>
         )}
 
