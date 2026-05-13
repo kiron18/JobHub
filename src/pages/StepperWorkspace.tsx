@@ -33,7 +33,9 @@ import {
     RefreshCw,
     ListChecks,
     Briefcase,
+    ShieldCheck,
 } from 'lucide-react';
+import { DraftCritiquePanel, type CritiqueResult } from '../components/strategy/DraftCritiquePanel';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
 import api from '../lib/api';
@@ -317,6 +319,40 @@ function DocumentStep({
     const isSC = stepId === 'selection-criteria';
     const hasCriteria = isSC && criteriaText.trim().length >= 40;
 
+    // Draft critique — button-driven, never auto-run (LLM cost control).
+    const [critiqueOpen, setCritiqueOpen] = useState(false);
+    const [critiqueLoading, setCritiqueLoading] = useState(false);
+    const [critiqueResult, setCritiqueResult] = useState<CritiqueResult | null>(null);
+
+    const handleReviewDraft = async () => {
+        if (!content || critiqueLoading) return;
+        setCritiqueOpen(true);
+        setCritiqueLoading(true);
+        try {
+            const { data } = await api.post<CritiqueResult>('/analyze/critique', {
+                docType: stepId,
+                content,
+                jobDescription,
+            });
+            setCritiqueResult(data);
+        } catch (err: any) {
+            const status = err?.response?.status;
+            const msg = status === 503 ? 'Review is temporarily unavailable. Please try again.' :
+                        status === 400 ? 'Draft needs to be a bit longer before we can review it.' :
+                        'Could not review this draft. Please retry.';
+            toast.error(msg);
+            setCritiqueOpen(false);
+        } finally {
+            setCritiqueLoading(false);
+        }
+    };
+
+    // Reset critique whenever the step changes or the content is regenerated.
+    useEffect(() => {
+        setCritiqueOpen(false);
+        setCritiqueResult(null);
+    }, [workspaceKey, stepId]);
+
     // Load the persisted draft + criteria on step entry. Never regenerates on navigation.
     useEffect(() => {
         const draft = loadDraft(workspaceKey, stepId);
@@ -464,6 +500,11 @@ function DocumentStep({
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     {hasDraft && !editing && (
                         <>
+                            <ToolbarButton
+                                icon={critiqueLoading ? <Loader2 size={13} className="animate-spin" /> : <ShieldCheck size={13} />}
+                                label="Review"
+                                onClick={handleReviewDraft}
+                            />
                             <ToolbarButton icon={<Copy size={13} />} label="Copy" onClick={handleCopy} />
                             <DownloadSplit
                                 format={downloadFormat}
@@ -577,6 +618,18 @@ function DocumentStep({
                     </div>
                 )}
             </div>
+
+            {/* Draft critique panel — mounts below the preview when triggered */}
+            <AnimatePresence>
+                {critiqueOpen && (
+                    <DraftCritiquePanel
+                        open={critiqueOpen}
+                        onClose={() => setCritiqueOpen(false)}
+                        loading={critiqueLoading}
+                        result={critiqueResult}
+                    />
+                )}
+            </AnimatePresence>
 
             {/* CTAs */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>

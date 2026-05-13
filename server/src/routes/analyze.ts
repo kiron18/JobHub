@@ -13,7 +13,7 @@ import { analyzeRateLimit } from '../middleware/analyzeRateLimit';
 import { callLLM } from '../services/llm';
 import { callLLMWithRetry } from '../utils/callLLMWithRetry';
 import { searchAchievements } from '../services/vector';
-import { JOB_ANALYSIS_PROMPT, DUAL_SIGNAL_PROMPT, ACHIEVEMENT_DRAFT_PROMPT } from '../services/prompts';
+import { JOB_ANALYSIS_PROMPT, DUAL_SIGNAL_PROMPT, ACHIEVEMENT_DRAFT_PROMPT, DRAFT_CRITIQUE_PROMPT } from '../services/prompts';
 import { parseLLMJson } from '../utils/parseLLMResponse';
 import { addGrades, computeComposite } from '../services/compositeScoring';
 import { EXEMPT_EMAILS } from './stripe';
@@ -584,6 +584,91 @@ router.post('/draft-achievement', async (req: any, res: any) => {
     } catch (err: any) {
         console.error('[analyze/draft-achievement] unexpected error:', err);
         return res.status(500).json({ error: 'Draft generation failed due to a server error.' });
+    }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// POST /api/analyze/critique — audit a generated document
+// ════════════════════════════════════════════════════════════════════════════
+//
+// Reads a generated resume / cover letter / SC document back and flags the
+// recruiter-trust failure modes that AI generators tend to miss: desperation,
+// overselling, hedging, vagueness, weak openings, narrative incoherence,
+// generic positioning. Button-driven in the UI (not auto-run on every
+// generation) to keep the LLM cost surface manageable.
+
+router.post('/critique', async (req: any, res: any) => {
+    try {
+        const userId = req.user.id;
+        const { docType, content, jobDescription } = req.body as {
+            docType?: 'resume' | 'cover-letter' | 'selection-criteria';
+            content?: string;
+            jobDescription?: string;
+        };
+
+        if (!docType || !content || content.trim().length < 100) {
+            return res.status(400).json({ error: 'docType and a substantive content body are required.' });
+        }
+        if (!['resume', 'cover-letter', 'selection-criteria'].includes(docType)) {
+            return res.status(400).json({ error: 'Unsupported docType.' });
+        }
+
+        const profile = await prisma.candidateProfile.findUnique({
+            where: { userId } as any,
+        }) as any;
+        if (!profile) {
+            return res.status(404).json({ error: 'Profile not found.' });
+        }
+
+        const positioningStatement: PositioningStatement | null = profile.positioningStatement ?? null;
+
+        const prompt = DRAFT_CRITIQUE_PROMPT({
+            docType,
+            content,
+            jobDescription: jobDescription ?? null,
+            positioningStatement,
+        });
+
+        let raw;
+        try {
+            raw = await callLLMWithRetry(prompt, true);
+        } catch (err: any) {
+            console.error('[analyze/critique] LLM call failed:', err.message);
+            return res.status(503).json({ error: 'Critique is temporarily unavailable. Please try again.' });
+        }
+
+        let critique: any;
+        try {
+            critique = parseLLMJson(raw);
+        } catch {
+            return res.status(500).json({ error: 'Failed to parse critique. Please retry.' });
+        }
+
+        // Defensive normalisation — never crash the UI on a malformed response.
+        const overall = critique?.overall ?? {};
+        const issues = Array.isArray(critique?.issues) ? critique.issues : [];
+        const strengths = Array.isArray(critique?.strengths) ? critique.strengths : [];
+
+        return res.json({
+            overall: {
+                verdict: typeof overall.verdict === 'string' ? overall.verdict : '',
+                trustScore: Math.max(0, Math.min(100, Math.round(Number(overall.trustScore ?? 0)))),
+            },
+            issues: issues
+                .filter((it: any) => it && typeof it.snippet === 'string' && typeof it.category === 'string')
+                .slice(0, 8)
+                .map((it: any) => ({
+                    category: it.category,
+                    severity: ['high', 'medium', 'low'].includes(it.severity) ? it.severity : 'medium',
+                    snippet: it.snippet,
+                    why: typeof it.why === 'string' ? it.why : '',
+                    fix: typeof it.fix === 'string' ? it.fix : '',
+                })),
+            strengths: strengths.filter((s: any) => typeof s === 'string').slice(0, 4),
+        });
+    } catch (err: any) {
+        console.error('[analyze/critique] unexpected error:', err);
+        return res.status(500).json({ error: 'Critique failed due to a server error.' });
     }
 });
 

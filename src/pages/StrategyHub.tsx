@@ -19,6 +19,7 @@ import { useAppTheme } from '../contexts/ThemeContext';
 import { DimRegion, DimTarget, DimPeer } from '../components/Dim';
 import { pickInsights } from '../data/strategicInsights';
 import { AnalysisResult, type DualSignalResult } from '../components/strategy/AnalysisResult';
+import { CoherenceCard, type CoherenceSignal } from '../components/strategy/CoherenceCard';
 
 // ─── HubHeader ───────────────────────────────────────────────────────────────
 
@@ -27,6 +28,7 @@ interface ProfileLite {
     targetRole?: string;
     targetCity?: string;
     seniority?: string;
+    coherence?: CoherenceSignal[];
 }
 
 function HubHeader({ profile, jobs }: { profile?: ProfileLite; jobs: JobLite[] }) {
@@ -767,6 +769,11 @@ export function StrategyHub() {
                 <DimTarget style={{ marginBottom: 40 }}>
                     <AnalysisHeroCard />
                 </DimTarget>
+                {profile?.coherence && profile.coherence.length > 0 && (
+                    <DimPeer style={{ marginBottom: 32 }}>
+                        <CoherenceCard signals={profile.coherence} />
+                    </DimPeer>
+                )}
                 <DimPeer style={{ marginBottom: 32 }}>
                     <StrategicInsightsPanel />
                 </DimPeer>

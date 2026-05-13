@@ -5,6 +5,7 @@ import { indexAchievement } from '../../services/vector';
 import { EXEMPT_EMAILS } from '../stripe';
 import { generateBaselineResume } from '../../services/baselineResume';
 import { derivePositioningStatement, type PositioningStatement } from '../../services/positioningStatement';
+import { runCoherenceCheck } from '../../services/coherenceCheck';
 
 const router = Router();
 
@@ -107,9 +108,19 @@ router.get('/profile', authenticate, async (req, res) => {
             }
         }
 
+        // Coherence signals — heuristic profile health check. Surfaces only
+        // when there are real signals; the frontend hides the panel otherwise.
+        const coherenceSignals = runCoherenceCheck({
+            targetRole: profile.targetRole ?? null,
+            achievements: profile.achievements ?? [],
+            experience: profile.experience ?? [],
+            positioningStatement: derivedPositioning ?? storedPositioning,
+        });
+
         res.json({
             ...profile,
             positioningStatement: derivedPositioning ?? storedPositioning,
+            coherence: coherenceSignals,
             isAdmin,
             completion: {
                 score,
