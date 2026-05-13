@@ -17,6 +17,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     ArrowLeft,
     ArrowRight,
@@ -307,7 +308,16 @@ function DocumentStep({
     });
     const [formatMenuOpen, setFormatMenuOpen] = useState(false);
 
-    // Load the persisted draft on step entry. Never regenerates on navigation.
+    // ── Selection-criteria-only state ────────────────────────────────────
+    const criteriaStorageKey = `jobhub_stepper_${workspaceKey}_criteria_text`;
+    const [criteriaText, setCriteriaText] = useState<string>(() => {
+        try { return localStorage.getItem(criteriaStorageKey) ?? ''; } catch { return ''; }
+    });
+    const [criteriaPanelOpen, setCriteriaPanelOpen] = useState<boolean>(false);
+    const isSC = stepId === 'selection-criteria';
+    const hasCriteria = isSC && criteriaText.trim().length >= 40;
+
+    // Load the persisted draft + criteria on step entry. Never regenerates on navigation.
     useEffect(() => {
         const draft = loadDraft(workspaceKey, stepId);
         if (draft) {
@@ -318,17 +328,35 @@ function DocumentStep({
             setHasDraft(false);
         }
         setEditing(false);
-    }, [workspaceKey, stepId]);
+        if (isSC) {
+            try {
+                const stored = localStorage.getItem(criteriaStorageKey) ?? '';
+                setCriteriaText(stored);
+                // Open the panel automatically if no criteria yet AND no draft.
+                setCriteriaPanelOpen(stored.trim().length === 0 && !draft);
+            } catch { /* noop */ }
+        }
+    }, [workspaceKey, stepId, isSC, criteriaStorageKey]);
+
+    const handleSaveCriteria = (next: string) => {
+        setCriteriaText(next);
+        try { localStorage.setItem(criteriaStorageKey, next); } catch { /* noop */ }
+    };
 
     const generate = async (regenerate = false) => {
         if (generating) return;
+        if (isSC && !hasCriteria) {
+            toast.error('Paste the selection criteria first.');
+            setCriteriaPanelOpen(true);
+            return;
+        }
         if (regenerate && hasDraft && !confirm('Regenerate this document? The current draft will be replaced.')) return;
 
         setGenerating(true);
         try {
-            const { data } = await api.post<{ content: string }>(`/generate/${stepId}`, {
-                jobDescription,
-            });
+            const payload: Record<string, unknown> = { jobDescription };
+            if (isSC) payload.selectionCriteriaText = criteriaText.trim();
+            const { data } = await api.post<{ content: string }>(`/generate/${stepId}`, payload);
             const text = typeof data?.content === 'string' ? data.content : '';
             setContent(text);
             saveDraft(workspaceKey, stepId, {
@@ -443,6 +471,19 @@ function DocumentStep({
                 </p>
             )}
 
+            {/* Selection-criteria paste panel — only on SC step */}
+            {isSC && (
+                <CriteriaPanel
+                    open={criteriaPanelOpen}
+                    onOpen={() => setCriteriaPanelOpen(true)}
+                    onClose={() => setCriteriaPanelOpen(false)}
+                    criteriaText={criteriaText}
+                    onSave={handleSaveCriteria}
+                    hasCriteria={hasCriteria}
+                    T={T}
+                />
+            )}
+
             {/* Body */}
             <div style={{
                 position: 'relative',
@@ -513,8 +554,10 @@ function DocumentStep({
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, padding: '40px 0', color: T.textFaint, textAlign: 'center' }}>
                         <PenLine size={28} />
-                        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>
-                            Click Generate to draft this from your profile and the job description.
+                        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, maxWidth: 380 }}>
+                            {isSC
+                                ? 'Paste the selection criteria above, then Generate. We will write a STAR response per criterion, drawing on your achievement bank.'
+                                : 'Click Generate to draft this from your profile and the job description.'}
                         </p>
                     </div>
                 )}
@@ -549,8 +592,9 @@ function DocumentStep({
                     {!hasDraft && (
                         <button
                             onClick={() => generate(false)}
-                            disabled={generating}
-                            style={primaryButtonStyle(T, generating)}
+                            disabled={generating || (isSC && !hasCriteria)}
+                            style={primaryButtonStyle(T, generating || (isSC && !hasCriteria))}
+                            title={isSC && !hasCriteria ? 'Paste the selection criteria first' : undefined}
                         >
                             {generating ? (<><Loader2 size={14} className="animate-spin" /> Generating…</>) : (<>Generate<ArrowRight size={14} /></>)}
                         </button>
@@ -705,6 +749,163 @@ function TrackStep({
                     </button>
                 </div>
             </div>
+        </div>
+    );
+}
+
+// ── CriteriaPanel (SC step only) ────────────────────────────────────────────
+
+const CRITERIA_PLACEHOLDER = `Paste the selection criteria here.
+
+Australian roles, especially government and university positions, often list a
+numbered set of capabilities you must address as a separate document. They look
+like:
+
+  1. Demonstrated experience in stakeholder engagement across diverse audiences.
+  2. Proven ability to manage competing priorities in a fast-paced environment.
+  3. Excellent written and verbal communication skills.
+
+You usually find them in the role's Position Description (PD), Information Pack,
+or a section on the job page titled "Key Selection Criteria" or "Selection
+Criteria". They are NOT the same as the JD bullet list.
+
+We will write one STAR response per criterion (Situation, Task, Action, Result).
+Typical length: 250 to 350 words per criterion.`;
+
+function CriteriaPanel({
+    open,
+    onOpen,
+    onClose,
+    criteriaText,
+    onSave,
+    hasCriteria,
+    T,
+}: {
+    open: boolean;
+    onOpen: () => void;
+    onClose: () => void;
+    criteriaText: string;
+    onSave: (next: string) => void;
+    hasCriteria: boolean;
+    T: ReturnType<typeof useAppTheme>['T'];
+}) {
+    const [buffer, setBuffer] = useState(criteriaText);
+
+    useEffect(() => { setBuffer(criteriaText); }, [criteriaText]);
+
+    const handleSave = () => {
+        onSave(buffer.trim());
+        onClose();
+    };
+
+    return (
+        <div>
+            <AnimatePresence mode="wait" initial={false}>
+                {!open ? (
+                    <motion.button
+                        key="pill"
+                        onClick={onOpen}
+                        initial={{ opacity: 0 }}
+                        animate={{
+                            opacity: 1,
+                            // Subtle vibration only when no criteria are saved yet
+                            ...(hasCriteria ? {} : { y: [0, -1.5, 0, 1.5, 0] }),
+                        }}
+                        exit={{ opacity: 0 }}
+                        transition={hasCriteria ? { duration: 0.2 } : { y: { duration: 1.6, repeat: Infinity, ease: 'easeInOut' } }}
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            padding: '10px 16px',
+                            background: hasCriteria ? 'rgba(125,166,125,0.10)' : 'rgba(197,160,89,0.14)',
+                            border: `1px solid ${hasCriteria ? 'rgba(125,166,125,0.32)' : 'rgba(197,160,89,0.45)'}`,
+                            borderRadius: 999,
+                            fontSize: 12.5,
+                            fontWeight: 700,
+                            letterSpacing: '0.02em',
+                            color: hasCriteria ? T.accentSecondary : T.accentSuccess,
+                            cursor: 'pointer',
+                            boxShadow: hasCriteria ? 'none' : '0 0 0 3px rgba(197,160,89,0.10)',
+                        }}
+                    >
+                        <ListChecks size={14} />
+                        {hasCriteria ? 'Criteria saved · edit' : 'Paste selection criteria here'}
+                        <ChevronRight size={12} />
+                    </motion.button>
+                ) : (
+                    <motion.div
+                        key="panel"
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.22 }}
+                        style={{
+                            overflow: 'hidden',
+                            border: `1px solid ${T.cardBorder}`,
+                            borderRadius: 12,
+                            background: T.inputBg,
+                        }}
+                    >
+                        <div style={{ padding: '14px 16px 12px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
+                                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: T.accentSuccess }}>
+                                    Selection criteria
+                                </p>
+                                <button
+                                    onClick={onClose}
+                                    style={{ background: 'transparent', border: 'none', color: T.textMuted, fontSize: 12, cursor: 'pointer', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 3 }}
+                                >
+                                    Hide
+                                </button>
+                            </div>
+                            <textarea
+                                value={buffer}
+                                onChange={(e) => setBuffer(e.target.value)}
+                                placeholder={CRITERIA_PLACEHOLDER}
+                                rows={10}
+                                spellCheck
+                                style={{
+                                    width: '100%',
+                                    padding: '12px 14px',
+                                    fontSize: 13,
+                                    lineHeight: 1.65,
+                                    color: T.inputText,
+                                    background: T.bg,
+                                    border: `1px solid ${T.inputBorder}`,
+                                    borderRadius: 10,
+                                    outline: 'none',
+                                    resize: 'vertical',
+                                    fontFamily: 'inherit',
+                                    boxSizing: 'border-box',
+                                }}
+                            />
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, gap: 12 }}>
+                                <p style={{ margin: 0, fontSize: 11, color: T.textFaint, lineHeight: 1.5 }}>
+                                    {buffer.trim().length} characters · we recommend pasting all numbered criteria together.
+                                </p>
+                                <button
+                                    onClick={handleSave}
+                                    disabled={buffer.trim().length < 40}
+                                    style={{
+                                        padding: '7px 14px',
+                                        fontSize: 12,
+                                        fontWeight: 700,
+                                        color: T.btnText,
+                                        background: buffer.trim().length < 40 ? 'rgba(45,90,110,0.4)' : T.btnBg,
+                                        border: 'none',
+                                        borderRadius: 8,
+                                        cursor: buffer.trim().length < 40 ? 'not-allowed' : 'pointer',
+                                        opacity: buffer.trim().length < 40 ? 0.6 : 1,
+                                    }}
+                                >
+                                    Use these criteria
+                                </button>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
