@@ -382,6 +382,21 @@ function DocumentStep({
         toast.success('Copied');
     };
 
+    // VERIFY tokens are inserted by the generator wherever the AI lacks
+    // confidence (job title gaps, fabricated metrics, etc.) and needs human
+    // review. We warn on continue rather than block — calm-ally, not gatekeeper.
+    const hasVerifyTokens = useMemo(() => /\[VERIFY:[^\]]*\]/i.test(content), [content]);
+
+    const handleContinueWithVerifyCheck = () => {
+        if (hasVerifyTokens) {
+            const ok = confirm(
+                'This draft still contains [VERIFY: ...] notes — spots where the AI flagged details for you to confirm or fill in before sending. Continue anyway?'
+            );
+            if (!ok) return;
+        }
+        onContinue();
+    };
+
     const handleEditToggle = () => {
         if (editing) {
             // Save edits
@@ -601,9 +616,10 @@ function DocumentStep({
                     )}
                     {hasDraft && (
                         <button
-                            onClick={onContinue}
+                            onClick={handleContinueWithVerifyCheck}
                             disabled={generating}
                             style={primaryButtonStyle(T, generating)}
+                            title={hasVerifyTokens ? 'This draft has unverified placeholders' : undefined}
                         >
                             {isLast ? 'Finish' : 'Save & continue'}
                             <ArrowRight size={14} />
