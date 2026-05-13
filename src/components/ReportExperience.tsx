@@ -5,25 +5,30 @@ import { Sun, Moon, Copy, Check, X, Star, ChevronDown } from 'lucide-react';
 import api from '../lib/api';
 import { parseReportSections, splitProblemFix } from '../lib/parseReport';
 
-// ── Color constants ────────────────────────────────────────────────────────────
-const INDIGO = '#5850EC';
-const TEAL   = '#0F766E';
-const RED    = '#ef4444';
-const AMBER  = '#f59e0b';
+// ── Strategy Hub palette (replaces the previous severity-coded indigo/red/amber/teal) ──
+// Calm-ally rule: no red, no orange. Severity coding is removed. Sections use
+// neutral slate for informational areas and muted gold for action-worthy ones.
+const PETROL = '#2D5A6E';
+const GOLD   = '#C5A059';
+const SAGE   = '#7DA67D';
+const SLATE  = '#9ca3af';
+const TEAL   = SAGE; // Legacy alias retained for downstream references (loading spinner, Skool link)
+const INDIGO = PETROL; // Legacy alias for the CTA glow + active chip
 
-// ── Section metadata (replaces SECTION_ICONS, simplified 2-color palette) ────
+// ── Section metadata ──────────────────────────────────────────────────────────
+// No severity labels. No critical/review distinction. Every section gets the
+// same neutral slate treatment; the action-plan section gets a muted gold
+// accent to mark it as forward-looking, not because the others are "worse".
 const SECTION_META: Record<string, {
   label: string;
-  severity: string;
   color: string;
   bg: string;
-  isCritical: boolean;
 }> = {
-  targeting:      { label: 'Targeting',            severity: 'REVIEW',      color: AMBER,   bg: 'rgba(245,158,11,0.08)',  isCritical: false },
-  document_audit: { label: 'Document Audit',       severity: 'CRITICAL',    color: RED,     bg: 'rgba(239,68,68,0.08)',   isCritical: true  },
-  pipeline:       { label: 'Application Pipeline', severity: 'REVIEW',      color: AMBER,   bg: 'rgba(245,158,11,0.08)',  isCritical: false },
-  honest:         { label: 'The Honest Truth',     severity: 'CRITICAL',    color: RED,     bg: 'rgba(239,68,68,0.08)',   isCritical: true  },
-  fix:            { label: 'Your 3-Step Fix',      severity: 'ACTION PLAN', color: INDIGO,  bg: 'rgba(88,80,236,0.08)',   isCritical: false },
+  targeting:      { label: 'Targeting',                color: SLATE, bg: 'rgba(160,164,168,0.08)' },
+  document_audit: { label: 'Document Audit',           color: SLATE, bg: 'rgba(160,164,168,0.08)' },
+  pipeline:       { label: 'Application Pipeline',     color: SLATE, bg: 'rgba(160,164,168,0.08)' },
+  honest:         { label: 'Primary Strategic Gap',    color: SLATE, bg: 'rgba(160,164,168,0.08)' },
+  fix:            { label: 'Your Next Three Moves',    color: GOLD,  bg: 'rgba(197,160,89,0.08)'  },
 };
 
 const SECTION_ORDER    = ['targeting', 'document_audit', 'pipeline', 'honest', 'fix', 'what_jobhub_does'];
@@ -39,11 +44,11 @@ const SECTION_TEASERS: Record<string, string> = {
 };
 
 const RESPONSE_INTROS: Record<string, string> = {
-  mostly_silence:    'You\'re not clearing the first screening. Applications are going in but nothing is coming back, the block is somewhere in your targeting, resume, or positioning.',
-  mostly_rejections: 'You\'re visible, but not compelling enough on paper. The gap is usually how your experience is framed, not the experience itself.',
-  interviews_stall:  'You\'re getting in the room, which means your documents work. The issue is how you\'re presenting your value once you\'re there.',
-  no_offers:         'You\'re making the shortlist. The difference between you and whoever they pick is narrow, and almost always specific and fixable.',
-  mix:               'An inconsistent pattern usually means the core positioning isn\'t locked in. Fix that first and the rest tends to follow.',
+  mostly_silence:    'Applications are going in and replies are not coming back yet. The signal is that the next move sits in your targeting, resume, or positioning, before anything in the room.',
+  mostly_rejections: 'You are getting noticed, which means the top of the funnel is working. The next move is usually how your experience is framed on the page, not the experience itself.',
+  interviews_stall:  'You are getting into the room, which means your documents are doing their job. The next move is how you present your value once you are there.',
+  no_offers:         'You are reaching the shortlist. The gap between you and the chosen candidate is narrow and almost always specific and fixable.',
+  mix:               'An inconsistent pattern usually means the core positioning is not locked in. Sharpen that first and the rest tends to follow.',
 };
 
 // ── Theme ──────────────────────────────────────────────────────────────────────
@@ -71,7 +76,7 @@ function makeTheme(isDark: boolean) {
     chipActive:   INDIGO,
     referralBg:   'rgba(255,255,255,0.025)',
     referralBorder:'rgba(255,255,255,0.07)',
-    blobs:        ['rgba(88,80,236,0.05)', 'rgba(15,118,110,0.04)', 'rgba(239,68,68,0.03)'],
+    blobs:        ['rgba(45,90,110,0.05)', 'rgba(125,166,125,0.04)', 'rgba(197,160,89,0.03)'],
   } : {
     bg:           '#f5f4f0',
     card:         'rgba(255,255,255,0.92)',
@@ -95,7 +100,7 @@ function makeTheme(isDark: boolean) {
     chipActive:   INDIGO,
     referralBg:   'rgba(248,250,252,0.95)',
     referralBorder:'rgba(0,0,0,0.07)',
-    blobs:        ['rgba(88,80,236,0.07)', 'rgba(15,118,110,0.06)', 'rgba(239,68,68,0.04)'],
+    blobs:        ['rgba(45,90,110,0.07)', 'rgba(125,166,125,0.06)', 'rgba(197,160,89,0.04)'],
   };
 }
 
@@ -114,12 +119,63 @@ function renderInline(text: string, headingColor?: string): React.ReactNode {
   );
 }
 
+// Pattern-styled headers — Option 2 / cheap path: no prompt change, just
+// recognise the consulting-deck patterns the LLM already emits and decorate
+// them in place. Three categories:
+//   - REQUIRES  (target signal):  "What X requires", "What X demands", ...
+//   - SHOWS     (current state):  "Your resume shows", "What your resume shows"
+//   - BRIDGE    (action):         "The bridge", "The fix", "The next move"
+const COMPARISON_PATTERNS = {
+    REQUIRES: /^(what\s+.+?\s+(requires?|needs?|demands?|expects?|looks\s+for|wants?))\s*:?\s*$/i,
+    SHOWS:    /^((what\s+)?your\s+(resume|profile|current\s+resume)(\s+(currently\s+)?shows?)?|your\s+resume\s+currently\s+shows?)\s*:?\s*$/i,
+    BRIDGE:   /^(the\s+(bridge|fix|next\s+move|move)|what\s+to\s+do|reframe(d)?\s+as|action\s*\d*)\s*:?\s*$/i,
+};
+
+function classifyPatternLine(t: string): 'REQUIRES' | 'SHOWS' | 'BRIDGE' | null {
+    if (COMPARISON_PATTERNS.REQUIRES.test(t)) return 'REQUIRES';
+    if (COMPARISON_PATTERNS.SHOWS.test(t))    return 'SHOWS';
+    if (COMPARISON_PATTERNS.BRIDGE.test(t))   return 'BRIDGE';
+    return null;
+}
+
+const PATTERN_STYLES: Record<'REQUIRES' | 'SHOWS' | 'BRIDGE', { fg: string; bg: string; border: string; label: string }> = {
+    REQUIRES: { fg: '#C5A059', bg: 'rgba(197,160,89,0.10)', border: 'rgba(197,160,89,0.30)', label: 'Target' },
+    SHOWS:    { fg: '#A0A4A8', bg: 'rgba(160,164,168,0.08)', border: 'rgba(160,164,168,0.22)', label: 'Current' },
+    BRIDGE:   { fg: '#7DA67D', bg: 'rgba(125,166,125,0.10)', border: 'rgba(125,166,125,0.30)', label: 'Next move' },
+};
+
 function RenderContent({ text, color, headingColor }: { text: string; color: string; headingColor?: string }) {
   const lines = text.split('\n').filter(l => { const t = l.trim(); return t && t !== '---'; });
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
       {lines.map((line, i) => {
         const t = line.trim();
+        const patternKind = classifyPatternLine(t.replace(/[*_`]/g, ''));
+        if (patternKind) {
+          const style = PATTERN_STYLES[patternKind];
+          return (
+            <div key={i} style={{
+              display: 'inline-flex',
+              alignSelf: 'flex-start',
+              alignItems: 'center',
+              gap: 8,
+              padding: '5px 10px',
+              fontSize: 10,
+              fontWeight: 800,
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              color: style.fg,
+              background: style.bg,
+              border: `1px solid ${style.border}`,
+              borderRadius: 999,
+              marginTop: i === 0 ? 0 : 6,
+            }}>
+              <span style={{ fontSize: 9, opacity: 0.75 }}>{style.label}</span>
+              <span style={{ width: 1, height: 11, background: style.border }} />
+              <span>{t.replace(/\s*:?\s*$/, '').replace(/[*_`]/g, '')}</span>
+            </div>
+          );
+        }
         if (t.startsWith('> ') || t.startsWith('>')) {
           const quote = t.replace(/^>\s?/, '');
           return (
@@ -230,8 +286,8 @@ function SocialProofWidget({ isDark, theme }: { isDark: boolean; theme: ReturnTy
               >
                 <Star
                   size={28}
-                  fill={(hovered || rating) >= n ? AMBER : 'none'}
-                  color={(hovered || rating) >= n ? AMBER : (isDark ? '#374151' : '#d1d5db')}
+                  fill={(hovered || rating) >= n ? GOLD : 'none'}
+                  color={(hovered || rating) >= n ? GOLD : (isDark ? '#374151' : '#d1d5db')}
                   strokeWidth={1.5}
                   style={{ transition: 'all 0.1s' }}
                 />
@@ -370,16 +426,15 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
 
   const BLOCKER_PRIORITY = ['document_audit', 'honest', 'targeting', 'pipeline'];
   const BLOCKER_HEADLINES: Record<string, string> = {
-    document_audit: 'Your resume isn\'t clearing the 6-second recruiter test.',
-    honest:         'Your positioning isn\'t matching what the market wants.',
-    targeting:      'Your targeting strategy is working against you.',
-    pipeline:       'Your applications aren\'t turning into conversations.',
+    document_audit: 'Next step: sharpen the first six seconds of your resume.',
+    honest:         'Next step: align your positioning with the market signal.',
+    targeting:      'Next step: tighten which roles you target and how you frame for them.',
+    pipeline:       'Next step: convert more applications into conversations.',
   };
   const topKey = BLOCKER_PRIORITY.find(k => sections.some(s => s.key === k));
-  const stickyHeadline = topKey ? BLOCKER_HEADLINES[topKey] : 'Your job search has a clear blocker.';
+  const stickyHeadline = topKey ? BLOCKER_HEADLINES[topKey] : 'Your strategic diagnosis is ready.';
 
   const overviewSource = sections.find(s => s.key === 'honest')
-    ?? cardSections.find(s => SECTION_META[s.key]?.isCritical)
     ?? cardSections[0];
   const overviewText = (() => {
     if (!overviewSource) return '';
@@ -455,19 +510,16 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
             )}
             <h1 style={{ fontSize: 'clamp(28px, 5.5vw, 42px)', fontWeight: 900, color: theme.heading, margin: '0 0 20px', lineHeight: 1.12, letterSpacing: '-0.03em' }}>
               {targetRole
-                ? <>here's what's holding back<br />your{' '}
-                    <span style={{
-                      background: 'linear-gradient(90deg, #f97316 0%, #eab308 28%, #ec4899 62%, #8b5cf6 100%)',
-                      WebkitBackgroundClip: 'text',
-                      backgroundClip: 'text',
-                      color: 'transparent',
-                      display: 'inline-block',
-                    }}>{targetRole}</span>
-                    {' '}job search.
+                ? <>your{' '}
+                    <span style={{ color: GOLD, display: 'inline-block' }}>{targetRole}</span>
+                    {' '}strategic diagnosis.
                   </>
-                : <>here's what's actually holding you back.</>
+                : <>your strategic diagnosis.</>
               }
             </h1>
+            <p style={{ fontSize: 16, color: theme.sub, lineHeight: 1.6, margin: '0 0 16px', maxWidth: 520, marginInline: 'auto' }}>
+              We analysed your application profile. Here is the gap between your current resume and the roles you are targeting, and the specific moves that close it.
+            </p>
             {responsePattern && RESPONSE_INTROS[responsePattern] && (
               <div style={{
                 display: 'inline-block',
@@ -634,7 +686,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                       backdropFilter: 'blur(24px)',
                       WebkitBackdropFilter: 'blur(24px)',
                       overflow: 'hidden',
-                      boxShadow: isOpen && meta.isCritical
+                      boxShadow: isOpen
                         ? `0 4px 24px ${meta.color}12`
                         : '0 2px 8px rgba(0,0,0,0.05)',
                       transition: 'border-color 0.25s, box-shadow 0.25s',
@@ -664,8 +716,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                         )}
                       </div>
                       <div style={{
-                        width: 7, height: 7, borderRadius: '50%', background: meta.color, flexShrink: 0,
-                        ...(meta.isCritical ? { boxShadow: `0 0 6px ${meta.color}70`, animation: 'criticalPulse 3s ease-in-out infinite' } : {}),
+                        width: 7, height: 7, borderRadius: '50%', background: meta.color, flexShrink: 0, opacity: 0.7,
                       }} />
                       <motion.span
                         animate={{ rotate: isOpen ? 180 : 0 }}
@@ -747,58 +798,38 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                   </span>
                 </div>
                 <h2 style={{ fontSize: 'clamp(24px, 4vw, 32px)', fontWeight: 900, color: theme.heading, margin: '0 0 12px', lineHeight: 1.15, letterSpacing: '-0.025em' }}>
-                  You now know exactly<br />what's holding you back.
+                  You have the experience.<br />Now let's build the narrative.
                 </h2>
                 <p style={{ fontSize: 15, color: theme.sub, lineHeight: 1.7, maxWidth: 480, margin: '0 auto 0' }}>
-                  {firstName ? `${firstName}, you` : 'You'} have what it takes, the issue is how it's being packaged.
-                  The platform turns your diagnosis into action: resume rewrites, targeted applications, and the exact changes your report identified.
+                  {firstName ? `${firstName}, your` : 'Your'} diagnosis points to the exact framing changes that will close the gap. The platform turns it into a tailored resume, cover letter, and selection-criteria responses, ready to send.
                 </p>
               </div>
 
-              {/* Urgency note */}
-              <div style={{
-                background: isDark ? 'rgba(251,191,36,0.06)' : 'rgba(254,243,199,0.85)',
-                border: `1px solid ${isDark ? 'rgba(251,191,36,0.22)' : 'rgba(251,191,36,0.40)'}`,
-                borderRadius: 12, padding: '13px 20px', marginBottom: 20, textAlign: 'center',
-              }}>
-                <p style={{ margin: 0, fontSize: 14, color: isDark ? '#fcd34d' : '#92400e', lineHeight: 1.65, fontWeight: 500 }}>
-                  Every day you delay is another day Australians with connections get the jobs you want.
-                </p>
-              </div>
-
-              {/* Primary CTA */}
+              {/* Primary CTA — calm petrol, no FOMO band */}
               <div ref={ctaRef} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
                 <motion.button
                   onClick={onDone}
-                  animate={{
-                    boxShadow: [
-                      `0 4px 18px ${INDIGO}35`,
-                      `0 6px 32px ${INDIGO}60`,
-                      `0 4px 18px ${INDIGO}35`,
-                    ],
-                  }}
-                  transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
-                  whileHover={{ scale: 1.015 }}
-                  whileTap={{ scale: 0.98 }}
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
                   style={{
-                    width: '100%', background: 'linear-gradient(135deg, #f97316 0%, #ec4899 50%, #7c3aed 100%)',
-                    color: 'white', borderRadius: 14, padding: '16px 24px',
-                    fontSize: 16, fontWeight: 800, border: 'none', cursor: 'pointer',
+                    width: '100%', background: PETROL,
+                    color: '#E0E0E0', borderRadius: 14, padding: '16px 24px',
+                    fontSize: 16, fontWeight: 700, border: 'none', cursor: 'pointer',
                     letterSpacing: '-0.01em',
-                    boxShadow: '0 6px 24px rgba(236, 72, 153, 0.35)',
+                    boxShadow: `0 6px 24px ${PETROL}40`,
                   }}
                 >
-                  Build your interview-ready resume, Free →
+                  Turn this diagnosis into an interview-ready resume →
                 </motion.button>
                 <p style={{ margin: 0, fontSize: 12, color: theme.sub, textAlign: 'center' }}>
-                  First 5 resume applications completely free, no card needed
+                  First five tailored applications free. No card needed.
                 </p>
                 <div style={{ textAlign: 'center' }}>
                   <a
                     href="https://www.skool.com/aussiegradcareers" target="_blank" rel="noopener noreferrer"
-                    style={{ fontSize: 13, color: isDark ? '#2dd4bf' : TEAL, textDecoration: 'underline', textUnderlineOffset: 3, fontWeight: 600 }}
+                    style={{ fontSize: 13, color: SAGE, textDecoration: 'underline', textUnderlineOffset: 3, fontWeight: 600 }}
                   >
-                    Or join the free community (Skool), frameworks, templates & weekly guidance →
+                    Or join the free community on Skool, frameworks, templates and weekly guidance →
                   </a>
                 </div>
               </div>
@@ -816,7 +847,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                   Share this, they get a free diagnosis.
                 </p>
                 <p style={{ fontSize: 13, color: theme.sub, lineHeight: 1.6, margin: '0 0 14px' }}>
-                  Every international grad you refer gets clarity on exactly what's holding their applications back.
+                  Every international grad you refer gets clarity on the specific moves that will sharpen their applications.
                 </p>
                 <div style={{
                   background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',

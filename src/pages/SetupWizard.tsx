@@ -162,7 +162,7 @@ const FALLBACK_MESSAGES: Partial<Record<StepType, string>> = {
 const COMPETITIVE_PROGRESS: Partial<Record<StepType, { strength: string; label: string }>> = {
   summary:        { strength: '5/10', label: "Summary added. Recruiters read this in 6 seconds, yours now makes them stop." },
   experience:     { strength: '6/10', label: "You're now ahead of 60% of applicants. Most stop here." },
-  achievements:   { strength: '8/10', label: "This step alone moves you from bottom 50% to top 25%." },
+  achievements:   { strength: '8/10', label: "Quantified achievements are what move applications from screened-out to shortlisted." },
   education:      { strength: '8/10', label: "Most applicants stop here. You're going further." },
   certifications: { strength: '8.5/10', label: "Any credential adds credibility, and most don't have one." },
   volunteering:   { strength: '9/10', label: "Hiring managers notice this section. Most candidates leave it blank." },
@@ -1247,7 +1247,7 @@ export function SetupWizard() {
                   Hold up, these look like job duties, not achievements.
                 </p>
                 <p style={{ margin: '0 0 10px', fontSize: 12, color: '#d97706', lineHeight: 1.55 }}>
-                  "Managed social media" won't get you interviews. "Grew Instagram from 4k to 22k in 6 months" will. Add a number or outcome to at least one bullet.
+                  "Managed social media" reads as a duty. "Grew Instagram from 4k to 22k in 6 months" reads as an outcome. Add a number or result to at least one bullet to make this work harder.
                 </p>
                 <button
                   onClick={() => setShowDutyWarning(false)}

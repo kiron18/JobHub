@@ -638,7 +638,7 @@ function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, onBa
         Now upload your documents.
       </h2>
       <p style={{ color: T.textMuted, fontSize: 13, lineHeight: 1.6, marginBottom: 6 }}>
-        We're not judging them, we're reading them to find exactly what's holding you back.
+        We're reading them to find the specific moves that will sharpen your applications.
       </p>
       <p style={{ color: T.textFaint, fontSize: 12, marginBottom: 16 }}>PDF or Word accepted.</p>
 

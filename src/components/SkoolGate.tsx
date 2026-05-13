@@ -86,8 +86,8 @@ export function SkoolGate({ onJoined }: SkoolGateProps) {
                   Your diagnosis is ready, {name}.
                 </h2>
                 <p style={{ fontSize: 15, color: '#9ca3af', lineHeight: 1.75, marginBottom: 16 }}>
-                  We've gone through your situation and put together an honest breakdown of
-                  what's actually holding back your <strong style={{ color: '#e5e7eb' }}>{role}</strong> search.
+                  We've analysed your profile and put together a strategic breakdown of the
+                  specific moves that will sharpen your <strong style={{ color: '#e5e7eb' }}>{role}</strong> applications.
                 </p>
                 <p style={{ fontSize: 18, color: '#e5e7eb', fontWeight: 800, lineHeight: 1.35, marginBottom: 28, letterSpacing: '-0.01em' }}>
                   Before you read it.<br />One quick step.
