@@ -105,17 +105,277 @@ function makeTheme(isDark: boolean) {
 }
 
 // ── Inline markdown renderer ───────────────────────────────────────────────────
+// Numbers carry the diagnostic's most concrete signal. Bolding them gives a
+// scanning eye the data points without forcing the user to read every sentence.
+// Matches: "5+ years", "0-2 years", "30%", "$200K", "12 months", "6 weeks".
+const NUMBER_PATTERN = /(\d+(?:\.\d+)?(?:[-+](?:\d+(?:\.\d+)?))?[%]?(?:\s*(?:years?|yrs?|months?|weeks?|days?|hrs?|hours?|\+|k|m))?|\$\d+(?:[.,]\d+)?\s*[kKmM]?\+?)/g;
+
 function renderInline(text: string, headingColor?: string): React.ReactNode {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g);
-  if (parts.length === 1) return text;
+  // First split by bold markers to preserve LLM-emitted bolds.
+  const boldParts = text.split(/(\*\*[^*]+\*\*)/g);
   return (
     <>
-      {parts.map((part, i) =>
-        part.startsWith('**') && part.endsWith('**')
-          ? <strong key={i} style={{ fontWeight: 700, color: headingColor ?? '#f3f4f6' }}>{part.slice(2, -2)}</strong>
-          : <span key={i}>{part}</span>
-      )}
+      {boldParts.map((part, i) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+          return <strong key={i} style={{ fontWeight: 700, color: headingColor ?? '#f3f4f6' }}>{part.slice(2, -2)}</strong>;
+        }
+        // For non-bold segments, auto-bold numeric tokens.
+        const numberParts = part.split(NUMBER_PATTERN);
+        return (
+          <span key={i}>
+            {numberParts.map((np, j) =>
+              NUMBER_PATTERN.test(np)
+                ? <strong key={j} style={{ fontWeight: 700, color: headingColor ?? 'inherit', fontVariantNumeric: 'tabular-nums' }}>{np}</strong>
+                : <span key={j}>{np}</span>
+            )}
+          </span>
+        );
+      })}
     </>
+  );
+}
+
+// ── Section preview extraction ───────────────────────────────────────────────
+//
+// Each section card now shows ALWAYS-VISIBLE: a one-sentence headline + up to
+// three operative bullets. Everything else moves behind a "Why this matters"
+// accordion. This is the progressive-disclosure pattern from the revamp doc:
+// a user should understand the core problem in 30 seconds without scrolling.
+
+interface SectionPreview {
+  headline: string;
+  bullets: string[];
+  depth: string;
+}
+
+function extractSectionPreview(markdown: string): SectionPreview {
+  const lines = markdown.split('\n').map(l => l.replace(/\s+$/, '')).filter(l => l.trim() && l.trim() !== '---');
+  let headline = '';
+  let headlineIdx = -1;
+
+  // Headline: first non-bullet, non-blockquote, non-heading line.
+  for (let i = 0; i < lines.length; i++) {
+    const t = lines[i].trim();
+    if (!t.startsWith('-') && !t.startsWith('•') && !t.startsWith('>') && !t.startsWith('#')) {
+      headline = t.replace(/[*_`]/g, '');
+      headlineIdx = i;
+      break;
+    }
+  }
+
+  // Bullets: first three bullets that follow the headline (or appear before
+  // any other paragraph if there's no headline).
+  const bullets: string[] = [];
+  const consumedIndices = new Set<number>();
+  if (headlineIdx >= 0) consumedIndices.add(headlineIdx);
+
+  for (let i = headlineIdx + 1; i < lines.length && bullets.length < 3; i++) {
+    const t = lines[i].trim();
+    if (t.startsWith('-') || t.startsWith('•')) {
+      bullets.push(t.replace(/^[-•]\s*/, ''));
+      consumedIndices.add(i);
+    } else if (bullets.length > 0) {
+      // Stop at the first non-bullet after we started picking bullets.
+      break;
+    }
+  }
+
+  // Depth: everything else, preserving original ordering.
+  const depthLines = lines.filter((_, i) => !consumedIndices.has(i));
+  const depth = depthLines.join('\n').trim();
+
+  return { headline, bullets, depth };
+}
+
+function extractFirstSentence(markdown: string, maxChars = 180): string {
+  if (!markdown) return '';
+  const clean = markdown.replace(/^#+\s.*$/gm, '').replace(/^[-•]\s.*$/gm, '').replace(/\*\*/g, '').replace(/\n+/g, ' ').trim();
+  const match = clean.match(/^(.+?[.!?])(\s|$)/);
+  let sentence = (match ? match[1] : clean).trim();
+  if (sentence.length > maxChars) sentence = sentence.slice(0, maxChars - 1).trimEnd() + '…';
+  return sentence;
+}
+
+// ── DisconnectCard ──────────────────────────────────────────────────────────
+//
+// Above-the-fold visual mismatch. Two factual columns side-by-side, one
+// gap-insight sentence below. The shape carries the story before the words.
+// Calm-ally rule: this is a comparison, not a verdict. Equal weight on both
+// columns, no red colour, no severity language. The insight line uses the
+// same palette as the sage "next move" accent so it reads as forward motion.
+
+interface PositioningLite {
+  raw: string;
+  components?: { title?: string; seniority?: string; years?: number; domain?: string; education?: string };
+}
+
+interface DisconnectCardProfile {
+  targetRole?: string;
+  positioningStatement?: PositioningLite | null;
+}
+
+const SENIORITY_TARGET_MAP: Record<string, string> = {
+  graduate:  'typically 0-2 years',
+  junior:    'typically 1-3 years',
+  associate: 'typically 1-3 years',
+  mid:       'typically 3-5 years',
+  senior:    'typically 5-8 years',
+  lead:      'typically 7-10 years',
+  manager:   'typically 5-10 years',
+  principal: 'typically 8-12 years',
+  head:      'typically 10+ years',
+  director:  'typically 12+ years',
+  vp:        'typically 15+ years',
+  chief:     'typically 15+ years',
+};
+
+function detectTargetSeniority(targetRole?: string): string | null {
+  if (!targetRole) return null;
+  const lower = targetRole.toLowerCase();
+  for (const key of Object.keys(SENIORITY_TARGET_MAP)) {
+    if (lower.includes(key)) return key;
+  }
+  return null;
+}
+
+function DisconnectCard({
+  profile,
+  gapInsight,
+  theme,
+  isDark,
+}: {
+  profile: DisconnectCardProfile;
+  gapInsight: string;
+  theme: ReturnType<typeof makeTheme>;
+  isDark: boolean;
+}) {
+  const targetRole = profile.targetRole?.trim();
+  const positioning = profile.positioningStatement;
+  const components = positioning?.components ?? {};
+
+  const targetSeniorityKey = detectTargetSeniority(targetRole);
+  const targetYearsHint = targetSeniorityKey ? SENIORITY_TARGET_MAP[targetSeniorityKey] : null;
+
+  const currentTitle = components.title?.trim();
+  const currentYears = components.years;
+  const currentDomain = components.domain?.trim();
+
+  const renderColumn = (
+    label: string,
+    accentColor: string,
+    rows: Array<{ caption: string; value: string }>,
+  ) => (
+    <div style={{
+      flex: 1,
+      minWidth: 0,
+      padding: '18px 20px',
+      background: isDark ? 'rgba(255,255,255,0.025)' : 'rgba(0,0,0,0.025)',
+      border: `1px solid ${theme.cardBorder}`,
+      borderRadius: 14,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 12,
+    }}>
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ width: 6, height: 6, borderRadius: '50%', background: accentColor, opacity: 0.8 }} />
+        <p style={{
+          margin: 0,
+          fontSize: 10,
+          fontWeight: 800,
+          letterSpacing: '0.14em',
+          textTransform: 'uppercase',
+          color: accentColor,
+        }}>
+          {label}
+        </p>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {rows.map((row, i) => (
+          <div key={i}>
+            <p style={{ margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: theme.sub, marginBottom: 2 }}>
+              {row.caption}
+            </p>
+            <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: theme.heading, lineHeight: 1.35, letterSpacing: '-0.01em', fontVariantNumeric: 'tabular-nums' }}>
+              {renderInline(row.value, theme.heading)}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const targetRows: Array<{ caption: string; value: string }> = [];
+  if (targetRole) targetRows.push({ caption: 'Role', value: targetRole });
+  if (targetYearsHint) targetRows.push({ caption: 'Experience window', value: targetYearsHint });
+
+  const currentRows: Array<{ caption: string; value: string }> = [];
+  if (currentTitle) currentRows.push({ caption: 'Resume reads as', value: currentTitle });
+  if (typeof currentYears === 'number' && currentYears > 0) {
+    currentRows.push({ caption: 'Experience', value: `${currentYears}${currentYears >= 25 ? '+' : ''} years` });
+  }
+  if (currentDomain && currentDomain !== 'general industry') {
+    currentRows.push({ caption: 'Domain', value: currentDomain.charAt(0).toUpperCase() + currentDomain.slice(1) });
+  }
+
+  // If we have nothing useful in either column, don't render — the section is meant to enlighten, not pad.
+  if (targetRows.length === 0 && currentRows.length === 0) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, delay: 0.1 }}
+      style={{
+        background: theme.card,
+        border: `1px solid ${theme.cardBorder}`,
+        borderRadius: 20,
+        padding: 24,
+        marginBottom: 32,
+        backdropFilter: 'blur(24px)',
+        WebkitBackdropFilter: 'blur(24px)',
+      }}
+    >
+      <p style={{
+        margin: '0 0 16px',
+        fontSize: 10,
+        fontWeight: 800,
+        letterSpacing: '0.16em',
+        textTransform: 'uppercase',
+        color: theme.sub,
+        textAlign: 'center',
+      }}>
+        Where you stand
+      </p>
+
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        {targetRows.length > 0 && renderColumn('Targeting', '#C5A059', targetRows)}
+        {currentRows.length > 0 && renderColumn('Your profile reads as', '#A0A4A8', currentRows)}
+      </div>
+
+      {gapInsight && (
+        <div style={{
+          marginTop: 18,
+          padding: '14px 18px',
+          background: 'rgba(125,166,125,0.06)',
+          border: '1px solid rgba(125,166,125,0.25)',
+          borderRadius: 12,
+        }}>
+          <p style={{
+            margin: '0 0 6px',
+            fontSize: 10,
+            fontWeight: 800,
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+            color: '#7DA67D',
+          }}>
+            The gap, in one line
+          </p>
+          <p style={{ margin: 0, fontSize: 14, color: theme.heading, lineHeight: 1.6, fontWeight: 500 }}>
+            {renderInline(gapInsight, theme.heading)}
+          </p>
+        </div>
+      )}
+    </motion.div>
   );
 }
 
@@ -380,7 +640,15 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
     refetchInterval: (query) => query.state.data?.status === 'PROCESSING' ? 4000 : false,
   });
 
-  const { data: profile } = useQuery<{ name?: string; targetRole?: string; responsePattern?: string }>({
+  const { data: profile } = useQuery<{
+    name?: string;
+    targetRole?: string;
+    responsePattern?: string;
+    positioningStatement?: {
+      raw: string;
+      components?: { title?: string; seniority?: string; years?: number; domain?: string; education?: string };
+    } | null;
+  }>({
     queryKey: ['profile'],
     queryFn: async () => { const { data } = await api.get('/profile'); return data; },
     staleTime: 5 * 60 * 1000,
@@ -434,15 +702,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
   const topKey = BLOCKER_PRIORITY.find(k => sections.some(s => s.key === k));
   const stickyHeadline = topKey ? BLOCKER_HEADLINES[topKey] : 'Your strategic diagnosis is ready.';
 
-  const overviewSource = sections.find(s => s.key === 'honest')
-    ?? cardSections[0];
-  const overviewText = (() => {
-    if (!overviewSource) return '';
-    const clean = overviewSource.content.replace(/\*\*/g, '').replace(/\n+/g, ' ');
-    const sentences = clean.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(Boolean);
-    const excerpt = sentences.slice(0, 2).join(' ');
-    return excerpt.length > 0 ? excerpt : '';
-  })();
+  // Overview snapshot was removed in favour of the DisconnectCard.
 
   return (
     <>
@@ -534,22 +794,20 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                 </p>
               </div>
             )}
-            {cardSections.length > 0 && (
-              <div style={{ marginTop: 20, maxWidth: 460, margin: '20px auto 0' }}>
-                <div style={{
-                  padding: '12px 16px',
-                  borderRadius: 10,
-                  background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
-                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'}`,
-                }}>
-                  <p style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.14em', color: isDark ? '#4b5563' : '#9ca3af', margin: '0 0 5px' }}>How to read this</p>
-                  <p style={{ fontSize: 12, color: theme.intro, lineHeight: 1.75, margin: 0 }}>
-                    {cardSections.length} sections, ranked by impact. Each covers: what's happening, why it's costing you results, and what to do instead. Read in order, the first section is where the most is lost.
-                  </p>
-                </div>
-              </div>
-            )}
           </motion.div>
+          )}
+
+          {/* ── Disconnect Card — leads with the visual mismatch ── */}
+          {cardSections.length > 0 && profile && (profile.targetRole || profile.positioningStatement?.raw) && (
+            <DisconnectCard
+              profile={profile}
+              gapInsight={extractFirstSentence(
+                (sections.find(s => s.key === 'honest')?.content ?? sections.find(s => s.key === 'targeting')?.content ?? ''),
+                190
+              ) || stickyHeadline}
+              theme={theme}
+              isDark={isDark}
+            />
           )}
 
           {/* ── Loading / processing — minimal placeholder. The rich shuffling-message
@@ -613,52 +871,8 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
             </div>
           )}
 
-          {/* ── Overview snapshot ── */}
-          {sections.length > 0 && overviewText && (
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.1 }}
-              style={{
-                background: isDark ? 'rgba(255,255,255,0.025)' : 'rgba(255,255,255,0.7)',
-                border: `1px solid ${theme.cardBorder}`,
-                borderRadius: 16,
-                padding: '18px 22px',
-                marginBottom: 20,
-              }}
-            >
-              <p style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: theme.sub, margin: '0 0 8px' }}>
-                What we found
-              </p>
-              <p style={{ fontSize: 15, color: theme.body, lineHeight: 1.75, margin: '0 0 14px' }}>
-                {overviewText}
-              </p>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {cardSections.map(s => {
-                  const m = SECTION_META[s.key];
-                  if (!m) return null;
-                  return (
-                    <button
-                      key={s.key}
-                      onClick={() => {
-                        setOpenSection(s.key);
-                        setTimeout(() => document.getElementById(`section-${s.key}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
-                      }}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 5,
-                        fontSize: 11, fontWeight: 700, color: m.color,
-                        background: `${m.color}12`, border: `1px solid ${m.color}28`,
-                        borderRadius: 8, padding: '5px 10px', cursor: 'pointer',
-                      }}
-                    >
-                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: m.color, display: 'inline-block', flexShrink: 0 }} />
-                      {m.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </motion.div>
-          )}
+          {/* Overview snapshot removed — the DisconnectCard above carries the
+              30-second comprehension. Section cards below carry the depth. */}
 
           {/* ── Section cards (progressive disclosure) ── */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -670,6 +884,15 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
               const isOpen = openSection === section.key;
               const teaser = SECTION_TEASERS[section.key] ?? '';
 
+              // Progressive disclosure: extract the always-visible preview
+              // (headline + 3 operative bullets) from the problem half. The
+              // remaining text + the entire fix zone live behind the
+              // "Why this matters" accordion.
+              const preview = extractSectionPreview(problem);
+              const depthContent = [preview.depth, fix].filter(s => s && s.split('\n').some(l => { const t = l.trim(); return t && t !== '---'; })).join('\n\n---\n\n');
+              const hasDepth = depthContent.trim().length > 0;
+              const anyPeerOpen = openSection !== null && openSection !== section.key;
+
               return (
                 <div key={section.key} id={`section-${section.key}`}>
                   <motion.div
@@ -678,6 +901,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: '-40px' }}
                     transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
+                    animate={{ opacity: anyPeerOpen ? 0.45 : 1 }}
                     style={{
                       background: theme.card,
                       borderRadius: 18,
@@ -689,47 +913,96 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                       boxShadow: isOpen
                         ? `0 4px 24px ${meta.color}12`
                         : '0 2px 8px rgba(0,0,0,0.05)',
-                      transition: 'border-color 0.25s, box-shadow 0.25s',
+                      transition: 'opacity 0.25s, border-color 0.25s, box-shadow 0.25s',
                     }}
                   >
-                    {/* Clickable header, always visible */}
-                    <button
-                      onClick={() => setOpenSection(isOpen ? null : section.key)}
-                      style={{
-                        width: '100%', display: 'flex', alignItems: 'center', gap: 12,
-                        padding: '18px 20px',
-                        background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
-                        minHeight: 62,
-                      }}
-                    >
-                      <span style={{ fontSize: 10, fontWeight: 900, color: meta.color, opacity: 0.45, letterSpacing: '-0.01em', fontVariantNumeric: 'tabular-nums', flexShrink: 0, minWidth: 18 }}>
-                        {sectionNum}
-                      </span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: theme.heading, letterSpacing: '-0.015em', lineHeight: 1.2 }}>
+                    {/* Always-visible card body — section label + headline + bullets */}
+                    <div style={{ padding: '20px 22px 16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                        <span style={{
+                          fontSize: 10, fontWeight: 900, color: meta.color, opacity: 0.5,
+                          letterSpacing: '-0.01em', fontVariantNumeric: 'tabular-nums',
+                          flexShrink: 0, minWidth: 18,
+                        }}>
+                          {sectionNum}
+                        </span>
+                        <p style={{
+                          margin: 0, flex: 1, fontSize: 11, fontWeight: 800,
+                          letterSpacing: '0.12em', textTransform: 'uppercase',
+                          color: theme.sub,
+                        }}>
                           {meta.label}
                         </p>
-                        {!isOpen && teaser && (
-                          <p style={{ margin: '3px 0 0', fontSize: 13, color: theme.sub, lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {teaser}.
-                          </p>
-                        )}
+                        <div style={{
+                          width: 6, height: 6, borderRadius: '50%', background: meta.color, flexShrink: 0, opacity: 0.7,
+                        }} />
                       </div>
-                      <div style={{
-                        width: 7, height: 7, borderRadius: '50%', background: meta.color, flexShrink: 0, opacity: 0.7,
-                      }} />
-                      <motion.span
-                        animate={{ rotate: isOpen ? 180 : 0 }}
-                        transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
-                        style={{ color: theme.sub, flexShrink: 0, display: 'flex' }}
-                      >
-                        <ChevronDown size={16} />
-                      </motion.span>
-                    </button>
 
-                    {/* Expandable content */}
+                      {/* Headline — always the operative insight, one sentence */}
+                      {preview.headline && (
+                        <p style={{
+                          margin: '0 0 10px',
+                          fontSize: 16,
+                          fontWeight: 700,
+                          color: theme.heading,
+                          letterSpacing: '-0.015em',
+                          lineHeight: 1.45,
+                        }}>
+                          {renderInline(preview.headline, theme.heading)}
+                        </p>
+                      )}
+
+                      {/* Up to three operative bullets */}
+                      {preview.bullets.length > 0 && (
+                        <ul style={{ margin: '4px 0 0', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {preview.bullets.map((b, bi) => (
+                            <li key={bi} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                              <span style={{ color: meta.color, marginTop: 5, flexShrink: 0, lineHeight: 0 }}>·</span>
+                              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.65, color: theme.body, fontWeight: 500 }}>
+                                {renderInline(b, theme.heading)}
+                              </p>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+
+                      {/* Fallback teaser if extraction produced nothing useful */}
+                      {!preview.headline && !preview.bullets.length && teaser && (
+                        <p style={{ margin: 0, fontSize: 14, color: theme.body, lineHeight: 1.65 }}>
+                          {teaser}.
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Why this matters — accordion toggle */}
+                    {hasDepth && (
+                      <button
+                        onClick={() => setOpenSection(isOpen ? null : section.key)}
+                        style={{
+                          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          padding: '12px 22px',
+                          background: 'none',
+                          borderTop: `1px solid ${theme.divider}`,
+                          borderLeft: 'none', borderRight: 'none', borderBottom: 'none',
+                          cursor: 'pointer', textAlign: 'left',
+                          fontSize: 12, fontWeight: 700, letterSpacing: '0.04em',
+                          color: theme.sub,
+                        }}
+                      >
+                        <span>{isOpen ? 'Hide the detail' : 'Why this matters'}</span>
+                        <motion.span
+                          animate={{ rotate: isOpen ? 180 : 0 }}
+                          transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+                          style={{ color: theme.sub, flexShrink: 0, display: 'flex' }}
+                        >
+                          <ChevronDown size={14} />
+                        </motion.span>
+                      </button>
+                    )}
+
+                    {/* Expandable depth */}
                     <AnimatePresence initial={false}>
-                      {isOpen && (
+                      {isOpen && hasDepth && (
                         <motion.div
                           key="body"
                           initial={{ height: 0, opacity: 0 }}
@@ -738,44 +1011,17 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                           transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
                           style={{ overflow: 'hidden' }}
                         >
-                          <div style={{ height: 1, background: theme.divider, margin: '0 20px' }} />
-
-                          {/* Problem zone */}
-                          <div style={{ padding: '18px 20px 16px', color: theme.body }}>
-                            <RenderContent text={problem} color={meta.color} headingColor={theme.heading} />
+                          <div style={{ padding: '18px 22px 22px', color: theme.body }}>
+                            <RenderContent text={depthContent} color={meta.color} headingColor={theme.heading} />
                           </div>
-
-                          {/* Fix zone */}
-                          {fix && fix.split('\n').some(l => { const t = l.trim(); return t && t !== '---'; }) && (
-                            <div style={{
-                              padding: '18px 20px 22px',
-                              background: isDark ? `${meta.color}08` : meta.bg,
-                              borderTop: `1px solid ${meta.color}20`,
-                            }}>
-                              <div style={{ color: theme.body }}>
-                                <RenderContent text={fix} color={meta.color} headingColor={theme.heading} />
-                              </div>
-                            </div>
-                          )}
                         </motion.div>
                       )}
                     </AnimatePresence>
                   </motion.div>
 
-                  {/* Social proof after honest section, only when expanded */}
-                  <AnimatePresence>
-                    {section.key === 'honest' && isOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 4 }}
-                        transition={{ duration: 0.25 }}
-                        style={{ marginTop: 12 }}
-                      >
-                        <SocialProofWidget isDark={isDark} theme={theme} />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  {/* Feedback widget moved to footer to stop it interrupting
+                      the read. Users who got value give feedback at the end,
+                      those who didn't aren't pushed for a rating mid-flow. */}
                 </div>
               );
             })}
@@ -892,6 +1138,13 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                 >
                   Already have an account? Go to the dashboard →
                 </button>
+              </div>
+
+              {/* Feedback widget — bottom-of-report placement so it doesn't
+                  interrupt the read. Quiet ask, after the user has had the
+                  full experience and the primary CTA. */}
+              <div style={{ marginTop: 40 }}>
+                <SocialProofWidget isDark={isDark} theme={theme} />
               </div>
             </motion.div>
           )}
