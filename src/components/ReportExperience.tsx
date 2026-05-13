@@ -51,53 +51,55 @@ const RESPONSE_INTROS: Record<string, string> = {
   mix:               'An inconsistent pattern usually means the core positioning is not locked in. Sharpen that first and the rest tends to follow.',
 };
 
-// ── Theme ──────────────────────────────────────────────────────────────────────
+// ── Theme — aligned with the Strategy Hub palette (warm charcoal / petrol /
+// gold / sage / off-white) so the diagnostic reads as part of the same app,
+// not a separate marketing surface. ─────────────────────────────────────────
 function makeTheme(isDark: boolean) {
   return isDark ? {
-    bg:           '#0d1117',
-    card:         'rgba(255,255,255,0.03)',
-    cardBorder:   'rgba(255,255,255,0.07)',
-    heading:      '#f3f4f6',
-    sub:          '#6b7280',
-    intro:        '#6b7280',
-    body:         '#9ca3af',
-    divider:      'rgba(255,255,255,0.07)',
-    fixBand:      'rgba(255,255,255,0.04)',
-    toggleBg:     'rgba(255,255,255,0.08)',
-    toggleColor:  '#9ca3af',
-    stickyBg:     '#111827',
+    bg:           '#1A1C1E',
+    card:         '#25282B',
+    cardBorder:   'rgba(255,255,255,0.06)',
+    heading:      '#E0E0E0',
+    sub:          '#A0A4A8',
+    intro:        '#A0A4A8',
+    body:         '#C8CCD0',
+    divider:      'rgba(255,255,255,0.06)',
+    fixBand:      'rgba(255,255,255,0.025)',
+    toggleBg:     'rgba(255,255,255,0.06)',
+    toggleColor:  '#A0A4A8',
+    stickyBg:     '#1F2225',
     stickyBorder: 'rgba(255,255,255,0.08)',
-    modalBg:      '#111827',
-    inputBg:      'rgba(255,255,255,0.05)',
-    inputBorder:  'rgba(255,255,255,0.10)',
-    inputText:    '#e5e7eb',
-    chipBg:       'rgba(255,255,255,0.07)',
-    chipBorder:   'rgba(255,255,255,0.12)',
-    chipActive:   INDIGO,
+    modalBg:      '#25282B',
+    inputBg:      'rgba(255,255,255,0.04)',
+    inputBorder:  'rgba(255,255,255,0.08)',
+    inputText:    '#E0E0E0',
+    chipBg:       'rgba(255,255,255,0.05)',
+    chipBorder:   'rgba(255,255,255,0.10)',
+    chipActive:   PETROL,
     referralBg:   'rgba(255,255,255,0.025)',
-    referralBorder:'rgba(255,255,255,0.07)',
+    referralBorder:'rgba(255,255,255,0.06)',
     blobs:        ['rgba(45,90,110,0.05)', 'rgba(125,166,125,0.04)', 'rgba(197,160,89,0.03)'],
   } : {
-    bg:           '#f5f4f0',
+    bg:           '#F8FAFC',
     card:         'rgba(255,255,255,0.92)',
     cardBorder:   'rgba(0,0,0,0.08)',
-    heading:      '#111827',
-    sub:          '#6b7280',
-    intro:        '#9ca3af',
-    body:         '#4b5563',
+    heading:      '#0F172A',
+    sub:          '#64748B',
+    intro:        '#64748B',
+    body:         '#334155',
     divider:      'rgba(0,0,0,0.07)',
     fixBand:      'rgba(0,0,0,0.025)',
     toggleBg:     'rgba(0,0,0,0.07)',
-    toggleColor:  '#6b7280',
+    toggleColor:  '#64748B',
     stickyBg:     '#ffffff',
     stickyBorder: 'rgba(0,0,0,0.09)',
     modalBg:      '#ffffff',
     inputBg:      'rgba(0,0,0,0.04)',
     inputBorder:  'rgba(0,0,0,0.12)',
-    inputText:    '#111827',
+    inputText:    '#0F172A',
     chipBg:       'rgba(0,0,0,0.05)',
     chipBorder:   'rgba(0,0,0,0.10)',
-    chipActive:   INDIGO,
+    chipActive:   PETROL,
     referralBg:   'rgba(248,250,252,0.95)',
     referralBorder:'rgba(0,0,0,0.07)',
     blobs:        ['rgba(45,90,110,0.07)', 'rgba(125,166,125,0.06)', 'rgba(197,160,89,0.04)'],
@@ -627,6 +629,8 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
   const theme = makeTheme(isDark);
   const [processingMs, setProcessingMs] = useState(0);
   const [openSection, setOpenSection] = useState<string | null>(null);
+  const [focusedSection, setFocusedSection] = useState<string | null>(null);
+  const sectionRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
   const [showSticky, setShowSticky] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [msgCopied, setMsgCopied] = useState(false);
@@ -703,6 +707,61 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
   const stickyHeadline = topKey ? BLOCKER_HEADLINES[topKey] : 'Your strategic diagnosis is ready.';
 
   // Overview snapshot was removed in favour of the DisconnectCard.
+
+  // ── Scroll-based focus mode ────────────────────────────────────────────────
+  // When the user scrolls through the report, the section closest to the
+  // vertical middle of the viewport is "in focus"; peers dim to 0.4 opacity
+  // so the page reads section-by-section instead of as a wall of text. If a
+  // user expands a section, that section becomes the focus regardless of
+  // scroll position. Calm-ally rule: dim, never blur; restore full opacity
+  // when no section dominates the viewport (e.g. user is between cards).
+  useEffect(() => {
+    const refs = sectionRefs.current;
+    if (refs.size === 0) return;
+
+    const observer = new IntersectionObserver(
+      () => {
+        let bestKey: string | null = null;
+        let bestRatio = 0;
+        const viewportCentre = window.innerHeight / 2;
+
+        refs.forEach((el, key) => {
+          if (!el) return;
+          const rect = el.getBoundingClientRect();
+          // Skip cards entirely above or below the viewport
+          if (rect.bottom < 0 || rect.top > window.innerHeight) return;
+
+          // Score: inverse of distance from viewport centre, weighted by
+          // proportion of card visible. Cards near the middle dominate.
+          const visibleTop = Math.max(0, rect.top);
+          const visibleBottom = Math.min(window.innerHeight, rect.bottom);
+          const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+          const visibilityRatio = visibleHeight / Math.max(rect.height, 1);
+          const cardCentre = (rect.top + rect.bottom) / 2;
+          const distance = Math.abs(cardCentre - viewportCentre);
+          const proximity = Math.max(0, 1 - distance / window.innerHeight);
+          const score = visibilityRatio * 0.5 + proximity * 0.5;
+
+          if (score > bestRatio) {
+            bestRatio = score;
+            bestKey = key;
+          }
+        });
+
+        // Only commit a focused section if it's reasonably dominant — otherwise
+        // restore full opacity so transitions between sections feel natural.
+        setFocusedSection(bestRatio >= 0.55 ? bestKey : null);
+      },
+      {
+        // Multiple thresholds so the callback fires throughout the scroll,
+        // not just on enter/exit.
+        threshold: [0, 0.15, 0.35, 0.55, 0.75, 0.95],
+      },
+    );
+
+    refs.forEach((el) => { if (el) observer.observe(el); });
+    return () => observer.disconnect();
+  }, [cardSections.length]);
 
   return (
     <>
@@ -891,17 +950,26 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
               const preview = extractSectionPreview(problem);
               const depthContent = [preview.depth, fix].filter(s => s && s.split('\n').some(l => { const t = l.trim(); return t && t !== '---'; })).join('\n\n---\n\n');
               const hasDepth = depthContent.trim().length > 0;
-              const anyPeerOpen = openSection !== null && openSection !== section.key;
+
+              // Active section: an explicit expand wins over scroll-based
+              // focus. Peers dim to 0.4 so the reading eye lands on the
+              // active one without the rest blurring out of usefulness.
+              const activeKey = openSection ?? focusedSection;
+              const isDimmed = activeKey !== null && activeKey !== section.key;
 
               return (
-                <div key={section.key} id={`section-${section.key}`}>
+                <div
+                  key={section.key}
+                  id={`section-${section.key}`}
+                  ref={(el) => { sectionRefs.current.set(section.key, el); }}
+                >
                   <motion.div
                     className="print-card"
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: '-40px' }}
                     transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
-                    animate={{ opacity: anyPeerOpen ? 0.45 : 1 }}
+                    animate={{ opacity: isDimmed ? 0.4 : 1 }}
                     style={{
                       background: theme.card,
                       borderRadius: 18,
