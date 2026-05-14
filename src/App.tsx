@@ -279,11 +279,11 @@ function ReportOrDashboard() {
     return localStorage.getItem('jobhub_report_seen') === 'true';
   });
   function handleDone() {
-    console.log('[ReportOrDashboard] handleDone — marking report seen, navigating to /workspace');
+    console.log('[ReportOrDashboard] handleDone, marking report seen, navigating to /setup');
     localStorage.setItem('jobhub_report_seen', 'true');
     localStorage.setItem('jobhub_tips_seen', 'false');
     setReportSeen(true);
-    navigate('/workspace', { replace: true });
+    navigate('/setup', { replace: true });
   }
 
   console.log('[ReportOrDashboard] render — reportSeen:', reportSeen);
