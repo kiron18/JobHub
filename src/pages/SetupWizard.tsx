@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronLeft, CheckCircle, ArrowRight, Briefcase, FileText, Award, GraduationCap, Zap, Heart } from 'lucide-react';
 import api from '../lib/api';
+import { trackBaselineResumeDownloadedFromWizard } from '../lib/analytics';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -914,6 +915,7 @@ export function SetupWizard() {
       try {
         const { data: doc } = await api.get(`/documents/${baselineState.documentId}`);
         const { exportDocx } = await import('../lib/exportDocx');
+        trackBaselineResumeDownloadedFromWizard();
         await exportDocx(doc.content, 'resume', '');
       } catch (err) {
         console.error('[SetupWizard] download baseline failed:', err);

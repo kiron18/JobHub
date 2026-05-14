@@ -56,6 +56,14 @@ export function trackDiagnosticReportViewed() {
   posthog.capture('diagnostic_report_viewed');
 }
 
+export function trackSection5CtaClicked() {
+  posthog.capture('section_5_cta_clicked');
+}
+
+export function trackBaselineResumeDownloadedFromWizard() {
+  posthog.capture('baseline_resume_downloaded_from_wizard');
+}
+
 // ── Core value moments ────────────────────────────────────────────────────────
 
 export function trackMatchAnalysisRun() {

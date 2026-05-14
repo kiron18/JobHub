@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Sun, Moon, X, Star, ChevronDown } from 'lucide-react';
 import api from '../lib/api';
 import { parseReportSections, splitProblemFix, parseFixMoves, type Move } from '../lib/parseReport';
+import { trackSection5CtaClicked } from '../lib/analytics';
 
 // ── Strategy Hub palette (replaces the previous severity-coded indigo/red/amber/teal) ──
 // Calm-ally rule: no red, no orange. Severity coding is removed. Sections use
@@ -1185,6 +1186,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                     isDark={isDark}
                     isDimmed={isDimmed}
                     onCta={() => {
+                      trackSection5CtaClicked();
                       onDone();
                     }}
                     ctaRef={ctaRef}
@@ -1388,7 +1390,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                 Free frameworks & weekly guidance (Skool)
               </a>
               <button
-                onClick={onDone}
+                onClick={() => { trackSection5CtaClicked(); onDone(); }}
                 style={{
                   background: PETROL, color: '#E0E0E0',
                   borderRadius: 10, padding: '10px 18px', fontSize: 13, fontWeight: 700,
