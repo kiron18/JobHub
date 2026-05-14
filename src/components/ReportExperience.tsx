@@ -561,14 +561,14 @@ function Section5Card({
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-40px' }}
           transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
-          animate={{ opacity: isDimmed ? 0.4 : 1 }}
+          animate={{ opacity: isDimmed ? 0.22 : 1 }}
           style={{
-            fontSize: 'clamp(22px, 4vw, 30px)',
+            fontSize: 'clamp(26px, 4.6vw, 34px)',
             fontWeight: 600,
             color: theme.heading,
             letterSpacing: '-0.02em',
-            lineHeight: 1.25,
-            margin: '36px 0 12px',
+            lineHeight: 1.22,
+            margin: '40px 0 22px',
           }}
         >
           {question}
@@ -581,7 +581,7 @@ function Section5Card({
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: '-40px' }}
         transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
-        animate={{ opacity: isDimmed ? 0.4 : 1 }}
+        animate={{ opacity: isDimmed ? 0.28 : 1 }}
         style={{
           background: theme.card,
           borderRadius: 18,
@@ -640,7 +640,7 @@ function Section5Card({
           fontWeight: 500,
           textAlign: 'center',
         }}>
-          Up next, the resume wizard turns every gap above into a stronger draft. You will see the difference immediately.
+          Your next step is the resume wizard. It turns every gap above into a stronger draft you can send today.
         </p>
 
         {/* Always-visible CTA */}
@@ -890,15 +890,25 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
             transition={{ duration: 0.5 }}
             style={{ marginBottom: 48, textAlign: 'center' }}
           >
-            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: theme.sub, marginBottom: 16 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: theme.sub, marginBottom: 24 }}>
               Your diagnosis
             </p>
-            {firstName && (
-              <p style={{ fontSize: 'clamp(28px, 5.5vw, 42px)', fontWeight: 900, color: theme.heading, margin: '0 0 6px', lineHeight: 1.12, letterSpacing: '-0.03em' }}>
-                Hey {firstName},
-              </p>
-            )}
-            <h1 style={{ fontSize: 'clamp(28px, 5.5vw, 42px)', fontWeight: 900, color: theme.heading, margin: '0 0 20px', lineHeight: 1.12, letterSpacing: '-0.03em' }}>
+            {/* Greeting — always reserves space so the layout doesn't jump when the
+                name extracts later. Fades in once firstName lands. */}
+            <p style={{
+              fontSize: 'clamp(28px, 5.5vw, 42px)',
+              fontWeight: 900,
+              color: theme.heading,
+              margin: '0 0 12px',
+              lineHeight: 1.12,
+              letterSpacing: '-0.03em',
+              minHeight: 'clamp(34px, 6.2vw, 48px)',
+              opacity: firstName ? 1 : 0,
+              transition: 'opacity 0.5s ease',
+            }}>
+              {firstName ? `Hey ${firstName},` : ' '}
+            </p>
+            <h1 style={{ fontSize: 'clamp(28px, 5.5vw, 42px)', fontWeight: 900, color: theme.heading, margin: '0 0 28px', lineHeight: 1.12, letterSpacing: '-0.03em' }}>
               {targetRole
                 ? <>your{' '}
                     <span style={{ color: GOLD, display: 'inline-block' }}>{targetRole}</span>
@@ -1063,7 +1073,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                       whileInView={{ opacity: 1, y: 0 }}
                       viewport={{ once: true, margin: '-40px' }}
                       transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
-                      animate={{ opacity: isDimmed ? 0.4 : 1 }}
+                      animate={{ opacity: isDimmed ? 0.28 : 1 }}
                       style={{
                         fontSize: 'clamp(22px, 4vw, 30px)',
                         fontWeight: 600,
@@ -1082,7 +1092,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: '-40px' }}
                     transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
-                    animate={{ opacity: isDimmed ? 0.4 : 1 }}
+                    animate={{ opacity: isDimmed ? 0.28 : 1 }}
                     style={{
                       background: theme.card,
                       borderRadius: 18,

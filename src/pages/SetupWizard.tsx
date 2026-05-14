@@ -4,7 +4,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronLeft, CheckCircle, ArrowRight, Briefcase, FileText, Award, GraduationCap, Zap, Heart } from 'lucide-react';
 import api from '../lib/api';
-import { trackBaselineResumeDownloadedFromWizard } from '../lib/analytics';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -73,26 +72,6 @@ function parseSkills(raw: string): string {
     if (typeof parsed === 'object' && parsed !== null) return Object.values(parsed).flat().join(', ');
   } catch { /* not JSON */ }
   return raw;
-}
-
-type BaselineResumeState =
-  | { status: 'unknown' }
-  | { status: 'generating' }
-  | { status: 'ready'; documentId: string }
-  | { status: 'error' };
-
-async function fetchBaselineState(): Promise<BaselineResumeState> {
-  try {
-    const { data } = await api.get('/profile/baseline-resume');
-    if (data?.status === 'ready' && data?.documentId) {
-      return { status: 'ready', documentId: data.documentId };
-    }
-    if (data?.status === 'generating' || data?.status === 'pending') return { status: 'generating' };
-    if (data?.status === 'error') return { status: 'error' };
-    return { status: 'unknown' };
-  } catch {
-    return { status: 'error' };
-  }
 }
 
 function buildSteps(_profile: ProfileData): WizardStep[] {
@@ -855,6 +834,7 @@ export function SetupWizard() {
   const [rewardMessage, setRewardMessage] = useState<string | null>(null);
   const resolveRewardRef = useRef<(() => void) | null>(null);
   const initialContentRef = useRef<Partial<Record<StepType, string>>>({});
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Per-step local edit state
   const [summaryText, setSummaryText] = useState('');
@@ -866,78 +846,8 @@ export function SetupWizard() {
   const [volEdits, setVolEdits] = useState<VolEntry[]>([]);
   const [skillsText, setSkillsText] = useState('');
 
-  const [baselineState, setBaselineState] = useState<BaselineResumeState>({ status: 'unknown' });
-  const [downloadingBaseline, setDownloadingBaseline] = useState(false);
-
-  // On mount: do a single status fetch so we know what we're starting from.
-  useEffect(() => {
-    let cancelled = false;
-    fetchBaselineState().then(state => {
-      if (!cancelled) setBaselineState(state);
-    });
-    return () => { cancelled = true; };
-  }, []);
-
-  // Whenever state is "generating" or "unknown", poll until it resolves.
-  // This restarts naturally after a retry click (which sets state back to
-  // "generating") and gives every active generation a fresh 30-attempt cap.
-  useEffect(() => {
-    if (baselineState.status !== 'generating' && baselineState.status !== 'unknown') {
-      return;
-    }
-    let cancelled = false;
-    let attempts = 0;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const tick = async () => {
-      if (cancelled) return;
-      const next = await fetchBaselineState();
-      if (cancelled) return;
-      setBaselineState(next);
-      if (next.status === 'generating' || next.status === 'unknown') {
-        attempts += 1;
-        if (attempts < 30) {
-          timer = setTimeout(tick, 6000);
-        } else if (!cancelled) {
-          setBaselineState({ status: 'error' });
-        }
-      }
-    };
-    timer = setTimeout(tick, 6000);
-    return () => {
-      cancelled = true;
-      if (timer) clearTimeout(timer);
-    };
-  }, [baselineState.status]);
-
-  const handleDownloadBaseline = async () => {
-    if (downloadingBaseline) return;
-    if (baselineState.status === 'error' || baselineState.status === 'unknown') {
-      setDownloadingBaseline(true);
-      try {
-        await api.post('/profile/baseline-resume/generate');
-        setBaselineState({ status: 'generating' });
-      } catch (err) {
-        console.error('[SetupWizard] retry baseline failed:', err);
-        setBaselineState({ status: 'error' });
-      } finally {
-        setDownloadingBaseline(false);
-      }
-      return;
-    }
-    if (baselineState.status === 'ready') {
-      setDownloadingBaseline(true);
-      try {
-        const { data: doc } = await api.get(`/documents/${baselineState.documentId}`);
-        const { exportDocx } = await import('../lib/exportDocx');
-        trackBaselineResumeDownloadedFromWizard();
-        await exportDocx(doc.content, 'resume', '');
-      } catch (err) {
-        console.error('[SetupWizard] download baseline failed:', err);
-      } finally {
-        setDownloadingBaseline(false);
-      }
-    }
-  };
+  // (Baseline-resume download chrome removed per product feedback. Generation
+  // still fires automatically when the diagnostic completes.)
 
   const isReturning = localStorage.getItem('jobhub_setup_complete') === '1';
 
@@ -984,8 +894,13 @@ export function SetupWizard() {
   const totalSteps = steps.length;
   const progress = totalSteps > 1 ? currentIndex / (totalSteps - 1) : 0;
 
+  // Wizard sets its own scroll container (root div has overflowY: auto), so
+  // window.scrollTo is a no-op. Scroll the container element directly via ref.
   const scrollTop = useCallback(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (containerRef.current) {
+      containerRef.current.scrollTo({ top: 0, behavior: 'auto' });
+    }
+    window.scrollTo({ top: 0, behavior: 'auto' });
   }, []);
 
   const showReward = useCallback(async (type: StepType, content: any) => {
@@ -1166,32 +1081,7 @@ export function SetupWizard() {
     : `PROFILE SETUP · Step ${currentIndex + 1} of ${totalSteps - 1}`;
 
   return (
-    <div style={{ height: '100vh', overflowY: 'auto', background: '#080b12', paddingBottom: 80 }}>
-      {/* Baseline resume download link, fixed top-right */}
-      <button
-        onClick={handleDownloadBaseline}
-        disabled={downloadingBaseline}
-        style={{
-          position: 'fixed', top: 16, right: 20, zIndex: 30,
-          background: 'rgba(255,255,255,0.05)',
-          border: '1px solid rgba(255,255,255,0.10)',
-          borderRadius: 999, padding: '8px 14px',
-          fontSize: 12, fontWeight: 600,
-          color: baselineState.status === 'ready' ? '#a5b4fc' : '#9ca3af',
-          cursor: downloadingBaseline ? 'wait' : 'pointer',
-          letterSpacing: '0.01em',
-          backdropFilter: 'blur(8px)',
-        }}
-      >
-        {(() => {
-          if (downloadingBaseline) return 'Downloading…';
-          if (baselineState.status === 'generating') return 'Generating baseline resume…';
-          if (baselineState.status === 'ready')      return 'Download my baseline resume';
-          if (baselineState.status === 'error')      return 'Retry baseline resume';
-          return 'Generating baseline resume…';
-        })()}
-      </button>
-
+    <div ref={containerRef} style={{ height: '100vh', overflowY: 'auto', background: '#080b12', paddingBottom: 80 }}>
       {/* Reward overlay */}
       <RewardOverlay
         visible={rewardVisible}
@@ -1380,32 +1270,40 @@ export function SetupWizard() {
             {/* CTAs */}
             {currentStep?.type !== 'complete' && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                {currentIndex > 0 && (
-                  <button
-                    onClick={goBack}
-                    disabled={saving}
-                    aria-label="Go back to previous step"
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      background: 'none',
-                      color: '#9ca3af',
-                      border: '1px solid rgba(255,255,255,0.12)',
-                      borderRadius: 11,
-                      padding: '12px 16px',
-                      fontSize: 13,
-                      fontWeight: 700,
-                      cursor: saving ? 'not-allowed' : 'pointer',
-                      opacity: saving ? 0.5 : 1,
-                      letterSpacing: '-0.01em',
-                      transition: 'opacity 0.15s, color 0.15s',
-                    }}
-                  >
-                    <ChevronLeft size={16} />
-                    Back
-                  </button>
-                )}
+                <button
+                  onClick={() => {
+                    if (currentIndex > 0) {
+                      goBack();
+                    } else {
+                      // Step 1: hop back to the diagnostic so the user can re-read
+                      // their analysis. Clearing the report-seen flag re-shows the
+                      // diagnostic on '/'.
+                      localStorage.setItem('jobhub_report_seen', 'false');
+                      navigate('/');
+                    }
+                  }}
+                  disabled={saving}
+                  aria-label={currentIndex > 0 ? 'Go back to previous step' : 'Back to diagnostic'}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    background: 'none',
+                    color: '#9ca3af',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: 11,
+                    padding: '12px 16px',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: saving ? 'not-allowed' : 'pointer',
+                    opacity: saving ? 0.5 : 1,
+                    letterSpacing: '-0.01em',
+                    transition: 'opacity 0.15s, color 0.15s',
+                  }}
+                >
+                  <ChevronLeft size={16} />
+                  {currentIndex > 0 ? 'Back' : 'Back to diagnostic'}
+                </button>
                 <button
                   onClick={handleSave}
                   disabled={saving}
@@ -1539,11 +1437,11 @@ function CompleteScreen({ onComplete }: { onComplete: () => void }) {
       >
         Start Generating Applications <ArrowRight size={16} />
       </button>
-      <p style={{ margin: '0 0 10px', fontSize: 12, color: '#4b5563' }}>
-        You can update your profile anytime from Profile & Achievements.
+      <p style={{ margin: '8px 0 0', fontSize: 12, color: '#22c55e', fontWeight: 600 }}>
+        First five tailored applications free. No card needed.
       </p>
-      <p style={{ margin: 0, fontSize: 12, color: '#374151' }}>
-        You can revisit this wizard anytime from the Profile & Achievements section.
+      <p style={{ margin: '6px 0 0', fontSize: 12, color: '#4b5563' }}>
+        You can revisit this wizard or update your profile anytime from Profile & Achievements.
       </p>
     </div>
   );

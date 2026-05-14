@@ -234,6 +234,25 @@ export function ProcessingScreen({ isDark: _isDark, theme: T, email: _email, nam
           40% { transform: translate(40px, 80px) scale(1.1); }
           80% { transform: translate(-50px, -30px) scale(0.9); }
         }
+        @keyframes primingShimmer {
+          0%   { background-position: -200% center; }
+          100% { background-position:  200% center; }
+        }
+        .priming-shimmer {
+          background: linear-gradient(
+            90deg,
+            currentColor 0%,
+            currentColor 35%,
+            rgba(255,255,255,0.95) 50%,
+            currentColor 65%,
+            currentColor 100%
+          );
+          background-size: 200% auto;
+          background-clip: text;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          animation: primingShimmer 4.5s linear infinite;
+        }
       `}</style>
 
       {/* Lava lamp blobs */}
@@ -327,16 +346,19 @@ export function ProcessingScreen({ isDark: _isDark, theme: T, email: _email, nam
             }}>
               {currentAside}
             </p>
-            <p style={{
-              fontSize: 14,
-              fontWeight: 700,
-              color: T.text,
-              textAlign: 'center',
-              marginTop: 8,
-              lineHeight: 1.55,
-              maxWidth: 420,
-              marginInline: 'auto',
-            }}>
+            <p
+              className="priming-shimmer"
+              style={{
+                fontSize: 14,
+                fontWeight: 700,
+                color: T.text,
+                textAlign: 'center',
+                marginTop: 8,
+                lineHeight: 1.55,
+                maxWidth: 420,
+                marginInline: 'auto',
+              }}
+            >
               Once your diagnosis lands, the resume wizard helps you turn every gap into a stronger application.
             </p>
           </>

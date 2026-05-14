@@ -355,8 +355,26 @@ export function StepperWorkspace() {
                         </div>
                     </>
                 ) : (
-                    <div style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: T.textMuted }}>
-                        Job description
+                    <div style={{
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minHeight: 160,
+                    }}>
+                        <span style={{
+                            writingMode: 'vertical-rl',
+                            textOrientation: 'mixed',
+                            transform: 'rotate(180deg)',
+                            fontSize: 10,
+                            fontWeight: 700,
+                            letterSpacing: '0.14em',
+                            textTransform: 'uppercase',
+                            color: T.textMuted,
+                            whiteSpace: 'nowrap',
+                        }}>
+                            Job description
+                        </span>
                     </div>
                 )}
             </aside>
