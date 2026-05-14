@@ -789,7 +789,7 @@ function Section5Card({
             whileTap={{ scale: 0.99 }}
             style={{
               width: '100%',
-              background: '#2D5A6E',
+              background: PETROL,
               color: '#E0E0E0',
               borderRadius: 14,
               padding: '16px 24px',
@@ -798,7 +798,7 @@ function Section5Card({
               border: 'none',
               cursor: 'pointer',
               letterSpacing: '-0.01em',
-              boxShadow: '0 6px 24px rgba(45,90,110,0.4)',
+              boxShadow: `0 6px 24px ${PETROL}40`,
             }}
           >
             Start with your professional summary →
