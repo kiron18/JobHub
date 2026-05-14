@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
-import { Sun, Moon, X, Star, ChevronDown } from 'lucide-react';
+import { Sun, Moon, X, ChevronDown } from 'lucide-react';
 import api from '../lib/api';
 import { parseReportSections, splitProblemFix, parseFixMoves, type Move } from '../lib/parseReport';
 import { trackSection5CtaClicked } from '../lib/analytics';
@@ -14,7 +14,6 @@ const GOLD   = '#C5A059';
 const SAGE   = '#7DA67D';
 const SLATE  = '#9ca3af';
 const TEAL   = SAGE; // Legacy alias retained for downstream references (loading spinner, Skool link)
-const INDIGO = PETROL; // Legacy alias for the CTA glow + active chip
 
 // ── Section metadata ──────────────────────────────────────────────────────────
 // No severity labels. No critical/review distinction. Every section gets the
@@ -491,136 +490,6 @@ function RenderContent({ text, color, headingColor }: { text: string; color: str
   );
 }
 
-// ── Social proof widget ────────────────────────────────────────────────────────
-const RATING_CHIPS = ['Spot on', 'Eye-opening', 'Needed to hear this', 'Needs more detail'];
-
-function SocialProofWidget({ isDark, theme }: { isDark: boolean; theme: ReturnType<typeof makeTheme> }) {
-  const [rating, setRating] = useState(0);
-  const [hovered, setHovered] = useState(0);
-  const [chips, setChips] = useState<string[]>([]);
-  const [comment, setComment] = useState('');
-  const [submitted, setSubmitted] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-
-  function toggleChip(chip: string) {
-    setChips(prev => prev.includes(chip) ? prev.filter(c => c !== chip) : [...prev, chip]);
-  }
-
-  async function handleSubmit() {
-    if (!rating) return;
-    setSubmitting(true);
-    try {
-      await api.post('/onboarding/rating', { rating, chips, comment: comment.trim() || undefined });
-      setSubmitted(true);
-    } catch {
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 24 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-60px' }}
-      transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
-      style={{
-        background: theme.card,
-        border: `1px solid ${theme.cardBorder}`,
-        borderRadius: 20,
-        padding: '28px 28px 24px',
-        backdropFilter: 'blur(24px)',
-      }}
-    >
-      {submitted ? (
-        <div style={{ textAlign: 'center', padding: '8px 0' }}>
-          <p style={{ fontSize: 22, fontWeight: 900, color: theme.heading, margin: '0 0 6px', letterSpacing: '-0.02em' }}>Thanks for the feedback.</p>
-          <p style={{ fontSize: 14, color: theme.sub }}>This helps us improve the diagnosis for everyone.</p>
-        </div>
-      ) : (
-        <>
-          <p style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: theme.sub, marginBottom: 8 }}>
-            How accurate was your diagnosis?
-          </p>
-          <h3 style={{ fontSize: 20, fontWeight: 900, color: theme.heading, margin: '0 0 20px', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-            Does this match what you've been experiencing?
-          </h3>
-
-          {/* Stars */}
-          <div style={{ display: 'flex', gap: 6, marginBottom: 18 }}>
-            {[1, 2, 3, 4, 5].map(n => (
-              <button
-                key={n}
-                onClick={() => setRating(n)}
-                onMouseEnter={() => setHovered(n)}
-                onMouseLeave={() => setHovered(0)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex' }}
-              >
-                <Star
-                  size={28}
-                  fill={(hovered || rating) >= n ? GOLD : 'none'}
-                  color={(hovered || rating) >= n ? GOLD : (isDark ? '#374151' : '#d1d5db')}
-                  strokeWidth={1.5}
-                  style={{ transition: 'all 0.1s' }}
-                />
-              </button>
-            ))}
-          </div>
-
-          {/* Chips */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 18 }}>
-            {RATING_CHIPS.map(chip => {
-              const active = chips.includes(chip);
-              return (
-                <button
-                  key={chip}
-                  onClick={() => toggleChip(chip)}
-                  style={{
-                    background: active ? `${INDIGO}15` : theme.chipBg,
-                    border: `1px solid ${active ? INDIGO + '50' : theme.chipBorder}`,
-                    borderRadius: 99, padding: '7px 14px', fontSize: 13, fontWeight: 600,
-                    color: active ? INDIGO : theme.sub, cursor: 'pointer',
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  {chip}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Optional comment */}
-          <textarea
-            placeholder="Anything else? (optional)"
-            value={comment}
-            onChange={e => setComment(e.target.value)}
-            rows={2}
-            style={{
-              width: '100%', background: theme.inputBg, border: `1px solid ${theme.inputBorder}`,
-              borderRadius: 10, color: theme.inputText, fontSize: 14,
-              padding: '10px 14px', outline: 'none', resize: 'none',
-              fontFamily: 'inherit', marginBottom: 14, boxSizing: 'border-box',
-            }}
-          />
-
-          <button
-            onClick={handleSubmit}
-            disabled={!rating || submitting}
-            style={{
-              background: rating ? INDIGO : (isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'),
-              color: rating ? 'white' : theme.sub,
-              border: 'none', borderRadius: 10, padding: '11px 24px',
-              fontSize: 14, fontWeight: 700, cursor: rating ? 'pointer' : 'default',
-              transition: 'all 0.2s', boxShadow: rating ? `0 4px 14px ${INDIGO}30` : 'none',
-            }}
-          >
-            {submitting ? 'Saving...' : 'Submit feedback'}
-          </button>
-        </>
-      )}
-    </motion.div>
-  );
-}
-
 // ── Section 5: structured 3-move card ─────────────────────────────────────────
 function MoveSubCard({
   index,
@@ -641,38 +510,18 @@ function MoveSubCard({
         background: theme.fixBand,
         border: `1px solid ${theme.cardBorder}`,
         borderRadius: 14,
-        padding: '20px 22px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 12,
+        padding: '18px 22px',
       }}
     >
-      <h3 style={{
-        margin: 0,
-        fontSize: 'clamp(16px, 2.6vw, 18px)',
-        fontWeight: 700,
-        color: theme.heading,
-        letterSpacing: '-0.015em',
-        lineHeight: 1.35,
-      }}>
-        {index + 1}. {move.headline}
-      </h3>
-      <p style={{ margin: 0, fontSize: 15, lineHeight: 1.7, color: theme.body, fontWeight: 450 }}>
-        {move.situation}
-      </p>
-      <p style={{ margin: 0, fontSize: 15, lineHeight: 1.7, color: theme.body, fontWeight: 450 }}>
-        {move.jobhub}
-      </p>
       <p style={{
         margin: 0,
-        fontSize: 14,
-        lineHeight: 1.6,
+        fontSize: 'clamp(15px, 2.4vw, 17px)',
+        fontWeight: 700,
         color: theme.heading,
-        fontWeight: 600,
-        fontStyle: 'italic',
-        opacity: 0.92,
+        letterSpacing: '-0.01em',
+        lineHeight: 1.5,
       }}>
-        {move.outcome}
+        {index + 1}. {move.action}
       </p>
     </motion.div>
   );
@@ -684,7 +533,7 @@ function Section5Card({
   meta,
   question,
   theme,
-  isDark,
+  isDark: _isDark,
   isDimmed,
   onCta,
   ctaRef,
@@ -771,16 +620,28 @@ function Section5Card({
             Hey {greetingName},
           </p>
           <p style={{ margin: 0, fontSize: 15, lineHeight: 1.65, color: theme.body, fontWeight: 450 }}>
-            Here is the path forward. Three moves, each tied to something the platform handles for you.
+            Here are three moves you can take today to start closing the gaps above.
           </p>
         </div>
 
         {/* Three sub-cards */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 22 }}>
           <MoveSubCard index={0} move={moves.targeting}    theme={theme} />
           <MoveSubCard index={1} move={moves.resume}       theme={theme} />
           <MoveSubCard index={2} move={moves.applications} theme={theme} />
         </div>
+
+        {/* Closing nudge to wizard */}
+        <p style={{
+          margin: '0 0 18px',
+          fontSize: 15,
+          lineHeight: 1.65,
+          color: theme.body,
+          fontWeight: 500,
+          textAlign: 'center',
+        }}>
+          Up next, the resume wizard turns every gap above into a stronger draft. You will see the difference immediately.
+        </p>
 
         {/* Always-visible CTA */}
         <div ref={ctaRef} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -807,11 +668,6 @@ function Section5Card({
           <p style={{ margin: 0, fontSize: 12, color: theme.sub, textAlign: 'center' }}>
             First five tailored applications free. No card needed.
           </p>
-        </div>
-
-        {/* Feedback widget moved inside the new Section 5, after the CTA */}
-        <div style={{ marginTop: 28 }}>
-          <SocialProofWidget isDark={isDark} theme={theme} />
         </div>
       </motion.div>
     </div>

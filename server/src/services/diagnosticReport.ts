@@ -113,35 +113,20 @@ Give the immediate fix for this primary blocker. Make it feel achievable, not ov
 
 ## The 3-Step Fix
 
-JobHub platform capabilities (use these as the only true source for what the platform can do; do not invent capabilities):
+Voice rules for this section: calm, plain, calm-ally tone. Use "you" not "the candidate" in the rendered text. No em dashes. No exclamations. Avoid the words: brutal, killing, crushing, rocket, fire, "stop guessing", "stop getting rejected". Be brief. Be specific to THIS candidate. No selling.
 
-- TARGETING: A Job Match Engine that scores live job descriptions against the candidate's specific profile. It identifies which roles align with the candidate's strengths, surfaces the points in their background that fit each role, and flags the gap between requirement and fit so the candidate can decide where to invest effort. Lives in the JobFeed and Match Engine.
+Emit three moves in EXACTLY this format. Each move is one short imperative ACTION sentence the candidate can act on TODAY to make their job search materially better. Aim for 12 to 22 words. Crisp, executable, not a paragraph, not a description.
 
-- RESUME: A Resume Tailoring engine that rebuilds the candidate's resume against the language of a specific role, drawing on a library of resumes that have landed interviews in Australia. The candidate's Achievement Bank supplies the substance; the engine handles framing, structure, and language.
-
-- APPLICATIONS: A Document Generation engine that produces tailored cover letters and selection-criteria responses in roughly three minutes per application, drawing from the candidate's Achievement Bank. The candidate reviews and adjusts before sending.
-
-Voice rules for this section: calm, plain language, calm-ally tone. Use "you" not "the candidate" in the rendered text. No em dashes anywhere. No exclamations. Avoid the words: brutal, killing, crushing, rocket, fire, "stop guessing", "stop getting rejected". Each paragraph short and independent. The pattern is: acknowledge what the candidate is already doing or attempting, pivot to how the relevant JobHub capability addresses their specific situation, then state the concrete outcome.
-
-Emit three moves in this EXACT format. Use plain text labels exactly as shown. Do not add any other prose between or around the moves.
+CRITICAL: Use plain text labels. Do NOT wrap labels in markdown bold. Write "ACTION:" as plain text, never "**ACTION:**". Do not add any other prose between or around the moves.
 
 ### MOVE_TARGETING
-HEADLINE: <4 to 7 word action-led headline grounded in this candidate's targeting situation>
-SITUATION: <1 to 2 sentences naming this candidate's specific situation in role targeting. Acknowledge what they are already doing or attempting.>
-JOBHUB: <1 to 2 sentences explaining how the TARGETING capability helps THIS candidate with THIS situation. Frame against their specific need, not generic AI claims.>
-OUTCOME: <1 sentence describing the concrete change for them.>
+ACTION: <one crisp imperative sentence on sharpening role targeting today. Specific to THIS candidate. Plain prose, no markdown, no bullets.>
 
 ### MOVE_RESUME
-HEADLINE: <4 to 7 word action-led headline grounded in this candidate's resume situation>
-SITUATION: <1 to 2 sentences naming this candidate's specific resume framing or format situation. Acknowledge what they are already doing or attempting.>
-JOBHUB: <1 to 2 sentences explaining how the RESUME capability helps THIS candidate with THIS situation. Frame against their specific need.>
-OUTCOME: <1 sentence describing the concrete change for them.>
+ACTION: <one crisp imperative sentence on refining their resume framing or structure today. Specific to THIS candidate. Plain prose.>
 
 ### MOVE_APPLICATIONS
-HEADLINE: <4 to 7 word action-led headline grounded in this candidate's volume vs quality situation>
-SITUATION: <1 to 2 sentences naming this candidate's specific application-volume situation. Acknowledge their effort.>
-JOBHUB: <1 to 2 sentences explaining how the APPLICATIONS capability helps THIS candidate with THIS situation.>
-OUTCOME: <1 sentence describing the concrete change for them.>
+ACTION: <one crisp imperative sentence on tightening how they apply (volume vs quality, channels, follow-up) today. Specific to THIS candidate. Plain prose.>
 
 ## What JobHub Will Do For You
 

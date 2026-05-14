@@ -327,6 +327,18 @@ export function ProcessingScreen({ isDark: _isDark, theme: T, email: _email, nam
             }}>
               {currentAside}
             </p>
+            <p style={{
+              fontSize: 14,
+              fontWeight: 700,
+              color: T.text,
+              textAlign: 'center',
+              marginTop: 8,
+              lineHeight: 1.55,
+              maxWidth: 420,
+              marginInline: 'auto',
+            }}>
+              Once your diagnosis lands, the resume wizard helps you turn every gap into a stronger application.
+            </p>
           </>
         )}
 

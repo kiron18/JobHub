@@ -1491,9 +1491,12 @@ function CompleteScreen({ onComplete }: { onComplete: () => void }) {
         fontWeight: 700,
         color: '#C5A059',
         letterSpacing: '-0.01em',
-        lineHeight: 1.45,
+        lineHeight: 1.55,
       }}>
-        Every section a recruiter checks? Done. Optimised. Ready.
+        Every section a recruiter checks?
+        <br />Done.
+        <br />Optimised.
+        <br />Ready.
       </p>
       <p style={{
         margin: '0 0 14px',

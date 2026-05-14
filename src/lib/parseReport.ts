@@ -62,10 +62,7 @@ export function splitProblemFix(content: string): { problem: string; fix: string
 }
 
 export interface Move {
-  headline: string;
-  situation: string;
-  jobhub: string;
-  outcome: string;
+  action: string;
 }
 
 export interface FixMoves {
@@ -75,10 +72,7 @@ export interface FixMoves {
 }
 
 const MOVE_FALLBACK: Move = {
-  headline: 'A move tailored to your situation',
-  situation: 'Here is how we would approach this part for your situation.',
-  jobhub: 'JobHub guides you through this step using your profile.',
-  outcome: 'You move forward with a clear next action.',
+  action: 'Take one focused step on this part of your application today.',
 };
 
 const MOVE_KEYS: Array<{ marker: string; field: keyof FixMoves }> = [
@@ -88,15 +82,24 @@ const MOVE_KEYS: Array<{ marker: string; field: keyof FixMoves }> = [
 ];
 
 /**
- * Extract one labelled value (e.g. "HEADLINE: foo") from a block of MOVE text.
- * Tolerant: returns undefined if missing. Stops at the next ALL-CAPS label
- * line so multi-line values are captured up to the next field.
+ * Strip stray markdown bold markers (LLMs sometimes wrap labels or values in **).
  */
-function extractField(block: string, label: 'HEADLINE' | 'SITUATION' | 'JOBHUB' | 'OUTCOME'): string | undefined {
-  const re = new RegExp(`${label}:\\s*([\\s\\S]*?)(?=\\n(?:HEADLINE|SITUATION|JOBHUB|OUTCOME):|$)`);
+function stripMarkdown(text: string): string {
+  return text.replace(/\*\*/g, '').replace(/^[*_]+|[*_]+$/g, '').trim();
+}
+
+/**
+ * Extract the ACTION line from one MOVE block. Tolerant of "**ACTION:**"
+ * wrapping and of multi-line values. Returns undefined if no ACTION found.
+ */
+function extractAction(block: string): string | undefined {
+  // Optional ** before/after the label, then the value up to the next ACTION
+  // label or end-of-block.
+  const re = /\*?\*?ACTION\*?\*?:\s*\*?\*?([\s\S]*?)(?=\n\s*\*?\*?ACTION\*?\*?:|$)/i;
   const m = block.match(re);
   if (!m) return undefined;
-  return m[1].replace(/\s+/g, ' ').trim() || undefined;
+  const value = stripMarkdown(m[1].replace(/\s+/g, ' ').trim());
+  return value || undefined;
 }
 
 /**
@@ -113,32 +116,23 @@ export function parseFixMoves(fixSectionContent: string): FixMoves {
   };
 
   for (const { marker, field } of MOVE_KEYS) {
-    // Each move block starts at "### MOVE_X" and ends at the next "###" or end-of-string.
-    const blockRe = new RegExp(`###\\s*${marker}\\s*\\n([\\s\\S]*?)(?=\\n###\\s*MOVE_|$)`, 'i');
+    // Each move block starts at "### MOVE_X" (with optional ** wrapping) and
+    // ends at the next "### MOVE_" or end-of-string.
+    const blockRe = new RegExp(
+      `###\\s*\\*?\\*?${marker}\\*?\\*?\\s*\\n([\\s\\S]*?)(?=\\n###\\s*\\*?\\*?MOVE_|$)`,
+      'i',
+    );
     const blockMatch = fixSectionContent.match(blockRe);
     if (!blockMatch) {
       console.warn(`[parseFixMoves] Missing block: ${marker}. Using fallback.`);
       continue;
     }
-    const block = blockMatch[1];
-
-    const headline = extractField(block, 'HEADLINE');
-    const situation = extractField(block, 'SITUATION');
-    const jobhub = extractField(block, 'JOBHUB');
-    const outcome = extractField(block, 'OUTCOME');
-
-    if (!headline || !situation || !jobhub || !outcome) {
-      console.warn(`[parseFixMoves] Incomplete block ${marker}. Falling back where missing.`, {
-        headline: !!headline, situation: !!situation, jobhub: !!jobhub, outcome: !!outcome,
-      });
+    const action = extractAction(blockMatch[1]);
+    if (!action) {
+      console.warn(`[parseFixMoves] No ACTION in ${marker}. Using fallback.`);
+      continue;
     }
-
-    result[field] = {
-      headline: headline ?? MOVE_FALLBACK.headline,
-      situation: situation ?? MOVE_FALLBACK.situation,
-      jobhub: jobhub ?? MOVE_FALLBACK.jobhub,
-      outcome: outcome ?? MOVE_FALLBACK.outcome,
-    };
+    result[field] = { action };
   }
 
   return result;
