@@ -991,6 +991,21 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
           ))}
         </div>
 
+        {/* Dashboard skip link */}
+        <button
+          onClick={onDone}
+          className="no-print"
+          style={{
+            position: 'fixed', top: 24, right: 70, zIndex: 20,
+            background: 'none', border: 'none',
+            color: theme.sub, fontSize: 12, fontWeight: 500,
+            cursor: 'pointer', padding: '6px 8px',
+            textDecoration: 'underline', textUnderlineOffset: 3,
+          }}
+        >
+          Go to the dashboard →
+        </button>
+
         {/* Theme toggle */}
         <button
           onClick={() => setIsDark(d => !d)}
