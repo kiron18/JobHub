@@ -43,6 +43,14 @@ const SECTION_TEASERS: Record<string, string> = {
   fix:            'Three actions, ranked by impact. Built from what your documents actually show, not generic advice.',
 };
 
+const SECTION_QUESTIONS: Record<string, string> = {
+  targeting:      'Am I going after the right jobs?',
+  document_audit: 'Is my resume actually doing its job?',
+  pipeline:       'Where am I getting stuck?',
+  honest:         "What's really holding me back?",
+  fix:            'So how do I actually fix this?',
+};
+
 const RESPONSE_INTROS: Record<string, string> = {
   mostly_silence:    'Applications are going in and replies are not coming back yet. The signal is that the next move sits in your targeting, resume, or positioning, before anything in the room.',
   mostly_rejections: 'You are getting noticed, which means the top of the funnel is working. The next move is usually how your experience is framed on the page, not the experience itself.',
@@ -957,12 +965,33 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
               const activeKey = openSection ?? focusedSection;
               const isDimmed = activeKey !== null && activeKey !== section.key;
 
+              const question = SECTION_QUESTIONS[section.key];
+
               return (
                 <div
                   key={section.key}
                   id={`section-${section.key}`}
                   ref={(el) => { sectionRefs.current.set(section.key, el); }}
                 >
+                  {question && (
+                    <motion.h2
+                      initial={{ opacity: 0, y: 10 }}
+                      whileInView={{ opacity: isDimmed ? 0.4 : 1, y: 0 }}
+                      viewport={{ once: true, margin: '-40px' }}
+                      transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
+                      animate={{ opacity: isDimmed ? 0.4 : 1 }}
+                      style={{
+                        fontSize: 'clamp(22px, 4vw, 30px)',
+                        fontWeight: 600,
+                        color: theme.heading,
+                        letterSpacing: '-0.02em',
+                        lineHeight: 1.25,
+                        margin: '36px 0 12px',
+                      }}
+                    >
+                      {question}
+                    </motion.h2>
+                  )}
                   <motion.div
                     className="print-card"
                     initial={{ opacity: 0, y: 20 }}
