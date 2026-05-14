@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { Sun, Moon, Copy, Check, X, Star, ChevronDown } from 'lucide-react';
 import api from '../lib/api';
-import { parseReportSections, splitProblemFix } from '../lib/parseReport';
+import { parseReportSections, splitProblemFix, parseFixMoves, type Move } from '../lib/parseReport';
 
 // ── Strategy Hub palette (replaces the previous severity-coded indigo/red/amber/teal) ──
 // Calm-ally rule: no red, no orange. Severity coding is removed. Sections use
@@ -620,6 +620,203 @@ function SocialProofWidget({ isDark, theme }: { isDark: boolean; theme: ReturnTy
   );
 }
 
+// ── Section 5: structured 3-move card ─────────────────────────────────────────
+function MoveSubCard({
+  index,
+  move,
+  theme,
+}: {
+  index: number;
+  move: Move;
+  theme: ReturnType<typeof makeTheme>;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-40px' }}
+      transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1], delay: index * 0.05 }}
+      style={{
+        background: theme.fixBand,
+        border: `1px solid ${theme.cardBorder}`,
+        borderRadius: 14,
+        padding: '20px 22px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+      }}
+    >
+      <h3 style={{
+        margin: 0,
+        fontSize: 'clamp(16px, 2.6vw, 18px)',
+        fontWeight: 700,
+        color: theme.heading,
+        letterSpacing: '-0.015em',
+        lineHeight: 1.35,
+      }}>
+        {index + 1}. {move.headline}
+      </h3>
+      <p style={{ margin: 0, fontSize: 15, lineHeight: 1.7, color: theme.body, fontWeight: 450 }}>
+        {move.situation}
+      </p>
+      <p style={{ margin: 0, fontSize: 15, lineHeight: 1.7, color: theme.body, fontWeight: 450 }}>
+        {move.jobhub}
+      </p>
+      <p style={{
+        margin: 0,
+        fontSize: 14,
+        lineHeight: 1.6,
+        color: theme.heading,
+        fontWeight: 600,
+        fontStyle: 'italic',
+        opacity: 0.92,
+      }}>
+        {move.outcome}
+      </p>
+    </motion.div>
+  );
+}
+
+function Section5Card({
+  fixSectionContent,
+  firstName,
+  meta,
+  question,
+  theme,
+  isDark,
+  isDimmed,
+  onCta,
+  ctaRef,
+  registerRef,
+}: {
+  fixSectionContent: string;
+  firstName: string | null;
+  meta: { label: string; color: string; bg: string };
+  question?: string;
+  theme: ReturnType<typeof makeTheme>;
+  isDark: boolean;
+  isDimmed: boolean;
+  onCta: () => void;
+  ctaRef: React.RefObject<HTMLDivElement | null>;
+  registerRef: (el: HTMLDivElement | null) => void;
+}) {
+  const moves = parseFixMoves(fixSectionContent);
+  const greetingName = firstName ?? 'there';
+
+  return (
+    <div ref={registerRef} id="section-fix">
+      {question && (
+        <motion.h2
+          initial={{ opacity: 0, y: 10 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-40px' }}
+          transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
+          animate={{ opacity: isDimmed ? 0.4 : 1 }}
+          style={{
+            fontSize: 'clamp(22px, 4vw, 30px)',
+            fontWeight: 600,
+            color: theme.heading,
+            letterSpacing: '-0.02em',
+            lineHeight: 1.25,
+            margin: '36px 0 12px',
+          }}
+        >
+          {question}
+        </motion.h2>
+      )}
+
+      <motion.div
+        className="print-card"
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-40px' }}
+        transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
+        animate={{ opacity: isDimmed ? 0.4 : 1 }}
+        style={{
+          background: theme.card,
+          borderRadius: 18,
+          border: `1px solid ${theme.cardBorder}`,
+          borderLeft: `4px solid ${meta.color}`,
+          backdropFilter: 'blur(24px)',
+          WebkitBackdropFilter: 'blur(24px)',
+          overflow: 'hidden',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+          transition: 'opacity 0.25s, border-color 0.25s, box-shadow 0.25s',
+          padding: '24px 26px',
+        }}
+      >
+        {/* Header: 05 / label / dot */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
+          <span style={{
+            fontSize: 10, fontWeight: 900, color: meta.color, opacity: 0.5,
+            letterSpacing: '-0.01em', fontVariantNumeric: 'tabular-nums',
+            flexShrink: 0, minWidth: 18,
+          }}>
+            05
+          </span>
+          <p style={{
+            margin: 0, flex: 1, fontSize: 11, fontWeight: 800,
+            letterSpacing: '0.12em', textTransform: 'uppercase',
+            color: theme.sub,
+          }}>
+            {meta.label}
+          </p>
+          <div style={{ width: 6, height: 6, borderRadius: '50%', background: meta.color, flexShrink: 0, opacity: 0.7 }} />
+        </div>
+
+        {/* Personalised intro */}
+        <div style={{ marginBottom: 20 }}>
+          <p style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 700, color: theme.heading, letterSpacing: '-0.015em' }}>
+            Hey {greetingName},
+          </p>
+          <p style={{ margin: 0, fontSize: 15, lineHeight: 1.65, color: theme.body, fontWeight: 450 }}>
+            Here is the path forward. Three moves, each tied to something the platform handles for you.
+          </p>
+        </div>
+
+        {/* Three sub-cards */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
+          <MoveSubCard index={0} move={moves.targeting}    theme={theme} />
+          <MoveSubCard index={1} move={moves.resume}       theme={theme} />
+          <MoveSubCard index={2} move={moves.applications} theme={theme} />
+        </div>
+
+        {/* Always-visible CTA */}
+        <div ref={ctaRef} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <motion.button
+            onClick={onCta}
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.99 }}
+            style={{
+              width: '100%',
+              background: '#2D5A6E',
+              color: '#E0E0E0',
+              borderRadius: 14,
+              padding: '16px 24px',
+              fontSize: 16,
+              fontWeight: 700,
+              border: 'none',
+              cursor: 'pointer',
+              letterSpacing: '-0.01em',
+              boxShadow: '0 6px 24px rgba(45,90,110,0.4)',
+            }}
+          >
+            Start with your professional summary →
+          </motion.button>
+          <p style={{ margin: 0, fontSize: 12, color: theme.sub, textAlign: 'center' }}>
+            First five tailored applications free. No card needed.
+          </p>
+        </div>
+
+        {/* Feedback widget moved inside the new Section 5, after the CTA */}
+        <div style={{ marginTop: 28 }}>
+          <SocialProofWidget isDark={isDark} theme={theme} />
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 // ── Main component ─────────────────────────────────────────────────────────────
 interface ReportExperienceProps {
   onDone: () => void;
@@ -966,6 +1163,26 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
               const isDimmed = activeKey !== null && activeKey !== section.key;
 
               const question = SECTION_QUESTIONS[section.key];
+
+              if (section.key === 'fix') {
+                return (
+                  <Section5Card
+                    key={section.key}
+                    fixSectionContent={section.content}
+                    firstName={firstName}
+                    meta={meta}
+                    question={SECTION_QUESTIONS.fix}
+                    theme={theme}
+                    isDark={isDark}
+                    isDimmed={isDimmed}
+                    onCta={() => {
+                      onDone();
+                    }}
+                    ctaRef={ctaRef}
+                    registerRef={(el) => { sectionRefs.current.set('fix', el); }}
+                  />
+                );
+              }
 
               return (
                 <div
