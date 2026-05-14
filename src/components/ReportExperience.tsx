@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
-import { Sun, Moon, Copy, Check, X, Star, ChevronDown } from 'lucide-react';
+import { Sun, Moon, X, Star, ChevronDown } from 'lucide-react';
 import api from '../lib/api';
 import { parseReportSections, splitProblemFix, parseFixMoves, type Move } from '../lib/parseReport';
 
@@ -837,8 +837,6 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
   const [focusedSection, setFocusedSection] = useState<string | null>(null);
   const sectionRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
   const [showSticky, setShowSticky] = useState(false);
-  const [linkCopied, setLinkCopied] = useState(false);
-  const [msgCopied, setMsgCopied] = useState(false);
   const ctaRef = useRef<HTMLDivElement>(null);
 
   const { data, isLoading, isError, refetch } = useQuery<ReportData>({
@@ -886,10 +884,6 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
   const firstName  = profile?.name?.split(' ')[0] ?? null;
   const targetRole = (profile as any)?.targetRole ?? null;
   const responsePattern = (profile as any)?.responsePattern ?? null;
-
-  const refSlug = (profile?.name ?? '').split(/\s/)[0].toLowerCase().replace(/[^a-z0-9]/g, '') || 'friend';
-  const referralLink = `https://aussiegradcareers.com.au?ref=${refSlug}`;
-  const shareMsg = `I just found this free tool that analyzed exactly why my applications weren't getting responses. Takes 5 minutes and the report is genuinely useful, ${referralLink}`;
 
 
   const cardSections = sections
@@ -1340,128 +1334,6 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
               );
             })}
           </div>
-
-          {/* ── CTA section ── */}
-          {sections.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-40px' }}
-              transition={{ duration: 0.5, ease: [0.25, 1, 0.5, 1] }}
-              style={{ marginTop: 56 }}
-            >
-              <div style={{ textAlign: 'center', marginBottom: 24 }}>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, marginBottom: 14 }}>
-                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 8px #22c55e80' }} />
-                  <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#22c55e' }}>
-                    Diagnosis complete
-                  </span>
-                </div>
-                <h2 style={{ fontSize: 'clamp(24px, 4vw, 32px)', fontWeight: 900, color: theme.heading, margin: '0 0 12px', lineHeight: 1.15, letterSpacing: '-0.025em' }}>
-                  You have the experience.<br />Now let's build the narrative.
-                </h2>
-                <p style={{ fontSize: 15, color: theme.sub, lineHeight: 1.7, maxWidth: 480, margin: '0 auto 0' }}>
-                  {firstName ? `${firstName}, your` : 'Your'} diagnosis points to the exact framing changes that will close the gap. The platform turns it into a tailored resume, cover letter, and selection-criteria responses, ready to send.
-                </p>
-              </div>
-
-              {/* Primary CTA — calm petrol, no FOMO band */}
-              <div ref={ctaRef} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
-                <motion.button
-                  onClick={onDone}
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.99 }}
-                  style={{
-                    width: '100%', background: PETROL,
-                    color: '#E0E0E0', borderRadius: 14, padding: '16px 24px',
-                    fontSize: 16, fontWeight: 700, border: 'none', cursor: 'pointer',
-                    letterSpacing: '-0.01em',
-                    boxShadow: `0 6px 24px ${PETROL}40`,
-                  }}
-                >
-                  Turn this diagnosis into an interview-ready resume →
-                </motion.button>
-                <p style={{ margin: 0, fontSize: 12, color: theme.sub, textAlign: 'center' }}>
-                  First five tailored applications free. No card needed.
-                </p>
-                <div style={{ textAlign: 'center' }}>
-                  <a
-                    href="https://www.skool.com/aussiegradcareers" target="_blank" rel="noopener noreferrer"
-                    style={{ fontSize: 13, color: SAGE, textDecoration: 'underline', textUnderlineOffset: 3, fontWeight: 600 }}
-                  >
-                    Or join the free community on Skool, frameworks, templates and weekly guidance →
-                  </a>
-                </div>
-              </div>
-
-              {/* Referral section */}
-              <div style={{
-                background: theme.referralBg,
-                border: `1px solid ${theme.referralBorder}`,
-                borderRadius: 20, padding: '22px 24px', marginBottom: 20,
-              }}>
-                <p style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: isDark ? '#374151' : '#9ca3af', marginBottom: 6 }}>
-                  Know someone in the same boat?
-                </p>
-                <p style={{ fontSize: 18, fontWeight: 800, color: theme.heading, margin: '0 0 5px', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-                  Share this, they get a free diagnosis.
-                </p>
-                <p style={{ fontSize: 13, color: theme.sub, lineHeight: 1.6, margin: '0 0 14px' }}>
-                  Every international grad you refer gets clarity on the specific moves that will sharpen their applications.
-                </p>
-                <div style={{
-                  background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
-                  border: `1px dashed ${isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.10)'}`,
-                  borderRadius: 10, padding: '11px 14px', marginBottom: 12,
-                  fontSize: 13, color: theme.sub, lineHeight: 1.7, fontStyle: 'italic',
-                }}>
-                  "I just found this free tool that analyzed exactly why my applications weren't getting responses, takes 5 minutes and the report is genuinely useful.{' '}
-                  <span style={{ color: isDark ? '#5eead4' : TEAL, fontStyle: 'normal', fontWeight: 600 }}>{referralLink}</span>"
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  {[
-                    { label: 'Copy message', copied: msgCopied, onClick: () => { navigator.clipboard.writeText(shareMsg); setMsgCopied(true); setTimeout(() => setMsgCopied(false), 2500); } },
-                    { label: 'Copy link',    copied: linkCopied, onClick: () => { navigator.clipboard.writeText(referralLink); setLinkCopied(true); setTimeout(() => setLinkCopied(false), 2500); } },
-                  ].map(({ label, copied, onClick }) => (
-                    <button
-                      key={label}
-                      onClick={onClick}
-                      style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                        background: copied
-                          ? (isDark ? 'rgba(34,197,94,0.12)' : 'rgba(34,197,94,0.10)')
-                          : (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'),
-                        border: `1px solid ${copied ? 'rgba(34,197,94,0.30)' : (isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.09)')}`,
-                        borderRadius: 10, padding: '11px 16px', fontSize: 13, fontWeight: 700,
-                        color: copied ? '#22c55e' : theme.sub,
-                        cursor: 'pointer', transition: 'all 0.18s', minHeight: 44,
-                      }}
-                    >
-                      {copied ? <Check size={13} /> : <Copy size={13} />}
-                      {copied ? 'Copied!' : label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Dashboard skip */}
-              <div style={{ textAlign: 'center' }}>
-                <button
-                  onClick={onDone}
-                  style={{ background: 'none', border: 'none', color: isDark ? '#374151' : '#9ca3af', fontWeight: 500, cursor: 'pointer', fontSize: 13 }}
-                >
-                  Already have an account? Go to the dashboard →
-                </button>
-              </div>
-
-              {/* Feedback widget — bottom-of-report placement so it doesn't
-                  interrupt the read. Quiet ask, after the user has had the
-                  full experience and the primary CTA. */}
-              <div style={{ marginTop: 40 }}>
-                <SocialProofWidget isDark={isDark} theme={theme} />
-              </div>
-            </motion.div>
-          )}
 
         </div>
       </div>
