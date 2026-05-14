@@ -26,18 +26,28 @@ describe('diagnostic prompt: Section 5 MOVE_* emission', () => {
     expect(p).toContain('### MOVE_APPLICATIONS');
   });
 
-  it('lists the four labelled keys per move', () => {
+  it('every MOVE_* block contains all four labelled keys', () => {
     const p = buildDiagnosticPromptForTest(baseInput);
-    expect(p).toContain('HEADLINE:');
-    expect(p).toContain('SITUATION:');
-    expect(p).toContain('JOBHUB:');
-    expect(p).toContain('OUTCOME:');
+    const moveBlocks = p.split('### MOVE_').slice(1);
+    expect(moveBlocks).toHaveLength(3);
+    moveBlocks.forEach((block) => {
+      expect(block).toMatch(/HEADLINE:/);
+      expect(block).toMatch(/SITUATION:/);
+      expect(block).toMatch(/JOBHUB:/);
+      expect(block).toMatch(/OUTCOME:/);
+    });
   });
 
-  it('forbids em dashes and avoid-list words in the voice rules', () => {
+  it('voice rules forbid em dashes', () => {
     const p = buildDiagnosticPromptForTest(baseInput);
     expect(p).toMatch(/no em dashes/i);
-    expect(p).toMatch(/avoid.*(brutal|killing|crushing)/i);
+  });
+
+  it('voice rules list each avoid-list word', () => {
+    const p = buildDiagnosticPromptForTest(baseInput);
+    expect(p).toContain('brutal');
+    expect(p).toContain('killing');
+    expect(p).toContain('crushing');
   });
 
   it('does not contain the old "first 7 days are free" sentence', () => {
