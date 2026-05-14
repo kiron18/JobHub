@@ -869,12 +869,25 @@ export function SetupWizard() {
   const [baselineState, setBaselineState] = useState<BaselineResumeState>({ status: 'unknown' });
   const [downloadingBaseline, setDownloadingBaseline] = useState(false);
 
-  // Poll for the baseline resume becoming ready. The server kicks off
-  // generation when the diagnostic completes; here we just check status
-  // until it settles.
+  // On mount: do a single status fetch so we know what we're starting from.
   useEffect(() => {
     let cancelled = false;
+    fetchBaselineState().then(state => {
+      if (!cancelled) setBaselineState(state);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Whenever state is "generating" or "unknown", poll until it resolves.
+  // This restarts naturally after a retry click (which sets state back to
+  // "generating") and gives every active generation a fresh 30-attempt cap.
+  useEffect(() => {
+    if (baselineState.status !== 'generating' && baselineState.status !== 'unknown') {
+      return;
+    }
+    let cancelled = false;
     let attempts = 0;
+    let timer: ReturnType<typeof setTimeout> | null = null;
     const tick = async () => {
       if (cancelled) return;
       const next = await fetchBaselineState();
@@ -883,16 +896,18 @@ export function SetupWizard() {
       if (next.status === 'generating' || next.status === 'unknown') {
         attempts += 1;
         if (attempts < 30) {
-          setTimeout(tick, 6000);
+          timer = setTimeout(tick, 6000);
         } else if (!cancelled) {
-          // Cap hit without resolution: surface a Retry option to the user.
           setBaselineState({ status: 'error' });
         }
       }
     };
-    tick();
-    return () => { cancelled = true; };
-  }, []);
+    timer = setTimeout(tick, 6000);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [baselineState.status]);
 
   const handleDownloadBaseline = async () => {
     if (downloadingBaseline) return;
@@ -901,7 +916,6 @@ export function SetupWizard() {
       try {
         await api.post('/profile/baseline-resume/generate');
         setBaselineState({ status: 'generating' });
-        setTimeout(async () => setBaselineState(await fetchBaselineState()), 4000);
       } catch (err) {
         console.error('[SetupWizard] retry baseline failed:', err);
         setBaselineState({ status: 'error' });
