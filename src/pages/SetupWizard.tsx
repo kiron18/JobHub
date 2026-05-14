@@ -74,6 +74,26 @@ function parseSkills(raw: string): string {
   return raw;
 }
 
+type BaselineResumeState =
+  | { status: 'unknown' }
+  | { status: 'generating' }
+  | { status: 'ready'; documentId: string }
+  | { status: 'error' };
+
+async function fetchBaselineState(): Promise<BaselineResumeState> {
+  try {
+    const { data } = await api.get('/profile/baseline-resume');
+    if (data?.status === 'ready' && data?.documentId) {
+      return { status: 'ready', documentId: data.documentId };
+    }
+    if (data?.status === 'generating') return { status: 'generating' };
+    if (data?.status === 'error') return { status: 'error' };
+    return { status: 'unknown' };
+  } catch {
+    return { status: 'error' };
+  }
+}
+
 function buildSteps(_profile: ProfileData): WizardStep[] {
   return [
     { type: 'summary',        label: 'Summary',        optional: false },
@@ -845,6 +865,61 @@ export function SetupWizard() {
   const [volEdits, setVolEdits] = useState<VolEntry[]>([]);
   const [skillsText, setSkillsText] = useState('');
 
+  const [baselineState, setBaselineState] = useState<BaselineResumeState>({ status: 'unknown' });
+  const [downloadingBaseline, setDownloadingBaseline] = useState(false);
+
+  // Poll for the baseline resume becoming ready. The server kicks off
+  // generation when the diagnostic completes; here we just check status
+  // until it settles.
+  useEffect(() => {
+    let cancelled = false;
+    let attempts = 0;
+    const tick = async () => {
+      if (cancelled) return;
+      const next = await fetchBaselineState();
+      if (cancelled) return;
+      setBaselineState(next);
+      if (next.status === 'generating' || next.status === 'unknown') {
+        attempts += 1;
+        if (attempts < 30) {
+          setTimeout(tick, 6000);
+        }
+      }
+    };
+    tick();
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleDownloadBaseline = async () => {
+    if (downloadingBaseline) return;
+    if (baselineState.status === 'error' || baselineState.status === 'unknown') {
+      setDownloadingBaseline(true);
+      try {
+        await api.post('/profile/baseline-resume/generate');
+        setBaselineState({ status: 'generating' });
+        setTimeout(async () => setBaselineState(await fetchBaselineState()), 4000);
+      } catch (err) {
+        console.error('[SetupWizard] retry baseline failed:', err);
+        setBaselineState({ status: 'error' });
+      } finally {
+        setDownloadingBaseline(false);
+      }
+      return;
+    }
+    if (baselineState.status === 'ready') {
+      setDownloadingBaseline(true);
+      try {
+        const { data: doc } = await api.get(`/documents/${baselineState.documentId}`);
+        const { exportDocx } = await import('../lib/exportDocx');
+        await exportDocx(doc.content, 'resume', '');
+      } catch (err) {
+        console.error('[SetupWizard] download baseline failed:', err);
+      } finally {
+        setDownloadingBaseline(false);
+      }
+    }
+  };
+
   const isReturning = localStorage.getItem('jobhub_setup_complete') === '1';
 
   // Load profile on mount
@@ -1073,6 +1148,31 @@ export function SetupWizard() {
 
   return (
     <div style={{ height: '100vh', overflowY: 'auto', background: '#080b12', paddingBottom: 80 }}>
+      {/* Baseline resume download link, fixed top-right */}
+      <button
+        onClick={handleDownloadBaseline}
+        disabled={downloadingBaseline}
+        style={{
+          position: 'fixed', top: 16, right: 20, zIndex: 30,
+          background: 'rgba(255,255,255,0.05)',
+          border: '1px solid rgba(255,255,255,0.10)',
+          borderRadius: 999, padding: '8px 14px',
+          fontSize: 12, fontWeight: 600,
+          color: baselineState.status === 'ready' ? '#a5b4fc' : '#9ca3af',
+          cursor: downloadingBaseline ? 'wait' : 'pointer',
+          letterSpacing: '0.01em',
+          backdropFilter: 'blur(8px)',
+        }}
+      >
+        {(() => {
+          if (downloadingBaseline) return 'Downloading…';
+          if (baselineState.status === 'generating') return 'Generating baseline resume…';
+          if (baselineState.status === 'ready')      return 'Download my baseline resume';
+          if (baselineState.status === 'error')      return 'Retry baseline resume';
+          return 'Generating baseline resume…';
+        })()}
+      </button>
+
       {/* Reward overlay */}
       <RewardOverlay
         visible={rewardVisible}
