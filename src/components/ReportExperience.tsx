@@ -1390,13 +1390,14 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
               <button
                 onClick={onDone}
                 style={{
-                  background: 'linear-gradient(135deg, #f97316 0%, #ec4899 50%, #7c3aed 100%)', color: 'white',
-                  borderRadius: 10, padding: '10px 18px', fontSize: 13, fontWeight: 800,
-                  border: 'none', cursor: 'pointer', boxShadow: '0 4px 16px rgba(236, 72, 153, 0.3)',
-                  whiteSpace: 'nowrap', minHeight: 44,
+                  background: PETROL, color: '#E0E0E0',
+                  borderRadius: 10, padding: '10px 18px', fontSize: 13, fontWeight: 700,
+                  border: 'none', cursor: 'pointer',
+                  boxShadow: `0 4px 16px ${PETROL}30`,
+                  whiteSpace: 'nowrap', minHeight: 44, letterSpacing: '-0.01em',
                 }}
               >
-                Build your interview-ready resume, Free →
+                Start with your professional summary →
               </button>
               <button
                 onClick={() => setShowSticky(false)}
