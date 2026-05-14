@@ -86,7 +86,7 @@ async function fetchBaselineState(): Promise<BaselineResumeState> {
     if (data?.status === 'ready' && data?.documentId) {
       return { status: 'ready', documentId: data.documentId };
     }
-    if (data?.status === 'generating') return { status: 'generating' };
+    if (data?.status === 'generating' || data?.status === 'pending') return { status: 'generating' };
     if (data?.status === 'error') return { status: 'error' };
     return { status: 'unknown' };
   } catch {
@@ -883,6 +883,9 @@ export function SetupWizard() {
         attempts += 1;
         if (attempts < 30) {
           setTimeout(tick, 6000);
+        } else if (!cancelled) {
+          // Cap hit without resolution: surface a Retry option to the user.
+          setBaselineState({ status: 'error' });
         }
       }
     };
