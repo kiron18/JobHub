@@ -93,7 +93,7 @@ const MOVE_KEYS: Array<{ marker: string; field: keyof FixMoves }> = [
  * line so multi-line values are captured up to the next field.
  */
 function extractField(block: string, label: 'HEADLINE' | 'SITUATION' | 'JOBHUB' | 'OUTCOME'): string | undefined {
-  const re = new RegExp(`^${label}:\\s*([\\s\\S]*?)(?=\\n[A-Z]{4,}:|$)`, 'm');
+  const re = new RegExp(`${label}:\\s*([\\s\\S]*?)(?=\\n(?:HEADLINE|SITUATION|JOBHUB|OUTCOME):|$)`);
   const m = block.match(re);
   if (!m) return undefined;
   return m[1].replace(/\s+/g, ' ').trim() || undefined;
