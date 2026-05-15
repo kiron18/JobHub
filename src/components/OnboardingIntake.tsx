@@ -285,86 +285,142 @@ function BackButton({ onBack, disabled }: { onBack: () => void; disabled?: boole
 function StepWelcome({ onNext }: { onNext: () => void }) {
   const { T } = useTheme();
   const navigate = useNavigate();
+
+  const PETROL = '#2D5A6E';
+  const GOLD   = '#C5A059';
+
+  const journeySteps = [
+    {
+      n: 1,
+      title: 'We Analyse Your Gaps.',
+      body: 'An instant, detailed diagnosis of your current positioning and experience, so you stop guessing what is costing you interviews.',
+    },
+    {
+      n: 2,
+      title: 'We Perfect Your Resume.',
+      body: 'JobHub translates your experience into the language Australian recruiters expect, tailored for the role you are applying to.',
+    },
+    {
+      n: 3,
+      title: 'We Validate & Fix the Rest.',
+      body: 'Before you apply, the platform pre-screens your package and closes any last gaps, so each application lands with maximum impact.',
+    },
+  ];
+
   return (
     <div style={{ textAlign: 'center' }}>
-      <motion.span initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+      <motion.span
+        initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
         style={{
-          display: 'inline-block', fontSize: 11, fontWeight: 700, letterSpacing: '0.18em',
-          textTransform: 'uppercase', color: T.textFaint,
-          background: T.chipBg, borderRadius: 99, padding: '6px 16px', marginBottom: 18,
-        }}>
-        Career diagnosis
+          display: 'inline-block', fontSize: 11, fontWeight: 700, letterSpacing: '0.2em',
+          textTransform: 'uppercase', color: T.textFaint, marginBottom: 18,
+        }}
+      >
+        Your Australian career journey
       </motion.span>
 
-      <h1 style={{ fontSize: 'clamp(22px, 4.5vw, 32px)', fontWeight: 900, color: T.text, lineHeight: 1.2, marginBottom: 12, letterSpacing: '-0.02em' }}>
-        Applying for months in Australia.<br />Getting nothing back?
+      <h1 style={{
+        fontSize: 'clamp(22px, 4.5vw, 32px)',
+        fontWeight: 900, color: T.text, lineHeight: 1.22,
+        marginBottom: 28, letterSpacing: '-0.02em',
+        maxWidth: 560, marginInline: 'auto',
+      }}>
+        Stop guessing why you aren't getting interviews.
+        <br />Let's fix your strategy.
       </h1>
 
-      <p style={{ color: T.textMuted, fontSize: 14, lineHeight: 1.65, maxWidth: 420, margin: '0 auto 18px' }}>
-        Take this free 3-minute diagnostic to find out exactly which part of your application process is costing you interviews, and what to fix first.
-      </p>
-
-      <div style={{ marginBottom: 18, textAlign: 'left' }}>
-        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: T.textFaint, textAlign: 'center', marginBottom: 10 }}>
-          Your diagnosis will cover
-        </p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-          {[
-            { label: 'Role targeting',        desc: 'Right roles for your level?' },
-            { label: 'Document audit',         desc: 'Resume costing you interviews?' },
-            { label: 'Application pipeline',   desc: 'Where things drop off?' },
-            { label: 'Honest assessment',      desc: 'What your docs reveal' },
-            { label: 'Three-step fix', color: '#22c55e', desc: 'Ranked by impact, written for you' },
-            { label: 'How we can help',        desc: 'Tools and training available' },
-          ].map((item, i) => (
-            <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * 0.04 }}
-              style={{
-                display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 10px',
-                borderRadius: 10, border: `1px solid ${T.inputBorder}`, background: T.inputBg,
-              }}
-            >
-              <div style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0, marginTop: 4, background: item.color || T.progressFill }} />
-              <div>
-                <span style={{ fontSize: 12, fontWeight: 700, color: item.color || T.text, display: 'block' }}>{item.label}</span>
-                <span style={{ fontSize: 11, color: T.textFaint }}>{item.desc}</span>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-
+      {/* 1-2-3 connected dots ribbon */}
       <div style={{
-        marginBottom: 18, padding: '12px 16px', borderRadius: 12,
-        background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.25)',
-        textAlign: 'left',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        gap: 0, marginBottom: 18, padding: '0 8px',
       }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: '#fde047', margin: '0 0 4px' }}>
-          Before you start, grab your resume.
-        </p>
-        <p style={{ fontSize: 12, color: T.textMuted, margin: 0, lineHeight: 1.5 }}>
-          This diagnostic reads your actual documents to identify what's costing you interviews. Resume is required. Cover letters help if you have them.
-        </p>
+        {journeySteps.map((s, i) => (
+          <React.Fragment key={s.n}>
+            <div style={{
+              width: 32, height: 32, borderRadius: '50%',
+              background: GOLD, color: '#1A1C1E',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontWeight: 900, fontSize: 14, flexShrink: 0,
+              boxShadow: `0 4px 16px ${GOLD}40`,
+            }}>
+              {s.n}
+            </div>
+            {i < journeySteps.length - 1 && (
+              <div style={{
+                flex: 1, height: 1,
+                background: `linear-gradient(90deg, ${GOLD}80, ${GOLD}30)`,
+                margin: '0 6px', maxWidth: 80,
+              }} />
+            )}
+          </React.Fragment>
+        ))}
       </div>
 
-      <motion.button onClick={onNext}
+      {/* Three step cards */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gap: 10, marginBottom: 24,
+      }}>
+        {journeySteps.map((s, i) => (
+          <motion.div
+            key={s.n}
+            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 + i * 0.08, ease: [0.25, 1, 0.5, 1] }}
+            style={{
+              padding: '14px 12px',
+              borderRadius: 12,
+              border: `1px solid ${T.inputBorder}`,
+              background: T.inputBg,
+              textAlign: 'center',
+              display: 'flex', flexDirection: 'column', gap: 8,
+            }}
+          >
+            <p style={{
+              margin: 0, fontSize: 13, fontWeight: 700,
+              color: T.text, letterSpacing: '-0.01em', lineHeight: 1.3,
+            }}>
+              {s.title}
+            </p>
+            <p style={{
+              margin: 0, fontSize: 11, lineHeight: 1.5,
+              color: T.textMuted, fontWeight: 450,
+            }}>
+              {s.body}
+            </p>
+          </motion.div>
+        ))}
+      </div>
+
+      <motion.button
+        onClick={onNext}
         style={{
-          background: 'linear-gradient(135deg, #16a34a, #15803d)',
-          color: 'white', padding: '15px 36px', borderRadius: 16, border: 'none',
-          fontWeight: 900, fontSize: 16, cursor: 'pointer',
-          boxShadow: '0 4px 24px rgba(22,163,74,0.35)',
+          background: PETROL,
+          color: '#E0E0E0',
+          padding: '15px 32px', borderRadius: 14, border: 'none',
+          fontWeight: 800, fontSize: 15, cursor: 'pointer',
+          boxShadow: `0 6px 24px ${PETROL}55`,
           letterSpacing: '-0.01em', width: '100%',
         }}
-        animate={{ boxShadow: ['0 4px 24px rgba(22,163,74,0.35)', '0 4px 36px rgba(22,163,74,0.6)', '0 4px 24px rgba(22,163,74,0.35)'] }}
-        transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
-        whileHover={{ scale: 1.02, boxShadow: '0 8px 40px rgba(22,163,74,0.55)' }}
-        whileTap={{ scale: 0.97 }}>
-        Start my diagnosis →
+        whileHover={{ scale: 1.01 }}
+        whileTap={{ scale: 0.98 }}
+      >
+        Analyse My Resume & Build My Plan →
       </motion.button>
-      <p style={{ fontSize: 12, color: T.textFaint, marginTop: 10 }}>Takes about 3 minutes · Free</p>
+      <p style={{ fontSize: 12, color: T.textFaint, marginTop: 10 }}>
+        Takes about 3 minutes · Free · No card needed
+      </p>
+
       <p style={{ fontSize: 12, color: T.textFaint, marginTop: 16 }}>
         Already have an account?{' '}
-        <button onClick={() => navigate('/auth')}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#22c55e', fontWeight: 700, fontSize: 12, padding: 0, textDecoration: 'underline', textUnderlineOffset: 3 }}>
+        <button
+          onClick={() => navigate('/auth')}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: GOLD, fontWeight: 700, fontSize: 12, padding: 0,
+            textDecoration: 'underline', textUnderlineOffset: 3,
+          }}
+        >
           Log in
         </button>
       </p>
