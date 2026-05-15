@@ -74,9 +74,17 @@ Tell them exactly how to fix it. Specific role titles, seniority level, or posit
 
 ## Document Audit
 
-Most resumes describe what the candidate *did* — their responsibilities. What employers actually need to see is what the candidate *caused* — the outcomes. The difference between "Managed a team of 5 developers" and "Grew engineering team capacity by 40%, enabling us to ship two product lines in parallel" is the difference between a resume that looks like a job description and one that builds a picture of someone they want to hire.
+Most resumes describe what the candidate did, their responsibilities. What employers actually need to see is what the candidate caused, the outcomes. State the principle as a one-line formula the candidate can re-use on every bullet:
 
-Look at the resume with that lens. Is the language describing duties (what the role required) or outcomes (what this person specifically achieved)? Where does the opening hook land — does it make a recruiter stop and read, or scan past? Identify 1–2 specific examples from their actual resume text where this shift would have the biggest impact.
+**Formula = What you did + What outcome was achieved as a result.**
+
+Choose ONE illustrative before/after example from a field DIFFERENT to the candidate's stated industry "${input.industry}", so the pattern is shown rather than mirrored. Pick from this rotating set, picking the first one whose field is not the candidate's:
+- Engineering: "Managed a team of 5 developers" → "Led a 5-person engineering team to ship 3 product features in Q2, cutting time-to-market by 30%."
+- Finance: "Reviewed monthly accounts" → "Reviewed monthly accounts across 12 cost centres and surfaced $180K of misallocated spend in the first quarter."
+- Design: "Designed marketing collateral" → "Redesigned the onboarding flow, lifting trial-to-paid conversion from 18% to 27% over 8 weeks."
+- Operations: "Coordinated logistics" → "Coordinated logistics across 4 sites and cut average delivery time from 5.2 to 3.4 days."
+
+Look at the candidate's resume with the formula lens. Is the language describing duties or outcomes? Where does the opening hook land, does it make a recruiter stop and read, or scan past? Identify 1 to 2 specific lines from their ACTUAL resume text where applying the formula would have the biggest impact.
 
 ${coverLetterSection ? 'Cover letters: Does the opening line start with the candidate or with the role? A line that opens with "I am applying for..." signals a transactional mindset. A line that opens with a specific insight about the company or a direct value statement signals someone who did the work. Evaluate whether the cover letter positions them or just summarises the resume.' : 'No cover letters were provided — note this as a gap. Recruiters at competitive firms use the cover letter to filter for written communication, motivation, and cultural fit. Not having one means leaving that round unplayed.'}
 
@@ -113,15 +121,20 @@ Give the immediate fix for this primary blocker. Make it feel achievable, not ov
 
 ## The 3-Step Fix
 
-Write exactly 3 numbered items. Each item must have a bold action title on the first line, followed by 2-3 sentences of specific advice. Fold the likely impact into the body of each item — do not add a separate section for impact. Number them 1, 2, 3. For any before/after example within an item, use blockquote format:
-> Before: [their actual text]
-> After: [the improved version]
+Voice rules for this section: calm, plain, calm-ally tone. Use "you" not "the candidate" in the rendered text. No em dashes. No exclamations. Avoid the words: brutal, killing, crushing, rocket, fire, "stop guessing", "stop getting rejected". Be brief. Be specific to THIS candidate. No selling.
 
-The third item must end with this closing sentence, adapted to reflect the biggest gap you identified (resume, cover letter, or interview): "The fastest way to do this is inside the platform — it has been built around your specific profile and this exact role type. Your first 7 days are free. Use them."
+Emit three moves in EXACTLY this format. Each move is one short imperative ACTION sentence the candidate can act on TODAY to make their job search materially better. Aim for 12 to 22 words. Crisp, executable, not a paragraph, not a description.
 
----
+CRITICAL: Use plain text labels. Do NOT wrap labels in markdown bold. Write "ACTION:" as plain text, never "**ACTION:**". Do not add any other prose between or around the moves.
 
-[Leave this zone empty — the three steps above are the complete plan.]
+### MOVE_TARGETING
+ACTION: <one crisp imperative sentence on sharpening role targeting today. Specific to THIS candidate. Plain prose, no markdown, no bullets.>
+
+### MOVE_RESUME
+ACTION: <one crisp imperative sentence on refining their resume framing or structure today. Specific to THIS candidate. Plain prose.>
+
+### MOVE_APPLICATIONS
+ACTION: <one crisp imperative sentence on tightening how they apply (volume vs quality, channels, follow-up) today. Specific to THIS candidate. Plain prose.>
 
 ## What JobHub Will Do For You
 
@@ -133,3 +146,7 @@ export async function generateDiagnosticReport(input: DiagnosticReportInput): Pr
   const { content } = await callClaude(prompt, false);
   return content;
 }
+
+// Test-only export. Allows the prompt assembler to be exercised directly
+// without an LLM call.
+export const buildDiagnosticPromptForTest = buildDiagnosticPrompt;

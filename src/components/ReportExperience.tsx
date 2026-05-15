@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
-import { Sun, Moon, Copy, Check, X, Star, ChevronDown } from 'lucide-react';
+import { Sun, Moon, X, ChevronDown } from 'lucide-react';
 import api from '../lib/api';
-import { parseReportSections, splitProblemFix } from '../lib/parseReport';
+import { parseReportSections, splitProblemFix, parseFixMoves, type Move } from '../lib/parseReport';
+import { trackSection5CtaClicked } from '../lib/analytics';
 
 // ── Strategy Hub palette (replaces the previous severity-coded indigo/red/amber/teal) ──
 // Calm-ally rule: no red, no orange. Severity coding is removed. Sections use
@@ -13,7 +14,6 @@ const GOLD   = '#C5A059';
 const SAGE   = '#7DA67D';
 const SLATE  = '#9ca3af';
 const TEAL   = SAGE; // Legacy alias retained for downstream references (loading spinner, Skool link)
-const INDIGO = PETROL; // Legacy alias for the CTA glow + active chip
 
 // ── Section metadata ──────────────────────────────────────────────────────────
 // No severity labels. No critical/review distinction. Every section gets the
@@ -41,6 +41,14 @@ const SECTION_TEASERS: Record<string, string> = {
   pipeline:       '"No response" is a data point, it tells you exactly where in the process you\'re being filtered out.',
   honest:         'The real blocker is almost never what it looks like from the inside. This section names it directly.',
   fix:            'Three actions, ranked by impact. Built from what your documents actually show, not generic advice.',
+};
+
+const SECTION_QUESTIONS: Record<string, string> = {
+  targeting:      'Am I going after the right jobs?',
+  document_audit: 'Is my resume actually doing its job?',
+  pipeline:       'Where am I getting stuck?',
+  honest:         "What's really holding me back?",
+  fix:            'So how do I actually fix this?',
 };
 
 const RESPONSE_INTROS: Record<string, string> = {
@@ -482,133 +490,187 @@ function RenderContent({ text, color, headingColor }: { text: string; color: str
   );
 }
 
-// ── Social proof widget ────────────────────────────────────────────────────────
-const RATING_CHIPS = ['Spot on', 'Eye-opening', 'Needed to hear this', 'Needs more detail'];
-
-function SocialProofWidget({ isDark, theme }: { isDark: boolean; theme: ReturnType<typeof makeTheme> }) {
-  const [rating, setRating] = useState(0);
-  const [hovered, setHovered] = useState(0);
-  const [chips, setChips] = useState<string[]>([]);
-  const [comment, setComment] = useState('');
-  const [submitted, setSubmitted] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-
-  function toggleChip(chip: string) {
-    setChips(prev => prev.includes(chip) ? prev.filter(c => c !== chip) : [...prev, chip]);
-  }
-
-  async function handleSubmit() {
-    if (!rating) return;
-    setSubmitting(true);
-    try {
-      await api.post('/onboarding/rating', { rating, chips, comment: comment.trim() || undefined });
-      setSubmitted(true);
-    } catch {
-      setSubmitting(false);
-    }
-  }
-
+// ── Section 5: structured 3-move card ─────────────────────────────────────────
+function MoveSubCard({
+  index,
+  move,
+  theme,
+}: {
+  index: number;
+  move: Move;
+  theme: ReturnType<typeof makeTheme>;
+}) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 24 }}
+      initial={{ opacity: 0, y: 12 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-60px' }}
-      transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
+      viewport={{ once: true, margin: '-40px' }}
+      transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1], delay: index * 0.05 }}
       style={{
-        background: theme.card,
+        background: theme.fixBand,
         border: `1px solid ${theme.cardBorder}`,
-        borderRadius: 20,
-        padding: '28px 28px 24px',
-        backdropFilter: 'blur(24px)',
+        borderRadius: 14,
+        padding: '18px 22px',
       }}
     >
-      {submitted ? (
-        <div style={{ textAlign: 'center', padding: '8px 0' }}>
-          <p style={{ fontSize: 22, fontWeight: 900, color: theme.heading, margin: '0 0 6px', letterSpacing: '-0.02em' }}>Thanks for the feedback.</p>
-          <p style={{ fontSize: 14, color: theme.sub }}>This helps us improve the diagnosis for everyone.</p>
-        </div>
-      ) : (
-        <>
-          <p style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: theme.sub, marginBottom: 8 }}>
-            How accurate was your diagnosis?
+      <p style={{
+        margin: 0,
+        fontSize: 'clamp(15px, 2.4vw, 17px)',
+        fontWeight: 700,
+        color: theme.heading,
+        letterSpacing: '-0.01em',
+        lineHeight: 1.5,
+      }}>
+        {index + 1}. {move.action}
+      </p>
+    </motion.div>
+  );
+}
+
+function Section5Card({
+  fixSectionContent,
+  firstName,
+  meta,
+  question,
+  theme,
+  isDark: _isDark,
+  isDimmed,
+  onCta,
+  ctaRef,
+  registerRef,
+}: {
+  fixSectionContent: string;
+  firstName: string | null;
+  meta: { label: string; color: string; bg: string };
+  question?: string;
+  theme: ReturnType<typeof makeTheme>;
+  isDark: boolean;
+  isDimmed: boolean;
+  onCta: () => void;
+  ctaRef: React.RefObject<HTMLDivElement | null>;
+  registerRef: (el: HTMLDivElement | null) => void;
+}) {
+  const moves = parseFixMoves(fixSectionContent);
+  const greetingName = firstName ?? 'there';
+
+  return (
+    <div ref={registerRef} id="section-fix">
+      {question && (
+        <motion.h2
+          initial={{ opacity: 0, y: 10 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-40px' }}
+          transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
+          animate={{ opacity: isDimmed ? 0.22 : 1 }}
+          style={{
+            fontSize: 'clamp(26px, 4.6vw, 34px)',
+            fontWeight: 600,
+            color: theme.heading,
+            letterSpacing: '-0.02em',
+            lineHeight: 1.22,
+            margin: '40px 0 22px',
+          }}
+        >
+          {question}
+        </motion.h2>
+      )}
+
+      <motion.div
+        className="print-card"
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-40px' }}
+        transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
+        animate={{ opacity: isDimmed ? 0.28 : 1 }}
+        style={{
+          background: theme.card,
+          borderRadius: 18,
+          border: `1px solid ${theme.cardBorder}`,
+          borderLeft: `4px solid ${meta.color}`,
+          backdropFilter: 'blur(24px)',
+          WebkitBackdropFilter: 'blur(24px)',
+          overflow: 'hidden',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+          transition: 'opacity 0.25s, border-color 0.25s, box-shadow 0.25s',
+          padding: '24px 26px',
+        }}
+      >
+        {/* Header: 05 / label / dot */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
+          <span style={{
+            fontSize: 10, fontWeight: 900, color: meta.color, opacity: 0.5,
+            letterSpacing: '-0.01em', fontVariantNumeric: 'tabular-nums',
+            flexShrink: 0, minWidth: 18,
+          }}>
+            05
+          </span>
+          <p style={{
+            margin: 0, flex: 1, fontSize: 11, fontWeight: 800,
+            letterSpacing: '0.12em', textTransform: 'uppercase',
+            color: theme.sub,
+          }}>
+            {meta.label}
           </p>
-          <h3 style={{ fontSize: 20, fontWeight: 900, color: theme.heading, margin: '0 0 20px', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-            Does this match what you've been experiencing?
-          </h3>
+          <div style={{ width: 6, height: 6, borderRadius: '50%', background: meta.color, flexShrink: 0, opacity: 0.7 }} />
+        </div>
 
-          {/* Stars */}
-          <div style={{ display: 'flex', gap: 6, marginBottom: 18 }}>
-            {[1, 2, 3, 4, 5].map(n => (
-              <button
-                key={n}
-                onClick={() => setRating(n)}
-                onMouseEnter={() => setHovered(n)}
-                onMouseLeave={() => setHovered(0)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex' }}
-              >
-                <Star
-                  size={28}
-                  fill={(hovered || rating) >= n ? GOLD : 'none'}
-                  color={(hovered || rating) >= n ? GOLD : (isDark ? '#374151' : '#d1d5db')}
-                  strokeWidth={1.5}
-                  style={{ transition: 'all 0.1s' }}
-                />
-              </button>
-            ))}
-          </div>
+        {/* Personalised intro */}
+        <div style={{ marginBottom: 20 }}>
+          <p style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 700, color: theme.heading, letterSpacing: '-0.015em' }}>
+            Hey {greetingName},
+          </p>
+          <p style={{ margin: 0, fontSize: 15, lineHeight: 1.65, color: theme.body, fontWeight: 450 }}>
+            Here are three moves you can take today to start closing the gaps above.
+          </p>
+        </div>
 
-          {/* Chips */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 18 }}>
-            {RATING_CHIPS.map(chip => {
-              const active = chips.includes(chip);
-              return (
-                <button
-                  key={chip}
-                  onClick={() => toggleChip(chip)}
-                  style={{
-                    background: active ? `${INDIGO}15` : theme.chipBg,
-                    border: `1px solid ${active ? INDIGO + '50' : theme.chipBorder}`,
-                    borderRadius: 99, padding: '7px 14px', fontSize: 13, fontWeight: 600,
-                    color: active ? INDIGO : theme.sub, cursor: 'pointer',
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  {chip}
-                </button>
-              );
-            })}
-          </div>
+        {/* Three sub-cards */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 22 }}>
+          <MoveSubCard index={0} move={moves.targeting}    theme={theme} />
+          <MoveSubCard index={1} move={moves.resume}       theme={theme} />
+          <MoveSubCard index={2} move={moves.applications} theme={theme} />
+        </div>
 
-          {/* Optional comment */}
-          <textarea
-            placeholder="Anything else? (optional)"
-            value={comment}
-            onChange={e => setComment(e.target.value)}
-            rows={2}
+        {/* Closing nudge to wizard */}
+        <p style={{
+          margin: '0 0 18px',
+          fontSize: 15,
+          lineHeight: 1.65,
+          color: theme.body,
+          fontWeight: 500,
+          textAlign: 'center',
+        }}>
+          Your next step is the resume wizard. It turns every gap above into a stronger draft you can send today.
+        </p>
+
+        {/* Always-visible CTA */}
+        <div ref={ctaRef} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <motion.button
+            onClick={onCta}
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.99 }}
             style={{
-              width: '100%', background: theme.inputBg, border: `1px solid ${theme.inputBorder}`,
-              borderRadius: 10, color: theme.inputText, fontSize: 14,
-              padding: '10px 14px', outline: 'none', resize: 'none',
-              fontFamily: 'inherit', marginBottom: 14, boxSizing: 'border-box',
-            }}
-          />
-
-          <button
-            onClick={handleSubmit}
-            disabled={!rating || submitting}
-            style={{
-              background: rating ? INDIGO : (isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'),
-              color: rating ? 'white' : theme.sub,
-              border: 'none', borderRadius: 10, padding: '11px 24px',
-              fontSize: 14, fontWeight: 700, cursor: rating ? 'pointer' : 'default',
-              transition: 'all 0.2s', boxShadow: rating ? `0 4px 14px ${INDIGO}30` : 'none',
+              width: '100%',
+              background: PETROL,
+              color: '#E0E0E0',
+              borderRadius: 14,
+              padding: '16px 24px',
+              fontSize: 16,
+              fontWeight: 700,
+              border: 'none',
+              cursor: 'pointer',
+              letterSpacing: '-0.01em',
+              boxShadow: `0 6px 24px ${PETROL}40`,
             }}
           >
-            {submitting ? 'Saving...' : 'Submit feedback'}
-          </button>
-        </>
-      )}
-    </motion.div>
+            Start with your professional summary →
+          </motion.button>
+          <p style={{ margin: 0, fontSize: 12, color: theme.sub, textAlign: 'center' }}>
+            First five tailored applications free. No card needed.
+          </p>
+        </div>
+      </motion.div>
+    </div>
   );
 }
 
@@ -632,8 +694,6 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
   const [focusedSection, setFocusedSection] = useState<string | null>(null);
   const sectionRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
   const [showSticky, setShowSticky] = useState(false);
-  const [linkCopied, setLinkCopied] = useState(false);
-  const [msgCopied, setMsgCopied] = useState(false);
   const ctaRef = useRef<HTMLDivElement>(null);
 
   const { data, isLoading, isError, refetch } = useQuery<ReportData>({
@@ -681,10 +741,6 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
   const firstName  = profile?.name?.split(' ')[0] ?? null;
   const targetRole = (profile as any)?.targetRole ?? null;
   const responsePattern = (profile as any)?.responsePattern ?? null;
-
-  const refSlug = (profile?.name ?? '').split(/\s/)[0].toLowerCase().replace(/[^a-z0-9]/g, '') || 'friend';
-  const referralLink = `https://aussiegradcareers.com.au?ref=${refSlug}`;
-  const shareMsg = `I just found this free tool that analyzed exactly why my applications weren't getting responses. Takes 5 minutes and the report is genuinely useful, ${referralLink}`;
 
 
   const cardSections = sections
@@ -792,6 +848,21 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
           ))}
         </div>
 
+        {/* Dashboard skip link */}
+        <button
+          onClick={onDone}
+          className="no-print"
+          style={{
+            position: 'fixed', top: 24, right: 70, zIndex: 20,
+            background: 'none', border: 'none',
+            color: theme.sub, fontSize: 12, fontWeight: 500,
+            cursor: 'pointer', padding: '6px 8px',
+            textDecoration: 'underline', textUnderlineOffset: 3,
+          }}
+        >
+          Go to the dashboard →
+        </button>
+
         {/* Theme toggle */}
         <button
           onClick={() => setIsDark(d => !d)}
@@ -819,15 +890,25 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
             transition={{ duration: 0.5 }}
             style={{ marginBottom: 48, textAlign: 'center' }}
           >
-            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: theme.sub, marginBottom: 16 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: theme.sub, marginBottom: 24 }}>
               Your diagnosis
             </p>
-            {firstName && (
-              <p style={{ fontSize: 'clamp(28px, 5.5vw, 42px)', fontWeight: 900, color: theme.heading, margin: '0 0 6px', lineHeight: 1.12, letterSpacing: '-0.03em' }}>
-                Hey {firstName},
-              </p>
-            )}
-            <h1 style={{ fontSize: 'clamp(28px, 5.5vw, 42px)', fontWeight: 900, color: theme.heading, margin: '0 0 20px', lineHeight: 1.12, letterSpacing: '-0.03em' }}>
+            {/* Greeting — always reserves space so the layout doesn't jump when the
+                name extracts later. Fades in once firstName lands. */}
+            <p style={{
+              fontSize: 'clamp(28px, 5.5vw, 42px)',
+              fontWeight: 900,
+              color: theme.heading,
+              margin: '0 0 12px',
+              lineHeight: 1.12,
+              letterSpacing: '-0.03em',
+              minHeight: 'clamp(34px, 6.2vw, 48px)',
+              opacity: firstName ? 1 : 0,
+              transition: 'opacity 0.5s ease',
+            }}>
+              {firstName ? `Hey ${firstName},` : ' '}
+            </p>
+            <h1 style={{ fontSize: 'clamp(28px, 5.5vw, 42px)', fontWeight: 900, color: theme.heading, margin: '0 0 28px', lineHeight: 1.12, letterSpacing: '-0.03em' }}>
               {targetRole
                 ? <>your{' '}
                     <span style={{ color: GOLD, display: 'inline-block' }}>{targetRole}</span>
@@ -957,19 +1038,61 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
               const activeKey = openSection ?? focusedSection;
               const isDimmed = activeKey !== null && activeKey !== section.key;
 
+              const question = SECTION_QUESTIONS[section.key];
+
+              if (section.key === 'fix') {
+                return (
+                  <Section5Card
+                    key={section.key}
+                    fixSectionContent={section.content}
+                    firstName={firstName}
+                    meta={meta}
+                    question={SECTION_QUESTIONS.fix}
+                    theme={theme}
+                    isDark={isDark}
+                    isDimmed={isDimmed}
+                    onCta={() => {
+                      trackSection5CtaClicked();
+                      onDone();
+                    }}
+                    ctaRef={ctaRef}
+                    registerRef={(el) => { sectionRefs.current.set('fix', el); }}
+                  />
+                );
+              }
+
               return (
                 <div
                   key={section.key}
                   id={`section-${section.key}`}
                   ref={(el) => { sectionRefs.current.set(section.key, el); }}
                 >
+                  {question && (
+                    <motion.h2
+                      initial={{ opacity: 0, y: 10 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true, margin: '-40px' }}
+                      transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
+                      animate={{ opacity: isDimmed ? 0.28 : 1 }}
+                      style={{
+                        fontSize: 'clamp(22px, 4vw, 30px)',
+                        fontWeight: 600,
+                        color: theme.heading,
+                        letterSpacing: '-0.02em',
+                        lineHeight: 1.25,
+                        margin: '36px 0 12px',
+                      }}
+                    >
+                      {question}
+                    </motion.h2>
+                  )}
                   <motion.div
                     className="print-card"
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true, margin: '-40px' }}
                     transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
-                    animate={{ opacity: isDimmed ? 0.4 : 1 }}
+                    animate={{ opacity: isDimmed ? 0.28 : 1 }}
                     style={{
                       background: theme.card,
                       borderRadius: 18,
@@ -1095,128 +1218,6 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
             })}
           </div>
 
-          {/* ── CTA section ── */}
-          {sections.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-40px' }}
-              transition={{ duration: 0.5, ease: [0.25, 1, 0.5, 1] }}
-              style={{ marginTop: 56 }}
-            >
-              <div style={{ textAlign: 'center', marginBottom: 24 }}>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, marginBottom: 14 }}>
-                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 8px #22c55e80' }} />
-                  <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#22c55e' }}>
-                    Diagnosis complete
-                  </span>
-                </div>
-                <h2 style={{ fontSize: 'clamp(24px, 4vw, 32px)', fontWeight: 900, color: theme.heading, margin: '0 0 12px', lineHeight: 1.15, letterSpacing: '-0.025em' }}>
-                  You have the experience.<br />Now let's build the narrative.
-                </h2>
-                <p style={{ fontSize: 15, color: theme.sub, lineHeight: 1.7, maxWidth: 480, margin: '0 auto 0' }}>
-                  {firstName ? `${firstName}, your` : 'Your'} diagnosis points to the exact framing changes that will close the gap. The platform turns it into a tailored resume, cover letter, and selection-criteria responses, ready to send.
-                </p>
-              </div>
-
-              {/* Primary CTA — calm petrol, no FOMO band */}
-              <div ref={ctaRef} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
-                <motion.button
-                  onClick={onDone}
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.99 }}
-                  style={{
-                    width: '100%', background: PETROL,
-                    color: '#E0E0E0', borderRadius: 14, padding: '16px 24px',
-                    fontSize: 16, fontWeight: 700, border: 'none', cursor: 'pointer',
-                    letterSpacing: '-0.01em',
-                    boxShadow: `0 6px 24px ${PETROL}40`,
-                  }}
-                >
-                  Turn this diagnosis into an interview-ready resume →
-                </motion.button>
-                <p style={{ margin: 0, fontSize: 12, color: theme.sub, textAlign: 'center' }}>
-                  First five tailored applications free. No card needed.
-                </p>
-                <div style={{ textAlign: 'center' }}>
-                  <a
-                    href="https://www.skool.com/aussiegradcareers" target="_blank" rel="noopener noreferrer"
-                    style={{ fontSize: 13, color: SAGE, textDecoration: 'underline', textUnderlineOffset: 3, fontWeight: 600 }}
-                  >
-                    Or join the free community on Skool, frameworks, templates and weekly guidance →
-                  </a>
-                </div>
-              </div>
-
-              {/* Referral section */}
-              <div style={{
-                background: theme.referralBg,
-                border: `1px solid ${theme.referralBorder}`,
-                borderRadius: 20, padding: '22px 24px', marginBottom: 20,
-              }}>
-                <p style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: isDark ? '#374151' : '#9ca3af', marginBottom: 6 }}>
-                  Know someone in the same boat?
-                </p>
-                <p style={{ fontSize: 18, fontWeight: 800, color: theme.heading, margin: '0 0 5px', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-                  Share this, they get a free diagnosis.
-                </p>
-                <p style={{ fontSize: 13, color: theme.sub, lineHeight: 1.6, margin: '0 0 14px' }}>
-                  Every international grad you refer gets clarity on the specific moves that will sharpen their applications.
-                </p>
-                <div style={{
-                  background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
-                  border: `1px dashed ${isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.10)'}`,
-                  borderRadius: 10, padding: '11px 14px', marginBottom: 12,
-                  fontSize: 13, color: theme.sub, lineHeight: 1.7, fontStyle: 'italic',
-                }}>
-                  "I just found this free tool that analyzed exactly why my applications weren't getting responses, takes 5 minutes and the report is genuinely useful.{' '}
-                  <span style={{ color: isDark ? '#5eead4' : TEAL, fontStyle: 'normal', fontWeight: 600 }}>{referralLink}</span>"
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  {[
-                    { label: 'Copy message', copied: msgCopied, onClick: () => { navigator.clipboard.writeText(shareMsg); setMsgCopied(true); setTimeout(() => setMsgCopied(false), 2500); } },
-                    { label: 'Copy link',    copied: linkCopied, onClick: () => { navigator.clipboard.writeText(referralLink); setLinkCopied(true); setTimeout(() => setLinkCopied(false), 2500); } },
-                  ].map(({ label, copied, onClick }) => (
-                    <button
-                      key={label}
-                      onClick={onClick}
-                      style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                        background: copied
-                          ? (isDark ? 'rgba(34,197,94,0.12)' : 'rgba(34,197,94,0.10)')
-                          : (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'),
-                        border: `1px solid ${copied ? 'rgba(34,197,94,0.30)' : (isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.09)')}`,
-                        borderRadius: 10, padding: '11px 16px', fontSize: 13, fontWeight: 700,
-                        color: copied ? '#22c55e' : theme.sub,
-                        cursor: 'pointer', transition: 'all 0.18s', minHeight: 44,
-                      }}
-                    >
-                      {copied ? <Check size={13} /> : <Copy size={13} />}
-                      {copied ? 'Copied!' : label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Dashboard skip */}
-              <div style={{ textAlign: 'center' }}>
-                <button
-                  onClick={onDone}
-                  style={{ background: 'none', border: 'none', color: isDark ? '#374151' : '#9ca3af', fontWeight: 500, cursor: 'pointer', fontSize: 13 }}
-                >
-                  Already have an account? Go to the dashboard →
-                </button>
-              </div>
-
-              {/* Feedback widget — bottom-of-report placement so it doesn't
-                  interrupt the read. Quiet ask, after the user has had the
-                  full experience and the primary CTA. */}
-              <div style={{ marginTop: 40 }}>
-                <SocialProofWidget isDark={isDark} theme={theme} />
-              </div>
-            </motion.div>
-          )}
-
         </div>
       </div>
 
@@ -1255,15 +1256,16 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                 Free frameworks & weekly guidance (Skool)
               </a>
               <button
-                onClick={onDone}
+                onClick={() => { trackSection5CtaClicked(); onDone(); }}
                 style={{
-                  background: 'linear-gradient(135deg, #f97316 0%, #ec4899 50%, #7c3aed 100%)', color: 'white',
-                  borderRadius: 10, padding: '10px 18px', fontSize: 13, fontWeight: 800,
-                  border: 'none', cursor: 'pointer', boxShadow: '0 4px 16px rgba(236, 72, 153, 0.3)',
-                  whiteSpace: 'nowrap', minHeight: 44,
+                  background: PETROL, color: '#E0E0E0',
+                  borderRadius: 10, padding: '10px 18px', fontSize: 13, fontWeight: 700,
+                  border: 'none', cursor: 'pointer',
+                  boxShadow: `0 4px 16px ${PETROL}30`,
+                  whiteSpace: 'nowrap', minHeight: 44, letterSpacing: '-0.01em',
                 }}
               >
-                Build your interview-ready resume, Free →
+                Start with your professional summary →
               </button>
               <button
                 onClick={() => setShowSticky(false)}

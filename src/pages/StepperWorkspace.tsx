@@ -38,6 +38,7 @@ import {
 import { DraftCritiquePanel, type CritiqueResult } from '../components/strategy/DraftCritiquePanel';
 import ReactMarkdown from 'react-markdown';
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import api from '../lib/api';
 import { useAppTheme } from '../contexts/ThemeContext';
@@ -57,9 +58,42 @@ const VERIFY_MARKER_RE = /\[(?:VERIFY|Verify|verify|ADD|Add|INSERT|Insert|TBD|PL
 function VerifyMarker({ note }: { note: string }) {
     const { T } = useAppTheme();
     const [open, setOpen] = React.useState(false);
+    const wrapperRef = React.useRef<HTMLSpanElement>(null);
+    const [tipPos, setTipPos] = React.useState<{ top: number; left: number; arrowX: number } | null>(null);
+
+    // Recalculate tooltip position whenever it opens or the window resizes/scrolls.
+    React.useEffect(() => {
+        if (!open || !wrapperRef.current) { setTipPos(null); return; }
+
+        const TIP_WIDTH = 280;
+        const MARGIN = 12;
+
+        const recompute = () => {
+            const el = wrapperRef.current;
+            if (!el) return;
+            const r = el.getBoundingClientRect();
+            // Default: centred horizontally over the marker.
+            const idealLeft = r.left + r.width / 2 - TIP_WIDTH / 2;
+            // Clamp to viewport so we never get clipped by an overflow:hidden ancestor.
+            const left = Math.max(MARGIN, Math.min(idealLeft, window.innerWidth - TIP_WIDTH - MARGIN));
+            const top = r.top - 10; // tooltip sits above the marker; tooltip is anchored bottom-up via translateY(-100%)
+            // Arrow follows the marker no matter where the tooltip clamped to.
+            const arrowX = Math.max(12, Math.min(r.left + r.width / 2 - left, TIP_WIDTH - 12));
+            setTipPos({ top, left, arrowX });
+        };
+
+        recompute();
+        window.addEventListener('scroll', recompute, true);
+        window.addEventListener('resize', recompute);
+        return () => {
+            window.removeEventListener('scroll', recompute, true);
+            window.removeEventListener('resize', recompute);
+        };
+    }, [open]);
 
     return (
         <span
+            ref={wrapperRef}
             style={{
                 position: 'relative',
                 display: 'inline-block',
@@ -105,26 +139,27 @@ function VerifyMarker({ note }: { note: string }) {
                 !
             </span>
 
-            {open && (
+            {open && tipPos && createPortal(
                 <span
                     role="tooltip"
+                    onMouseEnter={() => setOpen(true)}
+                    onMouseLeave={() => setOpen(false)}
                     onClick={(e) => e.stopPropagation()}
                     style={{
-                        position: 'absolute',
-                        bottom: 'calc(100% + 10px)',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
+                        position: 'fixed',
+                        top: tipPos.top,
+                        left: tipPos.left,
+                        transform: 'translateY(-100%)',
                         width: 280,
                         background: T.card,
                         border: `1px solid ${T.cardBorder}`,
                         borderRadius: 12,
                         padding: '12px 14px 14px',
                         boxShadow: '0 8px 32px rgba(0,0,0,0.45)',
-                        zIndex: 100,
+                        zIndex: 1000,
                         textAlign: 'left',
                         cursor: 'auto',
                         lineHeight: 1.55,
-                        // Reset inherited inline-block context for clean text.
                         whiteSpace: 'normal',
                         display: 'block',
                     }}
@@ -173,11 +208,11 @@ function VerifyMarker({ note }: { note: string }) {
                     >
                         Open profile to add this →
                     </Link>
-                    {/* Pointer arrow */}
+                    {/* Pointer arrow follows the marker even when the tooltip clamps to viewport edge */}
                     <span style={{
                         position: 'absolute',
                         top: '100%',
-                        left: '50%',
+                        left: tipPos.arrowX,
                         transform: 'translateX(-50%)',
                         width: 0,
                         height: 0,
@@ -185,7 +220,8 @@ function VerifyMarker({ note }: { note: string }) {
                         borderRight: '6px solid transparent',
                         borderTop: `6px solid ${T.card}`,
                     }} />
-                </span>
+                </span>,
+                document.body,
             )}
         </span>
     );
@@ -355,8 +391,26 @@ export function StepperWorkspace() {
                         </div>
                     </>
                 ) : (
-                    <div style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: T.textMuted }}>
-                        Job description
+                    <div style={{
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minHeight: 160,
+                    }}>
+                        <span style={{
+                            writingMode: 'vertical-rl',
+                            textOrientation: 'mixed',
+                            transform: 'rotate(180deg)',
+                            fontSize: 10,
+                            fontWeight: 700,
+                            letterSpacing: '0.14em',
+                            textTransform: 'uppercase',
+                            color: T.textMuted,
+                            whiteSpace: 'nowrap',
+                        }}>
+                            Job description
+                        </span>
                     </div>
                 )}
             </aside>

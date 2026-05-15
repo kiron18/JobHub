@@ -103,7 +103,7 @@ const POLL_INTERVAL_MS = 3_000;
 const MESSAGE_INTERVAL_MS = 10_000;
 const ASIDE_INTERVAL_MS   = 13_000;
 
-export function ProcessingScreen({ isDark: _isDark, theme: T, email, name, targetRole, onComplete, onRetry }: ProcessingScreenProps) {
+export function ProcessingScreen({ isDark: _isDark, theme: T, email: _email, name, targetRole, onComplete, onRetry }: ProcessingScreenProps) {
   const queryClient = useQueryClient();
   const [barWidth, setBarWidth]     = useState(100);
   const [msgIndex, setMsgIndex]     = useState(0);
@@ -234,6 +234,25 @@ export function ProcessingScreen({ isDark: _isDark, theme: T, email, name, targe
           40% { transform: translate(40px, 80px) scale(1.1); }
           80% { transform: translate(-50px, -30px) scale(0.9); }
         }
+        @keyframes primingShimmer {
+          0%   { background-position: -200% center; }
+          100% { background-position:  200% center; }
+        }
+        .priming-shimmer {
+          background: linear-gradient(
+            90deg,
+            currentColor 0%,
+            currentColor 35%,
+            rgba(255,255,255,0.95) 50%,
+            currentColor 65%,
+            currentColor 100%
+          );
+          background-size: 200% auto;
+          background-clip: text;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          animation: primingShimmer 4.5s linear infinite;
+        }
       `}</style>
 
       {/* Lava lamp blobs */}
@@ -327,37 +346,20 @@ export function ProcessingScreen({ isDark: _isDark, theme: T, email, name, targe
             }}>
               {currentAside}
             </p>
-            {email && (
-              <p style={{
-                fontSize: 12,
-                color: T.textMuted,
+            <p
+              className="priming-shimmer"
+              style={{
+                fontSize: 14,
+                fontWeight: 700,
+                color: T.text,
                 textAlign: 'center',
-                marginTop: 20,
-                padding: '10px 14px',
-                borderRadius: 10,
-                background: 'rgba(99,102,241,0.07)',
-                border: '1px solid rgba(99,102,241,0.15)',
-                lineHeight: 1.6,
-              }}>
-                Your report and personalised recommendations will be sent to <strong style={{ color: T.text }}>{email}</strong> once ready.
-              </p>
-            )}
-            <p style={{
-              fontSize: 12,
-              color: T.textFaint,
-              textAlign: 'center',
-              marginTop: 16,
-              lineHeight: 1.6,
-            }}>
-              While you wait,{' '}
-              <a
-                href="https://www.skool.com/aussiegradcareers"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: '#7DA67D', textDecoration: 'underline', textUnderlineOffset: 3, fontWeight: 600 }}
-              >
-                join the free Aussie Grad Careers community →
-              </a>
+                marginTop: 8,
+                lineHeight: 1.55,
+                maxWidth: 420,
+                marginInline: 'auto',
+              }}
+            >
+              Once your diagnosis lands, the resume wizard helps you turn every gap into a stronger application.
             </p>
           </>
         )}

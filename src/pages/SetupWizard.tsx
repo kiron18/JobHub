@@ -834,6 +834,7 @@ export function SetupWizard() {
   const [rewardMessage, setRewardMessage] = useState<string | null>(null);
   const resolveRewardRef = useRef<(() => void) | null>(null);
   const initialContentRef = useRef<Partial<Record<StepType, string>>>({});
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Per-step local edit state
   const [summaryText, setSummaryText] = useState('');
@@ -844,6 +845,9 @@ export function SetupWizard() {
   const [certEdits, setCertEdits] = useState<CertEntry[]>([]);
   const [volEdits, setVolEdits] = useState<VolEntry[]>([]);
   const [skillsText, setSkillsText] = useState('');
+
+  // (Baseline-resume download chrome removed per product feedback. Generation
+  // still fires automatically when the diagnostic completes.)
 
   const isReturning = localStorage.getItem('jobhub_setup_complete') === '1';
 
@@ -890,8 +894,13 @@ export function SetupWizard() {
   const totalSteps = steps.length;
   const progress = totalSteps > 1 ? currentIndex / (totalSteps - 1) : 0;
 
+  // Wizard sets its own scroll container (root div has overflowY: auto), so
+  // window.scrollTo is a no-op. Scroll the container element directly via ref.
   const scrollTop = useCallback(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (containerRef.current) {
+      containerRef.current.scrollTo({ top: 0, behavior: 'auto' });
+    }
+    window.scrollTo({ top: 0, behavior: 'auto' });
   }, []);
 
   const showReward = useCallback(async (type: StepType, content: any) => {
@@ -1072,7 +1081,7 @@ export function SetupWizard() {
     : `PROFILE SETUP · Step ${currentIndex + 1} of ${totalSteps - 1}`;
 
   return (
-    <div style={{ height: '100vh', overflowY: 'auto', background: '#080b12', paddingBottom: 80 }}>
+    <div ref={containerRef} style={{ height: '100vh', overflowY: 'auto', background: '#080b12', paddingBottom: 80 }}>
       {/* Reward overlay */}
       <RewardOverlay
         visible={rewardVisible}
@@ -1261,32 +1270,40 @@ export function SetupWizard() {
             {/* CTAs */}
             {currentStep?.type !== 'complete' && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                {currentIndex > 0 && (
-                  <button
-                    onClick={goBack}
-                    disabled={saving}
-                    aria-label="Go back to previous step"
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      background: 'none',
-                      color: '#9ca3af',
-                      border: '1px solid rgba(255,255,255,0.12)',
-                      borderRadius: 11,
-                      padding: '12px 16px',
-                      fontSize: 13,
-                      fontWeight: 700,
-                      cursor: saving ? 'not-allowed' : 'pointer',
-                      opacity: saving ? 0.5 : 1,
-                      letterSpacing: '-0.01em',
-                      transition: 'opacity 0.15s, color 0.15s',
-                    }}
-                  >
-                    <ChevronLeft size={16} />
-                    Back
-                  </button>
-                )}
+                <button
+                  onClick={() => {
+                    if (currentIndex > 0) {
+                      goBack();
+                    } else {
+                      // Step 1: hop back to the diagnostic so the user can re-read
+                      // their analysis. Clearing the report-seen flag re-shows the
+                      // diagnostic on '/'.
+                      localStorage.setItem('jobhub_report_seen', 'false');
+                      navigate('/');
+                    }
+                  }}
+                  disabled={saving}
+                  aria-label={currentIndex > 0 ? 'Go back to previous step' : 'Back to diagnostic'}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    background: 'none',
+                    color: '#9ca3af',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: 11,
+                    padding: '12px 16px',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: saving ? 'not-allowed' : 'pointer',
+                    opacity: saving ? 0.5 : 1,
+                    letterSpacing: '-0.01em',
+                    transition: 'opacity 0.15s, color 0.15s',
+                  }}
+                >
+                  <ChevronLeft size={16} />
+                  {currentIndex > 0 ? 'Back' : 'Back to diagnostic'}
+                </button>
                 <button
                   onClick={handleSave}
                   disabled={saving}
@@ -1372,9 +1389,12 @@ function CompleteScreen({ onComplete }: { onComplete: () => void }) {
         fontWeight: 700,
         color: '#C5A059',
         letterSpacing: '-0.01em',
-        lineHeight: 1.45,
+        lineHeight: 1.55,
       }}>
-        Every section a recruiter checks? Done. Optimised. Ready.
+        Every section a recruiter checks?
+        <br />Done.
+        <br />Optimised.
+        <br />Ready.
       </p>
       <p style={{
         margin: '0 0 14px',
@@ -1417,11 +1437,11 @@ function CompleteScreen({ onComplete }: { onComplete: () => void }) {
       >
         Start Generating Applications <ArrowRight size={16} />
       </button>
-      <p style={{ margin: '0 0 10px', fontSize: 12, color: '#4b5563' }}>
-        You can update your profile anytime from Profile & Achievements.
+      <p style={{ margin: '8px 0 0', fontSize: 12, color: '#22c55e', fontWeight: 600 }}>
+        First five tailored applications free. No card needed.
       </p>
-      <p style={{ margin: 0, fontSize: 12, color: '#374151' }}>
-        You can revisit this wizard anytime from the Profile & Achievements section.
+      <p style={{ margin: '6px 0 0', fontSize: 12, color: '#4b5563' }}>
+        You can revisit this wizard or update your profile anytime from Profile & Achievements.
       </p>
     </div>
   );

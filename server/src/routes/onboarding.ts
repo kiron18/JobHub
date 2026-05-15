@@ -279,6 +279,9 @@ router.post('/retry', authenticate, async (req: AuthRequest, res: Response) => {
             data: { marketingEmailSent: true },
           });
         }
+        generateBaselineResume(userId, reportInput.resumeText, markdown).catch(err =>
+          console.error('[Onboarding] Retry baseline resume failed:', err)
+        );
       })
       .catch(async (err) => {
         console.error('[Onboarding] Retry failed:', err);

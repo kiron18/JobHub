@@ -20,7 +20,7 @@ Schema:
     "phone": "Phone Number",
     "linkedin": "LinkedIn URL",
     "location": "Suburb, State",
-    "professionalSummary": "3-4 sentences in first person, present tense — never write 'they', 'he', 'she', or refer to the candidate by name. Examples: 'I am a seasoned Business Analyst with 15 years of experience...' or 'Seasoned Business Analyst bringing 15 years of...'. Always speak as the candidate, not about them."
+    "professionalSummary": "4-6 sentences, 300 to 600 characters total, in first person, present tense. Sentence 1: lead with role + seniority anchored by ONE concrete proof point pulled from their resume (a number, %, $, scale, headcount, or timeframe). Sentences 2-4: core strengths and specific work they have delivered (named outcomes, not vague duties). Final sentence: what they are aiming at next. Never write 'they', 'he', 'she', and never use the candidate's name within the summary itself. Examples: 'I am a Marketing Coordinator with 3 years scaling content programs that grew engagement 40% year on year at a Sydney agency. I specialise in performance marketing and audience segmentation, with hands-on experience running paid campaigns across LinkedIn and Meta. Most recently I led a content rebuild that lifted organic traffic 2.3x in six months. I am now targeting marketing analyst and growth roles where I can pair creative work with measurable outcomes.'. Always speak AS the candidate, not ABOUT them. Plain prose only, no bullets, no headings, no em dashes."
   },
   "skills": {
     "technical": ["Python", "Flask"],
