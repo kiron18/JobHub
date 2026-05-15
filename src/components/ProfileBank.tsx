@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Pencil, Check, X, AlertTriangle, CheckCircle2,
   User, Briefcase, GraduationCap,
-  Award, Heart, Wrench, Star, FileText, UploadCloud, RefreshCw, Download,
+  Award, Heart, Wrench, Star, FileText, UploadCloud, RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../lib/api';
@@ -1492,7 +1492,6 @@ const CompletionSidebar: React.FC<CompletionSidebarProps> = ({ completion, isDar
 
 export const ProfileBank: React.FC = () => {
   const { isDark } = useAppTheme();
-  const navigate = useNavigate();
 
   const { data: profile, isLoading, isError } = useQuery<ProfileData>({
     queryKey: ['profile'],
@@ -1505,69 +1504,6 @@ export const ProfileBank: React.FC = () => {
 
   const queryClient = useQueryClient();
   const [regenerating, setRegenerating] = useState(false);
-  const [showWelcomeModal, setShowWelcomeModal] = useState(() =>
-    !localStorage.getItem('jobhub_profile_visited')
-  );
-  const [baselineDownloading, setBaselineDownloading] = useState(false);
-
-  const dismissWelcomeModal = () => {
-    localStorage.setItem('jobhub_profile_visited', '1');
-    setShowWelcomeModal(false);
-  };
-
-  const handleBaselineDownload = async () => {
-    if (baselineDownloading) return;
-    setBaselineDownloading(true);
-
-    const downloadAndAdvance = async (documentId: string) => {
-      const { data: doc } = await api.get(`/documents/${documentId}`);
-      const { exportDocx } = await import('../lib/exportDocx');
-      await exportDocx(doc.content, 'resume', '');
-      dismissWelcomeModal();
-      navigate('/setup');
-    };
-
-    try {
-      const { data } = await api.get('/profile/baseline-resume');
-      if (data.status === 'ready' && data.documentId) {
-        await downloadAndAdvance(data.documentId);
-        return;
-      }
-
-      try {
-        const { data: genData } = await api.post('/profile/baseline-resume/generate');
-        if (genData.status === 'ready' && genData.documentId) {
-          await downloadAndAdvance(genData.documentId);
-          return;
-        }
-      } catch {
-        // Generation trigger failed, fall through to polling, which will time out and still advance.
-      }
-
-      for (let i = 0; i < 15; i++) {
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        try {
-          const { data: poll } = await api.get('/profile/baseline-resume');
-          if (poll.status === 'ready' && poll.documentId) {
-            await downloadAndAdvance(poll.documentId);
-            return;
-          }
-        } catch {
-          // Transient error, keep polling
-        }
-      }
-
-      toast('Still preparing your resume, opening your wizard so you can get started.');
-      dismissWelcomeModal();
-      navigate('/setup');
-    } catch {
-      toast("Couldn't reach the server, opening your wizard so you can get started.");
-      dismissWelcomeModal();
-      navigate('/setup');
-    } finally {
-      setBaselineDownloading(false);
-    }
-  };
 
   const handleRegenerateIdentity = async () => {
     setRegenerating(true);
@@ -1604,118 +1540,6 @@ export const ProfileBank: React.FC = () => {
 
   return (
     <div style={{ background: pageBg, minHeight: '100%', padding: '24px 0', color: textMain, fontFamily: 'system-ui, sans-serif' }}>
-      {/* First-visit modal, baseline resume gift for onboarded users, explanation otherwise */}
-      <AnimatePresence>
-        {showWelcomeModal && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            style={{ position: 'fixed', inset: 0, background: isDark ? '#080b12' : '#f8fafc', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.97, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.97, y: 8 }}
-              transition={{ duration: 0.28, ease: [0.25, 1, 0.5, 1] }}
-              style={{ background: isDark ? '#0d1117' : '#fff', border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`, borderRadius: 24, padding: '40px 44px', maxWidth: 520, width: '100%', position: 'relative' }}
-            >
-              <button onClick={dismissWelcomeModal} style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', cursor: 'pointer', color: isDark ? '#4b5563' : '#9ca3af', padding: 4, lineHeight: 1 }}>
-                <X size={16} />
-              </button>
-              {(profile as any)?.hasCompletedOnboarding ? (
-                <>
-                  <div style={{ marginBottom: 20 }}>
-                    <h3 style={{ fontSize: 22, fontWeight: 900, color: isDark ? '#f3f4f6' : '#111827', margin: '0 0 14px', letterSpacing: '-0.02em', lineHeight: 1.25 }}>
-                      Claim your{' '}
-                      <span style={{ background: 'linear-gradient(135deg, #f97316 0%, #ec4899 50%, #7c3aed 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-                        Personalised Resume Draft
-                      </span>
-                      .
-                    </h3>
-                    <p style={{ fontSize: 14, color: isDark ? '#d1d5db' : '#374151', margin: 0, lineHeight: 1.6 }}>
-                      This is your strong foundation, built from your diagnostic and ready to use.
-                    </p>
-                  </div>
-
-                  <div style={{ marginBottom: 24 }}>
-                    <p style={{ fontSize: 14, color: isDark ? '#9ca3af' : '#6b7280', margin: '0 0 12px', lineHeight: 1.65 }}>
-                      Want to make it truly exceptional? Our optimisation wizard helps you add specific achievements and formats that get you noticed by hiring managers.
-                    </p>
-                    <p style={{ fontSize: 14, color: isDark ? '#9ca3af' : '#6b7280', margin: 0, lineHeight: 1.65 }}>
-                      Turn a strong start into an unstoppable application.
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={handleBaselineDownload}
-                    disabled={baselineDownloading}
-                    style={{
-                      width: '100%', padding: '14px 0', borderRadius: 10,
-                      background: 'linear-gradient(135deg, #f97316 0%, #ec4899 50%, #7c3aed 100%)',
-                      border: 'none', color: '#fff', fontSize: 14, fontWeight: 800,
-                      cursor: baselineDownloading ? 'wait' : 'pointer',
-                      opacity: baselineDownloading ? 0.8 : 1,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                      letterSpacing: '-0.01em',
-                      boxShadow: '0 4px 20px rgba(236, 72, 153, 0.3)',
-                    }}
-                  >
-                    {baselineDownloading ? (
-                      <>
-                        <span style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite', display: 'inline-block' }} />
-                        Preparing your resume…
-                      </>
-                    ) : (
-                      <>
-                        <Download size={15} />
-                        Let's get unstoppable
-                      </>
-                    )}
-                  </button>
-                </>
-              ) : (
-                /* Explanation for non-onboarded users */
-                <>
-                  <div style={{ textAlign: 'center', marginBottom: 24 }}>
-                    <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
-                      <Star size={22} style={{ color: '#818cf8' }} />
-                    </div>
-                    <h3 style={{ fontSize: 18, fontWeight: 900, color: isDark ? '#f3f4f6' : '#111827', margin: '0 0 4px', letterSpacing: '-0.02em' }}>
-                      Your Achievement Bank
-                    </h3>
-                    <p style={{ fontSize: 12, color: isDark ? '#6b7280' : '#9ca3af', margin: 0 }}>
-                      The engine behind every document we generate for you.
-                    </p>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
-                    {[
-                      { num: '1', title: 'Add your experience', desc: 'Every role, every company. The AI reads your full work history to find the right story for each application.' },
-                      { num: '2', title: 'Add achievements to each role', desc: 'Specific wins, metrics, outcomes, the evidence that stops recruiters skimming. This is the most important part.' },
-                      { num: '3', title: 'Every document draws from this', desc: 'Resume, cover letters, interview prep, all generated from your bank. Update once, everything improves.' },
-                    ].map(s => (
-                      <div key={s.num} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                        <div style={{ width: 22, height: 22, borderRadius: 6, background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
-                          <span style={{ fontSize: 10, fontWeight: 900, color: '#818cf8' }}>{s.num}</span>
-                        </div>
-                        <div>
-                          <p style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 700, color: isDark ? '#e5e7eb' : '#111827' }}>{s.title}</p>
-                          <p style={{ margin: 0, fontSize: 12, color: isDark ? '#6b7280' : '#9ca3af', lineHeight: 1.55 }}>{s.desc}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <button
-                    onClick={dismissWelcomeModal}
-                    style={{ width: '100%', padding: '13px 0', borderRadius: 10, background: 'linear-gradient(135deg, #6366f1, #4f46e5)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 800, cursor: 'pointer', letterSpacing: '-0.01em' }}
-                  >
-                    Got it, start building →
-                  </button>
-                </>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px' }}>
         {/* Page header */}
         <div style={{ marginBottom: 28 }}>
