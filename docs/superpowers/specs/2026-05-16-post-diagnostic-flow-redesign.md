@@ -107,7 +107,7 @@ For users who legitimately don't have a resume to upload, replace the old 7-step
 
 1. **Name** — single field
 2. **Last (or current) role** — company / title / start date / end date or "still here"
-3. **One achievement from that role** — free text, AI will ask a follow-up to extract a metric (see §4 conversational capture below; same mechanism, just triggered here instead of at JD time)
+3. **One achievement from that role** — free text only, no follow-up prompt. Take it as-is; JD-time enrichment will sharpen it when relevant
 4. **Target role + city** — single screen, two fields
 
 After step 4, the system synthesises a minimal profile and generates a diagnostic. The flow re-joins the main path at the diagnostic stage.
@@ -251,7 +251,7 @@ Most of this is structural UX change. The minimal data changes:
 - **Achievement records already have a `metric` field.** The conversational capture writes to this existing field — no schema change.
 - **Add a per-bullet provenance flag** on generated resume bullets: `source: 'parsed' | 'user_metric' | 'ai_rewrite'`. Drives the editor badge.
 - **Application tracker already records application events.** The Strategic Intelligence unlocks count off this existing data — no schema change.
-- **Track which Strategic Intelligence unlocks the user has seen / dismissed.** Storage location is deferred to open question §2 — localStorage for v1 to ship quickly, migrate to a `strategic_intelligence_unlocks` JSON column on the user profile in v2 once the unlock track is validated.
+- **Track which Strategic Intelligence unlocks the user has seen / dismissed in localStorage** (v1, since the product is not yet cross-device). When cross-device support lands, migrate to a `strategic_intelligence_unlocks` JSON column on the user profile. See "Tech debt followups" below.
 
 No new external services. No new background jobs (Strategic Intelligence insights compute on-demand from existing data).
 
@@ -294,11 +294,15 @@ No new external services. No new background jobs (Strategic Intelligence insight
 
 ---
 
-## Open questions for next pass
+## Decisions on open questions
 
-1. **"From scratch" path — do we want the same conversational metric capture in step 3** (the "one achievement" prompt), or just take their free text as-is and enrich later at JD time? I lean toward the latter — keep the initial path as short as possible, enrich through use.
-2. **Strategic Intelligence — backend or localStorage for unlock state?** Backend is cleaner for cross-device, localStorage is faster to ship. Recommend localStorage for v1, migrate to backend in v2 once the unlock track is validated.
-3. **Application pattern unlock — what does the visual artefact actually look like?** Charts? A two-column "you apply to" / "you'd land" comparison? Defer to design phase; not a blocker for spec approval.
+1. **"From scratch" path — no conversational capture at step 3.** Take the free-text achievement as-is. Keep the initial path as short as possible; enrich through use at JD time.
+2. **Strategic Intelligence storage — localStorage for v1.** The product is not yet cross-device, so the cleaner backend option is not yet worth the migration cost. Tracked as tech debt below.
+3. **Application pattern unlock — visual side-by-side comparison.** Two-column card: left "Roles you've been applying to" (your actual JD pastes, grouped by seniority + industry), right "Roles your resume is actually competitive for" (top 5 from job-feed ranked by match score). Visual asymmetry between the two columns is the insight — a user applying to senior roles when their resume reads mid-level will see that gap at a glance.
+
+## Tech debt followups
+
+- **Migrate Strategic Intelligence unlock state from localStorage to a `strategic_intelligence_unlocks` JSON column on the user profile** once cross-device support is on the roadmap. Without this, a user who clears storage or signs in on a new device loses their unlock progress.
 
 ---
 
