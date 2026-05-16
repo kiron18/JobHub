@@ -12,6 +12,7 @@ import {
     Sparkles,
     Menu,
     X,
+    Stethoscope,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
@@ -102,12 +103,18 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
 
     const expanded = !isTouch && (introVisible || hovered);
 
-    const navItems = [
+    const navItems: Array<{
+        to?: string;
+        onClick?: () => void;
+        icon: typeof LayoutDashboard;
+        label: string;
+    }> = [
         { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/tracker', icon: Briefcase, label: 'Applications' },
         { to: '/documents', icon: Library, label: 'Documents' },
         { to: '/workspace', icon: FileText, label: 'Profile' },
         { to: '/jobs', icon: Sparkles, label: 'Job Feed' },
+        { onClick: () => window.dispatchEvent(new CustomEvent('show-diagnostic')), icon: Stethoscope, label: 'Diagnostic' },
         { to: '/linkedin', icon: Linkedin, label: 'LinkedIn' },
         { to: '/email-templates', icon: Mail, label: 'Email Templates' },
     ];
@@ -144,21 +151,8 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                         ? ((followUpCount ?? 0) > 9 ? '9+' : String(followUpCount))
                         : null;
 
-                    return (
-                        <NavLink
-                            key={item.to}
-                            to={item.to}
-                            end={item.to === '/'}
-                            onClick={() => isTouch && setDrawerOpen(false)}
-                            className={({ isActive }) =>
-                                `relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${isActive ? '' : 'hover:bg-white/[0.04]'}`
-                            }
-                            style={({ isActive }) => ({
-                                color: isActive ? T.text : T.textMuted,
-                                background: isActive ? 'rgba(45,90,110,0.18)' : 'transparent',
-                                border: isActive ? '1px solid rgba(45,90,110,0.35)' : '1px solid transparent',
-                            })}
-                        >
+                    const iconAndLabel = (
+                        <>
                             <Icon size={18} className="flex-shrink-0" />
                             <AnimatePresence>
                                 {showLabels && (
@@ -182,6 +176,39 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                                     {showLabels ? badge : ''}
                                 </span>
                             )}
+                        </>
+                    );
+
+                    if (item.onClick) {
+                        return (
+                            <button
+                                key={item.label}
+                                type="button"
+                                onClick={() => { item.onClick!(); if (isTouch) setDrawerOpen(false); }}
+                                className="relative flex w-full items-center gap-3 px-3 py-2.5 rounded-xl transition-all hover:bg-white/[0.04]"
+                                style={{ color: T.textMuted, background: 'transparent', border: '1px solid transparent' }}
+                            >
+                                {iconAndLabel}
+                            </button>
+                        );
+                    }
+
+                    return (
+                        <NavLink
+                            key={item.to}
+                            to={item.to!}
+                            end={item.to === '/'}
+                            onClick={() => isTouch && setDrawerOpen(false)}
+                            className={({ isActive }) =>
+                                `relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${isActive ? '' : 'hover:bg-white/[0.04]'}`
+                            }
+                            style={({ isActive }) => ({
+                                color: isActive ? T.text : T.textMuted,
+                                background: isActive ? 'rgba(45,90,110,0.18)' : 'transparent',
+                                border: isActive ? '1px solid rgba(45,90,110,0.35)' : '1px solid transparent',
+                            })}
+                        >
+                            {iconAndLabel}
                         </NavLink>
                     );
                 })}

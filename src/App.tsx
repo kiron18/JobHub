@@ -306,6 +306,14 @@ function ReportOrDashboard() {
     }
   }, [stage, profileLoading, profile]);
 
+  // Listen for "show-diagnostic" events fired by the sidebar Diagnostic link
+  // (and any other in-app entry points that want to re-open the diagnostic).
+  useEffect(() => {
+    const handler = () => setStage('report');
+    window.addEventListener('show-diagnostic', handler);
+    return () => window.removeEventListener('show-diagnostic', handler);
+  }, []);
+
   function markReportSeen() {
     localStorage.setItem('jobhub_report_seen', 'true');
     localStorage.setItem('jobhub_tips_seen', 'false');

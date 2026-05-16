@@ -24,7 +24,6 @@ import skoolRouter from './routes/skool';
 import jobFeedRouter from './routes/job-feed';
 import adminRouter from './routes/admin';
 import stripeRouter, { stripeWebhookHandler } from './routes/stripe';
-import wizardRouter from './routes/wizard';
 import { startJobFeedCron } from './cron/jobFeedCron';
 import { startTrialReminderCron } from './cron/trialReminderCron';
 import { startFollowUpReminderCron } from './cron/followUpReminderCron';
@@ -145,7 +144,6 @@ app.use('/api/skool', skoolRouter);
 app.use('/api/job-feed', jobFeedRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/stripe', stripeRouter);
-app.use('/api/wizard', wizardRouter);
 
 // Sentry error handler - must be before any other error handling middleware
 Sentry.setupExpressErrorHandler(app);
