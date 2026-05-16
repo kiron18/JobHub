@@ -21,6 +21,8 @@ import { pickInsights } from '../data/strategicInsights';
 import { AnalysisResult, type DualSignalResult } from '../components/strategy/AnalysisResult';
 import { CoherenceCard, type CoherenceSignal } from '../components/strategy/CoherenceCard';
 import { StrategicIntelligenceCard } from '../components/StrategicIntelligenceCard';
+import { ApplyFeedStrip } from '../components/strategy/ApplyFeedStrip';
+import type { JobFeedItem } from '../components/jobs/JobCard';
 
 // ─── HubHeader ───────────────────────────────────────────────────────────────
 
@@ -387,6 +389,13 @@ function AnalysisHeroCard() {
     const [scUserOverride, setScUserOverride] = useState(false);
     const [analysing, setAnalysing] = useState(false);
     const [result, setResult] = useState<DualSignalResult | null>(null);
+    const [pickedFeedItem, setPickedFeedItem] = useState<JobFeedItem | null>(null);
+
+    const handleFeedPick = (description: string, item: JobFeedItem) => {
+        setJd(description);
+        setPickedFeedItem(item);
+        setResult(null);
+    };
 
     const trimmed = jd.trim();
     const tooShort = trimmed.length > 0 && trimmed.length < 100;
@@ -436,6 +445,9 @@ function AnalysisHeroCard() {
                 sc: scToggle,
                 company: result?.extractedMetadata?.company,
                 role: result?.extractedMetadata?.role,
+                feedItemId: pickedFeedItem?.id,
+                sourceUrl: pickedFeedItem?.sourceUrl,
+                sourcePlatform: pickedFeedItem?.sourcePlatform,
             },
         });
     };
@@ -443,6 +455,7 @@ function AnalysisHeroCard() {
     const handleSkip = () => {
         setResult(null);
         setJd('');
+        setPickedFeedItem(null);
         setScToggle(false);
         setScUserOverride(false);
         setScAutoFlipped(false);
@@ -470,6 +483,42 @@ function AnalysisHeroCard() {
             >
                 Analyse a role
             </p>
+
+            <ApplyFeedStrip onPick={handleFeedPick} />
+
+            {pickedFeedItem && (
+                <div style={{
+                    marginBottom: 10,
+                    padding: '8px 12px',
+                    background: 'rgba(125,166,125,0.08)',
+                    border: '1px solid rgba(125,166,125,0.25)',
+                    borderRadius: 10,
+                    fontSize: 12,
+                    color: T.text,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                }}>
+                    <span>
+                        <strong>{pickedFeedItem.title}</strong> · {pickedFeedItem.company}
+                    </span>
+                    <button
+                        onClick={() => { setPickedFeedItem(null); setJd(''); }}
+                        style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: T.textMuted,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            padding: 0,
+                        }}
+                    >
+                        Clear
+                    </button>
+                </div>
+            )}
 
             <textarea
                 value={jd}
