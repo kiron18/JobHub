@@ -21,6 +21,7 @@ import type { DimensionScores } from '../services/compositeScoring';
 import { derivePositioningStatement, type PositioningStatement } from '../services/positioningStatement';
 import { detectHardGapHints, detectSelectionCriteria } from '../data/hardGapKeywords';
 import { findDuplicateApplication } from '../services/duplicateDetection';
+import { isRealMetric } from '../lib/achievementHeuristics';
 
 const router = Router();
 
@@ -72,6 +73,18 @@ router.post('/job', async (req: any, res: any) => {
         } catch (err: any) {
             console.error('Pinecone Search Failed:', err.message);
         }
+
+        // Achievements that match this JD but lack a real metric — surfaced
+        // to the frontend so it can prompt the user to enrich them at JD-time.
+        // Hard cap at 3 to keep the prompt strip lightweight.
+        const enrichmentCandidates = (matches ?? [])
+            .filter((m: any) => !isRealMetric(m?.metadata?.metric))
+            .slice(0, 3)
+            .map((m: any) => ({
+                achievementId: m.id,
+                title: m.metadata?.title ?? '',
+                text: m.metadata?.text ?? '',
+            }));
 
         const achievementsText = (matches && matches.length > 0)
             ? matches.map((match: any) => {
@@ -189,7 +202,8 @@ router.post('/job', async (req: any, res: any) => {
             hasSufficientEvidence,
             evidenceWarning: hasSufficientEvidence
                 ? null
-                : "You have fewer than 3 'Strong' matched achievements. Consider adding more specific metrics to your profile for a better match."
+                : "You have fewer than 3 'Strong' matched achievements. Consider adding more specific metrics to your profile for a better match.",
+            enrichmentCandidates,
         });
 
     } catch (error: any) {
