@@ -168,7 +168,13 @@ function sanitizeForExport(raw: string): string {
     // recruiter. Matches: VERIFY/Verify/verify, ADD/Add, INSERT/Insert, TBD,
     // PLACEHOLDER. Both [TOKEN: note] and [TOKEN note] forms.
     const PLACEHOLDER_RE = /\[(?:VERIFY|Verify|verify|ADD|Add|INSERT|Insert|TBD|PLACEHOLDER)(?:[:\s][^\]]*)?\]/g;
-    return raw.replace(PLACEHOLDER_RE, '').replace(/\s{2,}/g, ' ').replace(/[ \t]+([.,;:!?])/g, '$1');
+    // AI-rewrite badge token is screen-only; never include it in exports.
+    const AI_TOKEN_RE = /\[AI\]\s*/g;
+    return raw
+        .replace(PLACEHOLDER_RE, '')
+        .replace(AI_TOKEN_RE, '')
+        .replace(/\s{2,}/g, ' ')
+        .replace(/[ \t]+([.,;:!?])/g, '$1');
 }
 
 export async function exportPdf(

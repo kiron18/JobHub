@@ -261,7 +261,13 @@ function sanitizeForExport(raw: string): string {
     // shows these as small chips for the user to review; the exported file is
     // for sending, so they must not survive into .docx.
     const PLACEHOLDER_RE = /\[(?:VERIFY|Verify|verify|ADD|Add|INSERT|Insert|TBD|PLACEHOLDER)(?:[:\s][^\]]*)?\]/g;
-    return normalized.replace(PLACEHOLDER_RE, '').replace(/[ \t]{2,}/g, ' ').replace(/[ \t]+([.,;:!?])/g, '$1');
+    // AI-rewrite badge token is screen-only; never include it in exports.
+    const AI_TOKEN_RE = /\[AI\]\s*/g;
+    return normalized
+        .replace(PLACEHOLDER_RE, '')
+        .replace(AI_TOKEN_RE, '')
+        .replace(/[ \t]{2,}/g, ' ')
+        .replace(/[ \t]+([.,;:!?])/g, '$1');
 }
 
 export async function exportDocx(

@@ -31,6 +31,7 @@ import ReactMarkdown from 'react-markdown';
 import { Toaster, toast } from 'sonner';
 import { AchievementSelector } from './AchievementSelector';
 import { MissingFlag } from './MissingFlag';
+import { AIRewriteBadge } from './AIRewriteBadge';
 import { StrategistDebrief } from './StrategistDebrief';
 import { CompanyResearchPanel } from './CompanyResearchPanel';
 import type { CompanyResearch } from './CompanyResearchPanel';
@@ -1543,10 +1544,23 @@ export const ApplicationWorkspace: React.FC = () => {
                                             components={{
                                                 text: ({ children }) => {
                                                     if (typeof children !== 'string') return <>{children}</>;
-                                                    if (!children.includes('[MISSING:')) return <>{children}</>;
-                                                    const parts = children.split(/(\[MISSING:[^\]]+\])/g);
+                                                    // Pluck the AI-rewrite sentinel off the start of bullet text first.
+                                                    let aiPrefix: React.ReactNode = null;
+                                                    let rest = children;
+                                                    if (rest.startsWith('[AI] ')) {
+                                                        aiPrefix = <AIRewriteBadge key="ai" />;
+                                                        rest = rest.slice(5);
+                                                    } else if (rest.startsWith('[AI]')) {
+                                                        aiPrefix = <AIRewriteBadge key="ai" />;
+                                                        rest = rest.slice(4);
+                                                    }
+                                                    if (!rest.includes('[MISSING:')) {
+                                                        return <>{aiPrefix}{rest}</>;
+                                                    }
+                                                    const parts = rest.split(/(\[MISSING:[^\]]+\])/g);
                                                     return (
                                                         <>
+                                                            {aiPrefix}
                                                             {parts.map((part, i) => {
                                                                 if (part.startsWith('[MISSING:')) {
                                                                     return (
