@@ -17,6 +17,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     ArrowLeft,
@@ -36,6 +37,7 @@ import {
     ShieldCheck,
 } from 'lucide-react';
 import { DraftCritiquePanel, type CritiqueResult } from '../components/strategy/DraftCritiquePanel';
+import { ApplyDeepLinkButton } from '../components/strategy/ApplyDeepLinkButton';
 import ReactMarkdown from 'react-markdown';
 import React from 'react';
 import { createPortal } from 'react-dom';
@@ -315,7 +317,15 @@ export function StepperWorkspace() {
     const navigate = useNavigate();
     const location = useLocation();
 
-    const state = (location.state ?? {}) as { jobDescription?: string; sc?: boolean; company?: string; role?: string };
+    const state = (location.state ?? {}) as {
+        jobDescription?: string;
+        sc?: boolean;
+        company?: string;
+        role?: string;
+        feedItemId?: string;
+        sourceUrl?: string;
+        sourcePlatform?: string;
+    };
     const jobDescription = state.jobDescription ?? '';
     const wantsSC = state.sc === true;
     const jdEmpty = jobDescription.trim().length === 0;
@@ -439,6 +449,9 @@ export function StepperWorkspace() {
                         role={state.role}
                         workspaceKey={workspaceKey}
                         onBack={() => setCurrentIndex(currentIndex - 1)}
+                        feedItemId={state.feedItemId}
+                        sourceUrl={state.sourceUrl}
+                        sourcePlatform={state.sourcePlatform}
                     />
                 ) : (
                     <DocumentStep
@@ -937,6 +950,9 @@ function TrackStep({
     role,
     workspaceKey,
     onBack,
+    feedItemId,
+    sourceUrl,
+    sourcePlatform,
 }: {
     jobDescription: string;
     wantsSC: boolean;
@@ -944,16 +960,30 @@ function TrackStep({
     role?: string;
     workspaceKey: string;
     onBack: () => void;
+    feedItemId?: string;
+    sourceUrl?: string;
+    sourcePlatform?: string;
 }) {
     const { T } = useAppTheme();
     const navigate = useNavigate();
     const [autoSaveError, setAutoSaveError] = useState(false);
 
+    const resumeDraft = loadDraft(workspaceKey, 'resume');
+    const coverDraft = loadDraft(workspaceKey, 'cover-letter');
     const drafted = {
-        resume: loadDraft(workspaceKey, 'resume') !== null,
-        cover: loadDraft(workspaceKey, 'cover-letter') !== null,
+        resume: resumeDraft !== null,
+        cover: coverDraft !== null,
         sc: loadDraft(workspaceKey, 'selection-criteria') !== null,
     };
+
+    // Candidate name needed for the export filename. Falls back to a generic
+    // label so the apply button is never blocked on profile fetch failing.
+    const { data: profile } = useQuery({
+        queryKey: ['profile', 'lite-for-apply'],
+        queryFn: async () => (await api.get('/profile')).data,
+        staleTime: 10 * 60 * 1000,
+    });
+    const candidateName = (profile?.name && String(profile.name).trim()) || 'Application';
 
     // Auto-save the application on mount. One-shot per workspaceKey using a
     // local flag so revisiting the step doesn't duplicate the row.
@@ -1046,6 +1076,42 @@ function TrackStep({
                     </p>
                 </div>
             </div>
+
+            {/* Apply on platform — only when both docs exist. Downloads PDFs,
+                copies cover letter to clipboard, opens the listing in a new
+                tab, and transitions the application to APPLIED. */}
+            {drafted.resume && drafted.cover && (
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    justifyContent: 'space-between',
+                    gap: 14,
+                    padding: '14px 18px',
+                    background: 'rgba(125,166,125,0.08)',
+                    border: '1px solid rgba(125,166,125,0.30)',
+                    borderRadius: 12,
+                }}>
+                    <div style={{ flex: 1 }}>
+                        <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 700, color: T.text }}>
+                            Ready to send
+                        </p>
+                        <p style={{ margin: 0, fontSize: 12.5, color: T.textMuted, lineHeight: 1.55 }}>
+                            One click downloads your resume + cover letter as PDFs, copies the
+                            cover letter to your clipboard, and opens the listing.
+                        </p>
+                    </div>
+                    <ApplyDeepLinkButton
+                        resumeMarkdown={resumeDraft?.content ?? ''}
+                        coverLetterMarkdown={coverDraft?.content ?? ''}
+                        candidateName={candidateName}
+                        jobTitle={role}
+                        company={company}
+                        sourceUrl={sourceUrl}
+                        sourcePlatform={sourcePlatform}
+                        feedItemId={feedItemId}
+                    />
+                </div>
+            )}
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 4 }}>
                 <button onClick={onBack} style={ghostButtonStyle(T, false)}>
