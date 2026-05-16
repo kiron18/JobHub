@@ -9,6 +9,7 @@ import { generateBlueprint } from '../services/strategy';
 import { setCachedBlueprint } from '../services/blueprint-cache';
 import { buildPerCriterionAchievements } from '../services/generation';
 import { reviewDocument } from '../services/quality-gate';
+import { tagAIRewrites } from '../lib/provenanceTagging';
 import fs from 'fs';
 import path from 'path';
 
@@ -283,6 +284,17 @@ router.post('/:type', authenticate, async (req, res) => {
         // Strip em dashes — LLMs frequently emit U+2014; replace with a plain
         // spaced dash so downstream renderers and PDF exports stay consistent.
         finalContent = finalContent.split('\u2014').join(' - ');
+
+        // \u2500\u2500 Provenance tagging (resumes only) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+        // Mark bullets that diverge significantly from the user's source
+        // achievements with `[AI] ` so the editor can render an "review before
+        // sending" badge. Exporters strip the token before output.
+        if (docType === 'RESUME' && selectedAchievements.length > 0) {
+            const sources = selectedAchievements
+                .map((a: any) => a?.description ?? '')
+                .filter((s: string) => s && s.length > 0);
+            finalContent = tagAIRewrites(finalContent, sources);
+        }
 
         // ── Persist document ────────────────────────────────────────────────────
         const doc = await prisma.document.create({
