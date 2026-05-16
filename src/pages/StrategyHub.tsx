@@ -22,6 +22,7 @@ import { AnalysisResult, type DualSignalResult } from '../components/strategy/An
 import { CoherenceCard, type CoherenceSignal } from '../components/strategy/CoherenceCard';
 import { StrategicIntelligenceCard } from '../components/StrategicIntelligenceCard';
 import { ApplyFeedStrip } from '../components/strategy/ApplyFeedStrip';
+import { StaleApplicationsCard } from '../components/strategy/StaleApplicationsCard';
 import type { JobFeedItem } from '../components/jobs/JobCard';
 
 // ─── HubHeader ───────────────────────────────────────────────────────────────
@@ -826,6 +827,9 @@ export function StrategyHub() {
                 )}
                 <DimPeer style={{ marginBottom: 32 }}>
                     <StrategicInsightsPanel />
+                </DimPeer>
+                <DimPeer style={{ marginBottom: 32 }}>
+                    <StaleApplicationsCard />
                 </DimPeer>
                 <DimPeer style={{ marginBottom: 32 }}>
                     <StrategicIntelligenceCard />
