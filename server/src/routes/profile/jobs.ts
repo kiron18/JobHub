@@ -20,6 +20,24 @@ router.get('/jobs', authenticate, async (req, res) => {
     }
 });
 
+// GET /api/jobs/sent-count — count of applications the user has actually sent
+// (status != SAVED). Used by the Strategic Intelligence card to decide which
+// insights are unlocked.
+router.get('/jobs/sent-count', authenticate, async (req, res) => {
+    const userId = (req as any).user.id;
+    try {
+        const count = await prisma.jobApplication.count({
+            where: {
+                candidateProfile: { userId },
+                status: { not: 'SAVED' },
+            },
+        });
+        res.json({ count });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch sent count' });
+    }
+});
+
 // POST /api/jobs
 router.post('/jobs', authenticate, async (req, res) => {
     const userId = (req as any).user.id;
