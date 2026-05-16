@@ -20,6 +20,7 @@ import { DimRegion, DimTarget, DimPeer } from '../components/Dim';
 import { pickInsights } from '../data/strategicInsights';
 import { AnalysisResult, type DualSignalResult } from '../components/strategy/AnalysisResult';
 import { CoherenceCard, type CoherenceSignal } from '../components/strategy/CoherenceCard';
+import { StrategicIntelligenceCard } from '../components/StrategicIntelligenceCard';
 
 // ─── HubHeader ───────────────────────────────────────────────────────────────
 
@@ -776,6 +777,9 @@ export function StrategyHub() {
                 )}
                 <DimPeer style={{ marginBottom: 32 }}>
                     <StrategicInsightsPanel />
+                </DimPeer>
+                <DimPeer style={{ marginBottom: 32 }}>
+                    <StrategicIntelligenceCard />
                 </DimPeer>
                 <DimPeer>
                     <PipelineGlance jobs={jobs ?? []} />
