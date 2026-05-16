@@ -25,11 +25,14 @@ const FridayBriefPage = React.lazy(() =>
 const AdminDashboard = React.lazy(() =>
   import('./pages/AdminDashboard').then(m => ({ default: m.AdminDashboard }))
 );
-const SetupWizard = React.lazy(() =>
-  import('./pages/SetupWizard').then(m => ({ default: m.SetupWizard }))
-);
 const MindsetPage = React.lazy(() =>
   import('./pages/MindsetPage').then(m => ({ default: m.MindsetPage }))
+);
+const PostDiagnosticChoice = React.lazy(() =>
+  import('./components/PostDiagnosticChoice').then(m => ({ default: m.PostDiagnosticChoice }))
+);
+const FromScratchCapture = React.lazy(() =>
+  import('./components/FromScratchCapture').then(m => ({ default: m.FromScratchCapture }))
 );
 const StrategyHub = React.lazy(() =>
   import('./pages/StrategyHub').then(m => ({ default: m.StrategyHub }))
@@ -49,6 +52,7 @@ import { LegalPage } from './pages/LegalPage';
 
 // Lib
 import api from './lib/api';
+import { isEssentiallyEmptyProfile } from './lib/parseQuality';
 
 const queryClient = new QueryClient();
 
@@ -266,69 +270,136 @@ function DashboardGate({ children }: { children: React.ReactNode }) {
 
 // --- Report or Dashboard wrapper (first visit shows full-screen report) ---
 
+type ReportFlowStage = 'loading' | 'choice' | 'report' | 'from-scratch' | 'dashboard';
+
 function ReportOrDashboard() {
-  const navigate = useNavigate();
-  const [reportSeen, setReportSeen] = useState(() => {
-    // Email link uses ?view=report to force the report to show even for returning users
+  const queryClient = useQueryClient();
+
+  // Profile is needed for the parse-quality decision and the firstName greeting
+  // on the PostDiagnosticChoice screen.
+  const { data: profile, isLoading: profileLoading } = useQuery({
+    queryKey: ['profile'],
+    queryFn: async () => { const { data } = await api.get('/profile'); return data; },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const [stage, setStage] = useState<ReportFlowStage>(() => {
+    // Email link uses ?view=report to force the report to show even for returning users.
     const params = new URLSearchParams(window.location.search);
     if (params.get('view') === 'report') {
       window.history.replaceState({}, '', '/');
       localStorage.removeItem('jobhub_report_seen');
-      return false;
+      return 'report';
     }
-    return localStorage.getItem('jobhub_report_seen') === 'true';
+    if (localStorage.getItem('jobhub_report_seen') === 'true') return 'dashboard';
+    return 'loading';
   });
-  function handleDone() {
-    console.log('[ReportOrDashboard] handleDone, marking report seen, navigating to /setup');
+
+  // Once profile resolves, decide between from-scratch and the two-path choice.
+  // Only acts when we're in 'loading' to avoid stomping on user choices made later.
+  useEffect(() => {
+    if (stage !== 'loading' || profileLoading) return;
+    if (isEssentiallyEmptyProfile(profile)) {
+      setStage('from-scratch');
+    } else {
+      setStage('choice');
+    }
+  }, [stage, profileLoading, profile]);
+
+  function markReportSeen() {
     localStorage.setItem('jobhub_report_seen', 'true');
     localStorage.setItem('jobhub_tips_seen', 'false');
-    setReportSeen(true);
-    navigate('/setup', { replace: true });
   }
 
-  console.log('[ReportOrDashboard] render — reportSeen:', reportSeen);
+  function handleApplyNow() {
+    markReportSeen();
+    setStage('dashboard');
+  }
 
+  function handleSeeDiagnostic() {
+    setStage('report');
+  }
+
+  function handleReportDone() {
+    markReportSeen();
+    setStage('dashboard');
+  }
+
+  function handleFromScratchDone() {
+    queryClient.invalidateQueries({ queryKey: ['profile'] });
+    setStage('choice');
+  }
+
+  const firstName: string | null = profile?.name ? String(profile.name).split(' ')[0] : null;
+
+  const spinner = (
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="w-10 h-10 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
+    </div>
+  );
+
+  if (stage === 'loading') return spinner;
+
+  if (stage === 'from-scratch') {
+    return (
+      <React.Suspense fallback={spinner}>
+        <FromScratchCapture onDone={handleFromScratchDone} />
+      </React.Suspense>
+    );
+  }
+
+  if (stage === 'choice') {
+    return (
+      <React.Suspense fallback={spinner}>
+        <PostDiagnosticChoice
+          firstName={firstName}
+          onApplyNow={handleApplyNow}
+          onSeeDiagnostic={handleSeeDiagnostic}
+        />
+      </React.Suspense>
+    );
+  }
+
+  if (stage === 'report') {
+    return (
+      <React.Suspense fallback={spinner}>
+        <ReportExperience onDone={handleReportDone} />
+      </React.Suspense>
+    );
+  }
+
+  // stage === 'dashboard'
   return (
-    <>
-      {!reportSeen ? (
-        <>
-          <React.Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center"><div className="w-10 h-10 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" /></div>}>
-            <ReportExperience onDone={handleDone} />
-          </React.Suspense>
-        </>
-      ) : (
-        <DashboardGate>
-          <motion.div
-            key="dashboard"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3, ease: [0, 0, 0.2, 1] }}
-          >
-            <DashboardLayout>
-              <ErrorBoundary>
-              <React.Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" /></div>}>
-                <Routes>
-                  <Route path="/" element={<StrategyHub />} />
-                  <Route path="/tracker" element={<ApplicationTracker />} />
-                  <Route path="/apply" element={<StepperWorkspace />} />
-                  <Route path="/application-workspace" element={<ApplicationWorkspace />} />
-                  <Route path="/workspace" element={<Workspace />} />
-                  <Route path="/documents" element={<DocumentLibrary />} />
-                  <Route path="/email-templates" element={<EmailTemplatesLibrary />} />
-                  <Route path="/linkedin" element={<LinkedInPage />} />
-                  <Route path="/jobs" element={<JobFeedPage />} />
-                  <Route path="/mindset" element={<MindsetPage />} />
-                  <Route path="/admin" element={<AdminDashboard />} />
-                  <Route path="/admin/friday-brief" element={<FridayBriefPage />} />
-                  <Route path="*" element={<StrategyHub />} />
-                </Routes>
-              </React.Suspense>
-              </ErrorBoundary>
-            </DashboardLayout>
-          </motion.div>
-        </DashboardGate>
-      )}
-    </>
+    <DashboardGate>
+      <motion.div
+        key="dashboard"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3, ease: [0, 0, 0.2, 1] }}
+      >
+        <DashboardLayout>
+          <ErrorBoundary>
+            <React.Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" /></div>}>
+              <Routes>
+                <Route path="/" element={<StrategyHub />} />
+                <Route path="/tracker" element={<ApplicationTracker />} />
+                <Route path="/apply" element={<StepperWorkspace />} />
+                <Route path="/application-workspace" element={<ApplicationWorkspace />} />
+                <Route path="/workspace" element={<Workspace />} />
+                <Route path="/documents" element={<DocumentLibrary />} />
+                <Route path="/email-templates" element={<EmailTemplatesLibrary />} />
+                <Route path="/linkedin" element={<LinkedInPage />} />
+                <Route path="/jobs" element={<JobFeedPage />} />
+                <Route path="/mindset" element={<MindsetPage />} />
+                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/friday-brief" element={<FridayBriefPage />} />
+                <Route path="*" element={<StrategyHub />} />
+              </Routes>
+            </React.Suspense>
+          </ErrorBoundary>
+        </DashboardLayout>
+      </motion.div>
+    </DashboardGate>
   );
 }
 
@@ -347,15 +418,6 @@ function App() {
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/legal/:policy" element={<LegalPage />} />
               <Route path="/legal" element={<LegalPage />} />
-
-              {/* Setup wizard — full-screen, authenticated, no sidebar */}
-              <Route path="/setup" element={
-                <ProtectedRoute>
-                  <React.Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center"><div className="w-10 h-10 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" /></div>}>
-                    <SetupWizard />
-                  </React.Suspense>
-                </ProtectedRoute>
-              } />
 
               {/* Protected Application Routes */}
               <Route path="/*" element={
