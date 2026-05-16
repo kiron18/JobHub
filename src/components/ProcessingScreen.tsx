@@ -359,7 +359,7 @@ export function ProcessingScreen({ isDark: _isDark, theme: T, email: _email, nam
                 marginInline: 'auto',
               }}
             >
-              Once your diagnosis lands, the resume wizard helps you turn every gap into a stronger application.
+              Once your diagnosis lands, you can read it in full — or jump straight to writing your first tailored application.
             </p>
           </>
         )}
