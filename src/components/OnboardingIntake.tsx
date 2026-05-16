@@ -293,7 +293,7 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
     {
       n: 1,
       title: 'We Analyse Your Gaps.',
-      body: 'An instant, detailed diagnosis of your current positioning and experience, so you stop guessing what is costing you interviews.',
+      body: 'An instant, detailed diagnosis of your current positioning and experience, so you know exactly which lever to pull next.',
     },
     {
       n: 2,
@@ -325,8 +325,8 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
         marginBottom: 28, letterSpacing: '-0.02em',
         maxWidth: 560, marginInline: 'auto',
       }}>
-        Stop guessing why you aren't getting interviews.
-        <br />Let's fix your strategy.
+        See what is between your resume and your next interview.
+        <br />Let's close the gap.
       </h1>
 
       {/* 1-2-3 connected dots ribbon */}

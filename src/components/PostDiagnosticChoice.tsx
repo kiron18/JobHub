@@ -49,7 +49,7 @@ export function PostDiagnosticChoice({ onApplyNow, onSeeDiagnostic, firstName }:
         }}>
           {firstName ? `${firstName}, your resume is parsed.` : 'Your resume is parsed.'}
           <br />
-          <span style={{ color: '#C5A059' }}>We found 3 things quietly killing your applications.</span>
+          <span style={{ color: '#C5A059' }}>We pinpointed 3 places to sharpen before your next application.</span>
         </h1>
 
         <p style={{
