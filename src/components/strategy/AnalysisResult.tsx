@@ -19,6 +19,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, CheckCircle2, Sparkles, Lock, Pencil, AlertCircle } from 'lucide-react';
 import { useAppTheme } from '../../contexts/ThemeContext';
 import { AchievementDraftModal } from './AchievementDraftModal';
+import { EnrichmentPrompt } from '../EnrichmentPrompt';
 
 export interface DuplicateInfo {
     applicationId: string;
@@ -41,20 +42,24 @@ export interface DualSignalResult {
     insights: string[];
     scDetected: boolean;
     duplicate?: DuplicateInfo | null;
+    enrichmentCandidates?: Array<{ achievementId: string; title: string; text: string }>;
 }
 
 interface Props {
     result: DualSignalResult;
+    jobDescription: string;
     onContinue: () => void;
     onSkip?: () => void;
 }
 
-export function AnalysisResult({ result, onContinue, onSkip }: Props) {
+export function AnalysisResult({ result, jobDescription, onContinue, onSkip }: Props) {
     const { T } = useAppTheme();
     const { fitBands, extractedMetadata, dominantBand, insights, duplicate } = result;
     const { directMatch, bridgeableGap, hardGap } = fitBands;
 
     const [draftIndex, setDraftIndex] = useState<number | null>(null);
+    const [enrichmentDone, setEnrichmentDone] = useState(false);
+    const enrichmentCandidates = result.enrichmentCandidates ?? [];
     const draftItem = draftIndex !== null ? bridgeableGap.items[draftIndex] ?? null : null;
 
     const headline =
@@ -277,6 +282,18 @@ export function AnalysisResult({ result, onContinue, onSkip }: Props) {
                         ))}
                     </ul>
                 </div>
+            )}
+
+            {/* JD-time enrichment — surfaces achievements that match this JD
+                but lack a real metric so the user can sharpen them before
+                generating. Skipping never blocks the continue button. */}
+            {enrichmentCandidates.length > 0 && !enrichmentDone && (
+                <EnrichmentPrompt
+                    jobDescription={jobDescription}
+                    achievementIds={enrichmentCandidates.map(c => c.achievementId)}
+                    onComplete={() => setEnrichmentDone(true)}
+                    onSkipAll={() => setEnrichmentDone(true)}
+                />
             )}
 
             {/* CTAs */}

@@ -683,6 +683,7 @@ function AnalysisHeroCard() {
             {result && (
                 <AnalysisResult
                     result={result}
+                    jobDescription={trimmed}
                     onContinue={handleContinue}
                     onSkip={handleSkip}
                 />

@@ -508,6 +508,25 @@ router.post('/dual', async (req: any, res: any) => {
         // company + role tokens.
         const duplicate = await findDuplicateApplication({ userId, company, role });
 
+        // ── Enrichment candidates ──────────────────────────────────────────
+        // Achievements that match this JD but lack a real metric — surfaced
+        // to the frontend so it can prompt the user to enrich them before
+        // they generate. Hard cap at 3.
+        let enrichmentCandidates: Array<{ achievementId: string; title: string; text: string }> = [];
+        try {
+            const enrichMatches = await searchAchievements(userId, jobDescription, 8);
+            enrichmentCandidates = (enrichMatches ?? [])
+                .filter((m: any) => !isRealMetric(m?.metadata?.metric))
+                .slice(0, 3)
+                .map((m: any) => ({
+                    achievementId: m.id,
+                    title: m.metadata?.title ?? '',
+                    text: m.metadata?.text ?? '',
+                }));
+        } catch (err: any) {
+            console.warn('[analyze/dual] enrichment-candidates lookup failed:', err?.message);
+        }
+
         // Determine the dominant band for the result-state UI to pick which card to lead with.
         // Hard Gap wins iff it has items (rare). Otherwise Direct vs Bridgeable by pct.
         const dominantBand: 'directMatch' | 'bridgeableGap' | 'hardGap' =
@@ -529,6 +548,7 @@ router.post('/dual', async (req: any, res: any) => {
             insights,
             scDetected,
             duplicate,
+            enrichmentCandidates,
         });
     } catch (err: any) {
         console.error('[analyze/dual] unexpected error:', err);
