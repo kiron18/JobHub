@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import api from '../lib/api';
 import { useAppTheme } from '../contexts/ThemeContext';
 import { trackMatchAnalysisRun, trackFreeLimitHit } from '../lib/analytics';
+import { EnrichmentPrompt } from './EnrichmentPrompt';
 
 interface AnalysisResult {
     matchScore: number;
@@ -31,6 +32,11 @@ interface AnalysisResult {
         securityClearanceRequired: 'none' | 'baseline' | 'nv1' | 'nv2' | 'pv';
         salaryType: 'base' | 'trp' | 'unknown';
     };
+    enrichmentCandidates?: Array<{
+        achievementId: string;
+        title: string;
+        text: string;
+    }>;
 }
 
 interface LowMatchWarningProps {
@@ -217,6 +223,7 @@ export const MatchEngine: React.FC = () => {
     const [showLowMatchWarning, setShowLowMatchWarning] = useState(false);
     const [showCitizenshipWarning, setShowCitizenshipWarning] = useState(false);
     const [pendingNavType, setPendingNavType] = useState<'resume' | 'cover-letter' | 'selection-criteria' | null>(null);
+    const [enrichmentDone, setEnrichmentDone] = useState(false);
 
     const LOW_MATCH_THRESHOLD = 40;
 
@@ -252,6 +259,7 @@ export const MatchEngine: React.FC = () => {
             const { data } = await api.post('/analyze/job', { jobDescription });
             trackMatchAnalysisRun();
             setResult(data);
+            setEnrichmentDone(false);
             localStorage.setItem('jobhub_current_analysis', JSON.stringify(data));
             setTimeout(() => actionsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 150);
             if (data.citizenshipWarning) {
@@ -277,6 +285,7 @@ export const MatchEngine: React.FC = () => {
         setJobDescription('');
         setResult(null);
         setError(null);
+        setEnrichmentDone(false);
         localStorage.removeItem('jobhub_current_jd');
         localStorage.removeItem('jobhub_current_analysis');
     };
@@ -415,6 +424,16 @@ export const MatchEngine: React.FC = () => {
                         </div>
                     )}
                 </div>
+
+                {/* JD-time enrichment: sharpen weak achievements for this role */}
+                {result && !enrichmentDone && (result.enrichmentCandidates?.length ?? 0) > 0 && (
+                    <EnrichmentPrompt
+                        jobDescription={jobDescription}
+                        achievementIds={(result.enrichmentCandidates ?? []).map(c => c.achievementId)}
+                        onComplete={() => setEnrichmentDone(true)}
+                        onSkipAll={() => setEnrichmentDone(true)}
+                    />
+                )}
 
                 {/* Quick Actions Panel */}
                 {result && (
