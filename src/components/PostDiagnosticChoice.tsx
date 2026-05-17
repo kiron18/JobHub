@@ -61,7 +61,7 @@ export function PostDiagnosticChoice({ onApplyNow, onSeeDiagnostic, firstName }:
           maxWidth: 440,
           marginInline: 'auto',
         }}>
-          You can fix them right now by generating a tailored application — or read the full diagnostic first if you want the detail.
+          You can fix them right now by generating a tailored application, or read the full diagnostic first if you want the detail.
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18 }}>

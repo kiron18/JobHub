@@ -108,7 +108,7 @@ export function StrategicIntelligenceCard() {
                 {unlocked
                   ? <ChevronDown size={14} style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }} />
                   : <span style={{ fontSize: 11, fontWeight: 600, color: T.textMuted }}>
-                      {until} app{until === 1 ? '' : 's'} to unlock
+                      {until} application{until === 1 ? '' : 's'} to unlock
                     </span>
                 }
               </button>
