@@ -279,8 +279,11 @@ function ReportOrDashboard() {
   const queryClient = useQueryClient();
 
   // Profile is needed for the parse-quality decision and the firstName greeting
-  // on the PostDiagnosticChoice screen.
-  const { data: profile, isLoading: profileLoading } = useQuery({
+  // on the PostDiagnosticChoice screen. isFetching is critical here — the
+  // empty-profile check below must NOT fire on stale cached data while a
+  // refetch is in flight, or users whose autoExtract just finished get
+  // wrongly routed into the FromScratchCapture fallback.
+  const { data: profile, isLoading: profileLoading, isFetching: profileFetching } = useQuery({
     queryKey: ['profile'],
     queryFn: async () => { const { data } = await api.get('/profile'); return data; },
     staleTime: 5 * 60 * 1000,
@@ -300,14 +303,17 @@ function ReportOrDashboard() {
 
   // Once profile resolves, decide between from-scratch and the two-path choice.
   // Only acts when we're in 'loading' to avoid stomping on user choices made later.
+  // Wait for BOTH isLoading and isFetching to settle — invalidateQueries triggers
+  // a refetch that leaves isLoading=false (stale cache) but isFetching=true; if
+  // we decide here we lock in based on the stale empty profile.
   useEffect(() => {
-    if (stage !== 'loading' || profileLoading) return;
+    if (stage !== 'loading' || profileLoading || profileFetching) return;
     if (isEssentiallyEmptyProfile(profile)) {
       setStage('from-scratch');
     } else {
       setStage('choice');
     }
-  }, [stage, profileLoading, profile]);
+  }, [stage, profileLoading, profileFetching, profile]);
 
   // Listen for "show-diagnostic" events fired by the sidebar Diagnostic link
   // (and any other in-app entry points that want to re-open the diagnostic).
