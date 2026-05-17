@@ -16,7 +16,7 @@
  */
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, CheckCircle2, Sparkles, Lock, Pencil, AlertCircle } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Sparkles, Lock, Pencil, AlertCircle, Check } from 'lucide-react';
 import { useAppTheme } from '../../contexts/ThemeContext';
 import { AchievementDraftModal } from './AchievementDraftModal';
 import { EnrichmentPrompt } from '../EnrichmentPrompt';
@@ -58,6 +58,7 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip }: P
     const { directMatch, bridgeableGap, hardGap } = fitBands;
 
     const [draftIndex, setDraftIndex] = useState<number | null>(null);
+    const [bridgedIndices, setBridgedIndices] = useState<Set<number>>(new Set());
     const [enrichmentDone, setEnrichmentDone] = useState(false);
     const enrichmentCandidates = result.enrichmentCandidates ?? [];
     const draftItem = draftIndex !== null ? bridgeableGap.items[draftIndex] ?? null : null;
@@ -175,48 +176,89 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip }: P
                                 Based on your role and experience you likely have these. They just aren't named on your profile yet. Draft and save each one to strengthen your match for future analyses.
                             </p>
                             <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                {bridgeableGap.items.map((item, i) => (
-                                    <li key={i} style={{
-                                        padding: '12px 14px',
-                                        background: 'rgba(125,166,125,0.06)',
-                                        border: '1px solid rgba(125,166,125,0.18)',
-                                        borderRadius: 10,
-                                        display: 'flex',
-                                        alignItems: 'flex-start',
-                                        justifyContent: 'space-between',
-                                        gap: 12,
-                                    }}>
-                                        <div style={{ flex: 1, minWidth: 0 }}>
-                                            <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 700, color: T.text }}>
-                                                {item.skill}
-                                            </p>
-                                            <p style={{ margin: 0, fontSize: 12, color: T.textMuted, lineHeight: 1.55, fontStyle: 'italic' }}>
-                                                "{item.suggestion}"
-                                            </p>
-                                        </div>
-                                        <button
-                                            onClick={() => setDraftIndex(i)}
-                                            style={{
-                                                display: 'inline-flex',
-                                                alignItems: 'center',
-                                                gap: 4,
-                                                padding: '6px 10px',
-                                                fontSize: 11,
-                                                fontWeight: 700,
-                                                color: T.accentSecondary,
-                                                background: 'rgba(125,166,125,0.10)',
-                                                border: '1px solid rgba(125,166,125,0.30)',
-                                                borderRadius: 8,
-                                                cursor: 'pointer',
-                                                flexShrink: 0,
-                                                whiteSpace: 'nowrap',
-                                            }}
-                                        >
-                                            <Pencil size={11} />
-                                            Draft this
-                                        </button>
-                                    </li>
-                                ))}
+                                {bridgeableGap.items.map((item, i) => {
+                                    const isBridged = bridgedIndices.has(i);
+                                    return (
+                                        <li key={i} style={{
+                                            padding: '12px 14px',
+                                            background: isBridged ? 'rgba(125,166,125,0.14)' : 'rgba(125,166,125,0.06)',
+                                            border: `1px solid ${isBridged ? 'rgba(125,166,125,0.40)' : 'rgba(125,166,125,0.18)'}`,
+                                            borderRadius: 10,
+                                            display: 'flex',
+                                            alignItems: 'flex-start',
+                                            justifyContent: 'space-between',
+                                            gap: 12,
+                                            transition: 'background 0.25s, border-color 0.25s, opacity 0.25s',
+                                            opacity: isBridged ? 0.85 : 1,
+                                        }}>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <p style={{
+                                                    margin: '0 0 4px',
+                                                    fontSize: 13,
+                                                    fontWeight: 700,
+                                                    color: T.text,
+                                                    textDecoration: isBridged ? 'line-through' : 'none',
+                                                    textDecorationColor: 'rgba(125,166,125,0.55)',
+                                                    textDecorationThickness: '1px',
+                                                }}>
+                                                    {item.skill}
+                                                </p>
+                                                <p style={{
+                                                    margin: 0,
+                                                    fontSize: 12,
+                                                    color: T.textMuted,
+                                                    lineHeight: 1.55,
+                                                    fontStyle: 'italic',
+                                                }}>
+                                                    {isBridged ? 'Drafted and saved to your achievements.' : `"${item.suggestion}"`}
+                                                </p>
+                                            </div>
+                                            {isBridged ? (
+                                                <span
+                                                    style={{
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: 4,
+                                                        padding: '6px 10px',
+                                                        fontSize: 11,
+                                                        fontWeight: 700,
+                                                        color: T.accentSecondary,
+                                                        background: 'rgba(125,166,125,0.18)',
+                                                        border: '1px solid rgba(125,166,125,0.45)',
+                                                        borderRadius: 8,
+                                                        flexShrink: 0,
+                                                        whiteSpace: 'nowrap',
+                                                    }}
+                                                >
+                                                    <Check size={11} />
+                                                    Bridged
+                                                </span>
+                                            ) : (
+                                                <button
+                                                    onClick={() => setDraftIndex(i)}
+                                                    style={{
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: 4,
+                                                        padding: '6px 10px',
+                                                        fontSize: 11,
+                                                        fontWeight: 700,
+                                                        color: T.accentSecondary,
+                                                        background: 'rgba(125,166,125,0.10)',
+                                                        border: '1px solid rgba(125,166,125,0.30)',
+                                                        borderRadius: 8,
+                                                        cursor: 'pointer',
+                                                        flexShrink: 0,
+                                                        whiteSpace: 'nowrap',
+                                                    }}
+                                                >
+                                                    <Pencil size={11} />
+                                                    Draft this
+                                                </button>
+                                            )}
+                                        </li>
+                                    );
+                                })}
                             </ul>
                         </div>
                     }
@@ -346,7 +388,16 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip }: P
                 suggestion={draftItem?.suggestion ?? ''}
                 jobRole={extractedMetadata.role}
                 jobCompany={extractedMetadata.company}
-                onSaved={() => setDraftIndex(null)}
+                onSaved={() => {
+                    if (draftIndex !== null) {
+                        setBridgedIndices(prev => {
+                            const next = new Set(prev);
+                            next.add(draftIndex);
+                            return next;
+                        });
+                    }
+                    setDraftIndex(null);
+                }}
             />
         </div>
     );

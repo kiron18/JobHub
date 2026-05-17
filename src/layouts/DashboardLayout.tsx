@@ -186,7 +186,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                                 key={item.label}
                                 type="button"
                                 onClick={() => { item.onClick!(); if (isTouch) setDrawerOpen(false); }}
-                                className="relative flex w-full items-center gap-3 px-3 py-2.5 rounded-xl transition-all hover:bg-white/[0.04]"
+                                className="relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all hover:bg-white/[0.04] text-left"
                                 style={{ color: T.textMuted, background: 'transparent', border: '1px solid transparent' }}
                             >
                                 {iconAndLabel}
