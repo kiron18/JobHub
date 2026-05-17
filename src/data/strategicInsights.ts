@@ -16,62 +16,62 @@ export interface StrategicInsight {
 export const STRATEGIC_INSIGHTS: StrategicInsight[] = [
   {
     id: 'apac-focus',
-    text: 'Target APAC-focused firms. They value international perspective and often have built-in cultural diversity.',
+    text: "If your story includes another country, lean toward APAC-facing firms. International experience reads as an asset there, not a question mark.",
     category: 'market',
   },
   {
     id: 'asx-recruiters',
-    text: 'Many ASX-listed companies hire through external recruiters. Apply via the recruiter URL rather than the company site to land on the right list.',
+    text: "A lot of ASX-listed roles are filled by external recruiters before the company posting moves. If you spot the same job on a recruiter's site, apply there — that's where the shortlist actually lives.",
     category: 'process',
   },
   {
     id: 'group-of-eight',
-    text: 'When your university is unfamiliar to AU recruiters, add a one-line equivalence: "IIT Delhi (comparable to Group of Eight)" makes your education legible.',
+    text: "If your university isn't well-known here, give the recruiter a hand: one line like \"IIT Delhi (comparable to Group of Eight)\" turns an unknown name into a familiar reference point. It is not bragging, it is translation.",
     category: 'framing',
   },
   {
     id: 'aps-format',
-    text: 'Government roles (APS) reward selection-criteria detail. Treat them as a different application format entirely: separate document, structured answers.',
+    text: "Government roles are a different beast. Selection-criteria responses aren't a cover letter — they're a separate document, structured, evidence-led. Treating them as a normal application is the most common reason a strong candidate doesn't make the shortlist.",
     category: 'process',
   },
   {
     id: 'cover-letter-length',
-    text: 'Australian cover letters tend to be shorter and more direct than US ones. One page, no flourish, evidence-led.',
+    text: "Australian cover letters are shorter than US ones. One page. No flourish. Lead with what you did, not how excited you are. The instinct to fill more space usually weakens the application.",
     category: 'framing',
   },
   {
     id: 'pr-citizenship',
-    text: 'PR or citizenship requirements are common in government and some private-sector roles. Check this before tailoring. Saves wasted effort.',
+    text: "Some roles will ask for PR or citizenship. Most do not. Before you spend an hour tailoring, scan the requirements for the words \"permanent resident\" or \"citizen\" — skip the ones that block you, focus the time on the ones you can actually win.",
     category: 'market',
   },
   {
     id: 'growing-industries',
-    text: 'Industries actively growing in Australia for international graduates: renewables, aged care, infrastructure, fintech.',
+    text: "If you are open on industry, these are the ones hiring international graduates in 2026: renewables, aged care, infrastructure, fintech. Not the only path, but a softer landing if your current targeting feels stuck.",
     category: 'market',
   },
   {
     id: 'melbourne-vs-sydney',
-    text: 'Melbourne and Sydney differ on tone. Melbourne reads more collegial; Sydney more direct. Calibrate cover letters accordingly.',
+    text: "Same role, different city, different tone. Melbourne reads more collegial. Sydney reads more direct. The same cover letter can land warmly in one city and read as overplayed in the other — worth a small tonal pass when you switch.",
     category: 'framing',
   },
   {
     id: 'follow-up-window',
-    text: 'Recruiters in AU often respond to thoughtful follow-ups within a week of application. A short note beats silence.',
+    text: "If a recruiter has gone quiet for a week, a short, specific follow-up usually beats silence. Not a chase — a one-line nudge that references something specific from the role. Most candidates do not do this, which is exactly why it works.",
     category: 'process',
   },
   {
     id: 'avoid-us-jargon',
-    text: 'Avoid US-style superlatives ("rockstar", "ninja", "10x"). They read as imported jargon and tend to harm credibility here.',
+    text: "\"Rockstar\", \"ninja\", \"10x\" — these read as imported jargon here, and they do not signal what you think they signal. Plain words about what you actually did will land harder every time.",
     category: 'framing',
   },
   {
     id: 'personal-interests',
-    text: 'Australian resumes can include a brief personal-interests line. It is not unprofessional here, and can humanise an otherwise dense CV.',
+    text: "An Australian resume can include one short personal-interests line. It is not unprofessional here — and on a dense CV, it gives a recruiter one human thing to ask you about in the screening call. Small lever, often underrated.",
     category: 'framing',
   },
   {
     id: 'visa-transparency',
-    text: 'For roles with PR/citizenship restrictions, mention your visa status proactively. Silence often reads as a flag; honesty resolves it.',
+    text: "If a role has visa constraints, mention your status up front — one line, neutral, factual. Silence reads as something to hide. A clear sentence reads as someone who has done their homework. The honest version almost always plays better.",
     category: 'framing',
   },
 ];
