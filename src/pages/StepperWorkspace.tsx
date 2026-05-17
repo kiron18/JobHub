@@ -1042,44 +1042,80 @@ function TrackStep({
                 {wantsSC && <DraftRow label="Selection criteria" ready={drafted.sc} T={T} />}
             </div>
 
-            {/* Education chunk — tracker capabilities, presented as one cohesive idea */}
-            <div style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: 14,
-                padding: '16px 18px',
-                background: 'rgba(45,90,110,0.10)',
-                border: '1px solid rgba(45,90,110,0.30)',
-                borderRadius: 12,
-            }}>
-                <div style={{
-                    width: 36,
-                    height: 36,
-                    flexShrink: 0,
-                    borderRadius: 10,
-                    background: 'rgba(45,90,110,0.20)',
-                    color: T.accentSuccess,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                }}>
-                    <Briefcase size={18} />
-                </div>
-                <div style={{ flex: 1 }}>
-                    <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 700, color: T.text }}>
-                        Your tracker handles the next moves.
-                    </p>
-                    <p style={{ margin: 0, fontSize: 12.5, color: T.textMuted, lineHeight: 1.65 }}>
-                        It quietly nudges you to follow up after a week of silence and unlocks the
-                        Interview Prep generator the moment you mark a role as Interview. Find it
-                        anytime under <span style={{ color: T.text, fontWeight: 600 }}><Briefcase size={11} style={{ display: 'inline', marginRight: 3, verticalAlign: '-1px' }} />Applications</span> in the sidebar.
-                    </p>
+            {/* Compact tracker chip with hover tooltip. The full explanation
+                lives in the tooltip, not the layout, so the Track screen reads
+                less crowded. */}
+            <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 6 }} className="group">
+                <Briefcase size={12} style={{ color: T.textMuted, flexShrink: 0 }} />
+                <p style={{ margin: 0, fontSize: 12, color: T.textMuted, fontWeight: 500 }}>
+                    Find this anytime under{' '}
+                    <Link
+                        to="/tracker"
+                        style={{
+                            color: T.text,
+                            fontWeight: 600,
+                            textDecoration: 'underline',
+                            textUnderlineOffset: 3,
+                            textDecorationColor: 'rgba(255,255,255,0.2)',
+                        }}
+                    >
+                        Applications
+                    </Link>
+                    <span
+                        tabIndex={0}
+                        aria-label="What does the tracker do?"
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: 14,
+                            height: 14,
+                            borderRadius: '50%',
+                            background: 'rgba(255,255,255,0.08)',
+                            color: T.textMuted,
+                            fontSize: 9,
+                            fontWeight: 800,
+                            marginLeft: 6,
+                            cursor: 'help',
+                            verticalAlign: 'middle',
+                        }}
+                        className="peer"
+                    >
+                        i
+                    </span>
+                </p>
+                <div
+                    role="tooltip"
+                    style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 8px)',
+                        left: 0,
+                        zIndex: 30,
+                        width: 'min(360px, calc(100vw - 80px))',
+                        padding: '12px 14px',
+                        background: '#1A1C1E',
+                        border: '1px solid rgba(255,255,255,0.12)',
+                        borderRadius: 10,
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                        fontSize: 12,
+                        lineHeight: 1.55,
+                        color: T.textMuted,
+                        opacity: 0,
+                        pointerEvents: 'none',
+                        transform: 'translateY(-4px)',
+                        transition: 'opacity 0.15s, transform 0.15s',
+                    }}
+                    className="group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto peer-focus:opacity-100 peer-focus:translate-y-0 peer-focus:pointer-events-auto"
+                >
+                    The tracker quietly nudges you to follow up after a week of silence and unlocks
+                    the Interview Prep generator the moment you mark a role as Interview. Nothing
+                    extra to do here — it picks up from this point.
                 </div>
             </div>
 
             {/* Apply on platform — only when both docs exist. Downloads PDFs,
-                copies cover letter to clipboard, opens the listing in a new
-                tab, and transitions the application to APPLIED. */}
+                copies cover letter to clipboard, opens the listing (if we have
+                its URL), and transitions the application to APPLIED. */}
             {drafted.resume && drafted.cover && (
                 <div style={{
                     display: 'flex',
@@ -1093,11 +1129,13 @@ function TrackStep({
                 }}>
                     <div style={{ flex: 1 }}>
                         <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 700, color: T.text }}>
-                            Ready to send
+                            {sourceUrl ? 'Ready to send' : 'Your docs are ready'}
                         </p>
                         <p style={{ margin: 0, fontSize: 12.5, color: T.textMuted, lineHeight: 1.55 }}>
-                            One click downloads your resume + cover letter as PDFs, copies the
-                            cover letter to your clipboard, and opens the listing.
+                            {sourceUrl
+                                ? 'One click downloads your resume and cover letter as PDFs, copies the cover letter to your clipboard, and opens the listing.'
+                                : 'One click downloads your resume and cover letter as PDFs and copies the cover letter to your clipboard. Send this one off, then queue up the next.'
+                            }
                         </p>
                     </div>
                     <ApplyDeepLinkButton

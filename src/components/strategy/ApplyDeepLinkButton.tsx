@@ -46,6 +46,10 @@ export function ApplyDeepLinkButton({
   const [busy, setBusy] = useState<'idle' | 'pdf' | 'docx'>('idle');
 
   const label = platformLabel(sourcePlatform, sourceUrl);
+  // Only show the "Apply on X" framing when we actually have a URL to deep-link
+  // into. For pasted JDs we have no listing to send them to, so the button
+  // honestly says what it does: download + copy.
+  const canDeepLink = Boolean(sourceUrl);
   const hasResume = resumeMarkdown.trim().length > 0;
   const hasCover  = coverLetterMarkdown.trim().length > 0;
   const ready = hasResume && hasCover;
@@ -131,10 +135,15 @@ export function ApplyDeepLinkButton({
             <Loader2 size={15} className="animate-spin" />
             Preparing…
           </>
-        ) : (
+        ) : canDeepLink ? (
           <>
             Apply on {label}
             <ArrowUpRight size={15} />
+          </>
+        ) : (
+          <>
+            Get my docs
+            <Download size={15} />
           </>
         )}
       </button>

@@ -103,7 +103,7 @@ export function ApplyFeedStrip({ onPick }: ApplyFeedStripProps) {
               Browse {roleLabel} on Seek
             </span>
             <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 500 }}>
-              Open Seek in a new tab, copy any job description, paste it above.
+              Open Seek in a new tab, copy any job description, paste it below.
             </span>
           </span>
           <ExternalLink size={14} style={{ color: T.textMuted, flexShrink: 0 }} />
