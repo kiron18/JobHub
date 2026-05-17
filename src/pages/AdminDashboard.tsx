@@ -811,18 +811,32 @@ export function AdminDashboard() {
               <span style={{ color: S.teal, fontWeight: 600 }}>Data since 27 April 2026</span>
             </p>
           </div>
-          <button
-            onClick={() => refetch()}
-            disabled={isFetching}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              background: 'rgba(255,255,255,0.05)', border: `1px solid ${S.border}`,
-              borderRadius: 10, padding: '8px 16px', fontSize: 12, fontWeight: 700,
-              color: S.sub, cursor: 'pointer', opacity: isFetching ? 0.5 : 1,
-            }}>
-            <RefreshCcw size={12} style={{ animation: isFetching ? 'spin 0.8s linear infinite' : 'none' }} />
-            Refresh
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <a
+              href="/admin/funnel"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                background: 'rgba(45,212,191,0.10)', border: `1px solid rgba(45,212,191,0.35)`,
+                borderRadius: 10, padding: '8px 16px', fontSize: 12, fontWeight: 700,
+                color: S.teal, textDecoration: 'none',
+              }}>
+              <TrendingUp size={12} />
+              Trial conversion
+              <ExternalLink size={10} />
+            </a>
+            <button
+              onClick={() => refetch()}
+              disabled={isFetching}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                background: 'rgba(255,255,255,0.05)', border: `1px solid ${S.border}`,
+                borderRadius: 10, padding: '8px 16px', fontSize: 12, fontWeight: 700,
+                color: S.sub, cursor: 'pointer', opacity: isFetching ? 0.5 : 1,
+              }}>
+              <RefreshCcw size={12} style={{ animation: isFetching ? 'spin 0.8s linear infinite' : 'none' }} />
+              Refresh
+            </button>
+          </div>
         </div>
 
         {/* Tab bar */}
