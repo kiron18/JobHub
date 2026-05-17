@@ -4,11 +4,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Briefcase, Loader2, ExternalLink } from 'lucide-react';
 import api from '../../lib/api';
 import { useAppTheme } from '../../contexts/ThemeContext';
+import { buildSeekSearchUrl } from '../../lib/seekSearchUrl';
 import type { JobFeedItem } from '../jobs/JobCard';
 
 interface ApplyFeedStripProps {
   /** Called with the (possibly-hydrated) JD text + the feed item that produced it. */
   onPick: (jobDescription: string, item: JobFeedItem) => void;
+}
+
+interface ProfileLite {
+  targetRole?: string;
+  targetCity?: string;
 }
 
 /**
@@ -17,8 +23,9 @@ interface ApplyFeedStripProps {
  * page (calls /job-feed/:id/fetch-description) and pastes it into the
  * textarea, closing the "I don't have a JD to paste" friction gap.
  *
- * Renders nothing when the feed is empty (graceful degradation for free users
- * or first-visit users whose feed hasn't been built yet).
+ * When the feed is empty, falls back to a one-line nudge that links the user
+ * straight to Seek for their target role + city. Better than disappearing
+ * silently, especially for first-visit users.
  */
 export function ApplyFeedStrip({ onPick }: ApplyFeedStripProps) {
   const { T } = useAppTheme();
@@ -33,12 +40,77 @@ export function ApplyFeedStrip({ onPick }: ApplyFeedStripProps) {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Profile is cached by DashboardLayout; this query is cheap and shares the cache.
+  const { data: profile } = useQuery<ProfileLite>({
+    queryKey: ['profile'],
+    queryFn: async () => (await api.get('/profile')).data,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const visible = (jobs ?? [])
     .filter(j => !j.isRead || j.applicationStatus === null)
     .sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0))
     .slice(0, 5);
 
-  if (visible.length === 0) return null;
+  // Empty-feed fallback: send them to Seek for their target role rather than
+  // rendering nothing. They paste a JD from there, come back, and analyse.
+  if (visible.length === 0) {
+    const seekUrl = buildSeekSearchUrl(profile?.targetRole, profile?.targetCity);
+    const roleLabel = profile?.targetRole?.trim() || 'roles';
+    return (
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <Briefcase size={13} style={{ color: T.textMuted }} />
+          <p style={{
+            margin: 0,
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: '0.12em',
+            textTransform: 'uppercase',
+            color: T.textMuted,
+          }}>
+            Don't have a JD to paste?
+          </p>
+        </div>
+        <a
+          href={seekUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 10,
+            padding: '14px 16px',
+            borderRadius: 12,
+            background: 'rgba(255,255,255,0.02)',
+            border: `1px solid ${T.cardBorder}`,
+            color: T.text,
+            textDecoration: 'none',
+            transition: 'border-color 0.15s, background 0.15s',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.borderColor = T.accentSecondary;
+            e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.borderColor = T.cardBorder;
+            e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+          }}
+        >
+          <span style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <span style={{ fontSize: 13, fontWeight: 700 }}>
+              Browse {roleLabel} on Seek
+            </span>
+            <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 500 }}>
+              Open Seek in a new tab, copy any job description, paste it above.
+            </span>
+          </span>
+          <ExternalLink size={14} style={{ color: T.textMuted, flexShrink: 0 }} />
+        </a>
+      </div>
+    );
+  }
 
   async function handlePick(item: JobFeedItem) {
     setHydratingId(item.id);
