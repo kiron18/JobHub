@@ -88,12 +88,20 @@ router.post(
         ? await extractTextFromBuffer(cl2File.buffer, cl2File.mimetype, cl2File.originalname)
         : undefined;
 
-      // Upsert — new users have no profile row yet; create it on first onboarding
+      // Upsert — new users have no profile row yet; create it on first onboarding.
+      // NOTE: hasCompletedOnboarding is INTENTIONALLY not set here. It is only
+      // flipped to true once the diagnostic AND autoExtract both finish (see
+      // the generateDiagnosticReport.then() block below). Setting it eagerly
+      // here used to cause OnboardingGate to swap from ProcessingScreen into
+      // ReportOrDashboard mid-processing, which then routed users to
+      // FromScratchCapture against a half-populated profile.
+      // Refresh safety: if a user reloads while still processing, the
+      // /onboarding/report reportStatus check in OnboardingGate puts them
+      // straight back on ProcessingScreen (step 5 of OnboardingIntake).
       await prisma.candidateProfile.upsert({
         where: { userId },
         create: {
           userId,
-          hasCompletedOnboarding: true,
           targetRole: answers.targetRole,
           targetCity: answers.targetCity,
           seniority: answers.seniority,
@@ -115,7 +123,6 @@ router.post(
           visaStatus: (answers as any).visaStatus ?? null,
         },
         update: {
-          hasCompletedOnboarding: true,
           targetRole: answers.targetRole,
           targetCity: answers.targetCity,
           seniority: answers.seniority,
