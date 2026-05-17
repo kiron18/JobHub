@@ -663,7 +663,7 @@ function Section5Card({
               boxShadow: `0 6px 24px ${PETROL}40`,
             }}
           >
-            Start with your professional summary →
+            Start my first application →
           </motion.button>
           <p style={{ margin: 0, fontSize: 12, color: theme.sub, textAlign: 'center' }}>
             First five tailored applications free. No card needed.
@@ -1265,7 +1265,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                   whiteSpace: 'nowrap', minHeight: 44, letterSpacing: '-0.01em',
                 }}
               >
-                Start with your professional summary →
+                Start my first application →
               </button>
               <button
                 onClick={() => setShowSticky(false)}
