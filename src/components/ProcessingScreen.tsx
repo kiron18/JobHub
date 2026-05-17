@@ -359,7 +359,7 @@ export function ProcessingScreen({ isDark: _isDark, theme: T, email: _email, nam
                 marginInline: 'auto',
               }}
             >
-              Once your diagnosis lands, you can read it in full — or jump straight to writing your first tailored application.
+              What happens next: you pick a real role, we build you a sharp application in minutes. Most people send their first one the same day.
             </p>
           </>
         )}
