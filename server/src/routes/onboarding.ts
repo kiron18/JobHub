@@ -138,10 +138,20 @@ router.post(
         },
       });
 
-      // Auto-populate Achievement Bank from resume — fire and forget
-      autoExtractAchievements(userId, resumeText).catch(err =>
-        console.error('[Onboarding] Auto-extract failed:', err)
-      );
+      // Auto-populate Achievement Bank + structured profile fields. Kick this
+      // off in parallel with diagnostic generation and AWAIT it before
+      // setting status=COMPLETE — otherwise the frontend sees COMPLETE,
+      // fetches /profile while experience/education writes are still in
+      // flight, decides the profile is empty, and routes the user into
+      // FromScratchCapture to re-enter their resume. The 120s timeout is a
+      // safety floor: if autoExtract genuinely hangs or fails, we still
+      // signal COMPLETE so the user isn't trapped on the loading screen.
+      const autoExtractPromise: Promise<void> = Promise.race([
+        autoExtractAchievements(userId, resumeText),
+        new Promise<void>((resolve) => setTimeout(resolve, 120_000)),
+      ]).catch((err) => {
+        console.error('[Onboarding] Auto-extract failed (non-blocking):', err);
+      }) as Promise<void>;
 
       // Pre-warm job feed — build in background so it's ready when user finishes reading the report
       prisma.jobFeedItem.count({ where: { userId } })
@@ -177,6 +187,9 @@ router.post(
 
       generateDiagnosticReport(reportInput)
         .then(async (markdown) => {
+          // Wait for autoExtract before signalling COMPLETE so /profile
+          // returns populated experience/education to the frontend.
+          await autoExtractPromise;
           await prisma.diagnosticReport.update({
             where: { id: report.id },
             data: { status: 'COMPLETE', reportMarkdown: markdown },
