@@ -292,18 +292,18 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
   const journeySteps = [
     {
       n: 1,
-      title: 'We Analyse Your Gaps.',
-      body: 'An instant, detailed diagnosis of your current positioning and experience, so you know exactly which lever to pull next.',
+      title: 'Read your story.',
+      body: 'Upload your resume, answer a few questions. We capture what you have actually done, not just what you wrote down.',
     },
     {
       n: 2,
-      title: 'We Perfect Your Resume.',
-      body: 'JobHub translates your experience into the language Australian recruiters expect, tailored for the role you are applying to.',
+      title: 'Map the gap.',
+      body: 'Before you apply, you see exactly where your story matches the roles you want, and where it does not yet.',
     },
     {
       n: 3,
-      title: 'We Validate & Fix the Rest.',
-      body: 'Before you apply, the platform pre-screens your package and closes any last gaps, so each application lands with maximum impact.',
+      title: 'Tailor every application.',
+      body: 'Paste any job description. Get a resume, cover letter, and selection criteria written for that role. In minutes.',
     },
   ];
 
@@ -316,7 +316,7 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
           textTransform: 'uppercase', color: T.textFaint, marginBottom: 18,
         }}
       >
-        Your Australian career journey
+        Your Australian application engine
       </motion.span>
 
       <h1 style={{
@@ -325,8 +325,8 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
         marginBottom: 28, letterSpacing: '-0.02em',
         maxWidth: 560, marginInline: 'auto',
       }}>
-        See what is between your resume and your next interview.
-        <br />Let's close the gap.
+        Tailored Australian applications.
+        <br />In minutes, not hours.
       </h1>
 
       {/* 1-2-3 connected dots ribbon */}
@@ -405,7 +405,7 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
         whileHover={{ scale: 1.01 }}
         whileTap={{ scale: 0.98 }}
       >
-        Analyse My Resume & Build My Plan →
+        Build my profile →
       </motion.button>
       <p style={{ fontSize: 12, color: T.textFaint, marginTop: 10 }}>
         Takes about 3 minutes · Free · No card needed
