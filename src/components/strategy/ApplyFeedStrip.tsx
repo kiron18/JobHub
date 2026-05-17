@@ -1,14 +1,12 @@
-import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Briefcase, Loader2, ExternalLink } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import api from '../../lib/api';
 import { useAppTheme } from '../../contexts/ThemeContext';
 import { buildSeekSearchUrl } from '../../lib/seekSearchUrl';
 import type { JobFeedItem } from '../jobs/JobCard';
 
 interface ApplyFeedStripProps {
-  /** Called with the (possibly-hydrated) JD text + the feed item that produced it. */
+  /** Kept for caller compatibility — currently unused while the feed cards are disabled. */
   onPick: (jobDescription: string, item: JobFeedItem) => void;
 }
 
@@ -18,240 +16,62 @@ interface ProfileLite {
 }
 
 /**
- * Compact horizontal strip of the user's top Job Feed matches, shown above the
- * Analyse hero textarea. Clicking a card hydrates the full JD from the source
- * page (calls /job-feed/:id/fetch-description) and pastes it into the
- * textarea, closing the "I don't have a JD to paste" friction gap.
+ * TEMPORARILY simplified to a single sleek Seek banner.
  *
- * When the feed is empty, falls back to a one-line nudge that links the user
- * straight to Seek for their target role + city. Better than disappearing
- * silently, especially for first-visit users.
+ * The job-feed cards were producing low-confidence matches (default 50% for
+ * unranked items) and pasting incomplete JDs back into the analyse textarea,
+ * which broke user trust. Until the feed scoring and JD hydration are sharper,
+ * we always show the Seek shortcut instead — one row, one click, full-quality
+ * JD from the actual source.
+ *
+ * To restore the feed cards: revert this file. The query, sort, and handlePick
+ * logic from the previous version is in git history.
  */
-export function ApplyFeedStrip({ onPick }: ApplyFeedStripProps) {
+export function ApplyFeedStrip(_props: ApplyFeedStripProps) {
   const { T } = useAppTheme();
-  const [hydratingId, setHydratingId] = useState<string | null>(null);
 
-  const { data: jobs } = useQuery<JobFeedItem[]>({
-    queryKey: ['job-feed', 'strip'],
-    queryFn: async () => {
-      const { data } = await api.get('/job-feed/feed?offset=0');
-      return Array.isArray(data?.jobs) ? data.jobs : (Array.isArray(data) ? data : []);
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-
-  // Profile is cached by DashboardLayout; this query is cheap and shares the cache.
   const { data: profile } = useQuery<ProfileLite>({
     queryKey: ['profile'],
     queryFn: async () => (await api.get('/profile')).data,
     staleTime: 5 * 60 * 1000,
   });
 
-  const visible = (jobs ?? [])
-    .filter(j => !j.isRead || j.applicationStatus === null)
-    .sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0))
-    .slice(0, 5);
-
-  // Empty-feed fallback: send them to Seek for their target role rather than
-  // rendering nothing. They paste a JD from there, come back, and analyse.
-  if (visible.length === 0) {
-    const seekUrl = buildSeekSearchUrl(profile?.targetRole, profile?.targetCity);
-    const roleLabel = profile?.targetRole?.trim() || 'roles';
-    return (
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-          <Briefcase size={13} style={{ color: T.textMuted }} />
-          <p style={{
-            margin: 0,
-            fontSize: 11,
-            fontWeight: 700,
-            letterSpacing: '0.12em',
-            textTransform: 'uppercase',
-            color: T.textMuted,
-          }}>
-            Don't have a JD to paste?
-          </p>
-        </div>
-        <a
-          href={seekUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 10,
-            padding: '14px 16px',
-            borderRadius: 12,
-            background: 'rgba(255,255,255,0.02)',
-            border: `1px solid ${T.cardBorder}`,
-            color: T.text,
-            textDecoration: 'none',
-            transition: 'border-color 0.15s, background 0.15s',
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.borderColor = T.accentSecondary;
-            e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.borderColor = T.cardBorder;
-            e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
-          }}
-        >
-          <span style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <span style={{ fontSize: 13, fontWeight: 700 }}>
-              Browse {roleLabel} on Seek
-            </span>
-            <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 500 }}>
-              Open Seek in a new tab, copy any job description, paste it below.
-            </span>
-          </span>
-          <ExternalLink size={14} style={{ color: T.textMuted, flexShrink: 0 }} />
-        </a>
-      </div>
-    );
-  }
-
-  async function handlePick(item: JobFeedItem) {
-    setHydratingId(item.id);
-    try {
-      // Attempt to hydrate the full JD; fall back to whatever description we have.
-      let description = item.description;
-      try {
-        const { data } = await api.post(`/job-feed/${item.id}/fetch-description`);
-        if (typeof data?.description === 'string' && data.description.length > description.length) {
-          description = data.description;
-        }
-      } catch {
-        // Hydration failed (premium gate, 4xx, network, etc.) — use whatever we have.
-      }
-      onPick(description, { ...item, description });
-    } finally {
-      setHydratingId(null);
-    }
-  }
+  const seekUrl = buildSeekSearchUrl(profile?.targetRole, profile?.targetCity);
+  const roleLabel = profile?.targetRole?.trim() || 'roles';
 
   return (
-    <div style={{ marginBottom: 24 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-        <Briefcase size={13} style={{ color: T.textMuted }} />
-        <p style={{
-          margin: 0,
-          fontSize: 11,
-          fontWeight: 700,
-          letterSpacing: '0.12em',
-          textTransform: 'uppercase',
-          color: T.textMuted,
-        }}>
-          Or start from your feed
-        </p>
-      </div>
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-        gap: 10,
-      }}>
-        <AnimatePresence initial={false}>
-          {visible.map(item => {
-            const isHydrating = hydratingId === item.id;
-            const score = item.matchScore ?? null;
-            const scoreColor =
-              score == null ? T.textMuted :
-              score >= 75 ? T.accentSuccess :
-              score >= 50 ? T.accentSecondary : T.textMuted;
-            return (
-              <motion.button
-                key={item.id}
-                onClick={() => handlePick(item)}
-                disabled={isHydrating}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.18 }}
-                style={{
-                  textAlign: 'left',
-                  padding: 12,
-                  borderRadius: 12,
-                  background: 'rgba(255,255,255,0.02)',
-                  border: `1px solid ${T.cardBorder}`,
-                  color: T.text,
-                  cursor: isHydrating ? 'wait' : 'pointer',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 4,
-                  transition: 'border-color 0.15s, background 0.15s',
-                }}
-                onMouseEnter={e => {
-                  if (isHydrating) return;
-                  e.currentTarget.style.borderColor = T.accentSecondary;
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.borderColor = T.cardBorder;
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-                  <p style={{
-                    margin: 0,
-                    fontSize: 13,
-                    fontWeight: 700,
-                    lineHeight: 1.3,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical',
-                  }}>
-                    {item.title}
-                  </p>
-                  {score != null && (
-                    <span style={{
-                      flexShrink: 0,
-                      fontSize: 10,
-                      fontWeight: 800,
-                      letterSpacing: '0.02em',
-                      color: scoreColor,
-                      padding: '2px 7px',
-                      borderRadius: 999,
-                      background: 'rgba(255,255,255,0.04)',
-                      border: `1px solid ${scoreColor}33`,
-                    }}>
-                      {Math.round(score)}%
-                    </span>
-                  )}
-                </div>
-                <p style={{
-                  margin: 0,
-                  fontSize: 11,
-                  color: T.textMuted,
-                  fontWeight: 600,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}>
-                  {item.company}{item.location ? ` · ${item.location}` : ''}
-                </p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                  {isHydrating ? (
-                    <>
-                      <Loader2 size={11} className="animate-spin" style={{ color: T.textMuted }} />
-                      <span style={{ fontSize: 10, color: T.textMuted, fontWeight: 600 }}>Loading JD…</span>
-                    </>
-                  ) : (
-                    <>
-                      <ExternalLink size={10} style={{ color: T.textMuted }} />
-                      <span style={{ fontSize: 10, color: T.textMuted, fontWeight: 600 }}>
-                        {item.applicationStatus ? `${item.applicationStatus.toLowerCase()} · click to analyse` : 'Use this JD'}
-                      </span>
-                    </>
-                  )}
-                </div>
-              </motion.button>
-            );
-          })}
-        </AnimatePresence>
-      </div>
+    <div style={{ marginBottom: 18 }}>
+      <a
+        href={seekUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 10,
+          padding: '10px 14px',
+          borderRadius: 10,
+          background: 'rgba(255,255,255,0.02)',
+          border: `1px solid ${T.cardBorder}`,
+          color: T.text,
+          textDecoration: 'none',
+          transition: 'border-color 0.15s, background 0.15s',
+        }}
+        onMouseEnter={e => {
+          e.currentTarget.style.borderColor = T.accentSecondary;
+          e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.borderColor = T.cardBorder;
+          e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+        }}
+      >
+        <span style={{ fontSize: 13, fontWeight: 600 }}>
+          Browse {roleLabel} on Seek
+        </span>
+        <ExternalLink size={13} style={{ color: T.textMuted, flexShrink: 0 }} />
+      </a>
     </div>
   );
 }
