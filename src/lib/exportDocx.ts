@@ -260,7 +260,7 @@ function sanitizeForExport(raw: string): string {
     // Strip all placeholder marker variants the generator emits. The preview
     // shows these as small chips for the user to review; the exported file is
     // for sending, so they must not survive into .docx.
-    const PLACEHOLDER_RE = /\[(?:VERIFY|Verify|verify|ADD|Add|INSERT|Insert|TBD|PLACEHOLDER)(?:[:\s][^\]]*)?\]/g;
+    const PLACEHOLDER_RE = /\[(?:VERIFY|Verify|verify|MISSING|Missing|missing|ADD|Add|INSERT|Insert|TBD|PLACEHOLDER)(?:[:\s][^\]]*)?\]/g;
     // AI-rewrite badge token is screen-only; never include it in exports.
     const AI_TOKEN_RE = /\[AI\]\s*/g;
     return normalized

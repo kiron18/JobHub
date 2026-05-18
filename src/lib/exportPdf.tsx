@@ -165,9 +165,10 @@ const DOC_LABELS: Record<DocType, string> = {
 function sanitizeForExport(raw: string): string {
     // Mirrors the docx sanitiser — strip every placeholder marker variant so
     // the exported PDF never carries the AI's review notes through to the
-    // recruiter. Matches: VERIFY/Verify/verify, ADD/Add, INSERT/Insert, TBD,
-    // PLACEHOLDER. Both [TOKEN: note] and [TOKEN note] forms.
-    const PLACEHOLDER_RE = /\[(?:VERIFY|Verify|verify|ADD|Add|INSERT|Insert|TBD|PLACEHOLDER)(?:[:\s][^\]]*)?\]/g;
+    // recruiter. Matches: VERIFY/Verify/verify, MISSING/Missing/missing,
+    // ADD/Add, INSERT/Insert, TBD, PLACEHOLDER.
+    // Both [TOKEN: note] and [TOKEN note] forms.
+    const PLACEHOLDER_RE = /\[(?:VERIFY|Verify|verify|MISSING|Missing|missing|ADD|Add|INSERT|Insert|TBD|PLACEHOLDER)(?:[:\s][^\]]*)?\]/g;
     // AI-rewrite badge token is screen-only; never include it in exports.
     const AI_TOKEN_RE = /\[AI\]\s*/g;
     return raw
