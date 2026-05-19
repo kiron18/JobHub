@@ -284,7 +284,7 @@ router.post('/portal', authenticate, async (req: AuthRequest, res: Response) => 
   try {
     const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
     if (!profile?.stripeCustomerId) {
-      res.status(400).json({ error: 'No Stripe customer found for this account' });
+      res.json({ url: `${APP_URL}/pricing` });
       return;
     }
     const session = await stripe.billingPortal.sessions.create({
