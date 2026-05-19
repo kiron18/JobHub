@@ -103,7 +103,7 @@ const POLL_INTERVAL_MS = 3_000;
 const MESSAGE_INTERVAL_MS = 10_000;
 const ASIDE_INTERVAL_MS   = 13_000;
 
-export function ProcessingScreen({ isDark: _isDark, theme: T, email: _email, name, targetRole, onComplete, onRetry }: ProcessingScreenProps) {
+export function ProcessingScreen({ isDark: _isDark, theme: T, email, name, targetRole, onComplete, onRetry }: ProcessingScreenProps) {
   const queryClient = useQueryClient();
   const [barWidth, setBarWidth]     = useState(100);
   const [msgIndex, setMsgIndex]     = useState(0);
@@ -359,7 +359,7 @@ export function ProcessingScreen({ isDark: _isDark, theme: T, email: _email, nam
                 marginInline: 'auto',
               }}
             >
-              What happens next: you pick a real role, we build you a sharp application in minutes. Most people send their first one the same day.
+              We{email ? `'ll send the full report to ${email} once it's ready` : "'re building your personalised report — results land on the next screen"}. Check your inbox for a copy you can come back to anytime.
             </p>
           </>
         )}

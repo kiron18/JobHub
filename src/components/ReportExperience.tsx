@@ -908,7 +908,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
             }}>
               {firstName ? `Hey ${firstName},` : ' '}
             </p>
-            <h1 style={{ fontSize: 'clamp(28px, 5.5vw, 42px)', fontWeight: 900, color: theme.heading, margin: '0 0 28px', lineHeight: 1.12, letterSpacing: '-0.03em' }}>
+            <h1 style={{ fontSize: 'clamp(28px, 5.5vw, 42px)', fontWeight: 600, color: theme.heading, margin: '0 0 28px', lineHeight: 1.12, letterSpacing: '-0.02em' }}>
               {targetRole
                 ? <>your{' '}
                     <span style={{ color: GOLD, display: 'inline-block' }}>{targetRole}</span>

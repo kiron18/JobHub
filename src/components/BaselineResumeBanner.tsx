@@ -117,7 +117,7 @@ export function BaselineResumeBanner({ isDark }: Props) {
             <Sparkles size={17} style={{ color: accent }} />
           </div>
           <div>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: text, letterSpacing: '-0.01em' }}>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: text, letterSpacing: '-0.01em' }}>
               {status === 'ready' ? 'Your improved resume is ready' : 'Preparing your improved resume…'}
             </p>
             <p style={{ margin: '2px 0 0', fontSize: 12, color: sub }}>
@@ -195,7 +195,7 @@ export function BaselineResumeBanner({ isDark }: Props) {
               <Download size={20} style={{ color: accent }} />
             </div>
 
-            <h3 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 800, color: text, letterSpacing: '-0.01em' }}>
+            <h3 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 600, color: text, letterSpacing: '-0.01em' }}>
               Your resume is downloading
             </h3>
             <p style={{ margin: '0 0 24px', fontSize: 14, color: sub, lineHeight: 1.6 }}>

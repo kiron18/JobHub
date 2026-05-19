@@ -18,8 +18,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppTheme } from '../contexts/ThemeContext';
 import api from '../lib/api';
-import { FirstApplicationCelebration } from '../components/FirstApplicationCelebration';
-
 const COLLAPSED_WIDTH = 72;
 const EXPANDED_WIDTH = 240;
 const INTRO_DURATION_MS = 2000;
@@ -350,9 +348,6 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                     </Link>
                 </div>
             </main>
-
-            {/* Fires once when sent-count crosses 0 -> >=1. Self-managed via localStorage. */}
-            <FirstApplicationCelebration />
         </div>
     );
 };

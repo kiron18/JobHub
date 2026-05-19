@@ -243,7 +243,7 @@ function Disclaimer() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 32 }}>
-      <h3 style={{ fontSize: 15, fontWeight: 800, color: '#e2e8f0', margin: '0 0 10px' }}>{title}</h3>
+      <h3 style={{ fontSize: 15, fontWeight: 600, color: '#e2e8f0', margin: '0 0 10px' }}>{title}</h3>
       <div style={{ fontSize: 14, color: '#94a3b8', lineHeight: 1.8 }}>{children}</div>
     </div>
   );
@@ -253,7 +253,7 @@ function Policy({ title, updated, children }: { title: string; updated: string; 
   return (
     <div>
       <div style={{ marginBottom: 32 }}>
-        <h2 style={{ fontSize: 26, fontWeight: 900, color: 'white', margin: '0 0 6px' }}>{title}</h2>
+        <h2 style={{ fontSize: 26, fontWeight: 600, color: 'white', margin: '0 0 6px' }}>{title}</h2>
         <p style={{ fontSize: 12, color: '#475569', margin: 0 }}>Last updated: {updated}</p>
       </div>
       <div style={{
@@ -308,6 +308,7 @@ export function LegalPage() {
   return (
     <div style={{
       minHeight: '100vh',
+      overflowY: 'auto',
       background: 'linear-gradient(160deg, #0d1a2d 0%, #080f1a 100%)',
       color: 'white',
     }}>

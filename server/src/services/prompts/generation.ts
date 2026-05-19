@@ -277,7 +277,7 @@ IMPORTANT: If a section below is marked "(none — omit this section)" you MUST 
 Name: ${profile.name}
 Contact (use | as separator on one line): ${[profile.email, profile.phone, profile.linkedin, profile.location].filter(Boolean).join(' | ')}
 Professional Summary: ${profile.professionalSummary}
-Skills: ${JSON.stringify(profile.skills)}
+Skills: ${typeof profile.skills === 'string' ? profile.skills : '(none — omit this section)'}
 Experience: ${profile.experience?.length ? JSON.stringify(profile.experience) : '(none — omit this section)'}
 Education: ${profile.education?.length ? JSON.stringify(profile.education) : '(none — omit this section)'}
 Certifications: ${profile.certifications?.length ? JSON.stringify(profile.certifications) : '(none — omit this section)'}
@@ -500,7 +500,7 @@ IMPORTANT: If a section below is marked "(none — omit this section)" you MUST 
 Name: ${profile.name}
 Contact (use | as separator on one line): ${[profile.email, profile.phone, profile.linkedin, profile.location].filter(Boolean).join(' | ')}
 Professional Summary: ${profile.professionalSummary}
-Skills: ${JSON.stringify(profile.skills)}
+Skills: ${typeof profile.skills === 'string' ? profile.skills : '(none — omit this section)'}
 Experience: ${profile.experience?.length ? JSON.stringify(profile.experience) : '(none — omit this section)'}
 Education: ${profile.education?.length ? JSON.stringify(profile.education) : '(none — omit this section)'}
 Certifications: ${profile.certifications?.length ? JSON.stringify(profile.certifications) : '(none — omit this section)'}

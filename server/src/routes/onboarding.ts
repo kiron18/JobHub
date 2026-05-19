@@ -77,6 +77,10 @@ router.post(
         resumeFile.originalname
       );
 
+      if (!resumeText || resumeText.trim().length === 0) {
+        console.error(`[Onboarding] Resume text extraction returned empty for ${resumeFile.originalname} (${resumeFile.mimetype}) — all parsing backends failed`);
+      }
+
       const cl1File = files?.['coverLetter1']?.[0];
       const cl2File = files?.['coverLetter2']?.[0];
 
@@ -153,12 +157,18 @@ router.post(
       // FromScratchCapture to re-enter their resume. The 120s timeout is a
       // safety floor: if autoExtract genuinely hangs or fails, we still
       // signal COMPLETE so the user isn't trapped on the loading screen.
-      const autoExtractPromise: Promise<void> = Promise.race([
-        autoExtractAchievements(userId, resumeText),
-        new Promise<void>((resolve) => setTimeout(resolve, 120_000)),
-      ]).catch((err) => {
-        console.error('[Onboarding] Auto-extract failed (non-blocking):', err);
-      }) as Promise<void>;
+      const resumeIsEmpty = !resumeText || resumeText.trim().length === 0;
+      if (resumeIsEmpty) {
+        console.warn('[Onboarding] Skipping autoExtract — resume text is empty (all parsing backends failed)');
+      }
+      const autoExtractPromise: Promise<void> = resumeIsEmpty
+        ? Promise.resolve()
+        : Promise.race([
+            autoExtractAchievements(userId, resumeText),
+            new Promise<void>((resolve) => setTimeout(resolve, 120_000)),
+          ]).catch((err) => {
+            console.error('[Onboarding] Auto-extract failed (non-blocking):', err);
+          }) as Promise<void>;
 
       // Pre-warm job feed — build in background so it's ready when user finishes reading the report
       prisma.jobFeedItem.count({ where: { userId } })

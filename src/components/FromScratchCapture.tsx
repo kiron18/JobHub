@@ -106,6 +106,7 @@ export function FromScratchCapture({ onDone }: FromScratchCaptureProps) {
   return (
     <div style={{
       minHeight: '100vh',
+      overflowY: 'auto',
       background: '#080b12',
       paddingBottom: 80,
     }}>
@@ -138,7 +139,7 @@ export function FromScratchCapture({ onDone }: FromScratchCaptureProps) {
           >
             {step === 'name' && (
               <div>
-                <h1 style={{ margin: '0 0 24px', fontSize: 24, fontWeight: 800, color: '#f3f4f6', letterSpacing: '-0.02em' }}>
+                <h1 style={{ margin: '0 0 24px', fontSize: 24, fontWeight: 600, color: '#f3f4f6', letterSpacing: '-0.02em' }}>
                   What's your name?
                 </h1>
                 <label style={labelStyle}>Full name</label>
@@ -156,7 +157,7 @@ export function FromScratchCapture({ onDone }: FromScratchCaptureProps) {
 
             {step === 'role' && (
               <div>
-                <h1 style={{ margin: '0 0 24px', fontSize: 24, fontWeight: 800, color: '#f3f4f6', letterSpacing: '-0.02em' }}>
+                <h1 style={{ margin: '0 0 24px', fontSize: 24, fontWeight: 600, color: '#f3f4f6', letterSpacing: '-0.02em' }}>
                   What's your most recent role?
                 </h1>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
@@ -184,7 +185,7 @@ export function FromScratchCapture({ onDone }: FromScratchCaptureProps) {
 
             {step === 'achievement' && (
               <div>
-                <h1 style={{ margin: '0 0 8px', fontSize: 24, fontWeight: 800, color: '#f3f4f6', letterSpacing: '-0.02em' }}>
+                <h1 style={{ margin: '0 0 8px', fontSize: 24, fontWeight: 600, color: '#f3f4f6', letterSpacing: '-0.02em' }}>
                   One thing you delivered in that role
                 </h1>
                 <p style={{ margin: '0 0 24px', fontSize: 13, color: '#9ca3af', lineHeight: 1.55 }}>
@@ -204,7 +205,7 @@ export function FromScratchCapture({ onDone }: FromScratchCaptureProps) {
 
             {step === 'target' && (
               <div>
-                <h1 style={{ margin: '0 0 24px', fontSize: 24, fontWeight: 800, color: '#f3f4f6', letterSpacing: '-0.02em' }}>
+                <h1 style={{ margin: '0 0 24px', fontSize: 24, fontWeight: 600, color: '#f3f4f6', letterSpacing: '-0.02em' }}>
                   What's your target?
                 </h1>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>

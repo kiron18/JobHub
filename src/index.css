@@ -2,7 +2,33 @@
 @plugin "@tailwindcss/typography";
 
 @theme {
-  /* Brand colors derived from OKLCH hue — defaults to indigo ~262° */
+  /* ── Design System Tokens ── */
+
+  /* Neutrals */
+  --color-bg: #141517;
+  --color-surface: #1E1F22;
+  --color-surface-elevated: #25272B;
+  --color-fg: #E4E5E7;
+  --color-fg-muted: #A0A2A8;
+  --color-fg-faint: #5C5F66;
+  --color-border: rgba(255,255,255,0.08);
+  --color-border-strong: rgba(255,255,255,0.14);
+
+  /* Accent */
+  --color-accent: #2D5A6E;
+  --color-accent-hover: #386F86;
+  --color-accent-soft: rgba(45,90,110,0.12);
+  --color-accent-on: #E4E5E7;
+
+  /* Semantic */
+  --color-signal: #C5A059;
+  --color-signal-soft: rgba(197,160,89,0.10);
+  --color-success: #7DA67D;
+  --color-success-soft: rgba(125,166,125,0.10);
+  --color-danger: #B85C5C;
+  --color-danger-soft: rgba(184,92,92,0.10);
+
+  /* Legacy brand scale — kept for backward compatibility */
   --color-brand-50:  oklch(97% 0.04 var(--brand-hue, 262));
   --color-brand-100: oklch(93% 0.07 var(--brand-hue, 262));
   --color-brand-200: oklch(86% 0.12 var(--brand-hue, 262));
@@ -14,20 +40,43 @@
   --color-brand-800: oklch(35% 0.17 var(--brand-hue, 262));
   --color-brand-900: oklch(28% 0.13 var(--brand-hue, 262));
 
-  --color-primary: #0df2f2;
-  --color-background-dark: #0d1117;
-  --color-surface-dark: #161b22;
+  --color-primary: #2D5A6E;
+  --color-background-dark: #141517;
+  --color-surface-dark: #1E1F22;
 }
 
 :root {
   --brand-hue: 262;
-  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
-  line-height: 1.5;
+
+  /* Typography */
+  --font-display: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --font-body: 'Source Sans 3', -apple-system, 'Segoe UI', system-ui, sans-serif;
+  font-family: var(--font-body);
+  line-height: 1.6;
   font-weight: 400;
 
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* Radius */
+  --radius-card: 18px;
+  --radius-input: 12px;
+  --radius-button: 14px;
+
+  /* Shadows */
+  --shadow-raised: 0 8px 60px rgba(0,0,0,0.45);
+  --shadow-raised-light: 0 8px 40px rgba(0,0,0,0.12);
+
   color-scheme: dark;
-  color: #e6edf3;
-  background-color: #0d1117;
+  color: #E4E5E7;
+  background-color: #141517;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -41,6 +90,7 @@ body {
   min-height: 100vh;
   width: 100vw;
   overflow: hidden;
+  background-color: #141517;
 }
 
 #root {
@@ -48,15 +98,81 @@ body {
   width: 100vw;
 }
 
+/* Display / heading utility */
+h1, h2, h3, h4, .heading-display, .heading-serif {
+  font-family: var(--font-display);
+}
+
 @layer components {
-  .glass-card {
-    @apply bg-white/5 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden shadow-2xl;
-  }
-
+  /* ── Buttons ── */
   .btn-primary {
-    @apply bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-lg transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed font-semibold;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: #2D5A6E;
+    color: #E4E5E7;
+    border: none;
+    border-radius: 14px;
+    padding: 15px 30px;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .btn-primary:hover { transform: translateY(-1px); }
+  .btn-primary:active { transform: scale(0.99); }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: transparent;
+    color: #E4E5E7;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    padding: 14px 28px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .btn-secondary:hover { background: rgba(45,90,110,0.12); }
+
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    color: #A0A2A8;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 8px 16px;
+    transition: color 0.15s;
+  }
+  .btn-ghost:hover { color: #E4E5E7; }
+
+  /* ── Cards ── */
+  .card-default {
+    background: #1E1F22;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 18px;
+    padding: 24px;
   }
 
+  .glass-card {
+    background: rgba(255,255,255,0.04);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 18px;
+    overflow: hidden;
+  }
+
+  /* ── Legacy ── */
   .achievement-island {
     @apply bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-3xl p-8 shadow-inner;
   }
@@ -66,37 +182,22 @@ body {
   }
 }
 
+/* ── Typography utilities ── */
+.label-uppercase {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #A0A2A8;
+}
+
 /* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-}
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
 
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.custom-scrollbar-light::-webkit-scrollbar {
-  width: 6px;
-}
-
-.custom-scrollbar-light::-webkit-scrollbar-track {
-  background: #f8fafc;
-}
-
-.custom-scrollbar-light::-webkit-scrollbar-thumb {
-  background: var(--color-brand-400);
-  border-radius: 10px;
-}
-
-.custom-scrollbar-light::-webkit-scrollbar-thumb:hover {
-  background: var(--color-brand-500);
-}
+.custom-scrollbar-light::-webkit-scrollbar { width: 6px; }
+.custom-scrollbar-light::-webkit-scrollbar-track { background: #f8fafc; }
+.custom-scrollbar-light::-webkit-scrollbar-thumb { background: var(--color-brand-400); border-radius: 10px; }
+.custom-scrollbar-light::-webkit-scrollbar-thumb:hover { background: var(--color-brand-500); }

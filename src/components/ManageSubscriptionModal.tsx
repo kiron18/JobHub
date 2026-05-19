@@ -126,6 +126,7 @@ export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan
     }
   }
 
+  const isPaid = plan !== 'free';
   const planLabel = plan === 'annual' ? 'annual' : plan === 'three_month' ? '3-month' : 'monthly';
 
   return (
@@ -156,14 +157,16 @@ export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan
             {/* Header */}
             <div style={{ padding: '24px 24px 0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
               <div>
-                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#6366f1', marginBottom: 6 }}>
-                  Before you go
+                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: isPaid ? '#6366f1' : '#2D5A6E', marginBottom: 6 }}>
+                  {isPaid ? 'Before you go' : 'Account & billing'}
                 </p>
-                <h2 style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.02em', color: textMain, margin: 0, lineHeight: 1.3 }}>
-                  Most people see results in weeks&nbsp;2–3.
+                <h2 style={{ fontSize: 20, fontWeight: 600, letterSpacing: '-0.02em', color: textMain, margin: 0, lineHeight: 1.3 }}>
+                  {isPaid ? 'Most people see results in weeks 2–3.' : 'View your plan and billing details'}
                 </h2>
                 <p style={{ fontSize: 13, color: textMuted, marginTop: 6, lineHeight: 1.6 }}>
-                  You're closer than you think. What's making you consider leaving?
+                  {isPaid
+                    ? "You're closer than you think. What's making you consider leaving?"
+                    : 'Check your subscription status, switch plans, or update your billing information.'}
                 </p>
               </div>
               <button
@@ -175,7 +178,9 @@ export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan
               </button>
             </div>
 
-            {/* Video placeholder, reserved for personalised video */}
+            {/* Video placeholder + reason selector — only for paid users */}
+            {isPaid && (
+              <>
             <div style={{ margin: '18px 24px 0', borderRadius: 10, background: cardBg, border: `1px solid ${border}`, height: 52, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
               <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(99,102,241,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <div style={{ width: 0, height: 0, borderTop: '5px solid transparent', borderBottom: '5px solid transparent', borderLeft: '8px solid #6366f1', marginLeft: 2 }} />
@@ -183,7 +188,6 @@ export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan
               <span style={{ fontSize: 12, color: textMuted }}>Personalised video message, coming soon</span>
             </div>
 
-            {/* Reason selector */}
             <div style={{ padding: '18px 24px 0' }}>
               <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: textMuted, marginBottom: 8 }}>
                 What's going on?
@@ -225,7 +229,6 @@ export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan
               </div>
             </div>
 
-            {/* Tailored response */}
             <AnimatePresence>
               {selected && (
                 <motion.div {...slideDown}>
@@ -252,6 +255,8 @@ export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan
                 </motion.div>
               )}
             </AnimatePresence>
+            </>
+            )}
 
             {/* Footer actions */}
             <div style={{ padding: '18px 24px 24px', display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
@@ -262,9 +267,9 @@ export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan
                 disabled={cancelling}
                 style={{
                   width: '100%', padding: '11px 16px',
-                  borderRadius: 10, border: `1px solid ${isDark ? 'rgba(239,68,68,0.2)' : 'rgba(239,68,68,0.3)'}`,
-                  background: isDark ? 'rgba(239,68,68,0.06)' : 'rgba(239,68,68,0.04)',
-                  color: isDark ? '#fca5a5' : '#dc2626',
+                  borderRadius: 10, border: `1px solid ${isPaid ? (isDark ? 'rgba(239,68,68,0.2)' : 'rgba(239,68,68,0.3)') : border}`,
+                  background: isPaid ? (isDark ? 'rgba(239,68,68,0.06)' : 'rgba(239,68,68,0.04)') : (isDark ? 'rgba(45,90,110,0.12)' : 'rgba(45,90,110,0.08)'),
+                  color: isPaid ? (isDark ? '#fca5a5' : '#dc2626') : '#2D5A6E',
                   fontSize: 13, fontWeight: 600,
                   cursor: cancelling ? 'not-allowed' : 'pointer',
                   opacity: cancelling ? 0.6 : 1,
@@ -275,7 +280,7 @@ export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan
               >
                 {cancelling
                   ? <><RefreshCw size={13} style={{ animation: 'spin 0.8s linear infinite' }} /> Opening billing portal…</>
-                  : `Cancel my ${planLabel} subscription`
+                  : isPaid ? `Cancel my ${planLabel} subscription` : 'View plans & billing'
                 }
               </button>
 

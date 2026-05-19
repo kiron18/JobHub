@@ -104,7 +104,7 @@ export const LinkedInPage: React.FC = () => {
   return (
     <div style={{ maxWidth: 740, margin: '0 auto' }}>
       <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: 26, fontWeight: 900, color: T.text, margin: '0 0 4px', letterSpacing: '-0.02em' }}>
+        <h1 style={{ fontSize: 26, fontWeight: 600, color: T.text, margin: '0 0 4px', letterSpacing: '-0.015em' }}>
           LinkedIn Hub
         </h1>
         <p style={{ fontSize: 14, color: T.textMuted, margin: 0 }}>

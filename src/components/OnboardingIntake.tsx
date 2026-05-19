@@ -247,7 +247,7 @@ function PrimaryButton({ onClick, disabled, loading, label }: { onClick: () => v
     <motion.button onClick={onClick} disabled={isDisabled}
       style={{
         flex: 1, padding: '14px 20px', borderRadius: 14, border: 'none',
-        background: T.btnBg, color: T.btnText, fontWeight: 800, fontSize: 15,
+        background: T.btnBg, color: T.btnText, fontWeight: 600, fontSize: 15,
         cursor: isDisabled ? 'not-allowed' : 'pointer',
         opacity: isDisabled ? (loading ? 0.7 : 0.3) : 1,
         boxShadow: isDisabled ? 'none' : T.btnShadow,
@@ -288,6 +288,7 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
 
   const PETROL = '#2D5A6E';
   const GOLD   = '#C5A059';
+  const SLATE  = '#A0A4A8';
 
   const journeySteps = [
     {
@@ -320,77 +321,30 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
       </motion.span>
 
       <h1 style={{
-        fontSize: 'clamp(22px, 4.5vw, 32px)',
-        fontWeight: 900, color: T.text, lineHeight: 1.22,
-        marginBottom: 28, letterSpacing: '-0.02em',
-        maxWidth: 560, marginInline: 'auto',
+        fontSize: 'clamp(24px, 5vw, 36px)',
+        fontWeight: 600, color: T.text, lineHeight: 1.18,
+        marginBottom: 20, letterSpacing: '-0.02em',
+        maxWidth: 580, marginInline: 'auto',
       }}>
-        Tailored Australian applications.
-        <br />In minutes, not hours.
+        Are you really unemployable in Australia?
       </h1>
 
-      {/* 1-2-3 connected dots ribbon */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        gap: 0, marginBottom: 18, padding: '0 8px',
+      <p style={{
+        fontSize: 15, color: T.textMuted, lineHeight: 1.65,
+        marginBottom: 28, fontWeight: 450, maxWidth: 500, marginInline: 'auto',
       }}>
-        {journeySteps.map((s, i) => (
-          <React.Fragment key={s.n}>
-            <div style={{
-              width: 32, height: 32, borderRadius: '50%',
-              background: GOLD, color: '#1A1C1E',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontWeight: 900, fontSize: 14, flexShrink: 0,
-              boxShadow: `0 4px 16px ${GOLD}40`,
-            }}>
-              {s.n}
-            </div>
-            {i < journeySteps.length - 1 && (
-              <div style={{
-                flex: 1, height: 1,
-                background: `linear-gradient(90deg, ${GOLD}80, ${GOLD}30)`,
-                margin: '0 6px', maxWidth: 80,
-              }} />
-            )}
-          </React.Fragment>
-        ))}
-      </div>
+        Find the exact gaps in your job application process, how to fix them and see results in less than 30 days.
+      </p>
 
-      {/* Three step cards */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(3, 1fr)',
-        gap: 10, marginBottom: 24,
+      <p style={{
+        fontSize: 14, color: SLATE, lineHeight: 1.65,
+        marginBottom: 32, fontWeight: 450, maxWidth: 480, marginInline: 'auto',
+        fontStyle: 'italic',
       }}>
-        {journeySteps.map((s, i) => (
-          <motion.div
-            key={s.n}
-            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 + i * 0.08, ease: [0.25, 1, 0.5, 1] }}
-            style={{
-              padding: '14px 12px',
-              borderRadius: 12,
-              border: `1px solid ${T.inputBorder}`,
-              background: T.inputBg,
-              textAlign: 'center',
-              display: 'flex', flexDirection: 'column', gap: 8,
-            }}
-          >
-            <p style={{
-              margin: 0, fontSize: 13, fontWeight: 700,
-              color: T.text, letterSpacing: '-0.01em', lineHeight: 1.3,
-            }}>
-              {s.title}
-            </p>
-            <p style={{
-              margin: 0, fontSize: 11, lineHeight: 1.5,
-              color: T.textMuted, fontWeight: 450,
-            }}>
-              {s.body}
-            </p>
-          </motion.div>
-        ))}
-      </div>
+        You've spent your time and money to "gain qualifications" but without learning how the Australian hiring system actually works they are useless.
+        <br /><br />
+        Get your personalised diagnosis in 3 minutes.
+      </p>
 
       <motion.button
         onClick={onNext}
@@ -398,17 +352,17 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
           background: PETROL,
           color: '#E0E0E0',
           padding: '15px 32px', borderRadius: 14, border: 'none',
-          fontWeight: 800, fontSize: 15, cursor: 'pointer',
+          fontWeight: 600, fontSize: 15, cursor: 'pointer',
           boxShadow: `0 6px 24px ${PETROL}55`,
           letterSpacing: '-0.01em', width: '100%',
         }}
         whileHover={{ scale: 1.01 }}
         whileTap={{ scale: 0.98 }}
       >
-        Build my profile →
+        Check My Eligibility →
       </motion.button>
       <p style={{ fontSize: 12, color: T.textFaint, marginTop: 10 }}>
-        Takes about 3 minutes · Free · No card needed
+        Free · No card needed · Takes about 3 minutes
       </p>
 
       <p style={{ fontSize: 12, color: T.textFaint, marginTop: 16 }}>
@@ -521,7 +475,7 @@ function StepAuth({ onAuthSuccess, onBack }: {
 
   return (
     <div>
-      <h2 style={{ fontSize: 24, fontWeight: 900, color: T.text, marginBottom: 8, letterSpacing: '-0.02em' }}>
+      <h2 style={{ fontSize: 24, fontWeight: 600, color: T.text, marginBottom: 8, letterSpacing: '-0.02em' }}>
         {isSignup ? 'Get your personalized job readiness diagnostic' : 'Welcome back'}
       </h2>
       <p style={{ color: T.textMuted, fontSize: 13, lineHeight: 1.6, marginBottom: 24 }}>
@@ -598,7 +552,7 @@ function StepRole({ answers, onChange, onNext, onBack }: {
   return (
     <div>
       <ProfileProgress step={1} answers={answers} />
-      <h2 style={{ fontSize: 24, fontWeight: 900, color: T.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
+      <h2 style={{ fontSize: 24, fontWeight: 600, color: T.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
         What role are you targeting?
       </h2>
       <p style={{ color: T.textFaint, fontSize: 13, marginBottom: 24 }}>Be specific, this anchors your entire diagnosis to real Australian hiring conditions.</p>
@@ -650,7 +604,7 @@ function StepResponses({ answers, onChange, onNext, onBack }: {
   return (
     <div>
       <ProfileProgress step={2} answers={answers} />
-      <h2 style={{ fontSize: 24, fontWeight: 900, color: T.text, marginBottom: 4, letterSpacing: '-0.02em' }}>
+      <h2 style={{ fontSize: 24, fontWeight: 600, color: T.text, marginBottom: 4, letterSpacing: '-0.02em' }}>
         What are you getting back?
       </h2>
       <p style={{ color: T.textFaint, fontSize: 13, marginBottom: 20 }}>
@@ -690,7 +644,7 @@ function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, onBa
   return (
     <div>
       <ProfileProgress step={3} answers={answers} />
-      <h2 style={{ fontSize: 24, fontWeight: 900, color: T.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
+      <h2 style={{ fontSize: 24, fontWeight: 600, color: T.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
         Now upload your documents.
       </h2>
       <p style={{ color: T.textMuted, fontSize: 13, lineHeight: 1.6, marginBottom: 6 }}>
@@ -867,7 +821,7 @@ export function OnboardingIntake({ resumeMode: _resumeMode = false, initialStep 
 
   if (visibleStep === 5 || submitting) {
     return (
-      <div style={{ backgroundColor: T.bg, minHeight: '100vh', transition: 'background-color 0.4s' }}>
+      <div style={{ backgroundColor: T.bg, minHeight: '100vh', overflowY: 'auto', transition: 'background-color 0.4s' }}>
         <Scene />
         <ThemeToggle dark={isDark} onToggle={toggleDark} />
         {SignOutBtn}
@@ -883,11 +837,11 @@ export function OnboardingIntake({ resumeMode: _resumeMode = false, initialStep 
   }
 
   return (
-    <div style={{ backgroundColor: T.bg, height: '100dvh', overflowY: 'auto', overflowX: 'hidden', transition: 'background-color 0.4s' }}>
+    <div style={{ backgroundColor: T.bg, minHeight: '100dvh', overflowY: 'auto', overflowX: 'hidden', transition: 'background-color 0.4s' }}>
       <Scene />
       <ThemeToggle dark={isDark} onToggle={toggleDark} />
       {SignOutBtn}
-      <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 48, paddingBottom: 48, paddingLeft: 16, paddingRight: 16, minHeight: '100%', justifyContent: 'center' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 'clamp(32px, 6vh, 80px) 16px 48px' }}>
         <div style={{ width: '100%', maxWidth: 520 }}>
           <AnimatePresence mode="wait">
             <motion.div key={visibleStep}

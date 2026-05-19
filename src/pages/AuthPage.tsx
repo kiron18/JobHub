@@ -56,7 +56,7 @@ export const AuthPage: React.FC = () => {
 
   return (
     <div style={{
-      minHeight: '100vh', display: 'flex', alignItems: 'center',
+      minHeight: '100vh', overflowY: 'auto', display: 'flex', alignItems: 'center',
       justifyContent: 'center', padding: 24,
       background: 'radial-gradient(ellipse at top, rgba(99,102,241,0.12) 0%, #020617 60%)',
     }}>
@@ -75,7 +75,7 @@ export const AuthPage: React.FC = () => {
           }}>
             <Lock size={24} color="white" />
           </div>
-          <h1 style={{ fontSize: 26, fontWeight: 800, color: '#f1f5f9', margin: '0 0 8px', letterSpacing: '-0.02em' }}>
+          <h1 style={{ fontSize: 26, fontWeight: 600, color: '#f1f5f9', margin: '0 0 8px', letterSpacing: '-0.02em' }}>
             Sign in to JobHub
           </h1>
           <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>

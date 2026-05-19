@@ -62,7 +62,7 @@ export function FridayBriefPage() {
     <div style={{ maxWidth: 760 }}>
       {/* Header */}
       <div style={{ marginBottom: 32 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 900, marginBottom: 6 }}>Friday Brief</h1>
+        <h1 style={{ fontSize: 28, fontWeight: 600, marginBottom: 6 }}>Friday Brief</h1>
         <p style={{ fontSize: 14, color: '#6b7280' }}>
           Weekly call script generated from first-time diagnostic reports.
           {windowLabel && ` Current window: ${windowLabel}.`}

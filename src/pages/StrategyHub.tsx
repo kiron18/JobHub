@@ -23,6 +23,7 @@ import { CoherenceCard, type CoherenceSignal } from '../components/strategy/Cohe
 import { StrategicIntelligenceCard } from '../components/StrategicIntelligenceCard';
 import { ApplyFeedStrip } from '../components/strategy/ApplyFeedStrip';
 import { StaleApplicationsCard } from '../components/strategy/StaleApplicationsCard';
+import { FirstApplicationCelebration } from '../components/FirstApplicationCelebration';
 import type { JobFeedItem } from '../components/jobs/JobCard';
 
 // ─── HubHeader ───────────────────────────────────────────────────────────────
@@ -816,6 +817,8 @@ export function StrategyHub() {
 
     return (
         <div style={{ maxWidth: 720, margin: '0 auto' }}>
+            {/* Fires once when sent-count crosses 0 -> >=1. Self-managed via localStorage. */}
+            <FirstApplicationCelebration />
             <DimRegion>
                 <HubHeader profile={profile} jobs={jobs ?? []} />
                 <DimTarget style={{ marginBottom: 40 }}>

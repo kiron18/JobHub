@@ -1439,27 +1439,23 @@ const CompletionSidebar: React.FC<CompletionSidebarProps> = ({ completion, isDar
         );
       })()}
 
-      {/* Subscription management */}
-      {hasActiveSubscription && (
-        <>
-          <div style={{ height: 1, background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }} />
-          <button
-            onClick={() => setShowManage(true)}
-            style={{
-              width: '100%', padding: '9px 0',
-              background: 'transparent', border: 'none',
-              color: isDark ? '#6b7280' : '#9ca3af',
-              fontSize: 12, cursor: 'pointer',
-              transition: 'color 0.14s ease',
-              textAlign: 'center',
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = isDark ? '#9ca3af' : '#6b7280'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = isDark ? '#6b7280' : '#9ca3af'; }}
-          >
-            Manage subscription
-          </button>
-        </>
-      )}
+      {/* Subscription management — visible for all users */}
+      <div style={{ height: 1, background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }} />
+      <button
+        onClick={() => setShowManage(true)}
+        style={{
+          width: '100%', padding: '9px 0',
+          background: 'transparent', border: 'none',
+          color: isDark ? '#6b7280' : '#9ca3af',
+          fontSize: 12, cursor: 'pointer',
+          transition: 'color 0.14s ease',
+          textAlign: 'center',
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = isDark ? '#9ca3af' : '#6b7280'; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = isDark ? '#6b7280' : '#9ca3af'; }}
+      >
+        {hasActiveSubscription ? 'Manage subscription' : 'Billing & plan'}
+      </button>
 
       <ManageSubscriptionModal
         isOpen={showManage}
@@ -1527,7 +1523,7 @@ export const ProfileBank: React.FC = () => {
         {/* Page header */}
         <div style={{ marginBottom: 28 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-            <h2 style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.02em', color: textMain, margin: 0 }}>
+            <h2 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.02em', color: textMain, margin: 0 }}>
               Profile Bank
             </h2>
             <button

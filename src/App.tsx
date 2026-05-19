@@ -15,7 +15,6 @@ const ProfileBank          = React.lazy(() => import('./components/ProfileBank')
 const DocumentLibrary      = React.lazy(() => import('./components/DocumentLibrary').then(m => ({ default: m.DocumentLibrary })));
 const EmailTemplatesLibrary = React.lazy(() => import('./components/EmailTemplatesLibrary').then(m => ({ default: m.EmailTemplatesLibrary })));
 const LinkedInPage         = React.lazy(() => import('./pages/LinkedInPage').then(m => ({ default: m.LinkedInPage })));
-const ReportExperience     = React.lazy(() => import('./components/ReportExperience').then(m => ({ default: m.ReportExperience })));
 const JobFeedPage = React.lazy(() =>
   import('./pages/JobFeedPage').then(m => ({ default: m.JobFeedPage }))
 );
@@ -31,8 +30,8 @@ const AdminFunnel = React.lazy(() =>
 const MindsetPage = React.lazy(() =>
   import('./pages/MindsetPage').then(m => ({ default: m.MindsetPage }))
 );
-const PostDiagnosticChoice = React.lazy(() =>
-  import('./components/PostDiagnosticChoice').then(m => ({ default: m.PostDiagnosticChoice }))
+const DiagnosticPage = React.lazy(() =>
+  import('./components/DiagnosticPage').then(m => ({ default: m.DiagnosticPage }))
 );
 const FromScratchCapture = React.lazy(() =>
   import('./components/FromScratchCapture').then(m => ({ default: m.FromScratchCapture }))
@@ -265,7 +264,6 @@ function DashboardGate({ children }: { children: React.ReactNode }) {
       )}
       {isPastDue && <PastDueBanner />}
       {isTrialing && profile?.trialEndDate && <TrialBanner trialEndDate={profile.trialEndDate} />}
-      {isFree && !isPastDue && <FreeBanner profile={profile} />}
       {children}
     </>
   );
@@ -273,13 +271,13 @@ function DashboardGate({ children }: { children: React.ReactNode }) {
 
 // --- Report or Dashboard wrapper (first visit shows full-screen report) ---
 
-type ReportFlowStage = 'loading' | 'choice' | 'report' | 'from-scratch' | 'dashboard';
+type ReportFlowStage = 'loading' | 'diagnostic' | 'from-scratch' | 'dashboard';
 
 function ReportOrDashboard() {
   const queryClient = useQueryClient();
 
-  // Profile is needed for the parse-quality decision and the firstName greeting
-  // on the PostDiagnosticChoice screen. isFetching is critical here — the
+  // Profile is needed for the parse-quality decision and the DiagnosticPage
+  // greeting. isFetching is critical here — the
   // empty-profile check below must NOT fire on stale cached data while a
   // refetch is in flight, or users whose autoExtract just finished get
   // wrongly routed into the FromScratchCapture fallback.
@@ -295,30 +293,25 @@ function ReportOrDashboard() {
     if (params.get('view') === 'report') {
       window.history.replaceState({}, '', '/');
       localStorage.removeItem('jobhub_report_seen');
-      return 'report';
+      return 'diagnostic';
     }
     if (localStorage.getItem('jobhub_report_seen') === 'true') return 'dashboard';
     return 'loading';
   });
 
-  // Once profile resolves, decide between from-scratch and the two-path choice.
-  // Only acts when we're in 'loading' to avoid stomping on user choices made later.
-  // Wait for BOTH isLoading and isFetching to settle — invalidateQueries triggers
-  // a refetch that leaves isLoading=false (stale cache) but isFetching=true; if
-  // we decide here we lock in based on the stale empty profile.
+  // Once profile resolves, decide between from-scratch and the diagnostic page.
   useEffect(() => {
     if (stage !== 'loading' || profileLoading || profileFetching) return;
     if (isEssentiallyEmptyProfile(profile)) {
       setStage('from-scratch');
     } else {
-      setStage('choice');
+      setStage('diagnostic');
     }
   }, [stage, profileLoading, profileFetching, profile]);
 
   // Listen for "show-diagnostic" events fired by the sidebar Diagnostic link
-  // (and any other in-app entry points that want to re-open the diagnostic).
   useEffect(() => {
-    const handler = () => setStage('report');
+    const handler = () => setStage('diagnostic');
     window.addEventListener('show-diagnostic', handler);
     return () => window.removeEventListener('show-diagnostic', handler);
   }, []);
@@ -328,26 +321,15 @@ function ReportOrDashboard() {
     localStorage.setItem('jobhub_tips_seen', 'false');
   }
 
-  function handleApplyNow() {
-    markReportSeen();
-    setStage('dashboard');
-  }
-
-  function handleSeeDiagnostic() {
-    setStage('report');
-  }
-
-  function handleReportDone() {
+  function handleDiagnosticDone() {
     markReportSeen();
     setStage('dashboard');
   }
 
   function handleFromScratchDone() {
     queryClient.invalidateQueries({ queryKey: ['profile'] });
-    setStage('choice');
+    setStage('diagnostic');
   }
-
-  const firstName: string | null = profile?.name ? String(profile.name).split(' ')[0] : null;
 
   const spinner = (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -365,22 +347,10 @@ function ReportOrDashboard() {
     );
   }
 
-  if (stage === 'choice') {
+  if (stage === 'diagnostic') {
     return (
       <React.Suspense fallback={spinner}>
-        <PostDiagnosticChoice
-          firstName={firstName}
-          onApplyNow={handleApplyNow}
-          onSeeDiagnostic={handleSeeDiagnostic}
-        />
-      </React.Suspense>
-    );
-  }
-
-  if (stage === 'report') {
-    return (
-      <React.Suspense fallback={spinner}>
-        <ReportExperience onDone={handleReportDone} />
+        <DiagnosticPage profile={profile} onDone={handleDiagnosticDone} />
       </React.Suspense>
     );
   }

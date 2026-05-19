@@ -21,6 +21,10 @@ instagram_analysis.xlsx
 .worktrees/
 .claude/worktrees/
 screenshots/
+
+# Open Design workspace (full repo clone)
+.open-design/
+.open-design-temp/
 Report/
 server/scripts/qa_report.md
 server/scripts/qa_run_output.log

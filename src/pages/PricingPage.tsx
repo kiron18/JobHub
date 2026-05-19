@@ -245,7 +245,7 @@ export function PricingPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #0d1a2d 0%, #080f1a 100%)', color: 'white' }}>
+    <div style={{ minHeight: '100vh', overflowY: 'auto', background: 'linear-gradient(160deg, #0d1a2d 0%, #080f1a 100%)', color: 'white' }}>
       {/* Nav bar */}
       <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -276,7 +276,7 @@ export function PricingPage() {
             <Zap size={12} style={{ color: '#2dd4bf' }} />
             <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#2dd4bf' }}>Simple Pricing</span>
           </div>
-          <h1 style={{ fontSize: 44, fontWeight: 900, lineHeight: 1.1, margin: '0 0 16px', color: 'white' }}>
+          <h1 style={{ fontSize: 44, fontWeight: 600, lineHeight: 1.1, margin: '0 0 16px', color: 'white' }}>
             Get the job. Stop paying.
           </h1>
           <p style={{ fontSize: 17, color: '#94a3b8', maxWidth: 480, margin: '0 auto', lineHeight: 1.6 }}>
@@ -304,7 +304,7 @@ export function PricingPage() {
 
         {/* FAQ */}
         <div style={{ maxWidth: 620, margin: '0 auto' }}>
-          <h2 style={{ fontSize: 24, fontWeight: 900, marginBottom: 8, color: 'white' }}>Questions</h2>
+          <h2 style={{ fontSize: 24, fontWeight: 600, marginBottom: 8, color: 'white' }}>Questions</h2>
           <p style={{ fontSize: 14, color: '#64748b', marginBottom: 8 }}>Everything you need to know before signing up.</p>
           <div>
             {FAQS.map(faq => (

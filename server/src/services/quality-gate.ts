@@ -18,7 +18,7 @@ function extractProfileSnapshot(profile: any): ProfileSnapshot {
         .map((e: any) => e?.company)
         .filter(Boolean);
     const jobTitles: string[] = (profile?.experience ?? [])
-        .map((e: any) => e?.title)
+        .map((e: any) => e?.role)
         .filter(Boolean);
     const achievementMetrics: string[] = (profile?.achievements ?? [])
         .map((a: any) => a?.metric)
