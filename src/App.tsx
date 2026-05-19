@@ -128,40 +128,6 @@ export function showUpgradeModal(trigger: UpgradeTrigger) {
   window.dispatchEvent(new CustomEvent('show-upgrade', { detail: trigger }));
 }
 
-function FreeBanner({ profile }: { profile: any }) {
-  const navigate = useNavigate();
-  const genLeft = Math.max(0, 5 - (profile?.freeGenerationsUsed ?? 0));
-  const anaLeft = Math.max(0, 5 - (profile?.freeAnalysesUsed ?? 0));
-  const allGone = genLeft === 0 && anaLeft === 0;
-
-  return (
-    <div style={{
-      background: allGone
-        ? 'linear-gradient(90deg, rgba(220,38,38,0.12), rgba(220,38,38,0.06))'
-        : 'linear-gradient(90deg, rgba(15,118,110,0.10), rgba(15,118,110,0.04))',
-      borderBottom: `1px solid ${allGone ? 'rgba(220,38,38,0.2)' : 'rgba(15,118,110,0.15)'}`,
-      padding: '9px 20px',
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      gap: 12, flexWrap: 'wrap' as const,
-    }}>
-      <p style={{ margin: 0, fontSize: 12, color: allGone ? '#fca5a5' : '#6ee7b7', fontWeight: 600 }}>
-        Free tier — {genLeft} document {genLeft === 1 ? 'generation' : 'generations'} · {anaLeft} {anaLeft === 1 ? 'analysis' : 'analyses'} remaining
-      </p>
-      <button
-        onClick={() => navigate('/pricing')}
-        style={{
-          background: 'linear-gradient(135deg, #0F766E, #134E4A)',
-          color: 'white', border: 'none', borderRadius: 8,
-          padding: '6px 14px', fontSize: 11, fontWeight: 700, cursor: 'pointer',
-          whiteSpace: 'nowrap' as const,
-        }}
-      >
-        View plans →
-      </button>
-    </div>
-  );
-}
-
 function PastDueBanner() {
   const [loading, setLoading] = React.useState(false);
   async function handlePortal() {
@@ -248,11 +214,9 @@ function DashboardGate({ children }: { children: React.ReactNode }) {
 
   if (isLoading) return null;
 
-  const plan: string = profile?.plan ?? 'free';
   const planStatus: string = profile?.planStatus ?? 'active';
   const isPastDue = planStatus === 'past_due';
   const isTrialing = planStatus === 'trialing';
-  const isFree = plan === 'free';
 
   return (
     <>

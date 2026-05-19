@@ -290,24 +290,6 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
   const GOLD   = '#C5A059';
   const SLATE  = '#A0A4A8';
 
-  const journeySteps = [
-    {
-      n: 1,
-      title: 'Read your story.',
-      body: 'Upload your resume, answer a few questions. We capture what you have actually done, not just what you wrote down.',
-    },
-    {
-      n: 2,
-      title: 'Map the gap.',
-      body: 'Before you apply, you see exactly where your story matches the roles you want, and where it does not yet.',
-    },
-    {
-      n: 3,
-      title: 'Tailor every application.',
-      body: 'Paste any job description. Get a resume, cover letter, and selection criteria written for that role. In minutes.',
-    },
-  ];
-
   return (
     <div style={{ textAlign: 'center' }}>
       <motion.span
