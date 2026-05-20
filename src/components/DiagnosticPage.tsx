@@ -180,7 +180,7 @@ export function DiagnosticPage({ profile, onDone }: DiagnosticPageProps) {
   const themeCardBorder = 'rgba(255,255,255,0.06)';
 
   return (
-    <div style={{ background: '#080b12', minHeight: '100vh', overflowY: 'auto' }}>
+    <div style={{ background: '#080b12', height: '100vh', overflowY: 'auto' }}>
       {/* ── LOADING STATE ── */}
       {reportStatus === 'loading' && (
         <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 24px' }}>
