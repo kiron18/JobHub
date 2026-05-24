@@ -57,3 +57,26 @@ describe('diagnostic prompt: Section 5 MOVE_* emission', () => {
     expect(p).not.toContain('OUTCOME:');
   });
 });
+
+describe('diagnostic prompt: Headline Insight section', () => {
+  it('emits the ## Headline Insight section', () => {
+    const p = buildDiagnosticPromptForTest(baseInput);
+    expect(p).toContain('## Headline Insight');
+  });
+
+  it('mandates exactly one sentence for the headline', () => {
+    const p = buildDiagnosticPromptForTest(baseInput);
+    expect(p).toMatch(/ONE sentence/);
+  });
+
+  it('forbids recap-style openers and compliments in the headline', () => {
+    const p = buildDiagnosticPromptForTest(baseInput);
+    expect(p).toMatch(/Never open with a compliment/i);
+    expect(p).toMatch(/Reveal, do not summarise/i);
+  });
+
+  it('requires headline and Honest Assessment to agree', () => {
+    const p = buildDiagnosticPromptForTest(baseInput);
+    expect(p).toMatch(/SAME primary blocker/i);
+  });
+});

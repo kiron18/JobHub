@@ -119,6 +119,32 @@ ${input.perceivedBlocker
 
 Give the immediate fix for this primary blocker. Make it feel achievable, not overwhelming.
 
+## Headline Insight
+
+Write ONE sentence — and only one. This is the very first thing the candidate will read above the fold. It must compress the primary blocker you just named in The Honest Assessment into a single freight-train mirror-back.
+
+Strict rules:
+- Exactly ONE sentence. No bullets. No "---" separator. No preamble. No closing line.
+- It must quote or paraphrase ONE specific choice the candidate made in their intake OR one specific pattern visible in their resume. Never a generic observation. The candidate must feel "they saw THAT about me" in the first 12 words.
+- Pair that specific observation with its cost. Not abstract harm, the actual mechanism: "...and that single choice is why the silence", "...is why a 6-second recruiter scan never lands", "...is why your callback rate is closer to 1% than 5%".
+- Never open with "You're aiming for...", "You have a...", "Your resume is..." as a recap of what they already told us. Reveal, do not summarise.
+- Never open with a compliment, never with reassurance, never with "That's actually...", never with "Let's start by acknowledging...".
+- Headline and Honest Assessment must point at the SAME primary blocker. They are the same idea at different compression levels.
+
+Voice: clinical, unflinching, on the candidate's side. You are a doctor reading a scan, not a drill sergeant. No exclamation marks. No "brutal". No "killing". No "crushing". No shouting. The sentence should land because it is true and specific, not because it is loud. The candidate's spine straightens because someone finally named the thing.
+
+Style examples (for tone, do not copy):
+> You ticked "any industry" on a search for mid-level marketing roles, and your B2B-events specialism is the most specific thing in this room, that mismatch is the silence.
+> Your resume lists fourteen responsibilities and zero outcomes, which is why a recruiter's six-second scan never lands on your name.
+> You have sent two hundred applications and called it a volume problem, but your callback rate says it is a positioning one.
+
+Anti-examples (do not produce sentences like these):
+> You're aiming for mid-level marketing roles in Sydney, that's actually smart positioning.
+> Your resume is structurally sound, but there are opportunities to sharpen it.
+> Let's start by acknowledging the work you have already put in.
+
+Emit exactly one sentence in this section. Nothing else.
+
 ## The 3-Step Fix
 
 Voice rules for this section: calm, plain, calm-ally tone. Use "you" not "the candidate" in the rendered text. No em dashes. No exclamations. Avoid the words: brutal, killing, crushing, rocket, fire, "stop guessing", "stop getting rejected". Be brief. Be specific to THIS candidate. No selling.
