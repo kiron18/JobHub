@@ -105,3 +105,5 @@ Dynamic Content: Claude should dynamically insert the `user_name` and the person
 •
 Image/GIF Placeholders: Claude should generate HTML structures ready for the demo visuals, with clear `alt` text.
 This framework ensures that every element in Section 5 drives towards conversion, making the path from pain to solution feel logical, immediate, and irresistible.
+
+We also need to remove the resume generation that happens right after the diagnostic and just move directly into the wizard...despite my suggestions above let the copy reflect that too..add a stepper type visual element to the wizard as well we want people to feel good doing it and not feel stuck ..unless its a massive process, even if its just a visual thats ok, just for users to know where they are in the process

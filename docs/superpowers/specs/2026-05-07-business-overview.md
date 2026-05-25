@@ -6,7 +6,7 @@
 
 ## 1. Product Description
 
-JobHub is an AI-powered job application platform for Australian job seekers that diagnoses why applications are failing and generates tailored resumes, cover letters, and selection criteria matched to each role.
+JobHub is an AI-powered job application platform for Australian job seekers that diagnoses why applications are failing and generates tailored resumes, cover letters, selection criteria, Outreach templates and Linkedin Optimisations matched to each role.
 
 ---
 
@@ -20,7 +20,7 @@ The problem is structural: job application tooling has historically been either 
 
 ## 3. What a User Actually Does and Gets
 
-A user signs up, completes a 7-step onboarding intake (uploading a resume, answering questions about their role target, work rights, and timeline), and receives a **diagnostic report** identifying specific gaps: missing skills, weak achievement framing, poor keyword coverage, or strategic positioning issues. Once on the dashboard, they paste any job description and get an instant **match analysis** with a score across 10 dimensions. For any role they want to apply to, they generate a tailored resume, cover letter, or selection criteria response — the system pulls relevant STAR-formatted achievements from their bank and writes polished, ATS-friendly documents. They also track applications in a kanban pipeline, browse a daily curated job feed, research companies, prep interview answers, and generate follow-up emails.
+A user signs up, completes a 7-step (7 questions) onboarding intake (uploading a resume, answering questions about their role target, work rights, and timeline), and receives a **diagnostic report** identifying specific gaps: missing skills, weak achievement framing, poor keyword coverage, or strategic positioning issues. Once on the dashboard, they paste any job description and get an instant **match analysis** with a score across 10 dimensions. For any role they want to apply to, they generate a tailored resume, cover letter, or selection criteria response — the system pulls relevant STAR-formatted achievements from their bank and writes polished, ATS-friendly documents. They also track applications in a kanban pipeline, browse a daily curated job feed, research companies, prep interview answers, and generate follow-up emails.
 
 ---
 
@@ -32,7 +32,7 @@ A user signs up, completes a 7-step onboarding intake (uploading a resume, answe
 
 **Revenue model:**
 - Free trial: 5 job analyses over 7 days (email verification required, no credit card initially)
-- Paid: $67 AUD/month or $497 AUD/year via Stripe subscriptions
+- Paid: $97 AUD/month, $197 AUD/3months or $597 AUD/year via Stripe subscriptions
 - Exempt (no charge): kiron182@gmail.com, kamiproject2021@gmail.com, kiron@aussiegradcareers.com.au
 
 ---
