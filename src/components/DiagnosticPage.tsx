@@ -200,8 +200,11 @@ export function DiagnosticPage({ profile, onDone }: DiagnosticPageProps) {
   const previewContent = previewSection ? extractPreview(
     splitProblemFix(previewSection.content).problem
   ) : null;
+  // The prompt caps Headline Insight at 32 words / one sentence, so we don't
+  // need a tight char limit here. 600 is a generous safety net against
+  // pathological output without ever clipping a valid headline mid-word.
   const headlineInsight = (headlineSection?.content
-      ? extractFirstSentence(headlineSection.content.replace(/^[*_`>\s-]+/, ''), 240)
+      ? extractFirstSentence(headlineSection.content.replace(/^[*_`>\s-]+/, ''), 600)
       : null)
     ?? previewContent?.headline
     ?? (hasIssues ? issues[0].detail : 'Your resume is structurally sound, but there are opportunities to sharpen it.');
