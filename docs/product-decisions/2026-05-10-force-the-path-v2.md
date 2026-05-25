@@ -1,7 +1,7 @@
 # Force the Path — Strategy Spec v2
 
 **Date:** 2026-05-10  
-**Status:** Approved — building  
+**Status:** Discussion draft — not approved for implementation  
 **Purpose:** Sense-check the activation framework, challenge weak ideas, add angles that were missing, define the scoring system properly before a line of code is written.
 
 ---
@@ -288,40 +288,7 @@ The story bank in interview prep draws from actual achievements. A profile with 
 
 ---
 
-## 9. Profile Gate Overlay — Dashboard, Application Workspace, Job Board
-
-Users below 70% rawScore see a frosted overlay on the dashboard, application workspace, and job board. The profile bank (/workspace) is never gated — that's where they go to fix things.
-
-**Approach:** Simple client-side overlay. The real security is server-side — `checkAccess` already blocks generation/analysis requests. The overlay's job is motivational, not a security gate. If someone removes it via inspect element they see a skeleton with no useful data, which proves the point for you.
-
-**Copy on overlay:**
-> "Your profile isn't ready yet — documents generated from an incomplete profile won't reflect your real ability."
-> "[X] points away from unlocking everything. Finish your profile first."
-> CTA: "Complete my profile →" (links to /workspace)
-
-**What's behind the overlay:** Render real content with pointer-events disabled and a blur. Don't fake/mock it — the real empty state is persuasive enough.
-
-**Routes that get gated:**
-- `/` — Dashboard
-- `/application-workspace` — Document generation workspace
-- `/jobs` — Job feed (additionally: show shadow list of blurred real job cards with "unlock at 70%" message rather than a full overlay here)
-
-**Routes never gated:**
-- `/workspace` — Profile bank (where they fix things)
-- `/linkedin` — LinkedIn optimiser unlocks at 50%, not 70%
-- `/tracker` — Application tracker always available (they may have existing applications)
-
-## 10. Non-Quantifiable Achievement Bypass
-
-**Flow:**
-1. Amber warning fires with pointed questions generated from the achievement text (LLM call using the achievement description)
-2. After questions: secondary link — "This genuinely can't be measured — mark as qualitative"
-3. Qualitative-marked achievements: count as achievements for scoring, don't count toward metrics quality multiplier
-4. Sidebar note when qualitative achievements exist: "Qualitative achievements are fine — aim to have at least half your achievements with a number."
-
-**Pointed question prompt:** Takes the achievement text and returns 2–3 specific questions like "How many people were involved?", "Over what time period?", "What changed as a result?" — no hardcoded question banks.
-
-## 11. Open Questions Before Building Anything
+## 8. Open Questions Before Building Anything
 
 1. **What does a "good" baseline resume actually look like?** If we're promising "we've prepared a starting point," that promise needs to be kept. Has the baseline resume quality been validated with real users?
 
