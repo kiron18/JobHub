@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Copy, Check, RefreshCw } from 'lucide-react';
-import { useAppTheme } from '../../contexts/ThemeContext';
+import { warm } from '../../lib/theme/warmTokens';
 
 interface Props {
   label: string;
@@ -18,7 +18,6 @@ export const SectionCard: React.FC<Props> = ({
   label, description, charLimit, charTarget, content, onContentChange,
   onRegenerate, regenerating, renderContent,
 }) => {
-  const { T } = useAppTheme();
   const [copied, setCopied] = useState(false);
 
   const charCount = content.length;
@@ -32,18 +31,18 @@ export const SectionCard: React.FC<Props> = ({
 
   return (
     <div style={{
-      background: T.card, border: `1px solid ${T.cardBorder}`,
+      background: warm.colors.bgSurface, border: `1px solid ${warm.colors.borderWhisper}`,
       borderRadius: 16, padding: 24, marginBottom: 16,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.textFaint }}>
+        <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: warm.colors.textMuted }}>
           {label}
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {(charLimit || charTarget) && (
             <span style={{
               fontSize: 11, fontWeight: 600,
-              color: overLimit ? '#f87171' : T.textFaint,
+              color: overLimit ? '#f87171' : warm.colors.textMuted,
             }}>
               {charTarget ? `${charCount} / target ${charTarget}` : `${charCount} / ${charLimit}`}
             </span>
@@ -56,7 +55,7 @@ export const SectionCard: React.FC<Props> = ({
               title="Regenerate this section"
               style={{
                 background: 'none', border: 'none', cursor: regenerating ? 'default' : 'pointer',
-                color: T.textFaint, padding: 4, borderRadius: 6, display: 'flex',
+                color: warm.colors.textMuted, padding: 4, borderRadius: 6, display: 'flex',
               }}
             >
               <RefreshCw size={13} style={{ animation: regenerating ? 'spin 1s linear infinite' : 'none' }} />
@@ -67,9 +66,9 @@ export const SectionCard: React.FC<Props> = ({
             style={{
               display: 'flex', alignItems: 'center', gap: 4,
               fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 6,
-              border: `1px solid ${copied ? '#34d399' : T.cardBorder}`,
+              border: `1px solid ${copied ? '#34d399' : warm.colors.borderWhisper}`,
               background: copied ? 'rgba(52,211,153,0.1)' : 'transparent',
-              color: copied ? '#34d399' : T.textMuted, cursor: 'pointer',
+              color: copied ? '#34d399' : warm.colors.textSecondary, cursor: 'pointer',
               transition: 'all 0.15s',
             }}
           >
@@ -79,7 +78,7 @@ export const SectionCard: React.FC<Props> = ({
         </div>
       </div>
       {description && (
-        <p style={{ fontSize: 12, color: T.textFaint, margin: '0 0 12px', lineHeight: 1.6 }}>
+        <p style={{ fontSize: 12, color: warm.colors.textMuted, margin: '0 0 12px', lineHeight: 1.6 }}>
           {description}
         </p>
       )}
@@ -92,9 +91,9 @@ export const SectionCard: React.FC<Props> = ({
           rows={label === 'About' ? 10 : label === 'Experience Bullets (Most Recent Role)' ? 5 : 3}
           style={{
             width: '100%', background: 'rgba(255,255,255,0.03)',
-            border: `1px solid ${overLimit ? '#f87171' : T.cardBorder}`,
+            border: `1px solid ${overLimit ? '#f87171' : warm.colors.borderWhisper}`,
             borderRadius: 10, padding: '10px 12px', fontSize: 14,
-            color: T.text, resize: 'vertical', lineHeight: 1.6,
+            color: warm.colors.textPrimary, resize: 'vertical', lineHeight: 1.6,
             fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box',
           }}
         />

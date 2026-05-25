@@ -15,7 +15,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, Loader2, Target, X, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../lib/api';
-import { useAppTheme } from '../contexts/ThemeContext';
 import { DimRegion, DimTarget, DimPeer } from '../components/Dim';
 import { pickInsights } from '../data/strategicInsights';
 import { AnalysisResult, type DualSignalResult } from '../components/strategy/AnalysisResult';
@@ -25,6 +24,25 @@ import { ApplyFeedStrip } from '../components/strategy/ApplyFeedStrip';
 import { StaleApplicationsCard } from '../components/strategy/StaleApplicationsCard';
 import { FirstApplicationCelebration } from '../components/FirstApplicationCelebration';
 import type { JobFeedItem } from '../components/jobs/JobCard';
+import { warm } from '../lib/theme/warmTokens';
+
+// Warm theme tokens — replaces T.* from ThemeContext. ThemeContext preserved per spec §7.4.
+const warmT = {
+  text: warm.colors.textPrimary,
+  textMuted: warm.colors.textSecondary,
+  textFaint: warm.colors.textMuted,
+  card: warm.colors.bgSurface,
+  cardBorder: warm.colors.borderWhisper,
+  cardShadow: warm.shadow.soft,
+  inputBg: warm.colors.bgSurface,
+  inputBorder: warm.colors.borderDefined,
+  inputText: warm.colors.textPrimary,
+  accentSecondary: warm.colors.accentPetrol,
+  accentSuccess: warm.colors.success,
+  btnBg: warm.colors.accentPetrol,
+  btnText: warm.colors.textOnDeep,
+  btnShadow: '0 1px 2px rgba(26,24,20,0.06), 0 4px 14px rgba(45,90,110,0.18)',
+};
 
 // ─── HubHeader ───────────────────────────────────────────────────────────────
 
@@ -37,7 +55,6 @@ interface ProfileLite {
 }
 
 function HubHeader({ profile, jobs }: { profile?: ProfileLite; jobs: JobLite[] }) {
-    const { T } = useAppTheme();
     const role = profile?.targetRole?.trim();
     const city = profile?.targetCity?.trim();
     const identityLine = [role, city].filter(Boolean).join(' · ');
@@ -54,7 +71,7 @@ function HubHeader({ profile, jobs }: { profile?: ProfileLite; jobs: JobLite[] }
                                 fontWeight: 600,
                                 letterSpacing: '0.04em',
                                 textTransform: 'uppercase',
-                                color: T.textMuted,
+                                color: warmT.textMuted,
                             }}
                         >
                             {identityLine}
@@ -69,7 +86,7 @@ function HubHeader({ profile, jobs }: { profile?: ProfileLite; jobs: JobLite[] }
                     fontSize: 34,
                     fontWeight: 700,
                     letterSpacing: '-0.02em',
-                    color: T.text,
+                    color: warmT.text,
                     lineHeight: 1.15,
                 }}
             >
@@ -80,7 +97,7 @@ function HubHeader({ profile, jobs }: { profile?: ProfileLite; jobs: JobLite[] }
                     margin: 0,
                     fontSize: 15,
                     fontWeight: 500,
-                    color: T.accentSuccess,
+                    color: warmT.accentSuccess,
                     letterSpacing: '-0.01em',
                 }}
             >
@@ -125,7 +142,6 @@ function countInWindow(jobs: JobLite[], cadence: Cadence): number {
 }
 
 function GoalChip({ jobs }: { jobs: JobLite[] }) {
-    const { T } = useAppTheme();
     const [goal, setGoal] = useState<Goal | null>(() => loadGoal());
     const [editorOpen, setEditorOpen] = useState(false);
     const [tooltipOpen, setTooltipOpen] = useState(false);
@@ -182,7 +198,7 @@ function GoalChip({ jobs }: { jobs: JobLite[] }) {
                     fontSize: 12,
                     fontWeight: 700,
                     letterSpacing: '0.02em',
-                    color: goal ? T.text : T.accentSuccess,
+                    color: goal ? warmT.text : warmT.accentSuccess,
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
                 }}
@@ -206,25 +222,25 @@ function GoalChip({ jobs }: { jobs: JobLite[] }) {
                             top: 'calc(100% + 10px)',
                             right: 0,
                             width: 280,
-                            background: T.card,
-                            border: `1px solid ${T.cardBorder}`,
+                            background: warmT.card,
+                            border: `1px solid ${warmT.cardBorder}`,
                             borderRadius: 12,
                             padding: '14px 16px 12px',
-                            boxShadow: T.cardShadow,
+                            boxShadow: warmT.cardShadow,
                             zIndex: 20,
                         }}
                     >
                         <button
                             onClick={dismissTooltip}
                             aria-label="Dismiss"
-                            style={{ position: 'absolute', top: 8, right: 8, background: 'transparent', border: 'none', color: T.textMuted, cursor: 'pointer', padding: 2 }}
+                            style={{ position: 'absolute', top: 8, right: 8, background: 'transparent', border: 'none', color: warmT.textMuted, cursor: 'pointer', padding: 2 }}
                         >
                             <X size={13} />
                         </button>
-                        <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: T.accentSuccess, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                        <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: warmT.accentSuccess, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                             Nice. First application in.
                         </p>
-                        <p style={{ margin: '0 0 10px', fontSize: 13, color: T.text, lineHeight: 1.55 }}>
+                        <p style={{ margin: '0 0 10px', fontSize: 13, color: warmT.text, lineHeight: 1.55 }}>
                             Set a small daily or weekly goal. Steady beats burnout. We track it gently, no streaks to break.
                         </p>
                         <button
@@ -236,8 +252,8 @@ function GoalChip({ jobs }: { jobs: JobLite[] }) {
                                 padding: '7px 12px',
                                 fontSize: 12,
                                 fontWeight: 700,
-                                color: T.btnText,
-                                background: T.btnBg,
+                                color: warmT.btnText,
+                                background: warmT.btnBg,
                                 border: 'none',
                                 borderRadius: 8,
                                 cursor: 'pointer',
@@ -280,7 +296,6 @@ function GoalEditor({
     onCancel: () => void;
     onClear: () => void;
 }) {
-    const { T } = useAppTheme();
     const [cadence, setCadence] = useState<Cadence>(initial.cadence);
     const [target, setTarget] = useState<number>(initial.target);
 
@@ -295,15 +310,15 @@ function GoalEditor({
                 top: 'calc(100% + 10px)',
                 right: 0,
                 width: 280,
-                background: T.card,
-                border: `1px solid ${T.cardBorder}`,
+                background: warmT.card,
+                border: `1px solid ${warmT.cardBorder}`,
                 borderRadius: 12,
                 padding: 16,
-                boxShadow: T.cardShadow,
+                boxShadow: warmT.cardShadow,
                 zIndex: 20,
             }}
         >
-            <p style={{ margin: '0 0 12px', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: T.textMuted }}>
+            <p style={{ margin: '0 0 12px', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: warmT.textMuted }}>
                 Application goal
             </p>
             <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
@@ -316,9 +331,9 @@ function GoalEditor({
                             padding: '7px 10px',
                             fontSize: 12,
                             fontWeight: 700,
-                            color: cadence === c ? T.btnText : T.textMuted,
-                            background: cadence === c ? T.btnBg : 'transparent',
-                            border: `1px solid ${cadence === c ? T.btnBg : T.cardBorder}`,
+                            color: cadence === c ? warmT.btnText : warmT.textMuted,
+                            background: cadence === c ? warmT.btnBg : 'transparent',
+                            border: `1px solid ${cadence === c ? warmT.btnBg : warmT.cardBorder}`,
                             borderRadius: 8,
                             cursor: 'pointer',
                             textTransform: 'capitalize',
@@ -328,7 +343,7 @@ function GoalEditor({
                     </button>
                 ))}
             </div>
-            <label style={{ display: 'block', marginBottom: 6, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.textMuted }}>
+            <label style={{ display: 'block', marginBottom: 6, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: warmT.textMuted }}>
                 Target ({cadence === 'daily' ? 'per day' : 'per week'})
             </label>
             <input
@@ -341,35 +356,35 @@ function GoalEditor({
                     width: '100%',
                     padding: '8px 12px',
                     fontSize: 13,
-                    color: T.inputText,
-                    background: T.inputBg,
-                    border: `1px solid ${T.inputBorder}`,
+                    color: warmT.inputText,
+                    background: warmT.inputBg,
+                    border: `1px solid ${warmT.inputBorder}`,
                     borderRadius: 8,
                     outline: 'none',
                     boxSizing: 'border-box',
                     marginBottom: 12,
                 }}
             />
-            <p style={{ margin: '0 0 14px', fontSize: 11, color: T.textFaint, lineHeight: 1.55 }}>
+            <p style={{ margin: '0 0 14px', fontSize: 11, color: warmT.textFaint, lineHeight: 1.55 }}>
                 We count APPLIED roles in a rolling window. No streak shaming, no notifications. Edit or clear anytime.
             </p>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
                 <button
                     onClick={onClear}
-                    style={{ fontSize: 11, fontWeight: 600, color: T.textFaint, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline', textUnderlineOffset: 3 }}
+                    style={{ fontSize: 11, fontWeight: 600, color: warmT.textFaint, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline', textUnderlineOffset: 3 }}
                 >
                     Clear
                 </button>
                 <div style={{ display: 'flex', gap: 6 }}>
                     <button
                         onClick={onCancel}
-                        style={{ padding: '7px 12px', fontSize: 12, fontWeight: 600, color: T.textMuted, background: 'transparent', border: `1px solid ${T.cardBorder}`, borderRadius: 8, cursor: 'pointer' }}
+                        style={{ padding: '7px 12px', fontSize: 12, fontWeight: 600, color: warmT.textMuted, background: 'transparent', border: `1px solid ${warmT.cardBorder}`, borderRadius: 8, cursor: 'pointer' }}
                     >
                         Cancel
                     </button>
                     <button
                         onClick={() => onSave(cadence, target)}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '7px 12px', fontSize: 12, fontWeight: 700, color: T.btnText, background: T.btnBg, border: 'none', borderRadius: 8, cursor: 'pointer' }}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '7px 12px', fontSize: 12, fontWeight: 700, color: warmT.btnText, background: warmT.btnBg, border: 'none', borderRadius: 8, cursor: 'pointer' }}
                     >
                         <Check size={12} />
                         Save
@@ -383,7 +398,6 @@ function GoalEditor({
 // ─── AnalysisHeroCard ───────────────────────────────────────────────────────
 
 function AnalysisHeroCard() {
-    const { T } = useAppTheme();
     const navigate = useNavigate();
     const [jd, setJd] = useState('');
     const [scToggle, setScToggle] = useState(false);
@@ -426,6 +440,7 @@ function AnalysisHeroCard() {
         try {
             const { data } = await api.post<DualSignalResult>('/analyze/dual', { jobDescription: trimmed });
             setResult(data);
+            window.dispatchEvent(new CustomEvent('process:analysed'));
         } catch (err: any) {
             const status = err?.response?.status;
             const message =
@@ -466,11 +481,11 @@ function AnalysisHeroCard() {
     return (
         <div
             style={{
-                background: T.card,
-                border: `1px solid ${T.cardBorder}`,
+                background: warmT.card,
+                border: `1px solid ${warmT.cardBorder}`,
                 borderRadius: 20,
                 padding: 32,
-                boxShadow: T.cardShadow,
+                boxShadow: warmT.cardShadow,
             }}
         >
             <p
@@ -480,7 +495,7 @@ function AnalysisHeroCard() {
                     fontWeight: 700,
                     letterSpacing: '0.14em',
                     textTransform: 'uppercase',
-                    color: T.textMuted,
+                    color: warmT.textMuted,
                 }}
             >
                 Analyse a role
@@ -496,7 +511,7 @@ function AnalysisHeroCard() {
                     border: '1px solid rgba(125,166,125,0.25)',
                     borderRadius: 10,
                     fontSize: 12,
-                    color: T.text,
+                    color: warmT.text,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
@@ -510,7 +525,7 @@ function AnalysisHeroCard() {
                         style={{
                             background: 'transparent',
                             border: 'none',
-                            color: T.textMuted,
+                            color: warmT.textMuted,
                             fontSize: 11,
                             fontWeight: 700,
                             cursor: 'pointer',
@@ -523,8 +538,15 @@ function AnalysisHeroCard() {
             )}
 
             <textarea
+                data-process-step="paste"
                 value={jd}
-                onChange={(e) => setJd(e.target.value)}
+                onChange={(e) => {
+                    const next = e.target.value;
+                    if (jd.length === 0 && next.length > 0) {
+                        window.dispatchEvent(new CustomEvent('process:pasted'));
+                    }
+                    setJd(next);
+                }}
                 placeholder="Paste the job description here…"
                 rows={6}
                 style={{
@@ -533,21 +555,21 @@ function AnalysisHeroCard() {
                     fontSize: 14,
                     fontFamily: 'inherit',
                     lineHeight: 1.6,
-                    color: T.inputText,
-                    background: T.inputBg,
-                    border: `1px solid ${T.inputBorder}`,
+                    color: warmT.inputText,
+                    background: warmT.inputBg,
+                    border: `1px solid ${warmT.inputBorder}`,
                     borderRadius: 12,
                     outline: 'none',
                     resize: 'vertical',
                     transition: 'border-color 200ms',
                     boxSizing: 'border-box',
                 }}
-                onFocus={(e) => (e.currentTarget.style.borderColor = T.accentSecondary)}
-                onBlur={(e) => (e.currentTarget.style.borderColor = T.inputBorder)}
+                onFocus={(e) => (e.currentTarget.style.borderColor = warmT.accentSecondary)}
+                onBlur={(e) => (e.currentTarget.style.borderColor = warmT.inputBorder)}
             />
 
             {tooShort && (
-                <p style={{ margin: '8px 0 0', fontSize: 12, color: T.textFaint, lineHeight: 1.5 }}>
+                <p style={{ margin: '8px 0 0', fontSize: 12, color: warmT.textFaint, lineHeight: 1.5 }}>
                     Paste the full job description. The more text, the sharper the analysis.
                 </p>
             )}
@@ -568,7 +590,7 @@ function AnalysisHeroCard() {
                         alignItems: 'center',
                         gap: 10,
                         fontSize: 13,
-                        color: T.textMuted,
+                        color: warmT.textMuted,
                         cursor: 'pointer',
                         userSelect: 'none',
                     }}
@@ -588,7 +610,7 @@ function AnalysisHeroCard() {
                             width: 34,
                             height: 20,
                             borderRadius: 999,
-                            background: scToggle ? T.accentSecondary : 'rgba(255,255,255,0.08)',
+                            background: scToggle ? warmT.accentSecondary : warmT.cardBorder,
                             position: 'relative',
                             transition: 'background 200ms',
                             cursor: 'pointer',
@@ -603,7 +625,7 @@ function AnalysisHeroCard() {
                                 width: 16,
                                 height: 16,
                                 borderRadius: 999,
-                                background: T.text,
+                                background: scToggle ? warmT.btnText : warmT.textMuted,
                                 transition: 'left 200ms',
                             }}
                         />
@@ -612,6 +634,7 @@ function AnalysisHeroCard() {
                 </label>
 
                 <button
+                    data-process-step="analyse"
                     onClick={handleAnalyse}
                     disabled={!canSubmit}
                     style={{
@@ -622,13 +645,13 @@ function AnalysisHeroCard() {
                         fontSize: 14,
                         fontWeight: 700,
                         letterSpacing: '-0.01em',
-                        color: T.btnText,
-                        background: canSubmit ? T.btnBg : 'rgba(45,90,110,0.4)',
+                        color: warmT.btnText,
+                        background: canSubmit ? warmT.btnBg : `${warm.colors.accentPetrol}80`,
                         border: 'none',
                         borderRadius: 12,
                         cursor: canSubmit ? 'pointer' : analysing ? 'wait' : 'not-allowed',
                         opacity: canSubmit ? 1 : 0.6,
-                        boxShadow: canSubmit ? T.btnShadow : 'none',
+                        boxShadow: canSubmit ? warmT.btnShadow : 'none',
                         transition: 'opacity 200ms, background 200ms',
                     }}
                 >
@@ -659,7 +682,7 @@ function AnalysisHeroCard() {
                     justifyContent: 'space-between',
                     gap: 12,
                 }}>
-                    <p style={{ margin: 0, fontSize: 12, color: T.text, lineHeight: 1.55 }}>
+                    <p style={{ margin: 0, fontSize: 12, color: warmT.text, lineHeight: 1.55 }}>
                         This role lists selection criteria. We'll generate responses as a separate document.
                     </p>
                     <button
@@ -667,7 +690,7 @@ function AnalysisHeroCard() {
                         style={{
                             background: 'transparent',
                             border: 'none',
-                            color: T.textFaint,
+                            color: warmT.textFaint,
                             fontSize: 14,
                             cursor: 'pointer',
                             padding: 0,
@@ -696,7 +719,6 @@ function AnalysisHeroCard() {
 // ─── StrategicInsightsPanel ─────────────────────────────────────────────────
 
 function StrategicInsightsPanel() {
-    const { T } = useAppTheme();
     const insights = useMemo(() => pickInsights(3), []);
 
     if (!insights.length) return null;
@@ -710,7 +732,7 @@ function StrategicInsightsPanel() {
                     fontWeight: 700,
                     letterSpacing: '0.14em',
                     textTransform: 'uppercase',
-                    color: T.textMuted,
+                    color: warmT.textMuted,
                 }}
             >
                 Insights for Australian job hunts
@@ -721,12 +743,12 @@ function StrategicInsightsPanel() {
                         key={insight.id}
                         style={{
                             padding: '14px 18px',
-                            background: T.card,
-                            border: `1px solid ${T.cardBorder}`,
+                            background: warmT.card,
+                            border: `1px solid ${warmT.cardBorder}`,
                             borderRadius: 12,
                             fontSize: 13,
                             lineHeight: 1.6,
-                            color: T.textMuted,
+                            color: warmT.textMuted,
                         }}
                     >
                         {insight.text}
@@ -744,14 +766,13 @@ interface JobLite {
 }
 
 function PipelineGlance({ jobs }: { jobs: JobLite[] }) {
-    const { T } = useAppTheme();
     if (!jobs?.length) {
         return (
             <NavLink
                 to="/tracker"
                 style={{ textDecoration: 'none' }}
             >
-                <p style={{ margin: 0, fontSize: 13, color: T.textFaint }}>
+                <p style={{ margin: 0, fontSize: 13, color: warmT.textFaint }}>
                     No applications yet. Analyse a role to begin.
                 </p>
             </NavLink>
@@ -782,12 +803,12 @@ function PipelineGlance({ jobs }: { jobs: JobLite[] }) {
                 alignItems: 'center',
                 gap: 6,
                 fontSize: 13,
-                color: T.textMuted,
+                color: warmT.textMuted,
                 textDecoration: 'none',
                 transition: 'color 200ms',
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = T.text)}
-            onMouseLeave={(e) => (e.currentTarget.style.color = T.textMuted)}
+            onMouseEnter={(e) => (e.currentTarget.style.color = warmT.text)}
+            onMouseLeave={(e) => (e.currentTarget.style.color = warmT.textMuted)}
         >
             {parts.join(' · ')} →
         </NavLink>

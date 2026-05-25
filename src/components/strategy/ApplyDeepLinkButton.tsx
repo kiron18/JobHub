@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ArrowUpRight, Download, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../../lib/api';
-import { useAppTheme } from '../../contexts/ThemeContext';
+import { warm } from '../../lib/theme/warmTokens';
 import { exportPdf } from '../../lib/exportPdf';
 import { exportDocx } from '../../lib/exportDocx';
 
@@ -42,7 +42,6 @@ export function ApplyDeepLinkButton({
   sourcePlatform,
   feedItemId,
 }: ApplyDeepLinkButtonProps) {
-  const { T } = useAppTheme();
   const [busy, setBusy] = useState<'idle' | 'pdf' | 'docx'>('idle');
 
   const label = platformLabel(sourcePlatform, sourceUrl);
@@ -114,7 +113,7 @@ export function ApplyDeepLinkButton({
           display: 'inline-flex',
           alignItems: 'center',
           gap: 8,
-          background: T.accentSuccess,
+          background: warm.colors.success,
           color: '#0f1717',
           border: 'none',
           borderRadius: 12,
@@ -153,7 +152,7 @@ export function ApplyDeepLinkButton({
         style={{
           background: 'transparent',
           border: 'none',
-          color: T.textMuted,
+          color: warm.colors.textSecondary,
           fontSize: 11,
           fontWeight: 600,
           cursor: busy !== 'idle' ? 'wait' : 'pointer',

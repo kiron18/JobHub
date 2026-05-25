@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, Unlock, ChevronDown } from 'lucide-react';
 import api from '../lib/api';
-import { useAppTheme } from '../contexts/ThemeContext';
+import { warm } from '../lib/theme/warmTokens';
 import {
   INSIGHT_TRACK,
   isUnlocked,
@@ -15,8 +15,6 @@ import { ApplicationPatternInsight } from './insights/ApplicationPatternInsight'
 import { InsightPlaceholder } from './insights/InsightPlaceholder';
 
 export function StrategicIntelligenceCard() {
-  const { T } = useAppTheme();
-
   const { data: count } = useQuery({
     queryKey: ['jobs', 'sent-count'],
     queryFn: async () => (await api.get('/jobs/sent-count')).data?.count ?? 0,
@@ -37,7 +35,7 @@ export function StrategicIntelligenceCard() {
     }
     if (key === 'diagnostic') {
       return (
-        <p style={{ margin: 0, fontSize: 13, color: T.textMuted, lineHeight: 1.55 }}>
+        <p style={{ margin: 0, fontSize: 13, color: warm.colors.textSecondary, lineHeight: 1.55 }}>
           Open the Diagnostic from the sidebar to revisit your starting baseline.
         </p>
       );
@@ -48,23 +46,23 @@ export function StrategicIntelligenceCard() {
 
   return (
     <div style={{
-      background: T.card,
-      border: `1px solid ${T.cardBorder}`,
+      background: warm.colors.bgSurface,
+      border: `1px solid ${warm.colors.borderWhisper}`,
       borderRadius: 16,
       padding: 22,
-      boxShadow: T.cardShadow,
+      boxShadow: warm.shadow.soft,
     }}>
       <p style={{
         margin: '0 0 4px',
         fontSize: 11,
         fontWeight: 700,
         letterSpacing: '0.12em',
-        color: T.accentSuccess,
+        color: warm.colors.success,
         textTransform: 'uppercase',
       }}>
         Strategic Intelligence
       </p>
-      <p style={{ margin: '0 0 18px', fontSize: 13, color: T.textMuted }}>
+      <p style={{ margin: '0 0 18px', fontSize: 13, color: warm.colors.textSecondary }}>
         Insights unlock as you apply. {applicationsSent} application{applicationsSent === 1 ? '' : 's'} sent so far.
       </p>
 
@@ -77,7 +75,7 @@ export function StrategicIntelligenceCard() {
           return (
             <div key={def.key} style={{
               borderRadius: 12,
-              border: `1px solid ${T.cardBorder}`,
+              border: `1px solid ${warm.colors.borderWhisper}`,
               background: 'rgba(255,255,255,0.02)',
               overflow: 'hidden',
             }}>
@@ -93,7 +91,7 @@ export function StrategicIntelligenceCard() {
                   padding: '12px 16px',
                   background: 'transparent',
                   border: 'none',
-                  color: unlocked ? T.text : T.textMuted,
+                  color: unlocked ? warm.colors.textPrimary : warm.colors.textSecondary,
                   cursor: unlocked ? 'pointer' : 'default',
                   textAlign: 'left',
                   fontSize: 13,
@@ -101,13 +99,13 @@ export function StrategicIntelligenceCard() {
                 }}
               >
                 {unlocked
-                  ? <Unlock size={14} style={{ color: T.accentSuccess, flexShrink: 0 }} />
-                  : <Lock size={14} style={{ color: T.textMuted, opacity: 0.6, flexShrink: 0 }} />
+                  ? <Unlock size={14} style={{ color: warm.colors.success, flexShrink: 0 }} />
+                  : <Lock size={14} style={{ color: warm.colors.textSecondary, opacity: 0.6, flexShrink: 0 }} />
                 }
                 <span style={{ flex: 1 }}>{def.label}</span>
                 {unlocked
                   ? <ChevronDown size={14} style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }} />
-                  : <span style={{ fontSize: 11, fontWeight: 600, color: T.textMuted }}>
+                  : <span style={{ fontSize: 11, fontWeight: 600, color: warm.colors.textSecondary }}>
                       {until} application{until === 1 ? '' : 's'} to unlock
                     </span>
                 }

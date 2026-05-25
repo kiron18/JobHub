@@ -71,14 +71,14 @@ export function GapAnalysisPanel({ jobDescription, keywords }: GapAnalysisPanelP
     const fitCfg = result ? FIT_CONFIG[result.overallFit] : null;
 
     return (
-        <div className="rounded-xl border border-slate-700/50 bg-slate-900/60 overflow-hidden">
+        <div className="rounded-xl border border-[rgba(26,24,20,0.10)] bg-white/80 overflow-hidden">
             <button
                 onClick={hasRun ? () => setOpen(o => !o) : run}
-                className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-800/30 transition-colors"
+                className="w-full flex items-center justify-between px-4 py-3 hover:bg-[#F4EFE8]/50 transition-colors"
             >
                 <div className="flex items-center gap-2">
                     <TrendingUp size={13} className="text-brand-400" />
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Profile Gap Analysis</span>
+                    <span className="text-[10px] font-black text-[#5C5750] uppercase tracking-widest">Profile Gap Analysis</span>
                     {fitCfg && (
                         <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${fitCfg.color} ${fitCfg.bg} ${fitCfg.border}`}>
                             {fitCfg.label}
@@ -90,7 +90,7 @@ export function GapAnalysisPanel({ jobDescription, keywords }: GapAnalysisPanelP
                     {!hasRun && !loading && (
                         <span className="text-[9px] font-bold text-brand-400 uppercase tracking-wider">Run Analysis</span>
                     )}
-                    {hasRun && (open ? <ChevronUp size={13} className="text-slate-500" /> : <ChevronDown size={13} className="text-slate-500" />)}
+                    {hasRun && (open ? <ChevronUp size={13} className="text-[#8B847B]" /> : <ChevronDown size={13} className="text-[#8B847B]" />)}
                 </div>
             </button>
 
@@ -101,12 +101,12 @@ export function GapAnalysisPanel({ jobDescription, keywords }: GapAnalysisPanelP
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
                         transition={{ duration: 0.2, ease: 'easeInOut' }}
-                        className="overflow-hidden border-t border-slate-800"
+                        className="overflow-hidden border-t border-[rgba(26,24,20,0.08)]"
                     >
                         <div className="p-4 space-y-4">
                             {loading && (
                                 <div className="text-center py-4">
-                                    <p className="text-xs text-slate-500">Analysing your profile against the JD…</p>
+                                    <p className="text-xs text-[#8B847B]">Analysing your profile against the JD…</p>
                                 </div>
                             )}
 
@@ -115,10 +115,10 @@ export function GapAnalysisPanel({ jobDescription, keywords }: GapAnalysisPanelP
                                     {/* Profile readiness bar */}
                                     <div>
                                         <div className="flex items-center justify-between mb-1.5">
-                                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Profile Readiness</span>
+                                            <span className="text-[9px] font-black text-[#8B847B] uppercase tracking-widest">Profile Readiness</span>
                                             <span className={`text-[10px] font-black ${fitCfg?.color}`}>{result.profileReadiness}%</span>
                                         </div>
-                                        <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                        <div className="h-1.5 bg-[#F4EFE8] rounded-full overflow-hidden">
                                             <motion.div
                                                 className={`h-full rounded-full ${result.profileReadiness >= 70 ? 'bg-emerald-500' : result.profileReadiness >= 50 ? 'bg-amber-500' : 'bg-red-500'}`}
                                                 initial={{ width: 0 }}
@@ -131,7 +131,7 @@ export function GapAnalysisPanel({ jobDescription, keywords }: GapAnalysisPanelP
                                     {/* Strength areas */}
                                     {result.strengthAreas.length > 0 && (
                                         <div>
-                                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                                            <p className="text-[9px] font-black text-[#8B847B] uppercase tracking-widest mb-1.5 flex items-center gap-1">
                                                 <CheckCircle size={9} className="text-emerald-400" /> Your strengths for this role
                                             </p>
                                             <div className="flex flex-wrap gap-1.5">
@@ -147,7 +147,7 @@ export function GapAnalysisPanel({ jobDescription, keywords }: GapAnalysisPanelP
                                     {/* Missing keywords */}
                                     {result.missingKeywords.length > 0 && (
                                         <div>
-                                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                                            <p className="text-[9px] font-black text-[#8B847B] uppercase tracking-widest mb-1.5 flex items-center gap-1">
                                                 <AlertTriangle size={9} className="text-amber-400" /> Missing from your profile
                                             </p>
                                             <div className="flex flex-wrap gap-1.5">
@@ -163,12 +163,12 @@ export function GapAnalysisPanel({ jobDescription, keywords }: GapAnalysisPanelP
                                     {/* Skill gaps */}
                                     {result.skillGaps.length > 0 && (
                                         <div>
-                                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">Gaps to address</p>
+                                            <p className="text-[9px] font-black text-[#8B847B] uppercase tracking-widest mb-2">Gaps to address</p>
                                             <div className="space-y-2">
                                                 {result.skillGaps.map((sg, i) => (
-                                                    <div key={i} className="p-2.5 bg-slate-800/50 rounded-lg border border-slate-700/30">
-                                                        <p className="text-[10px] font-bold text-slate-300">{sg.gap}</p>
-                                                        <p className="text-[10px] text-slate-500 mt-0.5 leading-snug">→ {sg.suggestion}</p>
+                                                    <div key={i} className="p-2.5 bg-[#F4EFE8]/70 rounded-lg border border-[rgba(26,24,20,0.06)]">
+                                                        <p className="text-[10px] font-bold text-[#1A1814]">{sg.gap}</p>
+                                                        <p className="text-[10px] text-[#8B847B] mt-0.5 leading-snug">→ {sg.suggestion}</p>
                                                     </div>
                                                 ))}
                                             </div>
@@ -178,12 +178,12 @@ export function GapAnalysisPanel({ jobDescription, keywords }: GapAnalysisPanelP
                                     {/* Quick wins */}
                                     {result.quickWins.length > 0 && (
                                         <div>
-                                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                                            <p className="text-[9px] font-black text-[#8B847B] uppercase tracking-widest mb-1.5 flex items-center gap-1">
                                                 <Zap size={9} className="text-brand-400" /> Quick wins
                                             </p>
                                             <ul className="space-y-1">
                                                 {result.quickWins.map((qw, i) => (
-                                                    <li key={i} className="text-[10px] text-slate-400 leading-snug flex items-start gap-1.5">
+                                                    <li key={i} className="text-[10px] text-[#5C5750] leading-snug flex items-start gap-1.5">
                                                         <span className="text-brand-400 mt-0.5 shrink-0">·</span>
                                                         {qw}
                                                     </li>
@@ -193,7 +193,7 @@ export function GapAnalysisPanel({ jobDescription, keywords }: GapAnalysisPanelP
                                     )}
 
                                     {/* Achievement suggestions */}
-                                    <div className="pt-1 border-t border-slate-800">
+                                    <div className="pt-1 border-t border-[rgba(26,24,20,0.08)]">
                                         <button
                                             onClick={loadSuggestions}
                                             className="w-full flex items-center justify-between py-2 text-[10px] font-bold text-brand-400 hover:text-brand-300 transition-colors"
@@ -213,15 +213,15 @@ export function GapAnalysisPanel({ jobDescription, keywords }: GapAnalysisPanelP
                                                     className="overflow-hidden"
                                                 >
                                                     {loadingSuggestions ? (
-                                                        <p className="text-[10px] text-slate-500 py-2 text-center">Loading suggestions…</p>
+                                                        <p className="text-[10px] text-[#8B847B] py-2 text-center">Loading suggestions…</p>
                                                     ) : (
                                                         <div className="space-y-2 pb-1">
                                                             {suggestions.map((s, i) => (
                                                                 <div key={i} className="p-2.5 bg-brand-600/5 border border-brand-600/15 rounded-lg">
                                                                     <p className="text-[10px] font-bold text-brand-300">{s.title}</p>
-                                                                    <p className="text-[10px] text-slate-400 mt-0.5 italic">"{s.prompt}"</p>
-                                                                    <p className="text-[10px] text-slate-500 mt-0.5 leading-snug">{s.why}</p>
-                                                                    <p className="text-[9px] text-slate-600 mt-1 leading-snug">e.g. {s.example}</p>
+                                                                    <p className="text-[10px] text-[#5C5750] mt-0.5 italic">"{s.prompt}"</p>
+                                                                    <p className="text-[10px] text-[#8B847B] mt-0.5 leading-snug">{s.why}</p>
+                                                                    <p className="text-[9px] text-[#8B847B] mt-1 leading-snug">e.g. {s.example}</p>
                                                                 </div>
                                                             ))}
                                                         </div>
@@ -233,7 +233,7 @@ export function GapAnalysisPanel({ jobDescription, keywords }: GapAnalysisPanelP
 
                                     <button
                                         onClick={run}
-                                        className="text-[9px] font-bold text-slate-600 hover:text-slate-400 transition-colors uppercase tracking-wider"
+                                        className="text-[9px] font-bold text-[#8B847B] hover:text-[#5C5750] transition-colors uppercase tracking-wider"
                                     >
                                         Re-run analysis
                                     </button>

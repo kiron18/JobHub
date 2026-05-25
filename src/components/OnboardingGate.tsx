@@ -56,6 +56,7 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
     staleTime: 30_000,
     retry: 1,
     retryDelay: 1000,
+    refetchOnWindowFocus: false,
   });
 
   // Check for an existing in-progress report once profile is loaded and onboarding is incomplete.
@@ -136,8 +137,8 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
   // Show spinner while profile is loading OR while we're checking report status
   if (isLoading || (isAuthenticated && !profile?.hasCompletedOnboarding && reportStatus === 'checking')) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950">
-        <div className="w-12 h-12 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAF7F2' }}>
+        <div className="w-12 h-12 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(45,90,110,0.2)', borderTopColor: '#2D5A6E' }} />
       </div>
     );
   }

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Zap } from 'lucide-react';
+import { warm } from '../lib/theme/warmTokens';
 
 type PolicyKey = 'privacy' | 'terms' | 'refunds' | 'cancellation' | 'trial' | 'disclaimer';
 
@@ -57,7 +58,7 @@ function Terms() {
         <p>These terms are governed by the laws of Victoria, Australia. Any disputes are subject to the exclusive jurisdiction of Victorian courts.</p>
       </Section>
       <Section title="10. Contact">
-        <p>Questions about these terms: <a href="mailto:kiron@aussiegradcareers.com.au" style={{ color: '#2dd4bf' }}>kiron@aussiegradcareers.com.au</a></p>
+        <p>Questions about these terms: <a href="mailto:kiron@aussiegradcareers.com.au" style={{ color: warm.colors.accentPetrol }}>kiron@aussiegradcareers.com.au</a></p>
       </Section>
     </Policy>
   );
@@ -71,11 +72,11 @@ function Privacy() {
       </Section>
       <Section title="2. What we collect">
         <ul>
-          <li><strong style={{ color: '#e2e8f0' }}>Account data:</strong> name, email address</li>
-          <li><strong style={{ color: '#e2e8f0' }}>Resume and career data:</strong> resume text, work history, achievements, education, skills</li>
-          <li><strong style={{ color: '#e2e8f0' }}>Onboarding answers:</strong> job search stage, target role, location, visa status, application history</li>
-          <li><strong style={{ color: '#e2e8f0' }}>Usage data:</strong> pages visited, features used, document generation history</li>
-          <li><strong style={{ color: '#e2e8f0' }}>Payment data:</strong> handled entirely by Stripe. We do not store card details.</li>
+          <li><strong style={{ color: warm.colors.textPrimary }}>Account data:</strong> name, email address</li>
+          <li><strong style={{ color: warm.colors.textPrimary }}>Resume and career data:</strong> resume text, work history, achievements, education, skills</li>
+          <li><strong style={{ color: warm.colors.textPrimary }}>Onboarding answers:</strong> job search stage, target role, location, visa status, application history</li>
+          <li><strong style={{ color: warm.colors.textPrimary }}>Usage data:</strong> pages visited, features used, document generation history</li>
+          <li><strong style={{ color: warm.colors.textPrimary }}>Payment data:</strong> handled entirely by Stripe. We do not store card details.</li>
         </ul>
       </Section>
       <Section title="3. Why we collect it">
@@ -91,10 +92,10 @@ function Privacy() {
       <Section title="4. Who we share it with">
         <p>We do not sell your data. We share data only with:</p>
         <ul>
-          <li><strong style={{ color: '#e2e8f0' }}>Anthropic (Claude AI):</strong> your resume and career data is sent to Claude to generate documents. Anthropic's data processing agreements apply.</li>
-          <li><strong style={{ color: '#e2e8f0' }}>Google (Gemini AI):</strong> used for headshot generation only, if you use that feature.</li>
-          <li><strong style={{ color: '#e2e8f0' }}>Supabase:</strong> our database and file storage provider.</li>
-          <li><strong style={{ color: '#e2e8f0' }}>Stripe:</strong> payment processing.</li>
+          <li><strong style={{ color: warm.colors.textPrimary }}>Anthropic (Claude AI):</strong> your resume and career data is sent to Claude to generate documents. Anthropic's data processing agreements apply.</li>
+          <li><strong style={{ color: warm.colors.textPrimary }}>Google (Gemini AI):</strong> used for headshot generation only, if you use that feature.</li>
+          <li><strong style={{ color: warm.colors.textPrimary }}>Supabase:</strong> our database and file storage provider.</li>
+          <li><strong style={{ color: warm.colors.textPrimary }}>Stripe:</strong> payment processing.</li>
         </ul>
       </Section>
       <Section title="5. Data storage and security">
@@ -108,7 +109,7 @@ function Privacy() {
           <li>Request deletion of your account and data</li>
           <li>Withdraw marketing consent at any time</li>
         </ul>
-        <p>To exercise any of these rights, email <a href="mailto:kiron@aussiegradcareers.com.au" style={{ color: '#2dd4bf' }}>kiron@aussiegradcareers.com.au</a>.</p>
+        <p>To exercise any of these rights, email <a href="mailto:kiron@aussiegradcareers.com.au" style={{ color: warm.colors.accentPetrol }}>kiron@aussiegradcareers.com.au</a>.</p>
       </Section>
       <Section title="7. Data retention">
         <p>We retain your data while your account is active. If you delete your account, we will delete your personal data within 30 days, except where we are required to retain it by law (e.g. financial records).</p>
@@ -117,7 +118,7 @@ function Privacy() {
         <p>We use essential cookies for authentication only. We do not use tracking or advertising cookies.</p>
       </Section>
       <Section title="9. Contact">
-        <p>Privacy enquiries: <a href="mailto:kiron@aussiegradcareers.com.au" style={{ color: '#2dd4bf' }}>kiron@aussiegradcareers.com.au</a></p>
+        <p>Privacy enquiries: <a href="mailto:kiron@aussiegradcareers.com.au" style={{ color: warm.colors.accentPetrol }}>kiron@aussiegradcareers.com.au</a></p>
       </Section>
     </Policy>
   );
@@ -140,14 +141,14 @@ function Refunds() {
       <Section title="Goodwill refunds">
         <p>Outside of ACL rights, we will consider refund requests on a case-by-case basis:</p>
         <ul>
-          <li><strong style={{ color: '#e2e8f0' }}>Monthly plan:</strong> requests made within 7 days of your first charge (after the free trial) will generally be approved.</li>
-          <li><strong style={{ color: '#e2e8f0' }}>Annual plan:</strong> requests made within 14 days of your first charge will generally be approved.</li>
-          <li><strong style={{ color: '#e2e8f0' }}>3-Month Bundle:</strong> requests made within 14 days of purchase will generally be approved if the service has not been substantially used.</li>
+          <li><strong style={{ color: warm.colors.textPrimary }}>Monthly plan:</strong> requests made within 7 days of your first charge (after the free trial) will generally be approved.</li>
+          <li><strong style={{ color: warm.colors.textPrimary }}>Annual plan:</strong> requests made within 14 days of your first charge will generally be approved.</li>
+          <li><strong style={{ color: warm.colors.textPrimary }}>3-Month Bundle:</strong> requests made within 14 days of purchase will generally be approved if the service has not been substantially used.</li>
         </ul>
         <p>Change-of-mind refunds outside these windows are not guaranteed but can be requested.</p>
       </Section>
       <Section title="How to request a refund">
-        <p>Email <a href="mailto:kiron@aussiegradcareers.com.au" style={{ color: '#2dd4bf' }}>kiron@aussiegradcareers.com.au</a> with your account email and reason. We aim to respond within 2 business days. Approved refunds are processed via Stripe and appear within 5-10 business days.</p>
+        <p>Email <a href="mailto:kiron@aussiegradcareers.com.au" style={{ color: warm.colors.accentPetrol }}>kiron@aussiegradcareers.com.au</a> with your account email and reason. We aim to respond within 2 business days. Approved refunds are processed via Stripe and appear within 5-10 business days.</p>
       </Section>
       <Section title="What we do not refund">
         <ul>
@@ -178,7 +179,7 @@ function Cancellation() {
         <p>If you are on a free trial, you must cancel before day 8 to avoid being charged. Cancelling during the trial ends your access at the end of the trial period.</p>
       </Section>
       <Section title="Your data after cancellation">
-        <p>Your documents and profile data are retained for 30 days after your access expires. You can request immediate deletion by emailing <a href="mailto:kiron@aussiegradcareers.com.au" style={{ color: '#2dd4bf' }}>kiron@aussiegradcareers.com.au</a>.</p>
+        <p>Your documents and profile data are retained for 30 days after your access expires. You can request immediate deletion by emailing <a href="mailto:kiron@aussiegradcareers.com.au" style={{ color: warm.colors.accentPetrol }}>kiron@aussiegradcareers.com.au</a>.</p>
       </Section>
       <Section title="How to cancel">
         <p>Log in to your account, go to Settings, and click "Manage subscription". This opens the Stripe billing portal where you can cancel immediately. Alternatively, email us and we will cancel on your behalf.</p>
@@ -243,8 +244,8 @@ function Disclaimer() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 32 }}>
-      <h3 style={{ fontSize: 15, fontWeight: 600, color: '#e2e8f0', margin: '0 0 10px' }}>{title}</h3>
-      <div style={{ fontSize: 14, color: '#94a3b8', lineHeight: 1.8 }}>{children}</div>
+      <h3 style={{ fontSize: 15, fontWeight: 600, color: warm.colors.textPrimary, margin: '0 0 10px' }}>{title}</h3>
+      <div style={{ fontSize: 14, color: warm.colors.textSecondary, lineHeight: 1.8 }}>{children}</div>
     </div>
   );
 }
@@ -253,11 +254,11 @@ function Policy({ title, updated, children }: { title: string; updated: string; 
   return (
     <div>
       <div style={{ marginBottom: 32 }}>
-        <h2 style={{ fontSize: 26, fontWeight: 600, color: 'white', margin: '0 0 6px' }}>{title}</h2>
-        <p style={{ fontSize: 12, color: '#475569', margin: 0 }}>Last updated: {updated}</p>
+        <h2 style={{ fontSize: 26, fontWeight: 600, color: warm.colors.textPrimary, margin: '0 0 6px' }}>{title}</h2>
+        <p style={{ fontSize: 12, color: warm.colors.textMuted, margin: 0 }}>Last updated: {updated}</p>
       </div>
       <div style={{
-        fontSize: 14, color: '#94a3b8', lineHeight: 1.8,
+        fontSize: 14, color: warm.colors.textSecondary, lineHeight: 1.8,
       }}>
         <style>{`
           .legal-content ul { margin: 8px 0 8px 20px; padding: 0; }
@@ -307,35 +308,35 @@ export function LegalPage() {
 
   return (
     <div style={{
-      minHeight: '100vh',
+      height: '100vh',
       overflowY: 'auto',
-      background: 'linear-gradient(160deg, #0d1a2d 0%, #080f1a 100%)',
-      color: 'white',
+      background: warm.colors.bgCanvas,
+      color: warm.colors.textPrimary,
     }}>
       {/* Nav */}
       <div style={{
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        borderBottom: `1px solid ${warm.colors.borderWhisper}`,
         padding: '16px 24px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Zap size={16} style={{ color: '#2dd4bf' }} />
-          <span style={{ fontSize: 14, fontWeight: 900, letterSpacing: '0.05em', color: 'white' }}>
+          <Zap size={16} style={{ color: warm.colors.accentPetrol }} />
+          <span style={{ fontSize: 14, fontWeight: 900, letterSpacing: '0.05em', color: warm.colors.textPrimary }}>
             Aussie Grad Careers
           </span>
         </div>
         <button
           onClick={() => navigate('/pricing')}
           style={{
-            background: 'rgba(255,255,255,0.06)',
-            border: '1px solid rgba(255,255,255,0.1)',
+            background: warm.colors.bgAlt,
+            border: `1px solid ${warm.colors.borderWhisper}`,
             borderRadius: 8,
             padding: '8px 16px',
             fontSize: 12,
             fontWeight: 700,
-            color: '#94a3b8',
+            color: warm.colors.textSecondary,
             cursor: 'pointer',
           }}
         >
@@ -356,7 +357,7 @@ export function LegalPage() {
         <nav style={{ position: 'sticky', top: 32 }}>
           <p style={{
             fontSize: 10, fontWeight: 900, letterSpacing: '0.12em',
-            textTransform: 'uppercase', color: '#475569', marginBottom: 12,
+            textTransform: 'uppercase', color: warm.colors.textMuted, marginBottom: 12,
           }}>
             Legal
           </p>
@@ -371,11 +372,11 @@ export function LegalPage() {
                   borderRadius: 8,
                   fontSize: 13,
                   fontWeight: active === key ? 700 : 500,
-                  color: active === key ? 'white' : '#64748b',
-                  background: active === key ? 'rgba(255,255,255,0.06)' : 'transparent',
+                  color: active === key ? warm.colors.textPrimary : warm.colors.textMuted,
+                  background: active === key ? warm.colors.bgAlt : 'transparent',
                   textDecoration: 'none',
                   transition: 'all 0.15s',
-                  borderLeft: `2px solid ${active === key ? '#2dd4bf' : 'transparent'}`,
+                  borderLeft: `2px solid ${active === key ? warm.colors.accentPetrol : 'transparent'}`,
                 }}
               >
                 {label}
@@ -386,8 +387,8 @@ export function LegalPage() {
 
         {/* Content */}
         <main style={{
-          background: 'rgba(255,255,255,0.02)',
-          border: '1px solid rgba(255,255,255,0.06)',
+          background: warm.colors.bgSurface,
+          border: `1px solid ${warm.colors.borderWhisper}`,
           borderRadius: 20,
           padding: '36px 40px',
         }}>

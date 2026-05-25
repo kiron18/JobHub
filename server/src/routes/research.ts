@@ -1,21 +1,280 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
-import { searchSerper, scrapeUrl, snippetsToText } from '../services/serper';
+import { searchSerper, scrapeUrl, snippetsToText, type SerperResult } from '../services/serper';
 import { callLLMWithRetry } from '../utils/callLLMWithRetry';
 import { parseLLMJson } from '../utils/parseLLMResponse';
 
 const router = Router();
 
+// ── Hiring-contact discovery ─────────────────────────────────────────────────
+
+type Confidence = 'high' | 'medium' | 'low';
+
+interface Candidate {
+    name: string;
+    title: string | null;
+    confidence: Confidence;
+    sourceUrl: string | null;
+}
+
+const CONFIDENCE_RANK: Record<Confidence, number> = { high: 3, medium: 2, low: 1 };
+
+/**
+ * Derive a discipline + the LinkedIn-side titles that typically hold the
+ * hiring-decision authority for that discipline. The titles drive the
+ * Pass 1 LinkedIn search query.
+ */
+function deriveDiscipline(role: string): { discipline: string; titles: string[] } {
+    const r = (role || '').toLowerCase();
+    const m = (...keys: string[]) => keys.some(k => r.includes(k));
+
+    if (m('engineer', 'developer', 'sde', 'software', 'devops', 'platform', 'sre')) {
+        return { discipline: 'engineering', titles: ['Head of Engineering', 'Engineering Director', 'Director of Engineering', 'VP Engineering', 'CTO', 'Engineering Manager'] };
+    }
+    if (m('data scientist', 'data engineer', 'machine learning', 'ml engineer', 'analytics engineer')) {
+        return { discipline: 'data', titles: ['Head of Data', 'Director of Data', 'VP Data', 'Chief Data Officer', 'Head of Analytics'] };
+    }
+    if (m('marketing', 'growth', 'brand', 'demand gen', 'content marketer')) {
+        return { discipline: 'marketing', titles: ['Head of Marketing', 'Marketing Director', 'Director of Marketing', 'VP Marketing', 'CMO', 'Head of Growth'] };
+    }
+    if (m('sales', 'account executive', 'business development', 'bdm', 'bdr', 'sdr')) {
+        return { discipline: 'sales', titles: ['Head of Sales', 'Sales Director', 'Director of Sales', 'VP Sales', 'Chief Revenue Officer', 'CRO'] };
+    }
+    if (m('product manager', 'product owner', 'product lead', 'head of product')) {
+        return { discipline: 'product', titles: ['Head of Product', 'Director of Product', 'VP Product', 'CPO', 'Chief Product Officer'] };
+    }
+    if (m('designer', 'design', 'ux', 'ui', 'visual designer')) {
+        return { discipline: 'design', titles: ['Head of Design', 'Design Director', 'Director of Design', 'VP Design', 'Chief Design Officer'] };
+    }
+    if (m('finance', 'accountant', 'controller', 'fp&a', 'financial analyst')) {
+        return { discipline: 'finance', titles: ['Head of Finance', 'Finance Director', 'Director of Finance', 'CFO', 'Chief Financial Officer'] };
+    }
+    if (m('hr ', 'people ', 'human resources', 'talent partner', 'people operations', 'p&c')) {
+        return { discipline: 'people', titles: ['Head of People', 'HR Director', 'Director of People', 'VP People', 'Chief People Officer', 'CHRO'] };
+    }
+    if (m('operations', 'ops manager', 'coo', 'supply chain', 'logistics')) {
+        return { discipline: 'operations', titles: ['Head of Operations', 'Operations Director', 'Director of Operations', 'VP Operations', 'COO'] };
+    }
+    if (m('legal', 'lawyer', 'solicitor', 'paralegal', 'counsel')) {
+        return { discipline: 'legal', titles: ['Head of Legal', 'General Counsel', 'Legal Director', 'Director of Legal'] };
+    }
+    if (m('customer success', 'cs manager', 'csm', 'customer experience', 'support manager')) {
+        return { discipline: 'customer-success', titles: ['Head of Customer Success', 'Director of Customer Success', 'VP Customer Success'] };
+    }
+    if (m('nurse', 'clinical', 'midwife', 'allied health')) {
+        return { discipline: 'clinical', titles: ['Director of Nursing', 'Nurse Unit Manager', 'Clinical Director'] };
+    }
+    if (m('teacher', 'lecturer', 'educator', 'academic', 'principal')) {
+        return { discipline: 'education', titles: ['Head of School', 'Principal', 'Department Head', 'Dean'] };
+    }
+    if (m('project manager', 'program manager', 'pmo')) {
+        return { discipline: 'delivery', titles: ['Head of Delivery', 'Program Director', 'PMO Director', 'Director of Programs'] };
+    }
+
+    return { discipline: 'leadership', titles: ['Director', 'Head', 'Manager', 'General Manager'] };
+}
+
+function serperResultsToBlock(results: SerperResult[]): string {
+    return results.map(r => `- ${r.title}\n  ${r.snippet}\n  URL: ${r.link}`).join('\n');
+}
+
+function dedupeAndRank(candidates: Candidate[]): Candidate[] {
+    const seen = new Map<string, Candidate>();
+    for (const c of candidates) {
+        if (!c?.name) continue;
+        const key = c.name.toLowerCase().replace(/\s+/g, ' ').trim();
+        if (!key) continue;
+        const existing = seen.get(key);
+        if (!existing || CONFIDENCE_RANK[c.confidence] > CONFIDENCE_RANK[existing.confidence]) {
+            seen.set(key, c);
+        }
+    }
+    return [...seen.values()]
+        .sort((a, b) => CONFIDENCE_RANK[b.confidence] - CONFIDENCE_RANK[a.confidence])
+        .slice(0, 3);
+}
+
+/**
+ * Pass 0 — scan the JD text itself for an inline contact reference.
+ * Highest-confidence signal when present (the listing literally says who).
+ */
+async function scanJdForContact(jdText: string, company: string, role: string): Promise<Candidate | null> {
+    if (!jdText || jdText.length < 100) return null;
+    const trimmed = jdText.slice(0, 6000);
+
+    const prompt = `You are looking for a SPECIFIC PERSON mentioned in this job description who is identified as the hiring manager, the role's supervisor, the panel chair, the recruiting contact, or the person to contact for the application.
+
+COMPANY: ${company}
+ROLE: ${role}
+
+JOB DESCRIPTION:
+${trimmed}
+
+Only return a result if the JD names a real person. Do NOT return a result for generic phrases like "the hiring manager" or "our team". The person must be named.
+
+Return JSON:
+{
+  "name": "Full Name" or null,
+  "title": "their stated title or relationship to the role, e.g. 'Head of Marketing', 'reporting manager', 'recruitment contact'" or null,
+  "evidence": "the exact sentence from the JD that mentions them" or null
+}
+
+If no named person is mentioned, return { "name": null }.
+Return ONLY valid JSON.`;
+
+    try {
+        const raw = await callLLMWithRetry(prompt, true);
+        const parsed = parseLLMJson(raw) as { name?: string | null; title?: string | null };
+        if (!parsed?.name || typeof parsed.name !== 'string' || parsed.name.length < 3) return null;
+        return {
+            name: parsed.name.trim(),
+            title: parsed.title?.trim() ?? null,
+            confidence: 'high',
+            sourceUrl: null,
+        };
+    } catch (err: any) {
+        console.warn('[research] JD scan failed:', err.message);
+        return null;
+    }
+}
+
+/**
+ * Pass 1 — find the discipline head on LinkedIn. Usually the actual hiring
+ * manager for a given role, not the recruiter that posts it.
+ */
+async function searchDisciplineHead(company: string, role: string): Promise<Candidate[]> {
+    const { titles } = deriveDiscipline(role);
+    const titlesClause = titles.map(t => `"${t}"`).join(' OR ');
+    const query = `"${company}" (${titlesClause}) site:linkedin.com/in/`;
+
+    const results = await searchSerper(query, 5);
+    if (!results.length) return [];
+
+    const prompt = `You are extracting potential hiring managers from LinkedIn search snippets.
+
+COMPANY: ${company}
+ROLE BEING HIRED: ${role}
+TARGET TITLES we are looking for: ${titles.join(', ')}
+
+SEARCH RESULTS:
+${serperResultsToBlock(results)}
+
+Return a JSON array of up to 3 plausible hiring managers. For each:
+- name: full name as it appears in the result
+- title: their current title at ${company} (or null if unclear)
+- sourceUrl: the LinkedIn profile URL from the result
+
+Exclusion rules:
+- Skip people whose snippet clearly shows them at a different company.
+- Skip people whose title is junior (analyst, associate, intern, coordinator without "senior").
+- Skip recruiters and TA people for THIS pass (we'll find them separately).
+- Skip if no name is identifiable.
+
+Return ONLY a JSON array. If no plausible candidates: [].`;
+
+    try {
+        const raw = await callLLMWithRetry(prompt, true);
+        const parsed = parseLLMJson(raw);
+        const arr: any[] = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.candidates) ? parsed.candidates : [];
+        return arr
+            .filter(c => c && typeof c.name === 'string' && c.name.length >= 3)
+            .slice(0, 3)
+            .map(c => ({
+                name: c.name.trim(),
+                title: typeof c.title === 'string' ? c.title.trim() : null,
+                confidence: 'medium' as Confidence,
+                sourceUrl: typeof c.sourceUrl === 'string' ? c.sourceUrl : null,
+            }));
+    } catch (err: any) {
+        console.warn('[research] discipline-head extraction failed:', err.message);
+        return [];
+    }
+}
+
+/**
+ * Pass 2 — TA/recruiter fallback. Only runs when Pass 0 + 1 came up empty.
+ * Lower confidence because recruiters are usually NOT the right person to
+ * address a cover letter to, but better than nothing.
+ */
+async function searchRecruiter(company: string, role: string): Promise<Candidate[]> {
+    const query = `"${company}" ("talent acquisition" OR "recruiter" OR "people partner") site:linkedin.com/in/`;
+    const results = await searchSerper(query, 4);
+    if (!results.length) return [];
+
+    const prompt = `You are extracting recruiters / talent acquisition contacts from LinkedIn search snippets.
+
+COMPANY: ${company}
+ROLE BEING HIRED: ${role}
+
+SEARCH RESULTS:
+${serperResultsToBlock(results)}
+
+Return a JSON array of up to 2 plausible recruiters. For each:
+- name: full name
+- title: their TA/recruiter title at ${company}
+- sourceUrl: LinkedIn profile URL from the result
+
+Skip anyone clearly at a different company.
+
+Return ONLY a JSON array. If no plausible candidates: [].`;
+
+    try {
+        const raw = await callLLMWithRetry(prompt, true);
+        const parsed = parseLLMJson(raw);
+        const arr: any[] = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.candidates) ? parsed.candidates : [];
+        return arr
+            .filter(c => c && typeof c.name === 'string' && c.name.length >= 3)
+            .slice(0, 2)
+            .map(c => ({
+                name: c.name.trim(),
+                title: typeof c.title === 'string' ? c.title.trim() : null,
+                confidence: 'low' as Confidence,
+                sourceUrl: typeof c.sourceUrl === 'string' ? c.sourceUrl : null,
+            }));
+    } catch (err: any) {
+        console.warn('[research] recruiter extraction failed:', err.message);
+        return [];
+    }
+}
+
+function salutationFor(candidate: Candidate | undefined): string {
+    if (!candidate?.name) return 'Dear Hiring Manager,';
+    const firstName = candidate.name.split(/\s+/)[0];
+    return `Dear ${firstName},`;
+}
+
 /**
  * POST /api/research/company
- * Runs two Serper searches (hiring manager + company highlights) and uses
- * the LLM to extract structured context for cover letter generation.
  *
- * Body: { company: string, role: string }
- * Returns: { hiringManager, salutation, highlights, companySize }
+ * Multi-pass hiring-contact discovery + company highlights extraction.
+ *
+ * Passes (run in order, short-circuit when a high-confidence hit is found):
+ *   Pass 0: scan the JD text itself for a named contact (confidence: high)
+ *   Pass 1: LinkedIn search for the discipline head, e.g. "Head of Marketing"
+ *           for a marketing role (confidence: medium) — usually the actual
+ *           hiring manager.
+ *   Pass 2: LinkedIn search for TA / recruiters at the company (confidence:
+ *           low) — only runs if Passes 0 and 1 are empty.
+ *
+ * Always runs: a separate search for company highlights (culture / projects /
+ * news) used downstream in cover-letter generation.
+ *
+ * Body: { company: string, role: string, jdText?: string }
+ * Returns: {
+ *   candidates: Candidate[],          // ranked by confidence, max 3
+ *   hiringManager: string | null,      // top candidate name (backward compat)
+ *   hiringManagerTitle: string | null, // top candidate title (backward compat)
+ *   salutation: string,                // derived from top candidate
+ *   highlights: string[],
+ *   companySize: string,
+ * }
  */
 router.post('/company', authenticate, async (req, res) => {
-    const { company, role } = req.body as { company?: string; role?: string };
+    const { company, role, jdText } = req.body as {
+        company?: string;
+        role?: string;
+        jdText?: string;
+    };
 
     if (!company || company.length < 2) {
         return res.status(400).json({ error: 'company is required' });
@@ -23,75 +282,76 @@ router.post('/company', authenticate, async (req, res) => {
     if (company.length > 200 || (role && role.length > 300)) {
         return res.status(400).json({ error: 'company or role value is too long' });
     }
+    if (jdText && jdText.length > 20000) {
+        return res.status(400).json({ error: 'jdText is too long' });
+    }
 
     try {
-        // Search 1 — hiring manager / recruiter contact
-        const contactResults = await searchSerper(
-            `"${company}" "${role || ''}" hiring manager OR recruiter OR "talent acquisition" site:linkedin.com`,
-            4
-        );
+        const candidates: Candidate[] = [];
 
-        // Search 2 — company culture, projects, tech, news
+        // ── Pass 0 — JD inline scan ───────────────────────────────────────
+        if (jdText && jdText.length >= 100) {
+            const jdCandidate = await scanJdForContact(jdText, company, role || '');
+            if (jdCandidate) candidates.push(jdCandidate);
+        }
+
+        // ── Pass 1 — discipline-head LinkedIn search ──────────────────────
+        const disciplineHits = await searchDisciplineHead(company, role || '');
+        candidates.push(...disciplineHits);
+
+        // ── Pass 2 — recruiter fallback (only if 0 + 1 found nothing) ─────
+        if (candidates.length === 0) {
+            const recruiterHits = await searchRecruiter(company, role || '');
+            candidates.push(...recruiterHits);
+        }
+
+        const rankedCandidates = dedupeAndRank(candidates);
+        const top = rankedCandidates[0];
+
+        // ── Company highlights (independent of contact search) ────────────
         const companyResults = await searchSerper(
             `"${company}" culture OR "tech stack" OR "recent project" OR mission OR "company values" 2024 2025`,
             5
         );
-
-        const contactText = snippetsToText(contactResults);
         const companyText = snippetsToText(companyResults);
 
-        const hasData = contactText.length > 0 || companyText.length > 0;
+        let highlights: string[] = [];
+        let companySize: string = 'unknown';
 
-        if (!hasData) {
-            return res.json({
-                hiringManager: null,
-                salutation: 'Dear Hiring Manager,',
-                highlights: [],
-                companySize: 'unknown',
-                raw: '',
-            });
-        }
-
-        const extractionPrompt = `
-You are extracting structured company research from web search snippets. Be conservative — only extract what the evidence actually supports. Do NOT invent anything.
+        if (companyText) {
+            const highlightsPrompt = `Extract a few specific, verifiable facts about this company from the search snippets. Do NOT invent anything.
 
 COMPANY: ${company}
-ROLE BEING APPLIED FOR: ${role || 'unknown'}
 
-CONTACT/HIRING SEARCH RESULTS:
-${contactText || '(no results)'}
+SEARCH RESULTS:
+${companyText}
 
-COMPANY CULTURE/NEWS SEARCH RESULTS:
-${companyText || '(no results)'}
-
-Extract the following JSON. If a field cannot be determined from the evidence, use null or an empty array.
-
+Return JSON:
 {
-  "hiringManagerName": string | null,           // Full name if clearly identified as hiring manager or recruiter for this role
-  "hiringManagerTitle": string | null,           // Their title e.g. "Head of Marketing", "Talent Acquisition Manager"
   "companySize": "startup" | "sme" | "enterprise" | "government" | "education" | "nfp" | "unknown",
-  "highlights": string[],                        // 2-4 specific, verifiable facts: recent projects, tech stack, culture, awards, values — each under 20 words
-  "suggestedSalutation": string                  // e.g. "Dear Sarah Chen," or "Dear Hiring Manager," — use full name if found, otherwise generic
+  "highlights": string[]   // 2 to 4 facts. Each under 20 words. Examples: a recent project, a tech stack signal, a stated value, a recognised award.
 }
 
-Return ONLY valid JSON. No preamble.
-`;
-
-        const raw = await callLLMWithRetry(extractionPrompt, true);
-
-        let parsed: any = {};
-        try {
-            parsed = parseLLMJson(raw);
-        } catch {
-            console.warn('[research] LLM returned non-JSON:', raw.slice(0, 200));
+Return ONLY valid JSON.`;
+            try {
+                const raw = await callLLMWithRetry(highlightsPrompt, true);
+                const parsed = parseLLMJson(raw) as { companySize?: string; highlights?: unknown };
+                highlights = Array.isArray(parsed.highlights)
+                    ? (parsed.highlights as unknown[]).filter((h): h is string => typeof h === 'string')
+                    : [];
+                companySize = typeof parsed.companySize === 'string' ? parsed.companySize : 'unknown';
+            } catch (err: any) {
+                console.warn('[research] highlights extraction failed:', err.message);
+            }
         }
 
         return res.json({
-            hiringManager: parsed.hiringManagerName ?? null,
-            hiringManagerTitle: parsed.hiringManagerTitle ?? null,
-            salutation: parsed.suggestedSalutation ?? 'Dear Hiring Manager,',
-            highlights: Array.isArray(parsed.highlights) ? parsed.highlights : [],
-            companySize: parsed.companySize ?? 'unknown',
+            candidates: rankedCandidates,
+            hiringManager: top?.name ?? null,
+            hiringManagerTitle: top?.title ?? null,
+            salutation: salutationFor(top),
+            highlights,
+            companySize,
         });
 
     } catch (err: any) {

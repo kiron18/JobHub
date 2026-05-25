@@ -40,7 +40,7 @@ export const DocumentList: React.FC = () => {
     if (isLoading) {
         return <div className="animate-pulse space-y-4">
             {[1, 2, 3].map(i => (
-                <div key={i} className="h-20 bg-slate-800/50 rounded-2xl"></div>
+                <div key={i} className="h-20 bg-[#F4EFE8]/60 rounded-2xl"></div>
             ))}
         </div>;
     }
@@ -48,9 +48,9 @@ export const DocumentList: React.FC = () => {
     if (!documents || documents.length === 0) {
         return (
             <div className="glass-card p-12 text-center space-y-4">
-                <FileText className="w-12 h-12 text-slate-600 mx-auto" />
-                <h3 className="text-xl font-bold text-slate-400">No documents yet</h3>
-                <p className="text-slate-500 max-w-xs mx-auto">Upload your resumes or cover letters to get started with intelligent matching.</p>
+                <FileText className="w-12 h-12 text-[#8B847B] mx-auto" />
+                <h3 className="text-xl font-bold text-[#5C5750]">No documents yet</h3>
+                <p className="text-[#8B847B] max-w-xs mx-auto">Upload your resumes or cover letters to get started with intelligent matching.</p>
             </div>
         );
     }
@@ -64,15 +64,15 @@ export const DocumentList: React.FC = () => {
                             <FileText size={24} />
                         </div>
                         <div className="flex items-center gap-2">
-                            <span className="bg-slate-800 text-slate-400 text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded border border-slate-700">
+                            <span className="bg-[#F4EFE8] text-[#5C5750] text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded border border-[rgba(26,24,20,0.16)]">
                                 {doc.type}
                             </span>
                         </div>
                     </div>
                     
                     <div className="space-y-1">
-                        <h4 className="font-bold text-slate-200 truncate pr-8">{doc.title || 'Untitled Document'}</h4>
-                        <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <h4 className="font-bold text-[#1A1814] truncate pr-8">{doc.title || 'Untitled Document'}</h4>
+                        <div className="flex items-center gap-2 text-xs text-[#8B847B]">
                             <Clock size={12} />
                             <span>{new Date(doc.createdAt).toLocaleDateString()}</span>
                         </div>
@@ -86,7 +86,7 @@ export const DocumentList: React.FC = () => {
                              <button 
                                 onClick={() => handleDelete(doc.id)}
                                 disabled={deletingId === doc.id}
-                                className="p-2 hover:bg-white/5 rounded-lg text-slate-400 hover:text-red-400 transition-colors disabled:opacity-50"
+                                className="p-2 hover:bg-[#F4EFE8] rounded-lg text-[#5C5750] hover:text-red-400 transition-colors disabled:opacity-50"
                             >
                                 {deletingId === doc.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
                             </button>

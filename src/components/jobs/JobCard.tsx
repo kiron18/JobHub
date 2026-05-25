@@ -166,7 +166,7 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
               {platform.label}
             </span>
             {item.postedAt && (
-              <span className="text-[10px] text-slate-500">{daysAgo(item.postedAt)}</span>
+              <span className="text-[10px] text-[#8B847B]">{daysAgo(item.postedAt)}</span>
             )}
           </div>
 
@@ -193,9 +193,9 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
               </span>
             )}
             {(item.isSaved && !item.applicationStatus) || item.applicationStatus === 'SAVED' ? (
-              <span className="text-[9px] font-bold text-slate-500">Saved</span>
+              <span className="text-[9px] font-bold text-[#8B847B]">Saved</span>
             ) : null}
-            {expanded ? <ChevronUp size={14} className="text-slate-500" /> : <ChevronDown size={14} className="text-slate-500" />}
+            {expanded ? <ChevronUp size={14} className="text-[#8B847B]" /> : <ChevronDown size={14} className="text-[#8B847B]" />}
           </div>
         </div>
 
@@ -207,7 +207,7 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
             target="_blank"
             rel="noopener noreferrer"
             onClick={e => e.stopPropagation()}
-            className="flex-shrink-0 flex items-center gap-1 text-[10px] font-bold text-slate-500 hover:text-slate-300 transition-colors"
+            className="flex-shrink-0 flex items-center gap-1 text-[10px] font-bold text-[#8B847B] hover:text-[#1A1814] transition-colors"
           >
             <ExternalLink size={11} />
             Open
@@ -215,7 +215,7 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
         </div>
 
         {/* Row 3: meta */}
-        <p className="text-xs text-slate-500 mb-3">
+        <p className="text-xs text-[#8B847B] mb-3">
           {item.company}
           {item.location && ` · ${item.location}`}
           {item.salary && ` · ${item.salary}`}
@@ -225,7 +225,7 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
         {item.bullets ? (
           <ul className="space-y-1">
             {(item.bullets as string[]).map((b, i) => (
-              <li key={i} className="text-xs text-slate-400 flex items-start gap-2">
+              <li key={i} className="text-xs text-[#5C5750] flex items-start gap-2">
                 <span className="text-brand-500 mt-0.5 flex-shrink-0">·</span>
                 {b}
               </li>
@@ -234,7 +234,7 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
         ) : (
           <div className="space-y-1.5">
             {[70, 55, 85].map(w => (
-              <div key={w} className="h-2.5 rounded bg-slate-800 animate-pulse" style={{ width: `${w}%` }} />
+              <div key={w} className="h-2.5 rounded bg-[#F4EFE8] animate-pulse" style={{ width: `${w}%` }} />
             ))}
           </div>
         )}
@@ -249,7 +249,7 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="overflow-hidden border-t border-slate-800"
+            className="overflow-hidden border-t border-[rgba(26,24,20,0.08)]"
           >
             <div className="p-4 space-y-4">
               {/* Selection criteria warning */}
@@ -262,9 +262,9 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
 
               {/* Seek screening questions notice */}
               {item.sourcePlatform === 'seek' && (
-                <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-slate-700/40 border border-slate-600/40">
-                  <AlertTriangle size={13} className="text-slate-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-xs text-slate-400">
+                <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-[#F4EFE8] border border-[rgba(26,24,20,0.16)]">
+                  <AlertTriangle size={13} className="text-[#5C5750] flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-[#5C5750]">
                     Employers on Seek often add screening questions during the application process that don't appear in the listing, worth reviewing before you apply.
                   </p>
                 </div>
@@ -272,14 +272,14 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
 
               {/* Truncation fallback, only shown when silent auto-fetch failed */}
               {isTruncated && fullDescFailed && (
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-[#8B847B]">
                   Full description unavailable —{' '}
                   <a
                     href={item.sourceUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={e => e.stopPropagation()}
-                    className="text-slate-400 hover:text-slate-200 underline underline-offset-2 transition-colors"
+                    className="text-[#5C5750] hover:text-[#1A1814] underline underline-offset-2 transition-colors"
                   >
                     open the listing for complete details →
                   </a>
@@ -288,21 +288,21 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
 
               {/* Full description */}
               <div
-                className="text-xs text-slate-400 leading-relaxed overflow-y-auto custom-scrollbar"
+                className="text-xs text-[#5C5750] leading-relaxed overflow-y-auto custom-scrollbar"
                 style={{ maxHeight: 360, whiteSpace: 'pre-wrap' }}
               >
                 {item.description}
               </div>
 
               {/* Addressee section */}
-              <div className="rounded-xl bg-slate-800/40 border border-slate-700/50 p-3 space-y-2">
+              <div className="rounded-xl bg-[#F4EFE8]/60 border border-[rgba(26,24,20,0.10)] p-3 space-y-2">
                 <div className="flex items-center gap-2">
-                  <User size={12} className="text-slate-500" />
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">Cover letter, who to address</span>
+                  <User size={12} className="text-[#8B847B]" />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#8B847B]">Cover letter, who to address</span>
                 </div>
 
                 {addresseeLoading && (
-                  <p className="text-xs text-slate-500 flex items-center gap-1.5">
+                  <p className="text-xs text-[#8B847B] flex items-center gap-1.5">
                     <Loader2 size={11} className="animate-spin" />
                     Finding the right person to address your cover letter to…
                   </p>
@@ -313,7 +313,7 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
                     editingAddressee ? (
                       <div className="flex items-center gap-2">
                         <input
-                          className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-200 focus:outline-none focus:border-brand-500"
+                          className="flex-1 bg-white border border-[rgba(26,24,20,0.16)] rounded-lg px-2 py-1 text-xs text-[#1A1814] focus:outline-none focus:border-brand-500"
                           defaultValue={addresseeOverride ?? item.suggestedAddressee}
                           onBlur={e => { setAddresseeOverride(e.target.value); setEditingAddressee(false); }}
                           autoFocus
@@ -322,38 +322,38 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
                     ) : (
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-xs font-semibold text-slate-200">
+                          <p className="text-xs font-semibold text-[#1A1814]">
                             {addresseeOverride || item.suggestedAddressee}
                             {(item.addresseeTitle) && (
-                              <span className="font-normal text-slate-400">, {item.addresseeTitle}</span>
+                              <span className="font-normal text-[#5C5750]">, {item.addresseeTitle}</span>
                             )}
                           </p>
-                          <p className="text-[10px] text-slate-500 mt-0.5">
+                          <p className="text-[10px] text-[#8B847B] mt-0.5">
                             {item.addresseeSource === 'job-listing' ? 'Found in job listing' : 'Found via web search'} · verify before sending
                           </p>
                         </div>
                         <button
                           onClick={() => setEditingAddressee(true)}
-                          className="text-[10px] font-bold text-slate-500 hover:text-slate-300 transition-colors"
+                          className="text-[10px] font-bold text-[#8B847B] hover:text-[#1A1814] transition-colors"
                         >
                           Edit
                         </button>
                       </div>
                     )
                   ) : (
-                    <p className="text-xs text-slate-500">No specific contact found, we'll use "Hiring Manager"</p>
+                    <p className="text-xs text-[#8B847B]">No specific contact found, we'll use "Hiring Manager"</p>
                   )
                 )}
 
                 {addresseeFailed && (
-                  <p className="text-xs text-slate-500">Could not find contact information</p>
+                  <p className="text-xs text-[#8B847B]">Could not find contact information</p>
                 )}
               </div>
 
               {/* Apply section */}
-              <div className="rounded-xl bg-slate-800/30 border border-slate-700/40 p-3 space-y-2">
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  <span className="font-semibold text-slate-200">We build the documents. You make the move.</span>{' '}
+              <div className="rounded-xl bg-[#F4EFE8]/40 border border-[rgba(26,24,20,0.08)] p-3 space-y-2">
+                <p className="text-xs text-[#5C5750] leading-relaxed">
+                  <span className="font-semibold text-[#1A1814]">We build the documents. You make the move.</span>{' '}
                   Applying directly signals genuine intent, hiring managers notice candidates who submit personally.
                 </p>
                 <div className="flex items-center gap-2 flex-wrap">
@@ -369,7 +369,7 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
                     disabled={saving || item.isSaved}
                     title={item.isSaved ? 'Already saved to tracker' : 'Save to tracker'}
                     aria-label={item.isSaved ? 'Already saved to tracker' : 'Save to tracker'}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider border border-slate-700 text-slate-400 hover:border-slate-600 hover:text-slate-200 transition-colors disabled:opacity-40"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider border border-[rgba(26,24,20,0.16)] text-[#5C5750] hover:border-[rgba(26,24,20,0.24)] hover:text-[#1A1814] transition-colors disabled:opacity-40"
                   >
                     {saving ? <Loader2 size={11} className="animate-spin" /> : item.isSaved ? <BookmarkCheck size={11} className="text-emerald-400" /> : <BookmarkPlus size={11} />}
                     {item.isSaved ? 'Saved' : 'Save'}
@@ -379,7 +379,7 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={e => e.stopPropagation()}
-                    className="flex items-center gap-1 text-[10px] font-bold text-slate-500 hover:text-slate-300 transition-colors"
+                    className="flex items-center gap-1 text-[10px] font-bold text-[#8B847B] hover:text-[#1A1814] transition-colors"
                   >
                     <ExternalLink size={10} />
                     View on {platform.label}

@@ -174,7 +174,7 @@ function sanitizeForExport(raw: string): string {
     return raw
         .replace(PLACEHOLDER_RE, '')
         .replace(AI_TOKEN_RE, '')
-        .replace(/\s{2,}/g, ' ')
+        .replace(/[^\S\r\n]{2,}/g, ' ')
         .replace(/[ \t]+([.,;:!?])/g, '$1');
 }
 

@@ -4,10 +4,7 @@ import { X, ArrowRight } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
-
-const PETROL = '#2D5A6E';
-const GOLD   = '#C5A059';
-const SAGE   = '#7DA67D';
+import { warm } from '../lib/theme/warmTokens';
 
 const PREV_COUNT_KEY    = 'jobhub_sent_count_prev';
 const CELEBRATED_KEY    = 'jobhub_first_application_celebrated';
@@ -82,9 +79,9 @@ export function FirstApplicationCelebration() {
             position: 'fixed',
             inset: 0,
             zIndex: 100,
-            background: 'rgba(8,11,18,0.78)',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
+            background: 'rgba(0,0,0,0.72)',
+            backdropFilter: 'blur(4px)',
+            WebkitBackdropFilter: 'blur(4px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -102,11 +99,11 @@ export function FirstApplicationCelebration() {
               position: 'relative',
               maxWidth: 560,
               width: '100%',
-              background: '#1A1C1E',
-              border: '1px solid rgba(255,255,255,0.08)',
+              background: warm.colors.bgSurface,
+              border: `1px solid ${warm.colors.borderDefined}`,
               borderRadius: 22,
               padding: '40px 36px 32px',
-              boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
+              boxShadow: warm.shadow.lifted,
             }}
           >
             {/* Close button */}
@@ -119,7 +116,7 @@ export function FirstApplicationCelebration() {
                 right: 16,
                 background: 'none',
                 border: 'none',
-                color: 'rgba(255,255,255,0.4)',
+                color: warm.colors.textSecondary,
                 cursor: 'pointer',
                 padding: 8,
                 display: 'flex',
@@ -127,7 +124,7 @@ export function FirstApplicationCelebration() {
                 justifyContent: 'center',
                 borderRadius: 8,
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = warm.colors.bgAlt; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
             >
               <X size={16} />
@@ -141,7 +138,7 @@ export function FirstApplicationCelebration() {
                 fontWeight: 800,
                 letterSpacing: '0.16em',
                 textTransform: 'uppercase',
-                color: GOLD,
+                color: warm.colors.accentGold,
               }}>
                 Your first application is out
               </p>
@@ -149,7 +146,7 @@ export function FirstApplicationCelebration() {
                 margin: '0 0 14px',
                 fontSize: 'clamp(24px, 4.8vw, 32px)',
                 fontWeight: 900,
-                color: '#E0E0E0',
+                color: warm.colors.textPrimary,
                 lineHeight: 1.18,
                 letterSpacing: '-0.02em',
               }}>
@@ -158,7 +155,7 @@ export function FirstApplicationCelebration() {
               <p style={{
                 margin: 0,
                 fontSize: 15,
-                color: '#A0A4A8',
+                color: warm.colors.textSecondary,
                 lineHeight: 1.65,
                 maxWidth: 420,
                 marginInline: 'auto',
@@ -171,8 +168,8 @@ export function FirstApplicationCelebration() {
             {/* Beat 2 — What this draft did differently */}
             <div style={{
               padding: '20px 22px',
-              background: 'rgba(255,255,255,0.025)',
-              border: '1px solid rgba(255,255,255,0.06)',
+              background: warm.colors.bgAlt,
+              border: `1px solid ${warm.colors.borderWhisper}`,
               borderRadius: 16,
               marginBottom: 24,
             }}>
@@ -182,15 +179,15 @@ export function FirstApplicationCelebration() {
                 fontWeight: 800,
                 letterSpacing: '0.14em',
                 textTransform: 'uppercase',
-                color: SAGE,
+                color: warm.colors.success,
               }}>
                 What this draft did differently
               </p>
               <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {[
-                  'Your resume was retuned for this exact role, not a generic version of you.',
-                  'Your cover letter opened with the employer\'s need, not your own intro.',
-                  'Selection criteria were written in the language of the job description, not your own.',
+                  "Your resume was retuned for this exact role, not a generic version of you.",
+                  "Your cover letter opened with the employer's need, not your own intro.",
+                  "Selection criteria were written in the language of the job description, not your own.",
                 ].map((line, i) => (
                   <li key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                     <span style={{
@@ -199,14 +196,14 @@ export function FirstApplicationCelebration() {
                       width: 6,
                       height: 6,
                       borderRadius: '50%',
-                      background: SAGE,
+                      background: warm.colors.success,
                       opacity: 0.8,
                     }} />
                     <p style={{
                       margin: 0,
                       fontSize: 14,
                       lineHeight: 1.6,
-                      color: '#C8CCD0',
+                      color: warm.colors.textPrimary,
                       fontWeight: 450,
                     }}>
                       {line}
@@ -222,11 +219,11 @@ export function FirstApplicationCelebration() {
                 margin: 0,
                 fontSize: 14,
                 lineHeight: 1.7,
-                color: '#A0A4A8',
+                color: warm.colors.textSecondary,
                 fontWeight: 450,
                 textAlign: 'center',
               }}>
-                Job hunting feels like luck. It is a numbers game with quality applications. The more strong applications you send, the more your odds shift, week over week. <span style={{ color: '#E0E0E0', fontWeight: 600 }}>This is the first one.</span>
+                Job hunting feels like luck. It is a numbers game with quality applications. The more strong applications you send, the more your odds shift, week over week. <span style={{ color: warm.colors.textPrimary, fontWeight: 600 }}>This is the first one.</span>
               </p>
             </div>
 
@@ -242,8 +239,8 @@ export function FirstApplicationCelebration() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: 8,
-                  background: PETROL,
-                  color: '#E0E0E0',
+                  background: warm.colors.accentPetrol,
+                  color: warm.colors.textOnDeep,
                   borderRadius: 14,
                   padding: '15px 24px',
                   fontSize: 15,
@@ -251,7 +248,7 @@ export function FirstApplicationCelebration() {
                   border: 'none',
                   cursor: 'pointer',
                   letterSpacing: '-0.01em',
-                  boxShadow: `0 6px 24px ${PETROL}40`,
+                  boxShadow: `0 6px 24px rgba(45,90,110,0.25)`,
                 }}
               >
                 Send another
@@ -262,7 +259,7 @@ export function FirstApplicationCelebration() {
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: '#9ca3af',
+                  color: warm.colors.textSecondary,
                   fontSize: 12,
                   fontWeight: 600,
                   cursor: 'pointer',

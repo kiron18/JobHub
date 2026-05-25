@@ -48,6 +48,7 @@ import { ApplyContextBanner, type ApplyContext } from './ApplyContextBanner';
 import { getPlatformConfig, getApplyInstructions } from '../lib/platforms';
 import { DimensionsIsland } from './DimensionsIsland';
 import type { DimensionScores, AustralianFlags } from './DimensionsIsland';
+import { warm } from '../lib/theme/warmTokens';
 
 interface WorkspaceState {
     jobDescription: string;
@@ -102,9 +103,8 @@ import { ProfileCompletion } from './ProfileCompletion';
 
 /** Renders job description text with keyword terms highlighted */
 const HighlightedJD: React.FC<{ text: string; keywords: string[] }> = ({ text, keywords }) => {
-    if (!keywords.length) return <span className="whitespace-pre-wrap">{text}</span>;
+    if (!keywords.length) return <span style={{ whiteSpace: 'pre-wrap' }}>{text}</span>;
 
-    // Build a regex from keywords, sorted longest-first to avoid partial-match issues
     const escaped = [...keywords]
         .sort((a, b) => b.length - a.length)
         .map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
@@ -112,10 +112,10 @@ const HighlightedJD: React.FC<{ text: string; keywords: string[] }> = ({ text, k
 
     const parts = text.split(pattern);
     return (
-        <span className="whitespace-pre-wrap">
+        <span style={{ whiteSpace: 'pre-wrap' }}>
             {parts.map((part, i) =>
                 keywords.some(k => k.toLowerCase() === part.toLowerCase())
-                    ? <mark key={i} className="bg-brand-600/20 text-brand-300 rounded px-0.5">{part}</mark>
+                    ? <mark key={i} style={{ background: 'rgba(45,90,110,0.20)', color: warm.colors.accentPetrol, borderRadius: 2, padding: '0 2px' }}>{part}</mark>
                     : part
             )}
         </span>
@@ -127,8 +127,8 @@ export const ApplicationWorkspace: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
 
-    const initialState = location.state as { 
-        jobDescription: string; 
+    const initialState = location.state as {
+        jobDescription: string;
         analysis: any;
         initialTab?: string;
     };
@@ -151,13 +151,10 @@ export const ApplicationWorkspace: React.FC = () => {
         const savedDocIdsStr = localStorage.getItem('jobhub_current_docids');
         const savedDocIds = savedDocIdsStr ? JSON.parse(savedDocIdsStr) : { resume: null, 'cover-letter': null, 'selection-criteria': null, 'interview-prep': null };
 
-        // Priority 1: Location State (Navigation from MatchEngine)
-        // Priority 2: LocalStorage (Page Refresh)
         const currentJD = initialState?.jobDescription || savedJD || '';
         const currentAnalysis = initialState?.analysis || savedAnalysis || {};
         const currentTab = initialState?.initialTab || savedActiveTab || 'resume';
 
-        // If we got new data from location state, we should probably clear old docs/ids
         const useStoredDocs = !initialState?.analysis;
 
         return {
@@ -194,8 +191,7 @@ export const ApplicationWorkspace: React.FC = () => {
         localStorage.setItem('jobhub_current_tab', state.activeTab);
         localStorage.setItem('jobhub_current_docs', JSON.stringify(state.documents));
         localStorage.setItem('jobhub_current_docids', JSON.stringify(state.documentIds));
-        
-        // We also want to keep the analysis in sync if it changes (e.g. metadata)
+
         const currentAnalysis = {
             rankedAchievements: state.rankedAchievements,
             extractedMetadata: state.metadata,
@@ -253,7 +249,6 @@ export const ApplicationWorkspace: React.FC = () => {
         }
     };
 
-    // Academic documents, generated on demand, stored separately (not in main documents map)
     const [academicDocs, setAcademicDocs] = useState<{ 'teaching-philosophy': string; 'research-statement': string }>({
         'teaching-philosophy': '',
         'research-statement': '',
@@ -291,15 +286,12 @@ export const ApplicationWorkspace: React.FC = () => {
         }
     };
 
-    // Cover letter tone preference
     const [coverLetterTone, setCoverLetterTone] = useState<'professional' | 'warm' | 'concise'>('professional');
 
-    // Email cover letter modal
     const [emailVersion, setEmailVersion] = useState<{ emailSubject: string; emailBody: string } | null>(null);
     const [generatingEmail, setGeneratingEmail] = useState(false);
     const [copiedEmailField, setCopiedEmailField] = useState<'subject' | 'body' | null>(null);
 
-    // Auto-detect employer framework when SC tab is first activated
     useEffect(() => {
         if (state.activeTab !== 'selection-criteria') return;
         if (employerFramework) return;
@@ -313,19 +305,17 @@ export const ApplicationWorkspace: React.FC = () => {
                 });
                 if (data.framework) setEmployerFramework(data.framework);
             } catch {
-                // Silent, framework label is optional UI decoration
+                // Silent
             }
         };
         detect();
     }, [state.activeTab, state.metadata?.company]);
 
     useEffect(() => {
-        // Fetch existing documents if we have a jobApplicationId but NO document contents for the current tab
         const currentDoc = state.documents[state.activeTab];
         const currentDocId = state.documentIds[state.activeTab];
 
         if (state.jobApplicationId && !currentDoc && !currentDocId && !state.isGenerating && !isFetchingDocs) {
-            console.log('Fetching existing documents for Job Application:', state.jobApplicationId);
             setIsFetchingDocs(true);
             const fetchDocs = async () => {
                 try {
@@ -395,8 +385,8 @@ export const ApplicationWorkspace: React.FC = () => {
         } catch (error) {
             console.error('Failed to add to profile:', error);
         }
-    };    
-    
+    };
+
     const executeDownload = async (content: string) => {
         const candidateName = profile?.name || '';
         const jobTitle = state.metadata?.role || '';
@@ -407,7 +397,6 @@ export const ApplicationWorkspace: React.FC = () => {
             toast.success('Downloaded as Word document (.docx)');
         } catch (docxError) {
             console.warn('[Download] DOCX export failed, falling back to print:', docxError);
-            // Fallback: print-to-PDF
             const companyName = state.metadata?.company?.replace(/\s+/g, '_') || 'document';
             const filename = `${state.activeTab}-${companyName}`;
             const articleEl = document.getElementById('resume-preview-content');
@@ -496,7 +485,19 @@ export const ApplicationWorkspace: React.FC = () => {
         triggerDownloadWithReminder(() => executeDownload(content));
     };
 
-    // Auto-save logic
+    // Fire process:saved once both core docs (resume + cover letter) exist in
+    // the library. Per the process-strip flow: "Save" represents the user
+    // having both tailored documents ready — no manual save click required.
+    useEffect(() => {
+        const resume = state.documents['resume'];
+        const coverLetter = state.documents['cover-letter'];
+        if (resume && coverLetter) {
+            window.dispatchEvent(new CustomEvent('process:saved'));
+        }
+    }, [state.documents]);
+
+    // Auto-save logic — process:saved is dispatched on successful auto-save above.
+    // The download (.docx) button below serves as the "save" action for the strip.
     useEffect(() => {
         const documentId = state.documentIds[state.activeTab];
         const content = state.documents[state.activeTab];
@@ -510,12 +511,13 @@ export const ApplicationWorkspace: React.FC = () => {
                     content
                 });
                 setState(prev => ({ ...prev, saveStatus: 'saved' }));
+                window.dispatchEvent(new CustomEvent('process:saved'));
             } catch (error) {
                 console.error('Auto-save failed:', error);
                 setState(prev => ({ ...prev, saveStatus: 'unsaved' }));
                 toast.error("Auto-save failed");
             }
-        }, 1500); // 1.5s debounce
+        }, 1500);
 
         return () => clearTimeout(timer);
     }, [state.documents, state.activeTab, state.documentIds, state.saveStatus]);
@@ -527,7 +529,6 @@ export const ApplicationWorkspace: React.FC = () => {
 
     const handleGenerate = async (type: WorkspaceState['activeTab'], regenerate = false) => {
         if (state.hasFailed[type] && !regenerate) return;
-        // SC must never generate without criteria, hard guard regardless of how this was called
         if (type === 'selection-criteria' && selectionCriteriaText.trim().length < 20) return;
 
         const controller = new AbortController();
@@ -553,15 +554,12 @@ export const ApplicationWorkspace: React.FC = () => {
                     competencies: state.coreCompetencies,
                     regenerateFeedback: regenerate && regenerateFeedback.trim() ? regenerateFeedback.trim() : undefined,
                 },
-                // Company research context for cover letters (hiring manager, highlights)
                 companyResearch: type === 'cover-letter' ? companyResearch : null,
-                // For SC: use extracted (cleaned) criteria if available, fall back to raw text
                 selectionCriteriaText: type === 'selection-criteria'
                     ? (extractedCriteria.length > 0
                         ? extractedCriteria.map((c, i) => `${i + 1}. ${c}`).join('\n')
                         : selectionCriteriaText)
                     : null,
-                // Employer framework hint for SC (APS ILS, QLD LC4Q, etc.)
                 employerFramework: type === 'selection-criteria' ? employerFramework : null,
             }, { signal: controller.signal });
             trackDocumentGenerated(type, regenerate);
@@ -587,9 +585,9 @@ export const ApplicationWorkspace: React.FC = () => {
             setIsConfirmingRegen(false);
             setIsEditing(false);
             setRegenerateFeedback('');
+            window.dispatchEvent(new CustomEvent('process:tailored'));
         } catch (err: any) {
             if (err.name === 'CanceledError' || err.name === 'AbortError') {
-                console.log('Generation cancelled by user');
                 return;
             }
             if (err?.response?.status === 429) {
@@ -627,14 +625,11 @@ export const ApplicationWorkspace: React.FC = () => {
     };
 
     useEffect(() => {
-        // ONLY generate if we DON'T have a doc and DON'T have a doc ID (meaning it doesn't exist on server)
         const hasDoc = !!state.documents[state.activeTab];
         const hasDocId = !!state.documentIds[state.activeTab];
 
-        // SC never auto-generates, user must click the button explicitly
         if (state.activeTab === 'selection-criteria') return;
 
-        // Don't auto-generate while we're still fetching existing docs from the server (prevents race condition)
         if (state.jobDescription && !hasDoc && !hasDocId && !state.isGenerating && !isFetchingDocs && !state.hasFailed[state.activeTab]) {
             handleGenerate(state.activeTab);
         }
@@ -691,14 +686,12 @@ export const ApplicationWorkspace: React.FC = () => {
 
     const handleBack = () => navigate('/');
 
-    /** Derive a short back-label from job title */
     const backLabel = (() => {
         const raw = state.metadata?.role;
         if (!raw) return 'Back to Dashboard';
         return raw.length > 20 ? raw.slice(0, 20).trimEnd() + '…' : raw;
     })();
 
-    /** Parse VERIFY tokens from markdown, return { pills, stripped } */
     const parseVerifyTokens = useCallback((markdown: string): { pills: string[]; stripped: string } => {
         const pills: string[] = [];
         const stripped = markdown.replace(/\[VERIFY:\s*([^\]]+)\]/g, (_match, text) => {
@@ -708,7 +701,6 @@ export const ApplicationWorkspace: React.FC = () => {
         return { pills, stripped };
     }, []);
 
-    /** Map a verify text to a coaching message */
     const getCoachingMessage = (text: string): string => {
         const lower = text.toLowerCase();
         if (lower.includes('job title') || lower.includes('title')) {
@@ -723,7 +715,6 @@ export const ApplicationWorkspace: React.FC = () => {
         return 'Verifying this detail makes your application more credible and harder to dismiss.';
     };
 
-    /** Scroll to first occurrence of verify text in the document preview */
     const scrollToVerify = (text: string) => {
         if (!previewRef.current) return;
         const walker = document.createTreeWalker(previewRef.current, NodeFilter.SHOW_TEXT);
@@ -736,17 +727,12 @@ export const ApplicationWorkspace: React.FC = () => {
         }
     };
 
-    // CommonMark collapses consecutive lines into one <p> unless separated by a blank line.
-    // Enforce double line-breaks between skill categories and between cover letter paragraphs.
     const normaliseMarkdown = (md: string): string => {
         let out = md;
-        // Skill category lines
         out = out.replace(
             /([^\n])\n(\*\*(Technical Skills|Industry Knowledge|Soft Skills):\*\*)/g,
             '$1\n\n$2'
         );
-        // Cover letter: collapse 3+ newlines to 2, then ensure any single \n between
-        // non-empty lines becomes \n\n so ReactMarkdown renders them as separate <p> tags.
         if (state.activeTab === 'cover-letter') {
             out = out.replace(/\n{3,}/g, '\n\n');
             out = out.replace(/([^\n])\n([^\n])/g, '$1\n\n$2');
@@ -755,7 +741,12 @@ export const ApplicationWorkspace: React.FC = () => {
     };
 
     return (
-        <div className="fixed inset-0 bg-slate-950 z-50 flex flex-col overflow-hidden text-slate-200">
+        <div style={{
+            position: 'fixed', inset: 0, zIndex: 50,
+            display: 'flex', flexDirection: 'column', overflow: 'hidden',
+            background: warm.colors.bgCanvas,
+            color: warm.colors.textPrimary,
+        }}>
             <Toaster position="top-center" richColors />
 
             {/* Download reminder modal */}
@@ -765,20 +756,32 @@ export const ApplicationWorkspace: React.FC = () => {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[200] flex items-center justify-center p-6"
+                        onClick={() => setShowDownloadReminder(false)}
+                        style={{
+                            position: 'fixed', inset: 0, zIndex: 200,
+                            background: 'rgba(26, 24, 20, 0.36)',
+                            backdropFilter: 'blur(4px)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+                        }}
                     >
                         <motion.div
                             initial={{ scale: 0.94, opacity: 0, y: 12 }}
                             animate={{ scale: 1, opacity: 1, y: 0 }}
                             exit={{ scale: 0.94, opacity: 0, y: 12 }}
                             transition={{ duration: 0.2, ease: [0, 0, 0.2, 1] }}
-                            className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-7"
+                            onClick={e => e.stopPropagation()}
+                            style={{
+                                width: '100%', maxWidth: 448,
+                                background: warm.colors.bgSurface,
+                                border: `1px solid ${warm.colors.borderDefined}`,
+                                borderRadius: 16, boxShadow: warm.shadow.lifted, padding: 28,
+                            }}
                         >
-                            <h3 className="text-base font-black text-slate-100 mb-2 tracking-tight">Before you send this</h3>
-                            <p className="text-sm text-slate-400 leading-relaxed mb-1">
+                            <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 800, color: warm.colors.textPrimary, letterSpacing: '-0.01em' }}>Before you send this</h3>
+                            <p style={{ margin: '0 0 4px', fontSize: 13, color: warm.colors.textSecondary, lineHeight: 1.6 }}>
                                 Read through your document carefully before submitting. AI-generated content can contain errors, wrong dates, or details that don't reflect your actual experience.
                             </p>
-                            <p className="text-sm text-slate-400 leading-relaxed mb-6">
+                            <p style={{ margin: '0 0 24px', fontSize: 13, color: warm.colors.textSecondary, lineHeight: 1.6 }}>
                                 A 2-minute review can be the difference between an interview and a rejection.
                             </p>
                             <button
@@ -787,8 +790,12 @@ export const ApplicationWorkspace: React.FC = () => {
                                     pendingDownloadFn?.();
                                     setPendingDownloadFn(null);
                                 }}
-                                className="w-full py-3 rounded-xl font-black text-sm text-white mb-3 transition-all hover:opacity-90"
-                                style={{ background: 'linear-gradient(135deg, #f97316 0%, #ec4899 50%, #7c3aed 100%)' }}
+                                style={{
+                                    width: '100%', padding: '12px 0', borderRadius: 12,
+                                    fontWeight: 800, fontSize: 13, color: '#FFFFFF',
+                                    background: warm.colors.accentPetrol, border: 'none',
+                                    cursor: 'pointer', marginBottom: 12,
+                                }}
                             >
                                 I'll review it, download
                             </button>
@@ -799,7 +806,11 @@ export const ApplicationWorkspace: React.FC = () => {
                                     pendingDownloadFn?.();
                                     setPendingDownloadFn(null);
                                 }}
-                                className="w-full py-2 text-xs font-bold text-slate-600 hover:text-slate-400 transition-colors"
+                                style={{
+                                    width: '100%', padding: '8px 0', fontSize: 12, fontWeight: 700,
+                                    color: warm.colors.textMuted, background: 'transparent',
+                                    border: 'none', cursor: 'pointer',
+                                }}
                             >
                                 Don't remind me again
                             </button>
@@ -808,39 +819,57 @@ export const ApplicationWorkspace: React.FC = () => {
                 )}
             </AnimatePresence>
 
-            <header className="h-16 border-b border-slate-800 bg-slate-900/50 backdrop-blur-xl flex items-center justify-between px-6 shrink-0">
-                <div className="flex items-center gap-4">
+            <header style={{
+                height: 64, borderBottom: `1px solid ${warm.colors.borderWhisper}`,
+                background: warm.colors.bgSurface,
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '0 24px', flexShrink: 0,
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                     <button
                         onClick={handleBack}
                         aria-label={`Back to ${backLabel}`}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-slate-200 transition-colors group"
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px',
+                            background: 'transparent', border: 'none', cursor: 'pointer',
+                            color: warm.colors.textMuted, borderRadius: 8,
+                        }}
                     >
                         <ChevronLeft size={16} className="shrink-0" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest max-w-[120px] truncate hidden sm:block">
+                        <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'none' }} className="sm:block">
                             {backLabel}
                         </span>
                     </button>
                     <div>
-                        <h1 className="text-sm font-bold text-slate-200">
+                        <h1 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: warm.colors.textPrimary }}>
                             {state.metadata?.role || 'New Application'}
                         </h1>
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                        <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                             {state.metadata?.company || 'Drafting Workspace'}
                         </p>
                     </div>
                 </div>
 
-                <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
+                <div style={{
+                    display: 'flex', background: warm.colors.bgAlt, padding: 4,
+                    borderRadius: 12, border: `1px solid ${warm.colors.borderWhisper}`,
+                }}>
                     {(['resume', 'cover-letter', 'selection-criteria', 'interview-prep'] as const)
-                        .map(tab => (
+                        .map(tab => {
+                        const active = state.activeTab === tab;
+                        return (
                         <button
                             key={tab}
                             onClick={() => setState(prev => ({ ...prev, activeTab: tab }))}
-                            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
-                                state.activeTab === tab
-                                    ? 'bg-brand-600 text-white shadow-lg'
-                                    : 'text-slate-500 hover:text-slate-300'
-                            }`}
+                            style={{
+                                padding: '5px 16px', borderRadius: 8, fontSize: 11, fontWeight: 700,
+                                display: 'flex', alignItems: 'center', gap: 8,
+                                transition: 'all 0.15s',
+                                color: active ? '#FFFFFF' : warm.colors.textMuted,
+                                background: active ? warm.colors.accentPetrol : 'transparent',
+                                border: 'none', cursor: 'pointer',
+                                boxShadow: active ? '0 1px 3px rgba(45,90,110,0.20)' : 'none',
+                            }}
                         >
                             {tab === 'resume' && <FileText size={14} />}
                             {tab === 'cover-letter' && <Mail size={14} />}
@@ -848,15 +877,18 @@ export const ApplicationWorkspace: React.FC = () => {
                             {tab === 'interview-prep' && <ChevronRight size={14} />}
                             <span>{tab === 'interview-prep' ? 'Interview Prep' : tab === 'selection-criteria' ? 'Selection Criteria' : tab === 'cover-letter' ? 'Cover Letter' : 'Resume'}</span>
                             {tab === 'selection-criteria' && state.requiresSelectionCriteria && (
-                                <span className="inline-flex items-center justify-center w-1.5 h-1.5 rounded-full bg-amber-400" title="This job requires selection criteria" />
+                                <span style={{
+                                    display: 'inline-flex', width: 6, height: 6, borderRadius: '50%',
+                                    background: warm.colors.accentGold,
+                                }} title="This job requires selection criteria" />
                             )}
                         </button>
-                    ))}
+                    )})}
                 </div>
 
-                <div className="flex items-center gap-6">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
                     {profile?.completion && (
-                        <ProfileCompletion 
+                        <ProfileCompletion
                             completion={profile.completion}
                             variant="compact"
                             size="sm"
@@ -865,16 +897,30 @@ export const ApplicationWorkspace: React.FC = () => {
 
                     <button
                         onClick={() => setState(prev => ({ ...prev, isDrawerOpen: true }))}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg transition-all"
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: 8, padding: '5px 12px',
+                            background: warm.colors.bgAlt, color: warm.colors.textSecondary,
+                            fontSize: 11, fontWeight: 700, borderRadius: 8,
+                            border: `1px solid ${warm.colors.borderWhisper}`, cursor: 'pointer',
+                            transition: 'all 0.15s',
+                        }}
                     >
                         <Database size={14} />
                         Choose Achievements
                     </button>
                     <button
+                        data-process-step="save"
                         onClick={handleDownload}
                         disabled={state.isGenerating || !state.documents[state.activeTab as keyof typeof state.documents]}
                         aria-label="Export document as Word"
-                        className="flex items-center gap-1.5 px-3 py-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-[11px] font-bold rounded-lg transition-all shadow-md shadow-emerald-600/20"
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: 4, padding: '4px 12px',
+                            background: warm.colors.success, color: '#FFFFFF',
+                            fontSize: 11, fontWeight: 700, borderRadius: 8,
+                            border: 'none', cursor: state.isGenerating ? 'not-allowed' : 'pointer',
+                            opacity: state.isGenerating ? 0.5 : 1,
+                            boxShadow: '0 1px 3px rgba(42,157,111,0.20)',
+                        }}
                     >
                         <Download size={12} />
                         .docx
@@ -882,7 +928,14 @@ export const ApplicationWorkspace: React.FC = () => {
                     <button
                         onClick={handleDownloadPdf}
                         disabled={exportingPdf}
-                        className="flex items-center gap-1.5 px-3 py-1 bg-rose-700 hover:bg-rose-600 disabled:opacity-50 text-white text-[11px] font-bold rounded-lg transition-all shadow-md shadow-rose-700/20"
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: 4, padding: '4px 12px',
+                            background: warm.colors.danger, color: '#FFFFFF',
+                            fontSize: 11, fontWeight: 700, borderRadius: 8,
+                            border: 'none', cursor: exportingPdf ? 'not-allowed' : 'pointer',
+                            opacity: exportingPdf ? 0.5 : 1,
+                            boxShadow: '0 1px 3px rgba(184,92,92,0.20)',
+                        }}
                     >
                         {exportingPdf ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />}
                         .pdf
@@ -891,14 +944,23 @@ export const ApplicationWorkspace: React.FC = () => {
             </header>
 
             {profile?.completion && !profile.completion.isReady && (
-                <div className="bg-amber-500/10 border-b border-amber-500/20 px-6 py-2 flex items-center justify-between">
-                    <div className="flex items-center gap-3 text-amber-400 text-xs font-medium">
-                        <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                <div style={{
+                    background: 'rgba(197,160,89,0.10)',
+                    borderBottom: '1px solid rgba(197,160,89,0.20)',
+                    padding: '6px 24px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: warm.colors.accentGold, fontSize: 12, fontWeight: 500 }}>
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: warm.colors.accentGold }} />
                         <span>Profile Incomplete: Generated content may require heavy manual editing.</span>
                     </div>
-                    <button 
+                    <button
                         onClick={() => navigate('/workspace')}
-                        className="text-[10px] font-bold text-amber-500 uppercase tracking-widest hover:text-amber-400 transition-colors"
+                        style={{
+                            fontSize: 10, fontWeight: 700, color: warm.colors.accentGold,
+                            background: 'transparent', border: 'none', cursor: 'pointer',
+                            textTransform: 'uppercase', letterSpacing: '0.06em',
+                        }}
                     >
                         Fix Profile →
                     </button>
@@ -907,37 +969,57 @@ export const ApplicationWorkspace: React.FC = () => {
 
             <ApplyContextBanner context={applyContext} onDismiss={handleDismissApplyContext} />
 
-            <main className="flex-1 flex overflow-hidden">
-                <aside className="w-1/3 border-r border-slate-800 bg-slate-900/20 flex flex-col overflow-hidden">
+            <main style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+                <aside style={{
+                    width: '33.333%', borderRight: `1px solid ${warm.colors.borderWhisper}`,
+                    display: 'flex', flexDirection: 'column', overflow: 'hidden',
+                }}>
                     {/* Cover letter: tone selector + research panel */}
                     {state.activeTab === 'cover-letter' && (
-                        <div className="p-4 border-b border-slate-800 shrink-0 overflow-y-auto max-h-[55%] custom-scrollbar">
+                        <div style={{
+                            padding: 16, borderBottom: `1px solid ${warm.colors.borderWhisper}`,
+                            flexShrink: 0, overflowY: 'auto', maxHeight: '55%',
+                        }} className="custom-scrollbar">
                             {/* Tone selector */}
-                            <div className="rounded-xl border border-slate-700/50 bg-slate-900/60 overflow-hidden mb-4">
-                                <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-800 bg-slate-900/40">
-                                    <Mail size={13} className="text-brand-400" />
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tone</span>
+                            <div style={{
+                                borderRadius: 12, border: `1px solid ${warm.colors.borderWhisper}`,
+                                overflow: 'hidden', marginBottom: 16,
+                            }}>
+                                <div style={{
+                                    display: 'flex', alignItems: 'center', gap: 8,
+                                    padding: '10px 16px', borderBottom: `1px solid ${warm.colors.borderWhisper}`,
+                                }}>
+                                    <Mail size={13} style={{ color: warm.colors.accentPetrol }} />
+                                    <span style={{ fontSize: 10, fontWeight: 800, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Tone</span>
                                 </div>
-                                <div className="flex p-2 gap-1.5">
-                                    {(['professional', 'warm', 'concise'] as const).map(t => (
-                                        <button
-                                            key={t}
-                                            onClick={() => setCoverLetterTone(t)}
-                                            className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border ${
-                                                coverLetterTone === t
-                                                    ? 'bg-brand-600 border-brand-500 text-white shadow-lg shadow-brand-600/20'
-                                                    : 'border-slate-700 text-slate-500 hover:text-slate-300 hover:border-slate-600'
-                                            }`}
-                                        >
-                                            {t}
-                                        </button>
-                                    ))}
+                                <div style={{ display: 'flex', padding: 6, gap: 4 }}>
+                                    {(['professional', 'warm', 'concise'] as const).map(t => {
+                                        const active = coverLetterTone === t;
+                                        return (
+                                            <button
+                                                key={t}
+                                                onClick={() => setCoverLetterTone(t)}
+                                                style={{
+                                                    flex: 1, padding: '5px 0', borderRadius: 8, fontSize: 10, fontWeight: 800,
+                                                    textTransform: 'uppercase', letterSpacing: '0.06em',
+                                                    transition: 'all 0.15s', cursor: 'pointer',
+                                                    background: active ? warm.colors.accentPetrol : 'transparent',
+                                                    color: active ? '#FFFFFF' : warm.colors.textMuted,
+                                                    border: active ? 'none' : `1px solid ${warm.colors.borderWhisper}`,
+                                                    boxShadow: active ? '0 1px 3px rgba(45,90,110,0.20)' : 'none',
+                                                }}
+                                            >
+                                                {t}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
                             {state.metadata?.company && (
                                 <CompanyResearchPanel
                                     company={state.metadata.company}
                                     role={state.metadata.role || ''}
+                                    jdText={state.jobDescription}
                                     research={companyResearch}
                                     onResearchUpdate={setCompanyResearch}
                                 />
@@ -947,11 +1029,18 @@ export const ApplicationWorkspace: React.FC = () => {
 
                     {/* SC tab: criteria input panel */}
                     {state.activeTab === 'selection-criteria' && (
-                        <div className="p-4 border-b border-slate-800 shrink-0 overflow-y-auto max-h-[55%] custom-scrollbar">
+                        <div style={{
+                            padding: 16, borderBottom: `1px solid ${warm.colors.borderWhisper}`,
+                            flexShrink: 0, overflowY: 'auto', maxHeight: '55%',
+                        }} className="custom-scrollbar">
                             {state.requiresSelectionCriteria && !selectionCriteriaText.trim() && (
-                                <div className="mb-3 flex items-start gap-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3.5 py-2.5">
-                                    <AlertCircle size={13} className="text-amber-400 mt-0.5 shrink-0" />
-                                    <p className="text-xs text-amber-300 leading-relaxed">
+                                <div style={{
+                                    display: 'flex', alignItems: 'flex-start', gap: 10,
+                                    background: 'rgba(197,160,89,0.10)', border: '1px solid rgba(197,160,89,0.20)',
+                                    borderRadius: 12, padding: '10px 14px', marginBottom: 12,
+                                }}>
+                                    <AlertCircle size={13} style={{ color: warm.colors.accentGold, marginTop: 2, flexShrink: 0 }} />
+                                    <p style={{ margin: 0, fontSize: 12, color: warm.colors.accentGold, lineHeight: 1.5 }}>
                                         This job requires selection criteria responses. Paste the criteria below to generate targeted STAR responses for each criterion.
                                     </p>
                                 </div>
@@ -974,7 +1063,14 @@ export const ApplicationWorkspace: React.FC = () => {
                                     }));
                                     handleGenerate('selection-criteria');
                                 }}
-                                className="w-full mt-2 py-2.5 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                                style={{
+                                    width: '100%', marginTop: 8, padding: '10px 0',
+                                    background: selectionCriteriaText.trim().length < 20 || state.isGenerating ? 'rgba(124,108,181,0.4)' : '#7C6CB5',
+                                    color: '#FFFFFF', fontSize: 12, fontWeight: 700,
+                                    borderRadius: 12, border: 'none', cursor: selectionCriteriaText.trim().length < 20 || state.isGenerating ? 'not-allowed' : 'pointer',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                    opacity: selectionCriteriaText.trim().length < 20 || state.isGenerating ? 0.4 : 1,
+                                }}
                             >
                                 <List size={14} />
                                 Generate SC Responses
@@ -985,20 +1081,34 @@ export const ApplicationWorkspace: React.FC = () => {
 
                     {/* Academic Toolkit, shown for university framework */}
                     {(employerFramework === 'university_academic' || employerFramework === 'university_professional') && (
-                        <div className="p-4 border-b border-slate-800 shrink-0">
-                            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 overflow-hidden">
-                                <div className="flex items-center gap-2 px-4 py-3 border-b border-amber-500/15 bg-amber-500/5">
-                                    <BookOpen size={13} className="text-amber-400" />
-                                    <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest">Academic Toolkit</span>
+                        <div style={{ padding: 16, borderBottom: `1px solid ${warm.colors.borderWhisper}`, flexShrink: 0 }}>
+                            <div style={{
+                                borderRadius: 12, border: '1px solid rgba(197,160,89,0.20)',
+                                background: 'rgba(197,160,89,0.05)', overflow: 'hidden',
+                            }}>
+                                <div style={{
+                                    display: 'flex', alignItems: 'center', gap: 8,
+                                    padding: '10px 16px', borderBottom: '1px solid rgba(197,160,89,0.15)',
+                                }}>
+                                    <BookOpen size={13} style={{ color: warm.colors.accentGold }} />
+                                    <span style={{ fontSize: 10, fontWeight: 800, color: warm.colors.accentGold, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Academic Toolkit</span>
                                 </div>
-                                <div className="p-4 space-y-2">
-                                    <p className="text-[10px] text-slate-400 leading-relaxed">
+                                <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                    <p style={{ margin: 0, fontSize: 10, color: warm.colors.textSecondary, lineHeight: 1.5 }}>
                                         University positions typically require academic-specific documents beyond the standard application set.
                                     </p>
                                     <button
                                         onClick={() => handleGenerateAcademic('teaching-philosophy')}
                                         disabled={!!generatingAcademic}
-                                        className="w-full py-2 bg-amber-600/20 hover:bg-amber-600/30 disabled:opacity-50 text-amber-300 text-[11px] font-bold rounded-lg border border-amber-500/30 transition-all flex items-center justify-center gap-2"
+                                        style={{
+                                            width: '100%', padding: '8px 0',
+                                            background: 'rgba(197,160,89,0.20)', color: warm.colors.accentGold,
+                                            fontSize: 11, fontWeight: 700, borderRadius: 8,
+                                            border: '1px solid rgba(197,160,89,0.30)',
+                                            cursor: generatingAcademic ? 'not-allowed' : 'pointer',
+                                            opacity: generatingAcademic ? 0.5 : 1,
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                        }}
                                     >
                                         {generatingAcademic === 'teaching-philosophy' ? (
                                             <RefreshCcw size={11} className="animate-spin" />
@@ -1008,7 +1118,15 @@ export const ApplicationWorkspace: React.FC = () => {
                                     <button
                                         onClick={() => handleGenerateAcademic('research-statement')}
                                         disabled={!!generatingAcademic}
-                                        className="w-full py-2 bg-amber-600/20 hover:bg-amber-600/30 disabled:opacity-50 text-amber-300 text-[11px] font-bold rounded-lg border border-amber-500/30 transition-all flex items-center justify-center gap-2"
+                                        style={{
+                                            width: '100%', padding: '8px 0',
+                                            background: 'rgba(197,160,89,0.20)', color: warm.colors.accentGold,
+                                            fontSize: 11, fontWeight: 700, borderRadius: 8,
+                                            border: '1px solid rgba(197,160,89,0.30)',
+                                            cursor: generatingAcademic ? 'not-allowed' : 'pointer',
+                                            opacity: generatingAcademic ? 0.5 : 1,
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                        }}
                                     >
                                         {generatingAcademic === 'research-statement' ? (
                                             <RefreshCcw size={11} className="animate-spin" />
@@ -1016,11 +1134,16 @@ export const ApplicationWorkspace: React.FC = () => {
                                         {academicDocs['research-statement'] ? 'Regenerate' : 'Generate'} Research Statement
                                     </button>
                                     {(academicDocs['teaching-philosophy'] || academicDocs['research-statement']) && (
-                                        <div className="flex gap-2 pt-1">
+                                        <div style={{ display: 'flex', gap: 8, paddingTop: 4 }}>
                                             {academicDocs['teaching-philosophy'] && (
                                                 <button
                                                     onClick={() => setAcademicViewerType('teaching-philosophy')}
-                                                    className="flex-1 py-1.5 text-[10px] font-bold text-slate-300 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition-colors"
+                                                    style={{
+                                                        flex: 1, padding: '5px 0', fontSize: 10, fontWeight: 700,
+                                                        color: warm.colors.textSecondary, background: warm.colors.bgAlt,
+                                                        borderRadius: 8, border: `1px solid ${warm.colors.borderWhisper}`,
+                                                        cursor: 'pointer',
+                                                    }}
                                                 >
                                                     View Teaching Phil.
                                                 </button>
@@ -1028,7 +1151,12 @@ export const ApplicationWorkspace: React.FC = () => {
                                             {academicDocs['research-statement'] && (
                                                 <button
                                                     onClick={() => setAcademicViewerType('research-statement')}
-                                                    className="flex-1 py-1.5 text-[10px] font-bold text-slate-300 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition-colors"
+                                                    style={{
+                                                        flex: 1, padding: '5px 0', fontSize: 10, fontWeight: 700,
+                                                        color: warm.colors.textSecondary, background: warm.colors.bgAlt,
+                                                        borderRadius: 8, border: `1px solid ${warm.colors.borderWhisper}`,
+                                                        cursor: 'pointer',
+                                                    }}
                                                 >
                                                     View Research Stmt.
                                                 </button>
@@ -1040,9 +1168,9 @@ export const ApplicationWorkspace: React.FC = () => {
                         </div>
                     )}
 
-                    {/* Cover Letter Personalisation, shown when cover letter is generated, not on interview prep */}
+                    {/* Cover Letter Personalisation */}
                     {state.documents['cover-letter'] && !state.isGenerating && state.activeTab !== 'interview-prep' && (
-                        <div className="p-4 border-b border-slate-800">
+                        <div style={{ padding: 16, borderBottom: `1px solid ${warm.colors.borderWhisper}` }}>
                             <CoverLetterPersonalisationPanel
                                 document={state.documents['cover-letter']}
                                 jobDescription={state.jobDescription}
@@ -1051,9 +1179,9 @@ export const ApplicationWorkspace: React.FC = () => {
                         </div>
                     )}
 
-                    {/* Tone Rewrite Panel, shown when any document is ready, not on interview prep */}
+                    {/* Tone Rewrite Panel */}
                     {Object.values(state.documents).some(Boolean) && !state.isGenerating && state.activeTab !== 'interview-prep' && (
-                        <div className="p-4 border-b border-slate-800">
+                        <div style={{ padding: 16, borderBottom: `1px solid ${warm.colors.borderWhisper}` }}>
                             <ToneRewritePanel
                                 document={state.documents[state.activeTab as keyof typeof state.documents] || ''}
                                 docType={state.activeTab}
@@ -1061,18 +1189,24 @@ export const ApplicationWorkspace: React.FC = () => {
                         </div>
                     )}
 
-                    <div className="shrink-0 px-4 pt-4 border-b border-slate-800">
-                        <div className="flex items-center justify-between mb-0.5">
-                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Job Description</span>
+                    <div style={{
+                        flexShrink: 0, padding: '16px 16px 12px',
+                        borderBottom: `1px solid ${warm.colors.borderWhisper}`,
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                            <span style={{ fontSize: 10, fontWeight: 800, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Job Description</span>
                             {state.keywords && state.keywords.length > 0 && (
-                                <span className="text-[9px] font-bold text-brand-400/70 uppercase tracking-wider">{state.keywords.length} keywords</span>
+                                <span style={{ fontSize: 9, fontWeight: 700, color: warm.colors.accentPetrol, opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{state.keywords.length} keywords</span>
                             )}
                         </div>
                         {state.jobDescription && (
                             <JDSummaryBar jobDescription={state.jobDescription} />
                         )}
                     </div>
-                    <div className="flex-1 overflow-y-auto p-6 text-sm text-slate-400 leading-relaxed custom-scrollbar">
+                    <div style={{
+                        flex: 1, overflowY: 'auto', padding: 24,
+                        fontSize: 13, color: warm.colors.textSecondary, lineHeight: 1.7,
+                    }} className="custom-scrollbar">
                         <HighlightedJD text={state.jobDescription} keywords={state.keywords || []} />
                     </div>
 
@@ -1083,16 +1217,22 @@ export const ApplicationWorkspace: React.FC = () => {
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
-                                className="absolute inset-0 bg-slate-950/95 z-20 flex flex-col overflow-hidden"
+                                style={{
+                                    position: 'absolute', inset: 0,
+                                    display: 'flex', flexDirection: 'column', overflow: 'hidden',
+                                }}
                             >
-                                <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-800 shrink-0">
-                                    <div className="flex items-center gap-2">
-                                        {academicViewerType === 'teaching-philosophy' ? <BookOpen size={14} className="text-amber-400" /> : <FlaskConical size={14} className="text-amber-400" />}
-                                        <span className="text-sm font-bold text-slate-200">
+                                <div style={{
+                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                    padding: '12px 20px', borderBottom: `1px solid ${warm.colors.borderWhisper}`, flexShrink: 0,
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        {academicViewerType === 'teaching-philosophy' ? <BookOpen size={14} style={{ color: warm.colors.accentGold }} /> : <FlaskConical size={14} style={{ color: warm.colors.accentGold }} />}
+                                        <span style={{ fontSize: 13, fontWeight: 700, color: warm.colors.textPrimary }}>
                                             {academicViewerType === 'teaching-philosophy' ? 'Teaching Philosophy Statement' : 'Research Statement'}
                                         </span>
                                     </div>
-                                    <div className="flex items-center gap-2">
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                         <button
                                             onClick={async () => {
                                                 const content = academicDocs[academicViewerType];
@@ -1101,20 +1241,56 @@ export const ApplicationWorkspace: React.FC = () => {
                                                     toast.success('Downloaded as .docx');
                                                 }
                                             }}
-                                            className="text-[10px] font-black text-emerald-400 border border-emerald-700/50 px-3 py-1.5 rounded-lg hover:bg-emerald-500/10 transition-colors uppercase tracking-wider"
+                                            style={{
+                                                fontSize: 10, fontWeight: 800, color: warm.colors.success,
+                                                border: `1px solid rgba(42,157,111,0.40)`, padding: '5px 12px',
+                                                borderRadius: 8, background: 'transparent', cursor: 'pointer',
+                                                textTransform: 'uppercase', letterSpacing: '0.06em',
+                                            }}
                                         >
                                             Export .docx
                                         </button>
                                         <button
+                                            onClick={async () => {
+                                                const content = academicDocs[academicViewerType];
+                                                if (content) {
+                                                    setExportingPdf(true);
+                                                    try {
+                                                        await exportPdf(content, academicViewerType as DocType, profile?.name || '', state.metadata?.role);
+                                                        toast.success('Downloaded as PDF');
+                                                    } catch {
+                                                        toast.error('PDF export failed');
+                                                    } finally {
+                                                        setExportingPdf(false);
+                                                    }
+                                                }
+                                            }}
+                                            style={{
+                                                fontSize: 10, fontWeight: 800, color: warm.colors.danger,
+                                                border: `1px solid ${warm.colors.danger}40`, padding: '5px 12px',
+                                                borderRadius: 8, background: 'transparent', cursor: 'pointer',
+                                                textTransform: 'uppercase', letterSpacing: '0.06em',
+                                            }}
+                                        >
+                                            Export .pdf
+                                        </button>
+                                        <button
                                             onClick={() => setAcademicViewerType(null)}
-                                            className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 transition-colors"
+                                            style={{
+                                                padding: '5px 6px', borderRadius: 8, background: 'transparent',
+                                                border: 'none', cursor: 'pointer', color: warm.colors.textMuted,
+                                            }}
                                         >
                                             <ChevronLeft size={16} />
                                         </button>
                                     </div>
                                 </div>
-                                <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-                                    <div className="max-w-2xl mx-auto bg-white text-slate-900 rounded-sm p-10 shadow-2xl">
+                                <div style={{ flex: 1, overflowY: 'auto', padding: 24 }} className="custom-scrollbar">
+                                    <div style={{
+                                        maxWidth: 672, margin: '0 auto',
+                                        background: '#FFFFFF', color: '#111827',
+                                        borderRadius: 2, padding: 40, boxShadow: warm.shadow.lifted,
+                                    }}>
                                         <article className="prose prose-slate max-w-none">
                                             <ReactMarkdown>{academicDocs[academicViewerType] || ''}</ReactMarkdown>
                                         </article>
@@ -1125,18 +1301,42 @@ export const ApplicationWorkspace: React.FC = () => {
                     </AnimatePresence>
                 </aside>
 
-                <section className="flex-1 bg-slate-950 flex flex-col relative overflow-hidden">
-                    <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/10 shrink-0">
-                        <div className="flex bg-slate-900/60 p-1 rounded-lg border border-slate-800">
+                <section style={{
+                    flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden',
+                }}
+                data-process-step="tailor"
+                >
+                    <div style={{
+                        padding: '12px 16px', borderBottom: `1px solid ${warm.colors.borderWhisper}`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
+                    }}>
+                        <div style={{
+                            display: 'flex', background: warm.colors.bgAlt, padding: 4,
+                            borderRadius: 8, border: `1px solid ${warm.colors.borderWhisper}`,
+                        }}>
                             <button
                                 onClick={() => setIsEditing(false)}
-                                className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all flex items-center gap-2 ${!isEditing ? 'bg-brand-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
+                                style={{
+                                    padding: '4px 12px', borderRadius: 6, fontSize: 10, fontWeight: 700,
+                                    transition: 'all 0.15s', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+                                    color: !isEditing ? '#FFFFFF' : warm.colors.textMuted,
+                                    background: !isEditing ? warm.colors.accentPetrol : 'transparent',
+                                    border: 'none',
+                                    boxShadow: !isEditing ? '0 1px 3px rgba(45,90,110,0.20)' : 'none',
+                                }}
                             >
                                 Preview
                             </button>
                             <button
                                 onClick={() => setIsEditing(true)}
-                                className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all flex items-center gap-2 ${isEditing ? 'bg-brand-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
+                                style={{
+                                    padding: '4px 12px', borderRadius: 6, fontSize: 10, fontWeight: 700,
+                                    transition: 'all 0.15s', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+                                    color: isEditing ? '#FFFFFF' : warm.colors.textMuted,
+                                    background: isEditing ? warm.colors.accentPetrol : 'transparent',
+                                    border: 'none',
+                                    boxShadow: isEditing ? '0 1px 3px rgba(45,90,110,0.20)' : 'none',
+                                }}
                             >
                                 Edit Inline
                             </button>
@@ -1148,30 +1348,32 @@ export const ApplicationWorkspace: React.FC = () => {
                             const wordCount = content.trim().split(/\s+/).length;
                             const isOverLimit = state.activeTab === 'selection-criteria' && wordCount > 2500;
 
-                            // ATS keyword coverage for resume tab
                             let atsLabel: string | null = null;
-                            let atsColor = 'text-slate-500';
+                            let atsColor: string = warm.colors.textMuted;
                             if (state.activeTab === 'resume' && state.keywords && state.keywords.length > 0) {
                                 const contentLower = content.toLowerCase();
                                 const found = state.keywords.filter(k => contentLower.includes(k.toLowerCase())).length;
                                 const pct = Math.round((found / state.keywords.length) * 100);
                                 if (pct >= 80) {
                                     atsLabel = `${pct}% ATS COVERAGE`;
-                                    atsColor = 'text-emerald-400';
+                                    atsColor = warm.colors.success;
                                 } else {
                                     atsLabel = 'JD MATCHED';
-                                    atsColor = 'text-indigo-400';
+                                    atsColor = '#818cf8';
                                 }
                             }
 
                             return (
-                                <div className="flex items-center gap-3">
-                                    <span className={`text-[9px] font-bold uppercase tracking-wider ${isOverLimit ? 'text-amber-400' : 'text-slate-600'}`}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                    <span style={{
+                                        fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
+                                        color: isOverLimit ? warm.colors.accentGold : warm.colors.textMuted,
+                                    }}>
                                         {wordCount.toLocaleString()} words
                                         {isOverLimit && ' · check limit'}
                                     </span>
                                     {atsLabel && (
-                                        <span className={`text-[9px] font-bold uppercase tracking-wider ${atsColor}`}>
+                                        <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: atsColor }}>
                                             {atsLabel}
                                         </span>
                                     )}
@@ -1184,51 +1386,85 @@ export const ApplicationWorkspace: React.FC = () => {
                             <button
                                 onClick={handleGetEmailVersion}
                                 disabled={generatingEmail}
-                                className="flex items-center gap-2 px-3 py-1 bg-sky-600/10 text-sky-400 text-xs font-bold rounded-md hover:bg-sky-600/20 transition-all border border-sky-600/20 disabled:opacity-50"
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: 8, padding: '4px 12px',
+                                    background: 'rgba(45,90,110,0.10)', color: warm.colors.accentPetrol,
+                                    fontSize: 11, fontWeight: 700, borderRadius: 6,
+                                    border: '1px solid rgba(45,90,110,0.20)',
+                                    cursor: generatingEmail ? 'not-allowed' : 'pointer', opacity: generatingEmail ? 0.5 : 1,
+                                }}
                             >
                                 {generatingEmail ? <Loader2 size={12} className="animate-spin" /> : <Mail size={12} />}
                                 Email Version
                             </button>
                         )}
 
-                        <div className="relative">
+                        <div style={{ position: 'relative' }}>
                             <button
                                 onClick={() => setIsConfirmingRegen(!isConfirmingRegen)}
-                                className="flex items-center gap-2 px-3 py-1 bg-brand-600/10 text-brand-400 text-xs font-bold rounded-md hover:bg-brand-600/20 transition-all border border-brand-600/20"
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: 8, padding: '4px 12px',
+                                    background: 'rgba(45,90,110,0.10)', color: warm.colors.accentPetrol,
+                                    fontSize: 11, fontWeight: 700, borderRadius: 6,
+                                    border: '1px solid rgba(45,90,110,0.20)', cursor: 'pointer',
+                                }}
                             >
                                 <RefreshCcw size={12} className={state.isGenerating ? 'animate-spin' : ''} />
                                 Re-generate
                             </button>
-                            
+
                             <AnimatePresence>
                                 {isConfirmingRegen && (
                                     <motion.div
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         exit={{ opacity: 0, y: 10 }}
-                                        className="absolute right-0 top-full mt-2 w-64 bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-2xl z-20"
+                                        style={{
+                                            position: 'absolute', right: 0, top: 'calc(100% + 8px)',
+                                            width: 256,
+                                            background: warm.colors.bgSurface,
+                                            border: `1px solid ${warm.colors.borderDefined}`,
+                                            borderRadius: 14, padding: 12,
+                                            boxShadow: warm.shadow.lifted, zIndex: 20,
+                                        }}
                                     >
-                                        <p className="text-[10px] text-slate-400 font-bold mb-2">What should change? (optional)</p>
+                                        <p style={{ margin: '0 0 8px', fontSize: 10, color: warm.colors.textSecondary, fontWeight: 700 }}>What should change? (optional)</p>
                                         <textarea
                                             value={regenerateFeedback}
                                             onChange={e => setRegenerateFeedback(e.target.value)}
                                             placeholder="e.g. Make it more concise · Emphasise leadership · Warmer tone"
                                             rows={2}
-                                            className="w-full text-[11px] px-2 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-300 placeholder:text-slate-600 resize-none focus:outline-none focus:border-brand-500 mb-2.5"
+                                            style={{
+                                                width: '100%', fontSize: 11, padding: '6px 8px',
+                                                background: warm.colors.bgAlt, border: `1px solid ${warm.colors.borderWhisper}`,
+                                                borderRadius: 8, color: warm.colors.textPrimary,
+                                                resize: 'none', outline: 'none', fontFamily: 'inherit',
+                                                boxSizing: 'border-box', marginBottom: 10,
+                                            }}
+                                            onFocus={e => { e.currentTarget.style.borderColor = warm.colors.accentPetrol; }}
+                                            onBlur={e => { e.currentTarget.style.borderColor = warm.colors.borderWhisper; }}
                                         />
-                                        <div className="flex gap-2">
+                                        <div style={{ display: 'flex', gap: 8 }}>
                                             <button
                                                 onClick={() => {
                                                     handleGenerate(state.activeTab, true);
                                                     setIsConfirmingRegen(false);
                                                 }}
-                                                className="flex-1 py-1 bg-brand-600 text-white text-[10px] font-bold rounded hover:bg-brand-500"
+                                                style={{
+                                                    flex: 1, padding: '4px 0', background: warm.colors.accentPetrol,
+                                                    color: '#FFFFFF', fontSize: 10, fontWeight: 700, borderRadius: 8,
+                                                    border: 'none', cursor: 'pointer',
+                                                }}
                                             >
                                                 Regenerate
                                             </button>
                                             <button
                                                 onClick={() => { setIsConfirmingRegen(false); setRegenerateFeedback(''); }}
-                                                className="flex-1 py-1 bg-slate-800 text-slate-300 text-[10px] font-bold rounded hover:bg-slate-700"
+                                                style={{
+                                                    flex: 1, padding: '4px 0', background: warm.colors.bgAlt,
+                                                    color: warm.colors.textSecondary, fontSize: 10, fontWeight: 700, borderRadius: 8,
+                                                    border: 'none', cursor: 'pointer',
+                                                }}
                                             >
                                                 Cancel
                                             </button>
@@ -1239,9 +1475,12 @@ export const ApplicationWorkspace: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center bg-slate-900/10 custom-scrollbar">
+                    <div style={{
+                        flex: 1, overflowY: 'auto', padding: 24,
+                        display: 'flex', flexDirection: 'column', alignItems: 'center',
+                    }} className="custom-scrollbar">
                         {state.dimensions && state.overallGrade && (
-                            <div className="w-full max-w-3xl">
+                            <div style={{ width: '100%', maxWidth: 768 }}>
                                 <DimensionsIsland
                                     dimensions={state.dimensions as unknown as DimensionScores}
                                     overallGrade={state.overallGrade}
@@ -1257,40 +1496,55 @@ export const ApplicationWorkspace: React.FC = () => {
                             </div>
                         )}
                         {state.activeTab === 'resume' && !state.isGenerating && (profile?.certifications?.length === 0 || profile?.volunteering?.length === 0) && (
-                            <div className="w-full max-w-3xl mb-3 flex gap-2 flex-wrap">
+                            <div style={{ width: '100%', maxWidth: 768, marginBottom: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                                 {profile?.certifications?.length === 0 && (
-                                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-full text-[10px] font-bold text-amber-400">
+                                    <div style={{
+                                        display: 'flex', alignItems: 'center', gap: 4, padding: '5px 12px',
+                                        background: 'rgba(197,160,89,0.10)', border: '1px solid rgba(197,160,89,0.20)',
+                                        borderRadius: 999, fontSize: 10, fontWeight: 700, color: warm.colors.accentGold,
+                                    }}>
                                         <PlusCircle size={10} />
                                         Add certifications to your profile to include this section
                                     </div>
                                 )}
                                 {profile?.volunteering?.length === 0 && (
-                                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-full text-[10px] font-bold text-amber-400">
+                                    <div style={{
+                                        display: 'flex', alignItems: 'center', gap: 4, padding: '5px 12px',
+                                        background: 'rgba(197,160,89,0.10)', border: '1px solid rgba(197,160,89,0.20)',
+                                        borderRadius: 999, fontSize: 10, fontWeight: 700, color: warm.colors.accentGold,
+                                    }}>
                                         <PlusCircle size={10} />
                                         Add volunteering to your profile. Valued by Australian employers.
                                     </div>
                                 )}
                             </div>
                         )}
-                        {/* Selection criteria alert, shown whenever analysis flags SC required */}
+                        {/* Selection criteria alert */}
                         {!scBannerDismissed && (state.requiresSelectionCriteria || ['selection criteria', 'key selection criteria', 'duty statement', 'address the criteria'].some(kw => state.jobDescription?.toLowerCase().includes(kw))) && !!state.dimensions && !state.isGenerating && (
-                            <div className="w-full max-w-3xl mb-3 rounded-xl border border-purple-500/30 bg-purple-500/8 overflow-hidden">
-                                <div className="flex items-start gap-3 px-4 py-3">
-                                    <span className="text-purple-400 shrink-0 mt-0.5 text-base font-black">!</span>
-                                    <div className="flex-1">
-                                        <p className="text-[11px] font-black text-purple-300 uppercase tracking-wider mb-1">Selection Criteria Required</p>
-                                        <p className="text-xs text-purple-200/70 leading-relaxed mb-2">
-                                            This role requires a separate Selection Criteria response, most applicants don't know to submit one, and most get screened out for skipping it. Find the <strong className="text-purple-200/90">"Position Description"</strong> or <strong className="text-purple-200/90">"Job Information Pack"</strong> download on the job listing. The criteria questions are inside.
+                            <div style={{
+                                width: '100%', maxWidth: 768, marginBottom: 12,
+                                borderRadius: 12, border: '1px solid rgba(124,108,181,0.30)',
+                                overflow: 'hidden',
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 16px' }}>
+                                    <span style={{ color: '#7C6CB5', flexShrink: 0, marginTop: 1, fontSize: 16, fontWeight: 800 }}>!</span>
+                                    <div style={{ flex: 1 }}>
+                                        <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 800, color: '#7C6CB5', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Selection Criteria Required</p>
+                                        <p style={{ margin: '0 0 8px', fontSize: 12, color: 'rgba(124,108,181,0.7)', lineHeight: 1.5 }}>
+                                            This role requires a separate Selection Criteria response, most applicants don't know to submit one, and most get screened out for skipping it. Find the <strong>Position Description</strong> or <strong>Job Information Pack</strong> download on the job listing. The criteria questions are inside.
                                         </p>
                                         <button
                                             onClick={() => setState(s => ({ ...s, activeTab: 'selection-criteria' }))}
-                                            className="text-[11px] font-bold text-purple-300 hover:text-purple-100 transition-colors"
+                                            style={{
+                                                fontSize: 11, fontWeight: 700, color: '#7C6CB5',
+                                                background: 'transparent', border: 'none', cursor: 'pointer', padding: 0,
+                                            }}
                                         >
                                             Write my SC responses →
                                         </button>
                                     </div>
-                                    <button onClick={() => setScBannerDismissed(true)} className="text-purple-500/40 hover:text-purple-400 transition-colors ml-1 shrink-0" aria-label="Dismiss">
-                                        <span className="text-sm">×</span>
+                                    <button onClick={() => setScBannerDismissed(true)} style={{ color: 'rgba(124,108,181,0.4)', background: 'transparent', border: 'none', cursor: 'pointer', marginLeft: 4, flexShrink: 0 }} aria-label="Dismiss">
+                                        <span style={{ fontSize: 14 }}>×</span>
                                     </button>
                                 </div>
                             </div>
@@ -1307,24 +1561,32 @@ export const ApplicationWorkspace: React.FC = () => {
                                         y: { duration: 0.2, ease: [0.25, 1, 0.5, 1] },
                                         x: { duration: 0.4, delay: 0.5 },
                                     }}
-                                    className="w-full max-w-3xl mb-3 rounded-xl border border-amber-500/30 bg-amber-500/8 overflow-hidden"
+                                    style={{
+                                        width: '100%', maxWidth: 768, marginBottom: 12,
+                                        borderRadius: 12, border: '1px solid rgba(197,160,89,0.30)',
+                                        overflow: 'hidden',
+                                    }}
                                 >
                                     <button
                                         onClick={() => setViolationsExpanded(v => !v)}
-                                        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-amber-500/5 transition-colors text-left"
+                                        style={{
+                                            width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+                                            padding: '10px 16px', background: 'transparent', border: 'none',
+                                            cursor: 'pointer', textAlign: 'left', color: 'inherit', fontFamily: 'inherit',
+                                        }}
                                     >
-                                        <ShieldAlert size={13} className="text-amber-400 shrink-0" />
-                                        <span className="text-[10px] font-black text-amber-300 uppercase tracking-wider flex-1">Review Before Sending</span>
-                                        <span className="text-[10px] font-bold text-amber-500/60 mr-1">
+                                        <ShieldAlert size={13} style={{ color: warm.colors.accentGold, flexShrink: 0 }} />
+                                        <span style={{ fontSize: 10, fontWeight: 800, color: warm.colors.accentGold, textTransform: 'uppercase', letterSpacing: '0.06em', flex: 1 }}>Review Before Sending</span>
+                                        <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(197,160,89,0.6)', marginRight: 4 }}>
                                             {state.profileViolations!.length} flag{state.profileViolations!.length !== 1 ? 's' : ''}
                                         </span>
-                                        <motion.span animate={{ rotate: violationsExpanded ? 180 : 0 }} transition={{ duration: 0.15 }} className="inline-flex">
-                                            <ChevronDown size={12} className="text-amber-500/50" />
+                                        <motion.span animate={{ rotate: violationsExpanded ? 180 : 0 }} transition={{ duration: 0.15 }} style={{ display: 'inline-flex' }}>
+                                            <ChevronDown size={12} style={{ color: 'rgba(197,160,89,0.5)' }} />
                                         </motion.span>
                                         <span
                                             role="button"
                                             onClick={(e) => { e.stopPropagation(); setViolationsBannerDismissed(true); }}
-                                            className="ml-1 text-amber-500/40 hover:text-amber-400 transition-colors"
+                                            style={{ marginLeft: 4, color: 'rgba(197,160,89,0.4)', cursor: 'pointer', background: 'none', border: 'none', padding: 0, display: 'flex' }}
                                             aria-label="Dismiss"
                                         >
                                             <X size={12} />
@@ -1337,14 +1599,17 @@ export const ApplicationWorkspace: React.FC = () => {
                                                 animate={{ height: 'auto', opacity: 1 }}
                                                 exit={{ height: 0, opacity: 0 }}
                                                 transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
-                                                className="overflow-hidden"
+                                                style={{ overflow: 'hidden' }}
                                             >
-                                                <div className="px-4 pb-3.5 pt-0.5 border-t border-amber-500/20">
-                                                    <p className="text-[11px] text-amber-200/60 leading-relaxed mb-2 mt-2">The AI accuracy check flagged these claims, confirm each one matches your actual experience.</p>
-                                                    <ul className="space-y-1">
+                                                <div style={{
+                                                    padding: '0 16px 12px',
+                                                    borderTop: '1px solid rgba(197,160,89,0.20)',
+                                                }}>
+                                                    <p style={{ margin: '8px 0 8px', fontSize: 11, color: 'rgba(197,160,89,0.6)', lineHeight: 1.5 }}>The AI accuracy check flagged these claims, confirm each one matches your actual experience.</p>
+                                                    <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4 }}>
                                                         {state.profileViolations!.map((v, i) => (
-                                                            <li key={i} className="flex items-start gap-2 text-[11px] text-amber-200/80">
-                                                                <span className="text-amber-500 mt-0.5 shrink-0">·</span>
+                                                            <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 11, color: 'rgba(197,160,89,0.8)' }}>
+                                                                <span style={{ color: 'rgba(197,160,89,0.5)', marginTop: 1, flexShrink: 0 }}>·</span>
                                                                 {v}
                                                             </li>
                                                         ))}
@@ -1356,7 +1621,7 @@ export const ApplicationWorkspace: React.FC = () => {
                                 </motion.div>
                             )}
                         </AnimatePresence>
-                        {/* Coaching notes bar, VERIFY pills extracted from document */}
+                        {/* Coaching notes bar */}
                         {(() => {
                             const raw = state.documents[state.activeTab] || '';
                             const { pills } = parseVerifyTokens(raw);
@@ -1373,17 +1638,25 @@ export const ApplicationWorkspace: React.FC = () => {
                                             y: { duration: 0.22, ease: [0.25, 1, 0.5, 1] },
                                             x: { duration: 0.4, delay: 0.7 },
                                         }}
-                                        className="w-full max-w-3xl mb-3 rounded-xl border border-amber-400/20 bg-amber-400/5 overflow-hidden"
+                                        style={{
+                                            width: '100%', maxWidth: 768, marginBottom: 12,
+                                            borderRadius: 12, border: '1px solid rgba(197,160,89,0.20)',
+                                            overflow: 'hidden',
+                                        }}
                                     >
                                         <button
                                             onClick={() => setCoachingExpanded(v => !v)}
-                                            className="w-full flex items-center gap-2 px-3.5 py-2.5 hover:bg-amber-400/5 transition-colors text-left"
+                                            style={{
+                                                width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+                                                padding: '10px 14px', background: 'transparent', border: 'none',
+                                                cursor: 'pointer', textAlign: 'left', color: 'inherit', fontFamily: 'inherit',
+                                            }}
                                         >
-                                            <Pencil size={10} className="text-amber-400 shrink-0" />
-                                            <span className="text-[9px] font-black text-amber-400 uppercase tracking-widest flex-1">Coaching Notes</span>
-                                            <span className="text-[9px] font-bold text-amber-500/60 mr-1">{pills.length} item{pills.length !== 1 ? 's' : ''}</span>
-                                            <motion.span animate={{ rotate: coachingExpanded ? 180 : 0 }} transition={{ duration: 0.15 }} className="inline-flex">
-                                                <ChevronDown size={11} className="text-amber-500/40" />
+                                            <Pencil size={10} style={{ color: warm.colors.accentGold, flexShrink: 0 }} />
+                                            <span style={{ fontSize: 9, fontWeight: 800, color: warm.colors.accentGold, textTransform: 'uppercase', letterSpacing: '0.06em', flex: 1 }}>Coaching Notes</span>
+                                            <span style={{ fontSize: 9, fontWeight: 700, color: 'rgba(197,160,89,0.6)', marginRight: 4 }}>{pills.length} item{pills.length !== 1 ? 's' : ''}</span>
+                                            <motion.span animate={{ rotate: coachingExpanded ? 180 : 0 }} transition={{ duration: 0.15 }} style={{ display: 'inline-flex' }}>
+                                                <ChevronDown size={11} style={{ color: 'rgba(197,160,89,0.4)' }} />
                                             </motion.span>
                                         </button>
                                         <AnimatePresence initial={false}>
@@ -1393,30 +1666,28 @@ export const ApplicationWorkspace: React.FC = () => {
                                                     animate={{ height: 'auto', opacity: 1 }}
                                                     exit={{ height: 0, opacity: 0 }}
                                                     transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
-                                                    className="overflow-hidden"
+                                                    style={{ overflow: 'hidden' }}
                                                 >
-                                                    <div className="px-3.5 pb-3 pt-0.5 border-t border-amber-400/15 flex flex-wrap gap-2 mt-1">
+                                                    <div style={{
+                                                        padding: '0 14px 12px',
+                                                        borderTop: '1px solid rgba(197,160,89,0.15)',
+                                                        display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4,
+                                                    }}>
                                                         {pills.map((text, i) => (
                                                             <button
                                                                 key={i}
                                                                 onClick={() => scrollToVerify(text)}
                                                                 title={getCoachingMessage(text)}
                                                                 aria-label={`Coaching note: ${text}`}
-                                                                className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium transition-all hover:opacity-80 active:scale-95 group"
                                                                 style={{
-                                                                    background: 'rgba(251,191,36,0.10)',
-                                                                    border: '1px solid rgba(251,191,36,0.30)',
-                                                                    color: '#fbbf24',
+                                                                    display: 'flex', alignItems: 'center', gap: 4,
+                                                                    borderRadius: 999, padding: '4px 10px', fontSize: 10, fontWeight: 500,
+                                                                    background: 'rgba(197,160,89,0.10)', border: '1px solid rgba(197,160,89,0.30)',
+                                                                    color: warm.colors.accentGold, cursor: 'pointer',
                                                                 }}
                                                             >
                                                                 <Pencil size={9} />
-                                                                <span className="max-w-[160px] truncate">{text}</span>
-                                                                <span
-                                                                    className="ml-1 hidden group-hover:inline text-[9px] opacity-70 max-w-[200px] truncate"
-                                                                    style={{ color: '#fbbf24' }}
-                                                                >
-                                                                   , {getCoachingMessage(text)}
-                                                                </span>
+                                                                <span style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{text}</span>
                                                             </button>
                                                         ))}
                                                     </div>
@@ -1430,19 +1701,31 @@ export const ApplicationWorkspace: React.FC = () => {
 
                         {/* Interview prep, empty state */}
                         {state.activeTab === 'interview-prep' && !state.isGenerating && !state.documents['interview-prep'] && (
-                            <div className="flex flex-col items-center justify-center py-32 space-y-6 max-w-sm mx-auto text-center">
-                                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-                                    <ChevronRight size={22} className="text-amber-400" />
+                            <div style={{
+                                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                                padding: '128px 0', gap: 24, maxWidth: 384, margin: '0 auto', textAlign: 'center',
+                            }}>
+                                <div style={{
+                                    width: 48, height: 48, borderRadius: 16,
+                                    background: 'rgba(197,160,89,0.10)', border: '1px solid rgba(197,160,89,0.20)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                }}>
+                                    <ChevronRight size={22} style={{ color: warm.colors.accentGold }} />
                                 </div>
-                                <div className="space-y-2">
-                                    <p className="text-slate-200 font-bold text-base">Interview Prep</p>
-                                    <p className="text-slate-500 text-sm leading-relaxed">
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                    <p style={{ margin: 0, color: warm.colors.textPrimary, fontWeight: 700, fontSize: 16 }}>Interview Prep</p>
+                                    <p style={{ margin: 0, color: warm.colors.textMuted, fontSize: 13, lineHeight: 1.6 }}>
                                         Builds your story bank and question coaching from your achievement profile.{state.metadata?.company ? ` Tailored for ${state.metadata.company}.` : ''}
                                     </p>
                                 </div>
                                 <button
                                     onClick={() => handleGenerate('interview-prep')}
-                                    className="px-6 py-2.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-2"
+                                    style={{
+                                        padding: '10px 24px', background: warm.colors.accentGold,
+                                        color: '#FFFFFF', fontSize: 12, fontWeight: 700,
+                                        borderRadius: 12, border: 'none', cursor: 'pointer',
+                                        display: 'flex', alignItems: 'center', gap: 8,
+                                    }}
                                 >
                                     <ChevronRight size={14} />
                                     Generate Interview Prep
@@ -1452,17 +1735,25 @@ export const ApplicationWorkspace: React.FC = () => {
 
                         {/* Interview prep, generating spinner */}
                         {state.activeTab === 'interview-prep' && state.isGenerating && (
-                            <div className="flex flex-col items-center justify-center py-40 space-y-6">
-                                <div className="relative">
-                                    <div className="animate-spin text-amber-500"><RefreshCcw size={48} /></div>
-                                    <div className="absolute inset-0 flex items-center justify-center">
-                                        <div className="w-2 h-2 bg-amber-500 rounded-full animate-ping" />
+                            <div style={{
+                                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                                padding: '160px 0', gap: 24,
+                            }}>
+                                <div style={{ position: 'relative' }}>
+                                    <div className="animate-spin" style={{ color: warm.colors.accentGold }}><RefreshCcw size={48} /></div>
+                                    <div style={{
+                                        position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    }}>
+                                        <div style={{ width: 8, height: 8, background: warm.colors.accentGold, borderRadius: '50%' }} />
                                     </div>
                                 </div>
-                                <div className="text-center space-y-2">
-                                    <p className="text-slate-500 font-bold text-sm tracking-tight">Building your interview prep...</p>
-                                    <div className="w-48 h-1 bg-slate-800 rounded-full overflow-hidden mx-auto">
-                                        <motion.div className="h-full bg-amber-500" initial={{ width: '0%' }} animate={{ width: '100%' }} transition={{ duration: 20, ease: 'linear' }} />
+                                <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                    <p style={{ margin: 0, color: warm.colors.textSecondary, fontWeight: 700, fontSize: 13, letterSpacing: '-0.01em' }}>Building your interview prep...</p>
+                                    <div style={{
+                                        width: 192, height: 4, background: warm.colors.borderWhisper,
+                                        borderRadius: 999, overflow: 'hidden', margin: '0 auto',
+                                    }}>
+                                        <motion.div style={{ height: '100%', background: warm.colors.accentGold }} initial={{ width: '0%' }} animate={{ width: '100%' }} transition={{ duration: 20, ease: 'linear' }} />
                                     </div>
                                 </div>
                             </div>
@@ -1479,40 +1770,63 @@ export const ApplicationWorkspace: React.FC = () => {
 
                         {/* Standard document renderer (resume, cover letter, SC) */}
                         {(state.activeTab !== 'interview-prep') && (
-                        <div className="w-full max-w-3xl bg-white text-slate-900 shadow-2xl rounded-sm" style={{ fontFamily: 'Calibri, Arial, "Helvetica Neue", sans-serif' }}>
-                            <div className="p-12">
+                        <div style={{
+                            width: '100%', maxWidth: 768,
+                            background: '#FFFFFF', color: '#111827',
+                            boxShadow: warm.shadow.lifted, borderRadius: 2,
+                            fontFamily: 'Calibri, Arial, "Helvetica Neue", sans-serif',
+                        }}>
+                            <div style={{ padding: 48 }}>
                                 {rateLimitError ? (
-                                    <div className="flex flex-col items-center justify-center py-40 space-y-4">
-                                        <div className="flex items-start gap-3 max-w-md w-full bg-amber-50 border border-amber-200 rounded-xl p-5">
-                                            <AlertCircle size={18} className="text-amber-600 mt-0.5 shrink-0" />
-                                            <div className="space-y-1">
-                                                <p className="text-amber-900 font-bold text-sm">
+                                    <div style={{
+                                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                                        padding: '160px 0', gap: 16,
+                                    }}>
+                                        <div style={{
+                                            display: 'flex', alignItems: 'flex-start', gap: 12,
+                                            maxWidth: 448, width: '100%',
+                                            background: '#FEF3C7', border: '1px solid #FDE68A',
+                                            borderRadius: 12, padding: 20,
+                                        }}>
+                                            <AlertCircle size={18} style={{ color: '#D97706', marginTop: 2, flexShrink: 0 }} />
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                                <p style={{ margin: 0, color: '#92400E', fontWeight: 700, fontSize: 13 }}>
                                                     You've used all 10 of your free generations today.
                                                 </p>
-                                                <p className="text-amber-700 text-sm leading-relaxed">
+                                                <p style={{ margin: 0, color: '#B45309', fontSize: 13, lineHeight: 1.5 }}>
                                                     Come back tomorrow. Your documents and achievements are all saved.
                                                 </p>
                                             </div>
                                         </div>
                                     </div>
                                 ) : state.isGenerating ? (
-                                    <div className="flex flex-col items-center justify-center py-40 space-y-6">
-                                        <div className="relative">
-                                            <div className="animate-spin text-brand-600">
+                                    <div style={{
+                                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                                        padding: '160px 0', gap: 24,
+                                    }}>
+                                        <div style={{ position: 'relative' }}>
+                                            <div className="animate-spin" style={{ color: warm.colors.accentPetrol }}>
                                                 <RefreshCcw size={48} />
                                             </div>
-                                            <div className="absolute inset-0 flex items-center justify-center">
-                                                <div className="w-2 h-2 bg-brand-600 rounded-full animate-ping" />
+                                            <div style={{
+                                                position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            }}>
+                                                <div style={{
+                                                    width: 8, height: 8, background: warm.colors.accentPetrol,
+                                                    borderRadius: '50%',
+                                                }} />
                                             </div>
                                         </div>
-                                        <div className="text-center space-y-2">
-                                            <p className="text-slate-500 font-bold text-sm tracking-tight">
+                                        <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                            <p style={{ margin: 0, color: warm.colors.textMuted, fontWeight: 700, fontSize: 13, letterSpacing: '-0.01em' }}>
                                                 {"Drafting your " + state.activeTab.replace('-', ' ') + "..."}
                                             </p>
-                                            <div className="w-48 h-1 bg-slate-800 rounded-full overflow-hidden mx-auto">
+                                            <div style={{
+                                                width: 192, height: 4, background: warm.colors.borderWhisper,
+                                                borderRadius: 999, overflow: 'hidden', margin: '0 auto',
+                                            }}>
                                                 <motion.div
-                                                    className="h-full bg-brand-600 rounded-full"
-                                                    style={{ width: '38%' }}
+                                                    style={{ height: '100%', background: warm.colors.accentPetrol, borderRadius: 999, width: '38%' }}
                                                     animate={{ x: ['-120%', '320%'] }}
                                                     transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
                                                 />
@@ -1520,14 +1834,25 @@ export const ApplicationWorkspace: React.FC = () => {
                                         </div>
                                         <button
                                             onClick={handleStopGeneration}
-                                            className="mt-8 px-6 py-2 bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-500 border border-slate-200 hover:border-red-200 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all"
+                                            style={{
+                                                marginTop: 32, padding: '8px 24px',
+                                                background: warm.colors.bgAlt, color: warm.colors.textMuted,
+                                                border: `1px solid ${warm.colors.borderWhisper}`,
+                                                borderRadius: 999, fontSize: 10, fontWeight: 800,
+                                                textTransform: 'uppercase', letterSpacing: '0.2em', cursor: 'pointer',
+                                            }}
                                         >
                                             Stop Generation
                                         </button>
                                     </div>
                                 ) : isEditing ? (
                                     <textarea
-                                        className="w-full h-full min-h-[800px] border-none outline-none focus:ring-0 text-slate-800 font-mono text-sm leading-relaxed p-0 resize-none"
+                                        style={{
+                                            width: '100%', minHeight: 800,
+                                            border: 'none', outline: 'none',
+                                            color: '#1F2937', fontFamily: 'monospace',
+                                            fontSize: 13, lineHeight: 1.7, padding: 0, resize: 'none',
+                                        }}
                                         value={state.documents[state.activeTab]}
                                         onChange={(e) => handleUpdateContent(e.target.value)}
                                         placeholder={`Start typing your ${state.activeTab}...`}
@@ -1536,15 +1861,17 @@ export const ApplicationWorkspace: React.FC = () => {
                                     <article
                                         id="resume-preview-content"
                                         ref={previewRef}
-                                        className={`prose prose-slate max-w-none [&_ul]:my-1 [&_li]:my-0.5 [&_li]:leading-snug [&_h1]:text-[18pt] [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-1 [&_h1]:tracking-tight [&_h2]:text-[10.5pt] [&_h2]:font-bold [&_h2]:mt-4 [&_h2]:mb-1 [&_h2]:uppercase [&_h2]:tracking-wide [&_h2]:border-b [&_h2]:border-slate-300 [&_h2]:pb-0.5 [&_h3]:text-[10.5pt] [&_h3]:font-bold [&_h3]:mt-2.5 [&_h3]:mb-0.5 [&_strong]:font-semibold text-[10.5pt] leading-[1.45] ${state.activeTab === 'cover-letter' ? '[&_p]:my-4 [&_p]:leading-[1.6]' : '[&_p]:my-0.5'}`}
-                                        style={{ fontFamily: 'Calibri, Arial, "Helvetica Neue", sans-serif', fontSize: '10.5pt' }}
+                                        style={{
+                                            fontFamily: 'Calibri, Arial, "Helvetica Neue", sans-serif',
+                                            fontSize: '10.5pt', lineHeight: 1.45, color: '#1F2937',
+                                        }}
+                                        className={`prose prose-slate max-w-none ${state.activeTab === 'cover-letter' ? '' : '[&_ul]:my-1 [&_li]:my-0.5 [&_li]:leading-snug [&_h1]:text-[18pt] [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-1 [&_h1]:tracking-tight [&_h2]:text-[10.5pt] [&_h2]:font-bold [&_h2]:mt-4 [&_h2]:mb-1 [&_h2]:uppercase [&_h2]:tracking-wide [&_h2]:border-b [&_h2]:border-slate-300 [&_h2]:pb-0.5 [&_h3]:text-[10.5pt] [&_h3]:font-bold [&_h3]:mt-2.5 [&_h3]:mb-0.5 [&_strong]:font-semibold text-[10.5pt] leading-[1.45]'}`}
                                     >
                                         <ReactMarkdown
                                             children={normaliseMarkdown(parseVerifyTokens(state.documents[state.activeTab] || '').stripped)}
                                             components={{
                                                 text: ({ children }) => {
                                                     if (typeof children !== 'string') return <>{children}</>;
-                                                    // Pluck the AI-rewrite sentinel off the start of bullet text first.
                                                     let aiPrefix: React.ReactNode = null;
                                                     let rest = children;
                                                     if (rest.startsWith('[AI] ')) {
@@ -1587,13 +1914,23 @@ export const ApplicationWorkspace: React.FC = () => {
                         )}
                         {/* Cover letter prompt, shown after resume is generated, before cover letter is */}
                         {state.activeTab === 'resume' && !state.isGenerating && !!state.documents['resume'] && !state.documents['cover-letter'] && (
-                            <div className="w-full max-w-3xl mt-3 rounded-xl border border-indigo-500/20 bg-indigo-500/6 px-4 py-3 flex items-center justify-between gap-4">
-                                <p className="text-xs text-indigo-300/80 leading-relaxed">
-                                    Resume ready. <span className="font-semibold text-indigo-200">Applications with both a resume and cover letter get read first.</span>
+                            <div style={{
+                                width: '100%', maxWidth: 768, marginTop: 12,
+                                borderRadius: 12, border: '1px solid rgba(99,102,241,0.20)',
+                                padding: '12px 16px',
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+                            }}>
+                                <p style={{ margin: 0, fontSize: 12, color: 'rgba(99,102,241,0.8)', lineHeight: 1.5 }}>
+                                    Resume ready. <strong style={{ color: 'rgba(99,102,241,0.9)' }}>Applications with both a resume and cover letter get read first.</strong>
                                 </p>
                                 <button
                                     onClick={() => setState(s => ({ ...s, activeTab: 'cover-letter' }))}
-                                    className="shrink-0 text-[11px] font-bold text-indigo-300 border border-indigo-500/30 rounded-lg px-3 py-1.5 hover:bg-indigo-500/10 transition-colors whitespace-nowrap"
+                                    style={{
+                                        flexShrink: 0, fontSize: 11, fontWeight: 700, color: 'rgba(99,102,241,0.8)',
+                                        border: '1px solid rgba(99,102,241,0.30)', borderRadius: 8,
+                                        padding: '5px 12px', background: 'transparent', cursor: 'pointer',
+                                        whiteSpace: 'nowrap',
+                                    }}
                                 >
                                     Generate cover letter →
                                 </button>
@@ -1602,27 +1939,38 @@ export const ApplicationWorkspace: React.FC = () => {
 
                         {/* Tracker + next application nudge */}
                         {!state.isGenerating && !applyContext && (() => {
-                            const hasBoth = !!state.documents['resume'] && !!state.documents['cover-letter'];
-                            const hasAny = !!state.documents[state.activeTab];
+                            const hasDoc = Object.values(state.documents).some(Boolean);
 
-                            if (hasBoth && !trackerAdded) {
+                            if (hasDoc && !trackerAdded) {
                                 return (
                                     <motion.div
                                         initial={{ opacity: 0, y: 6 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         transition={{ duration: 0.25 }}
-                                        className="w-full max-w-3xl mt-4 rounded-xl border border-teal-500/20 bg-teal-500/5 p-4 flex items-center justify-between gap-4"
+                                        style={{
+                                            width: '100%', maxWidth: 768, marginTop: 16,
+                                            borderRadius: 12, border: '1px solid rgba(45,90,110,0.20)',
+                                            padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+                                        }}
                                     >
                                         <div>
-                                            <p className="text-sm font-bold text-teal-300 mb-0.5">Track this application.</p>
-                                            <p className="text-xs text-slate-400 leading-relaxed">
+                                            <p style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 700, color: warm.colors.accentPetrol }}>Track this application.</p>
+                                            <p style={{ margin: 0, fontSize: 12, color: warm.colors.textSecondary, lineHeight: 1.5 }}>
                                                 We'll remind you when to follow up, with a template, to keep you top of mind.
                                             </p>
                                         </div>
                                         <button
                                             onClick={handleAddToTracker}
                                             disabled={trackerAdding}
-                                            className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider border border-teal-500/30 text-teal-400 hover:bg-teal-500/10 transition-colors disabled:opacity-50"
+                                            style={{
+                                                flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8,
+                                                padding: '8px 16px', borderRadius: 8,
+                                                fontSize: 11, fontWeight: 800, textTransform: 'uppercase',
+                                                letterSpacing: '0.06em',
+                                                color: warm.colors.accentPetrol, background: 'transparent',
+                                                border: '1px solid rgba(45,90,110,0.30)',
+                                                cursor: trackerAdding ? 'not-allowed' : 'pointer', opacity: trackerAdding ? 0.5 : 1,
+                                            }}
                                         >
                                             {trackerAdding ? <Loader2 size={11} className="animate-spin" /> : <Briefcase size={11} />}
                                             {trackerAdding ? 'Adding…' : 'Track it →'}
@@ -1637,20 +1985,29 @@ export const ApplicationWorkspace: React.FC = () => {
                                         initial={{ opacity: 0, scale: 0.97 }}
                                         animate={{ opacity: 1, scale: 1 }}
                                         transition={{ duration: 0.25 }}
-                                        className="w-full max-w-3xl mt-4 rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-4 flex items-center justify-between gap-4"
+                                        style={{
+                                            width: '100%', maxWidth: 768, marginTop: 16,
+                                            borderRadius: 12, border: '1px solid rgba(99,102,241,0.20)',
+                                            padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+                                        }}
                                     >
-                                        <div className="flex items-center gap-3">
-                                            <CheckCircle size={16} className="text-green-400 shrink-0" />
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                            <CheckCircle size={16} style={{ color: warm.colors.success, flexShrink: 0 }} />
                                             <div>
-                                                <p className="text-sm font-bold text-slate-200 mb-0.5">Added to your tracker.</p>
-                                                <p className="text-xs text-slate-400">
+                                                <p style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 700, color: warm.colors.textPrimary }}>Added to your tracker.</p>
+                                                <p style={{ margin: 0, fontSize: 12, color: warm.colors.textSecondary }}>
                                                     We'll remind you to follow up in 7 days.
                                                 </p>
                                             </div>
                                         </div>
                                         <button
                                             onClick={handleNewApplication}
-                                            className="shrink-0 text-[11px] font-bold text-indigo-300 border border-indigo-500/30 rounded-lg px-3 py-1.5 hover:bg-indigo-500/10 transition-colors whitespace-nowrap"
+                                            style={{
+                                                flexShrink: 0, fontSize: 11, fontWeight: 700, color: 'rgba(99,102,241,0.8)',
+                                                border: '1px solid rgba(99,102,241,0.30)', borderRadius: 8,
+                                                padding: '5px 12px', background: 'transparent', cursor: 'pointer',
+                                                whiteSpace: 'nowrap',
+                                            }}
                                         >
                                             Start a new application →
                                         </button>
@@ -1658,12 +2015,16 @@ export const ApplicationWorkspace: React.FC = () => {
                                 );
                             }
 
-                            if (hasAny) {
+                            if (hasDoc) {
                                 return (
-                                    <div className="w-full max-w-3xl mt-3 flex justify-center">
+                                    <div style={{ width: '100%', maxWidth: 768, marginTop: 12, display: 'flex', justifyContent: 'center' }}>
                                         <button
                                             onClick={handleNewApplication}
-                                            className="text-[11px] font-semibold text-slate-500 hover:text-slate-300 transition-colors py-2 px-4"
+                                            style={{
+                                                fontSize: 11, fontWeight: 600, color: warm.colors.textMuted,
+                                                background: 'transparent', border: 'none', cursor: 'pointer',
+                                                padding: '8px 16px',
+                                            }}
                                         >
                                             Done with this one? Start a new application →
                                         </button>
@@ -1675,25 +2036,34 @@ export const ApplicationWorkspace: React.FC = () => {
                         })()}
 
                         {applyContext && !state.isGenerating && state.documents[state.activeTab] && (
-                            <div className="w-full max-w-3xl mt-4 rounded-xl border border-teal-500/20 bg-teal-500/5 p-5">
-                                <div className="flex items-center gap-2 mb-4">
-                                    <CheckCircle size={14} className="text-teal-400" />
-                                    <span className="text-sm font-bold text-teal-300">Documents ready - time to apply</span>
+                            <div style={{
+                                width: '100%', maxWidth: 768, marginTop: 16,
+                                borderRadius: 12, border: '1px solid rgba(45,90,110,0.20)',
+                                padding: 20,
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                                    <CheckCircle size={14} style={{ color: warm.colors.accentPetrol }} />
+                                    <span style={{ fontSize: 13, fontWeight: 700, color: warm.colors.accentPetrol }}>Documents ready - time to apply</span>
                                 </div>
                                 <a
                                     href={applyContext.sourceUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-[11px] font-black uppercase tracking-wider text-white mb-5 transition-opacity hover:opacity-80"
-                                    style={{ background: getPlatformConfig(applyContext.sourcePlatform).color }}
+                                    style={{
+                                        display: 'inline-flex', alignItems: 'center', gap: 8,
+                                        padding: '8px 16px', borderRadius: 8, fontSize: 11, fontWeight: 800,
+                                        textTransform: 'uppercase', letterSpacing: '0.06em',
+                                        color: '#FFFFFF', textDecoration: 'none', marginBottom: 20,
+                                        background: getPlatformConfig(applyContext.sourcePlatform).color,
+                                    }}
                                 >
                                     <ExternalLink size={11} />
                                     Apply on {getPlatformConfig(applyContext.sourcePlatform).label}
                                 </a>
-                                <ol className="space-y-2.5 mb-5">
+                                <ol style={{ margin: '0 0 20px', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
                                     {getApplyInstructions(applyContext.sourcePlatform).map((step, i) => (
-                                        <li key={i} className="text-xs text-slate-400 flex items-start gap-3">
-                                            <span className="text-teal-500 font-black flex-shrink-0 w-4 text-right">{i + 1}.</span>
+                                        <li key={i} style={{ fontSize: 12, color: warm.colors.textSecondary, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                                            <span style={{ color: warm.colors.accentPetrol, fontWeight: 800, flexShrink: 0, width: 16, textAlign: 'right' }}>{i + 1}.</span>
                                             {step}
                                         </li>
                                     ))}
@@ -1701,7 +2071,14 @@ export const ApplicationWorkspace: React.FC = () => {
                                 <button
                                     onClick={handleMarkApplied}
                                     disabled={markingApplied}
-                                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider border border-teal-500/30 text-teal-400 hover:bg-teal-500/10 transition-colors disabled:opacity-50"
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: 8,
+                                        padding: '8px 16px', borderRadius: 8, fontSize: 11, fontWeight: 800,
+                                        textTransform: 'uppercase', letterSpacing: '0.06em',
+                                        color: warm.colors.accentPetrol, background: 'transparent',
+                                        border: '1px solid rgba(45,90,110,0.30)',
+                                        cursor: markingApplied ? 'not-allowed' : 'pointer', opacity: markingApplied ? 0.5 : 1,
+                                    }}
                                 >
                                     {markingApplied
                                         ? <Loader2 size={11} className="animate-spin" />
@@ -1714,9 +2091,9 @@ export const ApplicationWorkspace: React.FC = () => {
 
                     </div>
 
-                    {/* Strategist's Notes, docked below scroll area, never overlaps document */}
+                    {/* Strategist's Notes */}
                     {state.blueprint && !state.isGenerating && (
-                        <div className="shrink-0 border-t border-slate-800/60 bg-slate-950">
+                        <div style={{ flexShrink: 0, borderTop: `1px solid ${warm.colors.borderWhisper}` }}>
                             <StrategistDebrief
                                 blueprint={state.blueprint}
                                 rankedAchievements={state.rankedAchievements}
@@ -1732,45 +2109,81 @@ export const ApplicationWorkspace: React.FC = () => {
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
-                                className="absolute inset-0 bg-slate-950/95 z-30 flex flex-col overflow-hidden"
+                                style={{
+                                    position: 'absolute', inset: 0, zIndex: 30,
+                                    display: 'flex', flexDirection: 'column', overflow: 'hidden',
+                                }}
                             >
-                                <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-800 shrink-0">
-                                    <div className="flex items-center gap-2">
-                                        <Mail size={14} className="text-sky-400" />
-                                        <span className="text-sm font-bold text-slate-200">Email Application Version</span>
+                                <div style={{
+                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                    padding: '12px 20px', borderBottom: `1px solid ${warm.colors.borderWhisper}`, flexShrink: 0,
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <Mail size={14} style={{ color: warm.colors.accentPetrol }} />
+                                        <span style={{ fontSize: 13, fontWeight: 700, color: warm.colors.textPrimary }}>Email Application Version</span>
                                     </div>
-                                    <button onClick={() => setEmailVersion(null)} className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 transition-colors">
+                                    <button onClick={() => setEmailVersion(null)} style={{
+                                        padding: '5px 6px', borderRadius: 8, background: 'transparent',
+                                        border: 'none', cursor: 'pointer', color: warm.colors.textMuted, display: 'flex',
+                                    }}>
                                         <ChevronLeft size={16} />
                                     </button>
                                 </div>
-                                <div className="flex-1 overflow-y-auto p-6 custom-scrollbar space-y-5">
+                                <div style={{
+                                    flex: 1, overflowY: 'auto', padding: 24,
+                                    display: 'flex', flexDirection: 'column', gap: 20,
+                                }} className="custom-scrollbar">
                                     {/* Subject line */}
-                                    <div className="rounded-xl border border-slate-700/50 bg-slate-900/60 overflow-hidden">
-                                        <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-800 bg-slate-900/40">
-                                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Subject Line</span>
+                                    <div style={{
+                                        borderRadius: 12, border: `1px solid ${warm.colors.borderWhisper}`,
+                                        overflow: 'hidden',
+                                    }}>
+                                        <div style={{
+                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                            padding: '8px 16px', borderBottom: `1px solid ${warm.colors.borderWhisper}`,
+                                        }}>
+                                            <span style={{ fontSize: 10, fontWeight: 800, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Subject Line</span>
                                             <button
                                                 onClick={() => copyEmailField('subject')}
-                                                className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-colors flex items-center gap-1.5 ${copiedEmailField === 'subject' ? 'text-emerald-400 border-emerald-700/40 bg-emerald-500/10' : 'text-slate-400 border-slate-700 hover:text-slate-200 hover:border-slate-600'}`}
+                                                style={{
+                                                    fontSize: 10, fontWeight: 700, padding: '4px 10px', borderRadius: 8,
+                                                    border: `1px solid ${copiedEmailField === 'subject' ? 'rgba(42,157,111,0.40)' : warm.colors.borderWhisper}`,
+                                                    background: copiedEmailField === 'subject' ? 'rgba(42,157,111,0.10)' : 'transparent',
+                                                    color: copiedEmailField === 'subject' ? warm.colors.success : warm.colors.textMuted,
+                                                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+                                                }}
                                             >
                                                 {copiedEmailField === 'subject' ? <CheckCircle size={10} /> : <Copy size={10} />}
                                                 {copiedEmailField === 'subject' ? 'Copied' : 'Copy'}
                                             </button>
                                         </div>
-                                        <p className="px-4 py-3 text-sm text-slate-200 font-medium select-all">{emailVersion.emailSubject}</p>
+                                        <p style={{ margin: 0, padding: '10px 16px', fontSize: 13, color: warm.colors.textPrimary, fontWeight: 500, userSelect: 'all' }}>{emailVersion.emailSubject}</p>
                                     </div>
                                     {/* Email body */}
-                                    <div className="rounded-xl border border-slate-700/50 bg-slate-900/60 overflow-hidden">
-                                        <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-800 bg-slate-900/40">
-                                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Email Body</span>
+                                    <div style={{
+                                        borderRadius: 12, border: `1px solid ${warm.colors.borderWhisper}`,
+                                        overflow: 'hidden',
+                                    }}>
+                                        <div style={{
+                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                            padding: '8px 16px', borderBottom: `1px solid ${warm.colors.borderWhisper}`,
+                                        }}>
+                                            <span style={{ fontSize: 10, fontWeight: 800, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Email Body</span>
                                             <button
                                                 onClick={() => copyEmailField('body')}
-                                                className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-colors flex items-center gap-1.5 ${copiedEmailField === 'body' ? 'text-emerald-400 border-emerald-700/40 bg-emerald-500/10' : 'text-slate-400 border-slate-700 hover:text-slate-200 hover:border-slate-600'}`}
+                                                style={{
+                                                    fontSize: 10, fontWeight: 700, padding: '4px 10px', borderRadius: 8,
+                                                    border: `1px solid ${copiedEmailField === 'body' ? 'rgba(42,157,111,0.40)' : warm.colors.borderWhisper}`,
+                                                    background: copiedEmailField === 'body' ? 'rgba(42,157,111,0.10)' : 'transparent',
+                                                    color: copiedEmailField === 'body' ? warm.colors.success : warm.colors.textMuted,
+                                                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+                                                }}
                                             >
                                                 {copiedEmailField === 'body' ? <CheckCircle size={10} /> : <Copy size={10} />}
                                                 {copiedEmailField === 'body' ? 'Copied' : 'Copy'}
                                             </button>
                                         </div>
-                                        <p className="px-4 py-4 text-sm text-slate-300 leading-relaxed whitespace-pre-wrap select-all">{emailVersion.emailBody}</p>
+                                        <p style={{ margin: 0, padding: '14px 16px', fontSize: 13, color: warm.colors.textSecondary, lineHeight: 1.6, whiteSpace: 'pre-wrap', userSelect: 'all' }}>{emailVersion.emailBody}</p>
                                     </div>
                                 </div>
                             </motion.div>
@@ -1799,46 +2212,75 @@ export const ApplicationWorkspace: React.FC = () => {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.18 }}
-                        className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm px-4"
                         onClick={(e) => { if (e.target === e.currentTarget) setShowUpgradeModal(false); }}
+                        style={{
+                            position: 'fixed', inset: 0, zIndex: 100,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            background: 'rgba(26, 24, 20, 0.36)',
+                            backdropFilter: 'blur(4px)',
+                            padding: '0 16px',
+                        }}
                     >
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95, y: 16 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 16 }}
                             transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
-                            className="w-full max-w-md bg-slate-900 border border-indigo-500/30 rounded-2xl shadow-2xl overflow-hidden"
+                            onClick={e => e.stopPropagation()}
+                            style={{
+                                width: '100%', maxWidth: 448,
+                                background: warm.colors.bgSurface,
+                                border: '1px solid rgba(99,102,241,0.30)',
+                                borderRadius: 16, boxShadow: warm.shadow.lifted,
+                                overflow: 'hidden',
+                            }}
                         >
-                            <div className="px-6 py-5 border-b border-slate-800 flex items-center justify-between">
-                                <div className="flex items-center gap-2.5">
-                                    <Sparkles size={16} className="text-indigo-400" />
-                                    <span className="text-sm font-bold text-slate-200">Start your 7-day free trial</span>
+                            <div style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                padding: '20px 24px', borderBottom: `1px solid ${warm.colors.borderWhisper}`,
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <Sparkles size={16} style={{ color: '#818cf8' }} />
+                                    <span style={{ fontSize: 13, fontWeight: 700, color: warm.colors.textPrimary }}>Start your 7-day free trial</span>
                                 </div>
                                 <button
                                     onClick={() => setShowUpgradeModal(false)}
                                     aria-label="Close"
-                                    className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-slate-300 transition-colors"
+                                    style={{
+                                        padding: '5px 6px', borderRadius: 8, background: 'transparent',
+                                        border: 'none', cursor: 'pointer', color: warm.colors.textMuted, display: 'flex',
+                                    }}
                                 >
                                     <X size={14} />
                                 </button>
                             </div>
-                            <div className="px-6 py-6 space-y-5">
-                                <p className="text-sm text-slate-300 leading-relaxed">
+                            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+                                <p style={{ margin: 0, fontSize: 13, color: warm.colors.textSecondary, lineHeight: 1.6 }}>
                                     You've used your free generations, but the work is just getting started.
                                 </p>
-                                <p className="text-sm text-slate-400 leading-relaxed">
+                                <p style={{ margin: 0, fontSize: 13, color: warm.colors.textMuted, lineHeight: 1.6 }}>
                                     Try JobHub free for 7 days: unlimited document generation, full workspace access, and every premium feature. You'll need to enter your card details to start, you won't be charged until the trial ends, and you can cancel any time.
                                 </p>
-                                <div className="flex flex-col gap-2.5">
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                                     <button
                                         onClick={() => { setShowUpgradeModal(false); navigate('/pricing'); }}
-                                        className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold transition-all shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-2"
+                                        style={{
+                                            width: '100%', padding: '12px 0', borderRadius: 12,
+                                            background: '#6366F1', color: '#FFFFFF',
+                                            fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                            boxShadow: '0 4px 12px rgba(99,102,241,0.25)',
+                                        }}
                                     >
                                         Start free trial →
                                     </button>
                                     <button
                                         onClick={() => setShowUpgradeModal(false)}
-                                        className="w-full py-2.5 rounded-xl text-slate-400 text-sm font-medium hover:text-slate-200 hover:bg-slate-800 transition-all"
+                                        style={{
+                                            width: '100%', padding: '10px 0', borderRadius: 12,
+                                            color: warm.colors.textMuted, fontSize: 13, fontWeight: 500,
+                                            background: 'transparent', border: 'none', cursor: 'pointer',
+                                        }}
                                     >
                                         Maybe later
                                     </button>

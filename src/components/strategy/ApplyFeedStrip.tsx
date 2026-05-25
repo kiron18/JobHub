@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { ExternalLink } from 'lucide-react';
 import api from '../../lib/api';
-import { useAppTheme } from '../../contexts/ThemeContext';
+import { warm } from '../../lib/theme/warmTokens';
 import { buildSeekSearchUrl } from '../../lib/seekSearchUrl';
 import type { JobFeedItem } from '../jobs/JobCard';
 
@@ -28,8 +28,6 @@ interface ProfileLite {
  * logic from the previous version is in git history.
  */
 export function ApplyFeedStrip(_props: ApplyFeedStripProps) {
-  const { T } = useAppTheme();
-
   const { data: profile } = useQuery<ProfileLite>({
     queryKey: ['profile'],
     queryFn: async () => (await api.get('/profile')).data,
@@ -52,25 +50,25 @@ export function ApplyFeedStrip(_props: ApplyFeedStripProps) {
           gap: 10,
           padding: '10px 14px',
           borderRadius: 10,
-          background: 'rgba(255,255,255,0.02)',
-          border: `1px solid ${T.cardBorder}`,
-          color: T.text,
+          background: warm.colors.bgSurface,
+          border: `1px solid ${warm.colors.borderDefined}`,
+          color: warm.colors.textPrimary,
           textDecoration: 'none',
           transition: 'border-color 0.15s, background 0.15s',
         }}
         onMouseEnter={e => {
-          e.currentTarget.style.borderColor = T.accentSecondary;
-          e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+          e.currentTarget.style.borderColor = warm.colors.accentPetrol;
+          e.currentTarget.style.background = warm.colors.bgAlt;
         }}
         onMouseLeave={e => {
-          e.currentTarget.style.borderColor = T.cardBorder;
-          e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+          e.currentTarget.style.borderColor = warm.colors.borderDefined;
+          e.currentTarget.style.background = warm.colors.bgSurface;
         }}
       >
-        <span style={{ fontSize: 13, fontWeight: 600 }}>
+        <span style={{ fontSize: 14, fontWeight: 600, color: warm.colors.textPrimary }}>
           Browse {roleLabel} on Seek
         </span>
-        <ExternalLink size={13} style={{ color: T.textMuted, flexShrink: 0 }} />
+        <ExternalLink size={14} style={{ color: warm.colors.textMuted, flexShrink: 0 }} />
       </a>
     </div>
   );

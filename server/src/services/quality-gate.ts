@@ -1,6 +1,7 @@
 import { callClaude } from './llm';
 import { QUALITY_GATE_PROMPT, QualityGateResult, ProfileSnapshot, StrategyBlueprint } from './prompts';
 import { parseLLMJson } from '../utils/parseLLMResponse';
+import { computeYearsOfExperience } from '../lib/profileMath';
 
 const CLAUDE_INPUT_COST_PER_M = 3.00;
 const CLAUDE_OUTPUT_COST_PER_M = 15.00;
@@ -23,7 +24,11 @@ function extractProfileSnapshot(profile: any): ProfileSnapshot {
     const achievementMetrics: string[] = (profile?.achievements ?? [])
         .map((a: any) => a?.metric)
         .filter(Boolean);
-    return { employers, jobTitles, achievementMetrics };
+    const candidateName: string | undefined = typeof profile?.name === 'string' && profile.name.trim().length > 0
+        ? profile.name.trim()
+        : undefined;
+    const yearsOfExperience = computeYearsOfExperience(profile?.experience);
+    return { employers, jobTitles, achievementMetrics, candidateName, yearsOfExperience };
 }
 
 export async function reviewDocument(

@@ -89,9 +89,9 @@ export const FeedbackBar: React.FC<Props> = ({ documentId, docTab }) => {
                     initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
-                    className="flex flex-wrap items-center gap-3 px-4 py-2.5 border-t border-slate-800/60 bg-slate-900/40"
+                    className="flex flex-wrap items-center gap-3 px-4 py-2.5 border-t border-[rgba(26,24,20,0.06)] bg-white/60"
                 >
-                    <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest whitespace-nowrap">
+                    <span className="text-[10px] font-semibold text-[#8B847B] uppercase tracking-widest whitespace-nowrap">
                         How did this land?
                     </span>
 
@@ -111,7 +111,7 @@ export const FeedbackBar: React.FC<Props> = ({ documentId, docTab }) => {
                                     className={
                                         n <= (hovered || rating)
                                             ? 'fill-amber-400 text-amber-400'
-                                            : 'text-slate-600'
+                                            : 'text-[#8B847B]'
                                     }
                                 />
                             </button>
@@ -127,7 +127,7 @@ export const FeedbackBar: React.FC<Props> = ({ documentId, docTab }) => {
                                 exit={{ opacity: 0, width: 0 }}
                                 value={weakSection}
                                 onChange={e => setWeakSection(e.target.value)}
-                                className="text-xs bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-slate-300 focus:outline-none focus:border-brand-500"
+                                className="text-xs bg-[#F4EFE8] border border-[rgba(26,24,20,0.16)] rounded-lg px-2 py-1 text-[#1A1814] focus:outline-none focus:border-brand-500"
                             >
                                 <option value="">What was weakest?</option>
                                 {sections.map(s => (
@@ -150,7 +150,7 @@ export const FeedbackBar: React.FC<Props> = ({ documentId, docTab }) => {
                                 onChange={e => setFreeText(e.target.value)}
                                 onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }}
                                 maxLength={200}
-                                className="text-xs bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-slate-300 placeholder-slate-600 focus:outline-none focus:border-brand-500 min-w-0 flex-1 max-w-48"
+                                className="text-xs bg-[#F4EFE8] border border-[rgba(26,24,20,0.16)] rounded-lg px-2 py-1 text-[#1A1814] placeholder-[#8B847B] focus:outline-none focus:border-brand-500 min-w-0 flex-1 max-w-48"
                             />
                         )}
                     </AnimatePresence>

@@ -5,13 +5,14 @@ import { useNavigate } from 'react-router-dom';
 import {
   Pencil, Check, X, AlertTriangle, CheckCircle2,
   User, Briefcase, GraduationCap,
-  Award, Heart, Wrench, Star, FileText, UploadCloud, RefreshCw,
+  Award, Heart, Wrench, Star, FileText, UploadCloud, RefreshCw, HelpCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../lib/api';
-import { useAppTheme } from '../contexts/ThemeContext';
+import { warm } from '../lib/theme/warmTokens';
 import { ProfileAdvisorPanel } from './ProfileAdvisorPanel';
-import { ActivityWidget } from './ActivityWidget';
+import { SectionIntroBanner } from './processStrip';
+import { ProfileExplainerModal, hasSeenProfileExplainer } from './ProfileExplainerModal';
 import { ManageSubscriptionModal } from './ManageSubscriptionModal';
 import { AchievementVideoModal } from './AchievementVideoModal';
 
@@ -141,16 +142,16 @@ const slideIn = {
 
 // ── Shared input style factory ─────────────────────────────────────────────────
 
-function inputStyle(isDark: boolean): React.CSSProperties {
+function inputStyle(): React.CSSProperties {
   return {
     width: '100%',
     padding: '8px 12px',
     fontSize: 14,
     fontFamily: 'system-ui, sans-serif',
     borderRadius: 8,
-    border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'}`,
-    background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-    color: isDark ? '#f3f4f6' : '#111827',
+    border: `1px solid ${'rgba(0,0,0,0.12)'}`,
+    background: 'rgba(0,0,0,0.03)',
+    color: '#111827',
     outline: 'none',
     boxSizing: 'border-box',
   };
@@ -181,24 +182,23 @@ const CoachHint: React.FC<{ hint: Hint }> = ({ hint }) => (
 interface SectionHeaderProps {
   icon: React.ReactNode;
   title: string;
-  isDark: boolean;
   badge?: React.ReactNode;
 }
 
-const SectionHeader: React.FC<SectionHeaderProps> = ({ icon, title, isDark, badge }) => (
+const SectionHeader: React.FC<SectionHeaderProps> = ({ icon, title, badge }) => (
   <div style={{
     display: 'flex', alignItems: 'center', gap: 8,
     paddingBottom: 12,
     marginBottom: 16,
-    borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'}`,
+    borderBottom: `1px solid ${'rgba(0,0,0,0.07)'}`,
   }}>
-    <span style={{ color: isDark ? '#6b7280' : '#9ca3af' }}>{icon}</span>
+    <span style={{ color: '#9ca3af' }}>{icon}</span>
     <span style={{
       fontSize: 10,
       fontWeight: 700,
       letterSpacing: '0.12em',
       textTransform: 'uppercase',
-      color: isDark ? '#6b7280' : '#9ca3af',
+      color: '#9ca3af',
     }}>{title}</span>
     {badge && <span style={{ marginLeft: 'auto' }}>{badge}</span>}
   </div>
@@ -208,13 +208,12 @@ const SectionHeader: React.FC<SectionHeaderProps> = ({ icon, title, isDark, badg
 
 interface IslandProps {
   children: React.ReactNode;
-  isDark: boolean;
 }
 
-const Island: React.FC<IslandProps> = ({ children, isDark }) => (
+const Island: React.FC<IslandProps> = ({ children }) => (
   <div style={{
-    background: isDark ? 'rgba(255,255,255,0.03)' : '#ffffff',
-    border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+    background: '#ffffff',
+    border: `1px solid ${'rgba(0,0,0,0.08)'}`,
     borderRadius: 14,
     padding: '20px 24px',
   }}>
@@ -224,15 +223,15 @@ const Island: React.FC<IslandProps> = ({ children, isDark }) => (
 
 // ── EditButton ────────────────────────────────────────────────────────────────
 
-const EditButton: React.FC<{ onClick: () => void; isDark: boolean }> = ({ onClick, isDark }) => (
+const EditButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
   <button
     onClick={onClick}
     aria-label="Edit"
     style={{
       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
       width: 28, height: 28, borderRadius: 7, border: 'none', cursor: 'pointer',
-      background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)',
-      color: isDark ? '#9ca3af' : '#6b7280',
+      background: 'rgba(0,0,0,0.05)',
+      color: '#6b7280',
       flexShrink: 0,
     }}
   >
@@ -246,8 +245,7 @@ const SaveCancelButtons: React.FC<{
   onSave: () => void;
   onCancel: () => void;
   saving: boolean;
-  isDark: boolean;
-}> = ({ onSave, onCancel, saving, isDark }) => (
+}> = ({ onSave, onCancel, saving }) => (
   <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
     <button
       onClick={onSave}
@@ -268,8 +266,8 @@ const SaveCancelButtons: React.FC<{
       style={{
         display: 'inline-flex', alignItems: 'center', gap: 5,
         padding: '7px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
-        background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)',
-        color: isDark ? '#9ca3af' : '#6b7280', fontSize: 12, fontWeight: 700,
+        background: 'rgba(0,0,0,0.06)',
+        color: '#6b7280', fontSize: 12, fontWeight: 700,
       }}
     >
       <X size={12} /> Cancel
@@ -279,7 +277,7 @@ const SaveCancelButtons: React.FC<{
 
 // ── SourceDocumentsIsland ─────────────────────────────────────────────────────
 
-const SourceDocumentsIsland: React.FC<{ profile: ProfileData; isDark: boolean }> = ({ profile, isDark }) => {
+const SourceDocumentsIsland: React.FC<{ profile: ProfileData }> = ({ profile }) => {
   const qc = useQueryClient();
   const resumeRef = useRef<HTMLInputElement>(null);
   const cl1Ref    = useRef<HTMLInputElement>(null);
@@ -317,10 +315,10 @@ const SourceDocumentsIsland: React.FC<{ profile: ProfileData; isDark: boolean }>
     }
   }
 
-  const docBg    = isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)';
-  const docBorder = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
-  const mutedText = isDark ? '#6b7280' : '#9ca3af';
-  const mainText  = isDark ? '#f3f4f6' : '#111827';
+  const docBg    = 'rgba(0,0,0,0.03)';
+  const docBorder = 'rgba(0,0,0,0.08)';
+  const mutedText = '#9ca3af';
+  const mainText  = '#111827';
 
   const docs = [
     {
@@ -354,12 +352,11 @@ const SourceDocumentsIsland: React.FC<{ profile: ProfileData; isDark: boolean }>
     : null;
 
   return (
-    <Island isDark={isDark}>
+    <Island>
       <SectionHeader
         icon={<FileText size={13} />}
         title="Source Documents"
-        isDark={isDark}
-        badge={
+                badge={
           updatedLabel
             ? <span style={{ fontSize: 10, color: mutedText }}>Updated {updatedLabel}</span>
             : undefined
@@ -377,7 +374,7 @@ const SourceDocumentsIsland: React.FC<{ profile: ProfileData; isDark: boolean }>
             style={{
               display: 'flex', alignItems: 'center', gap: 12,
               padding: '10px 14px', borderRadius: 10,
-              background: pending ? (isDark ? 'rgba(99,102,241,0.08)' : 'rgba(99,102,241,0.05)') : docBg,
+              background: pending ? ('rgba(99,102,241,0.05)') : docBg,
               border: `1px solid ${pending ? 'rgba(99,102,241,0.25)' : docBorder}`,
               transition: 'background 0.2s, border-color 0.2s',
             }}
@@ -404,8 +401,8 @@ const SourceDocumentsIsland: React.FC<{ profile: ProfileData; isDark: boolean }>
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 5,
                 padding: '6px 12px', borderRadius: 7, border: 'none', cursor: uploading ? 'not-allowed' : 'pointer',
-                background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
-                color: isDark ? '#9ca3af' : '#6b7280',
+                background: 'rgba(0,0,0,0.06)',
+                color: '#6b7280',
                 fontSize: 11, fontWeight: 700, flexShrink: 0,
               }}
             >
@@ -467,10 +464,9 @@ const SourceDocumentsIsland: React.FC<{ profile: ProfileData; isDark: boolean }>
 
 interface PersonalDetailsIslandProps {
   profile: ProfileData;
-  isDark: boolean;
 }
 
-const PersonalDetailsIsland: React.FC<PersonalDetailsIslandProps> = ({ profile, isDark }) => {
+const PersonalDetailsIsland: React.FC<PersonalDetailsIslandProps> = ({ profile }) => {
   const qc = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
@@ -491,16 +487,15 @@ const PersonalDetailsIsland: React.FC<PersonalDetailsIslandProps> = ({ profile, 
     onError: () => toast.error('Failed to save. Please try again.'),
   });
 
-  const inp = inputStyle(isDark);
+  const inp = inputStyle();
   const labelStyle: React.CSSProperties = {
-    fontSize: 11, fontWeight: 700, color: isDark ? '#6b7280' : '#9ca3af',
+    fontSize: 11, fontWeight: 700, color: '#9ca3af',
     letterSpacing: '0.06em', display: 'block', marginBottom: 4,
   };
 
   return (
-    <Island isDark={isDark}>
-      <SectionHeader icon={<User size={13} />} title="Personal Details" isDark={isDark}
-        badge={<EditButton onClick={() => setEditing(e => !e)} isDark={isDark} />} />
+    <Island>
+      <SectionHeader icon={<User size={13} />} title="Personal Details"         badge={<EditButton onClick={() => setEditing(e => !e)} />} />
 
       <AnimatePresence mode="wait">
         {editing ? (
@@ -526,12 +521,11 @@ const PersonalDetailsIsland: React.FC<PersonalDetailsIslandProps> = ({ profile, 
               onSave={() => mutation.mutate(form)}
               onCancel={() => setEditing(false)}
               saving={mutation.isPending}
-              isDark={isDark}
-            />
+                          />
           </motion.div>
         ) : (
           <motion.div key="view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <p style={{ fontSize: 26, fontWeight: 800, color: isDark ? '#f3f4f6' : '#111827', marginBottom: 4 }}>
+            <p style={{ fontSize: 26, fontWeight: 800, color: '#111827', marginBottom: 4 }}>
               {profile.name || <span style={{ color: '#d97706' }}>No name set</span>}
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', marginTop: 8 }}>
@@ -541,8 +535,8 @@ const PersonalDetailsIsland: React.FC<PersonalDetailsIslandProps> = ({ profile, 
                 { label: 'Location', value: profile.location },
                 { label: 'LinkedIn', value: profile.linkedin },
               ].map(({ label, value }) => (
-                <span key={label} style={{ fontSize: 13, color: isDark ? '#9ca3af' : '#6b7280' }}>
-                  <span style={{ fontWeight: 700, color: isDark ? '#6b7280' : '#9ca3af', marginRight: 4 }}>{label}:</span>
+                <span key={label} style={{ fontSize: 13, color: '#6b7280' }}>
+                  <span style={{ fontWeight: 700, color: '#9ca3af', marginRight: 4 }}>{label}:</span>
                   {value || <span style={{ color: '#d97706' }}>missing</span>}
                 </span>
               ))}
@@ -560,10 +554,9 @@ const PersonalDetailsIsland: React.FC<PersonalDetailsIslandProps> = ({ profile, 
 
 interface SummaryIslandProps {
   profile: ProfileData;
-  isDark: boolean;
 }
 
-const SummaryIsland: React.FC<SummaryIslandProps> = ({ profile, isDark }) => {
+const SummaryIsland: React.FC<SummaryIslandProps> = ({ profile }) => {
   const qc = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(profile.professionalSummary ?? '');
@@ -581,34 +574,32 @@ const SummaryIsland: React.FC<SummaryIslandProps> = ({ profile, isDark }) => {
   const hint = hintForSummary(profile.professionalSummary);
 
   return (
-    <Island isDark={isDark}>
-      <SectionHeader icon={<Star size={13} />} title="Professional Summary" isDark={isDark}
-        badge={<EditButton onClick={() => setEditing(e => !e)} isDark={isDark} />} />
+    <Island>
+      <SectionHeader icon={<Star size={13} />} title="Professional Summary"         badge={<EditButton onClick={() => setEditing(e => !e)} />} />
 
       <AnimatePresence mode="wait">
         {editing ? (
           <motion.div key="edit" {...slideIn}>
             <textarea
               rows={5}
-              style={{ ...inputStyle(isDark), resize: 'vertical' }}
+              style={{ ...inputStyle(), resize: 'vertical' }}
               value={text}
               onChange={e => setText(e.target.value)}
               placeholder="2–3 sentences. Lead with your years of experience and single biggest achievement."
             />
-            <div style={{ fontSize: 11, color: isDark ? '#6b7280' : '#9ca3af', marginTop: 4 }}>
+            <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>
               {text.length} chars {text.length < 80 && <span style={{ color: '#d97706' }}>(aim for 80+)</span>}
             </div>
             <SaveCancelButtons
               onSave={() => mutation.mutate(text)}
               onCancel={() => setEditing(false)}
               saving={mutation.isPending}
-              isDark={isDark}
-            />
+                          />
           </motion.div>
         ) : (
           <motion.div key="view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             {profile.professionalSummary
-              ? <p style={{ fontSize: 14, color: isDark ? '#d1d5db' : '#374151', lineHeight: 1.7 }}>{profile.professionalSummary}</p>
+              ? <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.7 }}>{profile.professionalSummary}</p>
               : <p style={{ fontSize: 14, color: '#d97706', fontStyle: 'italic' }}>No summary yet.</p>}
             {hint && <CoachHint hint={hint} />}
           </motion.div>
@@ -622,10 +613,9 @@ const SummaryIsland: React.FC<SummaryIslandProps> = ({ profile, isDark }) => {
 
 interface AchievementRowProps {
   ach: Achievement;
-  isDark: boolean;
 }
 
-const AchievementRow: React.FC<AchievementRowProps> = ({ ach, isDark }) => {
+const AchievementRow: React.FC<AchievementRowProps> = ({ ach }) => {
   const qc = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [showHowModal, setShowHowModal] = useState(false);
@@ -653,12 +643,12 @@ const AchievementRow: React.FC<AchievementRowProps> = ({ ach, isDark }) => {
   };
 
   const hint = hintForAchievement(ach);
-  const inp = inputStyle(isDark);
+  const inp = inputStyle();
 
   return (
     <div style={{
       padding: '12px 0',
-      borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
+      borderBottom: `1px solid ${'rgba(0,0,0,0.05)'}`,
     }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
         <div style={{ flex: 1 }}>
@@ -673,12 +663,12 @@ const AchievementRow: React.FC<AchievementRowProps> = ({ ach, isDark }) => {
                     <input style={inp} value={form.metricType} onChange={e => setForm(f => ({ ...f, metricType: e.target.value }))} placeholder="Type (e.g. revenue growth)" />
                   </div>
                 </div>
-                <SaveCancelButtons onSave={() => mutation.mutate(form)} onCancel={() => setEditing(false)} saving={mutation.isPending} isDark={isDark} />
+                <SaveCancelButtons onSave={() => mutation.mutate(form)} onCancel={() => setEditing(false)} saving={mutation.isPending} />
               </motion.div>
             ) : (
               <motion.div key="view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <p style={{ fontSize: 13, fontWeight: 700, color: isDark ? '#e5e7eb' : '#1f2937', marginBottom: 3 }}>{ach.title}</p>
-                <p style={{ fontSize: 13, color: isDark ? '#9ca3af' : '#6b7280', lineHeight: 1.6 }}>{ach.description}</p>
+                <p style={{ fontSize: 13, fontWeight: 700, color: '#1f2937', marginBottom: 3 }}>{ach.title}</p>
+                <p style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.6 }}>{ach.description}</p>
                 {ach.metric && ach.metric !== 'qualitative' && (
                   <span style={{
                     display: 'inline-block', marginTop: 5,
@@ -691,7 +681,7 @@ const AchievementRow: React.FC<AchievementRowProps> = ({ ach, isDark }) => {
                   </span>
                 )}
                 {ach.metric === 'qualitative' && (
-                  <span style={{ display: 'inline-block', marginTop: 5, padding: '2px 8px', borderRadius: 5, fontSize: 11, fontWeight: 600, background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)', color: isDark ? '#6b7280' : '#9ca3af', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}` }}>
+                  <span style={{ display: 'inline-block', marginTop: 5, padding: '2px 8px', borderRadius: 5, fontSize: 11, fontWeight: 600, background: 'rgba(0,0,0,0.04)', color: '#9ca3af', border: `1px solid ${'rgba(0,0,0,0.08)'}` }}>
                     Qualitative
                   </span>
                 )}
@@ -709,7 +699,7 @@ const AchievementRow: React.FC<AchievementRowProps> = ({ ach, isDark }) => {
                 <AchievementVideoModal
                   isOpen={showHowModal}
                   onClose={() => setShowHowModal(false)}
-                  isDark={isDark}
+                  isDark={false}
                   achievementDescription={ach.description}
                   onMarkQualitative={markQualitative}
                 />
@@ -717,7 +707,7 @@ const AchievementRow: React.FC<AchievementRowProps> = ({ ach, isDark }) => {
             )}
           </AnimatePresence>
         </div>
-        {!editing && <EditButton onClick={() => setEditing(true)} isDark={isDark} />}
+        {!editing && <EditButton onClick={() => setEditing(true)} />}
       </div>
     </div>
   );
@@ -728,10 +718,9 @@ const AchievementRow: React.FC<AchievementRowProps> = ({ ach, isDark }) => {
 interface ExperienceIslandProps {
   experience: Experience[];
   achievements: Achievement[];
-  isDark: boolean;
 }
 
-const ExperienceIsland: React.FC<ExperienceIslandProps> = ({ experience, achievements, isDark }) => {
+const ExperienceIsland: React.FC<ExperienceIslandProps> = ({ experience, achievements }) => {
   const qc = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [forms, setForms] = useState<Record<string, {
@@ -749,14 +738,14 @@ const ExperienceIsland: React.FC<ExperienceIslandProps> = ({ experience, achieve
     onError: () => toast.error('Failed to save. Please try again.'),
   });
 
-  const inp = inputStyle(isDark);
+  const inp = inputStyle();
   const workEntries = experience.filter(e => !e.type || e.type === 'work');
 
   return (
-    <Island isDark={isDark}>
-      <SectionHeader icon={<Briefcase size={13} />} title="Work Experience" isDark={isDark} />
+    <Island>
+      <SectionHeader icon={<Briefcase size={13} />} title="Work Experience" />
       {workEntries.length === 0 && (
-        <p style={{ fontSize: 13, color: isDark ? '#6b7280' : '#9ca3af', fontStyle: 'italic' }}>
+        <p style={{ fontSize: 13, color: '#9ca3af', fontStyle: 'italic' }}>
           No experience found. Upload a resume to populate this section.
         </p>
       )}
@@ -773,7 +762,7 @@ const ExperienceIsland: React.FC<ExperienceIslandProps> = ({ experience, achieve
           <div key={exp.id} style={{
             marginBottom: 20,
             paddingBottom: 20,
-            borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+            borderBottom: `1px solid ${'rgba(0,0,0,0.06)'}`,
           }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 6 }}>
               <div style={{ flex: 1 }}>
@@ -783,7 +772,7 @@ const ExperienceIsland: React.FC<ExperienceIslandProps> = ({ experience, achieve
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 14px' }}>
                         {(['role', 'company', 'startDate', 'endDate'] as const).map(f => (
                           <div key={f}>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: isDark ? '#6b7280' : '#9ca3af', display: 'block', marginBottom: 4 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', display: 'block', marginBottom: 4 }}>
                               {f === 'startDate' ? 'Start' : f === 'endDate' ? 'End' : f.charAt(0).toUpperCase() + f.slice(1)}
                             </span>
                             <input style={inp} value={form[f]} onChange={e => setForms(prev => ({ ...prev, [exp.id]: { ...form, [f]: e.target.value } }))} />
@@ -791,7 +780,7 @@ const ExperienceIsland: React.FC<ExperienceIslandProps> = ({ experience, achieve
                         ))}
                       </div>
                       <div style={{ marginTop: 10 }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: isDark ? '#6b7280' : '#9ca3af', display: 'block', marginBottom: 4 }}>Description</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', display: 'block', marginBottom: 4 }}>Description</span>
                         <textarea rows={4} style={{ ...inp, resize: 'vertical' }} value={form.description}
                           onChange={e => setForms(prev => ({ ...prev, [exp.id]: { ...form, description: e.target.value } }))} />
                       </div>
@@ -799,17 +788,16 @@ const ExperienceIsland: React.FC<ExperienceIslandProps> = ({ experience, achieve
                         onSave={() => mutation.mutate({ id: exp.id, data: form })}
                         onCancel={() => setEditingId(null)}
                         saving={mutation.isPending}
-                        isDark={isDark}
-                      />
+                                              />
                     </motion.div>
                   ) : (
                     <motion.div key="view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                      <p style={{ fontSize: 15, fontWeight: 700, color: isDark ? '#e5e7eb' : '#1f2937' }}>{exp.role}</p>
-                      <p style={{ fontSize: 13, color: isDark ? '#9ca3af' : '#6b7280', marginTop: 2 }}>
+                      <p style={{ fontSize: 15, fontWeight: 700, color: '#1f2937' }}>{exp.role}</p>
+                      <p style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>
                         {exp.company} · {exp.startDate}–{exp.endDate ?? 'Present'}
                       </p>
                       {exp.description && (
-                        <p style={{ fontSize: 13, color: isDark ? '#9ca3af' : '#6b7280', lineHeight: 1.6, marginTop: 6 }}>{exp.description}</p>
+                        <p style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.6, marginTop: 6 }}>{exp.description}</p>
                       )}
                       {hint && <CoachHint hint={hint} />}
                     </motion.div>
@@ -822,8 +810,7 @@ const ExperienceIsland: React.FC<ExperienceIslandProps> = ({ experience, achieve
                     setForms(prev => ({ ...prev, [exp.id]: { company: exp.company, role: exp.role, startDate: exp.startDate, endDate: exp.endDate ?? '', description: exp.description } }));
                     setEditingId(exp.id);
                   }}
-                  isDark={isDark}
-                />
+                                  />
               )}
             </div>
 
@@ -832,13 +819,13 @@ const ExperienceIsland: React.FC<ExperienceIslandProps> = ({ experience, achieve
               <div style={{
                 marginTop: 12, marginLeft: 16,
                 paddingLeft: 16,
-                borderLeft: `2px solid ${isDark ? 'rgba(99,102,241,0.2)' : 'rgba(99,102,241,0.2)'}`,
+                borderLeft: `2px solid ${'rgba(99,102,241,0.2)'}`,
               }}>
                 <p style={{ fontSize: 10, fontWeight: 700, color: '#818cf8', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>
                   Achievements
                 </p>
                 {linked.map(ach => (
-                  <AchievementRow key={ach.id} ach={ach} isDark={isDark} />
+                  <AchievementRow key={ach.id} ach={ach} />
                 ))}
               </div>
             )}
@@ -851,36 +838,36 @@ const ExperienceIsland: React.FC<ExperienceIslandProps> = ({ experience, achieve
 
 // ── ProjectsIsland ────────────────────────────────────────────────────────────
 
-const ProjectsIsland: React.FC<{ experience: Experience[]; achievements: Achievement[]; isDark: boolean }> = ({ experience, achievements, isDark }) => {
+const ProjectsIsland: React.FC<{ experience: Experience[]; achievements: Achievement[] }> = ({ experience, achievements }) => {
   const projects = experience.filter(e => e.type === 'project');
   if (projects.length === 0) return null;
 
   return (
-    <Island isDark={isDark}>
-      <SectionHeader icon={<Briefcase size={13} />} title="Projects" isDark={isDark} />
+    <Island>
+      <SectionHeader icon={<Briefcase size={13} />} title="Projects" />
       {projects.map(proj => {
         const linked = achievements.filter(a => a.experienceId === proj.id);
         return (
           <div key={proj.id} style={{
             marginBottom: 20, paddingBottom: 20,
-            borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+            borderBottom: `1px solid ${'rgba(0,0,0,0.06)'}`,
           }}>
-            <p style={{ fontSize: 15, fontWeight: 700, color: isDark ? '#e5e7eb' : '#1f2937' }}>{proj.role}</p>
-            <p style={{ fontSize: 13, color: isDark ? '#9ca3af' : '#6b7280', marginTop: 2 }}>
+            <p style={{ fontSize: 15, fontWeight: 700, color: '#1f2937' }}>{proj.role}</p>
+            <p style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>
               {proj.company} · {proj.startDate}{proj.endDate ? `–${proj.endDate}` : ''}
             </p>
             {proj.description && (
-              <p style={{ fontSize: 13, color: isDark ? '#9ca3af' : '#6b7280', lineHeight: 1.6, marginTop: 6 }}>{proj.description}</p>
+              <p style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.6, marginTop: 6 }}>{proj.description}</p>
             )}
             {linked.length > 0 && (
               <div style={{
                 marginTop: 12, marginLeft: 16, paddingLeft: 16,
-                borderLeft: `2px solid ${isDark ? 'rgba(99,102,241,0.2)' : 'rgba(99,102,241,0.2)'}`,
+                borderLeft: `2px solid ${'rgba(99,102,241,0.2)'}`,
               }}>
                 <p style={{ fontSize: 10, fontWeight: 700, color: '#818cf8', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>
                   Achievements
                 </p>
-                {linked.map(ach => <AchievementRow key={ach.id} ach={ach} isDark={isDark} />)}
+                {linked.map(ach => <AchievementRow key={ach.id} ach={ach} />)}
               </div>
             )}
           </div>
@@ -892,14 +879,14 @@ const ProjectsIsland: React.FC<{ experience: Experience[]; achievements: Achieve
 
 // ── EducationIsland ───────────────────────────────────────────────────────────
 
-const EducationIsland: React.FC<{ education: Education[]; isDark: boolean }> = ({ education, isDark }) => {
+const EducationIsland: React.FC<{ education: Education[] }> = ({ education }) => {
   const qc = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [forms, setForms] = useState<Record<string, { institution: string; degree: string; field: string; year: string }>>({});
   const [isAdding, setIsAdding] = useState(false);
   const [addForm, setAddForm] = useState({ institution: '', degree: '', field: '', year: '' });
 
-  const inp = inputStyle(isDark);
+  const inp = inputStyle();
 
   const editMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Record<string, string> }) => api.patch(`/education/${id}`, data),
@@ -920,9 +907,9 @@ const EducationIsland: React.FC<{ education: Education[]; isDark: boolean }> = (
   });
 
   return (
-    <Island isDark={isDark}>
+    <Island>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <SectionHeader icon={<GraduationCap size={13} />} title="Education" isDark={isDark} />
+        <SectionHeader icon={<GraduationCap size={13} />} title="Education" />
         {!isAdding && (
           <button onClick={() => setIsAdding(true)} style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>
             + Add
@@ -937,14 +924,14 @@ const EducationIsland: React.FC<{ education: Education[]; isDark: boolean }> = (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 14px' }}>
               {(['institution', 'degree', 'field', 'year'] as const).map(f => (
                 <div key={f}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: isDark ? '#6b7280' : '#9ca3af', display: 'block', marginBottom: 4 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', display: 'block', marginBottom: 4 }}>
                     {f.charAt(0).toUpperCase() + f.slice(1)}
                   </span>
                   <input style={inp} value={addForm[f]} onChange={e => setAddForm(p => ({ ...p, [f]: e.target.value }))} />
                 </div>
               ))}
             </div>
-            <SaveCancelButtons onSave={() => addMutation.mutate(addForm)} onCancel={() => setIsAdding(false)} saving={addMutation.isPending} isDark={isDark} />
+            <SaveCancelButtons onSave={() => addMutation.mutate(addForm)} onCancel={() => setIsAdding(false)} saving={addMutation.isPending} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -958,7 +945,7 @@ const EducationIsland: React.FC<{ education: Education[]; isDark: boolean }> = (
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           <div>
             <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#ef4444' }}>Education missing</p>
-            <p style={{ margin: '2px 0 0', fontSize: 12, color: isDark ? '#f87171' : '#dc2626' }}>
+            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#dc2626' }}>
               No education records found. Add your degree so it appears in generated resumes, click <strong>+ Add</strong> above.
             </p>
           </div>
@@ -979,19 +966,19 @@ const EducationIsland: React.FC<{ education: Education[]; isDark: boolean }> = (
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 14px' }}>
                         {(['institution', 'degree', 'field', 'year'] as const).map(f => (
                           <div key={f}>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: isDark ? '#6b7280' : '#9ca3af', display: 'block', marginBottom: 4 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', display: 'block', marginBottom: 4 }}>
                               {f.charAt(0).toUpperCase() + f.slice(1)}
                             </span>
                             <input style={inp} value={form[f]} onChange={e => setForms(prev => ({ ...prev, [edu.id]: { ...form, [f]: e.target.value } }))} />
                           </div>
                         ))}
                       </div>
-                      <SaveCancelButtons onSave={() => editMutation.mutate({ id: edu.id, data: form })} onCancel={() => setEditingId(null)} saving={editMutation.isPending} isDark={isDark} />
+                      <SaveCancelButtons onSave={() => editMutation.mutate({ id: edu.id, data: form })} onCancel={() => setEditingId(null)} saving={editMutation.isPending} />
                     </motion.div>
                   ) : (
                     <motion.div key="view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                      <p style={{ fontSize: 14, fontWeight: 700, color: isDark ? '#e5e7eb' : '#1f2937' }}>{edu.degree}{edu.field && ` in ${edu.field}`}</p>
-                      <p style={{ fontSize: 13, color: isDark ? '#9ca3af' : '#6b7280' }}>{edu.institution}{edu.year && ` · ${edu.year}`}</p>
+                      <p style={{ fontSize: 14, fontWeight: 700, color: '#1f2937' }}>{edu.degree}{edu.field && ` in ${edu.field}`}</p>
+                      <p style={{ fontSize: 13, color: '#6b7280' }}>{edu.institution}{edu.year && ` · ${edu.year}`}</p>
                       {hint && <CoachHint hint={hint} />}
                     </motion.div>
                   )}
@@ -999,8 +986,8 @@ const EducationIsland: React.FC<{ education: Education[]; isDark: boolean }> = (
               </div>
               {!isEditing && (
                 <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                  <EditButton onClick={() => { setForms(prev => ({ ...prev, [edu.id]: { institution: edu.institution, degree: edu.degree, field: edu.field ?? '', year: edu.year ?? '' } })); setEditingId(edu.id); }} isDark={isDark} />
-                  <button onClick={() => deleteMutation.mutate(edu.id)} style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isDark ? '#6b7280' : '#9ca3af' }}>
+                  <EditButton onClick={() => { setForms(prev => ({ ...prev, [edu.id]: { institution: edu.institution, degree: edu.degree, field: edu.field ?? '', year: edu.year ?? '' } })); setEditingId(edu.id); }} />
+                  <button onClick={() => deleteMutation.mutate(edu.id)} style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${'rgba(0,0,0,0.08)'}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>
                     <X size={12} />
                   </button>
                 </div>
@@ -1015,7 +1002,7 @@ const EducationIsland: React.FC<{ education: Education[]; isDark: boolean }> = (
 
 // ── SkillsIsland ──────────────────────────────────────────────────────────────
 
-const SkillsIsland: React.FC<{ skills: string | null; isDark: boolean }> = ({ skills, isDark }) => {
+const SkillsIsland: React.FC<{ skills: string | null }> = ({ skills }) => {
   const qc = useQueryClient();
   const parsed = parseSkills(skills);
   const allSkills: string[] = [
@@ -1042,20 +1029,20 @@ const SkillsIsland: React.FC<{ skills: string | null; isDark: boolean }> = ({ sk
   }
   function removeSkill(s: string) { setLocalSkills(p => p.filter(x => x !== s)); }
 
-  const inp = inputStyle(isDark);
+  const inp = inputStyle();
 
   return (
-    <Island isDark={isDark}>
+    <Island>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <SectionHeader icon={<Wrench size={13} />} title="Skills" isDark={isDark} />
-        {!editing && <EditButton onClick={openEdit} isDark={isDark} />}
+        <SectionHeader icon={<Wrench size={13} />} title="Skills" />
+        {!editing && <EditButton onClick={openEdit} />}
       </div>
 
       {editing ? (
         <div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
             {localSkills.map(s => (
-              <span key={s} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 99, fontSize: 12, fontWeight: 600, background: isDark ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0.08)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.2)' }}>
+              <span key={s} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 99, fontSize: 12, fontWeight: 600, background: 'rgba(99,102,241,0.08)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.2)' }}>
                 {s}
                 <button onClick={() => removeSkill(s)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: '#818cf8' }}><X size={10} /></button>
               </span>
@@ -1071,16 +1058,16 @@ const SkillsIsland: React.FC<{ skills: string | null; isDark: boolean }> = ({ sk
             />
             <button onClick={addSkill} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.08)', color: '#818cf8', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Add</button>
           </div>
-          <SaveCancelButtons onSave={() => mutation.mutate(localSkills)} onCancel={() => setEditing(false)} saving={mutation.isPending} isDark={isDark} />
+          <SaveCancelButtons onSave={() => mutation.mutate(localSkills)} onCancel={() => setEditing(false)} saving={mutation.isPending} />
         </div>
       ) : (
         <>
           {allSkills.length === 0 ? (
-            <p style={{ fontSize: 13, color: isDark ? '#6b7280' : '#9ca3af', fontStyle: 'italic' }}>No skills found.</p>
+            <p style={{ fontSize: 13, color: '#9ca3af', fontStyle: 'italic' }}>No skills found.</p>
           ) : (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {allSkills.map((skill, i) => (
-                <span key={i} style={{ padding: '4px 10px', borderRadius: 99, fontSize: 12, fontWeight: 600, background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)', color: isDark ? '#d1d5db' : '#374151', border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}` }}>
+                <span key={i} style={{ padding: '4px 10px', borderRadius: 99, fontSize: 12, fontWeight: 600, background: 'rgba(0,0,0,0.05)', color: '#374151', border: `1px solid ${'rgba(0,0,0,0.08)'}` }}>
                   {skill}
                 </span>
               ))}
@@ -1097,14 +1084,14 @@ const SkillsIsland: React.FC<{ skills: string | null; isDark: boolean }> = ({ sk
 
 // ── CertificationsIsland ──────────────────────────────────────────────────────
 
-const CertificationsIsland: React.FC<{ certifications: Certification[]; isDark: boolean }> = ({ certifications, isDark }) => {
+const CertificationsIsland: React.FC<{ certifications: Certification[] }> = ({ certifications }) => {
   const qc = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [forms, setForms] = useState<Record<string, { name: string; issuingBody: string; year: string }>>({});
   const [isAdding, setIsAdding] = useState(false);
   const [addForm, setAddForm] = useState({ name: '', issuingBody: '', year: '' });
 
-  const inp = inputStyle(isDark);
+  const inp = inputStyle();
 
   const editMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Record<string, string> }) => api.patch(`/certifications/${id}`, data),
@@ -1125,9 +1112,9 @@ const CertificationsIsland: React.FC<{ certifications: Certification[]; isDark: 
   });
 
   return (
-    <Island isDark={isDark}>
+    <Island>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <SectionHeader icon={<Award size={13} />} title="Certifications" isDark={isDark} />
+        <SectionHeader icon={<Award size={13} />} title="Certifications" />
         {!isAdding && (
           <button onClick={() => setIsAdding(true)} style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>
             + Add
@@ -1141,20 +1128,20 @@ const CertificationsIsland: React.FC<{ certifications: Certification[]; isDark: 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 80px', gap: '10px 14px' }}>
               {(['name', 'issuingBody', 'year'] as const).map(f => (
                 <div key={f}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: isDark ? '#6b7280' : '#9ca3af', display: 'block', marginBottom: 4 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', display: 'block', marginBottom: 4 }}>
                     {f === 'issuingBody' ? 'Issuing Body' : f.charAt(0).toUpperCase() + f.slice(1)}
                   </span>
                   <input style={inp} value={addForm[f]} onChange={e => setAddForm(p => ({ ...p, [f]: e.target.value }))} />
                 </div>
               ))}
             </div>
-            <SaveCancelButtons onSave={() => addMutation.mutate(addForm)} onCancel={() => setIsAdding(false)} saving={addMutation.isPending} isDark={isDark} />
+            <SaveCancelButtons onSave={() => addMutation.mutate(addForm)} onCancel={() => setIsAdding(false)} saving={addMutation.isPending} />
           </motion.div>
         )}
       </AnimatePresence>
 
       {certifications.length === 0 && !isAdding && (
-        <p style={{ fontSize: 13, color: isDark ? '#6b7280' : '#9ca3af', fontStyle: 'italic' }}>No certifications on record.</p>
+        <p style={{ fontSize: 13, color: '#9ca3af', fontStyle: 'italic' }}>No certifications on record.</p>
       )}
 
       {certifications.map(cert => {
@@ -1170,27 +1157,27 @@ const CertificationsIsland: React.FC<{ certifications: Certification[]; isDark: 
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 80px', gap: '10px 14px' }}>
                         {(['name', 'issuingBody', 'year'] as const).map(f => (
                           <div key={f}>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: isDark ? '#6b7280' : '#9ca3af', display: 'block', marginBottom: 4 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', display: 'block', marginBottom: 4 }}>
                               {f === 'issuingBody' ? 'Issuing Body' : f.charAt(0).toUpperCase() + f.slice(1)}
                             </span>
                             <input style={inp} value={form[f]} onChange={e => setForms(prev => ({ ...prev, [cert.id]: { ...form, [f]: e.target.value } }))} />
                           </div>
                         ))}
                       </div>
-                      <SaveCancelButtons onSave={() => editMutation.mutate({ id: cert.id, data: form })} onCancel={() => setEditingId(null)} saving={editMutation.isPending} isDark={isDark} />
+                      <SaveCancelButtons onSave={() => editMutation.mutate({ id: cert.id, data: form })} onCancel={() => setEditingId(null)} saving={editMutation.isPending} />
                     </motion.div>
                   ) : (
                     <motion.div key="view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                      <p style={{ fontSize: 13, fontWeight: 700, color: isDark ? '#e5e7eb' : '#1f2937' }}>{cert.name}</p>
-                      <p style={{ fontSize: 12, color: isDark ? '#9ca3af' : '#6b7280' }}>{cert.issuingBody}{cert.year && ` · ${cert.year}`}</p>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: '#1f2937' }}>{cert.name}</p>
+                      <p style={{ fontSize: 12, color: '#6b7280' }}>{cert.issuingBody}{cert.year && ` · ${cert.year}`}</p>
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
               {!isEditing && (
                 <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                  <EditButton onClick={() => { setForms(prev => ({ ...prev, [cert.id]: { name: cert.name, issuingBody: cert.issuingBody, year: cert.year ?? '' } })); setEditingId(cert.id); }} isDark={isDark} />
-                  <button onClick={() => deleteMutation.mutate(cert.id)} style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isDark ? '#6b7280' : '#9ca3af' }}>
+                  <EditButton onClick={() => { setForms(prev => ({ ...prev, [cert.id]: { name: cert.name, issuingBody: cert.issuingBody, year: cert.year ?? '' } })); setEditingId(cert.id); }} />
+                  <button onClick={() => deleteMutation.mutate(cert.id)} style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${'rgba(0,0,0,0.08)'}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>
                     <X size={12} />
                   </button>
                 </div>
@@ -1205,14 +1192,14 @@ const CertificationsIsland: React.FC<{ certifications: Certification[]; isDark: 
 
 // ── VolunteeringIsland ────────────────────────────────────────────────────────
 
-const VolunteeringIsland: React.FC<{ volunteering: Volunteering[]; isDark: boolean }> = ({ volunteering, isDark }) => {
+const VolunteeringIsland: React.FC<{ volunteering: Volunteering[] }> = ({ volunteering }) => {
   const qc = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [forms, setForms] = useState<Record<string, { organization: string; role: string; description: string }>>({});
   const [isAdding, setIsAdding] = useState(false);
   const [addForm, setAddForm] = useState({ organization: '', role: '', description: '' });
 
-  const inp = inputStyle(isDark);
+  const inp = inputStyle();
 
   const editMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Record<string, string> }) => api.patch(`/volunteering/${id}`, data),
@@ -1233,9 +1220,9 @@ const VolunteeringIsland: React.FC<{ volunteering: Volunteering[]; isDark: boole
   });
 
   return (
-    <Island isDark={isDark}>
+    <Island>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <SectionHeader icon={<Heart size={13} />} title="Volunteering" isDark={isDark} />
+        <SectionHeader icon={<Heart size={13} />} title="Volunteering" />
         {!isAdding && (
           <button onClick={() => setIsAdding(true)} style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>
             + Add
@@ -1248,23 +1235,23 @@ const VolunteeringIsland: React.FC<{ volunteering: Volunteering[]; isDark: boole
           <motion.div key="add" {...slideIn} style={{ marginBottom: 16 }}>
             {(['organization', 'role'] as const).map(f => (
               <div key={f} style={{ marginBottom: 10 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: isDark ? '#6b7280' : '#9ca3af', display: 'block', marginBottom: 4 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', display: 'block', marginBottom: 4 }}>
                   {f.charAt(0).toUpperCase() + f.slice(1)}
                 </span>
                 <input style={inp} value={addForm[f]} onChange={e => setAddForm(p => ({ ...p, [f]: e.target.value }))} />
               </div>
             ))}
             <div style={{ marginBottom: 10 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: isDark ? '#6b7280' : '#9ca3af', display: 'block', marginBottom: 4 }}>Description (optional)</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', display: 'block', marginBottom: 4 }}>Description (optional)</span>
               <textarea rows={3} style={{ ...inp, resize: 'vertical' }} value={addForm.description} onChange={e => setAddForm(p => ({ ...p, description: e.target.value }))} />
             </div>
-            <SaveCancelButtons onSave={() => addMutation.mutate(addForm)} onCancel={() => setIsAdding(false)} saving={addMutation.isPending} isDark={isDark} />
+            <SaveCancelButtons onSave={() => addMutation.mutate(addForm)} onCancel={() => setIsAdding(false)} saving={addMutation.isPending} />
           </motion.div>
         )}
       </AnimatePresence>
 
       {volunteering.length === 0 && !isAdding && (
-        <p style={{ fontSize: 13, color: isDark ? '#6b7280' : '#9ca3af', fontStyle: 'italic' }}>No volunteering records.</p>
+        <p style={{ fontSize: 13, color: '#9ca3af', fontStyle: 'italic' }}>No volunteering records.</p>
       )}
 
       {volunteering.map(vol => {
@@ -1279,31 +1266,31 @@ const VolunteeringIsland: React.FC<{ volunteering: Volunteering[]; isDark: boole
                     <motion.div key="edit" {...slideIn}>
                       {(['organization', 'role'] as const).map(f => (
                         <div key={f} style={{ marginBottom: 10 }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: isDark ? '#6b7280' : '#9ca3af', display: 'block', marginBottom: 4 }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', display: 'block', marginBottom: 4 }}>
                             {f.charAt(0).toUpperCase() + f.slice(1)}
                           </span>
                           <input style={inp} value={form[f]} onChange={e => setForms(prev => ({ ...prev, [vol.id]: { ...form, [f]: e.target.value } }))} />
                         </div>
                       ))}
                       <div style={{ marginBottom: 10 }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: isDark ? '#6b7280' : '#9ca3af', display: 'block', marginBottom: 4 }}>Description (optional)</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', display: 'block', marginBottom: 4 }}>Description (optional)</span>
                         <textarea rows={3} style={{ ...inp, resize: 'vertical' }} value={form.description} onChange={e => setForms(prev => ({ ...prev, [vol.id]: { ...form, description: e.target.value } }))} />
                       </div>
-                      <SaveCancelButtons onSave={() => editMutation.mutate({ id: vol.id, data: form })} onCancel={() => setEditingId(null)} saving={editMutation.isPending} isDark={isDark} />
+                      <SaveCancelButtons onSave={() => editMutation.mutate({ id: vol.id, data: form })} onCancel={() => setEditingId(null)} saving={editMutation.isPending} />
                     </motion.div>
                   ) : (
                     <motion.div key="view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                      <p style={{ fontSize: 13, fontWeight: 700, color: isDark ? '#e5e7eb' : '#1f2937' }}>{vol.role}</p>
-                      <p style={{ fontSize: 12, color: isDark ? '#9ca3af' : '#6b7280', marginBottom: vol.description ? 4 : 0 }}>{vol.organization}</p>
-                      {vol.description && <p style={{ fontSize: 13, color: isDark ? '#9ca3af' : '#6b7280', lineHeight: 1.6 }}>{vol.description}</p>}
+                      <p style={{ fontSize: 13, fontWeight: 700, color: '#1f2937' }}>{vol.role}</p>
+                      <p style={{ fontSize: 12, color: '#6b7280', marginBottom: vol.description ? 4 : 0 }}>{vol.organization}</p>
+                      {vol.description && <p style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.6 }}>{vol.description}</p>}
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
               {!isEditing && (
                 <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                  <EditButton onClick={() => { setForms(prev => ({ ...prev, [vol.id]: { organization: vol.organization, role: vol.role, description: vol.description ?? '' } })); setEditingId(vol.id); }} isDark={isDark} />
-                  <button onClick={() => deleteMutation.mutate(vol.id)} style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isDark ? '#6b7280' : '#9ca3af' }}>
+                  <EditButton onClick={() => { setForms(prev => ({ ...prev, [vol.id]: { organization: vol.organization, role: vol.role, description: vol.description ?? '' } })); setEditingId(vol.id); }} />
+                  <button onClick={() => deleteMutation.mutate(vol.id)} style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${'rgba(0,0,0,0.08)'}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>
                     <X size={12} />
                   </button>
                 </div>
@@ -1320,13 +1307,12 @@ const VolunteeringIsland: React.FC<{ volunteering: Volunteering[]; isDark: boole
 
 interface CompletionSidebarProps {
   completion: ProfileData['completion'];
-  isDark: boolean;
   targetRole?: string;
   plan?: string;
   planStatus?: string;
 }
 
-const CompletionSidebar: React.FC<CompletionSidebarProps> = ({ completion, isDark, targetRole, plan, planStatus }) => {
+const CompletionSidebar: React.FC<CompletionSidebarProps> = ({ completion, targetRole, plan, planStatus }) => {
   const navigate = useNavigate();
   const [showManage, setShowManage] = useState(false);
   const { score, missingFields } = completion;
@@ -1345,8 +1331,8 @@ const CompletionSidebar: React.FC<CompletionSidebarProps> = ({ completion, isDar
     <div style={{
       position: 'sticky',
       top: 24,
-      background: isDark ? 'rgba(255,255,255,0.03)' : '#ffffff',
-      border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+      background: '#ffffff',
+      border: `1px solid ${'rgba(0,0,0,0.08)'}`,
       borderRadius: 14,
       padding: '24px 20px',
       display: 'flex',
@@ -1357,7 +1343,7 @@ const CompletionSidebar: React.FC<CompletionSidebarProps> = ({ completion, isDar
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
         <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width={radius * 2} height={radius * 2} style={{ transform: 'rotate(-90deg)' }}>
-            <circle stroke={isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)'} fill="transparent" strokeWidth={stroke} r={nr} cx={radius} cy={radius} />
+            <circle stroke={'rgba(0,0,0,0.07)'} fill="transparent" strokeWidth={stroke} r={nr} cx={radius} cy={radius} />
             <motion.circle
               stroke={scoreColor}
               fill="transparent"
@@ -1384,7 +1370,7 @@ const CompletionSidebar: React.FC<CompletionSidebarProps> = ({ completion, isDar
             Prepared Candidate
           </p>
         ) : (
-          <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: isDark ? '#6b7280' : '#9ca3af', textAlign: 'center' }}>
+          <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#9ca3af', textAlign: 'center' }}>
             Profile Strength
           </p>
         )}
@@ -1393,14 +1379,14 @@ const CompletionSidebar: React.FC<CompletionSidebarProps> = ({ completion, isDar
       {/* Missing fields */}
       {missingFields.length > 0 && (
         <div>
-          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: isDark ? '#6b7280' : '#9ca3af', marginBottom: 8 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#9ca3af', marginBottom: 8 }}>
             Still needed
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             {missingFields.map((f, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <AlertTriangle size={10} style={{ color: '#d97706', flexShrink: 0 }} />
-                <span style={{ fontSize: 12, color: isDark ? '#9ca3af' : '#6b7280', textTransform: 'capitalize' }}>{f}</span>
+                <span style={{ fontSize: 12, color: '#6b7280', textTransform: 'capitalize' }}>{f}</span>
               </div>
             ))}
           </div>
@@ -1408,7 +1394,7 @@ const CompletionSidebar: React.FC<CompletionSidebarProps> = ({ completion, isDar
       )}
 
       {/* Profile Advisor */}
-      <div style={{ borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`, paddingTop: 16 }}>
+      <div style={{ borderTop: `1px solid ${'rgba(0,0,0,0.06)'}`, paddingTop: 16 }}>
         <ProfileAdvisorPanel targetRole={targetRole} />
       </div>
 
@@ -1419,8 +1405,8 @@ const CompletionSidebar: React.FC<CompletionSidebarProps> = ({ completion, isDar
         const cfg = {
           exceptional: { label: 'Your profile is exceptional. Go get hired.', bg: '#7c3aed', color: '#fff', active: true },
           ready:       { label: "You're ready. Find your next role.", bg: '#6366f1', color: '#fff', active: true },
-          close:       { label: `${pointsAway} point${pointsAway !== 1 ? 's' : ''} to unlock the job board. Keep going.`, bg: isDark ? 'rgba(217,119,6,0.12)' : 'rgba(217,119,6,0.1)', color: '#d97706', active: false },
-          building:    { label: "Complete your profile to unlock the platform.", bg: isDark ? 'rgba(220,38,38,0.1)' : 'rgba(220,38,38,0.07)', color: '#dc2626', active: false },
+          close:       { label: `${pointsAway} point${pointsAway !== 1 ? 's' : ''} to unlock the job board. Keep going.`, bg: 'rgba(217,119,6,0.1)', color: '#d97706', active: false },
+          building:    { label: "Complete your profile to unlock the platform.", bg: 'rgba(220,38,38,0.07)', color: '#dc2626', active: false },
         }[tier];
         return (
           <button
@@ -1440,19 +1426,19 @@ const CompletionSidebar: React.FC<CompletionSidebarProps> = ({ completion, isDar
       })()}
 
       {/* Subscription management — visible for all users */}
-      <div style={{ height: 1, background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }} />
+      <div style={{ height: 1, background: 'rgba(0,0,0,0.06)' }} />
       <button
         onClick={() => setShowManage(true)}
         style={{
           width: '100%', padding: '9px 0',
           background: 'transparent', border: 'none',
-          color: isDark ? '#6b7280' : '#9ca3af',
+          color: '#9ca3af',
           fontSize: 12, cursor: 'pointer',
           transition: 'color 0.14s ease',
           textAlign: 'center',
         }}
-        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = isDark ? '#9ca3af' : '#6b7280'; }}
-        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = isDark ? '#6b7280' : '#9ca3af'; }}
+        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#6b7280'; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#9ca3af'; }}
       >
         {hasActiveSubscription ? 'Manage subscription' : 'Billing & plan'}
       </button>
@@ -1470,8 +1456,6 @@ const CompletionSidebar: React.FC<CompletionSidebarProps> = ({ completion, isDar
 // ── ProfileBank (main export) ─────────────────────────────────────────────────
 
 export const ProfileBank: React.FC = () => {
-  const { isDark } = useAppTheme();
-
   const { data: profile, isLoading, isError } = useQuery<ProfileData>({
     queryKey: ['profile'],
     queryFn: async () => {
@@ -1483,6 +1467,7 @@ export const ProfileBank: React.FC = () => {
 
   const queryClient = useQueryClient();
   const [regenerating, setRegenerating] = useState(false);
+  const [explainerOpen, setExplainerOpen] = useState(() => !hasSeenProfileExplainer());
 
   const handleRegenerateIdentity = async () => {
     setRegenerating(true);
@@ -1496,13 +1481,13 @@ export const ProfileBank: React.FC = () => {
     }
   };
 
-  const pageBg = isDark ? '#0d1117' : '#f0ede8';
-  const textMain = isDark ? '#f3f4f6' : '#111827';
+  const pageBg = warm.colors.bgCanvas;
+  const textMain = warm.colors.textPrimary;
 
   if (isLoading) {
     return (
-      <div style={{ minHeight: 320, display: 'flex', alignItems: 'center', justifyContent: 'center', color: isDark ? '#6b7280' : '#9ca3af' }}>
-        <div style={{ width: 20, height: 20, border: `2px solid ${isDark ? 'rgba(99,102,241,0.3)' : 'rgba(99,102,241,0.2)'}`, borderTopColor: '#6366f1', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      <div style={{ minHeight: 320, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>
+        <div style={{ width: 20, height: 20, border: `2px solid ${'rgba(99,102,241,0.2)'}`, borderTopColor: '#6366f1', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
         <span style={{ marginLeft: 12, fontSize: 14 }}>Loading profile…</span>
       </div>
     );
@@ -1512,7 +1497,7 @@ export const ProfileBank: React.FC = () => {
     return (
       <div style={{ minHeight: 320, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
         <AlertTriangle size={24} style={{ color: '#d97706' }} />
-        <p style={{ fontSize: 14, color: isDark ? '#9ca3af' : '#6b7280' }}>Could not load your profile. Refresh the page to try again.</p>
+        <p style={{ fontSize: 14, color: '#6b7280' }}>Could not load your profile. Refresh the page to try again.</p>
       </div>
     );
   }
@@ -1520,16 +1505,38 @@ export const ProfileBank: React.FC = () => {
   return (
     <div style={{ background: pageBg, minHeight: '100%', padding: '24px 0', color: textMain, fontFamily: 'system-ui, sans-serif' }}>
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px' }}>
+        <SectionIntroBanner sectionId="profile">
+          Your master profile. Update it once and every future application pulls from here — no more rewriting your story.
+        </SectionIntroBanner>
         {/* Page header */}
         <div style={{ marginBottom: 28 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-            <h2 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.02em', color: textMain, margin: 0 }}>
-              Profile Bank
-            </h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h2 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.02em', color: textMain, margin: 0 }}>
+                Profile Bank
+              </h2>
+              <button
+                onClick={() => setExplainerOpen(true)}
+                aria-label="How the Profile Bank works"
+                title="How the Profile Bank works"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: warm.colors.textMuted,
+                  padding: 4,
+                  borderRadius: 6,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                }}
+              >
+                <HelpCircle size={16} />
+              </button>
+            </div>
             <button
               onClick={() => { window.location.href = '/?view=report'; }}
               style={{
-                fontSize: 12, fontWeight: 600, color: isDark ? '#6b7280' : '#9ca3af',
+                fontSize: 12, fontWeight: 600, color: '#9ca3af',
                 background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0',
                 textDecoration: 'underline', textUnderlineOffset: 3, flexShrink: 0,
               }}
@@ -1537,12 +1544,12 @@ export const ProfileBank: React.FC = () => {
               {(profile as any)?.hasCompletedOnboarding ? 'View Diagnostic' : 'Run Diagnostic'}
             </button>
           </div>
-          <p style={{ fontSize: 14, color: isDark ? '#9ca3af' : '#6b7280', marginTop: 4 }}>
+          <p style={{ fontSize: 14, color: '#6b7280', marginTop: 4 }}>
             Your achievement bank, the source of truth for every resume and cover letter JobHub generates. Complete it once, use it forever.
           </p>
         </div>
 
-        <ActivityWidget />
+        <ProfileExplainerModal open={explainerOpen} onClose={() => setExplainerOpen(false)} />
 
         {/* Two-column layout */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 24, alignItems: 'start' }}>
@@ -1550,33 +1557,94 @@ export const ProfileBank: React.FC = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Identity Cards */}
             {Array.isArray((profile as any)?.identityCards) && (profile as any).identityCards.length > 0 && (
-              <div className="mb-6">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-xs font-black uppercase tracking-widest text-slate-500">Roles You Should Target</h3>
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <h3 style={{
+                    fontSize: 11,
+                    fontWeight: 900,
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                    color: warm.colors.textSecondary,
+                    margin: 0,
+                  }}>
+                    Roles You Should Target
+                  </h3>
                   <button
                     onClick={handleRegenerateIdentity}
                     disabled={regenerating}
-                    className="text-[10px] font-bold text-slate-500 hover:text-brand-400 transition-colors disabled:opacity-40"
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: warm.colors.textMuted,
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: regenerating ? 'not-allowed' : 'pointer',
+                      opacity: regenerating ? 0.4 : 1,
+                      padding: 0,
+                    }}
                   >
                     {regenerating ? 'Regenerating...' : 'Regenerate'}
                   </button>
                 </div>
-                <div className="grid gap-3">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {(profile as any).identityCards.map((card: any, i: number) => (
-                    <div key={`${card.label ?? ''}-${i}`} className="border border-slate-700/50 rounded-xl bg-slate-900/60 p-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <h4 className="text-sm font-bold text-white">{card.label}</h4>
+                    <div
+                      key={`${card.label ?? ''}-${i}`}
+                      style={{
+                        border: `1px solid ${warm.colors.borderWhisper}`,
+                        borderRadius: 12,
+                        background: warm.colors.bgSurface,
+                        padding: 18,
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <h4 style={{
+                          margin: 0,
+                          fontSize: 14,
+                          fontWeight: 700,
+                          color: warm.colors.textPrimary,
+                        }}>
+                          {card.label}
+                        </h4>
                         {card.evidenceBasis === 'limited' && (
-                          <span className="text-[9px] font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full ml-2 shrink-0">
+                          <span style={{
+                            fontSize: 9,
+                            fontWeight: 700,
+                            color: warm.colors.accentGold,
+                            background: 'rgba(197,160,89,0.10)',
+                            padding: '2px 8px',
+                            borderRadius: 999,
+                            marginLeft: 8,
+                            flexShrink: 0,
+                            lineHeight: '16px',
+                          }}>
                             Limited data
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-slate-400 mb-3">{card.summary}</p>
+                      <p style={{
+                        margin: '0 0 10px',
+                        fontSize: 12.5,
+                        color: warm.colors.textSecondary,
+                        lineHeight: 1.6,
+                      }}>
+                        {card.summary}
+                      </p>
                       {Array.isArray(card.keyStrengths) && card.keyStrengths.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5">
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                           {card.keyStrengths.map((s: string) => (
-                            <span key={s} className="text-[10px] font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full">
+                            <span
+                              key={s}
+                              style={{
+                                fontSize: 10,
+                                fontWeight: 700,
+                                color: warm.colors.textSecondary,
+                                background: warm.colors.bgAlt,
+                                padding: '2px 8px',
+                                borderRadius: 999,
+                                lineHeight: '18px',
+                              }}
+                            >
                               {s}
                             </span>
                           ))}
@@ -1587,22 +1655,21 @@ export const ProfileBank: React.FC = () => {
                 </div>
               </div>
             )}
-            <SourceDocumentsIsland profile={profile} isDark={isDark} />
-            <PersonalDetailsIsland profile={profile} isDark={isDark} />
-            <SummaryIsland profile={profile} isDark={isDark} />
-            <ExperienceIsland experience={profile.experience} achievements={profile.achievements} isDark={isDark} />
-            <ProjectsIsland experience={profile.experience} achievements={profile.achievements} isDark={isDark} />
-            <EducationIsland education={profile.education} isDark={isDark} />
-            <SkillsIsland skills={profile.skills} isDark={isDark} />
-            <CertificationsIsland certifications={profile.certifications} isDark={isDark} />
-            <VolunteeringIsland volunteering={profile.volunteering} isDark={isDark} />
+            <SourceDocumentsIsland profile={profile} />
+            <PersonalDetailsIsland profile={profile} />
+            <SummaryIsland profile={profile} />
+            <ExperienceIsland experience={profile.experience} achievements={profile.achievements} />
+            <ProjectsIsland experience={profile.experience} achievements={profile.achievements} />
+            <EducationIsland education={profile.education} />
+            <SkillsIsland skills={profile.skills} />
+            <CertificationsIsland certifications={profile.certifications} />
+            <VolunteeringIsland volunteering={profile.volunteering} />
           </div>
 
           {/* Sidebar */}
           <CompletionSidebar
             completion={profile.completion}
-            isDark={isDark}
-            targetRole={profile.targetRole ?? undefined}
+                        targetRole={profile.targetRole ?? undefined}
             plan={(profile as any).plan}
             planStatus={(profile as any).planStatus}
           />

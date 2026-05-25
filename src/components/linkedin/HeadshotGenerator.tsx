@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Upload, Loader2, Save, RefreshCw, Camera, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../../lib/api';
-import { useAppTheme } from '../../contexts/ThemeContext';
+import { warm } from '../../lib/theme/warmTokens';
 
 interface Props {
   initialHeadshotUrl?: string | null;
@@ -10,7 +10,6 @@ interface Props {
 }
 
 export const HeadshotGenerator: React.FC<Props> = ({ initialHeadshotUrl, onSaved }) => {
-  const { T } = useAppTheme();
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -88,16 +87,16 @@ export const HeadshotGenerator: React.FC<Props> = ({ initialHeadshotUrl, onSaved
   const savedHeadshot = result ?? initialHeadshotUrl;
 
   return (
-    <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: 24, marginBottom: 16 }}>
+    <div style={{ background: warm.colors.bgSurface, border: `1px solid ${warm.colors.borderWhisper}`, borderRadius: 16, padding: 24, marginBottom: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Camera size={14} color="#0A66C2" />
-          <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.textFaint }}>
+          <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: warm.colors.textMuted }}>
             AI Headshot
           </span>
         </div>
         {usage && (
-          <span style={{ fontSize: 11, fontWeight: 600, color: usage.usedToday >= usage.limit ? '#f87171' : T.textFaint }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: usage.usedToday >= usage.limit ? '#f87171' : warm.colors.textMuted }}>
             {usage.usedToday} / {usage.limit} today
           </span>
         )}
@@ -118,7 +117,7 @@ export const HeadshotGenerator: React.FC<Props> = ({ initialHeadshotUrl, onSaved
           onClick={() => inputRef.current?.click()}
           style={{
             width: 140, height: 140, borderRadius: 12, flexShrink: 0,
-            border: `2px dashed ${preview ? T.cardBorder : 'rgba(10,102,194,0.4)'}`,
+            border: `2px dashed ${preview ? warm.colors.borderWhisper : 'rgba(10,102,194,0.4)'}`,
             background: preview ? 'transparent' : 'rgba(10,102,194,0.05)',
             cursor: 'pointer', overflow: 'hidden',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -130,7 +129,7 @@ export const HeadshotGenerator: React.FC<Props> = ({ initialHeadshotUrl, onSaved
               <div style={{ textAlign: 'center', padding: 12 }}>
                 <Upload size={24} color="#0A66C2" style={{ marginBottom: 8 }} />
                 <p style={{ fontSize: 12, color: '#60a5fa', fontWeight: 600, margin: 0 }}>Upload photo</p>
-                <p style={{ fontSize: 11, color: T.textFaint, margin: '4px 0 0' }}>JPG, PNG, WebP</p>
+                <p style={{ fontSize: 11, color: warm.colors.textMuted, margin: '4px 0 0' }}>JPG, PNG, WebP</p>
               </div>
             )
           }
@@ -146,10 +145,10 @@ export const HeadshotGenerator: React.FC<Props> = ({ initialHeadshotUrl, onSaved
           ) : (
             <div style={{
               width: 140, height: 140, borderRadius: 12, marginBottom: 12,
-              background: 'rgba(255,255,255,0.03)', border: `1px solid ${T.cardBorder}`,
+              background: 'rgba(255,255,255,0.03)', border: `1px solid ${warm.colors.borderWhisper}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              <p style={{ fontSize: 12, color: T.textFaint, textAlign: 'center', padding: 12 }}>
+              <p style={{ fontSize: 12, color: warm.colors.textMuted, textAlign: 'center', padding: 12 }}>
                 Generated headshot will appear here
               </p>
             </div>
@@ -177,7 +176,7 @@ export const HeadshotGenerator: React.FC<Props> = ({ initialHeadshotUrl, onSaved
                   disabled={saving}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 6,
-                    padding: '9px 16px', borderRadius: 8, border: `1px solid ${T.cardBorder}`,
+                    padding: '9px 16px', borderRadius: 8, border: `1px solid ${warm.colors.borderWhisper}`,
                     background: 'transparent', color: '#34d399', fontWeight: 700, fontSize: 13,
                     cursor: saving ? 'default' : 'pointer',
                   }}
@@ -189,8 +188,8 @@ export const HeadshotGenerator: React.FC<Props> = ({ initialHeadshotUrl, onSaved
                   onClick={handleDownload}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 6,
-                    padding: '9px 16px', borderRadius: 8, border: `1px solid ${T.cardBorder}`,
-                    background: 'transparent', color: T.textMuted, fontWeight: 700, fontSize: 13,
+                    padding: '9px 16px', borderRadius: 8, border: `1px solid ${warm.colors.borderWhisper}`,
+                    background: 'transparent', color: warm.colors.textSecondary, fontWeight: 700, fontSize: 13,
                     cursor: 'pointer',
                   }}
                 >
@@ -200,7 +199,7 @@ export const HeadshotGenerator: React.FC<Props> = ({ initialHeadshotUrl, onSaved
               </>
             )}
           </div>
-          <p style={{ fontSize: 11, color: T.textFaint, marginTop: 10, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 11, color: warm.colors.textMuted, marginTop: 10, lineHeight: 1.5 }}>
             Studio background · professional lighting · DSLR realism
           </p>
         </div>

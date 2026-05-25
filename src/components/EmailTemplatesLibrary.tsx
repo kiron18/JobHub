@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Copy, CheckCircle, ChevronDown, ChevronUp, Mail } from 'lucide-react';
 import { toast } from 'sonner';
+import { warm } from '../lib/theme/warmTokens';
+import { SectionIntroBanner } from './processStrip';
+import { getRawTemplate } from '../lib/emailTemplates';
 
 interface Template {
     id: string;
@@ -35,39 +38,13 @@ Thanks for your time,
         id: 'application-followup',
         title: 'Follow-Up After Application',
         category: 'Follow-Up',
-        subject: 'Following Up — [Job Title] Application',
-        body: `Hi [Hiring Manager Name],
-
-I wanted to follow up on my application for the [Job Title] role at [Company], submitted on [date].
-
-I remain very interested in the position, particularly because of [specific reason — e.g., "your team's work on [project/product] aligns closely with my background in [area]"].
-
-Please let me know if you need any additional information to support my application. I'm happy to provide references, work samples, or answer any questions at your convenience.
-
-Thank you for your consideration.
-
-Kind regards,
-[Your Name]
-[Phone] | [Email]`,
+        ...getRawTemplate('application-followup'),
     },
     {
         id: 'interview-thankyou',
         title: 'Thank-You After Interview',
         category: 'Interview',
-        subject: 'Thank You — [Job Title] Interview',
-        body: `Hi [Interviewer Name],
-
-Thank you for taking the time to meet with me today about the [Job Title] role at [Company].
-
-I enjoyed learning more about [specific topic discussed — e.g., "the team's approach to [challenge]"] and found it reinforced my enthusiasm for the position. Our conversation about [specific detail] particularly resonated with me — it aligns with my experience [brief relevant example].
-
-I'm confident I could contribute meaningfully to [team/project goal], and I'm excited about the prospect of joining [Company].
-
-Please don't hesitate to reach out if you have any further questions.
-
-Best regards,
-[Your Name]
-[Phone]`,
+        ...getRawTemplate('interview-thankyou'),
     },
     {
         id: 'informational-interview',
@@ -162,9 +139,116 @@ Thanks so much for considering this. I really appreciate it.
 Best,
 [Your Name]`,
     },
+    {
+        id: 'linkedin-connection-request',
+        title: '1. LinkedIn Connection Request',
+        category: 'LinkedIn Outreach',
+        subject: '(LinkedIn connection request — no subject field)',
+        body: `Hi [First Name] — your post on [specific topic / one thing they wrote] has been on my mind. I'm [one-line context — e.g., "an international student finishing a Master's in [field] in Melbourne, learning the [industry] space"].
+
+Would love to follow your work as I navigate this. No agenda — just curious how people I respect think.
+
+[Your first name]
+
+(Tip: LinkedIn connection requests are capped at ~300 characters. Trim if needed. Lead with the specific thing about them — never with a generic "I'd love to connect.")`,
+    },
+    {
+        id: 'linkedin-post-acceptance',
+        title: '2. After They Accept (No Ask)',
+        category: 'LinkedIn Outreach',
+        subject: '(LinkedIn DM — sent same day they accept)',
+        body: `Hi [First Name],
+
+Thanks for connecting.
+
+I wanted to come back to your point about [specific thing from their content]. [Your honest reaction in one sentence — what resonated, what you'd want to dig into, what you tested or thought after reading it.]
+
+Not asking for anything — just wanted to say hi properly. Looking forward to learning from your posts as I work through [your situation].
+
+[Your first name]
+
+(Tip: This message exists to PREVENT you from jumping to an ask. Send it the same day they accept, then go quiet for at least 2-3 weeks of public engagement before any further DM.)`,
+    },
+    {
+        id: 'linkedin-engagement-comment',
+        title: '3. Engagement Comment (Public)',
+        category: 'LinkedIn Outreach',
+        subject: '(Comment on their LinkedIn posts — recurring)',
+        body: `[Pick ONE specific point they made — not the whole post. Quote or paraphrase it.]
+
+[Your perspective in 1-2 sentences. Add something to the conversation — a related experience, a counter-angle done respectfully, or a real question that goes deeper. Do not just say "great post" or "totally agree". Add value or don't comment.]
+
+[Optional: one specific follow-up question. Not "what do you think about X?" — too vague. Try "When you say [their phrase], do you mean [your interpretation A] or [interpretation B]?"]
+
+(Tip: Comment on 3-5 of their posts over several weeks before any further DM. Recruiters and decision-makers watch their comment sections. Visibility through thoughtful comments builds standing nobody can fake.)`,
+    },
+    {
+        id: 'linkedin-15-minute-ask',
+        title: '4. The 15-Minute Ask',
+        category: 'LinkedIn Outreach',
+        subject: '(LinkedIn DM — only after weeks of engagement)',
+        body: `Hi [First Name],
+
+I've been following your posts for a few weeks now, and your point about [specific thing they wrote about] has genuinely shaped how I'm thinking about [your situation].
+
+I know your time is limited. I'd love 15 minutes — virtual is great — to ask you a few specific questions about [ONE narrow topic — e.g., "how you decided which direction to specialise in early in your career", NOT "the industry"].
+
+I'm not asking about jobs or referrals — I just want to learn from someone whose thinking I trust. Happy to fit around any 15-min gap. Coffee, Zoom, walking call — whatever's easiest for you.
+
+[Your first name]
+
+(Tip: Ask for TIME, not a job. Be specific about the topic so they can say yes without preparing. If they say no, thank them and keep engaging publicly — sometimes the answer is "not yet" not "no".)`,
+    },
+    {
+        id: 'linkedin-post-chat-thanks',
+        title: '5. Post-Chat Follow-Up',
+        category: 'LinkedIn Outreach',
+        subject: '(LinkedIn DM or email — same day as the chat)',
+        body: `[First Name] — thank you for the time today.
+
+What stuck with me most: [specific thing they said — quote them]. I went home and [what you actually did with their advice — actioned it, researched it, started something. Be concrete, not "I'll think about it"].
+
+I'll keep you posted as [specific thing develops]. And if I can ever return the favour — even just reading drafts of anything you're working on — please ask.
+
+[Your first name]
+
+(Tip: This message turns one chat into an ongoing relationship. Send it the same day. Reference something specific they said — not a generic "thanks for your time". Show you listened.)`,
+    },
+    {
+        id: 'linkedin-soft-ask',
+        title: '6. The Soft Ask (After Standing)',
+        category: 'LinkedIn Outreach',
+        subject: '(LinkedIn DM — only after months of relationship)',
+        body: `Hi [First Name],
+
+Quick one — I know we've talked about [topic] over the last few months, and you've watched me work through [thing you've shown them].
+
+I'm now actively [specific situation — e.g., "looking for grad roles in [field] starting [date]"], and I wanted to mention it to you because [specific reason their input matters here — not generic].
+
+I'm not asking for a referral, but if anything crosses your radar that fits, I'd be grateful for the heads-up. Either way, I appreciate your perspective as I navigate this.
+
+[Your first name]
+
+(Tip: This is the ONLY template that asks for anything career-related. By the time you send it, you've built real standing. The "I'm not asking for a referral" framing makes the request easy to honour or politely decline — both feel respectful.)`,
+    },
 ];
 
 const CATEGORIES = ['All', ...Array.from(new Set(TEMPLATES.map(t => t.category)))];
+
+const categoryLabelColor: Record<string, string> = {
+    Outreach: warm.colors.accentPetrol,
+    'Follow-Up': warm.colors.accentGold,
+    Interview: warm.colors.success,
+    Networking: '#7C6CB5',
+    Offer: warm.colors.accentPetrol,
+};
+
+const cardStyle: React.CSSProperties = {
+    background: warm.colors.bgSurface,
+    border: `1px solid ${warm.colors.borderWhisper}`,
+    borderRadius: 18,
+    overflow: 'hidden',
+};
 
 interface TemplateCardProps {
     template: Template;
@@ -184,41 +268,49 @@ const TemplateCard: React.FC<TemplateCardProps> = ({ template }) => {
         setTimeout(() => setCopied(null), 2000);
     };
 
-    const categoryColors: Record<string, string> = {
-        Outreach: 'text-sky-400 bg-sky-500/10 border-sky-500/20',
-        'Follow-Up': 'text-amber-400 bg-amber-500/10 border-amber-500/20',
-        Interview: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-        Networking: 'text-purple-400 bg-purple-500/10 border-purple-500/20',
-        Offer: 'text-brand-400 bg-brand-500/10 border-brand-500/20',
-    };
+    const catColor = categoryLabelColor[template.category] || warm.colors.textMuted;
 
     return (
-        <div className="glass-card overflow-hidden">
+        <div style={cardStyle}>
             <button
                 onClick={() => setExpanded(e => !e)}
-                className="w-full p-4 flex items-center justify-between gap-4 text-left hover:bg-white/[0.02] transition-colors"
+                style={{
+                    width: '100%', padding: 16, display: 'flex', alignItems: 'center',
+                    justifyContent: 'space-between', gap: 16, textAlign: 'left',
+                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    color: 'inherit', fontFamily: 'inherit',
+                }}
             >
-                <div className="flex items-center gap-3 min-w-0">
-                    <Mail size={14} className="text-slate-500 shrink-0" />
-                    <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                            <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border ${categoryColors[template.category] || 'text-slate-500 bg-slate-800 border-slate-700'}`}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                    <Mail size={14} style={{ color: warm.colors.textMuted, flexShrink: 0 }} />
+                    <div style={{ minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 2 }}>
+                            <span style={{
+                                fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase',
+                                padding: '1px 6px', borderRadius: 4, border: `1px solid ${catColor}40`,
+                                color: catColor, background: `${catColor}12`,
+                            }}>
                                 {template.category}
                             </span>
                         </div>
-                        <p className="text-sm font-semibold text-slate-200 truncate">{template.title}</p>
-                        <p className="text-xs text-slate-500 truncate">{template.subject}</p>
+                        <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: warm.colors.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{template.title}</p>
+                        <p style={{ margin: 0, fontSize: 12, color: warm.colors.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{template.subject}</p>
                     </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                     <button
                         onClick={e => { e.stopPropagation(); copy('all'); }}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-slate-400 border border-slate-700 hover:text-slate-200 hover:border-slate-600 transition-colors"
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px',
+                            borderRadius: 8, fontSize: 10, fontWeight: 700, cursor: 'pointer',
+                            color: warm.colors.textSecondary, border: `1px solid ${warm.colors.borderWhisper}`,
+                            background: 'transparent',
+                        }}
                     >
-                        {copied === 'all' ? <CheckCircle size={11} className="text-emerald-400" /> : <Copy size={11} />}
+                        {copied === 'all' ? <CheckCircle size={11} style={{ color: warm.colors.success }} /> : <Copy size={11} />}
                         Copy
                     </button>
-                    {expanded ? <ChevronUp size={14} className="text-slate-500" /> : <ChevronDown size={14} className="text-slate-500" />}
+                    {expanded ? <ChevronUp size={14} style={{ color: warm.colors.textMuted }} /> : <ChevronDown size={14} style={{ color: warm.colors.textMuted }} />}
                 </div>
             </button>
 
@@ -229,40 +321,44 @@ const TemplateCard: React.FC<TemplateCardProps> = ({ template }) => {
                         animate={{ height: 'auto' }}
                         exit={{ height: 0 }}
                         transition={{ duration: 0.18 }}
-                        className="overflow-hidden border-t border-slate-800"
+                        style={{ overflow: 'hidden', borderTop: `1px solid ${warm.colors.borderWhisper}` }}
                     >
-                        <div className="p-4 space-y-3">
+                        <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
                             {/* Subject line */}
-                            <div className="flex items-start justify-between gap-3">
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-wider mb-1">Subject</p>
-                                    <p className="text-xs font-medium text-slate-300">{template.subject}</p>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <p style={{ margin: '0 0 3px', fontSize: 9, fontWeight: 800, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Subject</p>
+                                    <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: warm.colors.textPrimary }}>{template.subject}</p>
                                 </div>
-                                <button
-                                    onClick={() => copy('subject')}
-                                    className="text-slate-600 hover:text-slate-300 transition-colors shrink-0 mt-3"
-                                >
-                                    {copied === 'subject' ? <CheckCircle size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                                <button onClick={() => copy('subject')} style={{
+                                    background: 'none', border: 'none', cursor: 'pointer',
+                                    color: warm.colors.textMuted, display: 'flex', marginTop: 8, flexShrink: 0,
+                                }}>
+                                    {copied === 'subject' ? <CheckCircle size={13} style={{ color: warm.colors.success }} /> : <Copy size={13} />}
                                 </button>
                             </div>
 
                             {/* Body */}
                             <div>
-                                <div className="flex items-center justify-between mb-1">
-                                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Body</p>
-                                    <button
-                                        onClick={() => copy('body')}
-                                        className="text-slate-600 hover:text-slate-300 transition-colors"
-                                    >
-                                        {copied === 'body' ? <CheckCircle size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                                    <p style={{ margin: 0, fontSize: 9, fontWeight: 800, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Body</p>
+                                    <button onClick={() => copy('body')} style={{
+                                        background: 'none', border: 'none', cursor: 'pointer', color: warm.colors.textMuted, display: 'flex',
+                                    }}>
+                                        {copied === 'body' ? <CheckCircle size={13} style={{ color: warm.colors.success }} /> : <Copy size={13} />}
                                     </button>
                                 </div>
-                                <pre className="text-xs text-slate-400 leading-relaxed whitespace-pre-wrap font-sans p-3 bg-slate-900/60 rounded-xl border border-slate-800">
+                                <pre style={{
+                                    margin: 0, fontSize: 12, color: warm.colors.textSecondary, lineHeight: 1.65,
+                                    whiteSpace: 'pre-wrap', fontFamily: warm.type.fontBody,
+                                    padding: 12, background: warm.colors.bgAlt,
+                                    borderRadius: 12, border: `1px solid ${warm.colors.borderWhisper}`,
+                                }}>
                                     {template.body}
                                 </pre>
                             </div>
 
-                            <p className="text-[9px] text-slate-600 italic">
+                            <p style={{ margin: 0, fontSize: 9, color: warm.colors.textMuted, fontStyle: 'italic' }}>
                                 Replace all [bracketed placeholders] before sending.
                             </p>
                         </div>
@@ -279,36 +375,45 @@ export const EmailTemplatesLibrary: React.FC = () => {
     const filtered = category === 'All' ? TEMPLATES : TEMPLATES.filter(t => t.category === category);
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-700">
-            <header className="space-y-2">
-                <h2 className="text-4xl font-extrabold tracking-tight text-white">Email Templates</h2>
-                <p className="text-xl text-slate-400 font-medium">
+        <div>
+            <SectionIntroBanner sectionId="emailTemplates">
+                Battle-tested email templates for every stage — application follow-ups, post-interview thank-yous, salary negotiation. Copy, personalise, send.
+            </SectionIntroBanner>
+            <header style={{ marginBottom: 28 }}>
+                <h2 style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', fontWeight: 700, color: warm.colors.textPrimary, letterSpacing: '-0.02em', margin: '0 0 6px' }}>Email Templates</h2>
+                <p style={{ margin: 0, fontSize: 14, color: warm.colors.textSecondary, fontWeight: 500 }}>
                     {TEMPLATES.length} professional email templates for every stage of your job search.
                 </p>
             </header>
 
             {/* Category filter */}
-            <div className="flex flex-wrap gap-2">
-                {CATEGORIES.map(cat => (
-                    <button
-                        key={cat}
-                        onClick={() => setCategory(cat)}
-                        className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all ${
-                            category === cat
-                                ? 'bg-brand-600/10 border-brand-600/30 text-brand-400'
-                                : 'bg-slate-900 border-slate-800 text-slate-500 hover:border-slate-700 hover:text-slate-400'
-                        }`}
-                    >
-                        {cat}
-                        <span className="ml-1.5 opacity-50">
-                            {cat === 'All' ? TEMPLATES.length : TEMPLATES.filter(t => t.category === cat).length}
-                        </span>
-                    </button>
-                ))}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 20 }}>
+                {CATEGORIES.map(cat => {
+                    const active = category === cat;
+                    const catColor = categoryLabelColor[cat] || warm.colors.accentPetrol;
+                    return (
+                        <button
+                            key={cat}
+                            onClick={() => setCategory(cat)}
+                            style={{
+                                padding: '6px 10px', borderRadius: 10, fontSize: 9, fontWeight: 800,
+                                letterSpacing: '0.06em', textTransform: 'uppercase',
+                                cursor: 'pointer', border: `1px solid ${warm.colors.borderWhisper}`,
+                                background: active ? `${catColor}14` : warm.colors.bgSurface,
+                                color: active ? catColor : warm.colors.textMuted,
+                            }}
+                        >
+                            {cat}
+                            <span style={{ marginLeft: 4, opacity: 0.5 }}>
+                                {cat === 'All' ? TEMPLATES.length : TEMPLATES.filter(t => t.category === cat).length}
+                            </span>
+                        </button>
+                    );
+                })}
             </div>
 
             {/* Template cards */}
-            <div className="space-y-3">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {filtered.map(template => (
                     <TemplateCard key={template.id} template={template} />
                 ))}

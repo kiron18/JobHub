@@ -22,7 +22,7 @@ export const ApplyContextBanner: React.FC<Props> = ({ context, onDismiss }) => {
   const platform = getPlatformConfig(context.sourcePlatform);
 
   return (
-    <div className="bg-slate-900/70 border-b border-slate-700/50 px-6 py-2 flex items-center justify-between shrink-0">
+    <div className="bg-white/85 border-b border-[rgba(26,24,20,0.10)] px-6 py-2 flex items-center justify-between shrink-0">
       <div className="flex items-center gap-3 min-w-0">
         <span
           className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full flex-shrink-0"
@@ -30,8 +30,8 @@ export const ApplyContextBanner: React.FC<Props> = ({ context, onDismiss }) => {
         >
           {platform.label}
         </span>
-        <p className="text-xs text-slate-400 truncate">
-          <span className="text-slate-200 font-semibold">{context.title}</span>
+        <p className="text-xs text-[#5C5750] truncate">
+          <span className="text-[#1A1814] font-semibold">{context.title}</span>
           {' · '}{context.company}
         </p>
       </div>
@@ -49,7 +49,7 @@ export const ApplyContextBanner: React.FC<Props> = ({ context, onDismiss }) => {
         <button
           onClick={onDismiss}
           aria-label="Dismiss application context"
-          className="text-slate-600 hover:text-slate-400 transition-colors"
+          className="text-[#8B847B] hover:text-[#5C5750] transition-colors"
         >
           <X size={12} />
         </button>

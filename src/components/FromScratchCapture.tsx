@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
 import api from '../lib/api';
+import { warm } from '../lib/theme/warmTokens';
 
 interface FromScratchCaptureProps {
   /** Called once all four prompts are submitted and saved. */
@@ -107,10 +108,10 @@ export function FromScratchCapture({ onDone }: FromScratchCaptureProps) {
     <div style={{
       minHeight: '100vh',
       overflowY: 'auto',
-      background: '#080b12',
+      background: warm.colors.bgCanvas,
       paddingBottom: 80,
     }}>
-      <div style={{ height: 3, background: 'rgba(255,255,255,0.04)' }}>
+      <div style={{ height: 3, background: warm.colors.borderWhisper }}>
         <motion.div
           animate={{ width: `${progress}%` }}
           transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }}

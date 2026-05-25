@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChevronRight } from 'lucide-react';
+import { warm } from '../../lib/theme/warmTokens';
 
 interface PipelineCounts {
     APPLIED: number;
@@ -14,62 +15,57 @@ interface PipelineFunnelProps {
 
 export const PipelineFunnel: React.FC<PipelineFunnelProps> = ({ counts }) => {
     return (
-        <div className="glass-card p-5">
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-4">Pipeline Funnel</p>
-            <div className="flex items-center gap-0">
+        <div style={{
+            background: warm.colors.bgSurface,
+            border: `1px solid ${warm.colors.borderWhisper}`,
+            borderRadius: 18, padding: 20, overflow: 'hidden',
+        }}>
+            <p style={{ margin: '0 0 16px', fontSize: 10, fontWeight: 800, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Pipeline Funnel</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
                 {/* Applied */}
-                <div className="flex flex-col items-center flex-1">
-                    <div
-                        className="w-full rounded-sm bg-blue-500/20 border border-blue-500/20 flex items-center justify-center"
-                        style={{ height: 44 }}
-                    >
-                        <span className="text-xl font-black text-blue-400 tabular-nums">{counts.APPLIED}</span>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
+                    <div style={{ width: '100%', borderRadius: 4, background: 'rgba(45,90,110,0.12)', border: '1px solid rgba(45,90,110,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', height: 44 }}>
+                        <span style={{ fontSize: 20, fontWeight: 800, color: warm.colors.accentPetrol, fontVariantNumeric: 'tabular-nums' }}>{counts.APPLIED}</span>
                     </div>
-                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mt-1.5">Applied</p>
+                    <p style={{ margin: '6px 0 0', fontSize: 9, fontWeight: 700, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Applied</p>
                 </div>
                 {/* Arrow + rate */}
-                <div className="flex flex-col items-center px-2 mb-5">
-                    <span className="text-[9px] font-bold text-slate-600">
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0 8px' }}>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: warm.colors.textMuted }}>
                         {counts.APPLIED > 0 ? `${Math.round((counts.INTERVIEW / Math.max(counts.APPLIED, 1)) * 100)}%` : '—'}
                     </span>
-                    <ChevronRight size={14} className="text-slate-700" />
+                    <ChevronRight size={14} style={{ color: warm.colors.borderDefined }} />
                 </div>
                 {/* Interview */}
-                <div className="flex flex-col items-center flex-1">
-                    <div
-                        className="w-full rounded-sm bg-amber-500/20 border border-amber-500/20 flex items-center justify-center"
-                        style={{ height: Math.max(28, counts.APPLIED > 0 ? Math.round(44 * counts.INTERVIEW / Math.max(counts.APPLIED, 1)) : 28) }}
-                    >
-                        <span className="text-xl font-black text-amber-400 tabular-nums">{counts.INTERVIEW}</span>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
+                    <div style={{ width: '100%', borderRadius: 4, background: 'rgba(197,160,89,0.14)', border: '1px solid rgba(197,160,89,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', height: Math.max(28, counts.APPLIED > 0 ? Math.round(44 * counts.INTERVIEW / Math.max(counts.APPLIED, 1)) : 28) }}>
+                        <span style={{ fontSize: 20, fontWeight: 800, color: warm.colors.accentGold, fontVariantNumeric: 'tabular-nums' }}>{counts.INTERVIEW}</span>
                     </div>
-                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mt-1.5">Interview</p>
+                    <p style={{ margin: '6px 0 0', fontSize: 9, fontWeight: 700, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Interview</p>
                 </div>
                 {/* Arrow + rate */}
-                <div className="flex flex-col items-center px-2 mb-5">
-                    <span className="text-[9px] font-bold text-slate-600">
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0 8px' }}>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: warm.colors.textMuted }}>
                         {counts.INTERVIEW > 0 ? `${Math.round((counts.OFFER / Math.max(counts.INTERVIEW, 1)) * 100)}%` : '—'}
                     </span>
-                    <ChevronRight size={14} className="text-slate-700" />
+                    <ChevronRight size={14} style={{ color: warm.colors.borderDefined }} />
                 </div>
                 {/* Offer */}
-                <div className="flex flex-col items-center flex-1">
-                    <div
-                        className="w-full rounded-sm bg-emerald-500/20 border border-emerald-500/20 flex items-center justify-center"
-                        style={{ height: Math.max(20, counts.APPLIED > 0 ? Math.round(44 * counts.OFFER / Math.max(counts.APPLIED, 1)) : 20) }}
-                    >
-                        <span className={`text-xl font-black tabular-nums ${counts.OFFER > 0 ? 'text-emerald-400' : 'text-slate-600'}`}>{counts.OFFER}</span>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
+                    <div style={{ width: '100%', borderRadius: 4, background: 'rgba(42,157,111,0.12)', border: '1px solid rgba(42,157,111,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', height: Math.max(20, counts.APPLIED > 0 ? Math.round(44 * counts.OFFER / Math.max(counts.APPLIED, 1)) : 20) }}>
+                        <span style={{ fontSize: 20, fontWeight: 800, color: counts.OFFER > 0 ? warm.colors.success : warm.colors.textMuted, fontVariantNumeric: 'tabular-nums' }}>{counts.OFFER}</span>
                     </div>
-                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mt-1.5">Offer</p>
+                    <p style={{ margin: '6px 0 0', fontSize: 9, fontWeight: 700, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Offer</p>
                 </div>
                 {/* Rejected aside */}
                 {counts.REJECTED > 0 && (
                     <>
-                        <div className="w-px h-10 bg-slate-800 mx-3 mb-5" />
-                        <div className="flex flex-col items-center">
-                            <div className="px-3 py-1 rounded bg-red-500/10 border border-red-500/20 flex items-center justify-center">
-                                <span className="text-sm font-black text-red-400 tabular-nums">{counts.REJECTED}</span>
+                        <div style={{ width: 1, height: 40, background: warm.colors.borderWhisper, margin: '0 12px' }} />
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <div style={{ padding: '2px 10px', borderRadius: 4, background: 'rgba(184,92,92,0.10)', border: '1px solid rgba(184,92,92,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <span style={{ fontSize: 14, fontWeight: 800, color: warm.colors.danger, fontVariantNumeric: 'tabular-nums' }}>{counts.REJECTED}</span>
                             </div>
-                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mt-1.5">Rejected</p>
+                            <p style={{ margin: '6px 0 0', fontSize: 9, fontWeight: 700, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Rejected</p>
                         </div>
                     </>
                 )}

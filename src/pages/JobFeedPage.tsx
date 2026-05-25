@@ -6,6 +6,13 @@ import { toast } from 'sonner';
 import { NavLink } from 'react-router-dom';
 import api from '../lib/api';
 import { JobCard, type JobFeedItem } from '../components/jobs/JobCard';
+import { warm } from '../lib/theme/warmTokens';
+import { SectionIntroBanner } from '../components/processStrip';
+
+const gc: React.CSSProperties = {
+  background: warm.colors.bgSurface, borderRadius: 18,
+  border: `1px solid ${warm.colors.borderWhisper}`, overflow: 'hidden',
+};
 
 export const JobFeedPage: React.FC = () => {
   const queryClient = useQueryClient();
@@ -105,26 +112,41 @@ export const JobFeedPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-24">
-        <div className="w-8 h-8 border-2 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '96px 0' }}>
+        <div style={{ width: 32, height: 32, border: `2px solid ${warm.colors.accentPetrol}30`, borderTopColor: warm.colors.accentPetrol, borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+      <SectionIntroBanner sectionId="jobs">
+        Curated Australian roles matched against your profile. Skim daily; analyse the ones worth your time.
+      </SectionIntroBanner>
       {/* Header */}
-      <header className="flex items-start justify-between gap-4">
-        <div className="space-y-1">
-          <h2 className="text-4xl font-extrabold tracking-tight text-white">Job Feed</h2>
+      <header style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <h2 className="font-display" style={{ fontSize: '2.25rem', fontWeight: 800, letterSpacing: '-0.02em', margin: 0, color: warm.colors.textPrimary }}>
+            Job Feed
+          </h2>
         </div>
         {!profileIncomplete && !building && (
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider border border-slate-700 text-slate-400 hover:border-slate-600 hover:text-slate-200 transition-all disabled:opacity-40"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px',
+              borderRadius: 12, fontSize: 11, fontWeight: 900, textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              border: `1px solid ${warm.colors.borderWhisper}`,
+              color: warm.colors.textSecondary, background: 'transparent',
+              cursor: refreshing ? 'default' : 'pointer',
+              opacity: refreshing ? 0.4 : 1,
+            }}
+            onMouseEnter={e => { if (!refreshing) { e.currentTarget.style.borderColor = warm.colors.borderDefined; e.currentTarget.style.color = warm.colors.textPrimary; }}}
+            onMouseLeave={e => { if (!refreshing) { e.currentTarget.style.borderColor = warm.colors.borderWhisper; e.currentTarget.style.color = warm.colors.textSecondary; }}}
           >
-            {refreshing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+            {refreshing ? <Loader2 size={13} style={{ animation: 'spin 0.8s linear infinite' }} /> : <RefreshCw size={13} />}
             Refresh
           </button>
         )}
@@ -132,15 +154,15 @@ export const JobFeedPage: React.FC = () => {
 
       {/* Building state */}
       {building && (
-        <div className="glass-card p-10 flex flex-col items-center gap-4 text-center">
-          <div className="w-10 h-10 border-2 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" />
+        <div style={{ ...gc, padding: 40, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, textAlign: 'center' }}>
+          <div style={{ width: 40, height: 40, border: `2px solid ${warm.colors.accentPetrol}30`, borderTopColor: warm.colors.accentPetrol, borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
           <div>
-            <p className="text-base font-bold text-slate-200">Searching live listings for you…</p>
-            <p className="text-sm text-slate-500 mt-1">
-              Finding <span className="text-slate-300">{profile?.targetRole}</span> roles
-              in <span className="text-slate-300">{profile?.targetCity}</span> across Seek, LinkedIn, and Adzuna.
+            <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: warm.colors.textPrimary }}>Searching live listings for you…</p>
+            <p style={{ margin: '4px 0 0', fontSize: 14, color: warm.colors.textSecondary }}>
+              Finding <span style={{ color: warm.colors.textPrimary }}>{profile?.targetRole}</span> roles
+              in <span style={{ color: warm.colors.textPrimary }}>{profile?.targetCity}</span> across Seek, LinkedIn, and Adzuna.
             </p>
-            <p className="text-xs text-slate-600 mt-2">
+            <p style={{ margin: '8px 0 0', fontSize: 12, color: warm.colors.textMuted }}>
               {pollCount.current >= 8
                 ? "Taking longer than usual, try refreshing manually."
                 : "This takes 1–2 minutes on first load. Grab a coffee, we'll check back automatically."}
@@ -151,16 +173,22 @@ export const JobFeedPage: React.FC = () => {
 
       {/* Profile incomplete */}
       {profileIncomplete && (
-        <div className="glass-card p-8 flex flex-col items-center gap-4 text-center">
-          <AlertCircle size={32} className="text-amber-400" />
+        <div style={{ ...gc, padding: 32, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, textAlign: 'center' }}>
+          <AlertCircle size={32} style={{ color: warm.colors.accentGold }} />
           <div>
-            <p className="text-base font-bold text-slate-200 mb-1">Location required</p>
-            <p className="text-sm text-slate-500 mb-4">
+            <p style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 700, color: warm.colors.textPrimary }}>Location required</p>
+            <p style={{ margin: '0 0 16px', fontSize: 14, color: warm.colors.textSecondary }}>
               Add your city to the Location field in Profile &amp; Achievements to enable your job feed.
             </p>
             <NavLink
               to="/workspace"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600/20 border border-brand-600/30 text-brand-400 text-sm font-bold hover:bg-brand-600/30 transition-colors"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 16px',
+                borderRadius: 12, background: `${warm.colors.accentPetrol}20`,
+                border: `1px solid ${warm.colors.accentPetrol}30`,
+                color: warm.colors.accentPetrol, fontSize: 14, fontWeight: 700,
+                textDecoration: 'none',
+              }}
             >
               Go to Profile &amp; Achievements →
             </NavLink>
@@ -170,20 +198,20 @@ export const JobFeedPage: React.FC = () => {
 
       {/* Error */}
       {isError && !profileIncomplete && (
-        <div className="glass-card p-8 flex flex-col items-center gap-3 text-center">
-          <AlertCircle size={32} className="text-red-400" />
-          <p className="text-base font-bold text-slate-200">Couldn't load today's jobs</p>
-          <p className="text-sm text-slate-500">Try refreshing in a few minutes.</p>
+        <div style={{ ...gc, padding: 32, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, textAlign: 'center' }}>
+          <AlertCircle size={32} style={{ color: warm.colors.danger }} />
+          <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: warm.colors.textPrimary }}>Couldn't load today's jobs</p>
+          <p style={{ margin: 0, fontSize: 14, color: warm.colors.textSecondary }}>Try refreshing in a few minutes.</p>
         </div>
       )}
 
       {/* Empty (build finished but no results) */}
       {!isLoading && !isError && !profileIncomplete && !building && jobs.length === 0 && (
-        <div className="glass-card p-12 flex flex-col items-center gap-4 text-center">
-          <Briefcase size={36} className="text-slate-700" />
+        <div style={{ ...gc, padding: 48, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, textAlign: 'center' }}>
+          <Briefcase size={36} style={{ color: warm.colors.textMuted }} />
           <div>
-            <p className="text-base font-bold text-slate-400">No listings found today</p>
-            <p className="text-sm text-slate-600 mt-1">
+            <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: warm.colors.textSecondary }}>No listings found today</p>
+            <p style={{ margin: '4px 0 0', fontSize: 14, color: warm.colors.textMuted }}>
               We searched for {profile?.targetRole} roles in {profile?.targetCity} but found nothing today.
               Try broadening your target role in your profile, or check back tomorrow.
             </p>
@@ -191,9 +219,18 @@ export const JobFeedPage: React.FC = () => {
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold border border-slate-700 text-slate-400 hover:border-slate-600 hover:text-slate-200 transition-all disabled:opacity-40"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px',
+              borderRadius: 12, fontSize: 12, fontWeight: 700,
+              border: `1px solid ${warm.colors.borderWhisper}`,
+              color: warm.colors.textSecondary, background: 'transparent',
+              cursor: refreshing ? 'default' : 'pointer',
+              opacity: refreshing ? 0.4 : 1,
+            }}
+            onMouseEnter={e => { if (!refreshing) { e.currentTarget.style.borderColor = warm.colors.borderDefined; e.currentTarget.style.color = warm.colors.textPrimary; }}}
+            onMouseLeave={e => { if (!refreshing) { e.currentTarget.style.borderColor = warm.colors.borderWhisper; e.currentTarget.style.color = warm.colors.textSecondary; }}}
           >
-            {refreshing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+            {refreshing ? <Loader2 size={12} style={{ animation: 'spin 0.8s linear infinite' }} /> : <RefreshCw size={12} />}
             Search again
           </button>
         </div>
@@ -201,7 +238,7 @@ export const JobFeedPage: React.FC = () => {
 
       {/* Job cards */}
       {jobs.length > 0 && (
-        <div className="space-y-3">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <AnimatePresence>
             {jobs.map(job => (
               <JobCard key={job.id} item={job} onUpdate={handleUpdate} />
@@ -209,14 +246,24 @@ export const JobFeedPage: React.FC = () => {
           </AnimatePresence>
 
           {hasMore && (
-            <div className="flex items-center justify-between pt-2">
-              <p className="text-xs text-slate-500">Showing {jobs.length} of {total} jobs</p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8 }}>
+              <p style={{ margin: 0, fontSize: 12, color: warm.colors.textMuted }}>Showing {jobs.length} of {total} jobs</p>
               <button
                 onClick={handleLoadMore}
                 disabled={loadingMore}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider border border-slate-700 text-slate-400 hover:border-slate-600 hover:text-slate-200 transition-all disabled:opacity-40"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px',
+                  borderRadius: 12, fontSize: 11, fontWeight: 900, textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  border: `1px solid ${warm.colors.borderWhisper}`,
+                  color: warm.colors.textSecondary, background: 'transparent',
+                  cursor: loadingMore ? 'default' : 'pointer',
+                  opacity: loadingMore ? 0.4 : 1,
+                }}
+                onMouseEnter={e => { if (!loadingMore) { e.currentTarget.style.borderColor = warm.colors.borderDefined; e.currentTarget.style.color = warm.colors.textPrimary; }}}
+                onMouseLeave={e => { if (!loadingMore) { e.currentTarget.style.borderColor = warm.colors.borderWhisper; e.currentTarget.style.color = warm.colors.textSecondary; }}}
               >
-                {loadingMore ? <Loader2 size={12} className="animate-spin" /> : null}
+                {loadingMore ? <Loader2 size={12} style={{ animation: 'spin 0.8s linear infinite' }} /> : null}
                 {loadingMore ? 'Loading…' : 'Load 10 more'}
               </button>
             </div>
