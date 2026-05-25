@@ -11,6 +11,13 @@ import type { DocType } from '../lib/exportDocx';
 
 type KnownDocumentType = 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE' | 'BASELINE_RESUME';
 
+interface QualitySignal {
+    severity: 'info' | 'warning' | 'critical';
+    category: string;
+    message: string;
+    evidence?: string[];
+}
+
 interface Document {
     id: string;
     title: string;
@@ -18,6 +25,7 @@ interface Document {
     content: string;
     createdAt: string;
     jobApplicationId: string | null;
+    qualitySignals?: QualitySignal[] | null;
 }
 
 interface TypeConfigEntry { label: string; color: string; }
@@ -159,6 +167,20 @@ const DocCard: React.FC<DocCardProps> = ({ doc, onDelete, deleting }) => {
                             <Clock size={9} />
                             {formatDate(doc.createdAt)}
                         </span>
+                        {doc.qualitySignals?.some(s => s.severity === 'warning' || s.severity === 'critical') && (
+                            <span
+                                title={doc.qualitySignals.filter(s => s.severity === 'warning' || s.severity === 'critical').map(s => `[${s.severity}] ${s.message}`).join(' • ')}
+                                style={{
+                                    fontSize: 9, fontWeight: 800, letterSpacing: '0.04em',
+                                    padding: '1px 6px', borderRadius: 4,
+                                    color: '#B85C5C', background: '#B85C5C15',
+                                    border: '1px solid #B85C5C35',
+                                    cursor: 'default',
+                                }}
+                            >
+                                Review carefully
+                            </span>
+                        )}
                     </div>
                     <p style={{ margin: '0 0 3px', fontSize: 13, fontWeight: 600, color: warm.colors.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.title}</p>
                     <p style={{ margin: 0, fontSize: 12, color: warm.colors.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{preview}…</p>

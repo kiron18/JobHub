@@ -75,7 +75,9 @@ router.post('/achievements', authenticate, async (req, res) => {
         });
 
         // Index in Pinecone with userId namespace
-        await indexAchievement(
+        // Non-blocking: DB save is the critical path; Pinecone indexing
+        // failures are logged but must not prevent the response.
+        indexAchievement(
             userId,
             achievement.id,
             `${achievement.title}: ${achievement.description}`,
@@ -84,7 +86,9 @@ router.post('/achievements', authenticate, async (req, res) => {
                 metricType: achievement.metricType,
                 skills: achievement.skills
             }
-        );
+        ).catch((err: any) => {
+            console.error(`Pinecone index FAILED for achievement ${achievement.id} (user ${userId}):`, err?.message ?? err);
+        });
 
         res.json(achievement);
     } catch (error) {
@@ -114,7 +118,7 @@ router.patch('/achievements/:id', authenticate, async (req, res) => {
             }
         });
 
-        await indexAchievement(
+        indexAchievement(
             userId,
             achievement.id,
             `${achievement.title}: ${achievement.description}`,
@@ -123,7 +127,9 @@ router.patch('/achievements/:id', authenticate, async (req, res) => {
                 metricType: achievement.metricType,
                 skills: achievement.skills
             }
-        );
+        ).catch((err: any) => {
+            console.error(`Pinecone re-index FAILED for achievement ${achievement.id} (user ${userId}):`, err?.message ?? err);
+        });
 
         res.json(achievement);
     } catch (error) {

@@ -10,8 +10,10 @@ import { setCachedBlueprint } from '../services/blueprint-cache';
 import { buildPerCriterionAchievements } from '../services/generation';
 import { reviewDocument } from '../services/quality-gate';
 import { tagAIRewrites } from '../lib/provenanceTagging';
-import { enforceFirstPersonSummary } from '../lib/voiceEnforcer';
+import { enforceFirstPersonSummary, scrubAITells, enforceFirstPersonCoverLetter, scrubBannedPhrases } from '../lib/voiceEnforcer';
 import { computeYearsOfExperience } from '../lib/profileMath';
+import { checkAtsKeywords } from '../lib/atsKeywords';
+import { collectSignals } from '../lib/qualitySignals';
 import fs from 'fs';
 import path from 'path';
 
@@ -299,6 +301,39 @@ router.post('/:type', authenticate, async (req, res) => {
             });
         }
 
+        // ── Cover letter voice + first-person enforcement ────────────────────
+        // AI-tell scrubber runs on all doc types. Cover letter additionally gets
+        // first-person enforcement across the full body (between salutation and
+        // sign-off). STAR responses get the AI-tell scrubber only.
+        if (docType === 'COVER_LETTER' || docType === 'RESUME') {
+            const { scrubbed, removed } = scrubAITells(finalContent);
+            finalContent = scrubbed;
+            if (removed.length > 0) {
+                console.log(`[Generation] AI-tell scrubber: ${removed.length} phrase(s) removed from ${docType}`);
+            }
+        }
+        if (docType === 'COVER_LETTER') {
+            finalContent = enforceFirstPersonCoverLetter(finalContent, {
+                candidateName: profile?.name,
+            });
+        }
+        if (docType === 'STAR_RESPONSE') {
+            const { scrubbed, removed } = scrubAITells(finalContent);
+            finalContent = scrubbed;
+            if (removed.length > 0) {
+                console.log(`[Generation] AI-tell scrubber: ${removed.length} phrase(s) removed from STAR_RESPONSE`);
+            }
+        }
+
+        // ── Banned-phrases scrubber (resumes only) ──────────────────────────
+        if (docType === 'RESUME') {
+            const banned = scrubBannedPhrases(finalContent);
+            finalContent = banned.scrubbed;
+            if (banned.flagged.length > 0) {
+                console.log(`[Generation] Banned-phrases scrubber: ${banned.flagged.length} item(s) flagged`);
+            }
+        }
+
         // \u2500\u2500 Provenance tagging (resumes only) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
         // Mark bullets that diverge significantly from the user's source
         // achievements with `[AI] ` so the editor can render an "review before
@@ -310,6 +345,45 @@ router.post('/:type', authenticate, async (req, res) => {
             finalContent = tagAIRewrites(finalContent, sources);
         }
 
+        // ── ATS keyword coverage check ─────────────────────────────────────────
+        // Runs after all post-processing so the analysis reflects what the user
+        // actually gets. Non-blocking: result is informational, attached to
+        // response for frontend badges (see TASK 4).
+        let atsResult: any = null;
+        if (docType === 'RESUME' || docType === 'COVER_LETTER') {
+            try {
+                atsResult = checkAtsKeywords({
+                    jobDescription,
+                    generatedDocument: finalContent,
+                    docType,
+                });
+                console.log(`[ATS] Coverage: ${Math.round(atsResult.coverage * 100)}%, missing: ${atsResult.missingFromOutput.length} keywords`);
+                if (atsResult.warnings.length > 0) {
+                    console.warn(`[ATS] Warnings:`, atsResult.warnings);
+                }
+            } catch (err) {
+                console.error('[ATS] Check failed:', err);
+            }
+        }
+
+// ── Quality signals ──────────────────────────────────────────────────────
+        const qualitySignals = collectSignals({
+            qualityGateOutcome: stage3Info.triggered
+                ? { passed: profileViolations.length === 0, flags: profileViolations }
+                : null,
+            blueprintFallback: blueprintResult === null,
+            atsCoverage: atsResult ? {
+                coverage: atsResult.coverage,
+                missingFromOutput: atsResult.missingFromOutput,
+                criticalMissing: atsResult.warnings.filter((w: string) => w.startsWith('CRITICAL')).map((w: string) => w.replace(/^CRITICAL:\s*/, '')),
+            } : null,
+        });
+        if (qualitySignals.length > 0) {
+            console.log('[Generation] Quality signals:', qualitySignals.map((s: any) => `[${s.severity}] ${s.category}: ${s.message}`));
+        }
+
+
+
         // ── Persist document ────────────────────────────────────────────────────
         const doc = await prisma.document.create({
             data: {
@@ -317,7 +391,8 @@ router.post('/:type', authenticate, async (req, res) => {
                 content: finalContent,
                 type: docType,
                 userId,
-                jobApplicationId: sanitizedJobAppId
+                jobApplicationId: sanitizedJobAppId,
+                qualitySignals: qualitySignals.length > 0 ? qualitySignals : undefined,
             }
         });
 
@@ -337,7 +412,7 @@ router.post('/:type', authenticate, async (req, res) => {
         };
         console.log('[Generation] Cost breakdown:', JSON.stringify(costBreakdown));
 
-        res.json({ content: finalContent, id: doc.id, costBreakdown, blueprint: blueprintResult?.blueprint ?? null, profileViolations });
+        res.json({ content: finalContent, id: doc.id, costBreakdown, blueprint: blueprintResult?.blueprint ?? null, profileViolations, atsResult, qualitySignals });
 
     } catch (error) {
         console.error(`Generation Error (${type}):`, error);

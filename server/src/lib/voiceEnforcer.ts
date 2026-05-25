@@ -263,3 +263,157 @@ function looksLikeVerb(token: string): boolean {
     if (/(ous|ess|us|is)$/.test(lower)) return false;
     return /(ies|es|s)$/.test(lower);
 }
+
+// ── AI-tell phrase scrubber ──────────────────────────────────────────────
+
+interface ScrubRule {
+    pattern: RegExp;
+    replacement: string;
+}
+
+const AI_TELL_RULES: ScrubRule[] = [
+    { pattern: /\bI am confident in my ability to\b/gi, replacement: 'I can' },
+    { pattern: /\bI am writing to express my (?:strong )?interest in\b/gi, replacement: '' },
+    { pattern: /\bNotably, I have demonstrated\b/gi, replacement: 'I have demonstrated' },
+    { pattern: /\bpositions me to contribute effectively\b/gi, replacement: 'lets me contribute' },
+    { pattern: /\baligns well with my professional background\b/gi, replacement: 'fits my background' },
+    { pattern: /\bI believe I would be a great fit\b/gi, replacement: '' },
+    { pattern: /\bI am excited about the opportunity to\b/gi, replacement: '' },
+    { pattern: /\bproven track record of\b/gi, replacement: 'track record of' },
+    { pattern: /\bleveraging\b/gi, replacement: 'using' },
+    { pattern: /\bspearheading\b/gi, replacement: 'leading' },
+    { pattern: /\bsynergies?\b/gi, replacement: 'alignment' },
+    { pattern: /\bdetail-oriented\b/gi, replacement: '' },
+    { pattern: /\bteam player\b/gi, replacement: '' },
+    { pattern: /\bpassionate about\b/gi, replacement: 'focused on' },
+    { pattern: /\bthrives? in (?:a |an )?fast.paced environment\b/gi, replacement: 'works well under deadline pressure' },
+    { pattern: /\bresults-driven\b(?!\s+\d+[\d,.]*\s*%?)/gi, replacement: '' },
+];
+
+export function scrubAITells(text: string): { scrubbed: string; removed: string[] } {
+    let scrubbed = text;
+    const removed: string[] = [];
+
+    for (const rule of AI_TELL_RULES) {
+        const matches = scrubbed.match(rule.pattern);
+        if (matches) {
+            removed.push(...matches);
+            scrubbed = scrubbed.replace(rule.pattern, rule.replacement);
+        }
+    }
+
+    // Clean up double spaces and leading/trailing whitespace from removals
+    scrubbed = scrubbed.replace(/\s{2,}/g, ' ');
+    scrubbed = scrubbed.replace(/\n\s+\n/g, '\n\n');
+
+    if (removed.length > 0) {
+        console.log(`[voiceEnforcer] scrubAITells: removed ${removed.length} AI-tell phrase(s):`, removed);
+    }
+
+    return { scrubbed, removed };
+}
+
+// ── Cover letter first-person enforcement ───────────────────────────────
+
+export function enforceFirstPersonCoverLetter(
+    text: string,
+    opts: { candidateName?: string | null }
+): string {
+    if (!text || typeof text !== 'string') return text;
+    const firstName = (opts.candidateName ?? '').trim().split(/\s+/)[0] ?? '';
+
+    // Extract the body between salutation and sign-off
+    const bodyMatch = text.match(/^(?:Dear\s+[^,]+,\s*\n\s*\n?)([\s\S]*?)(?:\n\s*\n\s*(?:Yours\s+(?:sincerely|faithfully)|Sincerely|Best regards|Kind regards|Regards|Thanks))/i);
+    if (!bodyMatch) return text;
+
+    const body = bodyMatch[1];
+    const beforeBody = text.slice(0, text.indexOf(body));
+    const afterBody = text.slice(text.indexOf(body) + body.length);
+
+    const scrubbed = scrubCoverLetterBody(body, firstName);
+    if (scrubbed === body) return text;
+
+    return beforeBody + scrubbed + afterBody;
+}
+
+function scrubCoverLetterBody(body: string, firstName: string): string {
+    let scrubbed = body;
+
+    // 1. "{FirstName} <verb>" → "I <verb-conjugated>"
+    if (firstName) {
+        const namePattern = new RegExp(`\\b${escapeRegex(firstName)}\\s+([A-Za-z][A-Za-z'-]*)`, 'g');
+        scrubbed = scrubbed.replace(namePattern, (match, verb: string) => {
+            if (!looksLikeVerb(verb)) return match;
+            return `I ${conjugateToFirstPerson(verb)}`;
+        });
+    }
+
+    // 2. "he/she/they/name <verb>" → "I <verb-conjugated>"
+    scrubbed = scrubbed.replace(/\b(he|she|they)\s+([A-Za-z][A-Za-z'-]*)/gi, (match, _pronoun, verb: string) => {
+        return `I ${conjugateToFirstPerson(verb)}`;
+    });
+
+    // 3. Possessives "his/her/their" → "my"
+    scrubbed = scrubbed.replace(/\b(his|her|their)\b/gi, (m) => preserveCase(m, 'my'));
+
+    // 4. Object pronouns "him/them" → "me"
+    scrubbed = scrubbed.replace(/\b(him|them)\b/gi, (m) => preserveCase(m, 'me'));
+
+    // 5. Reflexive pronouns → "myself"
+    scrubbed = scrubbed.replace(/\b(himself|herself|themself|themselves)\b/gi, (m) => preserveCase(m, 'myself'));
+
+    return scrubbed;
+}
+
+// ── Banned-phrases scrubber ─────────────────────────────────────────────
+
+const BANNED_RESUME_PHRASES: Array<{ pattern: RegExp; replacement: string | null; needsFlag: boolean }> = [
+    { pattern: /\bdemonstrating my ability to\b/gi, replacement: null, needsFlag: true },
+    { pattern: /\bhighlighting my\b/gi, replacement: null, needsFlag: true },
+    { pattern: /\bshowcasing my\b/gi, replacement: null, needsFlag: true },
+    { pattern: /\bresults-driven\b(?!\s+\d+[\d,.]*\s*%?)/gi, replacement: '', needsFlag: false },
+    { pattern: /\bteam player\b/gi, replacement: '', needsFlag: false },
+    { pattern: /\bexcellent communication skills\b/gi, replacement: '', needsFlag: false },
+    { pattern: /\bresponsible for managing\b/gi, replacement: 'managed', needsFlag: false },
+    { pattern: /\bassisted with\b/gi, replacement: null, needsFlag: true },
+    { pattern: /\bhelped (?:to )?develop\b/gi, replacement: 'developed', needsFlag: false },
+    { pattern: /\b(?:I )?helped (set up|build|create|launch)\b/gi, replacement: '$1', needsFlag: false },
+    { pattern: /\bworked closely with the team to\b/gi, replacement: '', needsFlag: false },
+    { pattern: /\bensuring alignment with\b/gi, replacement: 'aligned with', needsFlag: false },
+];
+
+export function scrubBannedPhrases(text: string): { scrubbed: string; flagged: string[] } {
+    let scrubbed = text;
+    const flagged: string[] = [];
+
+    for (const rule of BANNED_RESUME_PHRASES) {
+        if (rule.needsFlag) {
+            const matches = scrubbed.match(rule.pattern);
+            if (matches) {
+                flagged.push(...matches);
+            }
+        } else {
+            if (rule.replacement !== null) {
+                const before = scrubbed;
+                scrubbed = scrubbed.replace(rule.pattern, rule.replacement);
+                if (before !== scrubbed) {
+                    flagged.push(`replaced: ${rule.pattern.source}`);
+                }
+            } else {
+                const matches = scrubbed.match(rule.pattern);
+                if (matches) {
+                    flagged.push(...matches);
+                }
+            }
+        }
+    }
+
+    // Clean up double spaces from removals
+    scrubbed = scrubbed.replace(/\s{2,}/g, ' ');
+
+    if (flagged.length > 0) {
+        console.log(`[voiceEnforcer] scrubBannedPhrases: flagged ${flagged.length} item(s):`, flagged);
+    }
+
+    return { scrubbed, flagged };
+}

@@ -92,6 +92,7 @@ export function AchievementDraftModal({ open, onClose, skill, suggestion, jobRol
             });
             await queryClient.invalidateQueries({ queryKey: ['profile'] });
             await queryClient.invalidateQueries({ queryKey: ['achievements', 'count'] });
+            await queryClient.invalidateQueries({ queryKey: ['achievements'] });
             toast.success('Achievement added to your profile');
             onSaved?.();
             onClose();

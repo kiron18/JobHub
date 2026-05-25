@@ -26,28 +26,24 @@ export async function indexAchievement(
     text: string,
     metadata: any = {}
 ) {
-    try {
-        const index = getPinecone().index(PINECONE_INDEX_NAME);
-        const vector = await embedText(text);
+    const index = getPinecone().index(PINECONE_INDEX_NAME);
+    const vector = await embedText(text);
 
-        await index.namespace(userId).upsert({
-            records: [
-                {
-                    id: achievementId,
-                    values: vector,
-                    metadata: {
-                        ...metadata,
-                        userId,
-                        text,
-                        type: 'achievement'
-                    },
-                }
-            ]
-        });
-        console.log(`✅ Indexed achievement ${achievementId} in Pinecone namespace ${userId}`);
-    } catch (error) {
-        console.error('Pinecone Indexing Error:', error);
-    }
+    await index.namespace(userId).upsert({
+        records: [
+            {
+                id: achievementId,
+                values: vector,
+                metadata: {
+                    ...metadata,
+                    userId,
+                    text,
+                    type: 'achievement'
+                },
+            }
+        ]
+    });
+    console.log(`Indexed achievement ${achievementId} in Pinecone namespace ${userId}`);
 }
 
 /**
