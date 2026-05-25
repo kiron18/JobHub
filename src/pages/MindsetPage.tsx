@@ -11,7 +11,8 @@
  */
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-import { useAppTheme } from '../contexts/ThemeContext';
+import { warm } from '../lib/theme/warmTokens';
+import { SectionIntroBanner } from '../components/processStrip';
 
 interface Section {
   heading: string;
@@ -84,10 +85,11 @@ const SECTIONS: Section[] = [
 ];
 
 export function MindsetPage() {
-  const { T } = useAppTheme();
-
   return (
     <div style={{ maxWidth: 640, margin: '0 auto', padding: '24px 4px 80px' }}>
+      <SectionIntroBanner sectionId="mindset">
+        Quick-reference mindset prompts for when the job search wears you down. Read one when you need it.
+      </SectionIntroBanner>
       <Link
         to="/"
         style={{
@@ -95,13 +97,13 @@ export function MindsetPage() {
           alignItems: 'center',
           gap: 6,
           fontSize: 13,
-          color: T.textMuted,
+          color: warm.colors.textSecondary,
           textDecoration: 'none',
           marginBottom: 32,
           transition: 'color 200ms',
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.color = T.text)}
-        onMouseLeave={(e) => (e.currentTarget.style.color = T.textMuted)}
+        onMouseEnter={(e) => (e.currentTarget.style.color = warm.colors.textPrimary)}
+        onMouseLeave={(e) => (e.currentTarget.style.color = warm.colors.textSecondary)}
       >
         <ArrowLeft size={14} />
         Back to dashboard
@@ -111,16 +113,16 @@ export function MindsetPage() {
         margin: '0 0 16px',
         fontSize: 28,
         fontWeight: 700,
-        color: T.text,
+        color: warm.colors.textPrimary,
         letterSpacing: '-0.02em',
         lineHeight: 1.2,
       }}>
         A few notes for the hard stretches.
       </h1>
-      <p style={{ margin: '0 0 8px', fontSize: 15, color: T.textMuted, lineHeight: 1.65 }}>
+      <p style={{ margin: '0 0 8px', fontSize: 15, color: warm.colors.textSecondary, lineHeight: 1.65 }}>
         This page is not advice. It is a set of quiet reminders, written for the days when the silence is loud.
       </p>
-      <p style={{ margin: '0 0 48px', fontSize: 15, color: T.textMuted, lineHeight: 1.65 }}>
+      <p style={{ margin: '0 0 48px', fontSize: 15, color: warm.colors.textSecondary, lineHeight: 1.65 }}>
         You can leave it open in a tab. You can come back to it. Nothing on it will change.
       </p>
 
@@ -130,7 +132,7 @@ export function MindsetPage() {
             margin: '0 0 14px',
             fontSize: 18,
             fontWeight: 700,
-            color: T.text,
+            color: warm.colors.textPrimary,
             letterSpacing: '-0.01em',
           }}>
             {idx + 1}. {section.heading}
@@ -139,7 +141,7 @@ export function MindsetPage() {
             <p key={pIdx} style={{
               margin: '0 0 12px',
               fontSize: 14,
-              color: T.textMuted,
+              color: warm.colors.textSecondary,
               lineHeight: 1.75,
             }}>
               {para}
@@ -151,9 +153,9 @@ export function MindsetPage() {
       <footer style={{
         marginTop: 56,
         paddingTop: 24,
-        borderTop: `1px solid ${T.cardBorder}`,
+        borderTop: `1px solid ${warm.colors.borderWhisper}`,
         fontSize: 12,
-        color: T.textFaint,
+        color: warm.colors.textMuted,
         fontStyle: 'italic',
         textAlign: 'center',
       }}>

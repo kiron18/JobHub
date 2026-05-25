@@ -43,7 +43,8 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import api from '../lib/api';
-import { useAppTheme } from '../contexts/ThemeContext';
+import { warm } from '../lib/theme/warmTokens';
+import { GenerationProgress } from '../components/shared/GenerationProgress';
 
 // ── Placeholder marker rendering ────────────────────────────────────────────
 //
@@ -57,8 +58,17 @@ import { useAppTheme } from '../contexts/ThemeContext';
 
 const VERIFY_MARKER_RE = /\[(?:VERIFY|Verify|verify|ADD|Add|INSERT|Insert|TBD|PLACEHOLDER)(?:[:\s]\s*([^\]]*))?\]/g;
 
+/** Strip common AI-generation artifacts before rendering or storage. */
+function sanitizeContent(raw: string): string {
+    return raw
+        // "NFP?" hallucination — the LLM sometimes leaks the sector abbreviation
+        // before contact lines (e.g. "NFP?\n📞 +61...").
+        .replace(/^NFP\?\s*/gm, '')
+        .replace(/\bNFP\?\s*/g, '')
+        .trim();
+}
+
 function VerifyMarker({ note }: { note: string }) {
-    const { T } = useAppTheme();
     const [open, setOpen] = React.useState(false);
     const wrapperRef = React.useRef<HTMLSpanElement>(null);
     const [tipPos, setTipPos] = React.useState<{ top: number; left: number; arrowX: number } | null>(null);
@@ -153,8 +163,8 @@ function VerifyMarker({ note }: { note: string }) {
                         left: tipPos.left,
                         transform: 'translateY(-100%)',
                         width: 280,
-                        background: T.card,
-                        border: `1px solid ${T.cardBorder}`,
+                        background: warm.colors.bgSurface,
+                        border: `1px solid ${warm.colors.borderWhisper}`,
                         borderRadius: 12,
                         padding: '12px 14px 14px',
                         boxShadow: '0 8px 32px rgba(0,0,0,0.45)',
@@ -181,7 +191,7 @@ function VerifyMarker({ note }: { note: string }) {
                         <span style={{
                             display: 'block',
                             fontSize: 12,
-                            color: T.text,
+                            color: warm.colors.textPrimary,
                             fontStyle: 'italic',
                             marginBottom: 10,
                             background: 'rgba(197,160,89,0.06)',
@@ -192,7 +202,7 @@ function VerifyMarker({ note }: { note: string }) {
                             "{note}"
                         </span>
                     )}
-                    <span style={{ display: 'block', fontSize: 12, color: T.textMuted, marginBottom: 10 }}>
+                    <span style={{ display: 'block', fontSize: 12, color: warm.colors.textMuted, marginBottom: 10 }}>
                         We added this because your profile didn't have the specific detail the role asked for. Adding it to your profile means future drafts use the real value instead of a placeholder.
                     </span>
                     <Link
@@ -220,7 +230,7 @@ function VerifyMarker({ note }: { note: string }) {
                         height: 0,
                         borderLeft: '6px solid transparent',
                         borderRight: '6px solid transparent',
-                        borderTop: `6px solid ${T.card}`,
+                        borderTop: `6px solid ${warm.colors.bgSurface}`,
                     }} />
                 </span>,
                 document.body,
@@ -250,16 +260,19 @@ function processMarkers(children: React.ReactNode): React.ReactNode {
     });
 }
 
+const HEADING_COLOR: React.CSSProperties = { color: warm.colors.textPrimary };
+const STRONG_COLOR: React.CSSProperties = { color: warm.colors.textPrimary, fontWeight: 700 };
+
 const MARKDOWN_COMPONENTS = {
     p: ({ children }: { children?: React.ReactNode }) => <p>{processMarkers(children)}</p>,
     li: ({ children }: { children?: React.ReactNode }) => <li>{processMarkers(children)}</li>,
-    strong: ({ children }: { children?: React.ReactNode }) => <strong>{processMarkers(children)}</strong>,
+    strong: ({ children }: { children?: React.ReactNode }) => <strong style={STRONG_COLOR}>{processMarkers(children)}</strong>,
     em: ({ children }: { children?: React.ReactNode }) => <em>{processMarkers(children)}</em>,
     td: ({ children }: { children?: React.ReactNode }) => <td>{processMarkers(children)}</td>,
-    h1: ({ children }: { children?: React.ReactNode }) => <h1>{processMarkers(children)}</h1>,
-    h2: ({ children }: { children?: React.ReactNode }) => <h2>{processMarkers(children)}</h2>,
-    h3: ({ children }: { children?: React.ReactNode }) => <h3>{processMarkers(children)}</h3>,
-    h4: ({ children }: { children?: React.ReactNode }) => <h4>{processMarkers(children)}</h4>,
+    h1: ({ children }: { children?: React.ReactNode }) => <h1 style={HEADING_COLOR}>{processMarkers(children)}</h1>,
+    h2: ({ children }: { children?: React.ReactNode }) => <h2 style={HEADING_COLOR}>{processMarkers(children)}</h2>,
+    h3: ({ children }: { children?: React.ReactNode }) => <h3 style={HEADING_COLOR}>{processMarkers(children)}</h3>,
+    h4: ({ children }: { children?: React.ReactNode }) => <h4 style={HEADING_COLOR}>{processMarkers(children)}</h4>,
 };
 
 type StepId = 'resume' | 'cover-letter' | 'selection-criteria' | 'track';
@@ -296,7 +309,10 @@ function draftStorageKey(workspaceKey: string, step: StepId): string {
 function loadDraft(workspaceKey: string, step: StepId): PersistedDraft | null {
     try {
         const raw = localStorage.getItem(draftStorageKey(workspaceKey, step));
-        return raw ? JSON.parse(raw) : null;
+        if (!raw) return null;
+        const draft: PersistedDraft = JSON.parse(raw);
+        draft.content = sanitizeContent(draft.content);
+        return draft;
     } catch {
         return null;
     }
@@ -313,7 +329,6 @@ function saveDraft(workspaceKey: string, step: StepId, draft: PersistedDraft): v
 // ── Page ────────────────────────────────────────────────────────────────────
 
 export function StepperWorkspace() {
-    const { T } = useAppTheme();
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -367,8 +382,8 @@ export function StepperWorkspace() {
                     flexShrink: 0,
                     width: jdExpanded ? 360 : 36,
                     transition: 'width 220ms ease',
-                    background: T.card,
-                    border: `1px solid ${T.cardBorder}`,
+                    background: warm.colors.bgSurface,
+                    border: `1px solid ${warm.colors.borderWhisper}`,
                     borderRadius: 14,
                     padding: jdExpanded ? '18px 20px' : '18px 8px',
                     maxHeight: 'calc(100vh - 140px)',
@@ -385,14 +400,14 @@ export function StepperWorkspace() {
                             fontWeight: 700,
                             letterSpacing: '0.14em',
                             textTransform: 'uppercase',
-                            color: T.textMuted,
+                            color: warm.colors.textMuted,
                         }}>
                             Job description
                         </p>
                         <div style={{
                             fontSize: 12,
                             lineHeight: 1.65,
-                            color: T.textMuted,
+                            color: warm.colors.textMuted,
                             whiteSpace: 'pre-wrap',
                             maxHeight: 'calc(100vh - 200px)',
                             overflowY: 'auto',
@@ -416,7 +431,7 @@ export function StepperWorkspace() {
                             fontWeight: 700,
                             letterSpacing: '0.14em',
                             textTransform: 'uppercase',
-                            color: T.textMuted,
+                            color: warm.colors.textMuted,
                             whiteSpace: 'nowrap',
                         }}>
                             Job description
@@ -480,21 +495,20 @@ function Stepper({
     currentIndex: number;
     onSelect: (i: number) => void;
 }) {
-    const { T } = useAppTheme();
     return (
         <div style={{
             display: 'flex',
             alignItems: 'center',
             gap: 8,
             padding: '14px 18px',
-            background: T.card,
-            border: `1px solid ${T.cardBorder}`,
+            background: warm.colors.bgSurface,
+            border: `1px solid ${warm.colors.borderWhisper}`,
             borderRadius: 12,
         }}>
             {steps.map((step, i) => {
                 const isActive = i === currentIndex;
                 const isDone = i < currentIndex;
-                const color = isActive ? T.accentSuccess : isDone ? T.accentSecondary : T.textFaint;
+                const color = isActive ? warm.colors.accentGold : isDone ? warm.colors.accentPetrol : warm.colors.textMuted;
                 return (
                     <button
                         key={step.id}
@@ -518,7 +532,7 @@ function Stepper({
                         {isDone ? <Check size={13} /> : step.icon}
                         {step.label}
                         {i < steps.length - 1 && (
-                            <ChevronRight size={12} style={{ color: T.textFaint, marginLeft: 4 }} />
+                            <ChevronRight size={12} style={{ color: warm.colors.textMuted, marginLeft: 4 }} />
                         )}
                     </button>
                 );
@@ -544,7 +558,6 @@ function DocumentStep({
     onContinue: () => void;
     isLast: boolean;
 }) {
-    const { T } = useAppTheme();
     const [content, setContent] = useState<string>('');
     const [generating, setGenerating] = useState(false);
     const [hasDraft, setHasDraft] = useState(false);
@@ -643,7 +656,7 @@ function DocumentStep({
             const payload: Record<string, unknown> = { jobDescription };
             if (isSC) payload.selectionCriteriaText = criteriaText.trim();
             const { data } = await api.post<{ content: string }>(`/generate/${stepId}`, payload);
-            const text = typeof data?.content === 'string' ? data.content : '';
+            const text = typeof data?.content === 'string' ? sanitizeContent(data.content) : '';
             setContent(text);
             saveDraft(workspaceKey, stepId, {
                 content: text,
@@ -741,8 +754,8 @@ function DocumentStep({
 
     return (
         <div style={{
-            background: T.card,
-            border: `1px solid ${T.cardBorder}`,
+            background: warm.colors.bgSurface,
+            border: `1px solid ${warm.colors.borderWhisper}`,
             borderRadius: 14,
             padding: 28,
             display: 'flex',
@@ -751,7 +764,7 @@ function DocumentStep({
             minHeight: 420,
         }}>
             <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: T.textMuted }}>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: warm.colors.textMuted }}>
                     {stepLabel}
                 </p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -770,7 +783,6 @@ function DocumentStep({
                                 onCloseMenu={() => setFormatMenuOpen(false)}
                                 onDownload={() => handleDownload()}
                                 onChoose={(f) => handleDownload(f)}
-                                T={T}
                             />
                         </>
                     )}
@@ -779,7 +791,7 @@ function DocumentStep({
 
             {/* Cover letter educational note */}
             {stepId === 'cover-letter' && (
-                <p style={{ margin: 0, fontSize: 12, color: T.textMuted, lineHeight: 1.6, fontStyle: 'italic' }}>
+                <p style={{ margin: 0, fontSize: 12, color: warm.colors.textMuted, lineHeight: 1.6, fontStyle: 'italic' }}>
                     {coverLetterNote}
                 </p>
             )}
@@ -793,7 +805,6 @@ function DocumentStep({
                     criteriaText={criteriaText}
                     onSave={handleSaveCriteria}
                     hasCriteria={hasCriteria}
-                    T={T}
                 />
             )}
 
@@ -801,8 +812,8 @@ function DocumentStep({
             <div style={{
                 position: 'relative',
                 flex: 1,
-                background: T.inputBg,
-                border: `1px solid ${T.inputBorder}`,
+                background: warm.colors.bgAlt,
+                border: `1px solid ${warm.colors.borderWhisper}`,
                 borderRadius: 10,
                 padding: '20px 24px',
                 minHeight: 280,
@@ -818,7 +829,7 @@ function DocumentStep({
                             right: 16,
                             background: 'transparent',
                             border: 'none',
-                            color: editing ? T.accentSuccess : T.textMuted,
+                            color: editing ? warm.colors.accentGold : warm.colors.textMuted,
                             fontSize: 12,
                             fontWeight: 600,
                             letterSpacing: '0.02em',
@@ -835,10 +846,7 @@ function DocumentStep({
                 )}
 
                 {generating ? (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '60px 0', color: T.textMuted, fontSize: 13 }}>
-                        <Loader2 size={16} className="animate-spin" />
-                        Drafting your {stepId === 'cover-letter' ? 'cover letter' : stepId === 'selection-criteria' ? 'selection-criteria responses' : 'resume'}…
-                    </div>
+                    <GenerationProgress docType={stepId === 'cover-letter' ? 'cover-letter' : stepId === 'selection-criteria' ? 'selection-criteria' : 'resume'} />
                 ) : editing ? (
                     <textarea
                         value={editBuffer}
@@ -852,7 +860,7 @@ function DocumentStep({
                             background: 'transparent',
                             border: 'none',
                             outline: 'none',
-                            color: T.text,
+                            color: warm.colors.textPrimary,
                             fontSize: 13.5,
                             lineHeight: 1.7,
                             fontFamily: 'inherit',
@@ -861,11 +869,11 @@ function DocumentStep({
                         }}
                     />
                 ) : content ? (
-                    <div className="prose prose-invert max-w-none" style={{ color: T.text, fontSize: 13.5, lineHeight: 1.7 }}>
+                    <div className="prose prose-invert max-w-none" style={{ color: warm.colors.textPrimary, fontSize: 13.5, lineHeight: 1.7 }}>
                         <ReactMarkdown components={MARKDOWN_COMPONENTS as any}>{content}</ReactMarkdown>
                     </div>
                 ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, padding: '40px 0', color: T.textFaint, textAlign: 'center' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, padding: '40px 0', color: warm.colors.textMuted, textAlign: 'center' }}>
                         <PenLine size={28} />
                         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, maxWidth: 380 }}>
                             {isSC
@@ -895,7 +903,7 @@ function DocumentStep({
                         <button
                             onClick={onBack}
                             disabled={generating}
-                            style={ghostButtonStyle(T, generating)}
+                            style={ghostButtonStyle(generating)}
                         >
                             <ArrowLeft size={14} />
                             Back
@@ -907,7 +915,7 @@ function DocumentStep({
                         <button
                             onClick={() => generate(true)}
                             disabled={generating}
-                            style={ghostButtonStyle(T, generating)}
+                            style={ghostButtonStyle(generating)}
                             title="Regenerate this document"
                         >
                             <RefreshCw size={13} />
@@ -918,7 +926,7 @@ function DocumentStep({
                         <button
                             onClick={() => generate(false)}
                             disabled={generating || (isSC && !hasCriteria)}
-                            style={primaryButtonStyle(T, generating || (isSC && !hasCriteria))}
+                            style={primaryButtonStyle(generating || (isSC && !hasCriteria))}
                             title={isSC && !hasCriteria ? 'Paste the selection criteria first' : undefined}
                         >
                             {generating ? (<><Loader2 size={14} className="animate-spin" /> Generating…</>) : (<>Generate<ArrowRight size={14} /></>)}
@@ -928,7 +936,7 @@ function DocumentStep({
                         <button
                             onClick={handleContinueWithVerifyCheck}
                             disabled={generating}
-                            style={primaryButtonStyle(T, generating)}
+                            style={primaryButtonStyle(generating)}
                             title={hasVerifyTokens ? 'This draft has unverified placeholders' : undefined}
                         >
                             {isLast ? 'Finish' : 'Save & continue'}
@@ -964,7 +972,6 @@ function TrackStep({
     sourceUrl?: string;
     sourcePlatform?: string;
 }) {
-    const { T } = useAppTheme();
     const navigate = useNavigate();
     const [autoSaveError, setAutoSaveError] = useState(false);
 
@@ -1014,8 +1021,8 @@ function TrackStep({
 
     return (
         <div style={{
-            background: T.card,
-            border: `1px solid ${T.cardBorder}`,
+            background: warm.colors.bgSurface,
+            border: `1px solid ${warm.colors.borderWhisper}`,
             borderRadius: 14,
             padding: 28,
             display: 'flex',
@@ -1023,13 +1030,13 @@ function TrackStep({
             gap: 18,
         }}>
             <div>
-                <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: T.accentSuccess }}>
+                <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: warm.colors.accentGold }}>
                     {autoSaveError ? 'Almost there' : 'Saved to your tracker'}
                 </p>
-                <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: T.text, letterSpacing: '-0.01em' }}>
+                <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: warm.colors.textPrimary, letterSpacing: '-0.01em' }}>
                     {autoSaveError ? 'Your application is ready, but the tracker save failed.' : 'Nice work. This one is in your tracker.'}
                 </h2>
-                <p style={{ margin: '8px 0 0', fontSize: 13, color: T.textMuted, lineHeight: 1.6 }}>
+                <p style={{ margin: '8px 0 0', fontSize: 13, color: warm.colors.textMuted, lineHeight: 1.6 }}>
                     {autoSaveError
                         ? 'We could not save automatically. Retry below, or come back from the dashboard.'
                         : `${role ?? 'This role'}${company ? ` at ${company}` : ''} is now under Applications, with today's date set.`}
@@ -1037,26 +1044,26 @@ function TrackStep({
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <DraftRow label="Resume" ready={drafted.resume} T={T} />
-                <DraftRow label="Cover letter" ready={drafted.cover} T={T} />
-                {wantsSC && <DraftRow label="Selection criteria" ready={drafted.sc} T={T} />}
+                <DraftRow label="Resume" ready={drafted.resume} />
+                <DraftRow label="Cover letter" ready={drafted.cover} />
+                {wantsSC && <DraftRow label="Selection criteria" ready={drafted.sc} />}
             </div>
 
             {/* Compact tracker chip with hover tooltip. The full explanation
                 lives in the tooltip, not the layout, so the Track screen reads
                 less crowded. */}
             <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 6 }} className="group">
-                <Briefcase size={12} style={{ color: T.textMuted, flexShrink: 0 }} />
-                <p style={{ margin: 0, fontSize: 12, color: T.textMuted, fontWeight: 500 }}>
+                <Briefcase size={12} style={{ color: warm.colors.textMuted, flexShrink: 0 }} />
+                <p style={{ margin: 0, fontSize: 12, color: warm.colors.textMuted, fontWeight: 500 }}>
                     Find this anytime under{' '}
                     <Link
                         to="/tracker"
                         style={{
-                            color: T.text,
+                            color: warm.colors.textPrimary,
                             fontWeight: 600,
                             textDecoration: 'underline',
                             textUnderlineOffset: 3,
-                            textDecorationColor: 'rgba(255,255,255,0.2)',
+                            textDecorationColor: warm.colors.borderDefined,
                         }}
                     >
                         Applications
@@ -1071,8 +1078,8 @@ function TrackStep({
                             width: 14,
                             height: 14,
                             borderRadius: '50%',
-                            background: 'rgba(255,255,255,0.08)',
-                            color: T.textMuted,
+                            background: warm.colors.bgAlt,
+                            color: warm.colors.textMuted,
                             fontSize: 9,
                             fontWeight: 800,
                             marginLeft: 6,
@@ -1093,13 +1100,13 @@ function TrackStep({
                         zIndex: 30,
                         width: 'min(360px, calc(100vw - 80px))',
                         padding: '12px 14px',
-                        background: '#1A1C1E',
-                        border: '1px solid rgba(255,255,255,0.12)',
+                        background: warm.colors.bgDeep,
+                        border: `1px solid ${warm.colors.borderDefined}`,
                         borderRadius: 10,
-                        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                        boxShadow: warm.shadow.lifted,
                         fontSize: 12,
                         lineHeight: 1.55,
-                        color: T.textMuted,
+                        color: warm.colors.textOnDeep,
                         opacity: 0,
                         pointerEvents: 'none',
                         transform: 'translateY(-4px)',
@@ -1128,10 +1135,10 @@ function TrackStep({
                     borderRadius: 12,
                 }}>
                     <div style={{ flex: 1 }}>
-                        <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 700, color: T.text }}>
+                        <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 700, color: warm.colors.textPrimary }}>
                             {sourceUrl ? 'Ready to send' : 'Your docs are ready'}
                         </p>
-                        <p style={{ margin: 0, fontSize: 12.5, color: T.textMuted, lineHeight: 1.55 }}>
+                        <p style={{ margin: 0, fontSize: 12.5, color: warm.colors.textMuted, lineHeight: 1.55 }}>
                             {sourceUrl
                                 ? 'One click downloads your resume and cover letter as PDFs, copies the cover letter to your clipboard, and opens the listing.'
                                 : 'One click downloads your resume and cover letter as PDFs and copies the cover letter to your clipboard. Send this one off, then queue up the next.'
@@ -1152,15 +1159,15 @@ function TrackStep({
             )}
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 4 }}>
-                <button onClick={onBack} style={ghostButtonStyle(T, false)}>
+                <button onClick={onBack} style={ghostButtonStyle(false)}>
                     <ArrowLeft size={14} />
                     Back
                 </button>
                 <div style={{ display: 'flex', gap: 10 }}>
-                    <button onClick={() => navigate('/tracker')} style={ghostButtonStyle(T, false)}>
+                    <button onClick={() => navigate('/tracker')} style={ghostButtonStyle(false)}>
                         Open tracker
                     </button>
-                    <button onClick={() => navigate('/')} style={primaryButtonStyle(T, false)}>
+                    <button onClick={() => navigate('/')} style={primaryButtonStyle(false)}>
                         Apply for another role
                         <ArrowRight size={14} />
                     </button>
@@ -1196,7 +1203,6 @@ function CriteriaPanel({
     criteriaText,
     onSave,
     hasCriteria,
-    T,
 }: {
     open: boolean;
     onOpen: () => void;
@@ -1204,7 +1210,6 @@ function CriteriaPanel({
     criteriaText: string;
     onSave: (next: string) => void;
     hasCriteria: boolean;
-    T: ReturnType<typeof useAppTheme>['T'];
 }) {
     const [buffer, setBuffer] = useState(criteriaText);
 
@@ -1241,7 +1246,7 @@ function CriteriaPanel({
                             fontSize: 12.5,
                             fontWeight: 700,
                             letterSpacing: '0.02em',
-                            color: hasCriteria ? T.accentSecondary : T.accentSuccess,
+                            color: hasCriteria ? warm.colors.accentPetrol : warm.colors.accentGold,
                             cursor: 'pointer',
                             boxShadow: hasCriteria ? 'none' : '0 0 0 3px rgba(197,160,89,0.10)',
                         }}
@@ -1259,19 +1264,19 @@ function CriteriaPanel({
                         transition={{ duration: 0.22 }}
                         style={{
                             overflow: 'hidden',
-                            border: `1px solid ${T.cardBorder}`,
+                            border: `1px solid ${warm.colors.borderWhisper}`,
                             borderRadius: 12,
-                            background: T.inputBg,
+                            background: warm.colors.bgAlt,
                         }}
                     >
                         <div style={{ padding: '14px 16px 12px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
-                                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: T.accentSuccess }}>
+                                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: warm.colors.accentGold }}>
                                     Selection criteria
                                 </p>
                                 <button
                                     onClick={onClose}
-                                    style={{ background: 'transparent', border: 'none', color: T.textMuted, fontSize: 12, cursor: 'pointer', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 3 }}
+                                    style={{ background: 'transparent', border: 'none', color: warm.colors.textMuted, fontSize: 12, cursor: 'pointer', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 3 }}
                                 >
                                     Hide
                                 </button>
@@ -1287,9 +1292,9 @@ function CriteriaPanel({
                                     padding: '12px 14px',
                                     fontSize: 13,
                                     lineHeight: 1.65,
-                                    color: T.inputText,
-                                    background: T.bg,
-                                    border: `1px solid ${T.inputBorder}`,
+                                    color: warm.colors.textPrimary,
+                                    background: warm.colors.bgCanvas,
+                                    border: `1px solid ${warm.colors.borderWhisper}`,
                                     borderRadius: 10,
                                     outline: 'none',
                                     resize: 'vertical',
@@ -1298,7 +1303,7 @@ function CriteriaPanel({
                                 }}
                             />
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, gap: 12 }}>
-                                <p style={{ margin: 0, fontSize: 11, color: T.textFaint, lineHeight: 1.5 }}>
+                                <p style={{ margin: 0, fontSize: 11, color: warm.colors.textMuted, lineHeight: 1.5 }}>
                                     {buffer.trim().length} characters · we recommend pasting all numbered criteria together.
                                 </p>
                                 <button
@@ -1308,8 +1313,8 @@ function CriteriaPanel({
                                         padding: '7px 14px',
                                         fontSize: 12,
                                         fontWeight: 700,
-                                        color: T.btnText,
-                                        background: buffer.trim().length < 40 ? 'rgba(45,90,110,0.4)' : T.btnBg,
+                                        color: warm.colors.textOnDeep,
+                                        background: buffer.trim().length < 40 ? 'rgba(45,90,110,0.4)' : warm.colors.accentPetrol,
                                         border: 'none',
                                         borderRadius: 8,
                                         cursor: buffer.trim().length < 40 ? 'not-allowed' : 'pointer',
@@ -1336,7 +1341,6 @@ function DownloadSplit({
     onCloseMenu,
     onDownload,
     onChoose,
-    T,
 }: {
     format: 'docx' | 'pdf';
     open: boolean;
@@ -1344,7 +1348,6 @@ function DownloadSplit({
     onCloseMenu: () => void;
     onDownload: () => void;
     onChoose: (next: 'docx' | 'pdf') => void;
-    T: ReturnType<typeof useAppTheme>['T'];
 }) {
     return (
         <div style={{ position: 'relative', display: 'inline-flex' }} onMouseLeave={onCloseMenu}>
@@ -1358,9 +1361,9 @@ function DownloadSplit({
                     fontSize: 11,
                     fontWeight: 700,
                     letterSpacing: '0.06em',
-                    color: T.textMuted,
+                    color: warm.colors.textMuted,
                     background: 'transparent',
-                    border: `1px solid ${T.cardBorder}`,
+                    border: `1px solid ${warm.colors.borderWhisper}`,
                     borderRight: 'none',
                     borderTopLeftRadius: 8,
                     borderBottomLeftRadius: 8,
@@ -1376,10 +1379,10 @@ function DownloadSplit({
                 style={{
                     padding: '6px 8px',
                     background: 'transparent',
-                    border: `1px solid ${T.cardBorder}`,
+                    border: `1px solid ${warm.colors.borderWhisper}`,
                     borderTopRightRadius: 8,
                     borderBottomRightRadius: 8,
-                    color: T.textMuted,
+                    color: warm.colors.textMuted,
                     cursor: 'pointer',
                 }}
             >
@@ -1391,10 +1394,10 @@ function DownloadSplit({
                     top: 'calc(100% + 4px)',
                     right: 0,
                     minWidth: 140,
-                    background: T.card,
-                    border: `1px solid ${T.cardBorder}`,
+                    background: warm.colors.bgSurface,
+                    border: `1px solid ${warm.colors.borderWhisper}`,
                     borderRadius: 10,
-                    boxShadow: T.cardShadow,
+                    boxShadow: warm.shadow.soft,
                     padding: 6,
                     zIndex: 10,
                 }}>
@@ -1410,7 +1413,7 @@ function DownloadSplit({
                                 padding: '8px 12px',
                                 fontSize: 12,
                                 fontWeight: 600,
-                                color: T.text,
+                                color: warm.colors.textPrimary,
                                 background: f === format ? 'rgba(125,166,125,0.08)' : 'transparent',
                                 border: 'none',
                                 borderRadius: 6,
@@ -1419,10 +1422,10 @@ function DownloadSplit({
                             }}
                         >
                             <span>.{f}</span>
-                            {f === format && <Check size={12} style={{ color: T.accentSecondary }} />}
+                            {f === format && <Check size={12} style={{ color: warm.colors.accentPetrol }} />}
                         </button>
                     ))}
-                    <p style={{ margin: '6px 8px 4px', fontSize: 10, color: T.textFaint, lineHeight: 1.5 }}>
+                    <p style={{ margin: '6px 8px 4px', fontSize: 10, color: warm.colors.textMuted, lineHeight: 1.5 }}>
                         Choice persists for next time.
                     </p>
                 </div>
@@ -1431,25 +1434,25 @@ function DownloadSplit({
     );
 }
 
-function DraftRow({ label, ready, T }: { label: string; ready: boolean; T: ReturnType<typeof useAppTheme>['T'] }) {
+function DraftRow({ label, ready }: { label: string; ready: boolean }) {
     return (
         <div style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '10px 14px',
-            background: ready ? 'rgba(125,166,125,0.08)' : 'rgba(255,255,255,0.03)',
-            border: `1px solid ${ready ? 'rgba(125,166,125,0.25)' : T.cardBorder}`,
+            background: ready ? 'rgba(125,166,125,0.08)' : warm.colors.bgAlt,
+            border: `1px solid ${ready ? 'rgba(125,166,125,0.25)' : warm.colors.borderWhisper}`,
             borderRadius: 10,
             fontSize: 13,
         }}>
-            <span style={{ color: T.text, fontWeight: 600 }}>{label}</span>
+            <span style={{ color: warm.colors.textPrimary, fontWeight: 600 }}>{label}</span>
             <span style={{
                 fontSize: 11,
                 fontWeight: 700,
                 letterSpacing: '0.08em',
                 textTransform: 'uppercase',
-                color: ready ? T.accentSecondary : T.textFaint,
+                color: ready ? warm.colors.accentPetrol : warm.colors.textMuted,
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 4,
@@ -1463,7 +1466,6 @@ function DraftRow({ label, ready, T }: { label: string; ready: boolean; T: Retur
 // ── Button helpers ──────────────────────────────────────────────────────────
 
 function ToolbarButton({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
-    const { T } = useAppTheme();
     return (
         <button
             onClick={onClick}
@@ -1475,9 +1477,9 @@ function ToolbarButton({ icon, label, onClick }: { icon: React.ReactNode; label:
                 fontSize: 11,
                 fontWeight: 700,
                 letterSpacing: '0.06em',
-                color: T.textMuted,
+                color: warm.colors.textMuted,
                 background: 'transparent',
-                border: `1px solid ${T.cardBorder}`,
+                border: `1px solid ${warm.colors.borderWhisper}`,
                 borderRadius: 8,
                 cursor: 'pointer',
             }}
@@ -1488,7 +1490,7 @@ function ToolbarButton({ icon, label, onClick }: { icon: React.ReactNode; label:
     );
 }
 
-function primaryButtonStyle(T: ReturnType<typeof useAppTheme>['T'], busy: boolean): React.CSSProperties {
+function primaryButtonStyle(busy: boolean): React.CSSProperties {
     return {
         display: 'inline-flex',
         alignItems: 'center',
@@ -1497,17 +1499,17 @@ function primaryButtonStyle(T: ReturnType<typeof useAppTheme>['T'], busy: boolea
         fontSize: 13,
         fontWeight: 700,
         letterSpacing: '-0.01em',
-        color: T.btnText,
-        background: T.btnBg,
+        color: warm.colors.textOnDeep,
+        background: warm.colors.accentPetrol,
         border: 'none',
         borderRadius: 10,
         cursor: busy ? 'wait' : 'pointer',
         opacity: busy ? 0.7 : 1,
-        boxShadow: T.btnShadow,
+        boxShadow: warm.shadow.soft,
     };
 }
 
-function ghostButtonStyle(T: ReturnType<typeof useAppTheme>['T'], disabled: boolean): React.CSSProperties {
+function ghostButtonStyle(disabled: boolean): React.CSSProperties {
     return {
         display: 'inline-flex',
         alignItems: 'center',
@@ -1515,9 +1517,9 @@ function ghostButtonStyle(T: ReturnType<typeof useAppTheme>['T'], disabled: bool
         padding: '9px 14px',
         fontSize: 12,
         fontWeight: 600,
-        color: T.textMuted,
+        color: warm.colors.textMuted,
         background: 'transparent',
-        border: `1px solid ${T.cardBorder}`,
+        border: `1px solid ${warm.colors.borderWhisper}`,
         borderRadius: 10,
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.5 : 1,

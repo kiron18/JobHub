@@ -5,6 +5,8 @@ import { FileText, Trash2, Download, Copy, Search, X, Loader2, Clock, CheckCircl
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import api from '../lib/api';
+import { warm } from '../lib/theme/warmTokens';
+import { SectionIntroBanner } from './processStrip';
 import type { DocType } from '../lib/exportDocx';
 
 type KnownDocumentType = 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE' | 'BASELINE_RESUME';
@@ -12,22 +14,19 @@ type KnownDocumentType = 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE' | 'BASELINE
 interface Document {
     id: string;
     title: string;
-    // The backend can return any string here; we narrow to known types via
-    // resolveDocType below. Falling back to RESUME for unknown types means
-    // a new doc type never crashes the library.
     type: string;
     content: string;
     createdAt: string;
     jobApplicationId: string | null;
 }
 
-interface TypeConfigEntry { label: string; color: string; pill: string; }
+interface TypeConfigEntry { label: string; color: string; }
 
 const TYPE_CONFIG: Record<KnownDocumentType, TypeConfigEntry> = {
-    RESUME:          { label: 'Resume',             color: '#7DA67D', pill: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20' },
-    COVER_LETTER:    { label: 'Cover Letter',       color: '#C5A059', pill: 'bg-amber-500/10 text-amber-300 border-amber-500/20' },
-    STAR_RESPONSE:   { label: 'Selection Criteria', color: '#2D5A6E', pill: 'bg-sky-500/10 text-sky-300 border-sky-500/20' },
-    BASELINE_RESUME: { label: 'Starter Resume',     color: '#7DA67D', pill: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20' },
+    RESUME:          { label: 'Resume',             color: '#7DA67D' },
+    COVER_LETTER:    { label: 'Cover Letter',       color: '#C5A059' },
+    STAR_RESPONSE:   { label: 'Selection Criteria', color: '#2D5A6E' },
+    BASELINE_RESUME: { label: 'Starter Resume',     color: '#7DA67D' },
 };
 
 const DOC_TYPE_MAP: Record<KnownDocumentType, DocType> = {
@@ -59,6 +58,19 @@ function groupByDate(docs: Document[]): { label: string; items: Document[] }[] {
     return ORDER.filter(k => groups[k]).map(k => ({ label: k, items: groups[k] }));
 }
 
+const cardStyle: React.CSSProperties = {
+    background: warm.colors.bgSurface,
+    border: `1px solid ${warm.colors.borderWhisper}`,
+    borderRadius: 18,
+    overflow: 'hidden',
+};
+
+const btnAction: React.CSSProperties = {
+    padding: '5px 6px', borderRadius: 8, background: 'transparent', border: 'none',
+    cursor: 'pointer', color: warm.colors.textMuted, transition: 'color 0.15s',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+};
+
 interface DocCardProps {
     doc: Document;
     onDelete: (id: string) => void;
@@ -68,6 +80,7 @@ interface DocCardProps {
 const DocCard: React.FC<DocCardProps> = ({ doc, onDelete, deleting }) => {
     const [viewerOpen, setViewerOpen] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [hovered, setHovered] = useState(false);
     const resolvedType = resolveDocType(doc.type);
     const cfg = TYPE_CONFIG[resolvedType];
 
@@ -110,57 +123,75 @@ const DocCard: React.FC<DocCardProps> = ({ doc, onDelete, deleting }) => {
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
-                className="glass-card p-4 flex items-start gap-4 group hover:border-slate-700 transition-all cursor-pointer"
                 onClick={() => setViewerOpen(true)}
+                onMouseEnter={() => setHovered(true)}
+                onMouseLeave={() => setHovered(false)}
+                style={{
+                    ...cardStyle,
+                    padding: 16,
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 16,
+                    cursor: 'pointer',
+                    transition: 'border-color 0.15s',
+                    borderColor: hovered ? warm.colors.borderDefined : warm.colors.borderWhisper,
+                }}
             >
                 {/* Type dot */}
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
-                    style={{ background: `${cfg.color}18`, border: `1px solid ${cfg.color}30` }}>
+                <div style={{
+                    width: 36, height: 36, borderRadius: 10, display: 'flex',
+                    alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2,
+                    background: `${cfg.color}18`, border: `1px solid ${cfg.color}30`,
+                }}>
                     <FileText size={15} style={{ color: cfg.color }} />
                 </div>
 
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border ${cfg.pill}`}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
+                        <span style={{
+                            fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase',
+                            padding: '1px 6px', borderRadius: 4, border: `1px solid ${cfg.color}40`,
+                            color: cfg.color, background: `${cfg.color}12`,
+                        }}>
                             {cfg.label}
                         </span>
-                        <span className="text-[10px] text-slate-500 flex items-center gap-1">
+                        <span style={{ fontSize: 10, color: warm.colors.textMuted, display: 'flex', alignItems: 'center', gap: 3 }}>
                             <Clock size={9} />
                             {formatDate(doc.createdAt)}
                         </span>
                     </div>
-                    <p className="text-sm font-semibold text-slate-200 truncate mb-1">{doc.title}</p>
-                    <p className="text-xs text-slate-500 line-clamp-1 leading-relaxed">{preview}…</p>
+                    <p style={{ margin: '0 0 3px', fontSize: 13, fontWeight: 600, color: warm.colors.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.title}</p>
+                    <p style={{ margin: 0, fontSize: 12, color: warm.colors.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{preview}…</p>
                 </div>
 
                 {/* Actions — visible on hover */}
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" onClick={e => e.stopPropagation()}>
-                    <button
-                        onClick={handleCopy}
-                        title="Copy content"
-                        className="p-1.5 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-slate-800 transition-all"
+                <div style={{
+                    display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0,
+                    opacity: hovered ? 1 : 0, transition: 'opacity 0.15s',
+                }} onClick={e => e.stopPropagation()}>
+                    <button onClick={handleCopy} title="Copy content" style={btnAction}
+                        onMouseEnter={e => e.currentTarget.style.color = warm.colors.textPrimary}
+                        onMouseLeave={e => e.currentTarget.style.color = warm.colors.textMuted}
                     >
-                        {copied ? <CheckCircle size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                        {copied ? <CheckCircle size={14} style={{ color: warm.colors.success }} /> : <Copy size={14} />}
                     </button>
-                    <button
-                        onClick={handleDownloadPdf}
-                        title="Download as PDF"
-                        className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all"
+                    <button onClick={handleDownloadPdf} title="Download as PDF" style={btnAction}
+                        onMouseEnter={e => e.currentTarget.style.color = '#B85C5C'}
+                        onMouseLeave={e => e.currentTarget.style.color = warm.colors.textMuted}
                     >
                         <FileText size={14} />
                     </button>
-                    <button
-                        onClick={handleDownload}
-                        title="Download as .docx"
-                        className="p-1.5 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-slate-800 transition-all"
+                    <button onClick={handleDownload} title="Download as .docx" style={btnAction}
+                        onMouseEnter={e => e.currentTarget.style.color = warm.colors.textPrimary}
+                        onMouseLeave={e => e.currentTarget.style.color = warm.colors.textMuted}
                     >
                         <Download size={14} />
                     </button>
-                    <button
-                        onClick={() => onDelete(doc.id)}
-                        disabled={deleting}
-                        title="Delete"
-                        className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all disabled:opacity-40"
+                    <button onClick={() => onDelete(doc.id)} disabled={deleting} title="Delete" style={{
+                        ...btnAction, opacity: deleting ? 0.4 : 1, cursor: deleting ? 'not-allowed' : 'pointer',
+                    }}
+                        onMouseEnter={e => { if (!deleting) e.currentTarget.style.color = '#B85C5C'; }}
+                        onMouseLeave={e => { if (!deleting) e.currentTarget.style.color = warm.colors.textMuted; }}
                     >
                         {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                     </button>
@@ -174,44 +205,82 @@ const DocCard: React.FC<DocCardProps> = ({ doc, onDelete, deleting }) => {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-6"
                         onClick={() => setViewerOpen(false)}
+                        style={{
+                            position: 'fixed', inset: 0, zIndex: 50,
+                            background: 'rgba(26, 24, 20, 0.36)',
+                            backdropFilter: 'blur(4px)',
+                            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+                            padding: '0',
+                        }}
+                        className="sm:items-center sm:p-6"
                     >
                         <motion.div
                             initial={{ y: 80, opacity: 0 }}
                             animate={{ y: 0, opacity: 1 }}
                             exit={{ y: 80, opacity: 0 }}
                             transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-                            className="w-full sm:max-w-3xl bg-slate-900 border border-slate-800 rounded-t-2xl sm:rounded-2xl flex flex-col h-screen sm:h-auto sm:max-h-[88vh] overflow-hidden"
                             onClick={e => e.stopPropagation()}
+                            style={{
+                                width: '100%', maxWidth: 768,
+                                background: warm.colors.bgSurface,
+                                border: `1px solid ${warm.colors.borderWhisper}`,
+                                borderRadius: '16px 16px 0 0',
+                                display: 'flex', flexDirection: 'column',
+                                height: '100%', maxHeight: '88vh',
+                                overflow: 'hidden',
+                            }}
+                            className="sm:rounded-2xl"
                         >
-                            <div className="flex items-center justify-between gap-4 px-5 py-4 border-b border-slate-800 shrink-0">
-                                <div className="flex items-center gap-3 min-w-0">
-                                    <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border ${cfg.pill}`}>
+                            <div style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+                                padding: '16px 20px', borderBottom: `1px solid ${warm.colors.borderWhisper}`, flexShrink: 0,
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                                    <span style={{
+                                        fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase',
+                                        padding: '1px 6px', borderRadius: 4, border: `1px solid ${cfg.color}40`,
+                                        color: cfg.color, background: `${cfg.color}12`,
+                                    }}>
                                         {cfg.label}
                                     </span>
-                                    <p className="text-sm font-bold text-slate-100 truncate">{doc.title}</p>
+                                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: warm.colors.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.title}</p>
                                 </div>
-                                <div className="flex items-center gap-2 shrink-0">
-                                    <button
-                                        onClick={handleDownload}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider text-emerald-400 border border-emerald-700/50 hover:bg-emerald-500/10 transition-colors"
-                                    >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                                    <button onClick={handleDownload} style={{
+                                        display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px',
+                                        borderRadius: 8, fontSize: 10, fontWeight: 800, textTransform: 'uppercase',
+                                        letterSpacing: '0.04em', cursor: 'pointer',
+                                        color: warm.colors.success, border: `1px solid ${warm.colors.success}40`,
+                                        background: `${warm.colors.success}10`,
+                                    }}>
                                         <Download size={11} /> .docx
                                     </button>
-                                    <button
-                                        onClick={handleCopy}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider text-slate-400 border border-slate-700 hover:text-slate-200 transition-colors"
-                                    >
+                                    <button onClick={handleCopy} style={{
+                                        display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px',
+                                        borderRadius: 8, fontSize: 10, fontWeight: 800, textTransform: 'uppercase',
+                                        letterSpacing: '0.04em', cursor: 'pointer',
+                                        color: warm.colors.textSecondary, border: `1px solid ${warm.colors.borderDefined}`,
+                                        background: 'transparent',
+                                    }}>
                                         <Copy size={11} /> Copy
                                     </button>
-                                    <button onClick={() => setViewerOpen(false)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors">
+                                    <button onClick={() => setViewerOpen(false)} style={{
+                                        padding: '5px 6px', borderRadius: 8, background: 'transparent', border: 'none',
+                                        cursor: 'pointer', color: warm.colors.textMuted,
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    }}>
                                         <X size={16} />
                                     </button>
                                 </div>
                             </div>
-                            <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-                                <div className="max-w-2xl mx-auto bg-white text-slate-900 rounded-sm p-10 shadow-2xl">
+                            <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+                                <div style={{
+                                    maxWidth: 672, margin: '0 auto',
+                                    background: warm.colors.bgCanvas,
+                                    color: warm.colors.textPrimary,
+                                    borderRadius: 4, padding: 32,
+                                }}>
                                     <article className="prose prose-slate max-w-none">
                                         <ReactMarkdown>{doc.content}</ReactMarkdown>
                                     </article>
@@ -280,72 +349,96 @@ export const DocumentLibrary: React.FC = () => {
     }, [documents]);
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-700">
-            <header className="space-y-2">
-                <h2 className="text-4xl font-extrabold tracking-tight text-white">Document Library</h2>
-                <p className="text-xl text-slate-400 font-medium">
+        <div>
+            <SectionIntroBanner sectionId="documents">
+                Your library of tailored CVs, cover letters, and selection-criteria responses. Reuse anything you've already polished.
+            </SectionIntroBanner>
+            <header style={{ marginBottom: 28 }}>
+                <h2 style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', fontWeight: 700, color: warm.colors.textPrimary, letterSpacing: '-0.02em', margin: '0 0 6px' }}>Document Library</h2>
+                <p style={{ margin: 0, fontSize: 14, color: warm.colors.textSecondary, fontWeight: 500 }}>
                     {documents.length} document{documents.length !== 1 ? 's' : ''} generated
                 </p>
             </header>
 
             {/* Search + Type filters */}
-            <div className="flex flex-col sm:flex-row gap-3">
-                <div className="relative flex-1">
-                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
+                <div style={{ position: 'relative', flex: 1 }}>
+                    <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: warm.colors.textMuted, pointerEvents: 'none' }} />
                     <input
                         type="text"
                         placeholder="Search documents…"
                         value={search}
                         onChange={e => setSearch(e.target.value)}
-                        className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-8 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-brand-500 transition-colors"
+                        style={{
+                            width: '100%', background: warm.colors.bgSurface,
+                            border: `1px solid ${warm.colors.borderWhisper}`,
+                            borderRadius: 12, padding: '10px 32px 10px 36px',
+                            fontSize: 13, color: warm.colors.textPrimary,
+                            outline: 'none', boxSizing: 'border-box',
+                        }}
+                        onFocus={e => { e.currentTarget.style.borderColor = warm.colors.accentPetrol; e.currentTarget.style.boxShadow = `0 0 0 3px ${warm.colors.ringFocus}`; }}
+                        onBlur={e => { e.currentTarget.style.borderColor = warm.colors.borderWhisper; e.currentTarget.style.boxShadow = 'none'; }}
                     />
                     {search && (
-                        <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-400 transition-colors">
+                        <button onClick={() => setSearch('')} style={{
+                            position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                            background: 'none', border: 'none', cursor: 'pointer',
+                            color: warm.colors.textMuted, padding: 2, display: 'flex',
+                        }}>
                             <X size={13} />
                         </button>
                     )}
                 </div>
-                <div className="flex items-center gap-2">
-                    {(['ALL', 'RESUME', 'COVER_LETTER', 'STAR_RESPONSE', 'BASELINE_RESUME'] as const).map(t => (
-                        <button
-                            key={t}
-                            onClick={() => setTypeFilter(t)}
-                            className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all ${
-                                typeFilter === t
-                                    ? (t === 'ALL' ? 'bg-slate-700 border-slate-600 text-slate-200' : `${TYPE_CONFIG[t as KnownDocumentType]?.pill || ''}`)
-                                    : 'bg-slate-900 border-slate-800 text-slate-500 hover:border-slate-700 hover:text-slate-400'
-                            }`}
-                        >
-                            {t === 'ALL' ? 'All' : TYPE_CONFIG[t as KnownDocumentType].label}
-                            <span className="ml-1.5 opacity-60">{counts[t] || 0}</span>
-                        </button>
-                    ))}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    {(['ALL', 'RESUME', 'COVER_LETTER', 'STAR_RESPONSE', 'BASELINE_RESUME'] as const).map(t => {
+                        const active = typeFilter === t;
+                        const cfg = t === 'ALL' ? null : TYPE_CONFIG[t as KnownDocumentType];
+                        return (
+                            <button
+                                key={t}
+                                onClick={() => setTypeFilter(t)}
+                                style={{
+                                    padding: '6px 10px', borderRadius: 10, fontSize: 9, fontWeight: 800,
+                                    letterSpacing: '0.06em', textTransform: 'uppercase',
+                                    cursor: 'pointer', border: `1px solid ${warm.colors.borderWhisper}`,
+                                    background: active ? (cfg ? `${cfg.color}14` : warm.colors.bgAlt) : warm.colors.bgSurface,
+                                    color: active ? (cfg ? cfg.color : warm.colors.textPrimary) : warm.colors.textMuted,
+                                }}
+                            >
+                                {t === 'ALL' ? 'All' : cfg!.label}
+                                <span style={{ marginLeft: 4, opacity: 0.6 }}>{counts[t] || 0}</span>
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 
             {isLoading ? (
-                <div className="flex items-center justify-center py-20">
-                    <div className="w-8 h-8 border-2 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '80px 0' }}>
+                    <div style={{ width: 32, height: 32, border: `2px solid ${warm.colors.borderWhisper}`, borderTopColor: warm.colors.accentPetrol, borderRadius: '50%', animation: 'dspin 0.8s linear infinite' }} />
                 </div>
             ) : documents.length === 0 ? (
-                <div className="glass-card p-16 flex flex-col items-center gap-4 text-center">
-                    <FileText size={40} className="text-slate-700" />
+                <div style={{
+                    ...cardStyle, padding: 48,
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, textAlign: 'center',
+                }}>
+                    <FileText size={40} style={{ color: warm.colors.borderWhisper }} />
                     <div>
-                        <p className="text-lg font-bold text-slate-400">No documents yet</p>
-                        <p className="text-sm text-slate-600 mt-1">Generate documents from the Dashboard to see them here.</p>
+                        <p style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 700, color: warm.colors.textPrimary }}>No documents yet</p>
+                        <p style={{ margin: 0, fontSize: 13, color: warm.colors.textMuted }}>Generate documents from the Dashboard to see them here.</p>
                     </div>
                 </div>
             ) : filtered.length === 0 ? (
-                <div className="glass-card p-10 text-center">
-                    <p className="text-slate-400 font-medium">No documents match your search.</p>
+                <div style={{ ...cardStyle, padding: 32, textAlign: 'center' }}>
+                    <p style={{ margin: 0, fontSize: 14, color: warm.colors.textSecondary, fontWeight: 500 }}>No documents match your search.</p>
                 </div>
             ) : (
-                <div className="space-y-8">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
                     {grouped.map(group => (
                         <div key={group.label}>
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">{group.label}</p>
+                            <p style={{ margin: '0 0 10px', fontSize: 10, fontWeight: 800, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{group.label}</p>
                             <AnimatePresence>
-                                <div className="space-y-2">
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                     {group.items.map(doc => (
                                         <DocCard
                                             key={doc.id}

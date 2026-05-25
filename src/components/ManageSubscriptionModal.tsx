@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, ArrowRight, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../lib/api';
-import { useAppTheme } from '../contexts/ThemeContext';
+import { warm } from '../lib/theme/warmTokens';
 import {
   trackManageSubscriptionOpened,
   trackCancellationReasonSelected,
@@ -86,7 +86,6 @@ const slideDown = {
 };
 
 export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan, planStatus: _planStatus }) => {
-  const { isDark } = useAppTheme();
   const [selected, setSelected] = useState<ReasonKey | null>(null);
   const [cancelling, setCancelling] = useState(false);
 
@@ -94,14 +93,14 @@ export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan
     if (isOpen) trackManageSubscriptionOpened();
   }, [isOpen]);
 
-  const bg        = isDark ? '#0f1117' : '#ffffff';
-  const border    = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
-  const textMain  = isDark ? '#f3f4f6' : '#111827';
-  const textMuted = isDark ? '#9ca3af' : '#6b7280';
-  const cardBg    = isDark ? 'rgba(255,255,255,0.03)' : '#f9fafb';
-  const reasonHoverBg  = isDark ? 'rgba(255,255,255,0.05)' : '#f3f4f6';
-  const reasonActiveBg = isDark ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0.07)';
-  const responseBg     = isDark ? 'rgba(99,102,241,0.07)' : 'rgba(99,102,241,0.05)';
+  const bg        = warm.colors.bgSurface;
+  const border    = warm.colors.borderDefined;
+  const textMain  = warm.colors.textPrimary;
+  const textMuted = warm.colors.textSecondary;
+  const cardBg    = warm.colors.bgAlt;
+  const reasonHoverBg  = warm.colors.bgAlt;
+  const reasonActiveBg = 'rgba(99,102,241,0.07)';
+  const responseBg     = 'rgba(99,102,241,0.05)';
 
   async function handleCancel() {
     trackCancellationPortalOpened();
@@ -209,7 +208,7 @@ export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan
                         borderRadius: 10,
                         border: `1px solid ${isActive ? 'rgba(99,102,241,0.4)' : border}`,
                         background: isActive ? reasonActiveBg : 'transparent',
-                        color: isActive ? (isDark ? '#c7d2fe' : '#4338ca') : textMain,
+                        color: isActive ? '#4338ca' : textMain,
                         fontSize: 13, fontWeight: isActive ? 600 : 400,
                         cursor: 'pointer',
                         transition: 'all 0.14s ease',
@@ -243,7 +242,7 @@ export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan
                         style={{
                           marginTop: 12, display: 'inline-flex', alignItems: 'center', gap: 6,
                           padding: '8px 14px', borderRadius: 8, border: '1px solid rgba(99,102,241,0.3)',
-                          background: 'rgba(99,102,241,0.1)', color: isDark ? '#c7d2fe' : '#4338ca',
+                          background: 'rgba(99,102,241,0.1)', color: '#4338ca',
                           fontSize: 12, fontWeight: 700, cursor: cancelling ? 'not-allowed' : 'pointer',
                           opacity: cancelling ? 0.5 : 1, transition: 'opacity 0.15s',
                         }}
@@ -267,9 +266,9 @@ export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan
                 disabled={cancelling}
                 style={{
                   width: '100%', padding: '11px 16px',
-                  borderRadius: 10, border: `1px solid ${isPaid ? (isDark ? 'rgba(239,68,68,0.2)' : 'rgba(239,68,68,0.3)') : border}`,
-                  background: isPaid ? (isDark ? 'rgba(239,68,68,0.06)' : 'rgba(239,68,68,0.04)') : (isDark ? 'rgba(45,90,110,0.12)' : 'rgba(45,90,110,0.08)'),
-                  color: isPaid ? (isDark ? '#fca5a5' : '#dc2626') : '#2D5A6E',
+                  borderRadius: 10, border: `1px solid ${isPaid ? ('rgba(239,68,68,0.3)') : border}`,
+                  background: isPaid ? ('rgba(239,68,68,0.04)') : ('rgba(45,90,110,0.08)'),
+                  color: isPaid ? ('#dc2626') : '#2D5A6E',
                   fontSize: 13, fontWeight: 600,
                   cursor: cancelling ? 'not-allowed' : 'pointer',
                   opacity: cancelling ? 0.6 : 1,
@@ -289,7 +288,7 @@ export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan
                 style={{
                   width: '100%', padding: '11px 16px',
                   borderRadius: 10, border: `1px solid ${border}`,
-                  background: isDark ? 'rgba(255,255,255,0.04)' : '#f9fafb',
+                  background: '#f9fafb',
                   color: textMain,
                   fontSize: 13, fontWeight: 700,
                   cursor: 'pointer',

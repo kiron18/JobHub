@@ -13,10 +13,12 @@ import api from '../lib/api';
 import type { JobApplication, ApplicationStatus, JobPriority } from './tracker/types';
 import { STATUS_FLOW } from './tracker/types';
 import { STATUS_CONFIG } from './tracker/constants';
-import { JobCard, FollowUpNudge } from './tracker/JobCard';
+import { JobCard, FollowUpNudge, ThankYouNudge } from './tracker/JobCard';
 import { PipelineFunnel } from './tracker/PipelineFunnel';
 import { SortControls } from './tracker/SortControls';
 import type { SortBy } from './tracker/SortControls';
+import { SectionIntroBanner } from './processStrip';
+import { warm } from '../lib/theme/warmTokens';
 
 const PRIORITY_ORDER: Record<string, number> = { DREAM: 0, TARGET: 1, BACKUP: 2 };
 
@@ -192,52 +194,46 @@ export const ApplicationTracker: React.FC = () => {
     }).length;
 
     return (
-        <div className="space-y-10 animate-in fade-in duration-700">
-            <header className="space-y-2">
-                <h2 className="text-4xl font-extrabold tracking-tight text-white">Application Tracker</h2>
-                <p className="text-xl text-slate-400 font-medium">Track your pipeline from saved to signed.</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
+            <SectionIntroBanner sectionId="applications">
+                Every job you've started or applied to lives here. Track status, set follow-up reminders, and surface interview notes in one place.
+            </SectionIntroBanner>
+            <header style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <h2 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.5rem)', fontWeight: 800, letterSpacing: '-0.02em', color: warm.colors.textPrimary, margin: 0 }}>Application Tracker</h2>
+                <p style={{ margin: 0, fontSize: 16, color: warm.colors.textSecondary, fontWeight: 500 }}>Track your pipeline from saved to signed.</p>
             </header>
 
             {!isLoading && <FollowUpNudge jobs={jobs} />}
+            {!isLoading && <ThankYouNudge jobs={jobs} />}
 
             {/* Stats row */}
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-                <div className="glass-card p-5 flex flex-col gap-2">
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Total</p>
-                    <p className="text-4xl font-black text-white tabular-nums">{counts.ALL}</p>
-                </div>
-                <div className="glass-card p-5 flex flex-col gap-2">
-                    <p className="text-[10px] font-black text-blue-400 uppercase tracking-wider">Applied</p>
-                    <p className="text-4xl font-black text-blue-400 tabular-nums">{counts.APPLIED}</p>
-                </div>
-                <div className="glass-card p-5 flex flex-col gap-2">
-                    <p className="text-[10px] font-black text-amber-400 uppercase tracking-wider">Interviews</p>
-                    <p className="text-4xl font-black text-amber-400 tabular-nums">{counts.INTERVIEW}</p>
-                    {counts.APPLIED > 0 && (
-                        <p className="text-[9px] text-slate-500 font-bold">
-                            {Math.round((counts.INTERVIEW / Math.max(counts.APPLIED + counts.INTERVIEW, 1)) * 100)}% rate
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }} className="lg:grid-cols-5">
+                {[
+                    { label: 'Total', value: counts.ALL, color: warm.colors.textPrimary },
+                    { label: 'Applied', value: counts.APPLIED, color: warm.colors.accentPetrol },
+                    { label: 'Interviews', value: counts.INTERVIEW, color: warm.colors.accentGold, rate: counts.APPLIED > 0 ? `${Math.round((counts.INTERVIEW / Math.max(counts.APPLIED + counts.INTERVIEW, 1)) * 100)}% rate` : null },
+                    { label: 'Offers', value: counts.OFFER, color: counts.OFFER > 0 ? warm.colors.success : warm.colors.textMuted, icon: Trophy, rate: counts.INTERVIEW > 0 && counts.OFFER > 0 ? `${Math.round((counts.OFFER / counts.INTERVIEW) * 100)}% close rate` : null },
+                    { label: 'Follow-up Due', value: followUpDue, color: followUpDue > 0 ? warm.colors.accentGold : warm.colors.textMuted, icon: Clock, highlight: followUpDue > 0, borderColor: followUpDue > 0 ? 'rgba(197,160,89,0.30)' : undefined },
+                ].map((stat, i) => (
+                    <div key={i} style={{
+                        background: warm.colors.bgSurface,
+                        border: `1px solid ${stat.highlight ? 'rgba(197,160,89,0.30)' : warm.colors.borderWhisper}`,
+                        borderRadius: 18, padding: 20,
+                        display: 'flex', flexDirection: 'column', gap: 8,
+                    }}>
+                        <p style={{
+                            margin: 0, fontSize: 10, fontWeight: 800, textTransform: 'uppercase',
+                            letterSpacing: '0.06em',
+                            color: i === 1 ? warm.colors.accentPetrol : i === 2 ? warm.colors.accentGold : i === 3 ? warm.colors.success : stat.highlight ? warm.colors.accentGold : warm.colors.textMuted,
+                            display: 'flex', alignItems: 'center', gap: 4,
+                        }}>
+                            {stat.icon && <stat.icon size={10} />}
+                            {stat.label}
                         </p>
-                    )}
-                </div>
-                <div className="glass-card p-5 flex flex-col gap-2">
-                    <p className="text-[10px] font-black text-emerald-400 uppercase tracking-wider flex items-center gap-1">
-                        <Trophy size={10} />
-                        Offers
-                    </p>
-                    <p className={`text-4xl font-black tabular-nums ${counts.OFFER > 0 ? 'text-emerald-400' : 'text-slate-500'}`}>{counts.OFFER}</p>
-                    {counts.INTERVIEW > 0 && counts.OFFER > 0 && (
-                        <p className="text-[9px] text-slate-500 font-bold">
-                            {Math.round((counts.OFFER / counts.INTERVIEW) * 100)}% close rate
-                        </p>
-                    )}
-                </div>
-                <div className={`glass-card p-5 flex flex-col gap-2 ${followUpDue > 0 ? 'border-amber-500/30' : ''}`}>
-                    <p className="text-[10px] font-black text-amber-400 uppercase tracking-wider flex items-center gap-1">
-                        <Clock size={10} />
-                        Follow-up Due
-                    </p>
-                    <p className={`text-4xl font-black tabular-nums ${followUpDue > 0 ? 'text-amber-400' : 'text-slate-500'}`}>{followUpDue}</p>
-                </div>
+                        <p style={{ margin: 0, fontSize: 'clamp(1.8rem, 3vw, 2.5rem)', fontWeight: 800, color: stat.color as string, fontVariantNumeric: 'tabular-nums' }}>{stat.value}</p>
+                        {stat.rate && <p style={{ margin: 0, fontSize: 9, color: warm.colors.textMuted, fontWeight: 700 }}>{stat.rate}</p>}
+                    </div>
+                ))}
             </div>
 
             {/* Pipeline Funnel — only shown when there are active applications */}
@@ -249,7 +245,13 @@ export const ApplicationTracker: React.FC = () => {
             <div>
                 <button
                     onClick={() => setShowAddForm(s => !s)}
-                    className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl border border-slate-700 transition-all"
+                    style={{
+                        display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px',
+                        background: warm.colors.bgSurface, color: warm.colors.textSecondary,
+                        fontSize: 12, fontWeight: 700, borderRadius: 12,
+                        border: `1px solid ${warm.colors.borderWhisper}`, cursor: 'pointer',
+                        transition: 'all 0.15s',
+                    }}
                 >
                     <Briefcase size={13} />
                     Add Application Manually
@@ -261,35 +263,65 @@ export const ApplicationTracker: React.FC = () => {
                             animate={{ height: 'auto', opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
                             transition={{ duration: 0.18 }}
-                            className="overflow-hidden"
+                            style={{ overflow: 'hidden' }}
                         >
-                            <div className="mt-3 p-5 glass-card space-y-3">
-                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Track an application from outside JobHub</p>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div style={{
+                                marginTop: 12, padding: 20,
+                                background: warm.colors.bgSurface,
+                                border: `1px solid ${warm.colors.borderWhisper}`,
+                                borderRadius: 18,
+                                display: 'flex', flexDirection: 'column', gap: 12,
+                            }}>
+                                <p style={{ margin: 0, fontSize: 10, fontWeight: 800, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Track an application from outside JobHub</p>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }} className="sm:grid-cols-2">
                                     <div>
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Job Title *</label>
+                                        <label style={{ fontSize: 10, fontWeight: 700, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>Job Title *</label>
                                         <input
                                             value={addForm.title}
                                             onChange={e => setAddForm(f => ({ ...f, title: e.target.value }))}
                                             placeholder="e.g. Senior Product Manager"
-                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-brand-500 transition-colors"
+                                            style={{
+                                                width: '100%', background: warm.colors.bgAlt,
+                                                border: `1px solid ${warm.colors.borderWhisper}`,
+                                                borderRadius: 10, padding: '8px 12px', fontSize: 12,
+                                                color: warm.colors.textPrimary, outline: 'none',
+                                                boxSizing: 'border-box', fontFamily: 'inherit',
+                                            }}
+                                            onFocus={e => { e.currentTarget.style.borderColor = warm.colors.accentPetrol; }}
+                                            onBlur={e => { e.currentTarget.style.borderColor = warm.colors.borderWhisper; }}
                                         />
                                     </div>
                                     <div>
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Company *</label>
+                                        <label style={{ fontSize: 10, fontWeight: 700, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>Company *</label>
                                         <input
                                             value={addForm.company}
                                             onChange={e => setAddForm(f => ({ ...f, company: e.target.value }))}
                                             placeholder="e.g. Atlassian"
-                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-brand-500 transition-colors"
+                                            style={{
+                                                width: '100%', background: warm.colors.bgAlt,
+                                                border: `1px solid ${warm.colors.borderWhisper}`,
+                                                borderRadius: 10, padding: '8px 12px', fontSize: 12,
+                                                color: warm.colors.textPrimary, outline: 'none',
+                                                boxSizing: 'border-box', fontFamily: 'inherit',
+                                            }}
+                                            onFocus={e => { e.currentTarget.style.borderColor = warm.colors.accentPetrol; }}
+                                            onBlur={e => { e.currentTarget.style.borderColor = warm.colors.borderWhisper; }}
                                         />
                                     </div>
                                     <div>
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Status</label>
+                                        <label style={{ fontSize: 10, fontWeight: 700, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>Status</label>
                                         <select
                                             value={addForm.status}
                                             onChange={e => setAddForm(f => ({ ...f, status: e.target.value as ApplicationStatus }))}
-                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-brand-500 transition-colors"
+                                            style={{
+                                                width: '100%', background: warm.colors.bgAlt,
+                                                border: `1px solid ${warm.colors.borderWhisper}`,
+                                                borderRadius: 10, padding: '8px 12px', fontSize: 12,
+                                                color: warm.colors.textPrimary, outline: 'none',
+                                                boxSizing: 'border-box', fontFamily: 'inherit',
+                                            }}
+                                            onFocus={e => { e.currentTarget.style.borderColor = warm.colors.accentPetrol; }}
+                                            onBlur={e => { e.currentTarget.style.borderColor = warm.colors.borderWhisper; }}
                                         >
                                             {STATUS_FLOW.map(s => (
                                                 <option key={s} value={s}>{STATUS_CONFIG[s].label}</option>
@@ -297,36 +329,63 @@ export const ApplicationTracker: React.FC = () => {
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Date Applied</label>
+                                        <label style={{ fontSize: 10, fontWeight: 700, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>Date Applied</label>
                                         <input
                                             type="date"
                                             value={addForm.dateApplied}
                                             onChange={e => setAddForm(f => ({ ...f, dateApplied: e.target.value }))}
-                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-brand-500 transition-colors"
+                                            style={{
+                                                width: '100%', background: warm.colors.bgAlt,
+                                                border: `1px solid ${warm.colors.borderWhisper}`,
+                                                borderRadius: 10, padding: '8px 12px', fontSize: 12,
+                                                color: warm.colors.textPrimary, outline: 'none',
+                                                boxSizing: 'border-box', fontFamily: 'inherit',
+                                            }}
+                                            onFocus={e => { e.currentTarget.style.borderColor = warm.colors.accentPetrol; }}
+                                            onBlur={e => { e.currentTarget.style.borderColor = warm.colors.borderWhisper; }}
                                         />
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Notes (optional)</label>
+                                    <label style={{ fontSize: 10, fontWeight: 700, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>Notes (optional)</label>
                                     <input
                                         value={addForm.notes}
                                         onChange={e => setAddForm(f => ({ ...f, notes: e.target.value }))}
                                         placeholder="Recruiter name, application portal, role details…"
-                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-brand-500 transition-colors"
+                                        style={{
+                                            width: '100%', background: warm.colors.bgAlt,
+                                            border: `1px solid ${warm.colors.borderWhisper}`,
+                                            borderRadius: 10, padding: '8px 12px', fontSize: 12,
+                                            color: warm.colors.textPrimary, outline: 'none',
+                                            boxSizing: 'border-box', fontFamily: 'inherit',
+                                        }}
+                                        onFocus={e => { e.currentTarget.style.borderColor = warm.colors.accentPetrol; }}
+                                        onBlur={e => { e.currentTarget.style.borderColor = warm.colors.borderWhisper; }}
                                     />
                                 </div>
-                                <div className="flex gap-2 pt-1">
+                                <div style={{ display: 'flex', gap: 8, paddingTop: 4 }}>
                                     <button
                                         onClick={handleAddJob}
                                         disabled={!addForm.title.trim() || !addForm.company.trim() || createJobMutation.isPending}
-                                        className="flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-all"
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px',
+                                            background: warm.colors.accentPetrol, color: '#FFFFFF',
+                                            fontSize: 12, fontWeight: 700, borderRadius: 10,
+                                            border: 'none', cursor: createJobMutation.isPending ? 'not-allowed' : 'pointer',
+                                            opacity: (!addForm.title.trim() || !addForm.company.trim() || createJobMutation.isPending) ? 0.5 : 1,
+                                        }}
                                     >
                                         {createJobMutation.isPending ? <Loader2 size={13} className="animate-spin" /> : <Briefcase size={13} />}
                                         Add Application
                                     </button>
                                     <button
                                         onClick={() => { setShowAddForm(false); setAddForm({ title: '', company: '', status: 'SAVED', dateApplied: '', notes: '' }); }}
-                                        className="px-4 py-2 bg-slate-800 text-slate-400 text-xs font-bold rounded-lg hover:bg-slate-700 transition-all"
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px',
+                                            background: warm.colors.bgAlt, color: warm.colors.textMuted,
+                                            fontSize: 12, fontWeight: 700, borderRadius: 10,
+                                            border: 'none', cursor: 'pointer',
+                                        }}
                                     >
                                         Cancel
                                     </button>
@@ -338,23 +397,28 @@ export const ApplicationTracker: React.FC = () => {
             </div>
 
             {/* Filters + Sort */}
-            <div className="flex flex-wrap items-center gap-2">
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
                 {(['ALL', ...STATUS_FLOW] as const).map(status => {
                     const count = counts[status];
                     const config = status === 'ALL' ? null : STATUS_CONFIG[status];
+                    const active = filterStatus === status;
                     return (
                         <button
                             key={status}
                             onClick={() => setFilterStatus(status)}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border transition-all ${
-                                filterStatus === status
-                                    ? (config ? config.color : 'bg-slate-700 border-slate-600 text-slate-200')
-                                    : 'bg-slate-900 border-slate-800 text-slate-500 hover:border-slate-700 hover:text-slate-400'
-                            }`}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: 4,
+                                padding: '5px 12px', borderRadius: 8, fontSize: 10, fontWeight: 800,
+                                textTransform: 'uppercase', letterSpacing: '0.06em',
+                                cursor: 'pointer', transition: 'all 0.15s',
+                                ...(active
+                                    ? (config ? config.style : { color: warm.colors.textPrimary, background: warm.colors.bgAlt, border: `1px solid ${warm.colors.borderDefined}` })
+                                    : { color: warm.colors.textMuted, background: warm.colors.bgSurface, border: `1px solid ${warm.colors.borderWhisper}` }),
+                            }}
                         >
                             {config && <config.icon size={10} />}
                             {status === 'ALL' ? 'All' : STATUS_CONFIG[status].label}
-                            <span className="ml-1 opacity-60">{count}</span>
+                            <span style={{ marginLeft: 4, opacity: 0.6 }}>{count}</span>
                         </button>
                     );
                 })}
@@ -362,58 +426,70 @@ export const ApplicationTracker: React.FC = () => {
             </div>
 
             {/* Grade filter */}
-            <div className="flex items-center gap-1.5">
-                <span className="text-[9px] font-bold text-slate-600 uppercase tracking-wider">Grade</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 9, fontWeight: 700, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Grade</span>
                 {([
                     { key: 'ALL', label: 'All' },
                     { key: 'AB',  label: 'A – B' },
                     { key: 'C',   label: 'C' },
                     { key: 'DF',  label: 'D – F' },
-                ] as const).map(({ key, label }) => (
-                    <button
-                        key={key}
-                        onClick={() => setGradeFilter(key)}
-                        className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border transition-all ${
-                            gradeFilter === key
-                                ? 'bg-slate-700 border-slate-600 text-slate-200'
-                                : 'bg-slate-900 border-slate-800 text-slate-500 hover:border-slate-700 hover:text-slate-400'
-                        }`}
-                    >
-                        {label}
-                    </button>
-                ))}
+                ] as const).map(({ key, label }) => {
+                    const active = gradeFilter === key;
+                    return (
+                        <button
+                            key={key}
+                            onClick={() => setGradeFilter(key)}
+                            style={{
+                                padding: '4px 10px', borderRadius: 8, fontSize: 9, fontWeight: 800,
+                                textTransform: 'uppercase', letterSpacing: '0.06em',
+                                cursor: 'pointer', transition: 'all 0.15s',
+                                ...(active
+                                    ? { color: warm.colors.textPrimary, background: warm.colors.bgAlt, border: `1px solid ${warm.colors.borderDefined}` }
+                                    : { color: warm.colors.textMuted, background: warm.colors.bgSurface, border: `1px solid ${warm.colors.borderWhisper}` }),
+                            }}
+                        >
+                            {label}
+                        </button>
+                    );
+                })}
             </div>
 
             {/* Job list */}
             {isLoading ? (
-                <div className="flex items-center justify-center py-20">
-                    <div className="w-8 h-8 border-2 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '80px 0' }}>
+                    <div style={{ width: 32, height: 32, border: `2px solid ${warm.colors.borderWhisper}`, borderTopColor: warm.colors.accentPetrol, borderRadius: '50%', animation: 'dspin 0.8s linear infinite' }} />
                 </div>
             ) : filteredJobs.length === 0 ? (
-                <div className="glass-card p-16 flex flex-col items-center gap-4 text-center">
-                    <Briefcase size={40} className="text-slate-700" />
+                <div style={{
+                    background: warm.colors.bgSurface,
+                    border: `1px solid ${warm.colors.borderWhisper}`,
+                    borderRadius: 18, padding: 64,
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, textAlign: 'center',
+                }}>
+                    <Briefcase size={40} style={{ color: warm.colors.borderWhisper }} />
                     <div>
-                        <p className="text-lg font-bold text-slate-400">
+                        <p style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 700, color: warm.colors.textSecondary }}>
                             {filterStatus === 'ALL' ? 'No applications yet' : `No ${STATUS_CONFIG[filterStatus].label} applications`}
                         </p>
-                        <p className="text-sm text-slate-600 mt-1">
+                        <p style={{ margin: 0, fontSize: 13, color: warm.colors.textMuted, marginTop: 4 }}>
                             {filterStatus === 'ALL'
                                 ? 'Run a job analysis from the Dashboard to start tracking applications.'
                                 : 'Try a different filter above.'}
                         </p>
                     </div>
                     {filterStatus === 'ALL' && (
-                        <div className="flex items-center gap-2 text-brand-400 text-xs font-bold">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: warm.colors.accentPetrol, fontSize: 12, fontWeight: 700 }}>
                             <ChevronRight size={14} />
                             Go to Dashboard → paste a job description → run analysis
                         </div>
                     )}
                 </div>
             ) : (
-                <div className="space-y-3">
-                    {filteredJobs.map(job => (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {filteredJobs.map((job, index) => (
                         <JobCard
                             key={job.id}
+                            isFirst={index === 0}
                             job={job}
                             onStatusChange={handleStatusChange}
                             onDelete={handleDelete}

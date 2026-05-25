@@ -89,7 +89,7 @@ If the candidate has a name that is difficult to pronounce in English, they may 
 ### 3.2 Rules
 - Tailor to every job. This section must reflect the target job description's language.
 - No clichés: banned phrases include *hardworking, team player, passionate, detail-oriented, results-driven* (unless followed immediately by evidence).
-- Do not write in first person (*I am...* → write in third-person implied: *A marketing professional with...*)
+- **VOICE (mandatory) — first person, no name, no third-person pronouns.** Write the summary as the candidate speaking. Acceptable openings: *"I bring 10 years of..."*, *"Seasoned Business Analyst with 15 years..."* (agentless first-person — "I" implied), *"Marketing professional with a track record of..."* (agentless, "I" implied). **NEVER** open with the candidate's name (e.g. *"Kiron brings..."*, *"Jane is a..."*) and **NEVER** use "he", "she", or "they" to refer to the candidate anywhere in the summary. If a sentence needs a subject, use "I" or restructure to agentless first-person — do not reach for the name or a pronoun. This rule applies to the Professional Summary only; bullets in Work Experience follow Section 4.2.
 - Must include at least one ATS keyword from the target job description.
 
 ### 3.3 Example Framework
@@ -367,6 +367,7 @@ The following phrases must NEVER appear in any resume output. If detected, rewri
 
 ### Resume Structural Checks (confirm before output)
 - [ ] Professional Summary contains at least one number?
+- [ ] Professional Summary is in first person (no candidate name, no "he"/"she"/"they")?
 - [ ] Every bullet starts with a strong action verb?
 - [ ] Every bullet contains a quantified outcome?
 - [ ] No bullet contains "we" or "the team" as the agent of the result?

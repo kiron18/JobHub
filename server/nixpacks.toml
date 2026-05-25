@@ -1,5 +1,8 @@
 [variables]
-NODE_VERSION = "20"
+NIXPACKS_NODE_VERSION = "20"
+
+[phases.setup]
+nixPkgs = ["nodejs_20", "npm-9_x", "openssl"]
 
 [phases.build]
 cmds = ["npx prisma generate"]

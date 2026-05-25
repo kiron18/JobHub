@@ -1,4 +1,5 @@
 import { StrategyBlueprint } from './strategy';
+import { computeYearsOfExperience, todayIso } from '../../lib/profileMath';
 
 // =============================================================================
 // HYBRID ARCHITECTURE — STAGE 3 (Claude Sonnet quality gate)
@@ -33,6 +34,8 @@ export interface ProfileSnapshot {
     employers: string[];
     jobTitles: string[];
     achievementMetrics: string[];
+    candidateName?: string;
+    yearsOfExperience?: number | null;
 }
 
 export const QUALITY_GATE_PROMPT = (
@@ -41,10 +44,19 @@ export const QUALITY_GATE_PROMPT = (
     docType: 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE' = 'COVER_LETTER',
     profileSnapshot?: ProfileSnapshot | null
 ): string => {
+    const candidateFirstName = docType === 'RESUME' && profileSnapshot?.candidateName
+        ? profileSnapshot.candidateName.trim().split(/\s+/)[0]
+        : '';
     const check1 = docType === 'COVER_LETTER'
         ? `CHECK 1 — OPENING HOOK: Does the cover letter open with (or very closely paraphrase) the required hook? A close paraphrase passes. A generic opener that ignores the hook fails.\nHook required: "${blueprint.openingHook}"`
         : docType === 'RESUME'
-        ? `CHECK 1 — PROFESSIONAL SUMMARY: Does the resume professional summary read as a scannable credential block (years of experience + outcomes + capability)? FAIL if the summary begins with the exact company-specific hook "${blueprint.openingHook}" or any near-verbatim restatement of it. PASS if the summary is role-focused and does not echo the cover letter opener.`
+        ? `CHECK 1 — PROFESSIONAL SUMMARY: Two sub-checks, both must pass.
+  1a. STRUCTURE: Does the summary read as a scannable credential block (years of experience + outcomes + capability)? FAIL if it begins with the exact company-specific hook "${blueprint.openingHook}" or any near-verbatim restatement of it.
+  1b. VOICE (first person, mandatory): The professional summary MUST be written in first person. FAIL if the summary:
+       - Opens with or contains the candidate's name${candidateFirstName ? ` (e.g. "${candidateFirstName} brings...", "${candidateFirstName} is a...", "${candidateFirstName} has achieved...")` : ' (e.g. "Jane brings...", "John is a...")'}, OR
+       - Uses "he", "she", "they", "his", "her", or "their" to refer to the candidate anywhere in the summary.
+     When flagged, the rewrite MUST convert to first person — use "I" (e.g. "I bring 3 years...", "I have achieved...") or agentless first-person ("Marketing professional with 3 years...", "Brings 3 years of..."). Do not simply remove the name; rewrite the sentence so the candidate is speaking.
+     Scope: this check applies to the Professional Summary section ONLY. Work experience bullets are allowed to use "I" or imperative voice and should NOT be flagged under this check.`
         : `CHECK 1 — CRITERION OPENING: Does each criterion response open by directly restating the criterion or echoing its key terms in the first sentence? FAIL if any response opens with: (a) the company-specific hook "${blueprint.openingHook}", (b) a generic opener like "I am a dedicated professional" or "I have always had a passion for", or (c) a sentence with no connection to the criterion being addressed. PASS if each response's first sentence names the capability or echoes the criterion language.`;
 
     const formatCheck = docType === 'RESUME'
@@ -61,13 +73,21 @@ Verify every factual claim in the document is traceable to the candidate's actua
 CANDIDATE'S VERIFIED EMPLOYERS: ${profileSnapshot.employers.length > 0 ? profileSnapshot.employers.map(e => `"${e}"`).join(' | ') : '(none on record)'}
 CANDIDATE'S VERIFIED JOB TITLES: ${profileSnapshot.jobTitles.length > 0 ? profileSnapshot.jobTitles.map(t => `"${t}"`).join(' | ') : '(none on record)'}
 ${profileSnapshot.achievementMetrics.length > 0 ? `CANDIDATE'S VERIFIED METRICS (from achievement bank): ${profileSnapshot.achievementMetrics.map(m => `"${m}"`).join(' | ')}` : ''}
+${typeof profileSnapshot.yearsOfExperience === 'number' ? `CANDIDATE'S VERIFIED YEARS OF EXPERIENCE (computed from employment dates): ${profileSnapshot.yearsOfExperience}` : ''}
 
 Scan the document for:
 a) Any employer or organisation name NOT in VERIFIED EMPLOYERS — flag it.
 b) Any job title claimed NOT in VERIFIED JOB TITLES — flag it.
-c) Any specific numerical metric (%, $, team size, headcount, duration, dollar value) that does NOT appear in VERIFIED METRICS and is not already annotated [VERIFY:] — flag it.
+c) Any specific numerical metric (%, $, team size, headcount, dollar value) that does NOT appear in VERIFIED METRICS and is not already annotated [VERIFY:] — flag it.
 
-For each violation: add a rewrite that either removes the fabricated claim or replaces the specific number with [VERIFY: describe what the candidate should check] so they can confirm accuracy before sending.
+EXCEPTIONS — DO NOT FLAG these even though they are numbers not in VERIFIED METRICS:
+- A "X years of experience" / "X+ years" / "X years in [field]" figure in the Professional Summary, IF it matches CANDIDATE'S VERIFIED YEARS OF EXPERIENCE above (exact or within ±1 year). This is a computed fact, not a fabricated metric.
+- Role tenure within a single experience entry (e.g. "over 2 years in role") when the dates of that entry support it.
+- Date strings (e.g. "Feb 2021", "2023") that simply restate dates already in the candidate's experience entries.
+- Counts that simply restate the number of employers, education entries, or other items already present in the candidate data (e.g. "across 3 roles" when 3 roles are listed).
+NEVER rewrite a years-of-experience figure to [VERIFY:]. If the figure is wrong (off by more than 1 year from the verified value), rewrite it to the correct number directly — do NOT use [VERIFY:].
+
+For other violations: add a rewrite that either removes the fabricated claim or replaces the specific number with [VERIFY: describe what the candidate should check] so they can confirm accuracy before sending.
 
 PASS if no violations found, or all inferred numbers are already marked [VERIFY:]. Do NOT flag legitimate paraphrases of verified metrics (e.g. "23% reduction" is a valid paraphrase of a metric "reduced costs by 23%").`
         : '';
@@ -189,6 +209,11 @@ export const DOCUMENT_GENERATION_PROMPT_WITH_BLUEPRINT = (
     routeType?: string | null
 ): string => {
     const isAcademicDoc = routeType === 'teaching-philosophy' || routeType === 'research-statement' || routeType === 'offer-negotiation' || routeType === 'linkedin-profile' || routeType === 'cold-outreach' || routeType === 'rejection-response';
+    // Derived facts the LLM cannot compute without help (no current date in prompt,
+    // "Present" cannot be resolved). Compute server-side and inject as authoritative
+    // data so the LLM never emits [VERIFY:] for these.
+    const todayDate = todayIso();
+    const yearsOfExperience = computeYearsOfExperience(profile?.experience);
     // Build the proof point lookup for inline rendering
     const proofPointMap = new Map(
         blueprint.proofPoints.map(pp => [pp.achievementId, pp])
@@ -231,7 +256,11 @@ You are executing a document strategy designed by a senior career strategist. Yo
 
 ${type === 'COVER_LETTER' ? `OPENING HOOK (use this — or a minimal paraphrase that preserves specificity — as the cover letter's opening sentence):
 "${blueprint.openingHook}"` : `PROFESSIONAL SUMMARY DIRECTIVE (resume only — do NOT replicate the cover letter hook):
-Write a 3–4 sentence professional summary that leads with years of experience + core professional identity, then top 2–3 quantified outcomes, then a forward-looking capability statement. It must NOT begin with a company-specific hook or mirror the cover letter opening sentence. It must be scannable and role-agnostic enough to work across similar applications.`}
+Write a 3–4 sentence professional summary that leads with years of experience + core professional identity, then top 2–3 quantified outcomes, then a forward-looking capability statement. It must NOT begin with a company-specific hook or mirror the cover letter opening sentence. It must be scannable and role-agnostic enough to work across similar applications.
+
+VOICE — NON-NEGOTIABLE: Write the professional summary in FIRST PERSON. The candidate is speaking, not being described. NEVER open with the candidate's name (e.g. "${profile?.name ?? 'Jane'} brings...", "${profile?.name ?? 'Jane'} is a..."). NEVER use "he", "she", or "they" to refer to the candidate. Use "I" when a subject is needed, or write agentless first-person ("Seasoned Business Analyst with 15 years..." — "I" implied). This applies to the Professional Summary ONLY; work experience bullets follow the bullet rules.${yearsOfExperience !== null ? `
+
+YEARS OF EXPERIENCE — USE EXACTLY THIS NUMBER: ${yearsOfExperience}. This figure has been pre-computed from the candidate's actual employment history (earliest start date to today, ${todayDate}). Write it verbatim — e.g. "I bring ${yearsOfExperience} years of marketing experience..." or "${yearsOfExperience}+ years in...". Do NOT recalculate. Do NOT estimate. Do NOT emit [VERIFY:] for this number — it is a verified fact, not a hedge.` : ''}`}
 
 POSITIONING STATEMENT (shape the professional summary / pitch opening around this):
 ${blueprint.positioningStatement}
@@ -273,6 +302,9 @@ ${ruleBase}
 CANDIDATE DATA
 ==============================================================
 IMPORTANT: If a section below is marked "(none — omit this section)" you MUST omit that entire section from the output. Do not write a heading, do not write placeholder text, do not say "Not provided". Simply leave it out.
+
+TODAY'S DATE: ${todayDate}${yearsOfExperience !== null ? `
+TOTAL YEARS OF EXPERIENCE (pre-computed from work history — use verbatim, do NOT emit [VERIFY:] for this): ${yearsOfExperience}` : ''}
 
 Name: ${profile.name}
 Contact (use | as separator on one line): ${[profile.email, profile.phone, profile.linkedin, profile.location].filter(Boolean).join(' | ')}
@@ -482,6 +514,8 @@ export const DOCUMENT_GENERATION_PROMPT = (
     routeType?: string | null
 ) => {
     const isAcademicDoc = routeType === 'teaching-philosophy' || routeType === 'research-statement' || routeType === 'offer-negotiation' || routeType === 'linkedin-profile' || routeType === 'cold-outreach' || routeType === 'rejection-response';
+    const todayDate = todayIso();
+    const yearsOfExperience = computeYearsOfExperience(profile?.experience);
     return `
 You are a career coach generating a ${type}.
 
@@ -496,6 +530,9 @@ ${analysisContext?.competencies?.map(c => `- ${c}`).join('\n') || "Map candidate
 
 CANDIDATE DATA:
 IMPORTANT: If a section below is marked "(none — omit this section)" you MUST omit that entire section from the output. Do not write a heading, do not write placeholder text, do not say "Not provided". Simply leave it out.
+
+TODAY'S DATE: ${todayDate}${yearsOfExperience !== null ? `
+TOTAL YEARS OF EXPERIENCE (pre-computed from work history — use verbatim, do NOT emit [VERIFY:] for this): ${yearsOfExperience}` : ''}
 
 Name: ${profile.name}
 Contact (use | as separator on one line): ${[profile.email, profile.phone, profile.linkedin, profile.location].filter(Boolean).join(' | ')}

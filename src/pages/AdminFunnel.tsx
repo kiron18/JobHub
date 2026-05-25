@@ -23,6 +23,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Copy, Check, AlertTriangle, ArrowLeft, Clock, Zap } from 'lucide-react';
 import api from '../lib/api';
+import { warm } from '../lib/theme/warmTokens';
 
 interface FunnelStage {
   stage: string;
@@ -63,32 +64,28 @@ interface TrialsResponse {
   trials: TrialUser[];
 }
 
-// ── Visual tokens (matching the existing AdminDashboard's S object) ────────
+// ── Visual tokens ────────────────────────────────────────────────────────────
 const S = {
-  bg:     '#0d1117',
-  card:   'rgba(255,255,255,0.03)',
-  border: 'rgba(255,255,255,0.08)',
-  teal:   '#2dd4bf',
-  purple: '#a78bfa',
-  blue:   '#60a5fa',
-  amber:  '#fbbf24',
-  red:    '#f87171',
-  green:  '#4ade80',
-  main:   '#f3f4f6',
-  sub:    '#9ca3af',
-  dim:    '#6b7280',
+  petrol:      warm.colors.accentPetrol,
+  petrolLight: '#6B8E96',
+  gold:        warm.colors.accentGold,
+  success:     warm.colors.success,
+  danger:      warm.colors.danger,
+  main:        warm.colors.textPrimary,
+  sub:         warm.colors.textSecondary,
+  dim:         warm.colors.textMuted,
 };
 
 const QUOTA_VISUAL: Record<TrialUser['quotaStatus'], { label: string; color: string; bg: string }> = {
-  hot:  { label: 'Hot',  color: S.green, bg: 'rgba(74,222,128,0.12)' },
-  warm: { label: 'Warm', color: S.amber, bg: 'rgba(251,191,36,0.12)' },
-  cold: { label: 'Cold', color: S.dim,   bg: 'rgba(107,114,128,0.12)' },
+  hot:  { label: 'Hot',  color: S.success, bg: `${S.success}18` },
+  warm: { label: 'Warm', color: S.gold,    bg: `${S.gold}18` },
+  cold: { label: 'Cold', color: S.dim,     bg: `${S.dim}18` },
 };
 
 const RECENCY_VISUAL: Record<TrialUser['recencyStatus'], { label: string; color: string; bg: string }> = {
-  active:   { label: 'Active',   color: S.green, bg: 'rgba(74,222,128,0.12)' },
-  stale:    { label: 'Stale',    color: S.amber, bg: 'rgba(251,191,36,0.12)' },
-  inactive: { label: 'Inactive', color: S.red,   bg: 'rgba(248,113,113,0.12)' },
+  active:   { label: 'Active',   color: S.success, bg: `${S.success}18` },
+  stale:    { label: 'Stale',    color: S.gold,    bg: `${S.gold}18` },
+  inactive: { label: 'Inactive', color: S.danger,  bg: `${S.danger}12` },
 };
 
 function fmtPct(n: number | null): string {
@@ -124,8 +121,8 @@ function SummaryCard({
   return (
     <div style={{
       padding: '18px 20px',
-      background: S.card,
-      border: `1px solid ${S.border}`,
+      background: warm.colors.bgSurface,
+      border: `1px solid ${warm.colors.borderWhisper}`,
       borderRadius: 12,
       display: 'flex',
       flexDirection: 'column',
@@ -167,12 +164,12 @@ function FunnelBar({ stages }: { stages: FunnelStage[] }) {
             <p style={{ margin: 0, width: 200, fontSize: 13, color: S.sub, flexShrink: 0 }}>
               {stage.label}
             </p>
-            <div style={{ flex: 1, height: 28, position: 'relative', background: 'rgba(255,255,255,0.02)', borderRadius: 8 }}>
+            <div style={{ flex: 1, height: 28, position: 'relative', background: warm.colors.bgAlt, borderRadius: 8 }}>
               <div style={{
                 width: `${widthPct}%`,
                 height: '100%',
-                background: i === 0 ? 'rgba(45,212,191,0.20)' : i === stages.length - 1 ? 'rgba(74,222,128,0.25)' : 'rgba(96,165,250,0.18)',
-                border: `1px solid ${i === 0 ? S.teal : i === stages.length - 1 ? S.green : S.blue}`,
+                background: i === 0 ? `${S.petrol}28` : i === stages.length - 1 ? `${S.success}30` : `${S.petrolLight}25`,
+                border: `1px solid ${i === 0 ? S.petrol : i === stages.length - 1 ? S.success : S.petrolLight}`,
                 borderRadius: 8,
                 transition: 'width 0.3s',
               }} />
@@ -199,7 +196,7 @@ function FunnelBar({ stages }: { stages: FunnelStage[] }) {
               margin: 0,
               width: 90,
               fontSize: 11,
-              color: dropPct !== null && dropPct >= 50 ? S.red : S.dim,
+              color: dropPct !== null && dropPct >= 50 ? S.danger : S.dim,
               textAlign: 'right',
               flexShrink: 0,
               fontVariantNumeric: 'tabular-nums',
@@ -233,7 +230,7 @@ function TrialRow({ user }: { user: TrialUser }) {
   }
 
   return (
-    <tr style={{ borderBottom: `1px solid ${S.border}` }}>
+    <tr style={{ borderBottom: `1px solid ${warm.colors.borderWhisper}` }}>
       <td style={{ padding: '14px 12px', verticalAlign: 'top' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: S.main }}>
@@ -256,7 +253,7 @@ function TrialRow({ user }: { user: TrialUser }) {
         <p style={{
           margin: 0,
           fontWeight: trialEndUrgent || trialEndedAlready ? 700 : 500,
-          color: trialEndedAlready ? S.red : trialEndUrgent ? S.amber : S.main,
+          color: trialEndedAlready ? S.danger : trialEndUrgent ? S.gold : S.main,
         }}>
           {fmtRelativeDays(user.daysToTrialEnd, { future: true })}
         </p>
@@ -319,9 +316,9 @@ function TrialRow({ user }: { user: TrialUser }) {
             alignItems: 'center',
             gap: 6,
             padding: '6px 10px',
-            background: copied ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.05)',
-            color: copied ? S.green : S.sub,
-            border: `1px solid ${copied ? 'rgba(74,222,128,0.30)' : S.border}`,
+            background: copied ? `${S.success}18` : warm.colors.bgAlt,
+            color: copied ? S.success : S.sub,
+            border: `1px solid ${copied ? `${S.success}40` : warm.colors.borderWhisper}`,
             borderRadius: 8,
             fontSize: 11,
             fontWeight: 700,
@@ -356,13 +353,13 @@ export function AdminFunnel() {
 
   if (forbidden) {
     return (
-      <div style={{ minHeight: '100vh', background: S.bg, color: S.main, padding: 40 }}>
+      <div style={{ minHeight: '100vh', background: warm.colors.bgCanvas, color: S.main, padding: 40 }}>
         <div style={{
           maxWidth: 480, margin: '80px auto', padding: 32, textAlign: 'center',
-          background: S.card, border: `1px solid ${S.border}`, borderRadius: 12,
+          background: warm.colors.bgSurface, border: `1px solid ${warm.colors.borderWhisper}`, borderRadius: 12,
         }}>
-          <AlertTriangle size={32} style={{ color: S.amber, marginBottom: 12 }} />
-          <h1 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 8px' }}>Admin only</h1>
+          <AlertTriangle size={32} style={{ color: S.gold, marginBottom: 12 }} />
+          <h1 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 8px', color: S.main }}>Admin only</h1>
           <p style={{ fontSize: 13, color: S.sub, margin: 0 }}>
             You don't have access to this page.
           </p>
@@ -372,7 +369,7 @@ export function AdminFunnel() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: S.bg, color: S.main, padding: '32px 28px 80px' }}>
+    <div style={{ minHeight: '100vh', background: warm.colors.bgCanvas, color: S.main, padding: '32px 28px 80px' }}>
       <div style={{ maxWidth: 1180, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 28 }}>
 
         {/* Header */}
@@ -393,7 +390,7 @@ export function AdminFunnel() {
               <ArrowLeft size={11} />
               Back to admin
             </Link>
-            <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, letterSpacing: '-0.02em' }}>
+            <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, letterSpacing: '-0.02em', color: S.main }}>
               Trial conversion funnel
             </h1>
             <p style={{ margin: '4px 0 0', fontSize: 13, color: S.sub }}>
@@ -413,25 +410,25 @@ export function AdminFunnel() {
               label="Active trials"
               value={String(overviewQ.data.summary.activeTrials)}
               sub="On free trial right now"
-              accent={S.blue}
+              accent={S.petrol}
             />
             <SummaryCard
               label="Ending this week"
               value={String(overviewQ.data.summary.trialsEndingThisWeek)}
               sub="Decision window opens"
-              accent={S.amber}
+              accent={S.gold}
             />
             <SummaryCard
               label="Paid users"
               value={String(overviewQ.data.summary.paidUsers)}
               sub="All-time, currently active"
-              accent={S.green}
+              accent={S.success}
             />
             <SummaryCard
               label="Conversion (last 30d)"
               value={fmtPct(overviewQ.data.summary.conversionLast30Days)}
               sub={`${overviewQ.data.summary.convertedFromEnded} of ${overviewQ.data.summary.trialsEndedLast30} trials converted`}
-              accent={S.teal}
+              accent={S.petrol}
             />
           </div>
         ) : (
@@ -443,8 +440,8 @@ export function AdminFunnel() {
         {/* Funnel */}
         <div style={{
           padding: '22px 24px',
-          background: S.card,
-          border: `1px solid ${S.border}`,
+          background: warm.colors.bgSurface,
+          border: `1px solid ${warm.colors.borderWhisper}`,
           borderRadius: 14,
         }}>
           <h2 style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 800, letterSpacing: '0.02em', textTransform: 'uppercase', color: S.sub }}>
@@ -465,8 +462,8 @@ export function AdminFunnel() {
         {/* Trial queue */}
         <div style={{
           padding: '22px 24px',
-          background: S.card,
-          border: `1px solid ${S.border}`,
+          background: warm.colors.bgSurface,
+          border: `1px solid ${warm.colors.borderWhisper}`,
           borderRadius: 14,
         }}>
           <h2 style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 800, letterSpacing: '0.02em', textTransform: 'uppercase', color: S.sub }}>
@@ -485,7 +482,7 @@ export function AdminFunnel() {
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
-                    <tr style={{ borderBottom: `1px solid ${S.border}` }}>
+                    <tr style={{ borderBottom: `1px solid ${warm.colors.borderWhisper}` }}>
                       <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: S.sub, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                         User
                       </th>

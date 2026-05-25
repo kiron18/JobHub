@@ -13,7 +13,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Compass, Target, Layers, Hash, Award } from 'lucide-react';
-import { useAppTheme } from '../../contexts/ThemeContext';
+import { warm } from '../../lib/theme/warmTokens';
 
 export interface CoherenceSignal {
     category: 'missing_target' | 'seniority_mismatch' | 'scattered_domain' | 'thin_metrics' | 'thin_achievement_bank';
@@ -32,7 +32,6 @@ const ICONS: Record<CoherenceSignal['category'], React.ComponentType<{ size?: nu
 };
 
 export function CoherenceCard({ signals }: { signals: CoherenceSignal[] }) {
-    const { T } = useAppTheme();
     const [expandedKey, setExpandedKey] = useState<string | null>(null);
 
     if (!signals || signals.length === 0) return null;
@@ -46,7 +45,7 @@ export function CoherenceCard({ signals }: { signals: CoherenceSignal[] }) {
                     fontWeight: 700,
                     letterSpacing: '0.14em',
                     textTransform: 'uppercase',
-                    color: T.textMuted,
+                    color: warm.colors.textSecondary,
                 }}
             >
                 Story health · {signals.length} {signals.length === 1 ? 'signal' : 'signals'}
@@ -56,15 +55,15 @@ export function CoherenceCard({ signals }: { signals: CoherenceSignal[] }) {
                 {signals.map((signal, i) => {
                     const Icon = ICONS[signal.category];
                     const isHigh = signal.severity === 'high';
-                    const accent = isHigh ? T.accentSuccess : T.accentSecondary;
+                    const accent = isHigh ? warm.colors.success : warm.colors.accentPetrol;
                     const isOpen = expandedKey === `${signal.category}-${i}`;
 
                     return (
                         <div
                             key={`${signal.category}-${i}`}
                             style={{
-                                background: T.card,
-                                border: `1px solid ${T.cardBorder}`,
+                                background: warm.colors.bgSurface,
+                                border: `1px solid ${warm.colors.borderWhisper}`,
                                 borderLeft: `3px solid ${accent}`,
                                 borderRadius: 12,
                                 overflow: 'hidden',
@@ -87,13 +86,13 @@ export function CoherenceCard({ signals }: { signals: CoherenceSignal[] }) {
                                 <span style={{ display: 'inline-flex', color: accent, marginTop: 2, flexShrink: 0 }}>
                                     <Icon size={16} />
                                 </span>
-                                <p style={{ flex: 1, margin: 0, fontSize: 13.5, fontWeight: 600, color: T.text, lineHeight: 1.5 }}>
+                                <p style={{ flex: 1, margin: 0, fontSize: 13.5, fontWeight: 600, color: warm.colors.textPrimary, lineHeight: 1.5 }}>
                                     {signal.headline}
                                 </p>
                                 <motion.span
                                     animate={{ rotate: isOpen ? 180 : 0 }}
                                     transition={{ duration: 0.2 }}
-                                    style={{ color: T.textMuted, flexShrink: 0, display: 'flex', marginTop: 2 }}
+                                    style={{ color: warm.colors.textSecondary, flexShrink: 0, display: 'flex', marginTop: 2 }}
                                 >
                                     <ChevronDown size={14} />
                                 </motion.span>
@@ -109,7 +108,7 @@ export function CoherenceCard({ signals }: { signals: CoherenceSignal[] }) {
                                         style={{ overflow: 'hidden' }}
                                     >
                                         <div style={{ padding: '0 16px 14px 44px' }}>
-                                            <p style={{ margin: '0 0 10px', fontSize: 13, color: T.textMuted, lineHeight: 1.65 }}>
+                                            <p style={{ margin: '0 0 10px', fontSize: 13, color: warm.colors.textSecondary, lineHeight: 1.65 }}>
                                                 {signal.detail}
                                             </p>
                                             {signal.fixHref && (

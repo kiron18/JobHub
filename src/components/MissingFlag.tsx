@@ -41,14 +41,14 @@ export const MissingFlag: React.FC<MissingFlagProps> = ({
                         initial={{ opacity: 0, scale: 0.95, y: 5 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 5 }}
-                        className="absolute bottom-full left-0 mb-2 w-56 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl z-30 p-2 overflow-hidden"
+                        className="absolute bottom-full left-0 mb-2 w-56 bg-white border border-[rgba(26,24,20,0.08)] rounded-xl shadow-2xl z-30 p-2 overflow-hidden"
                     >
-                        <div className="flex items-center justify-between p-2 border-b border-slate-800 mb-1">
+                        <div className="flex items-center justify-between p-2 border-b border-[rgba(26,24,20,0.08)] mb-1">
                             <div className="flex items-center gap-2">
                                 <AlertCircle size={10} className="text-amber-500" />
-                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Content Gap</span>
+                                <span className="text-[10px] font-black text-[#8B847B] uppercase tracking-tighter">Content Gap</span>
                             </div>
-                            <button onClick={() => setIsOpen(false)} className="text-slate-600 hover:text-slate-400">
+                            <button onClick={() => setIsOpen(false)} className="text-[#8B847B] hover:text-[#5C5750]">
                                 <X size={10} />
                             </button>
                         </div>
@@ -56,21 +56,21 @@ export const MissingFlag: React.FC<MissingFlagProps> = ({
                         <div className="flex flex-col gap-1">
                             <button 
                                 onClick={() => handleAction(() => onEditInline?.())}
-                                className="flex items-center gap-2 w-full p-2 text-[11px] font-bold text-slate-300 hover:bg-slate-800 rounded-lg transition-colors group"
+                                className="flex items-center gap-2 w-full p-2 text-[11px] font-bold text-[#1A1814] hover:bg-[#F4EFE8] rounded-lg transition-colors group"
                             >
                                 <Edit3 size={12} className="text-brand-500 group-hover:scale-110 transition-transform" />
                                 Edit inline
                             </button>
                             <button 
                                 onClick={() => handleAction(() => onAddToProfile?.(label))}
-                                className="flex items-center gap-2 w-full p-2 text-[11px] font-bold text-slate-300 hover:bg-slate-800 rounded-lg transition-colors group"
+                                className="flex items-center gap-2 w-full p-2 text-[11px] font-bold text-[#1A1814] hover:bg-[#F4EFE8] rounded-lg transition-colors group"
                             >
                                 <PlusCircle size={12} className="text-emerald-500 group-hover:scale-110 transition-transform" />
                                 Add to Profile Bank
                             </button>
                             <button 
                                 onClick={() => handleAction(() => onRemove?.(text))}
-                                className="flex items-center gap-2 w-full p-2 text-[11px] font-bold text-slate-300 hover:bg-slate-800 rounded-lg transition-colors group"
+                                className="flex items-center gap-2 w-full p-2 text-[11px] font-bold text-[#1A1814] hover:bg-[#F4EFE8] rounded-lg transition-colors group"
                             >
                                 <Trash2 size={12} className="text-red-500 group-hover:scale-110 transition-transform" />
                                 Remove flag

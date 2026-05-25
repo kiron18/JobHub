@@ -1,6 +1,6 @@
 import React from 'react';
 import { Loader2 } from 'lucide-react';
-import { useAppTheme } from '../../contexts/ThemeContext';
+import { warm } from '../../lib/theme/warmTokens';
 import { SectionCard } from './SectionCard';
 import type { LinkedInProfileData } from './types';
 
@@ -19,13 +19,12 @@ export const ProfileSections: React.FC<Props> = ({
   profileData, generating, regeneratingSection, targetRole,
   onTargetRoleChange, onGenerateAll, onSectionChange, onRegenerate,
 }) => {
-  const { T } = useAppTheme();
-
+  
   return (
     <div>
       {/* Target role input */}
       <div style={{ marginBottom: 20 }}>
-        <label htmlFor="targetRole" style={{ display: 'block', fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: T.textFaint, marginBottom: 8 }}>
+        <label htmlFor="targetRole" style={{ display: 'block', fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: warm.colors.textMuted, marginBottom: 8 }}>
           Target Role (optional — sharpens output)
         </label>
         <input
@@ -36,11 +35,11 @@ export const ProfileSections: React.FC<Props> = ({
           placeholder="e.g. Senior Product Manager · B2B SaaS"
           style={{
             width: '100%', padding: '11px 14px', borderRadius: 10, fontSize: 14,
-            background: 'rgba(255,255,255,0.04)', border: `1px solid ${T.cardBorder}`,
-            color: T.text, outline: 'none', boxSizing: 'border-box',
+            background: 'rgba(255,255,255,0.04)', border: `1px solid ${warm.colors.borderWhisper}`,
+            color: warm.colors.textPrimary, outline: 'none', boxSizing: 'border-box',
           }}
         />
-        <p style={{ fontSize: 12, color: T.textFaint, margin: '6px 0 0', lineHeight: 1.5 }}>
+        <p style={{ fontSize: 12, color: warm.colors.textMuted, margin: '6px 0 0', lineHeight: 1.5 }}>
           Adding a target role sharpens the output. Leave blank for a general profile.
         </p>
       </div>

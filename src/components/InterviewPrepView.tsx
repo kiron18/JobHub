@@ -194,14 +194,14 @@ function CollapsibleSection({ title, accent, defaultOpen = false, children }: {
 }) {
     const [open, setOpen] = useState(defaultOpen);
     return (
-        <div className="rounded-xl border border-slate-800 overflow-hidden">
+        <div className="rounded-xl border border-[rgba(26,24,20,0.08)] overflow-hidden">
             <button
                 onClick={() => setOpen(o => !o)}
-                className="w-full flex items-center justify-between px-5 py-3.5 bg-slate-900/60 hover:bg-slate-900/80 transition-colors text-left"
+                className="w-full flex items-center justify-between px-5 py-3.5 bg-white/80 hover:bg-white/95 transition-colors text-left"
             >
-                <span className={`text-[10px] font-black uppercase tracking-widest ${accent || 'text-slate-400'}`}>{title}</span>
+                <span className={`text-[10px] font-black uppercase tracking-widest ${accent || 'text-[#5C5750]'}`}>{title}</span>
                 <motion.div animate={{ rotate: open ? 90 : 0 }} transition={{ duration: 0.18 }}>
-                    <ChevronRight size={13} className="text-slate-500" />
+                    <ChevronRight size={13} className="text-[#8B847B]" />
                 </motion.div>
             </button>
             <AnimatePresence initial={false}>
@@ -233,15 +233,15 @@ function StoryCardItem({ story }: { story: StoryCard }) {
                 <div className="flex items-start justify-between gap-3">
                     <div className="space-y-1 flex-1">
                         <p className="text-[9px] font-black text-brand-400 uppercase tracking-widest">{story.title}</p>
-                        <p className="text-sm font-bold text-slate-100 leading-snug">{story.hook}</p>
+                        <p className="text-sm font-bold text-[#1A1814] leading-snug">{story.hook}</p>
                     </div>
                     <motion.div animate={{ rotate: expanded ? 90 : 0 }} transition={{ duration: 0.18 }} className="shrink-0 mt-0.5">
-                        <ChevronRight size={13} className="text-slate-500" />
+                        <ChevronRight size={13} className="text-[#8B847B]" />
                     </motion.div>
                 </div>
                 <div className="flex flex-wrap gap-1.5 mt-2.5">
                     {story.covers.map((tag, i) => (
-                        <span key={i} className="text-[9px] font-bold text-slate-400 bg-slate-800 rounded px-2 py-0.5 border border-slate-700/50">
+                        <span key={i} className="text-[9px] font-bold text-[#5C5750] bg-[#F4EFE8] rounded px-2 py-0.5 border border-[rgba(26,24,20,0.10)]">
                             {tag}
                         </span>
                     ))}
@@ -259,21 +259,21 @@ function StoryCardItem({ story }: { story: StoryCard }) {
                         <div className="px-4 pb-4 pt-0 space-y-3 border-t border-brand-600/20">
                             {story.context && (
                                 <div className="pt-3">
-                                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">C, Context</span>
-                                    <p className="text-[12px] text-slate-400 leading-relaxed mt-1">{story.context}</p>
+                                    <span className="text-[9px] font-black text-[#8B847B] uppercase tracking-widest">C, Context</span>
+                                    <p className="text-[12px] text-[#5C5750] leading-relaxed mt-1">{story.context}</p>
                                 </div>
                             )}
                             {story.actions.length > 0 && (
                                 <div>
                                     <div className="flex items-baseline gap-2">
-                                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">A, Action</span>
-                                        <span className="text-[9px] text-slate-600 italic">pick the most relevant one</span>
+                                        <span className="text-[9px] font-black text-[#8B847B] uppercase tracking-widest">A, Action</span>
+                                        <span className="text-[9px] text-[#8B847B] italic">pick the most relevant one</span>
                                     </div>
                                     <ul className="mt-1.5 space-y-1">
                                         {story.actions.map((a, i) => (
                                             <li key={i} className="flex items-start gap-2">
                                                 <span className="text-brand-500 text-[10px] font-black mt-0.5 shrink-0">{i + 1}.</span>
-                                                <span className="text-[12px] text-slate-300 leading-snug">{a}</span>
+                                                <span className="text-[12px] text-[#1A1814] leading-snug">{a}</span>
                                             </li>
                                         ))}
                                     </ul>
@@ -281,7 +281,7 @@ function StoryCardItem({ story }: { story: StoryCard }) {
                             )}
                             {story.result && (
                                 <div>
-                                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">R, Result</span>
+                                    <span className="text-[9px] font-black text-[#8B847B] uppercase tracking-widest">R, Result</span>
                                     <p className="text-[12px] text-emerald-400/90 leading-relaxed mt-1 font-medium">{story.result}</p>
                                 </div>
                             )}
@@ -308,11 +308,11 @@ function ProveItPanel({ qt, company, role }: { qt: QuestionType; company: string
                 <div className="space-y-0.5">
                     <span className={`text-[10px] font-black uppercase tracking-widest ${cfg.color}`}>{qt.label}</span>
                     {qt.description && (
-                        <p className="text-[11px] text-slate-400 leading-snug">{qt.description}</p>
+                        <p className="text-[11px] text-[#5C5750] leading-snug">{qt.description}</p>
                     )}
                 </div>
                 <motion.div animate={{ rotate: open ? 90 : 0 }} transition={{ duration: 0.18 }}>
-                    <ChevronRight size={13} className="text-slate-500" />
+                    <ChevronRight size={13} className="text-[#8B847B]" />
                 </motion.div>
             </button>
             <AnimatePresence initial={false}>
@@ -327,19 +327,19 @@ function ProveItPanel({ qt, company, role }: { qt: QuestionType; company: string
                         <div className="p-4 space-y-3">
                             {qt.useStory && (
                                 <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg ${cfg.bg} border ${cfg.border}`}>
-                                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Deploy:</span>
+                                    <span className="text-[9px] font-black text-[#8B847B] uppercase tracking-wider">Deploy:</span>
                                     <span className={`text-[10px] font-bold ${cfg.color}`}>{qt.useStory}</span>
                                 </div>
                             )}
                             <div className="space-y-2">
                                 {qt.questions.map((q, i) => (
-                                    <div key={i} className="rounded-lg border border-slate-800 bg-slate-900/40 overflow-hidden">
+                                    <div key={i} className="rounded-lg border border-[rgba(26,24,20,0.08)] bg-white/60 overflow-hidden">
                                         <div className="flex items-start gap-3 p-3">
                                             <span className={`text-[9px] font-black ${cfg.color} shrink-0 mt-0.5`}>{i + 1}.</span>
-                                            <p className="text-[12px] text-slate-200 leading-snug flex-1">{q}</p>
+                                            <p className="text-[12px] text-[#1A1814] leading-snug flex-1">{q}</p>
                                             <button
                                                 onClick={() => setRevealed(revealed === i ? null : i)}
-                                                className="shrink-0 flex items-center gap-1 text-[9px] font-black text-slate-500 hover:text-slate-300 transition-colors uppercase tracking-wider"
+                                                className="shrink-0 flex items-center gap-1 text-[9px] font-black text-[#8B847B] hover:text-[#1A1814] transition-colors uppercase tracking-wider"
                                             >
                                                 {revealed === i ? <EyeOff size={10} /> : <Eye size={10} />}
                                                 {revealed === i ? 'Hide' : 'Answer'}
@@ -354,12 +354,12 @@ function ProveItPanel({ qt, company, role }: { qt: QuestionType; company: string
                                                     transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
                                                     className="overflow-hidden"
                                                 >
-                                                    <div className="px-3 pb-3 pt-0 space-y-2.5 border-t border-slate-800">
-                                                        <p className="text-[11px] text-slate-400 leading-relaxed pt-2.5">
+                                                    <div className="px-3 pb-3 pt-0 space-y-2.5 border-t border-[rgba(26,24,20,0.08)]">
+                                                        <p className="text-[11px] text-[#5C5750] leading-relaxed pt-2.5">
                                                             Open with your <span className={`font-bold ${cfg.color}`}>{qt.useStory}</span> story. Lead with the hook, expand through C-A-R.
                                                         </p>
                                                         {(company || role) && (
-                                                            <div className="flex items-start gap-2 rounded-lg bg-slate-800/60 border border-slate-700/40 px-3 py-2.5">
+                                                            <div className="flex items-start gap-2 rounded-lg bg-[#F4EFE8]/80 border border-[rgba(26,24,20,0.08)] px-3 py-2.5">
                                                                 <Lightbulb size={11} className="text-amber-400 shrink-0 mt-0.5" />
                                                                 <p className="text-[11px] text-amber-200/80 leading-relaxed">
                                                                     After landing the result, connect it forward: show how that experience is exactly what {company || 'this organisation'} needs{role ? ` in a ${role}` : ''}.
@@ -394,8 +394,8 @@ export function InterviewPrepView({ doc, company, role }: { doc: string; company
     if (!hasKnow && !hasStories && !hasProve) {
         return (
             <div className="flex flex-col items-center justify-center py-24 space-y-4 max-w-sm mx-auto text-center">
-                <p className="text-slate-300 font-bold text-sm">Format updated</p>
-                <p className="text-slate-500 text-[13px] leading-relaxed">
+                <p className="text-[#1A1814] font-bold text-sm">Format updated</p>
+                <p className="text-[#8B847B] text-[13px] leading-relaxed">
                     This prep was generated in an older format. Hit Re-generate to build your Story Bank and question coaching.
                 </p>
             </div>
@@ -408,14 +408,14 @@ export function InterviewPrepView({ doc, company, role }: { doc: string; company
             {/* Section 1, Know the Stage */}
             {hasKnow && (
                 <div className="space-y-2">
-                    <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest px-1">01, Know the Stage</p>
+                    <p className="text-[9px] font-black text-[#8B847B] uppercase tracking-widest px-1">01, Know the Stage</p>
                     {data.companyIntelligence.length > 0 && (
                         <CollapsibleSection title="Company Intelligence" defaultOpen={true}>
                             <ul className="space-y-2">
                                 {data.companyIntelligence.map((fact, i) => (
                                     <li key={i} className="flex items-start gap-2.5">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-slate-600 shrink-0 mt-1.5" />
-                                        <span className="text-[13px] text-slate-300 leading-relaxed">{fact}</span>
+                                        <span className="w-1.5 h-1.5 rounded-full bg-[rgba(26,24,20,0.16)] shrink-0 mt-1.5" />
+                                        <span className="text-[13px] text-[#1A1814] leading-relaxed">{fact}</span>
                                     </li>
                                 ))}
                             </ul>
@@ -423,7 +423,7 @@ export function InterviewPrepView({ doc, company, role }: { doc: string; company
                     )}
                     {data.lookingFor && (
                         <CollapsibleSection title="What They're Looking For">
-                            <p className="text-[13px] text-slate-300 leading-relaxed">{data.lookingFor}</p>
+                            <p className="text-[13px] text-[#1A1814] leading-relaxed">{data.lookingFor}</p>
                         </CollapsibleSection>
                     )}
                     {data.watchOuts.length > 0 && (
@@ -444,17 +444,17 @@ export function InterviewPrepView({ doc, company, role }: { doc: string; company
             {/* Section 2, Story Bank */}
             {hasStories && (
                 <div className="space-y-2">
-                    <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest px-1">02, Your Story Bank</p>
+                    <p className="text-[9px] font-black text-[#8B847B] uppercase tracking-widest px-1">02, Your Story Bank</p>
 
                     {/* Educational panel */}
-                    <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-3">
-                        <p className="text-[11px] text-slate-400 leading-relaxed">
+                    <div className="rounded-xl border border-[rgba(26,24,20,0.08)] bg-white/60 p-4 space-y-3">
+                        <p className="text-[11px] text-[#5C5750] leading-relaxed">
                             Know these {data.storyBank.length} stories and you can answer anything.
                             Every question an interviewer asks is an invitation to deploy one of them.
                         </p>
                         <button
                             onClick={() => setShowContrast(s => !s)}
-                            className="flex items-center gap-1.5 text-[10px] font-black text-slate-500 hover:text-slate-300 transition-colors uppercase tracking-wider"
+                            className="flex items-center gap-1.5 text-[10px] font-black text-[#8B847B] hover:text-[#1A1814] transition-colors uppercase tracking-wider"
                         >
                             <ChevronDown size={10} className={`transition-transform ${showContrast ? 'rotate-180' : ''}`} />
                             {showContrast ? 'Hide example' : 'See why specificity wins'}
@@ -471,13 +471,13 @@ export function InterviewPrepView({ doc, company, role }: { doc: string; company
                                     <div className="space-y-2 pt-1">
                                         <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2.5">
                                             <p className="text-[9px] font-black text-red-400 uppercase tracking-wider mb-1">Weak</p>
-                                            <p className="text-[12px] text-slate-400 italic">"I helped improve a reporting process and the client was happy."</p>
+                                            <p className="text-[12px] text-[#5C5750] italic">"I helped improve a reporting process and the client was happy."</p>
                                         </div>
                                         <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2.5">
                                             <p className="text-[9px] font-black text-emerald-400 uppercase tracking-wider mb-1">Strong</p>
-                                            <p className="text-[12px] text-slate-200 italic">"When our client reporting was running three weeks behind, I rebuilt the pipeline from scratch. The client extended the contract as a direct result."</p>
+                                            <p className="text-[12px] text-[#1A1814] italic">"When our client reporting was running three weeks behind, I rebuilt the pipeline from scratch. The client extended the contract as a direct result."</p>
                                         </div>
-                                        <p className="text-[11px] text-slate-500 leading-relaxed">Same story. Same candidate. One gets an offer.</p>
+                                        <p className="text-[11px] text-[#8B847B] leading-relaxed">Same story. Same candidate. One gets an offer.</p>
                                     </div>
                                 </motion.div>
                             )}
@@ -502,9 +502,9 @@ export function InterviewPrepView({ doc, company, role }: { doc: string; company
             {/* Section 3, Prove It */}
             {hasProve && (
                 <div className="space-y-2">
-                    <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest px-1">03, Prove It</p>
-                    <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3">
-                        <p className="text-[11px] text-slate-400 leading-relaxed">
+                    <p className="text-[9px] font-black text-[#8B847B] uppercase tracking-widest px-1">03, Prove It</p>
+                    <div className="rounded-xl border border-[rgba(26,24,20,0.08)] bg-white/60 px-4 py-3">
+                        <p className="text-[11px] text-[#5C5750] leading-relaxed">
                             Open each question type, read the question, then reveal the answer.
                             Practise until reaching for the right story feels automatic.
                         </p>
@@ -527,13 +527,13 @@ export function InterviewPrepView({ doc, company, role }: { doc: string; company
             {/* Section 4, Questions to Ask */}
             {hasAsk && (
                 <div className="space-y-2">
-                    <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest px-1">04, Questions to Ask</p>
+                    <p className="text-[9px] font-black text-[#8B847B] uppercase tracking-widest px-1">04, Questions to Ask</p>
                     <CollapsibleSection title="Your Questions">
                         <ul className="space-y-2">
                             {data.questionsToAsk.map((q, i) => (
                                 <li key={i} className="flex items-start gap-2.5">
                                     <span className="text-[10px] font-black text-brand-500 shrink-0 mt-0.5">{i + 1}.</span>
-                                    <span className="text-[13px] text-slate-300 leading-relaxed">{q}</span>
+                                    <span className="text-[13px] text-[#1A1814] leading-relaxed">{q}</span>
                                 </li>
                             ))}
                         </ul>

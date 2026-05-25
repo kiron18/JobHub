@@ -127,3 +127,21 @@ export function trackCancellationReasonSelected(reason: string) {
 export function trackCancellationPortalOpened() {
   posthog.capture('cancellation_portal_opened');
 }
+
+// ── Landing page funnel ───────────────────────────────────────────────────────
+
+export function trackLandingViewed(variant: string) {
+  posthog.capture('landing_viewed', { hero_variant: variant });
+}
+
+export function trackLandingSectionViewed(section: string, variant: string) {
+  posthog.capture('landing_section_viewed', { section, hero_variant: variant });
+}
+
+export function trackLandingCtaClicked(position: 'hero' | 'spotlight' | 'final', variant: string) {
+  posthog.capture('landing_cta_clicked', { position, hero_variant: variant });
+}
+
+export function trackLandingLogInClicked(variant: string) {
+  posthog.capture('landing_login_clicked', { hero_variant: variant });
+}
