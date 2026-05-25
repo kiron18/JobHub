@@ -157,55 +157,76 @@ function extractSummaryBlock(markdown: string): { heading: string; body: string;
 
 function scrubBody(body: string, firstName: string, yearsOfExperience?: number | null): string {
     let scrubbed = body;
+    const stats: string[] = [];
 
     // 1. "{FirstName} <verb>" -> "I <verb-first-person>".
-    //    Match the name as a whole word, followed by a verb-like token.
+    //    Only fire when the following word looks verb-like (in the known map
+    //    or ends with -s/-es/-ies). Prevents "Kiron Kurian" -> "I Kurian"
+    //    when the LLM uses the candidate's full name.
     if (firstName) {
         const namePattern = new RegExp(`\\b${escapeRegex(firstName)}\\s+([A-Za-z][A-Za-z'-]*)`, 'g');
-        scrubbed = scrubbed.replace(namePattern, (_match, verb: string) => {
+        scrubbed = scrubbed.replace(namePattern, (match, verb: string) => {
+            if (!looksLikeVerb(verb)) return match;
+            stats.push(`name+verb: "${match}" -> "I ${conjugateToFirstPerson(verb)}"`);
             return `I ${conjugateToFirstPerson(verb)}`;
         });
     }
 
-    // 2. "He/She/They <verb>" -> "I <verb-first-person>".
-    //    Only at word boundaries so we don't catch "Heading" or "Their" mid-token.
-    scrubbed = scrubbed.replace(/\b(He|She|They)\s+([A-Za-z][A-Za-z'-]*)/g, (_m, _pronoun, verb: string) => {
+    // 2. "he/she/they <verb>" -> "I <verb-first-person>" (CASE-INSENSITIVE).
+    //    The previous version only caught capital He/She/They, so lowercase
+    //    "he is equipped" / "he brings" / "he adapts" slipped through. This
+    //    is the bug behind 90% of third-person leaks in real LLM output —
+    //    the model often uses the name in sentence 1 and lowercase pronouns
+    //    in sentences 2 and 3.
+    scrubbed = scrubbed.replace(/\b(he|she|they)\s+([A-Za-z][A-Za-z'-]*)/gi, (match, _pronoun, verb: string) => {
+        stats.push(`pronoun+verb: "${match}" -> "I ${conjugateToFirstPerson(verb)}"`);
         return `I ${conjugateToFirstPerson(verb)}`;
     });
 
-    // 3. Possessives. "His/Her/Their X" -> "My X".
-    //    Note: "Her" is ambiguous (object vs possessive). In a Professional
-    //    Summary context, both senses refer to the candidate and "My/Me"
-    //    are correct first-person substitutions for both.
-    scrubbed = scrubbed.replace(/\b(His|Her|Their)\b/g, (m) => preserveCase(m, 'my'));
+    // 3. Possessives "his/her/their" -> "my" (case-insensitive).
+    scrubbed = scrubbed.replace(/\b(his|her|their)\b/gi, (m) => {
+        stats.push(`possessive: "${m}" -> "my"`);
+        return preserveCase(m, 'my');
+    });
 
-    // 4. Object pronouns "Him/Them" -> "Me".
-    scrubbed = scrubbed.replace(/\b(Him|Them)\b/g, (m) => preserveCase(m, 'me'));
+    // 4. Object pronouns "him/them" -> "me" (case-insensitive).
+    scrubbed = scrubbed.replace(/\b(him|them)\b/gi, (m) => {
+        stats.push(`object pronoun: "${m}" -> "me"`);
+        return preserveCase(m, 'me');
+    });
 
-    // 5. Reflexive "Himself/Herself/Themself/Themselves" -> "Myself".
-    scrubbed = scrubbed.replace(/\b(Himself|Herself|Themself|Themselves)\b/g, (m) => preserveCase(m, 'myself'));
+    // 5. Reflexive pronouns -> "myself" (case-insensitive).
+    scrubbed = scrubbed.replace(/\b(himself|herself|themself|themselves)\b/gi, (m) => {
+        stats.push(`reflexive: "${m}" -> "myself"`);
+        return preserveCase(m, 'myself');
+    });
 
-    // 6. Years-of-experience number correction.
-    //    Only act when we have a server-computed value AND the existing
-    //    figure is more than 1 year off. Avoids fighting reasonable rounding.
+    // 6. Years-of-experience number correction. Matches "X years of <ANY>",
+    //    "X+ years in <ANY>" — not just "experience" / "hands-on". Real
+    //    output uses phrasings like "X years of performance marketing" or
+    //    "X+ years in B2B sales", which the narrow original regex missed.
+    //    Only overrides when the existing number is more than 1 year off
+    //    the server-computed value (preserves reasonable rounding).
     if (typeof yearsOfExperience === 'number' && yearsOfExperience > 0) {
-        scrubbed = scrubbed.replace(/\b(\d+)(\+?)\s+years?\s+of\s+(experience|hands-on)/gi, (match, num, plus, kind) => {
+        scrubbed = scrubbed.replace(/\b(\d+)(\+?)\s+(years?\s+(?:of|in)\b)/gi, (match, num, plus, rest) => {
             const existing = parseInt(num, 10);
             if (!Number.isFinite(existing)) return match;
             if (Math.abs(existing - yearsOfExperience) <= 1) return match;
-            return `${yearsOfExperience}${plus} years of ${kind}`;
+            stats.push(`years digits: "${num}${plus}" -> "${yearsOfExperience}${plus}"`);
+            return `${yearsOfExperience}${plus} ${rest}`;
         });
-        // Word-form numbers ("three years of experience")
+        // Word-form numbers ("three years of marketing", "five years in delivery").
         const WORD_NUMBERS: Record<string, number> = {
             one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
             eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17,
             eighteen: 18, nineteen: 19, twenty: 20,
         };
-        scrubbed = scrubbed.replace(/\b([A-Za-z]+)\s+years?\s+of\s+(experience|hands-on)/gi, (match, wordNum: string, kind: string) => {
+        scrubbed = scrubbed.replace(/\b([A-Za-z]+)\s+(years?\s+(?:of|in)\b)/gi, (match, wordNum: string, rest: string) => {
             const existing = WORD_NUMBERS[wordNum.toLowerCase()];
             if (existing === undefined) return match;
             if (Math.abs(existing - yearsOfExperience) <= 1) return match;
-            return `${yearsOfExperience} years of ${kind}`;
+            stats.push(`years word: "${wordNum}" -> "${yearsOfExperience}"`);
+            return `${yearsOfExperience} ${rest}`;
         });
     }
 
@@ -213,10 +234,32 @@ function scrubBody(body: string, firstName: string, yearsOfExperience?: number |
     //    experience — we have the answer server-side, no verification needed.
     scrubbed = scrubbed.replace(/\[VERIFY:[^\]]*years?[^\]]*\]/gi, (match) => {
         if (typeof yearsOfExperience === 'number' && yearsOfExperience > 0) {
+            stats.push(`stripped [VERIFY: years] placeholder`);
             return `${yearsOfExperience} years`;
         }
         return match;
     });
 
+    if (stats.length > 0) {
+        console.log(`[voiceEnforcer] Applied ${stats.length} fix(es) to professional summary:`);
+        stats.forEach((s) => console.log(`  - ${s}`));
+    } else if (firstName) {
+        console.log(`[voiceEnforcer] Summary section located but no third-person violations found (firstName="${firstName}").`);
+    }
+
     return scrubbed;
+}
+
+/**
+ * True when the token looks like a third-person singular verb form —
+ * either an irregular in our conjugation map (is/has/does/...) or a
+ * regular -s/-es/-ies ending. Excludes common false positives like
+ * proper nouns and adjectives ending in -ous/-ess/-us/-is.
+ */
+function looksLikeVerb(token: string): boolean {
+    const lower = token.toLowerCase();
+    if (VERB_CONJUGATIONS[lower]) return true;
+    if (lower.length < 3) return false;
+    if (/(ous|ess|us|is)$/.test(lower)) return false;
+    return /(ies|es|s)$/.test(lower);
 }
