@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
-import { useAppTheme } from '../contexts/ThemeContext';
+import { warm } from '../lib/theme/warmTokens';
 import api from '../lib/api';
 import { ProfileStrip } from '../components/linkedin/ProfileStrip';
 import { ProfileSections } from '../components/linkedin/ProfileSections';
@@ -11,6 +11,7 @@ import { HeadshotGenerator } from '../components/linkedin/HeadshotGenerator';
 import { OutreachTemplates } from '../components/linkedin/OutreachTemplates';
 import type { LinkedInProfileData, BannerConfig } from '../components/linkedin/types';
 import { useProfile } from '../hooks/useProfile';
+import { SectionIntroBanner } from '../components/processStrip';
 
 type Tab = 'profile' | 'outreach';
 
@@ -22,7 +23,6 @@ const DEFAULT_BANNER: BannerConfig = {
 };
 
 export const LinkedInPage: React.FC = () => {
-  const { T } = useAppTheme();
   const { profile } = useProfile();
 
   const navigate = useNavigate();
@@ -97,17 +97,20 @@ export const LinkedInPage: React.FC = () => {
     padding: '10px 24px', borderRadius: 10, border: 'none', cursor: 'pointer',
     fontWeight: 700, fontSize: 14,
     background: active ? '#0A66C2' : 'transparent',
-    color: active ? 'white' : T.textMuted,
+    color: active ? 'white' : warm.colors.textSecondary,
     transition: 'all 0.15s',
   });
 
   return (
     <div style={{ maxWidth: 740, margin: '0 auto' }}>
+      <SectionIntroBanner sectionId="linkedin">
+        Around 70% of Aussie roles are filled via networking. This is your LinkedIn toolkit: profile rewrite, outreach templates, and headline drafts.
+      </SectionIntroBanner>
       <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: 26, fontWeight: 600, color: T.text, margin: '0 0 4px', letterSpacing: '-0.015em' }}>
+        <h1 style={{ fontSize: 26, fontWeight: 600, color: warm.colors.textPrimary, margin: '0 0 4px', letterSpacing: '-0.015em' }}>
           LinkedIn Hub
         </h1>
-        <p style={{ fontSize: 14, color: T.textMuted, margin: 0 }}>
+        <p style={{ fontSize: 14, color: warm.colors.textSecondary, margin: 0 }}>
           Profile · Outreach · Headshot · Banner — one cohesive system
         </p>
       </div>
@@ -115,7 +118,7 @@ export const LinkedInPage: React.FC = () => {
       {/* Tabs */}
       <div style={{
         display: 'flex', gap: 4, padding: 4, borderRadius: 14, marginBottom: 28,
-        background: 'rgba(255,255,255,0.04)', border: `1px solid ${T.cardBorder}`,
+        background: warm.colors.bgAlt, border: `1px solid ${warm.colors.borderWhisper}`,
         width: 'fit-content',
       }}>
         <button style={tabStyle(tab === 'profile')} onClick={() => setTab('profile')}>Profile</button>
@@ -149,7 +152,7 @@ export const LinkedInPage: React.FC = () => {
                   onOpenEditor={() => setBannerEditorOpen(true)}
                 />
               ) : (
-                <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: 24, marginBottom: 16 }}>
+                <div style={{ background: warm.colors.bgSurface, border: `1px solid ${warm.colors.borderWhisper}`, borderRadius: 16, padding: 24, marginBottom: 16 }}>
                   <BannerCanvas
                     config={bannerConfig}
                     onConfigChange={setBannerConfig}

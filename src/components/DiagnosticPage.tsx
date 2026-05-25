@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ArrowRight } from 'lucide-react';
 import api from '../lib/api';
@@ -374,18 +374,19 @@ export function DiagnosticPage({ profile, onDone }: DiagnosticPageProps) {
                 {firstName ? `${firstName}, here's what we found` : "Here's what we found"}
               </h2>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {cardSections.map((section, idx) => {
-                  const meta = SECTION_META[section.key];
-                  if (!meta) return null;
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {cardSections.filter(s => SECTION_META[s.key]).map((section, idx, arr) => {
+                  const meta = SECTION_META[section.key]!;
                   const { problem, fix } = splitProblemFix(section.content);
                   const isOpen = openSection === section.key;
                   const hasDepth = fix && fix.split('\n').some(l => { const t = l.trim(); return t && t !== '---'; });
+                  const isLast = idx === arr.length - 1;
 
                   if (section.key === 'fix') {
                     const moves = parseFixMoves(section.content);
                     return (
-                      <div key={section.key} style={{
+                      <Fragment key={section.key}>
+                      <div style={{
                         background: themeBg, borderRadius: 18,
                         border: `1px solid ${themeCardBorder}`,
                         borderLeft: `4px solid ${GOLD}`, padding: '22px 24px',
@@ -393,7 +394,7 @@ export function DiagnosticPage({ profile, onDone }: DiagnosticPageProps) {
                         <p style={{ margin: '0 0 4px', fontSize: 10, fontWeight: 900, color: GOLD, opacity: 0.5 }}>05</p>
                         <p style={{ margin: '0 0 16px', fontSize: 11, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: SLATE }}>{meta.label}</p>
                         {SECTION_QUESTIONS.fix && (
-                          <h3 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 600, color: '#E0E0E0', lineHeight: 1.25 }}>{SECTION_QUESTIONS.fix}</h3>
+                          <h3 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 600, color: '#E0E0E0', lineHeight: 1.25, paddingBottom: 14, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>{SECTION_QUESTIONS.fix}</h3>
                         )}
                         <p style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: '#E0E0E0' }}>
                           Hey {firstName ?? 'there'},
@@ -417,71 +418,87 @@ export function DiagnosticPage({ profile, onDone }: DiagnosticPageProps) {
                           Your next step is the resume wizard. It turns every gap above into a stronger draft you can send today.
                         </p>
                       </div>
+                      {!isLast && (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: '12px 0' }}>
+                          <div style={{ width: 3, height: 3, borderRadius: '50%', background: meta.color, opacity: 0.3 }} />
+                          <div style={{ width: 3, height: 3, borderRadius: '50%', background: meta.color, opacity: 0.25 }} />
+                          <div style={{ width: 3, height: 3, borderRadius: '50%', background: meta.color, opacity: 0.2 }} />
+                        </div>
+                      )}
+                      </Fragment>
                     );
                   }
 
                   return (
-                    <div key={section.key} style={{
-                      background: themeBg, borderRadius: 18,
-                      border: `1px solid ${isOpen ? `${meta.color}30` : themeCardBorder}`,
-                      borderLeft: `4px solid ${meta.color}`,
-                      overflow: 'hidden',
-                    }}>
-                      <div style={{ padding: '18px 20px 14px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-                          <span style={{
-                            fontSize: 10, fontWeight: 900, color: meta.color, opacity: 0.5,
-                            letterSpacing: '-0.01em', fontVariantNumeric: 'tabular-nums',
-                          }}>{String(idx + 1).padStart(2, '0')}</span>
-                          <p style={{ margin: 0, flex: 1, fontSize: 11, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: SLATE }}>
-                            {meta.label}
+                      <Fragment key={section.key}>
+                      <div style={{
+                        background: themeBg, borderRadius: 18,
+                        border: `1px solid ${isOpen ? `${meta.color}30` : themeCardBorder}`,
+                        borderLeft: `4px solid ${meta.color}`,
+                        overflow: 'hidden',
+                      }}>
+                        <div style={{ padding: '18px 20px 14px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                            <span style={{
+                              fontSize: 10, fontWeight: 900, color: meta.color, opacity: 0.5,
+                              letterSpacing: '-0.01em', fontVariantNumeric: 'tabular-nums',
+                            }}>{String(idx + 1).padStart(2, '0')}</span>
+                            <p style={{ margin: 0, flex: 1, fontSize: 11, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: SLATE }}>
+                              {meta.label}
+                            </p>
+                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: meta.color, flexShrink: 0, opacity: 0.7 }} />
+                          </div>
+                          {SECTION_QUESTIONS[section.key] && (
+                            <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700, color: '#E0E0E0', lineHeight: 1.4, paddingBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                              {SECTION_QUESTIONS[section.key]}
+                            </h3>
+                          )}
+                          <p style={{ margin: 0, fontSize: 14, color: '#C8CCD0', lineHeight: 1.7, fontWeight: 450 }}>
+                            {renderInline(extractFirstSentence(problem, 220))}
                           </p>
-                          <div style={{ width: 6, height: 6, borderRadius: '50%', background: meta.color, flexShrink: 0, opacity: 0.7 }} />
                         </div>
-                        {SECTION_QUESTIONS[section.key] && (
-                          <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: '#E0E0E0', lineHeight: 1.4 }}>
-                            {SECTION_QUESTIONS[section.key]}
-                          </h3>
+                        {hasDepth && (
+                          <>
+                            <button
+                              onClick={() => setOpenSection(isOpen ? null : section.key)}
+                              style={{
+                                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                padding: '10px 20px', background: 'none', borderTop: `1px solid rgba(255,255,255,0.06)`,
+                                borderLeft: 'none', borderRight: 'none', borderBottom: 'none',
+                                cursor: 'pointer', fontSize: 12, fontWeight: 700, letterSpacing: '0.04em', color: SLATE,
+                              }}
+                            >
+                              <span>{isOpen ? 'Hide detail' : 'Why this matters'}</span>
+                              <motion.span animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }} style={{ display: 'flex' }}>
+                                <ChevronDown size={14} />
+                              </motion.span>
+                            </button>
+                            <AnimatePresence initial={false}>
+                              {isOpen && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: 'auto', opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+                                  style={{ overflow: 'hidden' }}
+                                >
+                                  <div style={{ padding: '14px 20px 20px' }}>
+                                    <SectionContent text={fix} color={meta.color} />
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </>
                         )}
-                        <p style={{ margin: 0, fontSize: 14, color: '#C8CCD0', lineHeight: 1.7, fontWeight: 450 }}>
-                          {renderInline(extractFirstSentence(problem, 220))}
-                        </p>
                       </div>
-                      {hasDepth && (
-                        <>
-                          <button
-                            onClick={() => setOpenSection(isOpen ? null : section.key)}
-                            style={{
-                              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                              padding: '10px 20px', background: 'none', borderTop: `1px solid rgba(255,255,255,0.06)`,
-                              borderLeft: 'none', borderRight: 'none', borderBottom: 'none',
-                              cursor: 'pointer', fontSize: 12, fontWeight: 700, letterSpacing: '0.04em', color: SLATE,
-                            }}
-                          >
-                            <span>{isOpen ? 'Hide detail' : 'Why this matters'}</span>
-                            <motion.span animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }} style={{ display: 'flex' }}>
-                              <ChevronDown size={14} />
-                            </motion.span>
-                          </button>
-                          <AnimatePresence initial={false}>
-                            {isOpen && (
-                              <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: 'auto', opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
-                                style={{ overflow: 'hidden' }}
-                              >
-                                <div style={{ padding: '14px 20px 20px' }}>
-                                  <SectionContent text={fix} color={meta.color} />
-                                </div>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </>
+                      {!isLast && (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: '12px 0' }}>
+                          <div style={{ width: 3, height: 3, borderRadius: '50%', background: meta.color, opacity: 0.3 }} />
+                          <div style={{ width: 3, height: 3, borderRadius: '50%', background: meta.color, opacity: 0.25 }} />
+                          <div style={{ width: 3, height: 3, borderRadius: '50%', background: meta.color, opacity: 0.2 }} />
+                        </div>
                       )}
-                    </div>
-                  );
+                      </Fragment>);
                 })}
               </div>
             </div>

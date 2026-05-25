@@ -4,6 +4,7 @@ import { Zap, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../lib/api';
+import { warm } from '../lib/theme/warmTokens';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -107,18 +108,15 @@ function PlanCard({ plan, onSelect, loading }: { plan: PlanDef; onSelect: () => 
         flexDirection: 'column',
         borderRadius: 20,
         padding: '28px 24px',
-        border: `1px solid ${plan.recommended ? 'rgba(45,212,191,0.35)' : 'rgba(255,255,255,0.08)'}`,
-        background: plan.recommended
-          ? 'linear-gradient(135deg, rgba(15,118,110,0.20), rgba(19,34,68,0.22))'
-          : 'rgba(255,255,255,0.03)',
-        transition: 'border-color 0.2s',
+        border: `1px solid ${plan.recommended ? `${warm.colors.accentPetrol}50` : warm.colors.borderWhisper}`,
+        background: warm.colors.bgSurface,
       }}
     >
       {plan.recommended && (
         <div style={{ position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)' }}>
           <span style={{
-            background: 'linear-gradient(135deg, #0F766E, #134E4A)',
-            color: 'white',
+            background: warm.colors.accentPetrol,
+            color: warm.colors.textOnDeep,
             fontSize: 9,
             fontWeight: 900,
             letterSpacing: '0.15em',
@@ -131,20 +129,20 @@ function PlanCard({ plan, onSelect, loading }: { plan: PlanDef; onSelect: () => 
         </div>
       )}
 
-      <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 900, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#94a3b8' }}>{plan.name}</p>
-      <p style={{ margin: '0 0 2px', fontSize: 32, fontWeight: 900, color: 'white', lineHeight: 1 }}>{plan.price}</p>
-      <p style={{ margin: '0 0 4px', fontSize: 11, color: '#64748b' }}>{plan.billing}</p>
-      <p style={{ margin: '0 0 20px', fontSize: 13, fontWeight: 700, color: '#2dd4bf' }}>{plan.weekly}</p>
+      <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 900, letterSpacing: '0.12em', textTransform: 'uppercase', color: warm.colors.textMuted }}>{plan.name}</p>
+      <p style={{ margin: '0 0 2px', fontSize: 32, fontWeight: 900, color: warm.colors.textPrimary, lineHeight: 1 }}>{plan.price}</p>
+      <p style={{ margin: '0 0 4px', fontSize: 11, color: warm.colors.textMuted }}>{plan.billing}</p>
+      <p style={{ margin: '0 0 20px', fontSize: 13, fontWeight: 700, color: warm.colors.accentPetrol }}>{plan.weekly}</p>
 
       {plan.trial && (
-        <p style={{ margin: '0 0 16px', fontSize: 11, color: '#94a3b8', fontStyle: 'italic' }}>{plan.trial} — no charge until day 8</p>
+        <p style={{ margin: '0 0 16px', fontSize: 11, color: warm.colors.textMuted, fontStyle: 'italic' }}>{plan.trial} — no charge until day 8</p>
       )}
 
       <ul style={{ margin: '0 0 24px', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
         {plan.features.map(f => (
           <li key={f} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-            <Check size={13} style={{ color: '#2dd4bf', flexShrink: 0, marginTop: 1 }} />
-            <span style={{ fontSize: 13, color: '#cbd5e1' }}>{f}</span>
+            <Check size={13} style={{ color: warm.colors.accentPetrol, flexShrink: 0, marginTop: 1 }} />
+            <span style={{ fontSize: 13, color: warm.colors.textSecondary }}>{f}</span>
           </li>
         ))}
       </ul>
@@ -164,11 +162,9 @@ function PlanCard({ plan, onSelect, loading }: { plan: PlanDef; onSelect: () => 
           cursor: loading ? 'wait' : 'pointer',
           opacity: loading ? 0.6 : 1,
           transition: 'opacity 0.2s',
-          background: plan.recommended
-            ? 'linear-gradient(135deg, #0F766E, #134E4A)'
-            : 'rgba(255,255,255,0.06)',
-          color: plan.recommended ? 'white' : '#9ca3af',
-          border: plan.recommended ? 'none' : '1px solid rgba(255,255,255,0.1)',
+          background: plan.recommended ? warm.colors.accentPetrol : warm.colors.bgAlt,
+          color: plan.recommended ? warm.colors.textOnDeep : warm.colors.textSecondary,
+          border: plan.recommended ? 'none' : `1px solid ${warm.colors.borderWhisper}`,
         }}
       >
         {loading ? '...' : plan.cta}
@@ -180,7 +176,7 @@ function PlanCard({ plan, onSelect, loading }: { plan: PlanDef; onSelect: () => 
 function FaqItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <div style={{ borderBottom: '1px solid rgba(255,255,255,0.07)', paddingBottom: 20 }}>
+    <div style={{ borderBottom: `1px solid ${warm.colors.borderWhisper}`, paddingBottom: 20 }}>
       <button
         onClick={() => setOpen(v => !v)}
         style={{
@@ -196,13 +192,13 @@ function FaqItem({ q, a }: { q: string; a: string }) {
           textAlign: 'left',
         }}
       >
-        <span style={{ fontSize: 15, fontWeight: 700, color: '#e2e8f0' }}>{q}</span>
+        <span style={{ fontSize: 15, fontWeight: 700, color: warm.colors.textPrimary }}>{q}</span>
         {open
-          ? <ChevronUp size={16} style={{ color: '#64748b', flexShrink: 0 }} />
-          : <ChevronDown size={16} style={{ color: '#64748b', flexShrink: 0 }} />}
+          ? <ChevronUp size={16} style={{ color: warm.colors.textMuted, flexShrink: 0 }} />
+          : <ChevronDown size={16} style={{ color: warm.colors.textMuted, flexShrink: 0 }} />}
       </button>
       {open && (
-        <p style={{ margin: '12px 0 0', fontSize: 14, color: '#94a3b8', lineHeight: 1.7 }}>{a}</p>
+        <p style={{ margin: '12px 0 0', fontSize: 14, color: warm.colors.textSecondary, lineHeight: 1.7 }}>{a}</p>
       )}
     </div>
   );
@@ -245,23 +241,23 @@ export function PricingPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', overflowY: 'auto', background: 'linear-gradient(160deg, #0d1a2d 0%, #080f1a 100%)', color: 'white' }}>
+    <div style={{ height: '100vh', overflowY: 'auto', background: warm.colors.bgCanvas, color: warm.colors.textPrimary }}>
       {/* Nav bar */}
-      <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ borderBottom: `1px solid ${warm.colors.borderWhisper}`, padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Zap size={18} style={{ color: '#2dd4bf' }} />
-          <span style={{ fontSize: 14, fontWeight: 900, letterSpacing: '0.05em', color: 'white' }}>Aussie Grad Careers</span>
+          <Zap size={18} style={{ color: warm.colors.accentPetrol }} />
+          <span style={{ fontSize: 14, fontWeight: 900, letterSpacing: '0.05em', color: warm.colors.textPrimary }}>Aussie Grad Careers</span>
         </div>
         <button
           onClick={() => navigate('/auth')}
           style={{
-            background: 'rgba(255,255,255,0.06)',
-            border: '1px solid rgba(255,255,255,0.1)',
+            background: warm.colors.bgAlt,
+            border: `1px solid ${warm.colors.borderWhisper}`,
             borderRadius: 8,
             padding: '8px 16px',
             fontSize: 12,
             fontWeight: 700,
-            color: '#94a3b8',
+            color: warm.colors.textSecondary,
             cursor: 'pointer',
           }}
         >
@@ -272,14 +268,14 @@ export function PricingPage() {
       <div style={{ maxWidth: 860, margin: '0 auto', padding: '72px 24px 96px' }}>
         {/* Hero */}
         <div style={{ textAlign: 'center', marginBottom: 64 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(45,212,191,0.08)', border: '1px solid rgba(45,212,191,0.2)', borderRadius: 99, padding: '6px 14px', marginBottom: 24 }}>
-            <Zap size={12} style={{ color: '#2dd4bf' }} />
-            <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#2dd4bf' }}>Simple Pricing</span>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: `${warm.colors.accentPetrol}10`, border: `1px solid ${warm.colors.accentPetrol}28`, borderRadius: 99, padding: '6px 14px', marginBottom: 24 }}>
+            <Zap size={12} style={{ color: warm.colors.accentPetrol }} />
+            <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '0.12em', textTransform: 'uppercase', color: warm.colors.accentPetrol }}>Simple Pricing</span>
           </div>
-          <h1 style={{ fontSize: 44, fontWeight: 600, lineHeight: 1.1, margin: '0 0 16px', color: 'white' }}>
+          <h1 style={{ fontSize: 44, fontWeight: 600, lineHeight: 1.1, margin: '0 0 16px', color: warm.colors.textPrimary }}>
             Get the job. Stop paying.
           </h1>
-          <p style={{ fontSize: 17, color: '#94a3b8', maxWidth: 480, margin: '0 auto', lineHeight: 1.6 }}>
+          <p style={{ fontSize: 17, color: warm.colors.textSecondary, maxWidth: 480, margin: '0 auto', lineHeight: 1.6 }}>
             The average Australian graduate earns $1,200+ per week in their first role.
             This is how you get there.
           </p>
@@ -298,14 +294,14 @@ export function PricingPage() {
         </div>
 
         {/* Free tier note */}
-        <p style={{ textAlign: 'center', fontSize: 13, color: '#475569', marginBottom: 80 }}>
+        <p style={{ textAlign: 'center', fontSize: 13, color: warm.colors.textMuted, marginBottom: 80 }}>
           Not ready? Start free — 5 document generations, 5 job analyses, 1 job feed search included on the free tier.
         </p>
 
         {/* FAQ */}
         <div style={{ maxWidth: 620, margin: '0 auto' }}>
-          <h2 style={{ fontSize: 24, fontWeight: 600, marginBottom: 8, color: 'white' }}>Questions</h2>
-          <p style={{ fontSize: 14, color: '#64748b', marginBottom: 8 }}>Everything you need to know before signing up.</p>
+          <h2 style={{ fontSize: 24, fontWeight: 600, marginBottom: 8, color: warm.colors.textPrimary }}>Questions</h2>
+          <p style={{ fontSize: 14, color: warm.colors.textSecondary, marginBottom: 8 }}>Everything you need to know before signing up.</p>
           <div>
             {FAQS.map(faq => (
               <FaqItem key={faq.q} q={faq.q} a={faq.a} />
@@ -315,15 +311,15 @@ export function PricingPage() {
 
         {/* Bottom CTA */}
         <div style={{ textAlign: 'center', marginTop: 80 }}>
-          <p style={{ fontSize: 14, color: '#64748b', marginBottom: 20 }}>
+          <p style={{ fontSize: 14, color: warm.colors.textSecondary, marginBottom: 20 }}>
             Questions? Reach us at{' '}
-            <span style={{ color: '#2dd4bf' }}>support@aussiegradcareers.com.au</span>
+            <span style={{ color: warm.colors.accentPetrol }}>support@aussiegradcareers.com.au</span>
           </p>
           <button
             onClick={() => navigate('/auth')}
             style={{
-              background: 'linear-gradient(135deg, #0F766E, #134E4A)',
-              color: 'white',
+              background: warm.colors.accentPetrol,
+              color: warm.colors.textOnDeep,
               border: 'none',
               borderRadius: 12,
               padding: '14px 32px',
@@ -342,7 +338,7 @@ export function PricingPage() {
         <div style={{
           marginTop: 48,
           paddingTop: 24,
-          borderTop: '1px solid rgba(255,255,255,0.06)',
+          borderTop: `1px solid ${warm.colors.borderWhisper}`,
           display: 'flex',
           justifyContent: 'center',
           flexWrap: 'wrap',
@@ -356,7 +352,7 @@ export function PricingPage() {
             { to: '/legal/trial',        label: 'Free Trial Terms' },
             { to: '/legal/disclaimer',   label: 'Disclaimer' },
           ].map(({ to, label }) => (
-            <Link key={to} to={to} style={{ fontSize: 12, color: '#475569', textDecoration: 'none' }}>
+            <Link key={to} to={to} style={{ fontSize: 12, color: warm.colors.textMuted, textDecoration: 'none' }}>
               {label}
             </Link>
           ))}

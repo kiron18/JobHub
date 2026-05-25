@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../lib/api';
 import { toast } from 'sonner';
+import { warm } from '../lib/theme/warmTokens';
 
 interface BriefData {
   window: { from: string; to: string };
@@ -62,15 +63,17 @@ export function FridayBriefPage() {
     <div style={{ maxWidth: 760 }}>
       {/* Header */}
       <div style={{ marginBottom: 32 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 600, marginBottom: 6 }}>Friday Brief</h1>
-        <p style={{ fontSize: 14, color: '#6b7280' }}>
+        <h1 className="font-display" style={{ fontSize: 28, fontWeight: 600, marginBottom: 6, color: warm.colors.textPrimary }}>
+          Friday Brief
+        </h1>
+        <p style={{ fontSize: 14, color: warm.colors.textSecondary }}>
           Weekly call script generated from first-time diagnostic reports.
           {windowLabel && ` Current window: ${windowLabel}.`}
         </p>
       </div>
 
       {isLoading && (
-        <div style={{ color: '#6b7280', fontSize: 14 }}>Loading...</div>
+        <div style={{ color: warm.colors.textMuted, fontSize: 14 }}>Loading...</div>
       )}
 
       {!isLoading && data && (
@@ -79,18 +82,18 @@ export function FridayBriefPage() {
           <div style={{
             display: 'flex', gap: 12, marginBottom: 28,
             padding: '16px 20px',
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.08)',
+            background: warm.colors.bgSurface,
+            border: `1px solid ${warm.colors.borderWhisper}`,
             borderRadius: 14,
           }}>
             <div>
-              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#6b7280' }}>Reports this week</p>
-              <p style={{ margin: 0, fontSize: 28, fontWeight: 900 }}>{data.reportCount}</p>
+              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: warm.colors.textMuted }}>Reports this week</p>
+              <p style={{ margin: 0, fontSize: 28, fontWeight: 900, color: warm.colors.textPrimary }}>{data.reportCount}</p>
             </div>
             {data.cached && data.generatedAt && (
               <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#6b7280' }}>Generated</p>
-                <p style={{ margin: 0, fontSize: 14, color: '#9ca3af' }}>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: warm.colors.textMuted }}>Generated</p>
+                <p style={{ margin: 0, fontSize: 14, color: warm.colors.textSecondary }}>
                   {new Date(data.generatedAt).toLocaleString('en-AU')}
                 </p>
               </div>
@@ -104,8 +107,9 @@ export function FridayBriefPage() {
                 <button
                   onClick={handleCopy}
                   style={{
-                    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)',
-                    color: copied ? '#34d399' : '#9ca3af', borderRadius: 10, padding: '8px 16px',
+                    background: warm.colors.bgAlt, border: `1px solid ${warm.colors.borderWhisper}`,
+                    color: copied ? warm.colors.success : warm.colors.textSecondary,
+                    borderRadius: 10, padding: '8px 16px',
                     fontSize: 13, fontWeight: 600, cursor: 'pointer',
                   }}
                 >
@@ -115,9 +119,9 @@ export function FridayBriefPage() {
                   onClick={() => emailMutation.mutate()}
                   disabled={emailMutation.isPending}
                   style={{
-                    background: emailMutation.isPending ? 'rgba(15,118,110,0.3)' : 'rgba(15,118,110,0.15)',
-                    border: '1px solid rgba(15,118,110,0.4)',
-                    color: '#34d399', borderRadius: 10, padding: '8px 16px',
+                    background: emailMutation.isPending ? `${warm.colors.accentPetrol}80` : warm.colors.accentPetrol,
+                    border: 'none',
+                    color: warm.colors.textOnDeep, borderRadius: 10, padding: '8px 16px',
                     fontSize: 13, fontWeight: 600, cursor: emailMutation.isPending ? 'default' : 'pointer',
                   }}
                 >
@@ -127,8 +131,8 @@ export function FridayBriefPage() {
                   onClick={() => generateMutation.mutate()}
                   disabled={generateMutation.isPending}
                   style={{
-                    background: 'none', border: '1px solid rgba(255,255,255,0.08)',
-                    color: '#6b7280', borderRadius: 10, padding: '8px 16px',
+                    background: 'none', border: `1px solid ${warm.colors.borderWhisper}`,
+                    color: warm.colors.textMuted, borderRadius: 10, padding: '8px 16px',
                     fontSize: 13, fontWeight: 600, cursor: generateMutation.isPending ? 'default' : 'pointer',
                   }}
                 >
@@ -136,22 +140,22 @@ export function FridayBriefPage() {
                 </button>
               </div>
               <div style={{
-                background: 'rgba(255,255,255,0.02)',
-                border: '1px solid rgba(255,255,255,0.07)',
+                background: warm.colors.bgAlt,
+                border: `1px solid ${warm.colors.borderWhisper}`,
                 borderRadius: 16, padding: '28px 32px',
                 whiteSpace: 'pre-wrap', fontFamily: 'inherit',
-                fontSize: 15, lineHeight: 1.8, color: '#d1d5db',
+                fontSize: 15, lineHeight: 1.8, color: warm.colors.textSecondary,
               }}>
                 {data.script}
               </div>
             </>
           ) : (
             <div style={{
-              background: 'rgba(255,255,255,0.02)',
-              border: '1px solid rgba(255,255,255,0.07)',
+              background: warm.colors.bgSurface,
+              border: `1px solid ${warm.colors.borderWhisper}`,
               borderRadius: 16, padding: '40px', textAlign: 'center',
             }}>
-              <p style={{ fontSize: 15, color: '#6b7280', marginBottom: 24 }}>
+              <p style={{ fontSize: 15, color: warm.colors.textSecondary, marginBottom: 24 }}>
                 {data.reportCount === 0
                   ? 'No first-time reports in this window yet.'
                   : `${data.reportCount} report${data.reportCount === 1 ? '' : 's'} ready. Generate the call script when you're ready.`}
@@ -161,8 +165,8 @@ export function FridayBriefPage() {
                   onClick={() => generateMutation.mutate()}
                   disabled={generateMutation.isPending}
                   style={{
-                    background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
-                    color: 'white', border: 'none', borderRadius: 12,
+                    background: warm.colors.accentPetrol,
+                    color: warm.colors.textOnDeep, border: 'none', borderRadius: 12,
                     padding: '14px 32px', fontSize: 15, fontWeight: 800,
                     cursor: generateMutation.isPending ? 'default' : 'pointer',
                     opacity: generateMutation.isPending ? 0.6 : 1,
@@ -172,7 +176,7 @@ export function FridayBriefPage() {
                 </button>
               )}
               {generateMutation.isError && (
-                <p style={{ fontSize: 13, color: '#ef4444', marginTop: 16 }}>
+                <p style={{ fontSize: 13, color: warm.colors.danger, marginTop: 16 }}>
                   Generation failed — check the server logs.
                 </p>
               )}

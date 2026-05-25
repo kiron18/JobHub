@@ -30,6 +30,7 @@ export function parseReportSections(markdown: string): ReportSection[] {
 
 function headingToKey(heading: string): string {
   const h = heading.toLowerCase();
+  if (h.includes('headline') || h.includes('insight')) return 'headline_insight';
   if (h.includes('target')) return 'targeting';
   if (h.includes('document') || h.includes('audit')) return 'document_audit';
   if (h.includes('pipeline')) return 'pipeline';

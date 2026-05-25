@@ -687,7 +687,7 @@ interface ReportData {
 }
 
 export function ReportExperience({ onDone }: ReportExperienceProps) {
-  const [isDark, setIsDark] = useState(true);
+  const [isDark, setIsDark] = useState(false);
   const theme = makeTheme(isDark);
   const [processingMs, setProcessingMs] = useState(0);
   const [openSection, setOpenSection] = useState<string | null>(null);

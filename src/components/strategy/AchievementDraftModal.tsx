@@ -16,7 +16,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../../lib/api';
-import { useAppTheme } from '../../contexts/ThemeContext';
+import { warm } from '../../lib/theme/warmTokens';
 
 interface Props {
     open: boolean;
@@ -35,7 +35,6 @@ interface DraftPayload {
 }
 
 export function AchievementDraftModal({ open, onClose, skill, suggestion, jobRole, jobCompany, onSaved }: Props) {
-    const { T } = useAppTheme();
     const queryClient = useQueryClient();
 
     const [generating, setGenerating] = useState(false);
@@ -131,11 +130,11 @@ export function AchievementDraftModal({ open, onClose, skill, suggestion, jobRol
                         style={{
                             width: '100%',
                             maxWidth: 560,
-                            background: T.card,
-                            border: `1px solid ${T.cardBorder}`,
+                            background: warm.colors.bgSurface,
+                            border: `1px solid ${warm.colors.borderWhisper}`,
                             borderRadius: 18,
                             padding: 26,
-                            boxShadow: T.cardShadow,
+                            boxShadow: warm.shadow.soft,
                             maxHeight: '90vh',
                             overflowY: 'auto',
                         }}
@@ -150,7 +149,7 @@ export function AchievementDraftModal({ open, onClose, skill, suggestion, jobRol
                                     fontWeight: 700,
                                     letterSpacing: '0.14em',
                                     textTransform: 'uppercase',
-                                    color: T.accentSecondary,
+                                    color: warm.colors.accentPetrol,
                                     display: 'inline-flex',
                                     alignItems: 'center',
                                     gap: 6,
@@ -161,13 +160,13 @@ export function AchievementDraftModal({ open, onClose, skill, suggestion, jobRol
                                     margin: 0,
                                     fontSize: 18,
                                     fontWeight: 700,
-                                    color: T.text,
+                                    color: warm.colors.textPrimary,
                                     letterSpacing: '-0.01em',
                                     lineHeight: 1.3,
                                 }}>
                                     {skill}
                                 </h2>
-                                <p style={{ margin: '6px 0 0', fontSize: 12, color: T.textFaint, lineHeight: 1.5 }}>
+                                <p style={{ margin: '6px 0 0', fontSize: 12, color: warm.colors.textMuted, lineHeight: 1.5 }}>
                                     Edit anything that doesn't sound like you. Add a real number where you can. The draft saves as unverified so you can refine it later.
                                 </p>
                             </div>
@@ -177,7 +176,7 @@ export function AchievementDraftModal({ open, onClose, skill, suggestion, jobRol
                                 style={{
                                     background: 'transparent',
                                     border: 'none',
-                                    color: T.textMuted,
+                                    color: warm.colors.textSecondary,
                                     cursor: 'pointer',
                                     padding: 4,
                                     flexShrink: 0,
@@ -195,7 +194,7 @@ export function AchievementDraftModal({ open, onClose, skill, suggestion, jobRol
                                 justifyContent: 'center',
                                 gap: 10,
                                 padding: '40px 0',
-                                color: T.textMuted,
+                                color: warm.colors.textSecondary,
                                 fontSize: 13,
                             }}>
                                 <Loader2 size={16} className="animate-spin" />
@@ -205,42 +204,42 @@ export function AchievementDraftModal({ open, onClose, skill, suggestion, jobRol
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                                 {/* Title */}
                                 <div>
-                                    <label style={labelStyle(T.textMuted)}>Title</label>
+                                    <label style={labelStyle(warm.colors.textSecondary)}>Title</label>
                                     <input
                                         type="text"
                                         value={title}
                                         onChange={(e) => setTitle(e.target.value)}
-                                        style={inputStyle(T)}
+                                        style={inputStyle()}
                                         placeholder="Short title — what you did"
                                     />
                                 </div>
 
                                 {/* Description */}
                                 <div>
-                                    <label style={labelStyle(T.textMuted)}>Description (first person)</label>
+                                    <label style={labelStyle(warm.colors.textSecondary)}>Description (first person)</label>
                                     <textarea
                                         value={description}
                                         onChange={(e) => setDescription(e.target.value)}
                                         rows={4}
-                                        style={{ ...inputStyle(T), resize: 'vertical' as const, fontFamily: 'inherit', lineHeight: 1.6 }}
+                                        style={{ ...inputStyle(), resize: 'vertical' as const, fontFamily: 'inherit', lineHeight: 1.6 }}
                                         placeholder="I led the rollout of…"
                                     />
                                 </div>
 
                                 {/* Metric */}
                                 <div>
-                                    <label style={labelStyle(T.textMuted)}>
+                                    <label style={labelStyle(warm.colors.textSecondary)}>
                                         Metric (optional, but stronger with one)
                                     </label>
                                     <input
                                         type="text"
                                         value={metric}
                                         onChange={(e) => setMetric(e.target.value)}
-                                        style={inputStyle(T)}
+                                        style={inputStyle()}
                                         placeholder={metricPlaceholder || 'e.g. 30% faster, $200K saved, 12 stakeholders coordinated'}
                                     />
                                     {metricPlaceholder && (
-                                        <p style={{ margin: '6px 0 0', fontSize: 11, color: T.textFaint, lineHeight: 1.5 }}>
+                                        <p style={{ margin: '6px 0 0', fontSize: 11, color: warm.colors.textMuted, lineHeight: 1.5 }}>
                                             Suggested measure: {metricPlaceholder}
                                         </p>
                                     )}
@@ -257,9 +256,9 @@ export function AchievementDraftModal({ open, onClose, skill, suggestion, jobRol
                                     padding: '10px 16px',
                                     fontSize: 13,
                                     fontWeight: 600,
-                                    color: T.textMuted,
+                                    color: warm.colors.textSecondary,
                                     background: 'transparent',
-                                    border: `1px solid ${T.cardBorder}`,
+                                    border: `1px solid ${warm.colors.borderWhisper}`,
                                     borderRadius: 10,
                                     cursor: saving ? 'not-allowed' : 'pointer',
                                     opacity: saving ? 0.5 : 1,
@@ -277,13 +276,13 @@ export function AchievementDraftModal({ open, onClose, skill, suggestion, jobRol
                                     padding: '10px 18px',
                                     fontSize: 13,
                                     fontWeight: 700,
-                                    color: T.btnText,
-                                    background: canSave ? T.btnBg : 'rgba(45,90,110,0.4)',
+                                    color: warm.colors.bgCanvas,
+                                    background: canSave ? warm.colors.accentPetrol : 'rgba(45,90,110,0.4)',
                                     border: 'none',
                                     borderRadius: 10,
                                     cursor: canSave ? 'pointer' : 'not-allowed',
                                     opacity: canSave ? 1 : 0.6,
-                                    boxShadow: canSave ? T.btnShadow : 'none',
+                                    boxShadow: canSave ? warm.shadow.soft : 'none',
                                 }}
                             >
                                 {saving ? (
@@ -314,14 +313,14 @@ function labelStyle(color: string): React.CSSProperties {
     };
 }
 
-function inputStyle(T: ReturnType<typeof useAppTheme>['T']): React.CSSProperties {
+function inputStyle(): React.CSSProperties {
     return {
         width: '100%',
         padding: '11px 14px',
         fontSize: 13,
-        color: T.inputText,
-        background: T.inputBg,
-        border: `1px solid ${T.inputBorder}`,
+        color: warm.colors.textPrimary,
+        background: warm.colors.bgSurface,
+        border: `1px solid ${warm.colors.borderDefined}`,
         borderRadius: 10,
         outline: 'none',
         boxSizing: 'border-box',

@@ -34,6 +34,6 @@ export const PRIORITY_CONFIG: Record<NonNullable<JobPriority>, { label: string; 
     BACKUP: { label: 'Backup', dot: '#6b7280', border: 'rgba(107,114,128,0.3)', bg: 'rgba(107,114,128,0.07)', text: '#9ca3af' },
 };
 
-export type StatusConfigEntry = { label: string; color: string; icon: React.FC<{ size?: number; className?: string }> };
+export type StatusConfigEntry = { label: string; style: React.CSSProperties; icon: React.FC<{ size?: number; className?: string }> };
 
 export const STATUS_FLOW: ApplicationStatus[] = ['SAVED', 'APPLIED', 'INTERVIEW', 'OFFER', 'REJECTED'];

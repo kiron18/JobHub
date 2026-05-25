@@ -10,6 +10,8 @@ import { setCachedBlueprint } from '../services/blueprint-cache';
 import { buildPerCriterionAchievements } from '../services/generation';
 import { reviewDocument } from '../services/quality-gate';
 import { tagAIRewrites } from '../lib/provenanceTagging';
+import { enforceFirstPersonSummary } from '../lib/voiceEnforcer';
+import { computeYearsOfExperience } from '../lib/profileMath';
 import fs from 'fs';
 import path from 'path';
 
@@ -284,6 +286,18 @@ router.post('/:type', authenticate, async (req, res) => {
         // Strip em dashes — LLMs frequently emit U+2014; replace with a plain
         // spaced dash so downstream renderers and PDF exports stay consistent.
         finalContent = finalContent.split('\u2014').join(' - ');
+
+        // Deterministic first-person enforcement on the resume Professional
+        // Summary. The LLM and quality gate are advisory; this regex pass is
+        // the only layer that cannot fail silently. Catches "{Name} brings",
+        // "His track record", "He has...", and corrects years-of-experience
+        // when the LLM picked the wrong number.
+        if (docType === 'RESUME') {
+            finalContent = enforceFirstPersonSummary(finalContent, {
+                candidateName: profile?.name,
+                yearsOfExperience: computeYearsOfExperience(profile?.experience),
+            });
+        }
 
         // \u2500\u2500 Provenance tagging (resumes only) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
         // Mark bullets that diverge significantly from the user's source

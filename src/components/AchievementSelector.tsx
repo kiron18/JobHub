@@ -58,34 +58,34 @@ export const AchievementSelector: React.FC<AchievementSelectorProps> = ({
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50"
+                        className="fixed inset-0 bg-[#1A1814]/40 backdrop-blur-sm z-50"
                     />
                     <motion.div
                         initial={{ x: '100%' }}
                         animate={{ x: 0 }}
                         exit={{ x: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                        className="fixed right-0 top-0 bottom-0 w-[480px] bg-slate-900 border-l border-slate-800 z-50 flex flex-col shadow-2xl"
+                        className="fixed right-0 top-0 bottom-0 w-[480px] bg-white border-l border-[rgba(26,24,20,0.08)] z-50 flex flex-col shadow-2xl"
                     >
-                        <header className="p-6 border-b border-slate-800 flex items-center justify-between shrink-0">
+                        <header className="p-6 border-b border-[rgba(26,24,20,0.08)] flex items-center justify-between shrink-0">
                             <div>
-                                <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                                <h2 className="text-lg font-bold text-[#1A1814] flex items-center gap-2">
                                     <Star className="text-brand-500" size={20} />
                                     Achievement Selector
                                 </h2>
-                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
+                                <p className="text-[10px] font-bold text-[#8B847B] uppercase tracking-widest mt-1">
                                     {selectedIds.length} Selected • {achievements.length} Available
                                 </p>
                             </div>
                             <button 
                                 onClick={onClose}
-                                className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 transition-colors"
+                                className="p-2 hover:bg-[#F4EFE8] rounded-lg text-[#5C5750] transition-colors"
                             >
                                 <X size={20} />
                             </button>
                         </header>
 
-                        <div className="p-4 border-b border-slate-800 flex gap-2 shrink-0 overflow-x-auto no-scrollbar">
+                        <div className="p-4 border-b border-[rgba(26,24,20,0.08)] flex gap-2 shrink-0 overflow-x-auto no-scrollbar">
                             {(['ALL', 'STRONG', 'MODERATE', 'WEAK'] as const).map(f => (
                                 <button
                                     key={f}
@@ -93,7 +93,7 @@ export const AchievementSelector: React.FC<AchievementSelectorProps> = ({
                                     className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all border whitespace-nowrap ${
                                         filter === f 
                                             ? 'bg-brand-600 border-brand-500 text-white shadow-lg' 
-                                            : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-300'
+                                            : 'bg-[#F4EFE8] border-[rgba(26,24,20,0.16)] text-[#5C5750] hover:text-[#1A1814]'
                                     }`}
                                 >
                                     {f}
@@ -110,14 +110,14 @@ export const AchievementSelector: React.FC<AchievementSelectorProps> = ({
                                     className={`group p-4 rounded-xl border transition-all cursor-pointer ${
                                         selectedIds.includes(achievement.id)
                                             ? 'bg-brand-600/10 border-brand-500 shadow-lg shadow-brand-500/5'
-                                            : 'bg-slate-800/50 border-slate-700 hover:border-slate-500'
+                                            : 'bg-[#F4EFE8]/50 border-[rgba(26,24,20,0.16)] hover:border-[rgba(26,24,20,0.24)]'
                                     }`}
                                 >
                                     <div className="flex gap-3">
                                         <div className={`mt-1 h-5 w-5 rounded-md border flex items-center justify-center shrink-0 transition-all ${
                                             selectedIds.includes(achievement.id)
                                                 ? 'bg-brand-500 border-brand-500 text-white'
-                                                : 'bg-slate-900 border-slate-700 group-hover:border-slate-500'
+                                                : 'bg-white border-[rgba(26,24,20,0.16)] group-hover:border-[rgba(26,24,20,0.24)]'
                                         }`}>
                                             {selectedIds.includes(achievement.id) && <CheckCircle2 size={12} strokeWidth={3} />}
                                         </div>
@@ -126,28 +126,28 @@ export const AchievementSelector: React.FC<AchievementSelectorProps> = ({
                                                 <span className={`text-[8px] px-1.5 py-0.5 rounded font-black tracking-tighter ${
                                                     achievement.tier === 'STRONG' ? 'bg-emerald-500/20 text-emerald-400' :
                                                     achievement.tier === 'MODERATE' ? 'bg-amber-500/20 text-amber-400' :
-                                                    'bg-slate-500/20 text-slate-400'
+                                                    'bg-slate-500/20 text-[#5C5750]'
                                                 }`}>
                                                     {achievement.tier}
                                                 </span>
                                                 {achievement.relevanceScore !== undefined && (
-                                                    <span className="text-[8px] font-bold text-slate-500">
+                                                    <span className="text-[8px] font-bold text-[#8B847B]">
                                                         {achievement.relevanceScore}% match
                                                     </span>
                                                 )}
                                                 {achievement.category && (
-                                                    <span className="text-[8px] font-extrabold text-slate-500 uppercase flex items-center gap-1 opacity-50">
+                                                    <span className="text-[8px] font-extrabold text-[#8B847B] uppercase flex items-center gap-1 opacity-50">
                                                         <Hash size={8} />
                                                         {achievement.category}
                                                     </span>
                                                 )}
                                             </div>
-                                            <p className="text-xs leading-relaxed text-slate-300 mb-2">
+                                            <p className="text-xs leading-relaxed text-[#1A1814] mb-2">
                                                 {achievement.description}
                                             </p>
                                             {achievement.matchedKeywords && achievement.matchedKeywords.length > 0 && (
                                                 <div className="flex flex-wrap gap-1">
-                                                    <span className="text-[8px] font-bold text-slate-600 uppercase tracking-wider self-center">matched:</span>
+                                                    <span className="text-[8px] font-bold text-[#8B847B] uppercase tracking-wider self-center">matched:</span>
                                                     {achievement.matchedKeywords.slice(0, 5).map(kw => (
                                                         <span key={kw} className="text-[9px] px-1.5 py-0.5 rounded bg-brand-600/10 text-brand-400 border border-brand-600/20 font-semibold">
                                                             {kw}
@@ -161,7 +161,7 @@ export const AchievementSelector: React.FC<AchievementSelectorProps> = ({
                             ))}
                         </div>
 
-                        <footer className="p-6 border-t border-slate-800 bg-slate-900/50 shrink-0">
+                        <footer className="p-6 border-t border-[rgba(26,24,20,0.08)] bg-white/70 shrink-0">
                             <button 
                                 onClick={onConfirm}
                                 className="w-full py-4 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl transition-all shadow-xl shadow-brand-600/20 flex items-center justify-center gap-2"
@@ -169,7 +169,7 @@ export const AchievementSelector: React.FC<AchievementSelectorProps> = ({
                                 <RefreshCcw size={18} />
                                 Update and Re-generate
                             </button>
-                            <p className="text-[10px] text-center text-slate-500 mt-4 font-bold flex items-center justify-center gap-2 uppercase tracking-widest">
+                            <p className="text-[10px] text-center text-[#8B847B] mt-4 font-bold flex items-center justify-center gap-2 uppercase tracking-widest">
                                 <AlertCircle size={10} />
                                 Overwrites current draft
                             </p>

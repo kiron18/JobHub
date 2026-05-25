@@ -39,6 +39,9 @@ const FromScratchCapture = React.lazy(() =>
 const StrategyHub = React.lazy(() =>
   import('./pages/StrategyHub').then(m => ({ default: m.StrategyHub }))
 );
+const LandingPage = React.lazy(() =>
+  import('./pages/LandingPage').then(m => ({ default: m.LandingPage }))
+);
 const StepperWorkspace = React.lazy(() =>
   import('./pages/StepperWorkspace').then(m => ({ default: m.StepperWorkspace }))
 );
@@ -107,10 +110,10 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950">
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAF7F2' }}>
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
-          <p className="text-slate-400 font-medium animate-pulse">Loading...</p>
+          <div className="w-12 h-12 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(45,90,110,0.2)', borderTopColor: '#2D5A6E' }} />
+          <p style={{ color: '#5C5750', fontWeight: 500, margin: 0 }}>Loading...</p>
         </div>
       </div>
     );
@@ -237,6 +240,26 @@ function DashboardGate({ children }: { children: React.ReactNode }) {
 
 type ReportFlowStage = 'loading' | 'diagnostic' | 'from-scratch' | 'dashboard';
 
+// --- Public landing route guard ---
+
+function LandingPageOrExisting() {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (!user) return (
+    <React.Suspense fallback={null}>
+      <LandingPage />
+    </React.Suspense>
+  );
+  // Authenticated — render the existing protected route content
+  return (
+    <ProtectedRoute>
+      <OnboardingGate>
+        <ReportOrDashboard />
+      </OnboardingGate>
+    </ProtectedRoute>
+  );
+}
+
 function ReportOrDashboard() {
   const queryClient = useQueryClient();
 
@@ -266,7 +289,7 @@ function ReportOrDashboard() {
   // Once profile resolves, decide between from-scratch and the diagnostic page.
   useEffect(() => {
     if (stage !== 'loading' || profileLoading || profileFetching) return;
-    if (isEssentiallyEmptyProfile(profile)) {
+    if (isEssentiallyEmptyProfile(profile) && !profile?.hasCompletedOnboarding) {
       setStage('from-scratch');
     } else {
       setStage('diagnostic');
@@ -296,8 +319,8 @@ function ReportOrDashboard() {
   }
 
   const spinner = (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-      <div className="w-10 h-10 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
+    <div style={{ minHeight: '100vh', background: '#FAF7F2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="w-10 h-10 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(45,90,110,0.2)', borderTopColor: '#2D5A6E' }} />
     </div>
   );
 
@@ -330,7 +353,7 @@ function ReportOrDashboard() {
       >
         <DashboardLayout>
           <ErrorBoundary>
-            <React.Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" /></div>}>
+            <React.Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 256 }}><div className="w-8 h-8 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(45,90,110,0.2)', borderTopColor: '#2D5A6E' }} /></div>}>
               <Routes>
                 <Route path="/" element={<StrategyHub />} />
                 <Route path="/tracker" element={<ApplicationTracker />} />
@@ -370,6 +393,9 @@ function App() {
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/legal/:policy" element={<LegalPage />} />
               <Route path="/legal" element={<LegalPage />} />
+
+              {/* Public Landing — unauth sees new landing, auth preserves existing behaviour */}
+              <Route path="/" element={<LandingPageOrExisting />} />
 
               {/* Protected Application Routes */}
               <Route path="/*" element={

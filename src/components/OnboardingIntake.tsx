@@ -4,10 +4,10 @@ import { toast } from 'sonner';
 import api from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { ProcessingScreen } from './ProcessingScreen';
-import { useAppTheme } from '../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { warm } from '../lib/theme/warmTokens';
 import {
   trackOnboardingStepViewed,
   trackOnboardingStepCompleted,
@@ -15,7 +15,41 @@ import {
   trackDiagnosticReportViewed,
 } from '../lib/analytics';
 
-const useTheme = () => useAppTheme();
+// ── Warm theme override for T.* tokens ──────────────────────────────
+// ThemeContext is preserved per spec §7.4; we replace T.* with warm-cream
+// values so OnboardingIntake matches the landing visual language.
+const warmT = {
+  bg: warm.colors.bgCanvas,
+  card: warm.colors.bgSurface,
+  cardBorder: warm.colors.borderWhisper,
+  cardShadow: warm.shadow.soft,
+  text: warm.colors.textPrimary,
+  textMuted: warm.colors.textSecondary,
+  textFaint: warm.colors.textMuted,
+  btnBg: warm.colors.accentPetrol,
+  btnText: warm.colors.textOnDeep,
+  btnShadow: '0 1px 2px rgba(26,24,20,0.06), 0 4px 14px rgba(45,90,110,0.18)',
+  inputBg: warm.colors.bgSurface,
+  inputBorder: warm.colors.borderDefined,
+  inputText: warm.colors.textPrimary,
+  progressBg: warm.colors.borderWhisper,
+  progressFill: warm.colors.accentPetrol,
+  optBg: warm.colors.bgSurface,
+  optBorder: warm.colors.borderWhisper,
+  optActiveBg: `rgba(45, 90, 110, 0.08)`,
+  optActiveBorder: warm.colors.accentPetrol,
+  optActiveText: warm.colors.textPrimary,
+  optText: warm.colors.textSecondary,
+  chipBg: `rgba(45, 90, 110, 0.10)`,
+  chipText: warm.colors.accentPetrol,
+  fileBorder: warm.colors.borderDefined,
+  fileBg: warm.colors.bgAlt,
+  dotColor: warm.colors.accentGoldSoft,
+  accentSecondary: warm.colors.accentPetrol,
+  accentSuccess: warm.colors.success,
+  blobGrad: '',
+  blobShadow: '',
+} as const;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -55,58 +89,13 @@ const RESPONSE_OPTIONS = [
 const STEP_LABELS = ['', 'Target locked in.', 'Search pattern clear.'];
 
 // ── Scene ─────────────────────────────────────────────────────────────────────
+// Removed per spec §7.3 — decorative blobs don't fit the warm editorial direction.
 
-function Scene() {
-  const { T } = useTheme();
-  const blobStyle: React.CSSProperties = {
-    background: T.blobGrad, boxShadow: T.blobShadow,
-    borderRadius: '50%', position: 'fixed', pointerEvents: 'none',
-  };
-  return (
-    <>
-      <div className="fixed inset-0 pointer-events-none" style={{
-        backgroundColor: T.bg,
-        backgroundImage: `radial-gradient(circle, ${T.dotColor} 1px, transparent 1px)`,
-        backgroundSize: '22px 22px', transition: 'background-color 0.4s',
-      }} />
-      <motion.div style={{ ...blobStyle, width: 380, height: 380, bottom: -80, left: -80 }}
-        animate={{ x: [0, 18, -8, 0], y: [0, -14, 8, 0], scale: [1, 1.02, 0.99, 1] }}
-        transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }} />
-      <motion.div style={{ ...blobStyle, width: 280, height: 280, top: -60, right: -40 }}
-        animate={{ x: [0, -12, 6, 0], y: [0, 16, -6, 0], scale: [1, 1.03, 0.98, 1] }}
-        transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut', delay: 1.5 }} />
-      <motion.div style={{ ...blobStyle, width: 180, height: 180, top: '42%', right: -50 }}
-        animate={{ x: [0, -8, 4, 0], y: [0, 12, -8, 0] }}
-        transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut', delay: 3 }} />
-      <motion.div style={{ ...blobStyle, width: 140, height: 140, top: '12%', left: '8%' }}
-        animate={{ x: [0, 10, -5, 0], y: [0, -8, 6, 0] }}
-        transition={{ duration: 11, repeat: Infinity, ease: 'easeInOut', delay: 2 }} />
-    </>
-  );
-}
-
-function ThemeToggle({ dark, onToggle }: { dark: boolean; onToggle: () => void }) {
-  const { T } = useTheme();
-  return (
-    <motion.button onClick={onToggle} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.92 }}
-      style={{
-        position: 'fixed', top: 20, right: 20, zIndex: 100,
-        width: 40, height: 40, borderRadius: '50%', border: 'none',
-        background: T.toggleBg, color: T.toggleIcon,
-        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 18, transition: 'background 0.3s', backdropFilter: 'blur(12px)',
-      }}
-      title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-    >
-      {dark ? '☀' : '☽'}
-    </motion.button>
-  );
-}
+// ThemeToggle removed per spec — night mode is obsolete with warm theme.
 
 // ── Profile progress header ───────────────────────────────────────────────────
 
 function ProfileProgress({ step, answers }: { step: number; answers: IntakeAnswers }) {
-  const { T } = useTheme();
   const chips: string[] = [];
   if (answers.targetRole) chips.push(answers.targetRole);
   if (answers.seniority)  chips.push(answers.seniority);
@@ -115,14 +104,14 @@ function ProfileProgress({ step, answers }: { step: number; answers: IntakeAnswe
   return (
     <div style={{ marginBottom: 28 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: T.textFaint }}>
+        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: warmT.textFaint }}>
           Building your profile
         </span>
-        <span style={{ fontSize: 11, color: T.textFaint, fontWeight: 600 }}>{step} / 3</span>
+        <span style={{ fontSize: 11, color: warmT.textFaint, fontWeight: 600 }}>{step} / 3</span>
       </div>
-      <div style={{ height: 4, background: T.progressBg, borderRadius: 99, overflow: 'hidden' }}>
+      <div style={{ height: 4, background: warmT.progressBg, borderRadius: 99, overflow: 'hidden' }}>
         <motion.div
-          style={{ height: '100%', background: T.progressFill, borderRadius: 99 }}
+          style={{ height: '100%', background: warmT.progressFill, borderRadius: 99 }}
           animate={{ width: `${(step / 3) * 100}%` }}
           transition={{ duration: 0.6, ease: [0.25, 1, 0.5, 1] }}
         />
@@ -134,7 +123,7 @@ function ProfileProgress({ step, answers }: { step: number; answers: IntakeAnswe
           {chips.map((chip, i) => (
             <motion.span key={i} initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: i * 0.05 }}
-              style={{ fontSize: 11, padding: '4px 10px', borderRadius: 99, background: T.chipBg, color: T.chipText, fontWeight: 600 }}
+              style={{ fontSize: 11, padding: '4px 10px', borderRadius: 99, background: warmT.chipBg, color: warmT.chipText, fontWeight: 600 }}
             >
               {chip}
             </motion.span>
@@ -142,7 +131,7 @@ function ProfileProgress({ step, answers }: { step: number; answers: IntakeAnswe
         </motion.div>
       )}
       {step > 1 && (
-        <p style={{ fontSize: 11, color: T.textFaint, marginTop: 8, fontStyle: 'italic' }}>
+        <p style={{ fontSize: 11, color: warmT.textFaint, marginTop: 8, fontStyle: 'italic' }}>
           {STEP_LABELS[step - 1]}
         </p>
       )}
@@ -155,18 +144,17 @@ function ProfileProgress({ step, answers }: { step: number; answers: IntakeAnswe
 function TInput({ placeholder, value, onChange, type }: {
   placeholder: string; value: string; onChange: (v: string) => void; type?: string;
 }) {
-  const { T } = useTheme();
   const base: React.CSSProperties = {
-    background: T.inputBg, border: `1px solid ${T.inputBorder}`,
-    borderRadius: 12, color: T.inputText, fontSize: 15,
+    background: warmT.inputBg, border: `1px solid ${warmT.inputBorder}`,
+    borderRadius: 12, color: warmT.inputText, fontSize: 15,
     padding: '12px 16px', width: '100%', outline: 'none',
     transition: 'box-shadow 0.2s, border-color 0.2s', fontFamily: 'inherit',
   };
   return (
     <input style={base} placeholder={placeholder} value={value} type={type}
       onChange={e => onChange(e.target.value)}
-      onFocus={e => { e.target.style.boxShadow = `0 0 0 3px ${T.progressFill}22`; e.target.style.borderColor = T.inputText + '33'; }}
-      onBlur={e => { e.target.style.boxShadow = 'none'; e.target.style.borderColor = T.inputBorder; }}
+      onFocus={e => { e.target.style.boxShadow = `0 0 0 3px ${warmT.progressFill}22`; e.target.style.borderColor = warmT.inputText + '33'; }}
+      onBlur={e => { e.target.style.boxShadow = 'none'; e.target.style.borderColor = warmT.inputBorder; }}
     />
   );
 }
@@ -174,12 +162,11 @@ function TInput({ placeholder, value, onChange, type }: {
 function TSelect({ value, onChange, options, placeholder }: {
   value: string; onChange: (v: string) => void; options: string[]; placeholder: string;
 }) {
-  const { T } = useTheme();
   return (
     <select
       style={{
-        background: T.inputBg, border: `1px solid ${T.inputBorder}`,
-        borderRadius: 12, color: value ? T.inputText : T.textFaint,
+        background: warmT.inputBg, border: `1px solid ${warmT.inputBorder}`,
+        borderRadius: 12, color: value ? warmT.inputText : warmT.textFaint,
         fontSize: 15, padding: '12px 16px', width: '100%', outline: 'none',
         appearance: 'none', cursor: 'pointer',
         transition: 'box-shadow 0.2s, border-color 0.2s', fontFamily: 'inherit',
@@ -193,14 +180,13 @@ function TSelect({ value, onChange, options, placeholder }: {
 }
 
 function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
-  const { T } = useTheme();
   return (
     <div>
-      <span style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: T.textFaint, marginBottom: 8 }}>
+      <span style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: warmT.textFaint, marginBottom: 8 }}>
         {label}
       </span>
       {children}
-      {hint && <p style={{ fontSize: 12, color: T.textFaint, marginTop: 6, lineHeight: 1.5 }}>{hint}</p>}
+      {hint && <p style={{ fontSize: 12, color: warmT.textFaint, marginTop: 6, lineHeight: 1.5 }}>{hint}</p>}
     </div>
   );
 }
@@ -211,27 +197,26 @@ function FileDropZone({ label, subtext, required, file, onFile }: {
   label: string; subtext?: string; required?: boolean;
   file: File | null; onFile: (f: File | null) => void;
 }) {
-  const { T } = useTheme();
   const inputRef = useRef<HTMLInputElement>(null);
   return (
     <motion.div onClick={() => inputRef.current?.click()} whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
       style={{
-        border: `2px dashed ${file ? T.progressFill + '55' : T.fileBorder}`,
+        border: `2px dashed ${file ? warmT.progressFill + '55' : warmT.fileBorder}`,
         borderRadius: 14, padding: '16px 18px', cursor: 'pointer',
-        background: file ? T.progressFill + '08' : T.fileBg, transition: 'all 0.2s',
+        background: file ? warmT.progressFill + '08' : warmT.fileBg, transition: 'all 0.2s',
       }}
     >
       <input ref={inputRef} type="file"
         accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         className="hidden" onChange={e => onFile(e.target.files?.[0] ?? null)} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-        <span style={{ fontSize: 18, color: file ? T.text : T.textFaint, flexShrink: 0 }}>{file ? '✓' : '↑'}</span>
+        <span style={{ fontSize: 18, color: file ? warmT.text : warmT.textFaint, flexShrink: 0 }}>{file ? '✓' : '↑'}</span>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <p style={{ fontSize: 13, fontWeight: 600, color: file ? T.text : T.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: file ? warmT.text : warmT.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {file ? file.name : label}
-            {required && !file && <span style={{ color: '#6366f1', marginLeft: 4 }}>*</span>}
+            {required && !file && <span style={{ color: warmT.progressFill, marginLeft: 4 }}>*</span>}
           </p>
-          {subtext && !file && <p style={{ fontSize: 12, color: T.textFaint, marginTop: 2 }}>{subtext}</p>}
+          {subtext && !file && <p style={{ fontSize: 12, color: warmT.textFaint, marginTop: 2 }}>{subtext}</p>}
         </div>
       </div>
     </motion.div>
@@ -241,19 +226,18 @@ function FileDropZone({ label, subtext, required, file, onFile }: {
 // ── Shared buttons ────────────────────────────────────────────────────────────
 
 function PrimaryButton({ onClick, disabled, loading, label }: { onClick: () => void; disabled?: boolean; loading?: boolean; label: string }) {
-  const { T } = useTheme();
   const isDisabled = disabled || loading;
   return (
     <motion.button onClick={onClick} disabled={isDisabled}
       style={{
         flex: 1, padding: '14px 20px', borderRadius: 14, border: 'none',
-        background: T.btnBg, color: T.btnText, fontWeight: 600, fontSize: 15,
+        background: warmT.btnBg, color: warmT.btnText, fontWeight: 600, fontSize: 15,
         cursor: isDisabled ? 'not-allowed' : 'pointer',
         opacity: isDisabled ? (loading ? 0.7 : 0.3) : 1,
-        boxShadow: isDisabled ? 'none' : T.btnShadow,
+        boxShadow: isDisabled ? 'none' : warmT.btnShadow,
         transition: 'opacity 0.2s, box-shadow 0.2s', fontFamily: 'inherit', letterSpacing: '-0.01em',
       }}
-      whileHover={!isDisabled ? { scale: 1.02, boxShadow: '0 8px 40px rgba(0,0,0,0.25)' } : {}}
+      whileHover={!isDisabled ? { scale: 1.02, boxShadow: '0 8px 40px rgba(0,0,0,0.12)' } : {}}
       whileTap={!isDisabled ? { scale: 0.97 } : {}}
     >
       {loading ? 'Building your diagnosis…' : label}
@@ -262,12 +246,11 @@ function PrimaryButton({ onClick, disabled, loading, label }: { onClick: () => v
 }
 
 function BackButton({ onBack, disabled }: { onBack: () => void; disabled?: boolean }) {
-  const { T } = useTheme();
   return (
     <motion.button onClick={onBack} disabled={disabled}
       style={{
-        padding: '14px 16px', borderRadius: 14, border: `1px solid ${T.optBorder}`,
-        background: T.optBg, color: T.textMuted, fontWeight: 600, fontSize: 20,
+        padding: '14px 16px', borderRadius: 14, border: `1px solid ${warmT.optBorder}`,
+        background: warmT.optBg, color: warmT.textMuted, fontWeight: 600, fontSize: 20,
         cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.3 : 1,
         transition: 'all 0.15s', fontFamily: 'inherit', flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -280,97 +263,12 @@ function BackButton({ onBack, disabled }: { onBack: () => void; disabled?: boole
   );
 }
 
-// ── Step: Welcome ─────────────────────────────────────────────────────────────
-
-function StepWelcome({ onNext }: { onNext: () => void }) {
-  const { T } = useTheme();
-  const navigate = useNavigate();
-
-  const PETROL = '#2D5A6E';
-  const GOLD   = '#C5A059';
-  const SLATE  = '#A0A4A8';
-
-  return (
-    <div style={{ textAlign: 'center' }}>
-      <motion.span
-        initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-        style={{
-          display: 'inline-block', fontSize: 11, fontWeight: 700, letterSpacing: '0.2em',
-          textTransform: 'uppercase', color: T.textFaint, marginBottom: 18,
-        }}
-      >
-        Your Australian application engine
-      </motion.span>
-
-      <h1 style={{
-        fontSize: 'clamp(24px, 5vw, 36px)',
-        fontWeight: 600, color: T.text, lineHeight: 1.18,
-        marginBottom: 20, letterSpacing: '-0.02em',
-        maxWidth: 580, marginInline: 'auto',
-      }}>
-        Are you really unemployable in Australia?
-      </h1>
-
-      <p style={{
-        fontSize: 15, color: T.textMuted, lineHeight: 1.65,
-        marginBottom: 28, fontWeight: 450, maxWidth: 500, marginInline: 'auto',
-      }}>
-        Find the exact gaps in your job application process, how to fix them and see results in less than 30 days.
-      </p>
-
-      <p style={{
-        fontSize: 14, color: SLATE, lineHeight: 1.65,
-        marginBottom: 32, fontWeight: 450, maxWidth: 480, marginInline: 'auto',
-        fontStyle: 'italic',
-      }}>
-        You've spent your time and money to "gain qualifications" but without learning how the Australian hiring system actually works they are useless.
-        <br /><br />
-        Get your personalised diagnosis in 3 minutes.
-      </p>
-
-      <motion.button
-        onClick={onNext}
-        style={{
-          background: PETROL,
-          color: '#E0E0E0',
-          padding: '15px 32px', borderRadius: 14, border: 'none',
-          fontWeight: 600, fontSize: 15, cursor: 'pointer',
-          boxShadow: `0 6px 24px ${PETROL}55`,
-          letterSpacing: '-0.01em', width: '100%',
-        }}
-        whileHover={{ scale: 1.01 }}
-        whileTap={{ scale: 0.98 }}
-      >
-        Check My Eligibility →
-      </motion.button>
-      <p style={{ fontSize: 12, color: T.textFaint, marginTop: 10 }}>
-        Free · No card needed · Takes about 3 minutes
-      </p>
-
-      <p style={{ fontSize: 12, color: T.textFaint, marginTop: 16 }}>
-        Already have an account?{' '}
-        <button
-          onClick={() => navigate('/auth')}
-          style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            color: GOLD, fontWeight: 700, fontSize: 12, padding: 0,
-            textDecoration: 'underline', textUnderlineOffset: 3,
-          }}
-        >
-          Log in
-        </button>
-      </p>
-    </div>
-  );
-}
-
-// ── Step: Auth (step 1, before questions) ────────────────────────────────────
+// ── Step: Auth (step 0, before questions) ──────────────────────────────────────
 
 function StepAuth({ onAuthSuccess, onBack }: {
   onAuthSuccess: () => void;
   onBack: () => void;
 }) {
-  const { T } = useTheme();
   const { user } = useAuth();
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
@@ -394,8 +292,8 @@ function StepAuth({ onAuthSuccess, onBack }: {
   if (isAuthenticated) return null;
 
   const inputStyle: React.CSSProperties = {
-    background: T.inputBg, border: `1px solid ${T.inputBorder}`,
-    borderRadius: 12, color: T.inputText, fontSize: 15,
+    background: warmT.inputBg, border: `1px solid ${warmT.inputBorder}`,
+    borderRadius: 12, color: warmT.inputText, fontSize: 15,
     padding: '12px 16px', width: '100%', outline: 'none',
     fontFamily: 'inherit', boxSizing: 'border-box',
   };
@@ -411,7 +309,6 @@ function StepAuth({ onAuthSuccess, onBack }: {
         if (error) {
           toast.error('Incorrect email or password.');
         }
-        // onAuthStateChange fires → setUser → isAuthenticated → useEffect → onAuthSuccess()
       } else {
         if (password.length < 8 || !/[^a-zA-Z0-9]/.test(password)) {
           setPwError('Password needs 8+ characters and at least one symbol (! @ # $ …)');
@@ -457,10 +354,10 @@ function StepAuth({ onAuthSuccess, onBack }: {
 
   return (
     <div>
-      <h2 style={{ fontSize: 24, fontWeight: 600, color: T.text, marginBottom: 8, letterSpacing: '-0.02em' }}>
+      <h2 style={{ fontSize: 24, fontWeight: 600, color: warmT.text, marginBottom: 8, letterSpacing: '-0.02em' }}>
         {isSignup ? 'Get your personalized job readiness diagnostic' : 'Welcome back'}
       </h2>
-      <p style={{ color: T.textMuted, fontSize: 13, lineHeight: 1.6, marginBottom: 24 }}>
+      <p style={{ color: warmT.textMuted, fontSize: 13, lineHeight: 1.6, marginBottom: 24 }}>
         {isSignup
           ? 'Enter your email to receive your full results, and access them anytime.'
           : 'Sign in to continue your diagnosis.'}
@@ -468,35 +365,35 @@ function StepAuth({ onAuthSuccess, onBack }: {
 
       {awaitingConfirmation ? (
         <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-          style={{ padding: '14px 16px', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.25)', borderRadius: 10 }}>
-          <p style={{ fontSize: 14, fontWeight: 700, color: '#a5b4fc', margin: '0 0 6px 0' }}>Check your inbox</p>
-          <p style={{ fontSize: 13, color: '#c7d2fe', margin: 0, lineHeight: 1.5 }}>
+          style={{ padding: '14px 16px', background: `${warmT.btnBg}15`, border: `1px solid ${warmT.btnBg}40`, borderRadius: 10 }}>
+          <p style={{ fontSize: 14, fontWeight: 700, color: warmT.btnBg, margin: '0 0 6px 0' }}>Check your inbox</p>
+          <p style={{ fontSize: 13, color: warmT.text, margin: 0, lineHeight: 1.5 }}>
             We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account, then come back here.
           </p>
-          <p style={{ fontSize: 12, color: '#818cf8', margin: '6px 0 0 0' }}>Can't find it? Check spam.</p>
+          <p style={{ fontSize: 12, color: warmT.btnBg, margin: '6px 0 0 0' }}>Can't find it? Check spam.</p>
         </motion.div>
       ) : (
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: 14 }}>
-            <span style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' as const, color: T.textFaint, marginBottom: 8 }}>Email</span>
+            <span style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' as const, color: warmT.textFaint, marginBottom: 8 }}>Email</span>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)}
               placeholder="you@example.com" required style={inputStyle} autoFocus />
           </div>
           <div style={{ marginBottom: 8 }}>
-            <span style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' as const, color: T.textFaint, marginBottom: 8 }}>Password</span>
+            <span style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' as const, color: warmT.textFaint, marginBottom: 8 }}>Password</span>
             <input type="password" value={password} onChange={e => { setPassword(e.target.value); setPwError(''); }}
               placeholder={isSignup ? 'e.g. Hunter2!' : 'Your password'} required style={inputStyle} />
             {isSignup && password.length > 0 && (
               <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
-                <span style={{ fontSize: 11, fontWeight: 600, color: password.length >= 8 ? '#4ade80' : '#f87171' }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: password.length >= 8 ? warmT.accentSuccess : warmT.btnBg }}>
                   {password.length >= 8 ? '✓' : '✗'} 8+ characters
                 </span>
-                <span style={{ fontSize: 11, fontWeight: 600, color: /[^a-zA-Z0-9]/.test(password) ? '#4ade80' : '#f87171' }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: /[^a-zA-Z0-9]/.test(password) ? warmT.accentSuccess : warmT.btnBg }}>
                   {/[^a-zA-Z0-9]/.test(password) ? '✓' : '✗'} 1 symbol (! @ # $ …)
                 </span>
               </div>
             )}
-            {pwError && <p style={{ fontSize: 12, color: '#f87171', marginTop: 6 }}>{pwError}</p>}
+            {pwError && <p style={{ fontSize: 12, color: warmT.btnBg, marginTop: 6 }}>{pwError}</p>}
           </div>
 
           <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
@@ -509,10 +406,10 @@ function StepAuth({ onAuthSuccess, onBack }: {
         </form>
       )}
 
-      <p style={{ fontSize: 13, color: T.textFaint, marginTop: 16, textAlign: 'center' }}>
+      <p style={{ fontSize: 13, color: warmT.textFaint, marginTop: 16, textAlign: 'center' }}>
         {isSignup ? 'Already have an account? ' : 'New here? '}
         <button type="button" onClick={() => { setMode(isSignup ? 'signin' : 'signup'); setPwError(''); }}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.progressFill, fontWeight: 700, fontSize: 13, padding: 0, textDecoration: 'underline', textUnderlineOffset: 3 }}>
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: warmT.btnBg, fontWeight: 700, fontSize: 13, padding: 0, textDecoration: 'underline', textUnderlineOffset: 3 }}>
           {isSignup ? 'Sign in' : 'Create an account'}
         </button>
       </p>
@@ -529,15 +426,14 @@ function StepRole({ answers, onChange, onNext, onBack }: {
   onChange: (k: keyof IntakeAnswers, v: string) => void;
   onNext: () => void; onBack: () => void;
 }) {
-  const { T } = useTheme();
   const valid = answers.targetRole.trim() && answers.targetCity.trim() && answers.seniority && answers.industry && answers.visaStatus;
   return (
     <div>
       <ProfileProgress step={1} answers={answers} />
-      <h2 style={{ fontSize: 24, fontWeight: 600, color: T.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
+      <h2 style={{ fontSize: 24, fontWeight: 600, color: warmT.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
         What role are you targeting?
       </h2>
-      <p style={{ color: T.textFaint, fontSize: 13, marginBottom: 24 }}>Be specific, this anchors your entire diagnosis to real Australian hiring conditions.</p>
+      <p style={{ color: warmT.textFaint, fontSize: 13, marginBottom: 24 }}>Be specific, this anchors your entire diagnosis to real Australian hiring conditions.</p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <Field label="Role" hint="Vague targets produce vague diagnoses. The more specific you are, the more precisely we can flag what's off.">
@@ -572,24 +468,23 @@ function StepResponses({ answers, onChange, onNext, onBack }: {
   onChange: (k: keyof IntakeAnswers, v: string) => void;
   onNext: () => void; onBack: () => void;
 }) {
-  const { T } = useTheme();
   const valid = !!answers.responsePattern;
 
   const optStyle = (active: boolean): React.CSSProperties => ({
     width: '100%', textAlign: 'left', padding: '13px 16px', borderRadius: 12,
-    border: `1px solid ${active ? T.optActiveBorder : T.optBorder}`,
-    background: active ? T.optActiveBg : T.optBg,
-    color: active ? T.optActiveText : T.optText,
+    border: `1px solid ${active ? warmT.optActiveBorder : warmT.optBorder}`,
+    background: active ? warmT.optActiveBg : warmT.optBg,
+    color: active ? warmT.optActiveText : warmT.optText,
     cursor: 'pointer', transition: 'all 0.15s',
   });
 
   return (
     <div>
       <ProfileProgress step={2} answers={answers} />
-      <h2 style={{ fontSize: 24, fontWeight: 600, color: T.text, marginBottom: 4, letterSpacing: '-0.02em' }}>
+      <h2 style={{ fontSize: 24, fontWeight: 600, color: warmT.text, marginBottom: 4, letterSpacing: '-0.02em' }}>
         What are you getting back?
       </h2>
-      <p style={{ color: T.textFaint, fontSize: 13, marginBottom: 20 }}>
+      <p style={{ color: warmT.textFaint, fontSize: 13, marginBottom: 20 }}>
         The pattern tells us exactly where in the funnel things break down, before the interview, in it, or after.
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
@@ -622,17 +517,16 @@ function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, onBa
   answers: IntakeAnswers;
   submitting: boolean;
 }) {
-  const { T } = useTheme();
   return (
     <div>
       <ProfileProgress step={3} answers={answers} />
-      <h2 style={{ fontSize: 24, fontWeight: 600, color: T.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
+      <h2 style={{ fontSize: 24, fontWeight: 600, color: warmT.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
         Now upload your documents.
       </h2>
-      <p style={{ color: T.textMuted, fontSize: 13, lineHeight: 1.6, marginBottom: 6 }}>
+      <p style={{ color: warmT.textMuted, fontSize: 13, lineHeight: 1.6, marginBottom: 6 }}>
         We're reading them to find the specific moves that will sharpen your applications.
       </p>
-      <p style={{ color: T.textFaint, fontSize: 12, marginBottom: 16 }}>PDF or Word accepted.</p>
+      <p style={{ color: warmT.textFaint, fontSize: 12, marginBottom: 16 }}>PDF or Word accepted.</p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <FileDropZone label="Your resume (required)" required file={resume} onFile={setResume}
@@ -646,8 +540,8 @@ function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, onBa
       <div style={{ marginTop: 24 }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
           <input type="checkbox" checked={marketingConsent} onChange={e => onMarketingConsentChange(e.target.checked)}
-            style={{ width: 16, height: 16, accentColor: T.btnBg, cursor: 'pointer' }} />
-          <span style={{ fontSize: 13, color: T.textMuted }}>Email my diagnostic report + job search tips to my account email</span>
+            style={{ width: 16, height: 16, accentColor: warmT.btnBg, cursor: 'pointer' }} />
+          <span style={{ fontSize: 13, color: warmT.textMuted }}>Email my diagnostic report + job search tips to my account email</span>
         </label>
       </div>
 
@@ -661,23 +555,36 @@ function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, onBa
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
+const STEP_STORAGE_KEY = 'jobhub_onboarding_step';
+
 export function OnboardingIntake({ resumeMode: _resumeMode = false, initialStep }: { resumeMode?: boolean; initialStep?: number }) {
-  const [step, setStep]           = useState(initialStep ?? 0);
+  const [step, setStep] = useState(() => {
+    if (initialStep !== undefined) return initialStep;
+    const saved = sessionStorage.getItem(STEP_STORAGE_KEY);
+    return saved !== null ? parseInt(saved, 10) : 0;
+  });
+
+  // Persist step to sessionStorage so it survives ProtectedRoute unmount/remount
+  // cycles (e.g. auth session refresh on window focus).
+  useEffect(() => {
+    if (step <= 3 && step >= 1) {
+      sessionStorage.setItem(STEP_STORAGE_KEY, String(step));
+    }
+  }, [step]);
   const [submitting, setSubmitting] = useState(false);
-  const { T, isDark, toggle: toggleDark } = useAppTheme();
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
 
   const isAuthenticated = !!user && !(user as any).is_anonymous;
 
-  // Compute the visible step synchronously, if already authenticated, never render Welcome or Auth
-  const visibleStep = isAuthenticated && step < 2 ? 2 : step;
+  // Compute the visible step synchronously, if already authenticated, skip Auth step
+  const visibleStep = isAuthenticated && step < 1 ? 1 : step;
 
   // Sync internal step to visibleStep once auth resolves so that goNext advances
-  // from the correct position (avoids needing multiple clicks to leave step 2).
+  // from the correct position (avoids needing multiple clicks to leave step 0).
   useEffect(() => {
-    if (!authLoading && isAuthenticated && step < 2) {
-      setStep(2);
+    if (!authLoading && isAuthenticated && step < 1) {
+      setStep(1);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, isAuthenticated]);
@@ -711,7 +618,7 @@ export function OnboardingIntake({ resumeMode: _resumeMode = false, initialStep 
       trackOnboardingSubmitted();
       await api.post('/onboarding/submit', fd, { timeout: 30000 });
       setSubmitting(false);
-      setStep(5);
+      setStep(4);
     } catch (err: any) {
       const status = err?.response?.status;
       const detail = err?.response?.data?.error || err?.message || 'Unknown error';
@@ -721,7 +628,7 @@ export function OnboardingIntake({ resumeMode: _resumeMode = false, initialStep 
       } else if (err?.code === 'ECONNABORTED' || err?.message?.includes('timeout')) {
         toast.error('Request timed out. Try a smaller PDF.');
       } else if (!err?.response) {
-        toast.error('Network error, check your connection and try again.');
+        toast.error('Can\'t connect to the server — check your connection and try again.');
       } else {
         toast.error(`Upload failed (${status ?? 'error'}): ${detail}`);
       }
@@ -739,11 +646,11 @@ export function OnboardingIntake({ resumeMode: _resumeMode = false, initialStep 
   };
 
   const handleRetry = async () => {
-    try { await api.post('/onboarding/retry'); setStep(5); }
+    try { await api.post('/onboarding/retry'); setStep(4); }
     catch { toast.error('Retry failed. Please refresh and try again.'); }
   };
 
-  const STEP_NAMES = ['welcome', 'auth', 'role', 'responses', 'files', 'processing'];
+  const STEP_NAMES = ['auth', 'role', 'responses', 'files', 'processing'];
 
   const goNext = () => {
     trackOnboardingStepCompleted(visibleStep, STEP_NAMES[visibleStep] ?? `step_${visibleStep}`);
@@ -757,9 +664,8 @@ export function OnboardingIntake({ resumeMode: _resumeMode = false, initialStep 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visibleStep]);
 
-  // Step order: Welcome(0) → Auth(1) → Role(2) → Responses(3) → Files(4) → ProcessingScreen(5)
+  // Step order: Auth(0) → Role(1) → Responses(2) → Files(3) → ProcessingScreen(4)
   const STEPS = [
-    <StepWelcome key="welcome" onNext={goNext} />,
     <StepAuth key="auth" onAuthSuccess={goNext} onBack={goBack} />,
     <StepRole key="role" answers={answers} onChange={(k, v) => onChange(k, v as string)} onNext={goNext} onBack={goBack} />,
     <StepResponses key="responses" answers={answers} onChange={(k, v) => onChange(k, v as string)} onNext={goNext} onBack={goBack} />,
@@ -783,8 +689,8 @@ export function OnboardingIntake({ resumeMode: _resumeMode = false, initialStep 
       whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
       style={{
         position: 'fixed', top: 20, left: 20, zIndex: 100,
-        padding: '8px 14px', borderRadius: 10, border: 'none',
-        background: T.toggleBg, color: T.textMuted,
+        padding: '8px 14px', borderRadius: 10, border: `1px solid ${warmT.cardBorder}`,
+        background: warmT.card, color: warmT.textMuted,
         cursor: 'pointer', display: 'flex', alignItems: 'center',
         justifyContent: 'center', gap: 6, fontSize: 12, fontWeight: 600,
         backdropFilter: 'blur(12px)',
@@ -796,19 +702,17 @@ export function OnboardingIntake({ resumeMode: _resumeMode = false, initialStep 
   ) : null;
 
   if (authLoading) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: T.bg }}>
-      <div className="w-10 h-10 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAF7F2' }}>
+      <div className="w-10 h-10 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(45,90,110,0.2)', borderTopColor: '#2D5A6E' }} />
     </div>
   );
 
-  if (visibleStep === 5 || submitting) {
+  if (visibleStep === 4 || submitting) {
     return (
-      <div style={{ backgroundColor: T.bg, minHeight: '100vh', overflowY: 'auto', transition: 'background-color 0.4s' }}>
-        <Scene />
-        <ThemeToggle dark={isDark} onToggle={toggleDark} />
+      <div style={{ backgroundColor: warmT.bg, height: '100vh', overflowY: 'auto' }}>
         {SignOutBtn}
         <ProcessingScreen
-          isDark={isDark} theme={T}
+          theme={warmT}
           email={user?.email ?? answers.marketingEmail}
           targetRole={answers.targetRole || undefined}
           onComplete={() => { trackDiagnosticReportViewed(); }}
@@ -819,9 +723,7 @@ export function OnboardingIntake({ resumeMode: _resumeMode = false, initialStep 
   }
 
   return (
-    <div style={{ backgroundColor: T.bg, minHeight: '100dvh', overflowY: 'auto', overflowX: 'hidden', transition: 'background-color 0.4s' }}>
-      <Scene />
-      <ThemeToggle dark={isDark} onToggle={toggleDark} />
+    <div style={{ backgroundColor: warmT.bg, height: '100dvh', overflowY: 'auto', overflowX: 'hidden' }}>
       {SignOutBtn}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 'clamp(32px, 6vh, 80px) 16px 48px' }}>
         <div style={{ width: '100%', maxWidth: 520 }}>
@@ -831,11 +733,10 @@ export function OnboardingIntake({ resumeMode: _resumeMode = false, initialStep 
               transition={{ duration: 0.26, ease: [0.25, 1, 0.5, 1] }}
             >
               <div style={{
-                background: T.card, border: `1px solid ${T.cardBorder}`,
-                boxShadow: T.cardShadow, borderRadius: 28,
+                background: warmT.card, border: `1px solid ${warmT.cardBorder}`,
+                boxShadow: warmT.cardShadow, borderRadius: 28,
                 backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)',
                 padding: 'clamp(24px, 5vw, 44px)',
-                transition: 'background 0.4s, border-color 0.4s',
               }}>
                 {STEPS[visibleStep]}
               </div>

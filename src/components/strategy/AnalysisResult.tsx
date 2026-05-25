@@ -17,7 +17,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, CheckCircle2, Sparkles, Lock, Pencil, AlertCircle, Check } from 'lucide-react';
-import { useAppTheme } from '../../contexts/ThemeContext';
+import { warm } from '../../lib/theme/warmTokens';
 import { AchievementDraftModal } from './AchievementDraftModal';
 import { EnrichmentPrompt } from '../EnrichmentPrompt';
 
@@ -53,7 +53,6 @@ interface Props {
 }
 
 export function AnalysisResult({ result, jobDescription, onContinue, onSkip }: Props) {
-    const { T } = useAppTheme();
     const { fitBands, extractedMetadata, dominantBand, insights, duplicate } = result;
     const { directMatch, bridgeableGap, hardGap } = fitBands;
 
@@ -83,12 +82,12 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip }: P
                     border: '1px solid rgba(197,160,89,0.25)',
                     borderRadius: 12,
                 }}>
-                    <AlertCircle size={18} style={{ color: T.accentSuccess, flexShrink: 0, marginTop: 2 }} />
+                    <AlertCircle size={18} style={{ color: warm.colors.success, flexShrink: 0, marginTop: 2 }} />
                     <div style={{ flex: 1 }}>
-                        <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 700, color: T.text }}>
+                        <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 700, color: warm.colors.textPrimary }}>
                             You analysed a similar role on {formatDate(duplicate.createdAt)}.
                         </p>
-                        <p style={{ margin: '0 0 8px', fontSize: 12, color: T.textMuted, lineHeight: 1.55 }}>
+                        <p style={{ margin: '0 0 8px', fontSize: 12, color: warm.colors.textSecondary, lineHeight: 1.55 }}>
                             {duplicate.title} at {duplicate.company} · status: {humaniseStatus(duplicate.status)}
                             {duplicate.dateApplied && ` · applied ${formatDate(duplicate.dateApplied)}`}
                         </p>
@@ -97,7 +96,7 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip }: P
                             style={{
                                 fontSize: 12,
                                 fontWeight: 700,
-                                color: T.accentSuccess,
+                                color: warm.colors.success,
                                 textDecoration: 'none',
                             }}
                         >
@@ -115,7 +114,7 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip }: P
                     fontWeight: 700,
                     letterSpacing: '0.14em',
                     textTransform: 'uppercase',
-                    color: T.textMuted,
+                    color: warm.colors.textSecondary,
                 }}>
                     Analysis · {extractedMetadata.role} · {extractedMetadata.company}
                 </p>
@@ -124,7 +123,7 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip }: P
                     fontSize: 22,
                     fontWeight: 700,
                     letterSpacing: '-0.01em',
-                    color: T.text,
+                    color: warm.colors.textPrimary,
                     lineHeight: 1.35,
                 }}>
                     {headline}
@@ -134,26 +133,26 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip }: P
             {/* Direct Match card */}
             {directMatch.pct > 0 && (
                 <ResultCard
-                    accent={T.accentSuccess}
+                    accent={warm.colors.success}
                     icon={<CheckCircle2 size={18} />}
                     label="Direct match"
                     pct={directMatch.pct}
                     body={
                         <ul style={{ margin: '4px 0 0', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
                             {directMatch.evidence.length === 0 ? (
-                                <li style={{ fontSize: 13, color: T.textFaint, lineHeight: 1.6 }}>
+                                <li style={{ fontSize: 13, color: warm.colors.textMuted, lineHeight: 1.6 }}>
                                     No achievement evidence surfaced for this role.
                                 </li>
                             ) : (
                                 directMatch.evidence.map((line, i) => (
                                     <li key={i} style={{
                                         fontSize: 13,
-                                        color: T.textMuted,
+                                        color: warm.colors.textSecondary,
                                         lineHeight: 1.6,
                                         paddingLeft: 14,
                                         position: 'relative',
                                     }}>
-                                        <span style={{ position: 'absolute', left: 0, color: T.accentSuccess }}>•</span>
+                                        <span style={{ position: 'absolute', left: 0, color: warm.colors.success }}>•</span>
                                         {line}
                                     </li>
                                 ))
@@ -166,13 +165,13 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip }: P
             {/* Bridgeable Gap card */}
             {bridgeableGap.items.length > 0 && (
                 <ResultCard
-                    accent={T.accentSecondary}
+                    accent={warm.colors.accentPetrol}
                     icon={<Sparkles size={18} />}
                     label="Bridgeable gap"
                     pct={bridgeableGap.pct}
                     body={
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 4 }}>
-                            <p style={{ margin: 0, fontSize: 12, color: T.textFaint, lineHeight: 1.55 }}>
+                            <p style={{ margin: 0, fontSize: 12, color: warm.colors.textMuted, lineHeight: 1.55 }}>
                                 Based on your role and experience you likely have these. They just aren't named on your profile yet. Draft and save each one to strengthen your match for future analyses.
                             </p>
                             <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -196,7 +195,7 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip }: P
                                                     margin: '0 0 4px',
                                                     fontSize: 13,
                                                     fontWeight: 700,
-                                                    color: T.text,
+                                                    color: warm.colors.textPrimary,
                                                     textDecoration: isBridged ? 'line-through' : 'none',
                                                     textDecorationColor: 'rgba(125,166,125,0.55)',
                                                     textDecorationThickness: '1px',
@@ -206,7 +205,7 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip }: P
                                                 <p style={{
                                                     margin: 0,
                                                     fontSize: 12,
-                                                    color: T.textMuted,
+                                                    color: warm.colors.textSecondary,
                                                     lineHeight: 1.55,
                                                     fontStyle: 'italic',
                                                 }}>
@@ -222,7 +221,7 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip }: P
                                                         padding: '6px 10px',
                                                         fontSize: 11,
                                                         fontWeight: 700,
-                                                        color: T.accentSecondary,
+                                                        color: warm.colors.accentPetrol,
                                                         background: 'rgba(125,166,125,0.18)',
                                                         border: '1px solid rgba(125,166,125,0.45)',
                                                         borderRadius: 8,
@@ -243,7 +242,7 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip }: P
                                                         padding: '6px 10px',
                                                         fontSize: 11,
                                                         fontWeight: 700,
-                                                        color: T.accentSecondary,
+                                                        color: warm.colors.accentPetrol,
                                                         background: 'rgba(125,166,125,0.10)',
                                                         border: '1px solid rgba(125,166,125,0.30)',
                                                         borderRadius: 8,
@@ -268,25 +267,25 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip }: P
             {/* Hard Gap card */}
             {hardGap.items.length > 0 && (
                 <ResultCard
-                    accent={T.textMuted}
+                    accent={warm.colors.textSecondary}
                     icon={<Lock size={18} />}
                     label="Hard gap"
                     pct={null}
                     body={
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
-                            <p style={{ margin: 0, fontSize: 12, color: T.textFaint, lineHeight: 1.55 }}>
+                            <p style={{ margin: 0, fontSize: 12, color: warm.colors.textMuted, lineHeight: 1.55 }}>
                                 These look like formal requirements you haven't claimed on your profile. If you do hold them, add them to your profile so future analyses pick them up.
                             </p>
                             <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
                                 {hardGap.items.map((item, i) => (
                                     <li key={i} style={{
                                         fontSize: 13,
-                                        color: T.text,
+                                        color: warm.colors.textPrimary,
                                         lineHeight: 1.55,
                                         paddingLeft: 14,
                                         position: 'relative',
                                     }}>
-                                        <span style={{ position: 'absolute', left: 0, color: T.textMuted }}>•</span>
+                                        <span style={{ position: 'absolute', left: 0, color: warm.colors.textSecondary }}>•</span>
                                         {item}
                                     </li>
                                 ))}
@@ -305,7 +304,7 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip }: P
                         fontWeight: 700,
                         letterSpacing: '0.14em',
                         textTransform: 'uppercase',
-                        color: T.textMuted,
+                        color: warm.colors.textSecondary,
                     }}>
                         Strategic notes
                     </p>
@@ -313,12 +312,12 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip }: P
                         {insights.map((line, i) => (
                             <li key={i} style={{
                                 fontSize: 13,
-                                color: T.textMuted,
+                                color: warm.colors.textSecondary,
                                 lineHeight: 1.65,
                                 paddingLeft: 14,
                                 position: 'relative',
                             }}>
-                                <span style={{ position: 'absolute', left: 0, color: T.textFaint }}>·</span>
+                                <span style={{ position: 'absolute', left: 0, color: warm.colors.textMuted }}>·</span>
                                 {line}
                             </li>
                         ))}
@@ -349,12 +348,12 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip }: P
                         padding: '12px 22px',
                         fontSize: 14,
                         fontWeight: 700,
-                        color: T.btnText,
-                        background: T.btnBg,
+                        color: warm.colors.bgCanvas,
+                        background: warm.colors.accentPetrol,
                         border: 'none',
                         borderRadius: 12,
                         cursor: 'pointer',
-                        boxShadow: T.btnShadow,
+                        boxShadow: warm.shadow.soft,
                         letterSpacing: '-0.01em',
                     }}
                 >
@@ -368,9 +367,9 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip }: P
                             padding: '12px 18px',
                             fontSize: 13,
                             fontWeight: 600,
-                            color: T.textMuted,
+                            color: warm.colors.textSecondary,
                             background: 'transparent',
-                            border: `1px solid ${T.cardBorder}`,
+                            border: `1px solid ${warm.colors.borderWhisper}`,
                             borderRadius: 12,
                             cursor: 'pointer',
                         }}
@@ -439,11 +438,10 @@ function ResultCard({
     pct: number | null;
     body: React.ReactNode;
 }) {
-    const { T } = useAppTheme();
     return (
         <div style={{
-            background: T.card,
-            border: `1px solid ${T.cardBorder}`,
+            background: warm.colors.bgSurface,
+            border: `1px solid ${warm.colors.borderWhisper}`,
             borderLeft: `3px solid ${accent}`,
             borderRadius: 14,
             padding: '18px 22px',

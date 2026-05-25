@@ -11,7 +11,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, ShieldCheck, ChevronDown, X, AlertCircle, ShieldAlert, ThumbsUp } from 'lucide-react';
-import { useAppTheme } from '../../contexts/ThemeContext';
+import { warm } from '../../lib/theme/warmTokens';
 
 export type CritiqueCategory = 'desperation' | 'overselling' | 'hedging' | 'vagueness' | 'weak_opening' | 'incoherence' | 'generic_positioning';
 
@@ -47,13 +47,12 @@ interface Props {
 }
 
 export function DraftCritiquePanel({ open, onClose, loading, result }: Props) {
-    const { T } = useAppTheme();
     const [expandedIdx, setExpandedIdx] = useState<number | null>(0);
 
     if (!open) return null;
 
     const trustScore = result?.overall?.trustScore ?? 0;
-    const trustColor = trustScore >= 80 ? T.accentSecondary : trustScore >= 60 ? T.accentSuccess : T.textMuted;
+    const trustColor = trustScore >= 80 ? warm.colors.accentPetrol : trustScore >= 60 ? warm.colors.success : warm.colors.textSecondary;
 
     return (
         <motion.aside
@@ -62,8 +61,8 @@ export function DraftCritiquePanel({ open, onClose, loading, result }: Props) {
             exit={{ opacity: 0, x: 20 }}
             transition={{ duration: 0.22 }}
             style={{
-                background: T.card,
-                border: `1px solid ${T.cardBorder}`,
+                background: warm.colors.bgSurface,
+                border: `1px solid ${warm.colors.borderWhisper}`,
                 borderRadius: 14,
                 padding: 22,
                 marginTop: 16,
@@ -74,7 +73,7 @@ export function DraftCritiquePanel({ open, onClose, loading, result }: Props) {
         >
             <header style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flex: 1, minWidth: 0 }}>
-                    <span style={{ display: 'inline-flex', color: T.accentSuccess, marginTop: 2, flexShrink: 0 }}>
+                    <span style={{ display: 'inline-flex', color: warm.colors.success, marginTop: 2, flexShrink: 0 }}>
                         <ShieldCheck size={18} />
                     </span>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -84,11 +83,11 @@ export function DraftCritiquePanel({ open, onClose, loading, result }: Props) {
                             fontWeight: 700,
                             letterSpacing: '0.14em',
                             textTransform: 'uppercase',
-                            color: T.textMuted,
+                            color: warm.colors.textSecondary,
                         }}>
                             Draft review
                         </p>
-                        <p style={{ margin: 0, fontSize: 13, color: T.textMuted, lineHeight: 1.55 }}>
+                        <p style={{ margin: 0, fontSize: 13, color: warm.colors.textSecondary, lineHeight: 1.55 }}>
                             What a recruiter scans for, before the words register.
                         </p>
                     </div>
@@ -96,14 +95,14 @@ export function DraftCritiquePanel({ open, onClose, loading, result }: Props) {
                 <button
                     onClick={onClose}
                     aria-label="Close review"
-                    style={{ background: 'transparent', border: 'none', color: T.textMuted, cursor: 'pointer', padding: 4, flexShrink: 0 }}
+                    style={{ background: 'transparent', border: 'none', color: warm.colors.textSecondary, cursor: 'pointer', padding: 4, flexShrink: 0 }}
                 >
                     <X size={16} />
                 </button>
             </header>
 
             {loading && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '36px 0', color: T.textMuted, fontSize: 13 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '36px 0', color: warm.colors.textSecondary, fontSize: 13 }}>
                     <Loader2 size={16} className="animate-spin" />
                     Reading through your draft…
                 </div>
@@ -137,10 +136,10 @@ export function DraftCritiquePanel({ open, onClose, loading, result }: Props) {
                             </span>
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                            <p style={{ margin: '0 0 4px', fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: T.textMuted }}>
+                            <p style={{ margin: '0 0 4px', fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: warm.colors.textSecondary }}>
                                 Recruiter trust read
                             </p>
-                            <p style={{ margin: 0, fontSize: 13.5, color: T.text, lineHeight: 1.55, fontWeight: 500 }}>
+                            <p style={{ margin: 0, fontSize: 13.5, color: warm.colors.textPrimary, lineHeight: 1.55, fontWeight: 500 }}>
                                 {result.overall.verdict || 'Reviewed.'}
                             </p>
                         </div>
@@ -155,7 +154,7 @@ export function DraftCritiquePanel({ open, onClose, loading, result }: Props) {
                                 fontWeight: 700,
                                 letterSpacing: '0.14em',
                                 textTransform: 'uppercase',
-                                color: T.accentSecondary,
+                                color: warm.colors.accentPetrol,
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: 6,
@@ -165,8 +164,8 @@ export function DraftCritiquePanel({ open, onClose, loading, result }: Props) {
                             </p>
                             <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
                                 {result.strengths.map((s, i) => (
-                                    <li key={i} style={{ fontSize: 13, color: T.textMuted, lineHeight: 1.65, paddingLeft: 14, position: 'relative' }}>
-                                        <span style={{ position: 'absolute', left: 0, color: T.accentSecondary }}>·</span>
+                                    <li key={i} style={{ fontSize: 13, color: warm.colors.textSecondary, lineHeight: 1.65, paddingLeft: 14, position: 'relative' }}>
+                                        <span style={{ position: 'absolute', left: 0, color: warm.colors.accentPetrol }}>·</span>
                                         {s}
                                     </li>
                                 ))}
@@ -183,7 +182,7 @@ export function DraftCritiquePanel({ open, onClose, loading, result }: Props) {
                                 fontWeight: 700,
                                 letterSpacing: '0.14em',
                                 textTransform: 'uppercase',
-                                color: T.accentSuccess,
+                                color: warm.colors.success,
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: 6,
@@ -194,13 +193,13 @@ export function DraftCritiquePanel({ open, onClose, loading, result }: Props) {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                 {result.issues.map((issue, idx) => {
                                     const isOpen = expandedIdx === idx;
-                                    const accent = issue.severity === 'high' ? T.accentSuccess : issue.severity === 'medium' ? T.textMuted : T.textFaint;
+                                    const accent = issue.severity === 'high' ? warm.colors.success : issue.severity === 'medium' ? warm.colors.textSecondary : warm.colors.textMuted;
                                     return (
                                         <div
                                             key={idx}
                                             style={{
                                                 background: 'rgba(255,255,255,0.02)',
-                                                border: `1px solid ${T.cardBorder}`,
+                                                border: `1px solid ${warm.colors.borderWhisper}`,
                                                 borderLeft: `3px solid ${accent}`,
                                                 borderRadius: 10,
                                                 overflow: 'hidden',
@@ -232,14 +231,14 @@ export function DraftCritiquePanel({ open, onClose, loading, result }: Props) {
                                                     }}>
                                                         {CATEGORY_LABEL[issue.category] ?? issue.category}
                                                     </p>
-                                                    <p style={{ margin: 0, fontSize: 12.5, color: T.text, lineHeight: 1.5, fontStyle: 'italic' }}>
+                                                    <p style={{ margin: 0, fontSize: 12.5, color: warm.colors.textPrimary, lineHeight: 1.5, fontStyle: 'italic' }}>
                                                         "{issue.snippet}"
                                                     </p>
                                                 </div>
                                                 <motion.span
                                                     animate={{ rotate: isOpen ? 180 : 0 }}
                                                     transition={{ duration: 0.2 }}
-                                                    style={{ color: T.textMuted, flexShrink: 0, marginTop: 2, display: 'flex' }}
+                                                    style={{ color: warm.colors.textSecondary, flexShrink: 0, marginTop: 2, display: 'flex' }}
                                                 >
                                                     <ChevronDown size={12} />
                                                 </motion.span>
@@ -257,20 +256,20 @@ export function DraftCritiquePanel({ open, onClose, loading, result }: Props) {
                                                         <div style={{ padding: '0 14px 14px 38px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                                                             {issue.why && (
                                                                 <div>
-                                                                    <p style={{ margin: '0 0 2px', fontSize: 10, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: T.textFaint }}>
+                                                                    <p style={{ margin: '0 0 2px', fontSize: 10, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: warm.colors.textMuted }}>
                                                                         Why it hurts
                                                                     </p>
-                                                                    <p style={{ margin: 0, fontSize: 12.5, color: T.textMuted, lineHeight: 1.65 }}>
+                                                                    <p style={{ margin: 0, fontSize: 12.5, color: warm.colors.textSecondary, lineHeight: 1.65 }}>
                                                                         {issue.why}
                                                                     </p>
                                                                 </div>
                                                             )}
                                                             {issue.fix && (
                                                                 <div>
-                                                                    <p style={{ margin: '0 0 2px', fontSize: 10, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: T.accentSecondary }}>
+                                                                    <p style={{ margin: '0 0 2px', fontSize: 10, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: warm.colors.accentPetrol }}>
                                                                         How to rewrite
                                                                     </p>
-                                                                    <p style={{ margin: 0, fontSize: 12.5, color: T.text, lineHeight: 1.65 }}>
+                                                                    <p style={{ margin: 0, fontSize: 12.5, color: warm.colors.textPrimary, lineHeight: 1.65 }}>
                                                                         {issue.fix}
                                                                     </p>
                                                                 </div>
@@ -285,7 +284,7 @@ export function DraftCritiquePanel({ open, onClose, loading, result }: Props) {
                             </div>
                         </div>
                     ) : (
-                        <p style={{ margin: 0, fontSize: 13, color: T.textMuted, lineHeight: 1.65, textAlign: 'center', padding: '16px 0' }}>
+                        <p style={{ margin: 0, fontSize: 13, color: warm.colors.textSecondary, lineHeight: 1.65, textAlign: 'center', padding: '16px 0' }}>
                             No recruiter-trust issues flagged. Read it through once more, then send.
                         </p>
                     )}

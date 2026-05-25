@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, CheckCheck, XCircle, MoreHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../../lib/api';
-import { useAppTheme } from '../../contexts/ThemeContext';
+import { warm } from '../../lib/theme/warmTokens';
 
 interface JobApplicationLite {
   id: string;
@@ -25,7 +25,6 @@ function daysSince(iso: string | null): number | null {
 }
 
 export function StaleApplicationsCard() {
-  const { T } = useAppTheme();
   const queryClient = useQueryClient();
   const [dismissed, setDismissed] = useState<Set<string>>(() => new Set());
 
@@ -61,26 +60,26 @@ export function StaleApplicationsCard() {
 
   return (
     <div style={{
-      background: T.card,
-      border: `1px solid ${T.cardBorder}`,
+      background: warm.colors.bgSurface,
+      border: `1px solid ${warm.colors.borderWhisper}`,
       borderRadius: 16,
       padding: 22,
-      boxShadow: T.cardShadow,
+      boxShadow: warm.shadow.soft,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-        <Clock size={13} style={{ color: T.accentSecondary }} />
+        <Clock size={13} style={{ color: warm.colors.accentPetrol }} />
         <p style={{
           margin: 0,
           fontSize: 11,
           fontWeight: 700,
           letterSpacing: '0.12em',
-          color: T.accentSecondary,
+          color: warm.colors.accentPetrol,
           textTransform: 'uppercase',
         }}>
           Quietly waiting on you
         </p>
       </div>
-      <p style={{ margin: '0 0 18px', fontSize: 13, color: T.textMuted, lineHeight: 1.55 }}>
+      <p style={{ margin: '0 0 18px', fontSize: 13, color: warm.colors.textSecondary, lineHeight: 1.55 }}>
         Updating these unlocks Interview Prep and sharpens future application insights.
       </p>
 
@@ -102,7 +101,7 @@ export function StaleApplicationsCard() {
                   padding: '12px 14px',
                   borderRadius: 12,
                   background: 'rgba(255,255,255,0.02)',
-                  border: `1px solid ${T.cardBorder}`,
+                  border: `1px solid ${warm.colors.borderWhisper}`,
                 }}
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -110,7 +109,7 @@ export function StaleApplicationsCard() {
                     margin: 0,
                     fontSize: 13,
                     fontWeight: 700,
-                    color: T.text,
+                    color: warm.colors.textPrimary,
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
@@ -121,7 +120,7 @@ export function StaleApplicationsCard() {
                     margin: '2px 0 0',
                     fontSize: 11,
                     fontWeight: 600,
-                    color: T.textMuted,
+                    color: warm.colors.textSecondary,
                   }}>
                     {job.company} · sent {days} day{days === 1 ? '' : 's'} ago
                   </p>
@@ -130,7 +129,7 @@ export function StaleApplicationsCard() {
                   <button
                     onClick={() => updateStatus.mutate({ id: job.id, update: { status: 'INTERVIEW' } })}
                     disabled={updateStatus.isPending}
-                    style={pillStyle(T, 'success')}
+                    style={pillStyle('success')}
                     title="Mark as interview — unlocks Interview Prep"
                   >
                     <CheckCheck size={11} /> Interview
@@ -138,14 +137,14 @@ export function StaleApplicationsCard() {
                   <button
                     onClick={() => updateStatus.mutate({ id: job.id, update: { status: 'REJECTED' } })}
                     disabled={updateStatus.isPending}
-                    style={pillStyle(T, 'neutral')}
+                    style={pillStyle('neutral')}
                     title="Mark as rejected"
                   >
                     <XCircle size={11} /> Rejected
                   </button>
                   <button
                     onClick={() => setDismissed(prev => new Set(prev).add(job.id))}
-                    style={pillStyle(T, 'ghost')}
+                    style={pillStyle('ghost')}
                     title="Not yet — hide for this session"
                   >
                     <MoreHorizontal size={11} />
@@ -161,7 +160,6 @@ export function StaleApplicationsCard() {
 }
 
 function pillStyle(
-  T: ReturnType<typeof useAppTheme>['T'],
   tone: 'success' | 'neutral' | 'ghost',
 ): React.CSSProperties {
   const base: React.CSSProperties = {
@@ -173,13 +171,13 @@ function pillStyle(
     fontSize: 11,
     fontWeight: 700,
     cursor: 'pointer',
-    border: `1px solid ${T.cardBorder}`,
+    border: `1px solid ${warm.colors.borderWhisper}`,
     background: 'transparent',
-    color: T.textMuted,
+    color: warm.colors.textSecondary,
     transition: 'background 0.15s, border-color 0.15s, color 0.15s',
   };
   if (tone === 'success') {
-    return { ...base, color: T.accentSuccess, borderColor: `${T.accentSuccess}55` };
+    return { ...base, color: warm.colors.success, borderColor: `${warm.colors.success}55` };
   }
   if (tone === 'ghost') {
     return { ...base, padding: '6px 8px' };

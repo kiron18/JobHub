@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAppTheme } from '../../contexts/ThemeContext';
+import { warm } from '../../lib/theme/warmTokens';
 
 interface Props {
   name: string;
@@ -8,12 +8,11 @@ interface Props {
 }
 
 export const ProfileStrip: React.FC<Props> = ({ name, title, headshotUrl }) => {
-  const { T } = useAppTheme();
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 16,
       padding: '20px 24px', borderRadius: 16, marginBottom: 24,
-      background: T.card, border: `1px solid ${T.cardBorder}`,
+      background: warm.colors.bgSurface, border: `1px solid ${warm.colors.borderWhisper}`,
     }}>
       <div style={{
         width: 64, height: 64, borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
@@ -26,8 +25,8 @@ export const ProfileStrip: React.FC<Props> = ({ name, title, headshotUrl }) => {
         }
       </div>
       <div>
-        <p style={{ fontSize: 18, fontWeight: 800, color: T.text, margin: 0 }}>{name || 'Your Name'}</p>
-        <p style={{ fontSize: 14, color: T.textMuted, margin: '2px 0 0' }}>{title || 'Your Title'}</p>
+        <p style={{ fontSize: 18, fontWeight: 800, color: warm.colors.textPrimary, margin: 0 }}>{name || 'Your Name'}</p>
+        <p style={{ fontSize: 14, color: warm.colors.textSecondary, margin: '2px 0 0' }}>{title || 'Your Title'}</p>
       </div>
       <div style={{
         marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: '#0A66C2',

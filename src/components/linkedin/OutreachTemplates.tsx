@@ -3,7 +3,7 @@ import { Loader2, Copy, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
-import { useAppTheme } from '../../contexts/ThemeContext';
+import { warm } from '../../lib/theme/warmTokens';
 import type { OutreachData } from './types';
 
 const COACHING_TIPS: Record<keyof Omit<OutreachData, 'questionSuggestions'>, string> = {
@@ -23,7 +23,6 @@ const TEMPLATE_LABELS: Record<keyof Omit<OutreachData, 'questionSuggestions'>, s
 function TemplateCard({ label, content, tip, charLimit, editableNote }: {
   label: string; content: string; tip: string; charLimit?: number; editableNote?: string;
 }) {
-  const { T } = useAppTheme();
   const [copied, setCopied] = useState(false);
   const [showTip, setShowTip] = useState(false);
   const [editedContent, setEditedContent] = useState(content);
@@ -39,14 +38,14 @@ function TemplateCard({ label, content, tip, charLimit, editableNote }: {
   }
 
   return (
-    <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 14, padding: 20, marginBottom: 14 }}>
+    <div style={{ background: warm.colors.bgSurface, border: `1px solid ${warm.colors.borderWhisper}`, borderRadius: 14, padding: 20, marginBottom: 14 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <span style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#0A66C2' }}>
           {label}
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {charLimit && (
-            <span style={{ fontSize: 11, color: overLimit ? '#f87171' : T.textFaint, fontWeight: 600 }}>
+            <span style={{ fontSize: 11, color: overLimit ? '#f87171' : warm.colors.textMuted, fontWeight: 600 }}>
               {charCount} / {charLimit}
             </span>
           )}
@@ -55,9 +54,9 @@ function TemplateCard({ label, content, tip, charLimit, editableNote }: {
             style={{
               display: 'flex', alignItems: 'center', gap: 4,
               fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 6,
-              border: `1px solid ${copied ? '#34d399' : T.cardBorder}`,
+              border: `1px solid ${copied ? '#34d399' : warm.colors.borderWhisper}`,
               background: copied ? 'rgba(52,211,153,0.1)' : 'transparent',
-              color: copied ? '#34d399' : T.textMuted, cursor: 'pointer',
+              color: copied ? '#34d399' : warm.colors.textSecondary, cursor: 'pointer',
             }}
           >
             {copied ? <Check size={11} /> : <Copy size={11} />}
@@ -78,9 +77,9 @@ function TemplateCard({ label, content, tip, charLimit, editableNote }: {
         rows={5}
         style={{
           width: '100%', background: 'rgba(255,255,255,0.03)',
-          border: `1px solid ${overLimit ? '#f87171' : T.cardBorder}`,
+          border: `1px solid ${overLimit ? '#f87171' : warm.colors.borderWhisper}`,
           borderRadius: 8, padding: '10px 12px', fontSize: 13,
-          color: T.text, resize: 'vertical', lineHeight: 1.6,
+          color: warm.colors.textPrimary, resize: 'vertical', lineHeight: 1.6,
           fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box',
         }}
       />
@@ -89,14 +88,14 @@ function TemplateCard({ label, content, tip, charLimit, editableNote }: {
         onClick={() => setShowTip(v => !v)}
         style={{
           display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none',
-          color: T.textFaint, cursor: 'pointer', fontSize: 12, fontWeight: 600, marginTop: 8, padding: 0,
+          color: warm.colors.textMuted, cursor: 'pointer', fontSize: 12, fontWeight: 600, marginTop: 8, padding: 0,
         }}
       >
         {showTip ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
         Coaching tip
       </button>
       {showTip && (
-        <p style={{ fontSize: 12, color: T.textMuted, marginTop: 8, lineHeight: 1.6, fontStyle: 'italic', borderLeft: '2px solid rgba(10,102,194,0.4)', paddingLeft: 10 }}>
+        <p style={{ fontSize: 12, color: warm.colors.textSecondary, marginTop: 8, lineHeight: 1.6, fontStyle: 'italic', borderLeft: '2px solid rgba(10,102,194,0.4)', paddingLeft: 10 }}>
           {tip}
         </p>
       )}
@@ -105,7 +104,6 @@ function TemplateCard({ label, content, tip, charLimit, editableNote }: {
 }
 
 export const OutreachTemplates: React.FC = () => {
-  const { T } = useAppTheme();
   const navigate = useNavigate();
   const [targetFirstName, setTargetFirstName] = useState('');
   const [targetCompany, setTargetCompany] = useState('');
@@ -137,11 +135,11 @@ export const OutreachTemplates: React.FC = () => {
     }
   }
 
-  const inputStyle = (theme: typeof T): React.CSSProperties => ({
+  const inputStyle: React.CSSProperties = {
     width: '100%', padding: '10px 12px', borderRadius: 8, fontSize: 14,
-    background: 'rgba(255,255,255,0.04)', border: `1px solid ${theme.cardBorder}`,
-    color: theme.text, outline: 'none', boxSizing: 'border-box' as const,
-  });
+    background: warm.colors.bgAlt, border: `1px solid ${warm.colors.borderWhisper}`,
+    color: warm.colors.textPrimary, outline: 'none', boxSizing: 'border-box' as const,
+  };
 
   const labelStyle: React.CSSProperties = {
     fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
@@ -150,9 +148,36 @@ export const OutreachTemplates: React.FC = () => {
 
   return (
     <div>
+      {/* Brief strategy overview — always visible, sets up the playbook below */}
+      <div style={{
+        background: warm.colors.bgAlt,
+        border: `1px solid ${warm.colors.borderWhisper}`,
+        borderLeft: `3px solid ${warm.colors.accentPetrol}`,
+        borderRadius: 12,
+        padding: '14px 16px',
+        marginBottom: 14,
+      }}>
+        <p style={{
+          margin: '0 0 6px',
+          fontSize: 11,
+          fontWeight: 800,
+          letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+          color: warm.colors.textSecondary,
+        }}>
+          The outreach strategy
+        </p>
+        <p style={{ margin: '0 0 6px', fontSize: 13, lineHeight: 1.6, color: warm.colors.textPrimary, fontWeight: 600 }}>
+          Don't ask for a job. Become someone people are glad they know — then ask for a name or a direction.
+        </p>
+        <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6, color: warm.colors.textSecondary }}>
+          Fill in the person you want to reach below. We'll generate four templates in sequence: a connection note, a first message after they accept, an after-call follow-up, and a small direct ask. Use them in that order — each one earns the right to send the next.
+        </p>
+      </div>
+
       {/* Playbook guide */}
       <div style={{
-        background: T.card,
+        background: warm.colors.bgSurface,
         border: showPlaybook ? '1px solid rgba(239,68,68,0.25)' : '1px solid rgba(239,68,68,0.35)',
         borderRadius: 14, padding: 16, marginBottom: 20,
         boxShadow: showPlaybook ? 'none' : '0 0 14px rgba(239,68,68,0.12)',
@@ -162,15 +187,15 @@ export const OutreachTemplates: React.FC = () => {
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             width: '100%', background: 'none', border: 'none', cursor: 'pointer',
-            color: showPlaybook ? T.text : '#f87171', fontWeight: 700, fontSize: 14,
+            color: showPlaybook ? warm.colors.textPrimary : '#f87171', fontWeight: 700, fontSize: 14,
           }}
         >
           Before you start — The 7-Step Networking Playbook
           {showPlaybook ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </button>
         {showPlaybook && (
-          <div style={{ marginTop: 16, fontSize: 13, color: T.textMuted, lineHeight: 1.7 }}>
-            <p style={{ fontWeight: 700, color: T.text }}>The one mindset shift that makes everything else work:</p>
+          <div style={{ marginTop: 16, fontSize: 13, color: warm.colors.textSecondary, lineHeight: 1.7 }}>
+            <p style={{ fontWeight: 700, color: warm.colors.textPrimary }}>The one mindset shift that makes everything else work:</p>
             <blockquote style={{ borderLeft: '2px solid rgba(10,102,194,0.5)', paddingLeft: 12, margin: '8px 0 16px', fontStyle: 'italic' }}>
               LinkedIn networking is not about asking people for jobs. It is about becoming someone people are glad they know. Give before you ask.
             </blockquote>
@@ -188,18 +213,18 @@ export const OutreachTemplates: React.FC = () => {
       </div>
 
       {/* Input form */}
-      <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: 24, marginBottom: 20 }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 16 }}>
+      <div style={{ background: warm.colors.bgSurface, border: `1px solid ${warm.colors.borderWhisper}`, borderRadius: 16, padding: 24, marginBottom: 20 }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: warm.colors.textPrimary, marginBottom: 16 }}>
           About the person you want to reach
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
           <div>
             <label htmlFor="outFirstName" style={labelStyle}>First Name</label>
-            <input id="outFirstName" value={targetFirstName} onChange={e => setTargetFirstName(e.target.value)} placeholder="Sarah" style={inputStyle(T)} />
+            <input id="outFirstName" value={targetFirstName} onChange={e => setTargetFirstName(e.target.value)} placeholder="Sarah" style={inputStyle} />
           </div>
           <div>
             <label htmlFor="outCompany" style={labelStyle}>Company</label>
-            <input id="outCompany" value={targetCompany} onChange={e => setTargetCompany(e.target.value)} placeholder="Atlassian" style={inputStyle(T)} />
+            <input id="outCompany" value={targetCompany} onChange={e => setTargetCompany(e.target.value)} placeholder="Atlassian" style={inputStyle} />
           </div>
         </div>
         <div style={{ marginBottom: 14 }}>
@@ -209,7 +234,7 @@ export const OutreachTemplates: React.FC = () => {
             value={targetTopicOrPost}
             onChange={e => setTargetTopicOrPost(e.target.value)}
             placeholder="e.g. scaling engineering teams in fast-growth startups"
-            style={inputStyle(T)}
+            style={inputStyle}
           />
         </div>
         <div style={{ marginBottom: 20 }}>
@@ -219,7 +244,7 @@ export const OutreachTemplates: React.FC = () => {
             value={specificQuestion}
             onChange={e => setSpecificQuestion(e.target.value)}
             placeholder="e.g. What does your team look for when hiring graduates without AU work experience?"
-            style={inputStyle(T)}
+            style={inputStyle}
           />
           {outreach?.questionSuggestions?.length ? (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>

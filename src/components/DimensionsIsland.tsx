@@ -67,21 +67,21 @@ const TIERS: Array<{ label: string; keys: Array<keyof DimensionScores> }> = [
 function DimensionRow({ dimKey, dim }: { dimKey: keyof DimensionScores; dim: DimensionScore }) {
   const [hovered, setHovered] = useState(false);
   const filled = dim.score;
-  const gradeColour = GRADE_COLOURS[dim.grade] ?? 'text-slate-400';
+  const gradeColour = GRADE_COLOURS[dim.grade] ?? 'text-[#5C5750]';
 
   return (
     <div
-      className="relative flex items-center gap-3 py-1.5 px-2 rounded-lg transition-colors hover:bg-slate-800/40 cursor-default"
+      className="relative flex items-center gap-3 py-1.5 px-2 rounded-lg transition-colors hover:bg-[#F4EFE8]/60 cursor-default"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <span className="w-36 text-xs text-slate-400 shrink-0">{DIMENSION_LABELS[dimKey]}</span>
+      <span className="w-36 text-xs text-[#5C5750] shrink-0">{DIMENSION_LABELS[dimKey]}</span>
       <div className="flex gap-0.5 flex-1">
         {[1, 2, 3, 4, 5].map(i => (
           <div
             key={i}
             className={`h-1.5 flex-1 rounded-full transition-colors ${
-              i <= filled ? 'bg-brand-500' : 'bg-slate-700'
+              i <= filled ? 'bg-brand-500' : 'bg-[rgba(26,24,20,0.10)]'
             }`}
           />
         ))}
@@ -94,7 +94,7 @@ function DimensionRow({ dimKey, dim }: { dimKey: keyof DimensionScores; dim: Dim
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.15 }}
-            className="absolute left-0 bottom-full mb-2 z-10 w-64 bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-300 shadow-xl pointer-events-none"
+            className="absolute left-0 bottom-full mb-2 z-10 w-64 bg-white border border-[rgba(26,24,20,0.16)] rounded-lg p-2.5 text-xs text-[#1A1814] shadow-xl pointer-events-none"
           >
             {dim.note}
           </motion.div>
@@ -112,7 +112,7 @@ export const DimensionsIsland: React.FC<DimensionsIslandProps> = ({
   australianFlags,
 }) => {
   const [expanded, setExpanded] = useState(false);
-  const gradeColour = GRADE_COLOURS[overallGrade] ?? 'text-slate-400';
+  const gradeColour = GRADE_COLOURS[overallGrade] ?? 'text-[#5C5750]';
 
   const auChips: string[] = [];
   if (australianFlags.apsLevel) auChips.push(australianFlags.apsLevel);
@@ -123,23 +123,23 @@ export const DimensionsIsland: React.FC<DimensionsIslandProps> = ({
   if (australianFlags.requiresCitizenship) auChips.push('AU citizenship required');
 
   return (
-    <div className="border border-slate-700/50 rounded-2xl bg-slate-900/60 backdrop-blur-sm overflow-hidden mb-4">
+    <div className="border border-[rgba(26,24,20,0.10)] rounded-2xl bg-white/80 backdrop-blur-sm overflow-hidden mb-4">
       {/* Header — always visible */}
       <button
         onClick={() => setExpanded(prev => !prev)}
         aria-expanded={expanded}
-        className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-slate-800/40 transition-colors"
+        className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-[#F4EFE8]/60 transition-colors"
       >
         <div className="flex items-center gap-3">
-          <span className="text-xs font-black uppercase tracking-widest text-slate-500">Fit Breakdown</span>
+          <span className="text-xs font-black uppercase tracking-widest text-[#8B847B]">Fit Breakdown</span>
           {matchedIdentityCard && (
-            <span className="text-xs text-slate-500">· {matchedIdentityCard}</span>
+            <span className="text-xs text-[#8B847B]">· {matchedIdentityCard}</span>
           )}
         </div>
         <div className="flex items-center gap-3">
           <span className={`text-lg font-black ${gradeColour}`}>{overallGrade}</span>
-          <span className="text-xs text-slate-500">{matchScore}/100</span>
-          {expanded ? <ChevronUp size={14} className="text-slate-500" /> : <ChevronDown size={14} className="text-slate-500" />}
+          <span className="text-xs text-[#8B847B]">{matchScore}/100</span>
+          {expanded ? <ChevronUp size={14} className="text-[#8B847B]" /> : <ChevronDown size={14} className="text-[#8B847B]" />}
         </div>
       </button>
 
@@ -153,10 +153,10 @@ export const DimensionsIsland: React.FC<DimensionsIslandProps> = ({
             transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
             className="overflow-hidden"
           >
-            <div className="px-4 pb-4 space-y-4 border-t border-slate-700/50 pt-3">
+            <div className="px-4 pb-4 space-y-4 border-t border-[rgba(26,24,20,0.10)] pt-3">
               {TIERS.map(tier => (
                 <div key={tier.label}>
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-600 mb-1 px-2">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-[#8B847B] mb-1 px-2">
                     {tier.label}
                   </p>
                   {tier.keys.map(key => (
@@ -166,12 +166,12 @@ export const DimensionsIsland: React.FC<DimensionsIslandProps> = ({
               ))}
 
               {auChips.length > 0 && (
-                <div className="flex items-center gap-2 flex-wrap px-2 pt-1 border-t border-slate-800">
-                  <Shield size={11} className="text-slate-500 shrink-0" />
+                <div className="flex items-center gap-2 flex-wrap px-2 pt-1 border-t border-[rgba(26,24,20,0.08)]">
+                  <Shield size={11} className="text-[#8B847B] shrink-0" />
                   {auChips.map(chip => (
                     <span
                       key={chip}
-                      className="text-[10px] font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full"
+                      className="text-[10px] font-bold text-[#5C5750] bg-[#F4EFE8] px-2 py-0.5 rounded-full"
                     >
                       {chip}
                     </span>

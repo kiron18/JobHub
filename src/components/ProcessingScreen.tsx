@@ -11,7 +11,6 @@ interface Theme {
 }
 
 interface ProcessingScreenProps {
-  isDark: boolean;
   theme: Theme;
   email?: string;
   name?: string;
@@ -103,7 +102,7 @@ const POLL_INTERVAL_MS = 3_000;
 const MESSAGE_INTERVAL_MS = 10_000;
 const ASIDE_INTERVAL_MS   = 13_000;
 
-export function ProcessingScreen({ isDark: _isDark, theme: T, email, name, targetRole, onComplete, onRetry }: ProcessingScreenProps) {
+export function ProcessingScreen({ theme: T, email, name, targetRole, onComplete, onRetry }: ProcessingScreenProps) {
   const queryClient = useQueryClient();
   const [barWidth, setBarWidth]     = useState(100);
   const [msgIndex, setMsgIndex]     = useState(0);
@@ -121,6 +120,7 @@ export function ProcessingScreen({ isDark: _isDark, theme: T, email, name, targe
   const asideRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const barRef   = useRef<ReturnType<typeof setInterval> | null>(null);
   const startMs  = useRef(Date.now());
+  const pollErrorCountRef = useRef(0);
 
   // Bar depletion
   useEffect(() => {
@@ -168,6 +168,7 @@ export function ProcessingScreen({ isDark: _isDark, theme: T, email, name, targe
       try {
         const { data } = await api.get<{ status: string }>('/onboarding/report');
         console.log('[ProcessingScreen] poll response, status:', data.status);
+        pollErrorCountRef.current = 0; // reset on any successful response
         if (data.status === 'COMPLETE') {
           clearInterval(pollRef.current!);
           clearInterval(msgRef.current!);
@@ -194,7 +195,15 @@ export function ProcessingScreen({ isDark: _isDark, theme: T, email, name, targe
           setStatus('failed');
         }
       } catch {
-        // Network hiccup, keep polling
+        // Network hiccup, keep polling but track consecutive failures
+        pollErrorCountRef.current += 1;
+        if (pollErrorCountRef.current >= 5) {
+          clearInterval(pollRef.current!);
+          clearInterval(msgRef.current!);
+          clearInterval(asideRef.current!);
+          clearInterval(barRef.current!);
+          setStatus('failed');
+        }
       }
     }, POLL_INTERVAL_MS);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
@@ -205,6 +214,9 @@ export function ProcessingScreen({ isDark: _isDark, theme: T, email, name, targe
     : FALLBACK_MESSAGE;
 
   const currentAside = allAsides[asideIndex % allAsides.length];
+  const shimmerText = email
+    ? `We'll send the full report to ${email} once it's ready. Check your inbox for a copy you can come back to anytime.`
+    : "We're building your personalised report — results land on the next screen. Check your inbox for a copy you can come back to anytime.";
 
   return (
     <div style={{
@@ -234,24 +246,9 @@ export function ProcessingScreen({ isDark: _isDark, theme: T, email, name, targe
           40% { transform: translate(40px, 80px) scale(1.1); }
           80% { transform: translate(-50px, -30px) scale(0.9); }
         }
-        @keyframes primingShimmer {
-          0%   { background-position: -200% center; }
-          100% { background-position:  200% center; }
-        }
-        .priming-shimmer {
-          background: linear-gradient(
-            90deg,
-            currentColor 0%,
-            currentColor 35%,
-            rgba(255,255,255,0.95) 50%,
-            currentColor 65%,
-            currentColor 100%
-          );
-          background-size: 200% auto;
-          background-clip: text;
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          animation: primingShimmer 4.5s linear infinite;
+        @keyframes charGlow {
+          0%, 100% { opacity: 0.35; }
+          12%, 28% { opacity: 1; }
         }
       `}</style>
 
@@ -347,7 +344,6 @@ export function ProcessingScreen({ isDark: _isDark, theme: T, email, name, targe
               {currentAside}
             </p>
             <p
-              className="priming-shimmer"
               style={{
                 fontSize: 14,
                 fontWeight: 700,
@@ -359,7 +355,17 @@ export function ProcessingScreen({ isDark: _isDark, theme: T, email, name, targe
                 marginInline: 'auto',
               }}
             >
-              We{email ? `'ll send the full report to ${email} once it's ready` : "'re building your personalised report — results land on the next screen"}. Check your inbox for a copy you can come back to anytime.
+              {shimmerText.split('').map((char, i) => (
+                <span
+                  key={i}
+                  style={{
+                    animation: 'charGlow 21s ease-in-out infinite',
+                    animationDelay: `${i * 60}ms`,
+                  }}
+                >
+                  {char}
+                </span>
+              ))}
             </p>
           </>
         )}

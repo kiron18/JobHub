@@ -17,7 +17,7 @@ const FRAMEWORK_LABELS: Record<string, { label: string; color: string }> = {
     vic_vpsc: { label: 'Vic VPSC Framework', color: 'text-indigo-400' },
     university_academic: { label: 'University Academic', color: 'text-amber-400' },
     university_professional: { label: 'University Professional (HEW)', color: 'text-amber-400' },
-    general: { label: 'General Criteria', color: 'text-slate-400' },
+    general: { label: 'General Criteria', color: 'text-[#5C5750]' },
 };
 
 export function CriteriaInputPanel({ criteriaText, onChange, onExtracted, employerFramework }: CriteriaInputPanelProps) {
@@ -62,11 +62,11 @@ export function CriteriaInputPanel({ criteriaText, onChange, onExtracted, employ
     }, [criteriaText]);
 
     return (
-        <div className="rounded-xl border border-slate-700/50 bg-slate-900/60 overflow-hidden mb-4">
+        <div className="rounded-xl border border-[rgba(26,24,20,0.10)] bg-white/80 overflow-hidden mb-4">
             {/* Header */}
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-800 bg-slate-900/40">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-[rgba(26,24,20,0.08)] bg-white/60">
                 <List size={13} className="text-purple-400" />
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Selection Criteria</span>
+                <span className="text-[10px] font-black text-[#5C5750] uppercase tracking-widest">Selection Criteria</span>
                 {framework && (
                     <span className={`text-[9px] font-bold uppercase tracking-wider ${framework.color}`}>
                         {framework.label}
@@ -76,8 +76,8 @@ export function CriteriaInputPanel({ criteriaText, onChange, onExtracted, employ
 
             <div className="p-4 space-y-3">
                 {/* Instructions */}
-                <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/30 space-y-2">
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">How to find your selection criteria</p>
+                <div className="p-3 bg-[#F4EFE8]/60 rounded-lg border border-[rgba(26,24,20,0.06)] space-y-2">
+                    <p className="text-[10px] font-black text-[#8B847B] uppercase tracking-widest">How to find your selection criteria</p>
                     <ol className="space-y-1.5">
                         {[
                             'Go back to the job listing',
@@ -87,7 +87,7 @@ export function CriteriaInputPanel({ criteriaText, onChange, onExtracted, employ
                         ].map((step, i) => (
                             <li key={i} className="flex items-start gap-2">
                                 <span className="text-[10px] font-black text-purple-400 shrink-0 mt-0.5">{i + 1}.</span>
-                                <span className="text-[11px] text-slate-400 leading-snug">{step}</span>
+                                <span className="text-[11px] text-[#5C5750] leading-snug">{step}</span>
                             </li>
                         ))}
                     </ol>
@@ -99,12 +99,12 @@ export function CriteriaInputPanel({ criteriaText, onChange, onExtracted, employ
                     onChange={e => onChange(e.target.value)}
                     placeholder={`Paste the full criteria section here, even the whole position description. We'll extract the criteria automatically.\n\nFor example:\n1. Demonstrated ability to lead and manage teams\n2. Strong communication and stakeholder engagement skills`}
                     rows={8}
-                    className="w-full bg-slate-800/60 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-300 outline-none focus:border-purple-500 transition-colors resize-none leading-relaxed placeholder:text-slate-600"
+                    className="w-full bg-[#F4EFE8]/80 border border-[rgba(26,24,20,0.16)] rounded-xl px-4 py-3 text-sm text-[#1A1814] outline-none focus:border-purple-500 transition-colors resize-none leading-relaxed placeholder:text-[#8B847B]"
                 />
 
                 {/* Extraction status */}
                 {extracting && (
-                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                    <div className="flex items-center gap-2 text-[11px] text-[#8B847B]">
                         <Loader2 size={11} className="animate-spin text-purple-400" />
                         Reading your criteria…
                     </div>
@@ -128,9 +128,9 @@ export function CriteriaInputPanel({ criteriaText, onChange, onExtracted, employ
                         </div>
                         <div className="space-y-1.5">
                             {extracted.map((criterion, i) => (
-                                <div key={i} className="flex items-start gap-2.5 p-2.5 bg-slate-800/40 rounded-lg border border-slate-700/30">
+                                <div key={i} className="flex items-start gap-2.5 p-2.5 bg-[#F4EFE8]/60 rounded-lg border border-[rgba(26,24,20,0.06)]">
                                     <span className="text-[10px] font-black text-purple-400 mt-0.5 shrink-0 w-4">{i + 1}.</span>
-                                    <p className="text-[11px] text-slate-300 leading-snug">{criterion}</p>
+                                    <p className="text-[11px] text-[#1A1814] leading-snug">{criterion}</p>
                                 </div>
                             ))}
                         </div>

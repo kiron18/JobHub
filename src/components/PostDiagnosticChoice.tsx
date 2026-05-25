@@ -1,11 +1,11 @@
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import { scanProfile, type ProfileIssue } from '../lib/scanProfile';
+import { warm } from '../lib/theme/warmTokens';
 
 const PETROL = '#2D5A6E';
 const GOLD   = '#C5A059';
 const SAGE   = '#7DA67D';
-const SLATE  = '#A0A4A8';
 
 interface PostDiagnosticChoiceProps {
   onApplyNow: () => void;
@@ -13,8 +13,12 @@ interface PostDiagnosticChoiceProps {
   profile?: any;
 }
 
+function toTitleCase(str: string): string {
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+}
+
 export function PostDiagnosticChoice({ onApplyNow, onSeeDiagnostic, profile }: PostDiagnosticChoiceProps) {
-  const firstName = profile?.name ? String(profile.name).split(' ')[0] : null;
+  const firstName = profile?.name ? toTitleCase(String(profile.name).split(' ')[0]) : null;
   const { issues, totalCritical } = scanProfile(profile);
   const hasIssues = issues.length > 0;
 
@@ -22,7 +26,7 @@ export function PostDiagnosticChoice({ onApplyNow, onSeeDiagnostic, profile }: P
     <div style={{
       minHeight: '100vh',
       overflowY: 'auto',
-      background: '#080b12',
+      background: warm.colors.bgCanvas,
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
@@ -54,7 +58,7 @@ export function PostDiagnosticChoice({ onApplyNow, onSeeDiagnostic, profile }: P
             margin: '0 0 14px',
             fontSize: 'clamp(26px, 5vw, 36px)',
             fontWeight: 900,
-            color: '#E0E0E0',
+            color: warm.colors.textPrimary,
             letterSpacing: '-0.025em',
             lineHeight: 1.15,
             textAlign: 'center',
@@ -68,7 +72,7 @@ export function PostDiagnosticChoice({ onApplyNow, onSeeDiagnostic, profile }: P
             margin: '0 0 14px',
             fontSize: 'clamp(26px, 5vw, 36px)',
             fontWeight: 900,
-            color: '#E0E0E0',
+            color: warm.colors.textPrimary,
             letterSpacing: '-0.025em',
             lineHeight: 1.15,
             textAlign: 'center',
@@ -84,7 +88,7 @@ export function PostDiagnosticChoice({ onApplyNow, onSeeDiagnostic, profile }: P
           <p style={{
             margin: '0 auto 32px',
             fontSize: 15,
-            color: SLATE,
+            color: warm.colors.textSecondary,
             lineHeight: 1.65,
             textAlign: 'center',
             maxWidth: 480,
@@ -96,7 +100,7 @@ export function PostDiagnosticChoice({ onApplyNow, onSeeDiagnostic, profile }: P
           <p style={{
             margin: '0 auto 32px',
             fontSize: 15,
-            color: SLATE,
+            color: warm.colors.textSecondary,
             lineHeight: 1.65,
             textAlign: 'center',
             maxWidth: 500,
@@ -120,8 +124,8 @@ export function PostDiagnosticChoice({ onApplyNow, onSeeDiagnostic, profile }: P
                   alignItems: 'flex-start',
                   gap: 12,
                   padding: '14px 16px',
-                  background: 'rgba(255,255,255,0.025)',
-                  border: '1px solid rgba(255,255,255,0.06)',
+                  background: warm.colors.bgAlt,
+                  border: `1px solid ${warm.colors.borderWhisper}`,
                   borderLeft: `3px solid ${i === 0 ? GOLD : i === 1 ? PETROL : SAGE}`,
                   borderRadius: 10,
                 }}
@@ -147,7 +151,7 @@ export function PostDiagnosticChoice({ onApplyNow, onSeeDiagnostic, profile }: P
                     margin: '0 0 4px',
                     fontSize: 13,
                     fontWeight: 700,
-                    color: '#E0E0E0',
+                    color: warm.colors.textPrimary,
                     letterSpacing: '-0.01em',
                   }}>
                     {issue.label}
@@ -155,7 +159,7 @@ export function PostDiagnosticChoice({ onApplyNow, onSeeDiagnostic, profile }: P
                   <p style={{
                     margin: 0,
                     fontSize: 12.5,
-                    color: SLATE,
+                    color: warm.colors.textSecondary,
                     lineHeight: 1.55,
                     fontWeight: 450,
                   }}>
@@ -172,7 +176,7 @@ export function PostDiagnosticChoice({ onApplyNow, onSeeDiagnostic, profile }: P
           <p style={{
             margin: '0 auto 36px',
             fontSize: 13,
-            color: '#75787d',
+            color: warm.colors.textMuted,
             lineHeight: 1.6,
             textAlign: 'center',
             maxWidth: 420,
@@ -188,7 +192,7 @@ export function PostDiagnosticChoice({ onApplyNow, onSeeDiagnostic, profile }: P
           <p style={{
             margin: '0 auto 36px',
             fontSize: 13,
-            color: '#75787d',
+            color: warm.colors.textMuted,
             lineHeight: 1.6,
             textAlign: 'center',
             maxWidth: 420,
@@ -215,7 +219,7 @@ export function PostDiagnosticChoice({ onApplyNow, onSeeDiagnostic, profile }: P
               justifyContent: 'center',
               gap: 8,
               background: PETROL,
-              color: '#E0E0E0',
+              color: warm.colors.textPrimary,
               border: 'none',
               borderRadius: 14,
               padding: '16px 32px',
@@ -235,7 +239,7 @@ export function PostDiagnosticChoice({ onApplyNow, onSeeDiagnostic, profile }: P
             style={{
               background: 'none',
               border: 'none',
-              color: '#75787d',
+              color: warm.colors.textMuted,
               fontSize: 12.5,
               fontWeight: 600,
               cursor: 'pointer',
@@ -244,7 +248,7 @@ export function PostDiagnosticChoice({ onApplyNow, onSeeDiagnostic, profile }: P
               transition: 'color 0.15s',
             }}
             onMouseEnter={e => { e.currentTarget.style.color = '#A0A4A8'; }}
-            onMouseLeave={e => { e.currentTarget.style.color = '#75787d'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = warm.colors.textMuted; }}
           >
             {hasIssues ? 'Fix it and start applying →' : 'Start applying now →'}
           </button>
