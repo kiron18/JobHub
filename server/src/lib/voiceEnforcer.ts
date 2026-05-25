@@ -94,31 +94,65 @@ export function enforceFirstPersonSummary(markdown: string, opts: EnforceOptions
 }
 
 /**
- * Locate the Professional Summary section. Matches several heading variants
- * (## Professional Summary, ## Summary, ## Profile, ## About). Returns the
- * heading text, the body text, and the absolute slice indices so the caller
- * can swap the body without disturbing surrounding content.
+ * Locate the Professional Summary section. Tries an explicit heading first
+ * (## Professional Summary, ## Summary, ## Profile, ## About). Falls back to
+ * the first prose paragraph between the header block and the first ##
+ * heading when the LLM omits the heading entirely. Returns the heading text
+ * (may be empty), the body text, and the absolute slice indices so the
+ * caller can swap the body without disturbing surrounding content.
  */
 function extractSummaryBlock(markdown: string): { heading: string; body: string; startIndex: number; endIndex: number } | null {
-    // Match "## Professional Summary" (or close variants) up to the next ## heading or EOF.
+    // Strategy 1 — explicit heading (## Professional Summary etc.)
     const headingRegex = /(^|\n)(#{1,3}\s*(?:Professional\s+Summary|Summary|Profile|Career\s+Summary|About)\s*\n)/i;
     const m = headingRegex.exec(markdown);
-    if (!m) return null;
+    if (m) {
+        const headingStart = m.index + m[1].length;
+        const bodyStart = headingStart + m[2].length;
+        const rest = markdown.slice(bodyStart);
+        const nextHeading = /\n#{1,3}\s+\S/.exec(rest);
+        const bodyEnd = nextHeading ? bodyStart + nextHeading.index : markdown.length;
+        return {
+            heading: m[2],
+            body: markdown.slice(bodyStart, bodyEnd),
+            startIndex: headingStart,
+            endIndex: bodyEnd,
+        };
+    }
 
-    const headingStart = m.index + m[1].length;
-    const bodyStart = headingStart + m[2].length;
+    // Strategy 2 — headingless. The summary is the last prose paragraph
+    // BEFORE the first ## heading (Work Experience etc.). Header block is
+    // short single-line items (# Name, *Title*, contact line) — the summary
+    // is the long multi-sentence paragraph that follows.
+    const firstSection = /\n#{1,3}\s+\S/.exec(markdown);
+    if (!firstSection) return null;
 
-    // Body runs until the next ## or # heading (start of next section), or end of string.
-    const rest = markdown.slice(bodyStart);
-    const nextHeading = /\n#{1,3}\s+\S/.exec(rest);
-    const bodyEnd = nextHeading ? bodyStart + nextHeading.index : markdown.length;
+    const preamble = markdown.slice(0, firstSection.index);
+    const paragraphs = preamble.split(/\n\s*\n/);
 
-    return {
-        heading: m[2],
-        body: markdown.slice(bodyStart, bodyEnd),
-        startIndex: headingStart,
-        endIndex: bodyEnd,
-    };
+    // Walk from end of preamble back, find first paragraph that looks like
+    // a summary: long enough to be prose, not a heading, not a list, not the
+    // contact line (which contains "|" separators or "@" for email).
+    for (let i = paragraphs.length - 1; i >= 0; i--) {
+        const raw = paragraphs[i];
+        const trimmed = raw.trim();
+        if (trimmed.length < 80) continue;         // too short
+        if (trimmed.startsWith('#')) continue;     // heading
+        if (/^[-*]\s/.test(trimmed)) continue;     // bullet list
+        if (trimmed.startsWith('*') && trimmed.endsWith('*') && !trimmed.includes('\n')) continue; // italic title line
+        if (trimmed.includes('|') && trimmed.length < 200) continue; // contact line
+        if (/@\S+\.\S+/.test(trimmed) && trimmed.length < 200) continue; // email-bearing line
+        // Found the summary paragraph. Compute its absolute slice indices.
+        const joinedBefore = paragraphs.slice(0, i).join('\n\n');
+        const startIndex = joinedBefore.length + (i > 0 ? 2 : 0); // +2 for the rejoining \n\n
+        return {
+            heading: '',
+            body: raw,
+            startIndex,
+            endIndex: startIndex + raw.length,
+        };
+    }
+
+    return null;
 }
 
 function scrubBody(body: string, firstName: string, yearsOfExperience?: number | null): string {
