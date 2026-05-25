@@ -14,6 +14,7 @@ import { enforceFirstPersonSummary, scrubAITells, enforceFirstPersonCoverLetter,
 import { computeYearsOfExperience } from '../lib/profileMath';
 import { checkAtsKeywords } from '../lib/atsKeywords';
 import { collectSignals } from '../lib/qualitySignals';
+import { parseJD } from '../lib/jdParser';
 import fs from 'fs';
 import path from 'path';
 
@@ -224,6 +225,9 @@ router.post('/:type', authenticate, async (req, res) => {
             }
         }
 
+        // ── JD parser — detect Seek-style employer questions ─────────────────
+        const parsedJD = parseJD(jobDescription);
+
         const prompt = blueprintResult
             ? DOCUMENT_GENERATION_PROMPT_WITH_BLUEPRINT(
                 docType,
@@ -237,7 +241,8 @@ router.post('/:type', authenticate, async (req, res) => {
                 selectionCriteriaText,
                 perCriterionAchievements,
                 employerFramework,
-                type
+                type,
+                parsedJD.employerQuestions.length > 0 ? parsedJD.employerQuestions : undefined
             )
             : DOCUMENT_GENERATION_PROMPT(
                 docType,
@@ -250,7 +255,8 @@ router.post('/:type', authenticate, async (req, res) => {
                 selectionCriteriaText,
                 perCriterionAchievements,
                 employerFramework,
-                type
+                type,
+                parsedJD.employerQuestions.length > 0 ? parsedJD.employerQuestions : undefined
             );
 
         console.log(`[Generation] Stage 2: calling Llama for ${type}...`);
@@ -378,6 +384,14 @@ router.post('/:type', authenticate, async (req, res) => {
                 criticalMissing: atsResult.warnings.filter((w: string) => w.startsWith('CRITICAL')).map((w: string) => w.replace(/^CRITICAL:\s*/, '')),
             } : null,
         });
+
+        if (parsedJD.warning) {
+            qualitySignals.push({
+                severity: 'info',
+                category: 'employer_questions',
+                message: parsedJD.warning,
+            });
+        }
         if (qualitySignals.length > 0) {
             console.log('[Generation] Quality signals:', qualitySignals.map((s: any) => `[${s.severity}] ${s.category}: ${s.message}`));
         }

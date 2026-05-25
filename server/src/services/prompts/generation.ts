@@ -206,7 +206,8 @@ export const DOCUMENT_GENERATION_PROMPT_WITH_BLUEPRINT = (
     selectionCriteriaText?: string | null,
     perCriterionAchievements?: CriterionAchievementMap[] | null,
     employerFramework?: string | null,
-    routeType?: string | null
+    routeType?: string | null,
+    employerQuestions?: string[]
 ): string => {
     const isAcademicDoc = routeType === 'teaching-philosophy' || routeType === 'research-statement' || routeType === 'offer-negotiation' || routeType === 'linkedin-profile' || routeType === 'cold-outreach' || routeType === 'rejection-response';
     // Derived facts the LLM cannot compute without help (no current date in prompt,
@@ -477,6 +478,14 @@ ${buildPerCriterionBlock(perCriterionAchievements)}
 IMPORTANT: Generate ALL criteria listed above. Each response is a separate headed section.
 ` : ''}
 
+${employerQuestions && employerQuestions.length > 0 && type === 'COVER_LETTER' ? `
+EMPLOYER QUESTIONS — the JD asks the candidate to answer these. Address each
+proactively in the cover letter body where relevant. Do not include verbatim
+questions; weave the answers into the narrative.
+
+${employerQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}
+` : ''}
+
 CONSTRAINTS:
 - Do NOT use bold ** within bullet points unless highlighting a metric.
 - Do NOT include any meta-talk or pleasantries (e.g. "Here is your cover letter...").
@@ -511,7 +520,8 @@ export const DOCUMENT_GENERATION_PROMPT = (
     selectionCriteriaText?: string | null,
     perCriterionAchievements?: CriterionAchievementMap[] | null,
     employerFramework?: string | null,
-    routeType?: string | null
+    routeType?: string | null,
+    employerQuestions?: string[]
 ) => {
     const isAcademicDoc = routeType === 'teaching-philosophy' || routeType === 'research-statement' || routeType === 'offer-negotiation' || routeType === 'linkedin-profile' || routeType === 'cold-outreach' || routeType === 'rejection-response';
     const todayDate = todayIso();
@@ -623,6 +633,14 @@ ${perCriterionAchievements && perCriterionAchievements.length > 0 ? `
 TARGETED EVIDENCE per criterion (semantic search pre-matched):
 ${buildPerCriterionBlock(perCriterionAchievements)}
 ` : ''}
+` : ''}
+
+${employerQuestions && employerQuestions.length > 0 && type === 'COVER_LETTER' ? `
+EMPLOYER QUESTIONS — the JD asks the candidate to answer these. Address each
+proactively in the cover letter body where relevant. Do not include verbatim
+questions; weave the answers into the narrative.
+
+${employerQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}
 ` : ''}
 
 CONSTRAINTS:

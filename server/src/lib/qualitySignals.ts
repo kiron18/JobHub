@@ -1,6 +1,6 @@
 export type QualitySignal = {
     severity: 'info' | 'warning' | 'critical';
-    category: 'ats_keywords' | 'voice' | 'achievement_match' | 'quality_gate' | 'blueprint' | 'bridged_gap';
+    category: 'ats_keywords' | 'voice' | 'achievement_match' | 'quality_gate' | 'blueprint' | 'bridged_gap' | 'employer_questions';
     message: string;
     evidence?: string[];
 };
