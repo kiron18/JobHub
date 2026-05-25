@@ -16,12 +16,27 @@ import {
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
-import { useAppTheme } from '../contexts/ThemeContext';
 import api from '../lib/api';
+import { ProcessStrip } from '../components/processStrip';
+import { warm } from '../lib/theme/warmTokens';
+
 const COLLAPSED_WIDTH = 72;
 const EXPANDED_WIDTH = 240;
 const INTRO_DURATION_MS = 2000;
 const TOUCH_BREAKPOINT_PX = 768;
+
+// Warm theme override — matches landing palette. ThemeContext preserved per spec §7.4.
+const warmT = {
+  bg: warm.colors.bgCanvas,
+  dotColor: warm.colors.borderWhisper,
+  text: warm.colors.textPrimary,
+  textMuted: warm.colors.textSecondary,
+  textFaint: warm.colors.textMuted,
+  card: warm.colors.bgSurface,
+  cardBorder: warm.colors.borderWhisper,
+  cardShadow: warm.shadow.soft,
+  accentSuccess: warm.colors.success,
+};
 
 function useIsTouch(): boolean {
     const [isTouch, setIsTouch] = useState<boolean>(() =>
@@ -39,7 +54,6 @@ function useIsTouch(): boolean {
 
 export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { user, signOut } = useAuth();
-    const { T } = useAppTheme();
     const isTouch = useIsTouch();
 
     // Profile prefetch — used implicitly by downstream queries
@@ -123,7 +137,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
             <div className="flex items-center gap-3 mb-10 px-2">
                 <div
                     className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xl flex-shrink-0"
-                    style={{ background: '#2D5A6E', color: T.text }}
+                    style={{ background: warm.colors.accentPetrol, color: warmT.text }}
                 >
                     J
                 </div>
@@ -135,7 +149,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                             exit={{ opacity: 0, x: -8 }}
                             transition={{ duration: 0.15 }}
                             className="text-xl font-bold tracking-tight whitespace-nowrap"
-                            style={{ color: T.text }}
+                            style={{ color: warmT.text }}
                         >
                             JobReady
                         </motion.h1>
@@ -169,7 +183,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                             {badge !== null && (
                                 <span
                                     className={`flex items-center justify-center text-[10px] font-black leading-none ${showLabels ? 'w-5 h-5 rounded-full' : 'absolute top-1 right-1 w-3.5 h-3.5 rounded-full'}`}
-                                    style={{ background: T.accentSuccess, color: '#1A1C1E' }}
+                                    style={{ background: warmT.accentSuccess, color: warm.colors.bgCanvas }}
                                     aria-label={`${badge} applications need follow-up`}
                                 >
                                     {showLabels ? badge : ''}
@@ -184,8 +198,8 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                                 key={item.label}
                                 type="button"
                                 onClick={() => { item.onClick!(); if (isTouch) setDrawerOpen(false); }}
-                                className="relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all hover:bg-white/[0.04] text-left"
-                                style={{ color: T.textMuted, background: 'transparent', border: '1px solid transparent' }}
+                                className="relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all hover:bg-black/[0.04] text-left"
+                                style={{ color: warmT.textMuted, background: 'transparent', border: '1px solid transparent' }}
                             >
                                 {iconAndLabel}
                             </button>
@@ -198,13 +212,14 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                             to={item.to!}
                             end={item.to === '/'}
                             onClick={() => isTouch && setDrawerOpen(false)}
+                            {...(item.to === '/tracker' ? { 'data-process-nav': 'track' } : {})}
                             className={({ isActive }) =>
-                                `relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${isActive ? '' : 'hover:bg-white/[0.04]'}`
+                                `relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${isActive ? '' : 'hover:bg-black/[0.04]'}`
                             }
                             style={({ isActive }) => ({
-                                color: isActive ? T.text : T.textMuted,
-                                background: isActive ? 'rgba(45,90,110,0.18)' : 'transparent',
-                                border: isActive ? '1px solid rgba(45,90,110,0.35)' : '1px solid transparent',
+                                color: isActive ? warmT.text : warmT.textMuted,
+                                background: isActive ? 'rgba(45,90,110,0.10)' : 'transparent',
+                                border: isActive ? '1px solid rgba(45,90,110,0.25)' : '1px solid transparent',
                             })}
                         >
                             {iconAndLabel}
@@ -223,17 +238,17 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                             transition={{ duration: 0.15 }}
                             className="px-3 py-2"
                         >
-                            <p className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={{ color: T.textFaint }}>
+                            <p className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={{ color: warmT.textFaint }}>
                                 Account
                             </p>
-                            <p className="text-xs truncate" style={{ color: T.textMuted }}>{user?.email}</p>
+                            <p className="text-xs truncate" style={{ color: warmT.textMuted }}>{user?.email}</p>
                         </motion.div>
                     )}
                 </AnimatePresence>
                 <button
                     onClick={() => signOut()}
-                    className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all border border-transparent hover:border-white/10 hover:bg-white/5"
-                    style={{ color: T.textFaint }}
+                    className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all border border-transparent hover:border-black/10 hover:bg-black/5"
+                    style={{ color: warmT.textFaint }}
                     title="Sign Out"
                 >
                     <LogOut size={14} className="flex-shrink-0" />
@@ -247,10 +262,10 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
         <div
             className="flex h-screen overflow-hidden w-screen"
             style={{
-                backgroundColor: T.bg,
-                backgroundImage: `radial-gradient(circle, ${T.dotColor} 1px, transparent 1px)`,
+                backgroundColor: warmT.bg,
+                backgroundImage: `radial-gradient(circle, ${warmT.dotColor} 1px, transparent 1px)`,
                 backgroundSize: '22px 22px',
-                color: T.text,
+                color: warmT.text,
             }}
         >
             {/* Desktop sidebar */}
@@ -263,8 +278,8 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                     transition={{ duration: 0.25, ease: 'easeOut' }}
                     className="flex flex-col py-6 px-3 flex-shrink-0"
                     style={{
-                        background: T.card,
-                        borderRight: `1px solid ${T.cardBorder}`,
+                        background: warmT.card,
+                        borderRight: `1px solid ${warmT.cardBorder}`,
                     }}
                 >
                     {sidebarContent(expanded)}
@@ -278,9 +293,9 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                     aria-label="Open navigation"
                     className="fixed top-4 left-4 z-30 w-10 h-10 rounded-xl flex items-center justify-center"
                     style={{
-                        background: T.card,
-                        border: `1px solid ${T.cardBorder}`,
-                        color: T.text,
+                        background: warmT.card,
+                        border: `1px solid ${warmT.cardBorder}`,
+                        color: warmT.text,
                     }}
                 >
                     <Menu size={18} />
@@ -297,7 +312,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                             exit={{ opacity: 0 }}
                             transition={{ duration: 0.2 }}
                             className="fixed inset-0 z-40"
-                            style={{ background: 'rgba(0,0,0,0.5)' }}
+                            style={{ background: 'rgba(26, 24, 20, 0.36)' }}
                             onClick={() => setDrawerOpen(false)}
                         />
                         <motion.aside
@@ -308,15 +323,15 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                             className="fixed top-0 left-0 bottom-0 z-50 flex flex-col py-6 px-3"
                             style={{
                                 width: EXPANDED_WIDTH,
-                                background: T.card,
-                                borderRight: `1px solid ${T.cardBorder}`,
+                                background: warmT.card,
+                                borderRight: `1px solid ${warmT.cardBorder}`,
                             }}
                         >
                             <button
                                 onClick={() => setDrawerOpen(false)}
                                 aria-label="Close navigation"
                                 className="absolute top-4 right-3 w-8 h-8 rounded-lg flex items-center justify-center"
-                                style={{ color: T.textMuted }}
+                                style={{ color: warmT.textMuted }}
                             >
                                 <X size={16} />
                             </button>
@@ -332,6 +347,9 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                     className="max-w-5xl mx-auto px-6 md:px-10 pt-10 pb-6"
                     style={{ paddingTop: isTouch ? 64 : 40 }}
                 >
+                    <div style={{ marginBottom: 24 }}>
+                        <ProcessStrip />
+                    </div>
                     {children}
                 </div>
 
@@ -340,9 +358,9 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                     <Link
                         to="/mindset"
                         className="inline-block text-xs transition-colors"
-                        style={{ color: T.textFaint, textDecoration: 'none' }}
-                        onMouseEnter={(e) => (e.currentTarget.style.color = T.textMuted)}
-                        onMouseLeave={(e) => (e.currentTarget.style.color = T.textFaint)}
+                        style={{ color: warmT.textFaint, textDecoration: 'none' }}
+                        onMouseEnter={(e) => (e.currentTarget.style.color = warmT.textMuted)}
+                        onMouseLeave={(e) => (e.currentTarget.style.color = warmT.textFaint)}
                     >
                         Dealing with silence? Quick-ref mindset tips →
                     </Link>
