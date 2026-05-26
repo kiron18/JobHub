@@ -89,6 +89,10 @@ export function ApplyDeepLinkButton({
         window.open(sourceUrl, '_blank', 'noopener,noreferrer');
       }
 
+      // 5. Mark the Save step complete in the process strip — downloading the
+      //    docs is the explicit user signal that they have what they need.
+      window.dispatchEvent(new CustomEvent('process:saved'));
+
       toast.success(
         sourceUrl
           ? `Cover letter copied. ${format.toUpperCase()}s downloaded. Opening ${label}…`

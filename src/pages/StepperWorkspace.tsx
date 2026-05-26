@@ -1167,7 +1167,13 @@ function TrackStep({
                     <button onClick={() => navigate('/tracker')} style={ghostButtonStyle(false)}>
                         Open tracker
                     </button>
-                    <button onClick={() => navigate('/')} style={primaryButtonStyle(false)}>
+                    <button
+                        onClick={() => {
+                            window.dispatchEvent(new CustomEvent('process:saved'));
+                            navigate('/');
+                        }}
+                        style={primaryButtonStyle(false)}
+                    >
                         Apply for another role
                         <ArrowRight size={14} />
                     </button>

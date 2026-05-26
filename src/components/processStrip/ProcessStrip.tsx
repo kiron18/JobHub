@@ -165,6 +165,16 @@ export const ProcessStrip: React.FC = () => {
     };
   }, [currentStep, location.pathname]);
 
+  // Sidebar Applications nav indicator — glows while the track tooltip is queued
+  // or visible so the user can spot the destination even before the tip opens.
+  useEffect(() => {
+    if (!showTrackTip) return;
+    const el = document.querySelector('[data-process-nav="track"]');
+    if (!el) return;
+    el.classList.add('process-pulse-target');
+    return () => { el.classList.remove('process-pulse-target'); };
+  }, [showTrackTip, location.pathname]);
+
   // Tooltips render alongside whichever strip variant is visible (or even when
   // manually hidden — the user should still be able to complete the flow).
   const tooltips = (
@@ -181,6 +191,7 @@ export const ProcessStrip: React.FC = () => {
       {showTrackTip && (
         <ProcessStripTooltip
           anchorSelector='[data-process-nav="track"]'
+          delayMs={10000}
           dismissLabel="Got it"
           onDismiss={dismissTrackTip}
         >
