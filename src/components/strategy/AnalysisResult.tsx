@@ -249,6 +249,7 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip: _on
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                                     <input
                                                         type="checkbox"
+                                                        id={`bridge-${i}`}
                                                         checked={isBridged}
                                                         onChange={() => {
                                                             setBridgedIndices(prev => {
@@ -261,19 +262,15 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip: _on
                                                                 return next;
                                                             });
                                                         }}
-                                                        style={{ accentColor: warm.colors.accentPetrol, cursor: 'pointer', flexShrink: 0 }}
+                                                        style={{ accentColor: warm.colors.accentPetrol, cursor: 'pointer', flexShrink: 0, width: 18, height: 18 }}
                                                     />
-                                                    <p style={{
-                                                        margin: 0,
-                                                        fontSize: 13,
-                                                        fontWeight: 700,
-                                                        color: warm.colors.textPrimary,
+                                                    <label htmlFor={`bridge-${i}`} style={{ margin: 0, fontSize: 13, fontWeight: 700, color: warm.colors.textPrimary, cursor: 'pointer',
                                                         textDecoration: isBridged ? 'line-through' : 'none',
                                                         textDecorationColor: 'rgba(125,166,125,0.55)',
                                                         textDecorationThickness: '1px',
                                                     }}>
                                                         {item.skill}
-                                                    </p>
+                                                    </label>
                                                 </div>
                                                 {isBridged ? (
                                                     <div style={{
@@ -290,15 +287,21 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip: _on
                                                     }}>
                                                         <p style={{ margin: 0 }}>{item.suggestion}</p>
                                                         <div style={{ marginTop: 6, display: 'flex', gap: 10 }}>
-                                                            <span style={{
-                                                                fontSize: 11,
-                                                                fontWeight: 600,
-                                                                color: warm.colors.accentPetrol,
-                                                                cursor: 'pointer',
-                                                            }}>
+                                                            <button
+                                                                onClick={() => {}}  // Placeholder — inline edit in follow-up
+                                                                style={{
+                                                                    fontSize: 11,
+                                                                    fontWeight: 600,
+                                                                    color: warm.colors.accentPetrol,
+                                                                    background: 'transparent',
+                                                                    border: 'none',
+                                                                    cursor: 'pointer',
+                                                                    padding: '4px 0',
+                                                                }}
+                                                            >
                                                                 &#9998; Edit
-                                                            </span>
-                                                            <span
+                                                            </button>
+                                                            <button
                                                                 onClick={() => {
                                                                     setBridgedIndices(prev => {
                                                                         const next = new Set(prev);
@@ -310,11 +313,14 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip: _on
                                                                     fontSize: 11,
                                                                     fontWeight: 600,
                                                                     color: warm.colors.textMuted,
+                                                                    background: 'transparent',
+                                                                    border: 'none',
                                                                     cursor: 'pointer',
+                                                                    padding: '4px 0',
                                                                 }}
                                                             >
                                                                 &#215; Undo
-                                                            </span>
+                                                            </button>
                                                         </div>
                                                     </div>
                                                 ) : (
