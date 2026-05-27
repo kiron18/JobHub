@@ -175,6 +175,10 @@ async function ensureColumns() {
         ADD COLUMN IF NOT EXISTS "followUpSentAt" TIMESTAMP(3);
     `);
     await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Document"
+        ADD COLUMN IF NOT EXISTS "qualitySignals" JSONB;
+    `);
+    await prisma.$executeRawUnsafe(`
       ALTER TABLE "CandidateProfile"
         ADD COLUMN IF NOT EXISTS "achievementCountAtDerivation" INTEGER,
         ADD COLUMN IF NOT EXISTS "identityCards" JSONB,
