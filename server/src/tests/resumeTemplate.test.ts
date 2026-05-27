@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { profileToMarkdown } from '@shared/lib/profileToMarkdown';
-import { profileToResumeData, type ProfileWithRelations } from '@shared/lib/profileToResumeData';
+import { profileToMarkdown } from '../../../src/lib/profileToMarkdown';
+import { profileToResumeData, type ProfileWithRelations } from '../../../src/lib/profileToResumeData';
 
 // ---------- helpers ----------
 
