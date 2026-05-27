@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../../index';
 import { authenticate } from '../../middleware/auth';
 import { sendStatusEmail } from '../../services/email';
+import { fetchCompanyIntel, buildSkillsPreview } from '../../services/companyIntel';
 
 const router = Router();
 
@@ -66,6 +67,43 @@ router.post('/jobs', authenticate, async (req, res) => {
             include: { documents: true }
         });
         res.status(201).json(job);
+
+        // ── Background: fetch company intel ────────────────────────────────────
+        // Fire-and-forget — never blocks the response. The intel is consumed by
+        // the cover letter generation flow later.
+        if (company && company.trim() !== 'Unknown Company') {
+            const profile = await prisma.candidateProfile.findUnique({
+                where: { userId: job.userId } as any,
+                select: { skills: true },
+            }).catch(() => null);
+
+            const skillsPreview = buildSkillsPreview(profile?.skills, 7);
+
+            // Use short excerpts from the job description for context
+            const jobExcerpts = (description || '')
+                .split('\n')
+                .filter((l: string) => l.trim().length > 20)
+                .slice(0, 3);
+
+            if (jobExcerpts.length > 0 || skillsPreview.length > 0) {
+                fetchCompanyIntel({
+                    companyName: company.trim(),
+                    jobTitle: title.trim(),
+                    jobExcerpts,
+                    candidateSkills: skillsPreview,
+                })
+                    .then(intel =>
+                        prisma.jobApplication.update({
+                            where: { id: job.id },
+                            data: { companyIntel: intel as any },
+                        })
+                    )
+                    .then(() => console.log(`[companyIntel] saved for job ${job.id}`))
+                    .catch((err: Error) =>
+                        console.warn('[companyIntel] background fetch failed:', err.message)
+                    );
+            }
+        }
     } catch (error) {
         console.error('Create Job Error:', error);
         res.status(500).json({ error: 'Failed to create job application' });
