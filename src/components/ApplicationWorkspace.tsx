@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -45,7 +45,7 @@ import type { DocType } from '../lib/exportDocx';
 import { trackDocumentGenerated, trackDocumentCopied } from '../lib/analytics';
 import { exportPdf } from '../lib/exportPdf';
 import { profileToMarkdown } from '../lib/profileToMarkdown';
-import { profileToResumeData } from '../lib/profileToResumeData';
+import { profileToResumeData, type ProfileWithRelations } from '../lib/profileToResumeData';
 import { ApplyContextBanner, type ApplyContext } from './ApplyContextBanner';
 import { getPlatformConfig, getApplyInstructions } from '../lib/platforms';
 import { DimensionsIsland } from './DimensionsIsland';
@@ -433,9 +433,7 @@ export const ApplicationWorkspace: React.FC = () => {
     };
 
     const executePdfDownload = async () => {
-        const content = state.activeTab === 'resume'
-            ? (state.documents['resume'] || (profile ? profileToMarkdown(profileToResumeData(profile as any)) : ''))
-            : state.documents[state.activeTab];
+        const content = resolvedContent;
         if (!content) return;
         setExportingPdf(true);
         try {
@@ -453,9 +451,7 @@ export const ApplicationWorkspace: React.FC = () => {
     };
 
     const handleDownloadPdf = () => {
-        const content = state.activeTab === 'resume'
-            ? (state.documents['resume'] || (profile ? profileToMarkdown(profileToResumeData(profile as any)) : ''))
-            : state.documents[state.activeTab];
+        const content = resolvedContent;
         if (!content) return;
         triggerDownloadWithReminder(() => executePdfDownload());
     };
@@ -470,9 +466,7 @@ export const ApplicationWorkspace: React.FC = () => {
     };
 
     const handleDownload = async () => {
-        const content = state.activeTab === 'resume'
-            ? (state.documents['resume'] || (profile ? profileToMarkdown(profileToResumeData(profile as any)) : ''))
-            : state.documents[state.activeTab];
+        const content = resolvedContent;
         if (!content) return;
 
         if (content.includes('[MISSING:')) {
@@ -700,9 +694,11 @@ export const ApplicationWorkspace: React.FC = () => {
         return raw.length > 20 ? raw.slice(0, 20).trimEnd() + '…' : raw;
     })();
 
-    const resumeMd = state.activeTab === 'resume'
-        ? (state.documents['resume'] || (profile ? profileToMarkdown(profileToResumeData(profile as any)) : ''))
-        : state.documents[state.activeTab] || '';
+    const resolvedContent = useMemo(() => {
+        if (state.activeTab !== 'resume') return state.documents[state.activeTab] || '';
+        return state.documents['resume']
+            || (profile ? profileToMarkdown(profileToResumeData(profile as ProfileWithRelations)) : '');
+    }, [state.activeTab, state.documents, profile]);
 
     const parseVerifyTokens = useCallback((markdown: string): { pills: string[]; stripped: string } => {
         const pills: string[] = [];
@@ -1880,7 +1876,7 @@ export const ApplicationWorkspace: React.FC = () => {
                                         className={`prose prose-slate max-w-none ${state.activeTab === 'cover-letter' ? '' : '[&_ul]:my-1 [&_li]:my-0.5 [&_li]:leading-snug [&_h1]:text-[18pt] [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-1 [&_h1]:tracking-tight [&_h2]:text-[10.5pt] [&_h2]:font-bold [&_h2]:mt-4 [&_h2]:mb-1 [&_h2]:uppercase [&_h2]:tracking-wide [&_h2]:border-b [&_h2]:border-slate-300 [&_h2]:pb-0.5 [&_h3]:text-[10.5pt] [&_h3]:font-bold [&_h3]:mt-2.5 [&_h3]:mb-0.5 [&_strong]:font-semibold text-[10.5pt] leading-[1.45]'}`}
                                     >
                                         <ReactMarkdown
-                                            children={normaliseMarkdown(parseVerifyTokens(resumeMd).stripped)}
+                                            children={normaliseMarkdown(parseVerifyTokens(resolvedContent).stripped)}
                                             components={{
                                                 text: ({ children }) => {
                                                     if (typeof children !== 'string') return <>{children}</>;
