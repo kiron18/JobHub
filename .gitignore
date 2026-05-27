@@ -2,9 +2,11 @@
 .env
 .env.local
 .env.production
+.env.staging
 server/.env
 server/.env.local
 server/.env.production
+server/.env.staging
 
 # Large/generated files
 Resumes/
