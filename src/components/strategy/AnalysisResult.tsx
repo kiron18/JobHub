@@ -16,7 +16,7 @@
  */
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, CheckCircle2, Sparkles, Lock, Pencil, AlertCircle, Check } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Sparkles, Lock, Pencil, AlertCircle } from 'lucide-react';
 import { warm } from '../../lib/theme/warmTokens';
 import { AchievementDraftModal } from './AchievementDraftModal';
 import { EnrichmentPrompt } from '../EnrichmentPrompt';
@@ -52,7 +52,7 @@ interface Props {
     onSkip?: () => void;
 }
 
-export function AnalysisResult({ result, jobDescription, onContinue, onSkip }: Props) {
+export function AnalysisResult({ result, jobDescription, onContinue, onSkip: _onSkip }: Props) {
     const { fitBands, extractedMetadata, dominantBand, insights, duplicate } = result;
     const { directMatch, bridgeableGap, hardGap } = fitBands;
 
@@ -66,7 +66,7 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip }: P
         dominantBand === 'directMatch'
             ? `Your achievements prove you can do ${directMatch.pct}% of this role right now.`
             : dominantBand === 'bridgeableGap'
-              ? `Direct match: ${directMatch.pct}%. Likely fit: ${directMatch.pct + bridgeableGap.pct}% once we name what you already do.`
+              ? `Direct match: ${directMatch.pct}%. Could add: ${directMatch.pct + bridgeableGap.pct}% once you name what you already do.`
               : 'This role lists requirements you haven\'t claimed on your profile.';
 
     return (
@@ -106,6 +106,54 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip }: P
                 </div>
             )}
 
+            {/* Sticky apply bar */}
+            <div style={{
+                position: 'sticky',
+                top: 24,
+                zIndex: 20,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: '14px 20px',
+                background: warm.colors.bgSurface,
+                border: `1px solid ${warm.colors.borderWhisper}`,
+                borderRadius: 14,
+                boxShadow: warm.shadow.soft,
+                marginBottom: 16,
+            }}>
+                <div>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: warm.colors.textPrimary }}>
+                        Apply for this role
+                    </p>
+                    <p style={{ margin: '2px 0 0', fontSize: 12, color: warm.colors.textMuted }}>
+                        {extractedMetadata.role} &middot; {extractedMetadata.company}
+                    </p>
+                </div>
+                <button
+                    onClick={onContinue}
+                    style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '10px 22px',
+                        fontSize: 14,
+                        fontWeight: 700,
+                        color: warm.colors.bgCanvas,
+                        background: warm.colors.accentPetrol,
+                        border: 'none',
+                        borderRadius: 12,
+                        cursor: 'pointer',
+                        boxShadow: warm.shadow.soft,
+                        letterSpacing: '-0.01em',
+                        whiteSpace: 'nowrap',
+                    }}
+                >
+                    Apply now
+                    <ArrowRight size={16} />
+                </button>
+            </div>
+
             {/* Headline + role/company */}
             <div>
                 <p style={{
@@ -135,29 +183,35 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip }: P
                 <ResultCard
                     accent={warm.colors.success}
                     icon={<CheckCircle2 size={18} />}
-                    label="Direct match"
+                    label="Include in resume"
                     pct={directMatch.pct}
                     body={
-                        <ul style={{ margin: '4px 0 0', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            {directMatch.evidence.length === 0 ? (
-                                <li style={{ fontSize: 13, color: warm.colors.textMuted, lineHeight: 1.6 }}>
-                                    No achievement evidence surfaced for this role.
-                                </li>
-                            ) : (
-                                directMatch.evidence.map((line, i) => (
-                                    <li key={i} style={{
-                                        fontSize: 13,
-                                        color: warm.colors.textSecondary,
-                                        lineHeight: 1.6,
-                                        paddingLeft: 14,
-                                        position: 'relative',
-                                    }}>
-                                        <span style={{ position: 'absolute', left: 0, color: warm.colors.success }}>•</span>
-                                        {line}
+                        <div style={{ marginTop: 4 }}>
+                            <p style={{ margin: '0 0 10px', fontSize: 12, color: warm.colors.textMuted, lineHeight: 1.55 }}>
+                                Achievements that prove you can deliver what this role asks for.
+                                <br /><strong>These will be included in your resume.</strong>
+                            </p>
+                            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                {directMatch.evidence.length === 0 ? (
+                                    <li style={{ fontSize: 13, color: warm.colors.textMuted, lineHeight: 1.6 }}>
+                                        No achievements surfaced for this role yet.
                                     </li>
-                                ))
-                            )}
-                        </ul>
+                                ) : (
+                                    directMatch.evidence.map((line, i) => (
+                                        <li key={i} style={{
+                                            fontSize: 13,
+                                            color: warm.colors.textSecondary,
+                                            lineHeight: 1.6,
+                                            paddingLeft: 14,
+                                            position: 'relative',
+                                        }}>
+                                            <span style={{ position: 'absolute', left: 0, color: warm.colors.success }}>•</span>
+                                            {line}
+                                        </li>
+                                    ))
+                                )}
+                            </ul>
+                        </div>
                     }
                 />
             )}
@@ -167,12 +221,13 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip }: P
                 <ResultCard
                     accent={warm.colors.accentPetrol}
                     icon={<Sparkles size={18} />}
-                    label="Bridgeable gap"
+                    label="Could add"
                     pct={bridgeableGap.pct}
                     body={
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 4 }}>
                             <p style={{ margin: 0, fontSize: 12, color: warm.colors.textMuted, lineHeight: 1.55 }}>
-                                Based on your role and experience you likely have these. They just aren't named on your profile yet. Draft and save each one to strengthen your match for future analyses.
+                                You likely have these — they just aren't on your profile yet.
+                                Adding them boosts your match to {directMatch.pct + bridgeableGap.pct}%.
                             </p>
                             <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
                                 {bridgeableGap.items.map((item, i) => {
@@ -191,48 +246,90 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip }: P
                                             opacity: isBridged ? 0.85 : 1,
                                         }}>
                                             <div style={{ flex: 1, minWidth: 0 }}>
-                                                <p style={{
-                                                    margin: '0 0 4px',
-                                                    fontSize: 13,
-                                                    fontWeight: 700,
-                                                    color: warm.colors.textPrimary,
-                                                    textDecoration: isBridged ? 'line-through' : 'none',
-                                                    textDecorationColor: 'rgba(125,166,125,0.55)',
-                                                    textDecorationThickness: '1px',
-                                                }}>
-                                                    {item.skill}
-                                                </p>
-                                                <p style={{
-                                                    margin: 0,
-                                                    fontSize: 12,
-                                                    color: warm.colors.textSecondary,
-                                                    lineHeight: 1.55,
-                                                    fontStyle: 'italic',
-                                                }}>
-                                                    {isBridged ? 'Drafted and saved to your achievements.' : `"${item.suggestion}"`}
-                                                </p>
-                                            </div>
-                                            {isBridged ? (
-                                                <span
-                                                    style={{
-                                                        display: 'inline-flex',
-                                                        alignItems: 'center',
-                                                        gap: 4,
-                                                        padding: '6px 10px',
-                                                        fontSize: 11,
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isBridged}
+                                                        onChange={() => {
+                                                            setBridgedIndices(prev => {
+                                                                const next = new Set(prev);
+                                                                if (next.has(i)) {
+                                                                    next.delete(i);
+                                                                } else {
+                                                                    next.add(i);
+                                                                }
+                                                                return next;
+                                                            });
+                                                        }}
+                                                        style={{ accentColor: warm.colors.accentPetrol, cursor: 'pointer', flexShrink: 0 }}
+                                                    />
+                                                    <p style={{
+                                                        margin: 0,
+                                                        fontSize: 13,
                                                         fontWeight: 700,
-                                                        color: warm.colors.accentPetrol,
-                                                        background: 'rgba(125,166,125,0.18)',
-                                                        border: '1px solid rgba(125,166,125,0.45)',
+                                                        color: warm.colors.textPrimary,
+                                                        textDecoration: isBridged ? 'line-through' : 'none',
+                                                        textDecorationColor: 'rgba(125,166,125,0.55)',
+                                                        textDecorationThickness: '1px',
+                                                    }}>
+                                                        {item.skill}
+                                                    </p>
+                                                </div>
+                                                {isBridged ? (
+                                                    <div style={{
+                                                        marginTop: 8,
+                                                        marginLeft: 28,
+                                                        padding: '8px 10px',
+                                                        background: 'rgba(125,166,125,0.08)',
+                                                        border: '1px solid rgba(125,166,125,0.20)',
                                                         borderRadius: 8,
-                                                        flexShrink: 0,
-                                                        whiteSpace: 'nowrap',
-                                                    }}
-                                                >
-                                                    <Check size={11} />
-                                                    Bridged
-                                                </span>
-                                            ) : (
+                                                        fontSize: 12,
+                                                        color: warm.colors.textSecondary,
+                                                        lineHeight: 1.55,
+                                                        fontStyle: 'italic',
+                                                    }}>
+                                                        <p style={{ margin: 0 }}>{item.suggestion}</p>
+                                                        <div style={{ marginTop: 6, display: 'flex', gap: 10 }}>
+                                                            <span style={{
+                                                                fontSize: 11,
+                                                                fontWeight: 600,
+                                                                color: warm.colors.accentPetrol,
+                                                                cursor: 'pointer',
+                                                            }}>
+                                                                &#9998; Edit
+                                                            </span>
+                                                            <span
+                                                                onClick={() => {
+                                                                    setBridgedIndices(prev => {
+                                                                        const next = new Set(prev);
+                                                                        next.delete(i);
+                                                                        return next;
+                                                                    });
+                                                                }}
+                                                                style={{
+                                                                    fontSize: 11,
+                                                                    fontWeight: 600,
+                                                                    color: warm.colors.textMuted,
+                                                                    cursor: 'pointer',
+                                                                }}
+                                                            >
+                                                                &#215; Undo
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <p style={{
+                                                        margin: '4px 0 0 28px',
+                                                        fontSize: 12,
+                                                        color: warm.colors.textSecondary,
+                                                        lineHeight: 1.55,
+                                                        fontStyle: 'italic',
+                                                    }}>
+                                                        &ldquo;{item.suggestion}&rdquo;
+                                                    </p>
+                                                )}
+                                            </div>
+                                            {!isBridged && (
                                                 <button
                                                     onClick={() => setDraftIndex(i)}
                                                     style={{
@@ -252,7 +349,7 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip }: P
                                                     }}
                                                 >
                                                     <Pencil size={11} />
-                                                    Draft this
+                                                    Draft
                                                 </button>
                                             )}
                                         </li>
@@ -269,7 +366,7 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip }: P
                 <ResultCard
                     accent={warm.colors.textSecondary}
                     icon={<Lock size={18} />}
-                    label="Hard gap"
+                    label="Not on your profile"
                     pct={null}
                     body={
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
@@ -337,47 +434,6 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip }: P
                 />
             )}
 
-            {/* CTAs */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8, flexWrap: 'wrap' }}>
-                <button
-                    onClick={onContinue}
-                    style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        padding: '12px 22px',
-                        fontSize: 14,
-                        fontWeight: 700,
-                        color: warm.colors.bgCanvas,
-                        background: warm.colors.accentPetrol,
-                        border: 'none',
-                        borderRadius: 12,
-                        cursor: 'pointer',
-                        boxShadow: warm.shadow.soft,
-                        letterSpacing: '-0.01em',
-                    }}
-                >
-                    {dominantBand === 'hardGap' ? 'Apply anyway' : 'Apply'}
-                    <ArrowRight size={16} />
-                </button>
-                {dominantBand === 'hardGap' && onSkip && (
-                    <button
-                        onClick={onSkip}
-                        style={{
-                            padding: '12px 18px',
-                            fontSize: 13,
-                            fontWeight: 600,
-                            color: warm.colors.textSecondary,
-                            background: 'transparent',
-                            border: `1px solid ${warm.colors.borderWhisper}`,
-                            borderRadius: 12,
-                            cursor: 'pointer',
-                        }}
-                    >
-                        Skip this one
-                    </button>
-                )}
-            </div>
 
             {/* Achievement draft modal — fired from Bridgeable Gap items */}
             <AchievementDraftModal
