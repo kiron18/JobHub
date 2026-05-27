@@ -190,11 +190,36 @@ async function ensureColumns() {
         ADD COLUMN IF NOT EXISTS "marketingEmailSent" BOOLEAN NOT NULL DEFAULT false,
         ADD COLUMN IF NOT EXISTS "visaStatus" TEXT,
         ADD COLUMN IF NOT EXISTS "positioningStatement" JSONB,
-        ADD COLUMN IF NOT EXISTS "plan" TEXT NOT NULL DEFAULT 'free';
+        ADD COLUMN IF NOT EXISTS "coachingAlerts" JSONB,
+        ADD COLUMN IF NOT EXISTS "dashboardAccess" BOOLEAN NOT NULL DEFAULT false,
+        ADD COLUMN IF NOT EXISTS "dashboardAccessRequested" BOOLEAN NOT NULL DEFAULT false,
+        ADD COLUMN IF NOT EXISTS "skoolJoined" BOOLEAN NOT NULL DEFAULT false,
+        ADD COLUMN IF NOT EXISTS "skoolCommunityEmail" TEXT,
+        ADD COLUMN IF NOT EXISTS "stripeCustomerId" TEXT,
+        ADD COLUMN IF NOT EXISTS "stripeSubscriptionId" TEXT,
+        ADD COLUMN IF NOT EXISTS "subscriptionStatus" TEXT,
+        ADD COLUMN IF NOT EXISTS "plan" TEXT NOT NULL DEFAULT 'free',
+        ADD COLUMN IF NOT EXISTS "planStatus" TEXT NOT NULL DEFAULT 'active',
+        ADD COLUMN IF NOT EXISTS "trialEndDate" TIMESTAMP(3),
+        ADD COLUMN IF NOT EXISTS "accessExpiresAt" TIMESTAMP(3),
+        ADD COLUMN IF NOT EXISTS "freeGenerationsUsed" INTEGER NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS "freeAnalysesUsed" INTEGER NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS "freeJobSearchesUsed" INTEGER NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS "freeMatchScoresUsed" INTEGER NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS "headshotUrl" TEXT,
+        ADD COLUMN IF NOT EXISTS "headshotGenerationsToday" INTEGER NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS "headshotGenerationsDate" TIMESTAMP(3),
+        ADD COLUMN IF NOT EXISTS "resumeFilename" TEXT,
+        ADD COLUMN IF NOT EXISTS "coverLetterFilename" TEXT,
+        ADD COLUMN IF NOT EXISTS "coverLetterFilename2" TEXT,
+        ADD COLUMN IF NOT EXISTS "documentsUpdatedAt" TIMESTAMP(3);
     `);
     await prisma.$executeRawUnsafe(`
       ALTER TABLE "DiagnosticReport"
-        ADD COLUMN IF NOT EXISTS "overallRating" INTEGER;
+        ADD COLUMN IF NOT EXISTS "overallRating" INTEGER,
+        ADD COLUMN IF NOT EXISTS "ratingChips" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+        ADD COLUMN IF NOT EXISTS "ratingComment" TEXT,
+        ADD COLUMN IF NOT EXISTS "ratedAt" TIMESTAMP(3);
     `);
     console.log('[startup] schema columns verified');
   } catch (err) {
