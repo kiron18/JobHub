@@ -1,4 +1,4 @@
-import type { ResumeData } from './resumeRender';
+import type { ResumeData } from './resumeData';
 
 // Minimal shape we need from the Prisma include
 export interface ProfileWithRelations {

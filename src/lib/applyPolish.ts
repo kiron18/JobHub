@@ -1,4 +1,4 @@
-import type { ResumeData } from './resumeRender';
+import type { ResumeData } from './resumeData';
 
 // NOTE: PolishPayload mirrors server/src/lib/validatePolish.ts's ValidatedPolish
 // (Zod-inferred type). Keep both in sync — the Zod schema is the single source of truth.

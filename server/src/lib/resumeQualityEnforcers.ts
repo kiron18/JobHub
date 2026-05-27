@@ -12,45 +12,11 @@ import {
 } from './voiceEnforcer';
 import { tagAIRewrites } from './provenanceTagging';
 
-/**
- * Canonical definition: ../../../src/lib/resumeRender.tsx
- *
- * Duplicated here because the server tsconfig does not set `--jsx`, so
- * importing directly from a .tsx file would fail at compile time.
- */
-export interface ResumeData {
-  name: string;
-  targetRole?: string;
-  email?: string;
-  phone?: string;
-  linkedin?: string;
-  location?: string;
-  professionalSummary?: string;
-  skills?: string;
-  experience: Array<{
-    role: string;
-    company: string;
-    location?: string;
-    startDate: string;
-    endDate?: string | null;
-    isCurrent?: boolean;
-    description?: string;
-  }>;
-  education: Array<{
-    degree: string;
-    field?: string;
-    institution: string;
-    location?: string;
-    year?: string;
-    startDate?: string;
-    endDate?: string;
-  }>;
-  certifications?: Array<{ name: string; issuingBody: string; year?: string }>;
-  volunteering?: Array<{ role: string; organization: string; description?: string }>;
-  languages?: Array<{ name: string; proficiency: string }>;
-  showReferees?: boolean;
-}
+import type { ResumeData } from '@shared/lib/resumeData';
 
+// =============================================================================
+// Quality enforcer options
+// =============================================================================
 export interface QualityEnforcerOptions {
   candidateName?: string | null;
   yearsOfExperience?: number | null;
