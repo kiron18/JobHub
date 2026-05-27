@@ -125,6 +125,55 @@ export async function callClaude(
 }
 
 /**
+ * Calls Perplexity Sonar Pro via OpenRouter for web-search-backed research.
+ * Returns content + citations from the search results.
+ */
+export async function callPerplexity(
+  prompt: string,
+  jsonMode: boolean = true
+): Promise<{ content: string; citations: string[] }> {
+  if (!OPENROUTER_API_KEY) {
+    throw new Error('OPENROUTER_API_KEY is not set in environment variables.');
+  }
+
+  return await retryWithBackoff(async () => {
+    const response = await axios.post(
+      OPENROUTER_URL,
+      {
+        model: 'perplexity/sonar-pro',
+        temperature: 0,
+        max_tokens: 1024,
+        messages: [
+          {
+            role: 'system',
+            content: jsonMode
+              ? 'You are a company research assistant. Return ONLY valid JSON. No preamble, no markdown fences.'
+              : 'You are a company research assistant.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+          'HTTP-Referer': process.env.OPENROUTER_REFERER || 'https://aussiegradcareers.com.au',
+          'X-Title': process.env.OPENROUTER_APP_TITLE || 'JobHub',
+          'Content-Type': 'application/json',
+        },
+        timeout: 10000,
+      }
+    );
+
+    const content = response.data.choices[0].message.content as string;
+    const citations: string[] = (response.data as any).citations ?? [];
+    return { content, citations };
+  });
+}
+
+/**
  * Generates embeddings for a given text.
  */
 export async function embedText(text: string): Promise<number[]> {
