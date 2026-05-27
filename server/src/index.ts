@@ -189,7 +189,12 @@ async function ensureColumns() {
         ADD COLUMN IF NOT EXISTS "marketingConsent" BOOLEAN NOT NULL DEFAULT false,
         ADD COLUMN IF NOT EXISTS "marketingEmailSent" BOOLEAN NOT NULL DEFAULT false,
         ADD COLUMN IF NOT EXISTS "visaStatus" TEXT,
-        ADD COLUMN IF NOT EXISTS "positioningStatement" JSONB;
+        ADD COLUMN IF NOT EXISTS "positioningStatement" JSONB,
+        ADD COLUMN IF NOT EXISTS "plan" TEXT NOT NULL DEFAULT 'free';
+    `);
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "DiagnosticReport"
+        ADD COLUMN IF NOT EXISTS "overallRating" INTEGER;
     `);
     console.log('[startup] schema columns verified');
   } catch (err) {
