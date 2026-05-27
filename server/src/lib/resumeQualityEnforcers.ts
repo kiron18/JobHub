@@ -81,9 +81,8 @@ function enforceSummaryVoice(
   // If the enforcer returned the same string, nothing changed.
   if (result === wrapped) return summary;
 
-  // Strip the heading + exactly one newline
-  const prefix = result.startsWith(heading) ? heading : '## Professional Summary\n';
-  const stripped = result.startsWith(prefix)
+  // Strip the heading prefix to recover the bare summary text
+  const stripped = result.startsWith(heading)
     ? result.slice(prefix.length)
     : result;
 
