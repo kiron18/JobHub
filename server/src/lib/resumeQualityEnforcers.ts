@@ -83,7 +83,7 @@ function enforceSummaryVoice(
 
   // Strip the heading prefix to recover the bare summary text
   const stripped = result.startsWith(heading)
-    ? result.slice(prefix.length)
+    ? result.slice(heading.length)
     : result;
 
   return stripped;
