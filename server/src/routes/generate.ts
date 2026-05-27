@@ -434,4 +434,197 @@ router.post('/:type', authenticate, async (req, res) => {
     }
 });
 
+// ── Structured resume generation ────────────────────────────────────────────
+// This route generates a resume as structured JSON (summary + experience bullets)
+// which is then validated with Zod and rendered to deterministic markdown server-side.
+// Benefits: higher bullet quality (LLM focuses on content), machine-validated output,
+// no LLM formatting drift.
+router.post('/resume-structured', authenticate, async (req: any, res: any) => {
+    const userId = (req as any).user.id as string;
+    const {
+        jobDescription,
+        selectedAchievementIds,
+        analysisContext,
+        jobApplicationId,
+        companyResearch,  // { salutation, highlights, companySize, hiringManager }
+    } = req.body;
+
+    if (!jobDescription) {
+        return res.status(400).json({ error: 'Job description is required' });
+    }
+
+    try {
+        const userEmail = ((req as any).user?.email ?? '').toLowerCase();
+        const access = await checkAccess(userId, 'generation', userEmail);
+        if (!access.allowed) {
+            return res.status(402).json({
+                error: 'Generation limit reached',
+                upgradeRequired: true,
+                remaining: 0,
+            });
+        }
+
+        const profile = await prisma.candidateProfile.findUnique({
+            where: { userId },
+            include: {
+                achievements: true,
+                experience: true,
+                education: true,
+                volunteering: true,
+                certifications: true,
+                languages: true,
+            },
+        });
+
+        if (!profile) {
+            return res.status(404).json({ error: 'Profile not found' });
+        }
+
+        const { buildAchievementContext } = await import('../services/generation');
+        const selectedAchievements = await buildAchievementContext(
+            userId,
+            jobDescription,
+            selectedAchievementIds
+        );
+
+        const sanitizedJobAppId = jobApplicationId === 'temp-id' ? null : (jobApplicationId || null);
+        const docType = 'RESUME';
+
+        // ── STAGE 1: Strategic Blueprint (Claude) ──────────────────────────
+        let blueprintResult;
+        let stage1Info: { cached: boolean; tokens?: { input: number; output: number; cost_usd: number } } = { cached: false };
+
+        const { buildSearchContextBlock } = await import('../services/prompts');
+        const searchContext = buildSearchContextBlock(profile);
+
+        // Pre-populate DB blueprint cache
+        if (sanitizedJobAppId) {
+            const jobApp = await prisma.jobApplication.findUnique({
+                where: { id: sanitizedJobAppId },
+                select: { blueprintJson: true },
+            });
+            if (jobApp?.blueprintJson) {
+                setCachedBlueprint(sanitizedJobAppId, jobApp.blueprintJson as any);
+                console.log(`[ResumeStructured] DB blueprint cache hit for ${sanitizedJobAppId}`);
+            }
+        }
+
+        const matchedCardLabel: string | null = analysisContext?.matchedIdentityCard ?? null;
+        let resolvedIdentityCard: any = null;
+        if (matchedCardLabel && Array.isArray((profile as any)?.identityCards)) {
+            resolvedIdentityCard = (profile as any).identityCards.find(
+                (c: any) => c.label === matchedCardLabel
+            ) ?? null;
+        }
+
+        const cacheKey = sanitizedJobAppId || `${userId}-${Date.now()}`;
+        try {
+            blueprintResult = await generateBlueprint(
+                cacheKey,
+                searchContext + jobDescription,
+                profile,
+                selectedAchievements,
+                docType,
+                resolvedIdentityCard
+            );
+            stage1Info = { cached: blueprintResult.cached, tokens: blueprintResult.tokens };
+            console.log(`[ResumeStructured] Stage 1 complete. Cached: ${blueprintResult.cached}`);
+
+            if (!blueprintResult.cached && sanitizedJobAppId) {
+                prisma.jobApplication.update({
+                    where: { id: sanitizedJobAppId },
+                    data: { blueprintJson: blueprintResult.blueprint as any },
+                }).catch(err => console.error('[ResumeStructured] Failed to persist blueprint to DB:', err));
+            }
+        } catch (blueprintError: any) {
+            console.error('[ResumeStructured] Stage 1 failed — aborting:', blueprintError.message);
+            return res.status(500).json({ error: 'Strategy generation failed' });
+        }
+
+        // ── STAGE 2: Structured JSON generation (Llama) ────────────────────
+        // Load the structured prompt dynamically so it can be imported alongside
+        // the existing prompts without breaking the index re-export.
+        const { RESUME_STRUCTURED_PROMPT } = await import('../services/prompts/resumeStructuredPrompt');
+
+        // Override employerInsight if company research was provided
+        if (companyResearch?.highlights?.length > 0) {
+            blueprintResult.blueprint.employerInsight =
+                companyResearch.highlights.join(' — ');
+        }
+
+        const { parseJD } = await import('../lib/jdParser');
+        const parsedJD = parseJD(jobDescription);
+
+        const prompt = RESUME_STRUCTURED_PROMPT(
+            jobDescription,
+            profile,
+            selectedAchievements,
+            blueprintResult.blueprint,
+            analysisContext,
+            companyResearch,
+            parsedJD.employerQuestions.length > 0 ? parsedJD.employerQuestions : undefined
+        );
+
+        console.log('[ResumeStructured] Stage 2: calling Llama for structured resume...');
+        const stage2Raw = await callLLMWithRetry(prompt, false);
+        console.log(`[ResumeStructured] Stage 2 complete. ${stage2Raw.length} characters.`);
+
+        const stage2InputTokens = Math.round(prompt.length / 4);
+        const stage2OutputTokens = Math.round(stage2Raw.length / 4);
+        const stage2Cost =
+            (stage2InputTokens / 1_000_000) * LLAMA_INPUT_COST_PER_M +
+            (stage2OutputTokens / 1_000_000) * LLAMA_OUTPUT_COST_PER_M;
+
+        // ── STAGE 3: Validate + build template resume ──────────────────────
+        const { parsePolishJson } = await import('../lib/validatePolish');
+        const { buildTemplateResume } = await import('../lib/buildTemplateResume');
+
+        const polish = parsePolishJson(stage2Raw);
+        if (!polish) {
+            console.warn('[ResumeStructured] LLM output failed Zod validation — falling back to unpolished resume');
+        }
+
+        const finalContent = buildTemplateResume(profile, polish, {
+            candidateName: profile?.name,
+            yearsOfExperience: computeYearsOfExperience(profile?.experience),
+            achievementSources: selectedAchievements
+                .map((a: any) => a?.description ?? '')
+                .filter((s: string) => s && s.length > 0),
+        });
+
+        // ── Persist document ────────────────────────────────────────────────
+        const doc = await prisma.document.create({
+            data: {
+                title: `STRUCTURED RESUME - ${profile.name || 'Draft'}`,
+                content: finalContent,
+                type: 'RESUME',
+                userId,
+                jobApplicationId: sanitizedJobAppId,
+            },
+        });
+
+        const total_cost_usd =
+            (stage1Info.tokens?.cost_usd ?? 0) + stage2Cost;
+
+        const costBreakdown = {
+            stage1_cached: stage1Info.cached,
+            stage1_tokens: stage1Info.tokens,
+            stage2_tokens: { input: stage2InputTokens, output: stage2OutputTokens, cost_usd: stage2Cost },
+            total_cost_usd,
+        };
+        console.log('[ResumeStructured] Cost breakdown:', JSON.stringify(costBreakdown));
+
+        res.json({
+            content: finalContent,
+            id: doc.id,
+            costBreakdown,
+            blueprint: blueprintResult.blueprint ?? null,
+            polishAccepted: polish !== null,
+        });
+    } catch (error) {
+        console.error('[ResumeStructured] Generation Error:', error);
+        res.status(500).json({ error: 'Failed to generate structured resume' });
+    }
+});
+
 export default router;
