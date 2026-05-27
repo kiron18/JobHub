@@ -62,7 +62,7 @@ export function profileToResumeData(profile: ProfileWithRelations): ResumeData {
       location: exp.location || undefined,
       startDate: exp.startDate,
       endDate: exp.endDate,
-      isCurrent: exp.isCurrent || false,
+      isCurrent: exp.isCurrent ?? false,
       description: exp.description || undefined,
     })),
     education: profile.education.map(ed => ({
