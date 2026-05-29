@@ -325,6 +325,12 @@ enum DiagnosticStatus {
   FAILED
 }
 
+enum SponsorConfidence {
+  high
+  medium
+  low
+}
+
 model FridayBrief {
   id          String   @id @default(uuid())
   windowStart DateTime @unique
@@ -332,4 +338,23 @@ model FridayBrief {
   script      String
   reportCount Int
   generatedAt DateTime @default(now())
+}
+
+model Sponsor {
+  id               String             @id @default(uuid())
+  cleanName        String             @unique
+  rawName          String
+  website          String?
+  careersUrl       String?
+  careersSearchUrl String?
+  industry         String
+  locations        String[]
+  hiringProfile    String
+  confidence       SponsorConfidence
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  @@index([industry])
+  @@index([confidence])
+  @@index([cleanName])
 }
