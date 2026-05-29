@@ -1,4 +1,3 @@
-import React from 'react';
 import { colors, type, spacing } from '../landing/tokens';
 import { SponsorSearchBar } from './SponsorSearchBar';
 

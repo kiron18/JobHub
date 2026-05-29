@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { colors, spacing } from '../components/landing/tokens';
 import { SponsorHero } from '../components/sponsors/SponsorHero';
 import { SponsorFilterBar } from '../components/sponsors/SponsorFilterBar';

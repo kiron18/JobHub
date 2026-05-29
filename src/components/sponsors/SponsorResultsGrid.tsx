@@ -1,4 +1,3 @@
-import React from 'react';
 import { colors, type } from '../landing/tokens';
 import { SponsorCard } from './SponsorCard';
 
