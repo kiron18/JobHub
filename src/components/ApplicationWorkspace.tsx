@@ -540,7 +540,7 @@ export const ApplicationWorkspace: React.FC = () => {
         setViolationsBannerDismissed(false);
         setState(prev => ({ ...prev, isGenerating: true }));
         try {
-            const { data } = await api.post(`/generate/${type}`, {
+            const { data } = await api.post(type === 'cover-letter' ? '/generate/cover-letter-structured' : `/generate/${type}`, {
                 jobDescription: state.jobDescription,
                 selectedAchievementIds: state.selectedAchievementIds,
                 regenerate,

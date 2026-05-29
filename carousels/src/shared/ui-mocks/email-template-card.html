@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>JobHub mock - email template card</title>
+<style>
+  .jobhub-mock--email-template-card,
+  .jobhub-mock--email-template-card * {
+    margin: 0; padding: 0; box-sizing: border-box;
+    font-family: 'Geist', -apple-system, 'Segoe UI', system-ui, sans-serif;
+  }
+
+  .jobhub-mock--email-template-card {
+    background: #FFFFFF;
+    border: 1px solid rgba(26, 24, 20, 0.08);
+    border-radius: 16px;
+    box-shadow: 0 1px 2px rgba(26,24,20,0.04), 0 4px 16px rgba(26,24,20,0.04);
+    padding: 28px;
+    width: 720px;
+  }
+
+  .jh-email-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .jh-category-pill {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 9999px;
+    background: rgba(45, 90, 110, 0.10);
+    color: #2D5A6E;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .jh-copy-button {
+    background: none;
+    border: none;
+    padding: 4px;
+    cursor: default;
+    color: #8B847B;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .jh-copy-button svg {
+    display: block;
+  }
+
+  .jh-email-title {
+    font-family: 'Fraunces', Georgia, 'Times New Roman', serif;
+    font-weight: 600;
+    font-size: 20px;
+    color: #1A1814;
+    margin-bottom: 12px;
+  }
+
+  .jh-email-body {
+    background: #F4EFE8;
+    border-radius: 10px;
+    padding: 16px;
+    font-size: 13px;
+    font-weight: 400;
+    color: #5C5750;
+    line-height: 1.6;
+    white-space: pre-line;
+    margin-bottom: 14px;
+  }
+
+  .jh-email-footer {
+    font-size: 11px;
+    font-weight: 400;
+    color: #8B847B;
+  }
+</style>
+</head>
+<body style="background:#FAF7F2; padding:48px; display:flex; align-items:center; justify-content:center;">
+
+<section class="jobhub-mock jobhub-mock--email-template-card">
+  <div class="jh-email-top">
+    <span class="jh-category-pill">{{CATEGORY_LABEL}}</span>
+    <button class="jh-copy-button">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="jh-email-title">{{TEMPLATE_TITLE}}</div>
+  <div class="jh-email-body">{{EMAIL_BODY}}</div>
+  <div class="jh-email-footer">{{PERSONALISE_NOTE}}</div>
+</section>
+
+</body>
+</html>

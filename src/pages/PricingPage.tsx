@@ -20,6 +20,7 @@ interface PlanDef {
   cta: string;
   recommended?: boolean;
   features: string[];
+  savings?: string;
 }
 
 // ─── Plan definitions ──────────────────────────────────────────────────────────
@@ -57,6 +58,7 @@ const PLANS: PlanDef[] = [
       'Great for structured job hunts',
       'Lifetime access to your documents',
     ],
+    savings: 'Three months for $197. That\'s $65 a month — $94 less than paying monthly.\nAfterpay and Zip both work at checkout.',
   },
   {
     id: 'annual',
@@ -94,6 +96,10 @@ const FAQS = [
   {
     q: 'Is my card charged immediately?',
     a: "For the 3-Month Bundle, yes — it's a one-time payment charged immediately. For Monthly and Annual plans, your free trial starts immediately and your card is charged on day 8 unless you cancel first.",
+  },
+  {
+    q: 'Can I use Afterpay or Zip for the 3-Month Bundle?',
+    a: 'Yes. Both are supported at checkout. Afterpay splits $197 into four fortnightly payments. No interest, no ongoing commitment.',
   },
 ];
 
@@ -136,6 +142,9 @@ function PlanCard({ plan, onSelect, loading }: { plan: PlanDef; onSelect: () => 
 
       {plan.trial && (
         <p style={{ margin: '0 0 16px', fontSize: 11, color: warm.colors.textMuted, fontStyle: 'italic' }}>{plan.trial} — no charge until day 8</p>
+      )}
+      {plan.savings && (
+        <p style={{ margin: '0 0 16px', fontSize: 11, color: warm.colors.accentPetrol, lineHeight: 1.5, whiteSpace: 'pre-line' }}>{plan.savings}</p>
       )}
 
       <ul style={{ margin: '0 0 24px', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>

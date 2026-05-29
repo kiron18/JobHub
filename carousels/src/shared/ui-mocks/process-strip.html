@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>JobHub mock - process strip</title>
+<style>
+  .jobhub-mock--process-strip,
+  .jobhub-mock--process-strip * {
+    margin: 0; padding: 0; box-sizing: border-box;
+    font-family: 'Geist', -apple-system, 'Segoe UI', system-ui, sans-serif;
+  }
+
+  .jobhub-mock--process-strip {
+    background: #FFFFFF;
+    border: 1px solid rgba(26, 24, 20, 0.08);
+    border-radius: 16px;
+    box-shadow: 0 1px 2px rgba(26,24,20,0.04), 0 4px 16px rgba(26,24,20,0.04);
+    padding: 16px 20px;
+    width: 720px;
+  }
+
+  /* ── data-step variant switcher ── */
+  .jobhub-mock--process-strip[data-step="paste"]   .jh-strip--paste,
+  .jobhub-mock--process-strip[data-step="analyse"] .jh-strip--analyse,
+  .jobhub-mock--process-strip[data-step="tailor"]  .jh-strip--tailor,
+  .jobhub-mock--process-strip[data-step="save"]    .jh-strip--save,
+  .jobhub-mock--process-strip[data-step="track"]   .jh-strip--track {
+    display: block;
+  }
+
+  .jh-strip-variant { display: none; }
+
+  .jh-node-row {
+    display: flex;
+    align-items: center;
+    width: 100%;
+  }
+
+  .jh-step-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+  }
+
+  .jh-step-circle {
+    width: 28px;
+    height: 28px;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: 'Geist', sans-serif;
+    flex-shrink: 0;
+  }
+
+  .jh-step-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #8B847B;
+    margin-top: 6px;
+    text-align: center;
+  }
+
+  .jh-step--completed .jh-step-circle {
+    background: #C5A059;
+    color: #FFFFFF;
+  }
+
+  .jh-step--current .jh-step-circle {
+    background: #2D5A6E;
+    color: #FFFFFF;
+    box-shadow: 0 0 0 2px rgba(45, 90, 110, 0.40);
+  }
+
+  .jh-step--current .jh-step-label {
+    color: #1A1814;
+  }
+
+  .jh-step--future .jh-step-circle {
+    background: transparent;
+    border: 1.5px solid rgba(26, 24, 20, 0.08);
+    color: #8B847B;
+  }
+
+  .jh-connector {
+    height: 2px;
+    flex: 1;
+    align-self: center;
+    margin: 0 4px;
+    margin-bottom: 22px;
+  }
+
+  .jh-connector--done {
+    background: #C5A059;
+  }
+
+  .jh-connector--pending {
+    background: rgba(26, 24, 20, 0.08);
+  }
+
+  .jh-strip-caption {
+    font-size: 12px;
+    font-weight: 400;
+    color: #5C5750;
+    text-align: center;
+    margin-top: 12px;
+  }
+</style>
+</head>
+<body style="background:#FAF7F2; padding:48px; display:flex; align-items:center; justify-content:center;">
+
+<section class="jobhub-mock jobhub-mock--process-strip" data-step="{{CURRENT_STEP}}">
+
+  <!-- Variant: paste -->
+  <div class="jh-strip-variant jh-strip--paste">
+    <div class="jh-node-row">
+      <div class="jh-step-node">
+        <div class="jh-step-circle jh-step--current">1</div>
+        <span class="jh-step-label">Paste</span>
+      </div>
+      <div class="jh-connector jh-connector--pending"></div>
+      <div class="jh-step-node">
+        <div class="jh-step-circle jh-step--future">2</div>
+        <span class="jh-step-label">Analyse</span>
+      </div>
+      <div class="jh-connector jh-connector--pending"></div>
+      <div class="jh-step-node">
+        <div class="jh-step-circle jh-step--future">3</div>
+        <span class="jh-step-label">Tailor</span>
+      </div>
+      <div class="jh-connector jh-connector--pending"></div>
+      <div class="jh-step-node">
+        <div class="jh-step-circle jh-step--future">4</div>
+        <span class="jh-step-label">Save</span>
+      </div>
+      <div class="jh-connector jh-connector--pending"></div>
+      <div class="jh-step-node">
+        <div class="jh-step-circle jh-step--future">5</div>
+        <span class="jh-step-label">Track</span>
+      </div>
+    </div>
+    <p class="jh-strip-caption">{{CAPTION}}</p>
+  </div>
+
+  <!-- Variant: analyse -->
+  <div class="jh-strip-variant jh-strip--analyse">
+    <div class="jh-node-row">
+      <div class="jh-step-node">
+        <div class="jh-step-circle jh-step--completed">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <span class="jh-step-label">Paste</span>
+      </div>
+      <div class="jh-connector jh-connector--done"></div>
+      <div class="jh-step-node">
+        <div class="jh-step-circle jh-step--current">1</div>
+        <span class="jh-step-label">Analyse</span>
+      </div>
+      <div class="jh-connector jh-connector--pending"></div>
+      <div class="jh-step-node">
+        <div class="jh-step-circle jh-step--future">2</div>
+        <span class="jh-step-label">Tailor</span>
+      </div>
+      <div class="jh-connector jh-connector--pending"></div>
+      <div class="jh-step-node">
+        <div class="jh-step-circle jh-step--future">3</div>
+        <span class="jh-step-label">Save</span>
+      </div>
+      <div class="jh-connector jh-connector--pending"></div>
+      <div class="jh-step-node">
+        <div class="jh-step-circle jh-step--future">4</div>
+        <span class="jh-step-label">Track</span>
+      </div>
+    </div>
+    <p class="jh-strip-caption">{{CAPTION}}</p>
+  </div>
+
+  <!-- Variant: tailor -->
+  <div class="jh-strip-variant jh-strip--tailor">
+    <div class="jh-node-row">
+      <div class="jh-step-node">
+        <div class="jh-step-circle jh-step--completed">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <span class="jh-step-label">Paste</span>
+      </div>
+      <div class="jh-connector jh-connector--done"></div>
+      <div class="jh-step-node">
+        <div class="jh-step-circle jh-step--completed">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <span class="jh-step-label">Analyse</span>
+      </div>
+      <div class="jh-connector jh-connector--done"></div>
+      <div class="jh-step-node">
+        <div class="jh-step-circle jh-step--current">1</div>
+        <span class="jh-step-label">Tailor</span>
+      </div>
+      <div class="jh-connector jh-connector--pending"></div>
+      <div class="jh-step-node">
+        <div class="jh-step-circle jh-step--future">2</div>
+        <span class="jh-step-label">Save</span>
+      </div>
+      <div class="jh-connector jh-connector--pending"></div>
+      <div class="jh-step-node">
+        <div class="jh-step-circle jh-step--future">3</div>
+        <span class="jh-step-label">Track</span>
+      </div>
+    </div>
+    <p class="jh-strip-caption">{{CAPTION}}</p>
+  </div>
+
+  <!-- Variant: save -->
+  <div class="jh-strip-variant jh-strip--save">
+    <div class="jh-node-row">
+      <div class="jh-step-node">
+        <div class="jh-step-circle jh-step--completed">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <span class="jh-step-label">Paste</span>
+      </div>
+      <div class="jh-connector jh-connector--done"></div>
+      <div class="jh-step-node">
+        <div class="jh-step-circle jh-step--completed">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <span class="jh-step-label">Analyse</span>
+      </div>
+      <div class="jh-connector jh-connector--done"></div>
+      <div class="jh-step-node">
+        <div class="jh-step-circle jh-step--completed">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <span class="jh-step-label">Tailor</span>
+      </div>
+      <div class="jh-connector jh-connector--done"></div>
+      <div class="jh-step-node">
+        <div class="jh-step-circle jh-step--current">1</div>
+        <span class="jh-step-label">Save</span>
+      </div>
+      <div class="jh-connector jh-connector--pending"></div>
+      <div class="jh-step-node">
+        <div class="jh-step-circle jh-step--future">2</div>
+        <span class="jh-step-label">Track</span>
+      </div>
+    </div>
+    <p class="jh-strip-caption">{{CAPTION}}</p>
+  </div>
+
+  <!-- Variant: track -->
+  <div class="jh-strip-variant jh-strip--track">
+    <div class="jh-node-row">
+      <div class="jh-step-node">
+        <div class="jh-step-circle jh-step--completed">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <span class="jh-step-label">Paste</span>
+      </div>
+      <div class="jh-connector jh-connector--done"></div>
+      <div class="jh-step-node">
+        <div class="jh-step-circle jh-step--completed">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <span class="jh-step-label">Analyse</span>
+      </div>
+      <div class="jh-connector jh-connector--done"></div>
+      <div class="jh-step-node">
+        <div class="jh-step-circle jh-step--completed">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <span class="jh-step-label">Tailor</span>
+      </div>
+      <div class="jh-connector jh-connector--done"></div>
+      <div class="jh-step-node">
+        <div class="jh-step-circle jh-step--completed">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <span class="jh-step-label">Save</span>
+      </div>
+      <div class="jh-connector jh-connector--done"></div>
+      <div class="jh-step-node">
+        <div class="jh-step-circle jh-step--current">1</div>
+        <span class="jh-step-label">Track</span>
+      </div>
+    </div>
+    <p class="jh-strip-caption">{{CAPTION}}</p>
+  </div>
+
+</section>
+
+</body>
+</html>

@@ -13,7 +13,7 @@ export const PolishPayloadSchema = z.object({
       }),
     )
     .optional(),
-}).strict(); // Reject extra fields from LLM output
+}).strip(); // Strip extra fields from LLM output (LLM sometimes adds skills)
 
 export type ValidatedPolish = z.infer<typeof PolishPayloadSchema>;
 

@@ -1,4 +1,5 @@
 import { callPerplexity } from './llm';
+import { parseLLMJson } from '../utils/parseLLMResponse';
 
 export interface CompanyIntelParams {
   companyName: string;
@@ -48,23 +49,12 @@ export async function fetchCompanyIntel(
 
   const result = await callPerplexity(prompt, true);
 
-  // Parse the JSON response from Perplexity
+  // Parse the JSON response using the shared utility (handles fences, prose, comments)
   let parsed: { summary: string; suggestedContact: { title: string; reason: string } };
   try {
-    parsed = JSON.parse(result.content);
-  } catch {
-    // If Perplexity returns fuzzy JSON, try to extract from markdown code block
-    const jsonMatch = result.content.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (jsonMatch) {
-      parsed = JSON.parse(jsonMatch[1]);
-    } else {
-      // Last resort: clean and parse
-      const cleaned = result.content
-        .replace(/^```(?:json)?\s*/, '')
-        .replace(/\s*```$/, '')
-        .trim();
-      parsed = JSON.parse(cleaned);
-    }
+    parsed = parseLLMJson(result.content) as any;
+  } catch (e: any) {
+    throw new Error(`Company Intel JSON parse failed: ${e.message}`);
   }
 
   if (!parsed.summary || !parsed.suggestedContact?.title) {
@@ -77,7 +67,7 @@ export async function fetchCompanyIntel(
       title: parsed.suggestedContact.title,
       reason: parsed.suggestedContact.reason ?? '',
     },
-    citations: result.citations,
+    citations: result.citations ?? [],
     fetchedAt: new Date().toISOString(),
   };
 }

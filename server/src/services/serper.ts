@@ -1,7 +1,13 @@
 import axios from 'axios';
 
-const SERPER_API_KEY = process.env.SERPER_API_KEY;
 const SERPER_URL = 'https://google.serper.dev/search';
+
+/** Read at call time so dotenv has a chance to load first. */
+function serperKey(): string {
+    const k = process.env.SERPER_API_KEY;
+    if (!k) console.warn('[serper] SERPER_API_KEY not set — skipping search');
+    return k || '';
+}
 
 export interface SerperResult {
     title: string;
@@ -14,17 +20,15 @@ export interface SerperResult {
  * Costs ~$0.001 per call. Use strategically — max 2 calls per generation.
  */
 export async function searchSerper(query: string, num = 5): Promise<SerperResult[]> {
-    if (!SERPER_API_KEY) {
-        console.warn('[serper] SERPER_API_KEY not set — skipping search');
-        return [];
-    }
+    const key = serperKey();
+    if (!key) return [];
     try {
         const { data } = await axios.post(
             SERPER_URL,
             { q: query, num, gl: 'au', hl: 'en' },
             {
                 headers: {
-                    'X-API-KEY': SERPER_API_KEY,
+                    'X-API-KEY': key,
                     'Content-Type': 'application/json',
                 },
                 timeout: 8000,
@@ -51,17 +55,15 @@ export function snippetsToText(results: SerperResult[]): string {
  * Useful for extracting job descriptions from Seek, LinkedIn, company career pages.
  */
 export async function scrapeUrl(url: string): Promise<string> {
-    if (!SERPER_API_KEY) {
-        console.warn('[serper] SERPER_API_KEY not set — cannot scrape URL');
-        return '';
-    }
+    const key = serperKey();
+    if (!key) return '';
     try {
         const { data } = await axios.post(
             'https://scraper.serper.dev',
             { url },
             {
                 headers: {
-                    'X-API-KEY': SERPER_API_KEY,
+                    'X-API-KEY': key,
                     'Content-Type': 'application/json',
                 },
                 timeout: 15000,

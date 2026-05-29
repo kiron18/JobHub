@@ -363,7 +363,12 @@ ${type === 'COVER_LETTER' ? `METRICS RULE (mandatory): You MUST include at least
 4. ${isAcademicDoc
         ? 'ACADEMIC DOCUMENT FORMAT: Follow the specific format and structure rules in the FORMATTING RULES section above exactly. Do NOT apply STAR framework. Write as first-person narrative prose as specified.'
         : type === 'STAR_RESPONSE'
-        ? 'STAR FORMAT: Situation (10-15%) → Task (10-15%) → Action (40-50%) → Result (20-25%). Flowing prose. First person active voice. Each component MUST be introduced with its bold label on its own line: **Situation**, **Task**, **Action**, **Result** — written exactly like that, before the prose for each component.'
+        ? routeType === 'cold-outreach'
+          ? `COLD OUTREACH FORMAT: Two variants — LinkedIn DM (≤150 words) and Email (≤200 words).
+SALUTATION: ${companyResearch?.salutation ?? 'Dear Hiring Manager,'}
+COMPANY CONTEXT: ${companyResearch?.highlights?.join(' — ') ?? ''}
+Follow the cold outreach rules in the rule base for structure and tone.`
+          : 'STAR FORMAT: Situation (10-15%) → Task (10-15%) → Action (40-50%) → Result (20-25%). Flowing prose. First person active voice. Each component MUST be introduced with its bold label on its own line: **Situation**, **Task**, **Action**, **Result** — written exactly like that, before the prose for each component.'
         : type === 'COVER_LETTER'
             ? `COVER LETTER FORMAT: No headers or subheadings. 3-5 paragraphs separated by a blank line.
    SALUTATION: ${companyResearch?.salutation ?? 'Dear Hiring Manager,'}
@@ -588,7 +593,9 @@ Generate the ${type} as high-impact Markdown.
 4. ${isAcademicDoc
     ? 'ACADEMIC DOCUMENT FORMAT: Follow the specific format and structure rules in the FORMATTING RULES section above exactly. Do NOT apply STAR framework. Write as first-person narrative prose as specified.'
     : type === 'STAR_RESPONSE'
-    ? `STAR FORMAT REQUIRED: Each criterion response must follow Situation (10-15%) → Task (10-15%) → Action (40-50%) → Result (20-25%). Write in flowing prose, first person, active voice. Each component MUST be introduced with its bold label on its own line (**Situation**, **Task**, **Action**, **Result**) before the prose for that component.`
+    ? routeType === 'cold-outreach'
+      ? `COLD OUTREACH FORMAT: Two variants — LinkedIn DM (≤150 words) and Email (≤200 words).\nSALUTATION: ${companyResearch?.salutation ?? 'Dear Hiring Manager,'}\nCOMPANY CONTEXT: ${companyResearch?.highlights?.join(' — ') ?? ''}\nFollow the cold outreach rules in the rule base for structure and tone.`
+      : `STAR FORMAT REQUIRED: Each criterion response must follow Situation (10-15%) → Task (10-15%) → Action (40-50%) → Result (20-25%). Write in flowing prose, first person, active voice. Each component MUST be introduced with its bold label on its own line (**Situation**, **Task**, **Action**, **Result**) before the prose for that component.`
     : type === 'COVER_LETTER'
     ? `COVER LETTER FORMAT: No headers or subheadings. 3-4 paragraphs separated by a blank line.
    SALUTATION: ${companyResearch?.salutation ?? 'Dear Hiring Manager,'}

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>JobHub mock - analyse card</title>
+<style>
+  .jobhub-mock--analyse-card,
+  .jobhub-mock--analyse-card * {
+    margin: 0; padding: 0; box-sizing: border-box;
+    font-family: 'Geist', -apple-system, 'Segoe UI', system-ui, sans-serif;
+  }
+
+  .jobhub-mock--analyse-card {
+    background: #FFFFFF;
+    border: 1px solid rgba(26, 24, 20, 0.08);
+    border-radius: 16px;
+    box-shadow: 0 1px 2px rgba(26,24,20,0.04), 0 4px 16px rgba(26,24,20,0.04);
+    padding: 28px;
+    width: 720px;
+  }
+
+  .jobhub-mock--analyse-card .jh-eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #5C5750;
+    margin-bottom: 16px;
+  }
+
+  .jobhub-mock--analyse-card .jh-browse-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #FFFFFF;
+    border: 1px solid rgba(26, 24, 20, 0.08);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 14px;
+    color: #1A1814;
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  .jobhub-mock--analyse-card .jh-browse-link svg {
+    color: #5C5750;
+  }
+
+  .jobhub-mock--analyse-card .jh-textarea {
+    width: 100%;
+    min-height: 140px;
+    background: #F4EFE8;
+    border: 1px solid rgba(26, 24, 20, 0.08);
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #5C5750;
+    margin-bottom: 20px;
+  }
+
+  .jobhub-mock--analyse-card .jh-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .jobhub-mock--analyse-card .jh-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #5C5750;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .jobhub-mock--analyse-card .jh-toggle-track {
+    width: 28px;
+    height: 16px;
+    background: rgba(26, 24, 20, 0.16);
+    border-radius: 9999px;
+    position: relative;
+  }
+
+  .jobhub-mock--analyse-card[data-toggle-on="true"] .jh-toggle-track {
+    background: #2D5A6E;
+  }
+
+  .jobhub-mock--analyse-card .jh-toggle-knob {
+    width: 12px;
+    height: 12px;
+    background: #FFFFFF;
+    border-radius: 9999px;
+    position: absolute;
+    top: 2px;
+    left: 2px;
+  }
+
+  .jobhub-mock--analyse-card[data-toggle-on="true"] .jh-toggle-knob {
+    left: 14px;
+  }
+
+  .jobhub-mock--analyse-card .jh-button-analyse {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #2D5A6E;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 12px;
+    padding: 12px 22px;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    cursor: default;
+  }
+</style>
+</head>
+<body style="background:#FAF7F2; padding:48px; display:flex; align-items:center; justify-content:center;">
+
+<section class="jobhub-mock jobhub-mock--analyse-card" data-toggle-on="{{TOGGLE_ON}}">
+  <p class="jh-eyebrow">Analyse a Role</p>
+
+  <div class="jh-browse-link">
+    <span>{{BROWSE_PILL_TEXT}}</span>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+      <polyline points="15 3 21 3 21 9"/>
+      <line x1="10" y1="14" x2="21" y2="3"/>
+    </svg>
+  </div>
+
+  <div class="jh-textarea">{{TEXTAREA_PLACEHOLDER}}</div>
+
+  <div class="jh-controls">
+    <label class="jh-toggle">
+      <span class="jh-toggle-track">
+        <span class="jh-toggle-knob"></span>
+      </span>
+      Generate selection criteria responses
+    </label>
+    <button class="jh-button-analyse">
+      Analyse
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    </button>
+  </div>
+</section>
+
+</body>
+</html>

@@ -1,0 +1,142 @@
+Task: Add a whimsical "math behind it" tooltip to the landing page
+
+  Context
+
+  JobHub is a React + TypeScript + Vite app helping Australian graduates land jobs. The landing page        
+  (src/pages/LandingPage.tsx) uses a premium-warm aesthetic with paper texture, pencil-sketch illustrations,   a display serif (Fraunces), and a sans body (Geist).
+
+  I want to add a single, hover-activated tooltip — a "interesting fact" easter egg, not an efficiency      
+  feature. It should reward curious users with the actual probability math behind the "job search is a      
+  numbers game" claim. Optimised for endearment, not for conversion.
+
+  File to modify
+
+  src/components/landing/ThreeTruths.tsx
+
+  The component renders three "truths" cards. Anchor the tooltip to Truth #02 ("Volume is the lever. Not    
+  luck. Not vibes."). Inside that truth's body text, find the phrase "numbers game" and turn it into the    
+  tooltip trigger.
+
+  Design tokens to use
+
+  All in src/components/landing/tokens.ts:
+
+  - colors.bgSurface (#FFFFFF) — tooltip card background
+  - colors.bgAlt (#F4EFE8) — subtle paper tone for the equation block
+  - colors.textPrimary (#1A1814) — body text in tooltip
+  - colors.textSecondary (#5C5750) — secondary text
+  - colors.accentGold (#C5A059) — the dotted underline + asterisk colour
+  - colors.accentPetrol (#2D5A6E) — equation highlight
+  - colors.borderDefined — card border
+  - type.display ('Fraunces' serif) — for equations + headings
+  - type.body ('Geist' sans) — for paragraph text
+
+  Trigger styling
+
+  Replace the literal text numbers game in Truth #02's body with an inline <span> styled as:
+
+  - Dotted underline in colors.accentGold, offset 4px below the text
+  - A small superscript asterisk * immediately after, also in colors.accentGold, slightly raised
+  - On hover: underline transitions to solid, asterisk subtly rotates ~15deg (200ms ease)
+  - Cursor: help
+  - Aria: tabIndex={0}, role="button", aria-describedby pointing to the tooltip
+  - Mobile: the same span is tappable; tooltip toggles on tap (close by tapping elsewhere or pressing Esc)  
+
+  Tooltip card
+
+  Positioning: floating above the trigger (use Framer Motion for entry — opacity + y: 8 → 0, 180ms,
+  cubic-bezier(0.25, 1, 0.5, 1)). On desktop, position above-right of the trigger, with smart edge collision   (flip below or to the left if it would overflow the viewport).
+
+  Dimensions: width: clamp(320px, 90vw, 420px), padding 24px.
+
+  Look:
+  - Background: colors.bgSurface
+  - Border: 1px solid ${colors.borderDefined}
+  - Border-radius: 4px (not pill-y — feels like a paper card)
+  - Box-shadow: a soft, warm shadow — 0 12px 32px -8px rgba(26, 24, 20, 0.18), 0 4px 12px -4px rgba(26, 24, 
+  20, 0.08)
+  - A subtle paper grain on the card (re-use the existing noise-texture SVG filter from LandingPage.tsx via 
+  a tiny absolute-positioned overlay div with mix-blend-mode: multiply and opacity: 0.4)
+  - A handwritten-feeling little label at the top: "The math, if you're curious" in Fraunces italic,        
+  colors.accentGold, 13px
+
+  Body content (exact copy below) renders inside the card. Equations should be rendered in Fraunces (display   serif), centered, slightly larger than body text, with a thin colors.borderWhisper divider above and     
+  below — like a chalkboard line, not a code block.
+
+  Copy (use verbatim)
+
+  Render this content inside the tooltip card. Use proper React markup — bold tags for bold,
+  blockquote-style divs for the equation lines, etc.
+
+  ---
+  The math, if you're curious
+
+  Job searching is a probability problem — most people just treat it like a lottery.
+
+  A typical CV has a 3–5% chance of generating a callback on any single application. That sounds brutal     
+  until you run the actual equation:
+
+  ▎ At a 5% callback rate across 50 applications, the probability of landing at least one interview is:     
+  ▎
+  ▎ 1 − (0.95)⁵⁰ = 92.3%
+
+  50 well-targeted applications give you a 92% chance of an interview.
+
+  Reverse-engineer it from the goal:
+
+  ▎ Applications needed = Target offers ÷ (Interview rate × Offer rate)
+  ▎
+  ▎ Want 2 offers? At industry averages: 2 ÷ (0.05 × 0.25) = 160 applications.
+  ▎
+  ▎ Fix your callback rate from 1% to 5% — the same goal takes 40 applications.
+
+  The game isn't volume. It's rate.
+
+  Every percentage point of improvement in your callback rate roughly halves the effort required. That's why   your CV, cover letter, and LinkedIn profile aren't admin tasks — they're the highest-leverage variables  
+  in the entire equation.
+
+  This is what JobHub is built on: systems and strategy rooted in math.
+
+  ---
+  Interaction rules
+
+  - Hover (desktop): opens after 150ms hover delay, closes 100ms after mouse leaves both trigger and card   
+  (so users can move the cursor onto the card to read)
+  - Focus (keyboard): opens on focus, closes on blur or Esc
+  - Tap (mobile): toggles on tap; tap outside or Esc closes
+  - Card itself is hoverable — moving cursor from trigger to card should NOT close it
+  - z-index: 200 (must sit above the page noise overlay at z-index 100)
+  - No external positioning library — implement positioning with a small custom hook using
+  getBoundingClientRect + viewport edge detection. Do NOT add Floating UI or Radix.
+
+  Analytics
+
+  Add a single PostHog event: landing_math_tooltip_opened with property { variant: HeroVariant }. Fire once 
+  per session (use a ref to dedupe). Pull variant via prop drilling from ThreeTruths → if not currently     
+  passed, accept it as an optional prop and update LandingPage.tsx to pass it.
+
+  Import path: import posthog from 'posthog-js'.
+
+  Constraints
+
+  - No new npm dependencies. Use Framer Motion (already in the project) for animation.
+  - Don't touch any other section. Only ThreeTruths.tsx, optionally LandingPage.tsx for the variant prop.   
+  - Preserve existing animations and layout. The truth row's existing motion.div and useInView must keep    
+  working.
+  - Mobile-first sanity: tooltip card must not overflow viewport at 360px width. Default to centered        
+  horizontally below the trigger on screens <640px.
+  - Accessibility: keyboard-navigable, screen-reader-friendly (role="tooltip" on the card,
+  aria-live="polite").
+  - Tone: the only voice cue I want is the italic "The math, if you're curious" label. Don't add emojis,    
+  exclamation marks, or extra microcopy. The whimsy lives in the dotted underline + asterisk discovery, not 
+  in chatty language.
+
+  Done criteria
+
+  - Hovering "numbers game" in Truth #02 reveals the tooltip with the copy above
+  - Tooltip closes cleanly on mouse-out, blur, Esc, or outside-tap
+  - Works on mobile (tap to open, tap-outside to close)
+  - No layout shift in the surrounding paragraph
+  - No new dependencies in package.json
+  - TypeScript compiles cleanly
+  - PostHog event fires once per session

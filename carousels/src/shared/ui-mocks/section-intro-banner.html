@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>JobHub mock - section intro banner</title>
+<style>
+  .jobhub-mock--section-intro-banner,
+  .jobhub-mock--section-intro-banner * {
+    margin: 0; padding: 0; box-sizing: border-box;
+    font-family: 'Geist', -apple-system, 'Segoe UI', system-ui, sans-serif;
+  }
+
+  .jobhub-mock--section-intro-banner {
+    background: #F4EFE8;
+    border: 1px solid rgba(26, 24, 20, 0.08);
+    border-radius: 16px;
+    padding: 16px 20px;
+    width: 720px;
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .jh-banner-text {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 400;
+    color: #5C5750;
+    line-height: 1.55;
+    border-left: 3px solid #2D5A6E;
+    padding-left: 14px;
+  }
+
+  .jh-banner-close {
+    background: none;
+    border: none;
+    padding: 4px;
+    cursor: default;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #8B847B;
+  }
+
+  .jh-banner-close svg {
+    display: block;
+  }
+</style>
+</head>
+<body style="background:#FAF7F2; padding:48px; display:flex; align-items:center; justify-content:center;">
+
+<section class="jobhub-mock jobhub-mock--section-intro-banner">
+  <p class="jh-banner-text">{{BANNER_TEXT}}</p>
+  <button class="jh-banner-close">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18"/>
+      <line x1="6" y1="6" x2="18" y2="18"/>
+    </svg>
+  </button>
+</section>
+
+</body>
+</html>

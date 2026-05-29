@@ -26,11 +26,12 @@ interface PlanCardProps {
   trial: string | null;
   cta: string;
   recommended?: boolean;
+  savings?: string;
   onSelect: () => void;
   loading: boolean;
 }
 
-function PlanCard({ name, price, weekly, billing, trial, cta, recommended, onSelect, loading }: PlanCardProps) {
+function PlanCard({ name, price, weekly, billing, trial, cta, recommended, savings, onSelect, loading }: PlanCardProps) {
   return (
     <div
       className="relative flex flex-col rounded-2xl border p-5 transition-all"
@@ -56,6 +57,9 @@ function PlanCard({ name, price, weekly, billing, trial, cta, recommended, onSel
 
       {trial && (
         <p className="text-[10px] text-[#8B847B] mb-3">{trial}</p>
+      )}
+      {savings && (
+        <p className="text-[11px] text-brand-400 mb-3 leading-relaxed whitespace-pre-line">{savings}</p>
       )}
 
       <button
@@ -147,6 +151,7 @@ export const UpgradeModal: React.FC<Props> = ({ trigger, onClose }) => {
               weekly="Best value for job seekers"
               billing="One payment, 90 days access"
               trial={null}
+              savings={"Three months for $197. That's $65 a month — $94 less than paying monthly.\nAfterpay and Zip both work at checkout."}
               cta="Get 3-Month Access"
               recommended
               onSelect={() => handleCheckout('three_month')}

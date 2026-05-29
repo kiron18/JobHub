@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/node';
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
 import fs from 'fs';
@@ -27,6 +28,7 @@ import adminFunnelRouter from './routes/admin-funnel';
 import stripeRouter, { stripeWebhookHandler } from './routes/stripe';
 import enrichmentRouter from './routes/enrichment';
 import insightsRouter from './routes/insights';
+import sponsorsRouter from './routes/sponsors';
 import { startJobFeedCron } from './cron/jobFeedCron';
 import { startTrialReminderCron } from './cron/trialReminderCron';
 import { startFollowUpReminderCron } from './cron/followUpReminderCron';
@@ -94,6 +96,7 @@ app.use(cors(corsOptions));
 app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), stripeWebhookHandler);
 
 app.use(express.json({ limit: '10mb' }));
+app.use(cookieParser());
 
 const isDev = process.env.NODE_ENV !== 'production';
 
@@ -150,6 +153,7 @@ app.use('/api/admin/funnel', adminFunnelRouter);
 app.use('/api/stripe', stripeRouter);
 app.use('/api/enrichment', enrichmentRouter);
 app.use('/api/insights', insightsRouter);
+app.use('/api/sponsors', sponsorsRouter);
 
 // Sentry error handler - must be before any other error handling middleware
 Sentry.setupExpressErrorHandler(app);
@@ -221,6 +225,14 @@ async function ensureColumns() {
         ADD COLUMN IF NOT EXISTS "ratingChips" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
         ADD COLUMN IF NOT EXISTS "ratingComment" TEXT,
         ADD COLUMN IF NOT EXISTS "ratedAt" TIMESTAMP(3);
+    `);
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "SponsorLead" (
+        id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+        email TEXT NOT NULL UNIQUE,
+        "unlockedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
     `);
     console.log('[startup] schema columns verified');
   } catch (err) {

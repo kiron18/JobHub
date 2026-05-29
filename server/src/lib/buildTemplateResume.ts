@@ -17,7 +17,7 @@
  */
 
 import { enforceResumeQuality } from './resumeQualityEnforcers';
-import type { ResumeData } from '@shared/lib/resumeData';
+import type { ResumeData } from './resumeData';
 
 // =============================================================================
 // PolishPayload — mirrors src/lib/applyPolish.ts
@@ -79,6 +79,37 @@ export interface ProfileWithRelations {
 }
 
 // =============================================================================
+// Normalise skills — the DB stores skills as a JSON string like
+// `{"technical":["Adobe"],"softSkills":["Writing"]}`. The markdown renderer
+// expects newline-separated `Category: item1, item2` lines.
+// =============================================================================
+function normalizeSkillsString(skills: string | null | undefined): string | undefined {
+  if (!skills) return undefined;
+  // If it looks like JSON, parse and flatten
+  const trimmed = skills.trim();
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed.join(', ');
+      }
+      if (typeof parsed === 'object') {
+        return Object.entries(parsed)
+          .map(([key, vals]) => {
+            const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+            const items = Array.isArray(vals) ? vals.join(', ') : String(vals);
+            return `${label}: ${items}`;
+          })
+          .join('\n');
+      }
+    } catch {
+      // Not actually JSON — use as-is
+    }
+  }
+  return skills;
+}
+
+// =============================================================================
 // profileToResumeData — maps Prisma profile shape to ResumeData
 // =============================================================================
 export function profileToResumeData(profile: ProfileWithRelations): ResumeData {
@@ -90,7 +121,7 @@ export function profileToResumeData(profile: ProfileWithRelations): ResumeData {
     linkedin: profile.linkedin || undefined,
     location: profile.location || undefined,
     professionalSummary: profile.professionalSummary || undefined,
-    skills: profile.skills || undefined,
+    skills: normalizeSkillsString(profile.skills) || undefined,
     experience: profile.experience.map(exp => ({
       role: exp.role,
       company: exp.company,

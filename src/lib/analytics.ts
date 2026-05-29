@@ -145,3 +145,33 @@ export function trackLandingCtaClicked(position: 'hero' | 'spotlight' | 'final',
 export function trackLandingLogInClicked(variant: string) {
   posthog.capture('landing_login_clicked', { hero_variant: variant });
 }
+
+// ── Sponsor directory funnel ──────────────────────────────────────
+
+export function trackSponsorDirectoryViewed() {
+  posthog.capture('sponsor_directory_viewed');
+}
+
+export function trackSponsorSearchPerformed(q: string, filters: Record<string, string>, resultCount: number) {
+  posthog.capture('sponsor_search_performed', { query: q, ...filters, result_count: resultCount });
+}
+
+export function trackSponsorEmailGateShown() {
+  posthog.capture('sponsor_email_gate_shown');
+}
+
+export function trackSponsorEmailCaptured() {
+  posthog.capture('sponsor_email_captured');
+}
+
+export function trackSponsorLinksUnlocked() {
+  posthog.capture('sponsor_links_unlocked');
+}
+
+export function trackSponsorOutreachLockedClicked() {
+  posthog.capture('sponsor_outreach_locked_clicked');
+}
+
+export function trackSponsorTrialCtaClicked() {
+  posthog.capture('sponsor_trial_cta_clicked');
+}

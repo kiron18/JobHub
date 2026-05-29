@@ -88,30 +88,56 @@ export function LandingNav({ onLogInClick }: LandingNavProps) {
       </span>
 
       {/* Log in */}
-      <button
-        onClick={handleLogIn}
-        style={{
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          fontFamily: typeTokens.body,
-          fontSize: '0.9375rem',
-          fontWeight: 500,
-          color: colors.textSecondary,
-          padding: 0,
-          textDecoration: 'none',
-          textUnderlineOffset: 4,
-          transition: 'color 180ms ease',
-          outline: 'none',
-          lineHeight: 1,
-        }}
-        onMouseEnter={e => { e.currentTarget.style.color = colors.accentPetrol; e.currentTarget.style.textDecoration = 'underline'; }}
-        onMouseLeave={e => { e.currentTarget.style.color = colors.textSecondary; e.currentTarget.style.textDecoration = 'none'; }}
-        onFocus={e => { e.currentTarget.style.outline = `2px solid ${colors.ringFocus}`; e.currentTarget.style.outlineOffset = '4px'; }}
-        onBlur={e => { e.currentTarget.style.outline = 'none'; }}
-      >
-        Log in
-      </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+        <button
+          onClick={() => navigate('/pricing')}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            fontFamily: typeTokens.body,
+            fontSize: '0.9375rem',
+            fontWeight: 500,
+            color: colors.textSecondary,
+            padding: 0,
+            textDecoration: 'none',
+            textUnderlineOffset: 4,
+            transition: 'color 180ms ease',
+            outline: 'none',
+            lineHeight: 1,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.color = colors.accentPetrol; e.currentTarget.style.textDecoration = 'underline'; }}
+          onMouseLeave={e => { e.currentTarget.style.color = colors.textSecondary; e.currentTarget.style.textDecoration = 'none'; }}
+          onFocus={e => { e.currentTarget.style.outline = `2px solid ${colors.ringFocus}`; e.currentTarget.style.outlineOffset = '4px'; }}
+          onBlur={e => { e.currentTarget.style.outline = 'none'; }}
+        >
+          Pricing
+        </button>
+        <button
+          onClick={handleLogIn}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            fontFamily: typeTokens.body,
+            fontSize: '0.9375rem',
+            fontWeight: 500,
+            color: colors.textSecondary,
+            padding: 0,
+            textDecoration: 'none',
+            textUnderlineOffset: 4,
+            transition: 'color 180ms ease',
+            outline: 'none',
+            lineHeight: 1,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.color = colors.accentPetrol; e.currentTarget.style.textDecoration = 'underline'; }}
+          onMouseLeave={e => { e.currentTarget.style.color = colors.textSecondary; e.currentTarget.style.textDecoration = 'none'; }}
+          onFocus={e => { e.currentTarget.style.outline = `2px solid ${colors.ringFocus}`; e.currentTarget.style.outlineOffset = '4px'; }}
+          onBlur={e => { e.currentTarget.style.outline = 'none'; }}
+        >
+          Log in
+        </button>
+      </div>
 
       {/* Mobile responsive: reduce padding */}
       <style>{`

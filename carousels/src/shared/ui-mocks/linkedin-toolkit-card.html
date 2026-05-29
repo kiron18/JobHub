@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>JobHub mock - linkedin toolkit card</title>
+<style>
+  .jobhub-mock--linkedin-toolkit-card,
+  .jobhub-mock--linkedin-toolkit-card * {
+    margin: 0; padding: 0; box-sizing: border-box;
+    font-family: 'Geist', -apple-system, 'Segoe UI', system-ui, sans-serif;
+  }
+
+  .jobhub-mock--linkedin-toolkit-card {
+    background: #FFFFFF;
+    border: 1px solid rgba(26, 24, 20, 0.08);
+    border-radius: 16px;
+    box-shadow: 0 1px 2px rgba(26,24,20,0.04), 0 4px 16px rgba(26,24,20,0.04);
+    padding: 24px;
+    width: 360px;
+  }
+
+  .jh-toolkit-icon {
+    width: 36px;
+    height: 36px;
+    background: rgba(45, 90, 110, 0.10);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+    color: #2D5A6E;
+  }
+
+  .jh-toolkit-icon svg {
+    display: block;
+  }
+
+  .jh-toolkit-title {
+    font-family: 'Fraunces', Georgia, 'Times New Roman', serif;
+    font-weight: 600;
+    font-size: 20px;
+    color: #1A1814;
+    margin-bottom: 6px;
+  }
+
+  .jh-toolkit-body {
+    font-size: 13px;
+    font-weight: 400;
+    color: #5C5750;
+    line-height: 1.55;
+    margin-bottom: 14px;
+  }
+
+  .jh-toolkit-link {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #2D5A6E;
+    text-decoration: none;
+  }
+</style>
+</head>
+<body style="background:#FAF7F2; padding:48px; display:flex; align-items:center; justify-content:center;">
+
+<section class="jobhub-mock jobhub-mock--linkedin-toolkit-card">
+  <div class="jh-toolkit-icon">
+    {{ICON_SVG}}
+  </div>
+  <div class="jh-toolkit-title">{{CARD_TITLE}}</div>
+  <div class="jh-toolkit-body">{{CARD_BODY}}</div>
+  <a class="jh-toolkit-link">Open &rarr;</a>
+</section>
+
+</body>
+</html>

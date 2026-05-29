@@ -6,6 +6,7 @@ import api from '../lib/api';
 import { useAppTheme } from '../contexts/ThemeContext';
 import { trackMatchAnalysisRun, trackFreeLimitHit } from '../lib/analytics';
 import { EnrichmentPrompt } from './EnrichmentPrompt';
+import { PricingTeaser } from './PricingTeaser';
 
 interface AnalysisResult {
     matchScore: number;
@@ -424,6 +425,12 @@ export const MatchEngine: React.FC = () => {
                         </div>
                     )}
                 </div>
+
+                {result && (
+                  <div className="mt-3">
+                    <PricingTeaser source="match_engine" variant="compact" />
+                  </div>
+                )}
 
                 {/* JD-time enrichment: sharpen weak achievements for this role */}
                 {result && !enrichmentDone && (result.enrichmentCandidates?.length ?? 0) > 0 && (

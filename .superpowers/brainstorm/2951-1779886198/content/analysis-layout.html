@@ -1,0 +1,181 @@
+<h2>Post-Analysis Dashboard Layout</h2>
+<p class="subtitle">What the user sees after clicking Analyse — the page slides down, revealing results + the apply button</p>
+
+<div class="mockup">
+  <div class="mockup-header">Strategy Hub — Post-Analysis View</div>
+  <div class="mockup-body" style="padding:20px;display:flex;flex-direction:column;gap:16px;">
+
+    <!-- 🔝 APPLY BAR — pinned always visible -->
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.25);border-radius:12px;">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:#e2e8f0;">Ready to apply?</div>
+        <div style="font-size:12px;color:#94a3b8;margin-top:2px;">All insights collected · 3 gaps bridged · 1 company insight</div>
+      </div>
+      <button class="mock-button" style="padding:10px 24px;font-size:14px;font-weight:700;">Apply now →</button>
+    </div>
+
+    <!-- HEADLINE -->
+    <div>
+      <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#64748b;">
+        Analysis · Marketing Manager · Canva
+      </div>
+      <h3 style="margin:6px 0 0;font-size:20px;color:#f1f5f9;">
+        Your achievements prove you can do 68% of this role right now.
+      </h3>
+    </div>
+
+    <!-- COMPANY INTEL — new card -->
+    <div style="background:#1e293b;border:1px solid #334155;border-left:3px solid #818cf8;border-radius:12px;padding:16px 20px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <span style="color:#818cf8;font-size:13px;">🔍</span>
+        <span style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#818cf8;">Company Intel</span>
+      </div>
+      <p style="margin:0 0 10px;font-size:13px;color:#cbd5e1;line-height:1.6;">
+        Canva's marketing team recently launched a generative AI video ad platform
+        (Canva Video AI) and heavily uses HubSpot for CRM workflows. They're
+        mid-growth (~150 person marketing org) and value experimentation culture.
+      </p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        <span style="font-size:11px;padding:4px 10px;background:rgba(129,140,248,0.12);border-radius:6px;color:#a5b4fc;">
+          Suggested contact: Head of Marketing
+        </span>
+        <span style="font-size:11px;padding:4px 10px;background:rgba(129,140,248,0.08);border-radius:6px;color:#a5b4fc;">
+          2 sources
+        </span>
+      </div>
+    </div>
+
+    <!-- DIRECT MATCH card -->
+    <div style="background:#1e293b;border:1px solid #334155;border-left:3px solid #4ade80;border-radius:12px;padding:16px 20px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="color:#4ade80;">✓</span>
+          <span style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#4ade80;">Include in resume</span>
+        </div>
+        <span style="font-size:13px;font-weight:700;color:#4ade80;">68%</span>
+      </div>
+      <p style="margin:0 0 8px;font-size:12px;color:#94a3b8;line-height:1.5;">
+        Achievements that prove you can deliver what this role asks for.
+        <strong style="color:#cbd5e1;">These will be included in your resume.</strong>
+      </p>
+      <ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;">
+        <li style="font-size:13px;color:#cbd5e1;padding-left:14px;position:relative;">
+          <span style="position:absolute;left:0;color:#4ade80;">•</span>
+          Led a cross-functional campaign that grew pipeline by 34% in 6 months
+        </li>
+        <li style="font-size:13px;color:#cbd5e1;padding-left:14px;position:relative;">
+          <span style="position:absolute;left:0;color:#4ade80;">•</span>
+          Managed HubSpot CRM workflows for lead scoring and nurture sequences
+        </li>
+      </ul>
+    </div>
+
+    <!-- BRIDGEABLE GAP card — inline editing mock -->
+    <div style="background:#1e293b;border:1px solid #334155;border-left:3px solid #4fd1c5;border-radius:12px;padding:16px 20px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="color:#4fd1c5;">✦</span>
+          <span style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#4fd1c5;">Add to resume</span>
+        </div>
+        <span style="font-size:13px;font-weight:700;color:#4fd1c5;">+21%</span>
+      </div>
+      <p style="margin:0 0 10px;font-size:12px;color:#94a3b8;line-height:1.5;">
+        You likely have these — they just aren't on your profile yet.
+        Adding them boosts your match to <strong style="color:#cbd5e1;">89%</strong>.
+      </p>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <!-- Gap item 1 — inline editable -->
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(79,209,197,0.06);border:1px solid rgba(79,209,197,0.2);border-radius:8px;">
+          <input type="checkbox" checked style="accent-color:#4fd1c5;" />
+          <div style="flex:1;">
+            <div style="font-size:12px;font-weight:700;color:#e2e8f0;text-decoration:line-through;text-decoration-color:rgba(79,209,197,0.5);">Video ad production</div>
+            <input type="text" value="Produced generative AI video ads that drove 28% higher CTR" style="width:100%;margin-top:4px;padding:4px 8px;font-size:12px;background:#0f172a;border:1px solid #334155;border-radius:4px;color:#cbd5e1;" disabled />
+          </div>
+          <span style="font-size:10px;color:#4fd1c5;font-weight:700;">✓ Added</span>
+        </div>
+        <!-- Gap item 2 — awaiting action -->
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(79,209,197,0.04);border:1px solid rgba(79,209,197,0.12);border-radius:8px;">
+          <input type="checkbox" style="accent-color:#4fd1c5;" />
+          <div style="flex:1;">
+            <div style="font-size:12px;font-weight:700;color:#e2e8f0;">Campaign attribution modelling</div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px;font-style:italic;">"Designed multi-touch attribution models to measure channel contribution"</div>
+          </div>
+          <button style="padding:4px 10px;font-size:11px;font-weight:700;color:#4fd1c5;background:rgba(79,209,197,0.1);border:1px solid rgba(79,209,197,0.3);border-radius:6px;cursor:pointer;">✎ Draft</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- HARD GAP card -->
+    <div style="background:#1e293b;border:1px solid #334155;border-left:3px solid #64748b;border-radius:12px;padding:16px 20px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <span style="color:#64748b;">🔒</span>
+        <span style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#64748b;">Not on your profile</span>
+      </div>
+      <p style="margin:0 0 6px;font-size:12px;color:#94a3b8;line-height:1.5;">
+        If you have these, add them to your profile so we detect them next time.
+      </p>
+      <ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px;">
+        <li style="font-size:13px;color:#94a3b8;padding-left:14px;position:relative;">
+          <span style="position:absolute;left:0;color:#64748b;">•</span>
+          Experience with SQL-based analytics tools
+        </li>
+      </ul>
+    </div>
+
+    <!-- STRATEGIC NOTES -->
+    <div>
+      <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#64748b;margin-bottom:8px;">
+        Strategic notes
+      </div>
+      <ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;">
+        <li style="font-size:13px;color:#94a3b8;padding-left:14px;position:relative;">
+          <span style="position:absolute;left:0;color:#475569;">·</span>
+          Canva values experimentation — lead with your A/B testing results
+        </li>
+      </ul>
+    </div>
+
+    <!-- BOTTOM APPLY BAR — same as top -->
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.25);border-radius:12px;margin-top:8px;">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:#e2e8f0;">Apply with all insights</div>
+        <div style="font-size:12px;color:#94a3b8;margin-top:2px;">Company Intel · Resume matched · Gaps bridged</div>
+      </div>
+      <button class="mock-button" style="padding:10px 24px;font-size:14px;font-weight:700;">Apply now →</button>
+    </div>
+
+  </div>
+</div>
+
+<div class="section">
+  <h3>What changed from current design?</h3>
+  <div class="pros-cons">
+    <div class="pros">
+      <h4>New</h4>
+      <ul>
+        <li><strong>Company Intel card</strong> — research paragraph + suggested contact</li>
+        <li><strong>Apply bar pinned</strong> at top + bottom, always visible</li>
+        <li><strong>Copy reframed</strong> — "Include in resume" / "Add to resume" / "Not on your profile"</li>
+        <li><strong>Bridged state</strong> — checkbox + inline edit suggestion</li>
+        <li><strong>Direct match</strong> says "These will be included in your resume"</li>
+        <li><strong>Slide-down reveal</strong> on analysis complete</li>
+      </ul>
+    </div>
+    <div class="cons">
+      <h4>Removed / Simplified</h4>
+      <ul>
+        <li>No more "Bridgeable Gap" label — now "Add to resume"</li>
+        <li>No more "Direct match" label — now "Include in resume"</li>
+        <li>Hard gap reframed as neutral "Not on your profile"</li>
+        <li>Insights moved below cards (less prominent)</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <p class="subtitle">
+    Take a look. Does the layout + copy direction feel right?
+    Anything you'd rearrange, rename, or remove?
+  </p>
+</div>

@@ -1,5 +1,6 @@
 import { useEffect, useSyncExternalStore, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import api from '../../lib/api';
 import type { ProcessProgress, ProcessStep } from './types';
 import type { JobApplication } from '../tracker/types';
 
@@ -40,6 +41,7 @@ export function useProcessProgress(): ProcessProgress & {
 } {
   const { data: jobs = [] } = useQuery<JobApplication[]>({
     queryKey: ['jobs'],
+    queryFn: async () => (await api.get('/jobs')).data,
     staleTime: 30_000,
   });
 

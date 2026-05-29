@@ -12,7 +12,7 @@ import {
 } from './voiceEnforcer';
 import { tagAIRewrites } from './provenanceTagging';
 
-import type { ResumeData } from '@shared/lib/resumeData';
+import type { ResumeData } from './resumeData';
 
 // =============================================================================
 // Quality enforcer options

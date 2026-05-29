@@ -49,7 +49,10 @@ router.post('/jobs', authenticate, async (req, res) => {
     }
 
     try {
-        const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
+        const profile = await prisma.candidateProfile.findUnique({
+            where: { userId },
+            select: { id: true, skills: true },
+        });
         if (!profile) return res.status(404).json({ error: 'Profile not found.' });
 
         const job = await prisma.jobApplication.create({
@@ -69,15 +72,10 @@ router.post('/jobs', authenticate, async (req, res) => {
         res.status(201).json(job);
 
         // ── Background: fetch company intel ────────────────────────────────────
-        // Fire-and-forget — never blocks the response. The intel is consumed by
-        // the cover letter generation flow later.
+        // Fire-and-forget — never blocks the response. Uses skills from the
+        // profile already loaded above.
         if (company && company.trim() !== 'Unknown Company') {
-            const profile = await prisma.candidateProfile.findUnique({
-                where: { userId: job.userId } as any,
-                select: { skills: true },
-            }).catch(() => null);
-
-            const skillsPreview = buildSkillsPreview(profile?.skills, 7);
+            const skillsPreview = buildSkillsPreview(profile.skills, 7);
 
             // Use short excerpts from the job description for context
             const jobExcerpts = (description || '')

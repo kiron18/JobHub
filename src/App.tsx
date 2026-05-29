@@ -45,6 +45,9 @@ const LandingPage = React.lazy(() =>
 const StepperWorkspace = React.lazy(() =>
   import('./pages/StepperWorkspace').then(m => ({ default: m.StepperWorkspace }))
 );
+const VisaSponsorsPage = React.lazy(() =>
+  import('./pages/VisaSponsorsPage').then(m => ({ default: m.VisaSponsorsPage }))
+);
 
 // Auth & Context
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -59,7 +62,19 @@ import { LegalPage } from './pages/LegalPage';
 import api from './lib/api';
 import { isEssentiallyEmptyProfile } from './lib/parseQuality';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // refetchOnWindowFocus was firing a full-app refetch storm on every
+      // focus/visibility event (react-query onFocus → refetch), repainting the
+      // whole dashboard every few seconds. Disable it and set a sane default
+      // staleTime so queries without explicit options don't refetch on mount.
+      refetchOnWindowFocus: false,
+      staleTime: 60_000,
+      retry: 1,
+    },
+  },
+});
 
 // --- Sub-components (could be moved to separate files later) ---
 
@@ -164,6 +179,30 @@ function PastDueBanner() {
   );
 }
 
+function LapsedBanner() {
+  return (
+    <div style={{
+      background: 'linear-gradient(90deg, rgba(245,158,11,0.12), rgba(245,158,11,0.05))',
+      borderBottom: '1px solid rgba(245,158,11,0.22)',
+      padding: '9px 20px',
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+    }}>
+      <p style={{ margin: 0, fontSize: 12, color: '#fcd34d', fontWeight: 600 }}>
+        Your Premium subscription has ended — reactivate to keep your tools.
+      </p>
+      <button
+        onClick={() => { window.location.href = '/pricing'; }}
+        style={{
+          background: '#f59e0b', color: '#1c1917', border: 'none',
+          borderRadius: 8, padding: '6px 14px', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+        }}
+      >
+        Reactivate Premium →
+      </button>
+    </div>
+  );
+}
+
 function TrialBanner({ trialEndDate }: { trialEndDate: string }) {
   const end = new Date(trialEndDate);
   const daysLeft = Math.ceil((end.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
@@ -220,6 +259,7 @@ function DashboardGate({ children }: { children: React.ReactNode }) {
   const planStatus: string = profile?.planStatus ?? 'active';
   const isPastDue = planStatus === 'past_due';
   const isTrialing = planStatus === 'trialing';
+  const isLapsed = planStatus === 'cancelled' || planStatus === 'expired';
 
   return (
     <>
@@ -230,6 +270,7 @@ function DashboardGate({ children }: { children: React.ReactNode }) {
         />
       )}
       {isPastDue && <PastDueBanner />}
+      {isLapsed && <LapsedBanner />}
       {isTrialing && profile?.trialEndDate && <TrialBanner trialEndDate={profile.trialEndDate} />}
       {children}
     </>
@@ -393,6 +434,11 @@ function App() {
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/legal/:policy" element={<LegalPage />} />
               <Route path="/legal" element={<LegalPage />} />
+              <Route path="/visa-sponsors" element={
+                <React.Suspense fallback={null}>
+                  <VisaSponsorsPage />
+                </React.Suspense>
+              } />
 
               {/* Public Landing — unauth sees new landing, auth preserves existing behaviour */}
               <Route path="/" element={<LandingPageOrExisting />} />

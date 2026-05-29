@@ -358,3 +358,10 @@ model Sponsor {
   @@index([confidence])
   @@index([cleanName])
 }
+
+model SponsorLead {
+  id         String   @id @default(uuid())
+  email      String   @unique
+  createdAt  DateTime @default(now())
+  unlockedAt DateTime @default(now())
+}

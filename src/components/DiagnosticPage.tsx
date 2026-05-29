@@ -6,6 +6,7 @@ import { scanProfile } from '../lib/scanProfile';
 import { parseReportSections, splitProblemFix, parseFixMoves, type ReportSection } from '../lib/parseReport';
 import { trackSection5CtaClicked } from '../lib/analytics';
 import { warm } from '../lib/theme/warmTokens';
+import { PricingTeaser } from './PricingTeaser';
 
 const PETROL = '#2D5A6E';
 const GOLD   = '#C5A059';
@@ -616,6 +617,9 @@ export function DiagnosticPage({ profile, onDone }: DiagnosticPageProps) {
                     <ArrowRight size={16} />
                   </motion.button>
                 </div>
+              </div>
+              <div style={{ marginTop: 32 }}>
+                <PricingTeaser source="diagnostic_report" variant="full" />
               </div>
             </div>
           )}

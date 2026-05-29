@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>JobHub mock - diagnostic card</title>
+<style>
+  .jobhub-mock--diagnostic-card,
+  .jobhub-mock--diagnostic-card * {
+    margin: 0; padding: 0; box-sizing: border-box;
+    font-family: 'Geist', -apple-system, 'Segoe UI', system-ui, sans-serif;
+  }
+
+  .jobhub-mock--diagnostic-card {
+    background: #FFFFFF;
+    border: 1px solid rgba(26, 24, 20, 0.08);
+    border-radius: 16px;
+    box-shadow: 0 1px 3px rgba(26,24,20,0.04), 0 6px 20px rgba(26,24,20,0.06), 0 18px 48px rgba(26,24,20,0.04);
+    padding: 32px;
+    width: 720px;
+  }
+
+  .jh-fix-eyebrow {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #C5A059;
+    margin-bottom: 6px;
+  }
+
+  .jh-fix-title {
+    font-family: 'Fraunces', Georgia, 'Times New Roman', serif;
+    font-weight: 700;
+    font-size: 28px;
+    color: #1A1814;
+    margin-bottom: 20px;
+  }
+
+  .jh-fix-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+
+  .jh-column-label {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+  }
+
+  .jh-column-label--before {
+    color: #B85C5C;
+  }
+
+  .jh-column-label--after {
+    color: #2A9D6F;
+  }
+
+  .jh-quote-box {
+    background: #F4EFE8;
+    border-radius: 10px;
+    padding: 16px;
+  }
+
+  .jh-quote-box--before {
+    border: 1px solid rgba(184, 92, 92, 0.20);
+  }
+
+  .jh-quote-box--after {
+    border: 1px solid rgba(42, 157, 111, 0.20);
+  }
+
+  .jh-quote-text {
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .jh-quote-text--before {
+    font-style: italic;
+    color: #5C5750;
+  }
+
+  .jh-quote-text--after {
+    font-weight: 500;
+    color: #1A1814;
+  }
+
+  .jh-fix-caption {
+    font-size: 13px;
+    font-weight: 400;
+    color: #5C5750;
+    padding-top: 20px;
+    margin-top: 24px;
+    border-top: 1px solid rgba(26, 24, 20, 0.08);
+  }
+</style>
+</head>
+<body style="background:#FAF7F2; padding:48px; display:flex; align-items:center; justify-content:center;">
+
+<section class="jobhub-mock jobhub-mock--diagnostic-card">
+  <p class="jh-fix-eyebrow">FIX {{FIX_NUMBER}}</p>
+  <div class="jh-fix-title">{{FINDING_TITLE}}</div>
+
+  <div class="jh-fix-grid">
+    <div>
+      <p class="jh-column-label jh-column-label--before">Before</p>
+      <div class="jh-quote-box jh-quote-box--before">
+        <p class="jh-quote-text jh-quote-text--before">{{BEFORE_TEXT}}</p>
+      </div>
+    </div>
+    <div>
+      <p class="jh-column-label jh-column-label--after">After</p>
+      <div class="jh-quote-box jh-quote-box--after">
+        <p class="jh-quote-text jh-quote-text--after">{{AFTER_TEXT}}</p>
+      </div>
+    </div>
+  </div>
+
+  <p class="jh-fix-caption">{{EXPLANATION}}</p>
+</section>
+
+</body>
+</html>
