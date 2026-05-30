@@ -742,7 +742,7 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
 // This route generates a cover letter as structured JSON (salutation + 4 paragraphs
 // + signoff) which is then validated with Zod and rendered to deterministic markdown
 // server-side. LLM writes prose for fixed slots; code owns paragraph structure.
-router.post('/cover-letter-structured', async (req: any, res: any) => {
+router.post('/cover-letter-structured', authenticate, async (req: any, res: any) => {
     const userId = (req as any).user?.id;
     const {
         jobDescription,

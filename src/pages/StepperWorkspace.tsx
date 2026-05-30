@@ -45,6 +45,8 @@ import { toast } from 'sonner';
 import api from '../lib/api';
 import { warm } from '../lib/theme/warmTokens';
 import { GenerationProgress } from '../components/shared/GenerationProgress';
+import { CompanyResearchPanel, type CompanyResearch } from '../components/CompanyResearchPanel';
+import { CoverLetterPersonalisationPanel } from '../components/CoverLetterPersonalisationPanel';
 
 // ── Placeholder marker rendering ────────────────────────────────────────────
 //
@@ -474,6 +476,8 @@ export function StepperWorkspace() {
                         stepId={currentStep.id as GenerateType}
                         workspaceKey={workspaceKey}
                         jobDescription={jobDescription}
+                        company={state.company}
+                        role={state.role}
                         onBack={currentIndex > 0 ? () => setCurrentIndex(currentIndex - 1) : null}
                         onContinue={() => setCurrentIndex(currentIndex + 1)}
                         isLast={currentIndex === steps.length - 1}
@@ -547,6 +551,8 @@ function DocumentStep({
     stepId,
     workspaceKey,
     jobDescription,
+    company,
+    role,
     onBack,
     onContinue,
     isLast,
@@ -554,6 +560,8 @@ function DocumentStep({
     stepId: GenerateType;
     workspaceKey: string;
     jobDescription: string;
+    company?: string;
+    role?: string;
     onBack: (() => void) | null;
     onContinue: () => void;
     isLast: boolean;
@@ -572,6 +580,12 @@ function DocumentStep({
         }
     });
     const [formatMenuOpen, setFormatMenuOpen] = useState(false);
+
+    // Cover-letter-only: tone + Perplexity-backed company research feed the
+    // structured /cover-letter-structured route. Reset on step/workspace change.
+    const [coverTone, setCoverTone] = useState<'professional' | 'warm' | 'concise'>('professional');
+    const [companyResearch, setCompanyResearch] = useState<CompanyResearch | null>(null);
+    const isCoverLetter = stepId === 'cover-letter';
 
     // ── Selection-criteria-only state ────────────────────────────────────
     const criteriaStorageKey = `jobhub_stepper_${workspaceKey}_criteria_text`;
@@ -655,7 +669,26 @@ function DocumentStep({
         try {
             const payload: Record<string, unknown> = { jobDescription };
             if (isSC) payload.selectionCriteriaText = criteriaText.trim();
-            const { data } = await api.post<{ content: string }>(`/generate/${stepId}`, payload);
+
+            // Canonical structured routes: resume + cover letter render from
+            // Zod-validated JSON templates. SC stays on the legacy markdown route.
+            let endpoint = `/generate/${stepId}`;
+            if (stepId === 'resume') {
+                endpoint = '/generate/resume-structured';
+            } else if (stepId === 'cover-letter') {
+                endpoint = '/generate/cover-letter-structured';
+                payload.analysisContext = {
+                    tone:
+                        coverTone === 'warm'
+                            ? 'Warm, genuine, values-driven. Conversational but professional.'
+                            : coverTone === 'concise'
+                            ? 'Extremely concise and direct. Minimal words, maximum impact. Results-focused.'
+                            : 'Professional, polished, direct.',
+                };
+                payload.companyResearch = companyResearch;
+            }
+
+            const { data } = await api.post<{ content: string }>(endpoint, payload);
             const text = typeof data?.content === 'string' ? sanitizeContent(data.content) : '';
             setContent(text);
             saveDraft(workspaceKey, stepId, {
@@ -796,6 +829,49 @@ function DocumentStep({
                 </p>
             )}
 
+            {/* Cover letter: tone + Perplexity company research — both feed the structured route */}
+            {isCoverLetter && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    <div style={{ borderRadius: 12, border: `1px solid ${warm.colors.borderWhisper}`, overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderBottom: `1px solid ${warm.colors.borderWhisper}` }}>
+                            <Mail size={13} style={{ color: warm.colors.accentGold }} />
+                            <span style={{ fontSize: 10, fontWeight: 800, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Tone</span>
+                        </div>
+                        <div style={{ display: 'flex', padding: 6, gap: 4 }}>
+                            {(['professional', 'warm', 'concise'] as const).map((t) => {
+                                const active = coverTone === t;
+                                return (
+                                    <button
+                                        key={t}
+                                        onClick={() => setCoverTone(t)}
+                                        disabled={generating}
+                                        style={{
+                                            flex: 1, padding: '6px 0', borderRadius: 8,
+                                            fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em',
+                                            cursor: generating ? 'default' : 'pointer', transition: 'all 0.15s',
+                                            background: active ? warm.colors.accentGold : 'transparent',
+                                            color: active ? '#1a1a1a' : warm.colors.textMuted,
+                                            border: active ? 'none' : `1px solid ${warm.colors.borderWhisper}`,
+                                        }}
+                                    >
+                                        {t}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                    {company && (
+                        <CompanyResearchPanel
+                            company={company}
+                            role={role ?? ''}
+                            jdText={jobDescription}
+                            research={companyResearch}
+                            onResearchUpdate={setCompanyResearch}
+                        />
+                    )}
+                </div>
+            )}
+
             {/* Selection-criteria paste panel — only on SC step */}
             {isSC && (
                 <CriteriaPanel
@@ -895,6 +971,17 @@ function DocumentStep({
                     />
                 )}
             </AnimatePresence>
+
+            {/* Cover-letter personalisation score — mounts once a draft exists */}
+            {isCoverLetter && content && !generating && !editing && (
+                <div style={{ border: `1px solid ${warm.colors.borderWhisper}`, borderRadius: 12, padding: '14px 16px' }}>
+                    <CoverLetterPersonalisationPanel
+                        document={content}
+                        jobDescription={jobDescription}
+                        company={company}
+                    />
+                </div>
+            )}
 
             {/* CTAs */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>

@@ -9,7 +9,6 @@ import { DashboardLayout } from './layouts/DashboardLayout';
 import { OnboardingGate } from './components/OnboardingGate';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
-const ApplicationWorkspace = React.lazy(() => import('./components/ApplicationWorkspace').then(m => ({ default: m.ApplicationWorkspace })));
 const ApplicationTracker   = React.lazy(() => import('./components/ApplicationTracker').then(m => ({ default: m.ApplicationTracker })));
 const ProfileBank          = React.lazy(() => import('./components/ProfileBank').then(m => ({ default: m.ProfileBank })));
 const DocumentLibrary      = React.lazy(() => import('./components/DocumentLibrary').then(m => ({ default: m.DocumentLibrary })));
@@ -399,7 +398,6 @@ function ReportOrDashboard() {
                 <Route path="/" element={<StrategyHub />} />
                 <Route path="/tracker" element={<ApplicationTracker />} />
                 <Route path="/apply" element={<StepperWorkspace />} />
-                <Route path="/application-workspace" element={<ApplicationWorkspace />} />
                 <Route path="/workspace" element={<Workspace />} />
                 <Route path="/documents" element={<DocumentLibrary />} />
                 <Route path="/email-templates" element={<EmailTemplatesLibrary />} />

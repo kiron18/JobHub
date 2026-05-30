@@ -138,8 +138,15 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
       sourceUrl: item.sourceUrl,
       sourcePlatform: item.sourcePlatform,
     }));
-    navigate('/application-workspace', {
-      state: { jobDescription: item.description, analysis: null, initialTab: 'cover-letter' },
+    navigate('/apply', {
+      state: {
+        jobDescription: item.description,
+        company: item.company,
+        role: item.title,
+        feedItemId: item.id,
+        sourceUrl: item.sourceUrl,
+        sourcePlatform: item.sourcePlatform,
+      },
     });
     toast.success('Job loaded, generate your documents, then apply');
   };
