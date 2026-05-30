@@ -581,9 +581,8 @@ function DocumentStep({
     });
     const [formatMenuOpen, setFormatMenuOpen] = useState(false);
 
-    // Cover-letter-only: tone + Perplexity-backed company research feed the
-    // structured /cover-letter-structured route. Reset on step/workspace change.
-    const [coverTone, setCoverTone] = useState<'professional' | 'warm' | 'concise'>('professional');
+    // Cover-letter-only: Perplexity-backed company research feeds the
+    // structured /cover-letter-structured route.
     const [companyResearch, setCompanyResearch] = useState<CompanyResearch | null>(null);
     const isCoverLetter = stepId === 'cover-letter';
 
@@ -677,14 +676,7 @@ function DocumentStep({
                 endpoint = '/generate/resume-structured';
             } else if (stepId === 'cover-letter') {
                 endpoint = '/generate/cover-letter-structured';
-                payload.analysisContext = {
-                    tone:
-                        coverTone === 'warm'
-                            ? 'Warm, genuine, values-driven. Conversational but professional.'
-                            : coverTone === 'concise'
-                            ? 'Extremely concise and direct. Minimal words, maximum impact. Results-focused.'
-                            : 'Professional, polished, direct.',
-                };
+                payload.analysisContext = { tone: 'Professional, polished, direct.' };
                 payload.companyResearch = companyResearch;
             }
 
@@ -829,47 +821,15 @@ function DocumentStep({
                 </p>
             )}
 
-            {/* Cover letter: tone + Perplexity company research — both feed the structured route */}
-            {isCoverLetter && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                    <div style={{ borderRadius: 12, border: `1px solid ${warm.colors.borderWhisper}`, overflow: 'hidden' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderBottom: `1px solid ${warm.colors.borderWhisper}` }}>
-                            <Mail size={13} style={{ color: warm.colors.accentGold }} />
-                            <span style={{ fontSize: 10, fontWeight: 800, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Tone</span>
-                        </div>
-                        <div style={{ display: 'flex', padding: 6, gap: 4 }}>
-                            {(['professional', 'warm', 'concise'] as const).map((t) => {
-                                const active = coverTone === t;
-                                return (
-                                    <button
-                                        key={t}
-                                        onClick={() => setCoverTone(t)}
-                                        disabled={generating}
-                                        style={{
-                                            flex: 1, padding: '6px 0', borderRadius: 8,
-                                            fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em',
-                                            cursor: generating ? 'default' : 'pointer', transition: 'all 0.15s',
-                                            background: active ? warm.colors.accentGold : 'transparent',
-                                            color: active ? '#1a1a1a' : warm.colors.textMuted,
-                                            border: active ? 'none' : `1px solid ${warm.colors.borderWhisper}`,
-                                        }}
-                                    >
-                                        {t}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-                    {company && (
-                        <CompanyResearchPanel
-                            company={company}
-                            role={role ?? ''}
-                            jdText={jobDescription}
-                            research={companyResearch}
-                            onResearchUpdate={setCompanyResearch}
-                        />
-                    )}
-                </div>
+            {/* Cover letter: Perplexity company research feeds the structured route */}
+            {isCoverLetter && company && (
+                <CompanyResearchPanel
+                    company={company}
+                    role={role ?? ''}
+                    jdText={jobDescription}
+                    research={companyResearch}
+                    onResearchUpdate={setCompanyResearch}
+                />
             )}
 
             {/* Selection-criteria paste panel — only on SC step */}

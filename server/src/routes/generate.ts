@@ -96,8 +96,13 @@ ${rawText.slice(0, 4000)}
     }
 });
 
-router.post('/:type', authenticate, async (req, res) => {
+router.post('/:type', authenticate, async (req, res, next) => {
     const type = req.params.type as string;
+    // The dedicated /resume-structured and /cover-letter-structured routes are
+    // registered AFTER this wildcard, so Express matches them here first. Without
+    // this passthrough they get treated as an unknown type and default to RESUME —
+    // which is why cover letters were rendering as resumes. Hand them off.
+    if (type === 'resume-structured' || type === 'cover-letter-structured') return next();
     const userId = (req as any).user.id as string;
     const {
         jobDescription,
