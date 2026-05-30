@@ -34,6 +34,7 @@ import {
     RefreshCw,
     ListChecks,
     Briefcase,
+    Building2,
     ShieldCheck,
 } from 'lucide-react';
 import { DraftCritiquePanel, type CritiqueResult } from '../components/strategy/DraftCritiquePanel';
@@ -848,6 +849,59 @@ function DocumentStep({
                 </p>
             )}
 
+            {/* Company insight — read-only view of the Perplexity intel woven into the letter */}
+            {isCoverLetter && companyIntel && (
+                <div style={{
+                    border: `1px solid ${warm.colors.borderWhisper}`,
+                    borderRadius: 12,
+                    padding: '14px 16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 10,
+                    background: warm.colors.bgAlt,
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                        <Building2 size={13} style={{ color: warm.colors.accentGold }} />
+                        <span style={{ fontSize: 10, fontWeight: 800, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                            Company Insight
+                        </span>
+                        <span style={{ fontSize: 9, color: warm.colors.textMuted, opacity: 0.7 }}>· via Perplexity</span>
+                    </div>
+
+                    {companyIntel.summary && (
+                        <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6, color: warm.colors.textPrimary }}>
+                            {companyIntel.summary}
+                        </p>
+                    )}
+
+                    {companyIntel.suggestedContact?.title && (
+                        <div style={{ fontSize: 11.5, lineHeight: 1.5, color: warm.colors.textMuted }}>
+                            <span style={{ fontWeight: 700, color: warm.colors.textPrimary }}>Suggested contact: </span>
+                            {companyIntel.suggestedContact.title}
+                            {companyIntel.suggestedContact.reason ? ` — ${companyIntel.suggestedContact.reason}` : ''}
+                        </div>
+                    )}
+
+                    {companyIntel.citations && companyIntel.citations.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                            <span style={{ fontSize: 9, fontWeight: 700, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                                Sources
+                            </span>
+                            {companyIntel.citations.map((url, i) => (
+                                <a
+                                    key={i}
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{ fontSize: 11, color: warm.colors.accentGold, textDecoration: 'underline', textUnderlineOffset: 3 }}
+                                >
+                                    {i + 1}
+                                </a>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Selection-criteria paste panel — only on SC step */}
             {isSC && (
