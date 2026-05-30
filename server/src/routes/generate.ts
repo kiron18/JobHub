@@ -755,6 +755,7 @@ router.post('/cover-letter-structured', authenticate, async (req: any, res: any)
         analysisContext,
         jobApplicationId,
         companyResearch,
+        companyIntel: companyIntelFromBody,
     } = req.body;
 
     if (!jobDescription) {
@@ -801,9 +802,10 @@ router.post('/cover-letter-structured', authenticate, async (req: any, res: any)
 
         const sanitizedJobAppId = jobApplicationId === 'temp-id' ? null : (jobApplicationId || null);
 
-        // Load companyIntel from the JobApplication if available
-        let companyIntel: any = null;
-        if (sanitizedJobAppId) {
+        // Company intel: prefer the value the apply flow pre-fetched (Perplexity,
+        // background-warmed on entry); else fall back to the JobApplication row.
+        let companyIntel: any = companyIntelFromBody ?? null;
+        if (!companyIntel && sanitizedJobAppId) {
             try {
                 const jobApp = await prisma.jobApplication.findUnique({
                     where: { id: sanitizedJobAppId },

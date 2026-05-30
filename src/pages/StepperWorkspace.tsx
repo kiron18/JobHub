@@ -45,8 +45,16 @@ import { toast } from 'sonner';
 import api from '../lib/api';
 import { warm } from '../lib/theme/warmTokens';
 import { GenerationProgress } from '../components/shared/GenerationProgress';
-import { CompanyResearchPanel, type CompanyResearch } from '../components/CompanyResearchPanel';
 import { CoverLetterPersonalisationPanel } from '../components/CoverLetterPersonalisationPanel';
+
+// Perplexity company intel, pre-fetched on apply-flow entry and fed into the
+// structured cover-letter route. Shape mirrors the server's CompanyIntelResult.
+interface CompanyIntel {
+    summary: string;
+    suggestedContact: { title: string; reason: string };
+    citations?: string[];
+    fetchedAt?: string;
+}
 
 // ── Placeholder marker rendering ────────────────────────────────────────────
 //
@@ -363,6 +371,7 @@ export function StepperWorkspace() {
 
     const [currentIndex, setCurrentIndex] = useState(0);
     const [jdExpanded, setJdExpanded] = useState(false);
+    const [companyIntel, setCompanyIntel] = useState<CompanyIntel | null>(null);
 
     const currentStep = steps[currentIndex];
     const isFinalStep = currentStep?.id === 'track';
@@ -371,6 +380,19 @@ export function StepperWorkspace() {
     useEffect(() => {
         if (jdEmpty) navigate('/', { replace: true });
     }, [jdEmpty, navigate]);
+
+    // Pre-warm Perplexity company intel in the background on entry, so it's ready
+    // by the cover-letter step (runs while the user works on the resume). Fully
+    // non-fatal — the letter still generates without it.
+    useEffect(() => {
+        const company = state.company?.trim();
+        if (jdEmpty || !company || company === 'Unknown Company') return;
+        let cancelled = false;
+        api.post('/research/company-intel', { company, title: state.role ?? '', jobDescription })
+            .then(({ data }) => { if (!cancelled) setCompanyIntel(data); })
+            .catch(() => { /* non-fatal */ });
+        return () => { cancelled = true; };
+    }, [state.company, state.role, jobDescription, jdEmpty]);
 
     if (jdEmpty) return null;
 
@@ -464,6 +486,7 @@ export function StepperWorkspace() {
                         wantsSC={wantsSC}
                         company={state.company}
                         role={state.role}
+                        companyIntel={companyIntel}
                         workspaceKey={workspaceKey}
                         onBack={() => setCurrentIndex(currentIndex - 1)}
                         feedItemId={state.feedItemId}
@@ -478,6 +501,7 @@ export function StepperWorkspace() {
                         jobDescription={jobDescription}
                         company={state.company}
                         role={state.role}
+                        companyIntel={companyIntel}
                         onBack={currentIndex > 0 ? () => setCurrentIndex(currentIndex - 1) : null}
                         onContinue={() => setCurrentIndex(currentIndex + 1)}
                         isLast={currentIndex === steps.length - 1}
@@ -553,6 +577,7 @@ function DocumentStep({
     jobDescription,
     company,
     role,
+    companyIntel,
     onBack,
     onContinue,
     isLast,
@@ -562,6 +587,7 @@ function DocumentStep({
     jobDescription: string;
     company?: string;
     role?: string;
+    companyIntel?: CompanyIntel | null;
     onBack: (() => void) | null;
     onContinue: () => void;
     isLast: boolean;
@@ -581,9 +607,6 @@ function DocumentStep({
     });
     const [formatMenuOpen, setFormatMenuOpen] = useState(false);
 
-    // Cover-letter-only: Perplexity-backed company research feeds the
-    // structured /cover-letter-structured route.
-    const [companyResearch, setCompanyResearch] = useState<CompanyResearch | null>(null);
     const isCoverLetter = stepId === 'cover-letter';
 
     // ── Selection-criteria-only state ────────────────────────────────────
@@ -681,7 +704,7 @@ function DocumentStep({
                     company: company ?? '',
                     title: role ?? '',
                 };
-                payload.companyResearch = companyResearch;
+                payload.companyIntel = companyIntel ?? null;
             }
 
             const { data } = await api.post<{ content: string }>(endpoint, payload);
@@ -825,16 +848,6 @@ function DocumentStep({
                 </p>
             )}
 
-            {/* Cover letter: Perplexity company research feeds the structured route */}
-            {isCoverLetter && company && (
-                <CompanyResearchPanel
-                    company={company}
-                    role={role ?? ''}
-                    jdText={jobDescription}
-                    research={companyResearch}
-                    onResearchUpdate={setCompanyResearch}
-                />
-            )}
 
             {/* Selection-criteria paste panel — only on SC step */}
             {isSC && (
@@ -1007,6 +1020,7 @@ function TrackStep({
     wantsSC,
     company,
     role,
+    companyIntel,
     workspaceKey,
     onBack,
     feedItemId,
@@ -1017,6 +1031,7 @@ function TrackStep({
     wantsSC: boolean;
     company?: string;
     role?: string;
+    companyIntel?: CompanyIntel | null;
     workspaceKey: string;
     onBack: () => void;
     feedItemId?: string;
@@ -1057,6 +1072,7 @@ function TrackStep({
                     description: jobDescription,
                     status: 'APPLIED',
                     dateApplied: new Date().toISOString(),
+                    companyIntel: companyIntel ?? undefined,
                 });
                 if (!cancelled) {
                     localStorage.setItem(flag, '1');

@@ -42,7 +42,7 @@ router.get('/jobs/sent-count', authenticate, async (req, res) => {
 // POST /api/jobs
 router.post('/jobs', authenticate, async (req, res) => {
     const userId = (req as any).user.id;
-    const { title, company, description, status, dateApplied, notes, closingDate } = req.body;
+    const { title, company, description, status, dateApplied, notes, closingDate, companyIntel } = req.body;
 
     if (!title || !company) {
         return res.status(400).json({ error: 'Title and company are required.' });
@@ -66,6 +66,7 @@ router.post('/jobs', authenticate, async (req, res) => {
                 closingDate: closingDate ? new Date(closingDate) : null,
                 userId,
                 candidateProfileId: profile.id,
+                companyIntel: companyIntel ?? undefined,
             },
             include: { documents: true }
         });
@@ -74,7 +75,8 @@ router.post('/jobs', authenticate, async (req, res) => {
         // ── Background: fetch company intel ────────────────────────────────────
         // Fire-and-forget — never blocks the response. Uses skills from the
         // profile already loaded above.
-        if (company && company.trim() !== 'Unknown Company') {
+        // Skip the fetch if the apply flow already pre-fetched intel (dedupe).
+        if (!companyIntel && company && company.trim() !== 'Unknown Company') {
             const skillsPreview = buildSkillsPreview(profile.skills, 7);
 
             // Use short excerpts from the job description for context
