@@ -676,7 +676,11 @@ function DocumentStep({
                 endpoint = '/generate/resume-structured';
             } else if (stepId === 'cover-letter') {
                 endpoint = '/generate/cover-letter-structured';
-                payload.analysisContext = { tone: 'Professional, polished, direct.' };
+                payload.analysisContext = {
+                    tone: 'Professional, polished, direct.',
+                    company: company ?? '',
+                    title: role ?? '',
+                };
                 payload.companyResearch = companyResearch;
             }
 

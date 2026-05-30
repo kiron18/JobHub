@@ -24,12 +24,14 @@ export type ValidatedPolish = z.infer<typeof PolishPayloadSchema>;
  */
 export function parsePolishJson(raw: string): ValidatedPolish | null {
   try {
-    // Handle stray markdown fences around JSON
-    const cleaned = raw.trim()
-      .replace(/^```json\s*/i, '')
-      .replace(/```\s*$/, '')
-      .trim();
-    return PolishPayloadSchema.parse(JSON.parse(cleaned));
+    // Models wrap JSON in code fences (json-tagged OR a bare fence) or add
+    // preamble prose. Extract the object between the first { and last } rather
+    // than stripping a fence prefix: a bare ``` fence slipped through the old
+    // regex and made JSON.parse choke, falling back to an unpolished resume.
+    const start = raw.indexOf('{');
+    const end = raw.lastIndexOf('}');
+    if (start === -1 || end === -1 || end < start) return null;
+    return PolishPayloadSchema.parse(JSON.parse(raw.slice(start, end + 1)));
   } catch (err) {
     console.warn('[validatePolish] Failed to validate LLM polish JSON:', err instanceof Error ? err.message : err);
     return null;
