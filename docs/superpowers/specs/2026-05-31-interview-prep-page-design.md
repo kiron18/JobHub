@@ -121,7 +121,7 @@ Regeneration: a quiet "Regenerate" affordance on the page re-runs `/generate` an
 ## Loading & empty states
 
 - **Loading copy** (calm, rotating, while the doc generates): e.g. *"Building your prep from your real experience…"*, *"Mapping your stories to the questions they'll ask…"*, *"Almost there — your guide is nearly ready."* No spinners-only; the wait should already feel like the calm ally.
-- **Generation failure:** keep the static calm sections visible (they need no generation) and offer a retry for the generated body. The mindset/On The Day/checklist value is never blocked by an API error.
+- **Generation failure:** show a calm toast and keep the "Build my interview prep" call-to-action so the user can retry. (Note: in the v1 build the calm sections render inside `InterviewPrepView` alongside the generated body, so on a hard failure the page falls back to the retry CTA rather than showing the static sections alone. Splitting the static sections to survive a failed generation is a deliberate later refinement, not v1.)
 
 ## Visual / tone direction
 
@@ -170,6 +170,6 @@ Run the **frontend-design** skill before building the page (standing rule). Dire
 
 - Status → INTERVIEW renders the pill instantly with no network call.
 - First page open generates, persists `INTERVIEW_PREP`, renders; second open does not regenerate.
-- Generation failure still shows static calm sections + retry.
+- Generation failure shows a calm toast + keeps the retry CTA; page does not crash.
 - Deleting the app/doc clears the prep; badge reads "Interview Prep".
 - `InterviewQuestionsPanel` and `/analyze/interview-questions` fully removed with no dangling imports/usages.
