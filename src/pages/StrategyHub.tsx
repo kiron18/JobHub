@@ -405,6 +405,17 @@ function AnalysisHeroCard() {
     const [scUserOverride, setScUserOverride] = useState(false);
     const [analysing, setAnalysing] = useState(false);
     const [result, setResult] = useState<DualSignalResult | null>(null);
+    const resultRef = useRef<HTMLDivElement>(null);
+
+    // Auto-scroll to analysis result when it appears
+    useEffect(() => {
+        if (result) {
+            setTimeout(() => {
+                resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
+    }, [result]);
+
     const [pickedFeedItem, setPickedFeedItem] = useState<JobFeedItem | null>(null);
 
     const handleFeedPick = (description: string, item: JobFeedItem) => {
@@ -705,12 +716,14 @@ function AnalysisHeroCard() {
 
             {/* Inline result */}
             {result && (
-                <AnalysisResult
-                    result={result}
-                    jobDescription={trimmed}
-                    onContinue={handleContinue}
-                    onSkip={handleSkip}
-                />
+                <div ref={resultRef}>
+                    <AnalysisResult
+                        result={result}
+                        jobDescription={trimmed}
+                        onContinue={handleContinue}
+                        onSkip={handleSkip}
+                    />
+                </div>
             )}
         </div>
     );

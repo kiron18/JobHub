@@ -31,7 +31,7 @@ export function ApplyFeedStrip(_props: ApplyFeedStripProps) {
   const { data: profile } = useQuery<ProfileLite>({
     queryKey: ['profile'],
     queryFn: async () => (await api.get('/profile')).data,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30_000,
   });
 
   const seekUrl = buildSeekSearchUrl(profile?.targetRole, profile?.targetCity);

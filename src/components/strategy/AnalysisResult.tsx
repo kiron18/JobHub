@@ -288,20 +288,6 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip: _on
                                                         <p style={{ margin: 0 }}>{item.suggestion}</p>
                                                         <div style={{ marginTop: 6, display: 'flex', gap: 10 }}>
                                                             <button
-                                                                onClick={() => {}}  // Placeholder — inline edit in follow-up
-                                                                style={{
-                                                                    fontSize: 11,
-                                                                    fontWeight: 600,
-                                                                    color: warm.colors.accentPetrol,
-                                                                    background: 'transparent',
-                                                                    border: 'none',
-                                                                    cursor: 'pointer',
-                                                                    padding: '4px 0',
-                                                                }}
-                                                            >
-                                                                &#9998; Edit
-                                                            </button>
-                                                            <button
                                                                 onClick={() => {
                                                                     setBridgedIndices(prev => {
                                                                         const next = new Set(prev);
