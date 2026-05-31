@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { colors, type } from '../landing/tokens';
 
 interface Props {
@@ -8,6 +8,21 @@ interface Props {
 
 export function SponsorSearchBar({ onSearch, defaultValue = '' }: Props) {
   const [value, setValue] = useState(defaultValue);
+
+  // Keep the latest onSearch without making it a deps trigger (it's recreated
+  // on every parent render).
+  const onSearchRef = useRef(onSearch);
+  useEffect(() => { onSearchRef.current = onSearch; });
+
+  // Live search — fire as the user types, debounced so results feel instant
+  // without hammering the API. Skip the very first run (initial mount already
+  // loads the unfiltered list).
+  const firstRun = useRef(true);
+  useEffect(() => {
+    if (firstRun.current) { firstRun.current = false; return; }
+    const t = setTimeout(() => onSearchRef.current(value), 200);
+    return () => clearTimeout(t);
+  }, [value]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
