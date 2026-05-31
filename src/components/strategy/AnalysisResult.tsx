@@ -82,6 +82,7 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip: _on
             : dominantBand === 'bridgeableGap'
               ? `Direct match: ${directMatch.pct}%. Could add: ${directMatch.pct + bridgeableGap.pct}% once you name what you already do.`
               : 'This role lists requirements you haven\'t claimed on your profile.';
+    const bridgedCount = bridgedIndices.size;
 
     return (
         <div style={{ marginTop: 32, display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -131,17 +132,20 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip: _on
                 gap: 12,
                 padding: '14px 20px',
                 background: warm.colors.bgSurface,
-                border: `1px solid ${warm.colors.borderWhisper}`,
+                border: `1px solid ${bridgedCount > 0 ? 'rgba(45,90,110,0.35)' : warm.colors.borderWhisper}`,
                 borderRadius: 14,
                 boxShadow: warm.shadow.soft,
                 marginBottom: 16,
+                transition: 'border-color 0.3s cubic-bezier(0.25, 1, 0.5, 1)',
             }}>
                 <div>
                     <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: warm.colors.textPrimary }}>
                         Apply for this role
                     </p>
-                    <p style={{ margin: '2px 0 0', fontSize: 12, color: warm.colors.textMuted }}>
-                        {extractedMetadata.role} &middot; {extractedMetadata.company}
+                    <p style={{ margin: '2px 0 0', fontSize: 12, color: bridgedCount > 0 ? warm.colors.success : warm.colors.textMuted }}>
+                        {bridgedCount > 0
+                            ? `✓ ${bridgedCount} strength${bridgedCount > 1 ? 's' : ''} added — you're ready to apply`
+                            : `${extractedMetadata.role} · ${extractedMetadata.company}`}
                     </p>
                 </div>
                 <button
@@ -150,7 +154,7 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip: _on
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: 6,
-                        padding: '10px 22px',
+                        padding: bridgedCount > 0 ? '12px 26px' : '10px 22px',
                         fontSize: 14,
                         fontWeight: 700,
                         color: warm.colors.bgCanvas,
@@ -158,9 +162,12 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip: _on
                         border: 'none',
                         borderRadius: 12,
                         cursor: 'pointer',
-                        boxShadow: warm.shadow.soft,
+                        boxShadow: bridgedCount > 0
+                            ? `0 0 0 4px rgba(45,90,110,0.18), ${warm.shadow.soft}`
+                            : warm.shadow.soft,
                         letterSpacing: '-0.01em',
                         whiteSpace: 'nowrap',
+                        transition: 'padding 0.3s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.3s cubic-bezier(0.25, 1, 0.5, 1)',
                     }}
                 >
                     Apply now
