@@ -25,7 +25,7 @@ interface Props {
     suggestion: string;
     jobRole: string;
     jobCompany: string;
-    onSaved?: () => void;
+    onSaved?: (finalDescription: string) => void;
 }
 
 interface DraftPayload {
@@ -41,7 +41,6 @@ export function AchievementDraftModal({ open, onClose, skill, suggestion, jobRol
     const [saving, setSaving] = useState(false);
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
-    const [metric, setMetric] = useState('');
     const [metricPlaceholder, setMetricPlaceholder] = useState('');
 
     // Fetch the LLM draft on open
@@ -51,7 +50,6 @@ export function AchievementDraftModal({ open, onClose, skill, suggestion, jobRol
         setGenerating(true);
         setTitle('');
         setDescription('');
-        setMetric('');
         setMetricPlaceholder('');
         api
             .post<DraftPayload>('/analyze/draft-achievement', {
@@ -78,6 +76,7 @@ export function AchievementDraftModal({ open, onClose, skill, suggestion, jobRol
         return () => { cancelled = true; };
     }, [open, skill, suggestion, jobRole, jobCompany]);
 
+    const pendingPlaceholder = (description.match(/\[[^\]]*\]/) || [])[0] ?? null;
     const canSave = title.trim().length > 0 && description.trim().length > 0 && !saving && !generating;
 
     const handleSave = async () => {
@@ -85,16 +84,16 @@ export function AchievementDraftModal({ open, onClose, skill, suggestion, jobRol
         setSaving(true);
         try {
             await api.post('/achievements', {
-                title: title.trim(),
+                title: (title.trim() || skill),
                 description: description.trim(),
-                metric: metric.trim() || null,
+                metric: null,
                 skills: skill,
             });
             await queryClient.invalidateQueries({ queryKey: ['profile'] });
             await queryClient.invalidateQueries({ queryKey: ['achievements', 'count'] });
             await queryClient.invalidateQueries({ queryKey: ['achievements'] });
-            toast.success('Achievement added to your profile');
-            onSaved?.();
+            toast.success('Added to your application and profile');
+            onSaved?.(description.trim());
             onClose();
         } catch {
             toast.error('Failed to save. Please try again.');
@@ -202,49 +201,42 @@ export function AchievementDraftModal({ open, onClose, skill, suggestion, jobRol
                                 Drafting from your positioning…
                             </div>
                         ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                                {/* Title */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                {/* Single sentence — the artifact we actually use */}
                                 <div>
-                                    <label style={labelStyle(warm.colors.textSecondary)}>Title</label>
-                                    <input
-                                        type="text"
-                                        value={title}
-                                        onChange={(e) => setTitle(e.target.value)}
-                                        style={inputStyle()}
-                                        placeholder="Short title — what you did"
-                                    />
-                                </div>
-
-                                {/* Description */}
-                                <div>
-                                    <label style={labelStyle(warm.colors.textSecondary)}>Description (first person)</label>
+                                    <label style={labelStyle(warm.colors.textSecondary)}>Your achievement (first person)</label>
                                     <textarea
                                         value={description}
                                         onChange={(e) => setDescription(e.target.value)}
-                                        rows={4}
+                                        rows={3}
                                         style={{ ...inputStyle(), resize: 'vertical' as const, fontFamily: 'inherit', lineHeight: 1.6 }}
                                         placeholder="I led the rollout of…"
                                     />
                                 </div>
 
-                                {/* Metric */}
-                                <div>
-                                    <label style={labelStyle(warm.colors.textSecondary)}>
-                                        Metric (optional, but stronger with one)
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={metric}
-                                        onChange={(e) => setMetric(e.target.value)}
-                                        style={inputStyle()}
-                                        placeholder={metricPlaceholder || 'e.g. 30% faster, $200K saved, 12 stakeholders coordinated'}
-                                    />
-                                    {metricPlaceholder && (
-                                        <p style={{ margin: '6px 0 0', fontSize: 11, color: warm.colors.textMuted, lineHeight: 1.5 }}>
-                                            Suggested measure: {metricPlaceholder}
-                                        </p>
-                                    )}
-                                </div>
+                                {/* Red placeholder cue OR positive ready state */}
+                                {pendingPlaceholder ? (
+                                    <div style={{
+                                        display: 'flex', alignItems: 'flex-start', gap: 8,
+                                        padding: '8px 12px', borderRadius: 10,
+                                        background: warm.colors.dangerSoft,
+                                        fontSize: 12, lineHeight: 1.5, color: warm.colors.danger,
+                                    }}>
+                                        <span>
+                                            Replace <span style={{ fontWeight: 800, color: warm.colors.danger }}>{pendingPlaceholder}</span> with a real number — a metric makes this far stronger.
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5, color: warm.colors.success }}>
+                                        Looks strong — ready to add.
+                                    </p>
+                                )}
+
+                                {metricPlaceholder && (
+                                    <p style={{ margin: 0, fontSize: 11, color: warm.colors.textMuted, lineHeight: 1.5 }}>
+                                        Suggested measure: {metricPlaceholder}
+                                    </p>
+                                )}
                             </div>
                         )}
 
@@ -291,10 +283,13 @@ export function AchievementDraftModal({ open, onClose, skill, suggestion, jobRol
                                         <Loader2 size={14} className="animate-spin" /> Saving…
                                     </>
                                 ) : (
-                                    'Save to my profile'
+                                    'Add to application'
                                 )}
                             </button>
                         </div>
+                        <p style={{ margin: '10px 0 0', fontSize: 11, color: warm.colors.textMuted, textAlign: 'right' as const }}>
+                            Also saved to your profile for future jobs.
+                        </p>
                     </motion.div>
                 </motion.div>
             )}
