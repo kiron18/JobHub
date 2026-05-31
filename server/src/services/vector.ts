@@ -29,13 +29,22 @@ export async function indexAchievement(
     const index = getPinecone().index(PINECONE_INDEX_NAME);
     const vector = await embedText(text);
 
+    // Pinecone rejects null/undefined metadata values ("Metadata value must be a
+    // string, number, boolean or list of strings"). An achievement saved without
+    // a metric arrives here with metric:null — strip empty fields so the upsert
+    // succeeds and the achievement is actually searchable, instead of throwing
+    // and silently never being indexed.
+    const cleanMeta = Object.fromEntries(
+        Object.entries(metadata).filter(([, v]) => v !== null && v !== undefined)
+    );
+
     await index.namespace(userId).upsert({
         records: [
             {
                 id: achievementId,
                 values: vector,
                 metadata: {
-                    ...metadata,
+                    ...cleanMeta,
                     userId,
                     text,
                     type: 'achievement'
