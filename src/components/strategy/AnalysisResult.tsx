@@ -14,7 +14,8 @@
  * the user to /workspace where they can edit achievements directly. Phase
  * 2i will replace this with an inline LLM-draft modal.
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { capabilityStatement, type BridgedGap } from '../../lib/bridgedGaps';
 import { Link } from 'react-router-dom';
 import { ArrowRight, CheckCircle2, Sparkles, Lock, Pencil, AlertCircle } from 'lucide-react';
 import { warm } from '../../lib/theme/warmTokens';
@@ -50,17 +51,30 @@ interface Props {
     jobDescription: string;
     onContinue: () => void;
     onSkip?: () => void;
+    onBridgedGapsChange?: (gaps: BridgedGap[]) => void;
 }
 
-export function AnalysisResult({ result, jobDescription, onContinue, onSkip: _onSkip }: Props) {
+export function AnalysisResult({ result, jobDescription, onContinue, onSkip: _onSkip, onBridgedGapsChange }: Props) {
     const { fitBands, extractedMetadata, dominantBand, insights, duplicate } = result;
     const { directMatch, bridgeableGap, hardGap } = fitBands;
 
     const [draftIndex, setDraftIndex] = useState<number | null>(null);
     const [bridgedIndices, setBridgedIndices] = useState<Set<number>>(new Set());
+    const [bridgedText, setBridgedText] = useState<Map<number, string>>(new Map());
     const [enrichmentDone, setEnrichmentDone] = useState(false);
     const enrichmentCandidates = result.enrichmentCandidates ?? [];
     const draftItem = draftIndex !== null ? bridgeableGap.items[draftIndex] ?? null : null;
+
+    useEffect(() => {
+        if (!onBridgedGapsChange) return;
+        const gaps: BridgedGap[] = [...bridgedIndices].map(i => {
+            const item = bridgeableGap.items[i];
+            const edited = bridgedText.get(i);
+            const statement = (edited && edited.trim()) || capabilityStatement(item?.suggestion ?? '');
+            return { skill: item?.skill ?? '', statement };
+        }).filter(g => g.skill && g.statement);
+        onBridgedGapsChange(gaps);
+    }, [bridgedIndices, bridgedText, bridgeableGap.items, onBridgedGapsChange]);
 
     const headline =
         dominantBand === 'directMatch'
@@ -283,9 +297,28 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip: _on
                                                         fontSize: 12,
                                                         color: warm.colors.textSecondary,
                                                         lineHeight: 1.55,
-                                                        fontStyle: 'italic',
                                                     }}>
-                                                        <p style={{ margin: 0 }}>{item.suggestion}</p>
+                                                        <textarea
+                                                            value={bridgedText.get(i) ?? capabilityStatement(item.suggestion)}
+                                                            onChange={(e) => {
+                                                                const v = e.target.value;
+                                                                setBridgedText(prev => {
+                                                                    const next = new Map(prev);
+                                                                    next.set(i, v);
+                                                                    return next;
+                                                                });
+                                                            }}
+                                                            rows={2}
+                                                            style={{
+                                                                width: '100%', margin: 0, fontSize: 12,
+                                                                color: warm.colors.textSecondary, lineHeight: 1.55,
+                                                                background: 'transparent', border: 'none',
+                                                                resize: 'vertical', fontStyle: 'italic', fontFamily: 'inherit',
+                                                            }}
+                                                        />
+                                                        <p style={{ margin: '2px 0 0', fontSize: 10.5, color: warm.colors.textMuted, fontStyle: 'normal' }}>
+                                                            Tip: edit in a real metric to stand out.
+                                                        </p>
                                                         <div style={{ marginTop: 6, display: 'flex', gap: 10 }}>
                                                             <button
                                                                 onClick={() => {
