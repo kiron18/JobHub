@@ -20,7 +20,7 @@ let cachedLocations: string[] = [];
 let cachedTotal = 0;
 let cacheLoaded = false;
 
-async function loadFilterCache() {
+export async function loadFilterCache() {
   try {
     const [industries, locations, total] = await Promise.all([
       prisma.sponsor.findMany({ select: { industry: true }, distinct: ['industry'], orderBy: { industry: 'asc' } }),
@@ -37,8 +37,10 @@ async function loadFilterCache() {
   }
 }
 
-// Warm cache on first import
-loadFilterCache();
+// Cache is warmed explicitly at server startup (after prisma is initialised and
+// the table is seeded) via loadFilterCache() in index.ts. Calling it at module
+// import time raced the prisma export and threw "Cannot access 'prisma' before
+// initialization". The per-request lazy load below remains as a safety net.
 
 // ── Helpers ──────────────────────────────────────────────────────
 

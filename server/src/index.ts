@@ -28,7 +28,7 @@ import adminFunnelRouter from './routes/admin-funnel';
 import stripeRouter, { stripeWebhookHandler } from './routes/stripe';
 import enrichmentRouter from './routes/enrichment';
 import insightsRouter from './routes/insights';
-import sponsorsRouter from './routes/sponsors';
+import sponsorsRouter, { loadFilterCache as loadSponsorFilterCache } from './routes/sponsors';
 import { startJobFeedCron } from './cron/jobFeedCron';
 import { startTrialReminderCron } from './cron/trialReminderCron';
 import { startFollowUpReminderCron } from './cron/followUpReminderCron';
@@ -240,9 +240,63 @@ async function ensureColumns() {
   }
 }
 
+// Seed the Sponsor table from the bundled JSON if it is empty. The dataset ships
+// in the repo, so this makes every environment self-seed on first boot — no
+// manual seed command, and it can't wipe an already-populated table (it only
+// runs when count === 0).
+async function ensureSponsorsSeeded() {
+  try {
+    const count = await prisma.sponsor.count();
+    if (count > 0) {
+      console.log(`[startup] sponsors already seeded (${count} rows)`);
+      return;
+    }
+
+    const dataPath = path.join(__dirname, '../data/sponsors_enriched.json');
+    if (!fs.existsSync(dataPath)) {
+      console.warn(`[startup] sponsor seed file not found at ${dataPath} — skipping seed`);
+      return;
+    }
+
+    const records: any[] = JSON.parse(fs.readFileSync(dataPath, 'utf-8'));
+
+    // Dedupe by cleanName (last occurrence wins — the enriched version).
+    const deduped = new Map<string, any>();
+    for (const r of records) {
+      const key = (r.cleanName ?? '').trim();
+      if (key) deduped.set(key, r);
+    }
+    const unique = Array.from(deduped.values());
+
+    const BATCH = 500;
+    for (let i = 0; i < unique.length; i += BATCH) {
+      const batch = unique.slice(i, i + BATCH);
+      await prisma.sponsor.createMany({
+        data: batch.map((r) => ({
+          cleanName: r.cleanName,
+          rawName: r.rawName,
+          website: r.website ?? null,
+          careersUrl: r.careersUrl ?? null,
+          careersSearchUrl: r.careersSearchUrl ?? null,
+          industry: r.industry,
+          locations: Array.isArray(r.locations) ? r.locations : [],
+          hiringProfile: r.hiringProfile ?? '',
+          confidence: r.confidence,
+        })),
+        skipDuplicates: true,
+      });
+    }
+    console.log(`[startup] seeded ${unique.length} sponsors`);
+  } catch (err) {
+    console.warn('[startup] ensureSponsorsSeeded skipped:', err);
+  }
+}
+
 app.listen(PORT, async () => {
     console.log(`Job Ready Backend running on http://localhost:${PORT}`);
     await ensureColumns();
+    await ensureSponsorsSeeded();
+    await loadSponsorFilterCache();
     startJobFeedCron();
     startTrialReminderCron();
     startFollowUpReminderCron();
