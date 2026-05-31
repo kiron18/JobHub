@@ -24,6 +24,7 @@ import { ApplyFeedStrip } from '../components/strategy/ApplyFeedStrip';
 import { StaleApplicationsCard } from '../components/strategy/StaleApplicationsCard';
 import { FirstApplicationCelebration } from '../components/FirstApplicationCelebration';
 import type { JobFeedItem } from '../components/jobs/JobCard';
+import type { BridgedGap } from '../lib/bridgedGaps';
 import { warm } from '../lib/theme/warmTokens';
 
 // Warm theme tokens — replaces T.* from ThemeContext. ThemeContext preserved per spec §7.4.
@@ -405,6 +406,7 @@ function AnalysisHeroCard() {
     const [scUserOverride, setScUserOverride] = useState(false);
     const [analysing, setAnalysing] = useState(false);
     const [result, setResult] = useState<DualSignalResult | null>(null);
+    const [bridgedGaps, setBridgedGaps] = useState<BridgedGap[]>([]);
     const resultRef = useRef<HTMLDivElement>(null);
 
     // Auto-scroll to analysis result when it appears
@@ -476,12 +478,14 @@ function AnalysisHeroCard() {
                 feedItemId: pickedFeedItem?.id,
                 sourceUrl: pickedFeedItem?.sourceUrl,
                 sourcePlatform: pickedFeedItem?.sourcePlatform,
+                bridgedGaps,
             },
         });
     };
 
     const handleSkip = () => {
         setResult(null);
+        setBridgedGaps([]);
         setJd('');
         setPickedFeedItem(null);
         setScToggle(false);
@@ -722,6 +726,7 @@ function AnalysisHeroCard() {
                         jobDescription={trimmed}
                         onContinue={handleContinue}
                         onSkip={handleSkip}
+                        onBridgedGapsChange={setBridgedGaps}
                     />
                 </div>
             )}
