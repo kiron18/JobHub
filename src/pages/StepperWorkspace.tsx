@@ -343,7 +343,7 @@ export function StepperWorkspace() {
     const navigate = useNavigate();
     const location = useLocation();
 
-    const state = (location.state ?? {}) as {
+    type ApplyState = {
         jobDescription?: string;
         sc?: boolean;
         company?: string;
@@ -351,7 +351,21 @@ export function StepperWorkspace() {
         feedItemId?: string;
         sourceUrl?: string;
         sourcePlatform?: string;
+        bridgedGaps?: import('../lib/bridgedGaps').BridgedGap[];
     };
+    const APPLY_CTX_KEY = 'apply:context';
+    const state = useMemo<ApplyState>(() => {
+        const incoming = (location.state ?? null) as ApplyState | null;
+        if (incoming && Object.keys(incoming).length > 0) {
+            try { sessionStorage.setItem(APPLY_CTX_KEY, JSON.stringify(incoming)); } catch { /* noop */ }
+            return incoming;
+        }
+        try {
+            const cached = sessionStorage.getItem(APPLY_CTX_KEY);
+            if (cached) return JSON.parse(cached) as ApplyState;
+        } catch { /* noop */ }
+        return {};
+    }, [location.state]);
     const jobDescription = state.jobDescription ?? '';
     const wantsSC = state.sc === true;
     const jdEmpty = jobDescription.trim().length === 0;
@@ -503,6 +517,7 @@ export function StepperWorkspace() {
                         company={state.company}
                         role={state.role}
                         companyIntel={companyIntel}
+                        bridgedGaps={state.bridgedGaps ?? []}
                         onBack={currentIndex > 0 ? () => setCurrentIndex(currentIndex - 1) : null}
                         onContinue={() => setCurrentIndex(currentIndex + 1)}
                         isLast={currentIndex === steps.length - 1}
@@ -579,6 +594,7 @@ function DocumentStep({
     company,
     role,
     companyIntel,
+    bridgedGaps,
     onBack,
     onContinue,
     isLast,
@@ -589,6 +605,7 @@ function DocumentStep({
     company?: string;
     role?: string;
     companyIntel?: CompanyIntel | null;
+    bridgedGaps?: import('../lib/bridgedGaps').BridgedGap[];
     onBack: (() => void) | null;
     onContinue: () => void;
     isLast: boolean;
@@ -698,6 +715,7 @@ function DocumentStep({
             let endpoint = `/generate/${stepId}`;
             if (stepId === 'resume') {
                 endpoint = '/generate/resume-structured';
+                payload.bridgedGaps = bridgedGaps ?? [];
             } else if (stepId === 'cover-letter') {
                 endpoint = '/generate/cover-letter-structured';
                 payload.analysisContext = {
@@ -706,6 +724,7 @@ function DocumentStep({
                     title: role ?? '',
                 };
                 payload.companyIntel = companyIntel ?? null;
+                payload.bridgedGaps = bridgedGaps ?? [];
             }
 
             const { data } = await api.post<{ content: string }>(endpoint, payload);
