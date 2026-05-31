@@ -10,6 +10,7 @@ import {
     Mail,
     Linkedin,
     Sparkles,
+    ShieldCheck,
     Menu,
     X,
     Stethoscope,
@@ -130,6 +131,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
         { onClick: () => window.dispatchEvent(new CustomEvent('show-diagnostic')), icon: Stethoscope, label: 'Diagnostic' },
         { to: '/linkedin', icon: Linkedin, label: 'LinkedIn' },
         { to: '/email-templates', icon: Mail, label: 'Email Templates' },
+        { to: '/visa-sponsors', icon: ShieldCheck, label: 'Visa Sponsors' },
     ];
 
     const sidebarContent = (showLabels: boolean) => (

@@ -91,3 +91,38 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
     return res.status(500).json({ error: 'Internal server error during authentication' });
   }
 };
+
+// Optional authentication — populates req.user when a valid token is present,
+// but never blocks the request. Use on routes that serve both anonymous and
+// logged-in visitors (e.g. the public visa-sponsor directory, where logged-in
+// users get full data and anonymous users hit the email gate).
+export const optionalAuthenticate = async (req: AuthRequest, _res: Response, next: NextFunction) => {
+  if (req.method === 'OPTIONS') return next();
+
+  if (process.env.NODE_ENV !== 'production' && process.env.DEV_BYPASS_AUTH === 'true') {
+    req.user = { id: DEV_BYPASS_USER_ID, email: DEV_BYPASS_EMAIL };
+    return next();
+  }
+
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return next(); // anonymous — continue without a user
+
+  const jwtSecret = process.env.SUPABASE_JWT_SECRET;
+  if (jwtSecret) {
+    try {
+      const { sub, email } = verifyJWT(token, jwtSecret);
+      req.user = { id: sub, email };
+    } catch (e: any) {
+      log(`Optional JWT verification failed (continuing anonymous): ${e.message}`);
+    }
+    return next();
+  }
+
+  try {
+    const { data: { user } } = await supabase.auth.getUser(token);
+    if (user) req.user = { id: user.id, email: user.email };
+  } catch (error) {
+    log(`Optional auth error (continuing anonymous): ${error instanceof Error ? error.message : String(error)}`);
+  }
+  return next();
+};

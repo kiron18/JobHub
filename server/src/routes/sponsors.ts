@@ -2,8 +2,14 @@ import { Router } from 'express';
 import { prisma } from '../index';
 import { Prisma } from '@prisma/client';
 import crypto from 'crypto';
+import { optionalAuthenticate } from '../middleware/auth';
 
 const router = Router();
+
+// Populate req.user when a logged-in user calls these routes (without blocking
+// anonymous visitors). Logged-in users then get the full, unlocked dataset;
+// anonymous visitors still hit the email gate. See isUnlocked() below.
+router.use(optionalAuthenticate);
 
 const SPONSOR_COOKIE = 'sponsor_unlock';
 const COOKIE_MAX_AGE = 30 * 24 * 60 * 60 * 1000; // 30 days

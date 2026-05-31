@@ -74,6 +74,18 @@ export function VisaSponsorsPage() {
     }
   }, []);
 
+  // The global stylesheet sets `body { overflow: hidden }` (the dashboard supplies
+  // its own scroll container). This public page is rendered outside that shell, so
+  // re-enable document scrolling while it's mounted and restore on unmount.
+  useEffect(() => {
+    document.body.style.overflow = 'auto';
+    document.documentElement.style.overflow = 'auto';
+    return () => {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    };
+  }, []);
+
   // Initial load
   useEffect(() => {
     trackSponsorDirectoryViewed();
