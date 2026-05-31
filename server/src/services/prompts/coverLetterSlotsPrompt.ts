@@ -1,4 +1,6 @@
 import { StrategyBlueprint } from './strategy';
+import type { BridgedGap } from '../../lib/bridgedGaps';
+import { salutationTitle } from '../companyIntel';
 
 // =============================================================================
 // COVER LETTER SLOTS PROMPT — JSON output (structured template path)
@@ -26,6 +28,7 @@ export const COVER_LETTER_SLOTS_PROMPT = (
     analysisContext?: { tone?: string; competencies?: string[]; regenerateFeedback?: string },
     companyResearch?: { salutation?: string; highlights?: string[]; companySize?: string; hiringManager?: string } | null,
     companyIntel?: { summary?: string | null; suggestedContact?: { title?: string | null } | null } | null,
+    bridgedGaps?: BridgedGap[],
 ): string => {
     const todayDate = new Date().toISOString().split('T')[0];
 
@@ -57,12 +60,16 @@ export const COVER_LETTER_SLOTS_PROMPT = (
         ? blueprint.messagingAngles.map(a => `- ${a}`).join('\n')
         : (analysisContext?.competencies?.map(c => `- ${c}`).join('\n') ?? 'Map candidate strengths to JD requirements.');
 
-    const contactTitle = companyIntel?.suggestedContact?.title
+    const contactTitle = salutationTitle(companyIntel?.suggestedContact?.title)
         || companyResearch?.salutation
         || 'Hiring Manager';
 
     const companySummary = companyIntel?.summary
         || (companyResearch?.highlights?.length ? companyResearch.highlights.join(' ') : '');
+
+    const bridgedBlock = (bridgedGaps && bridgedGaps.length > 0)
+        ? bridgedGaps.map(g => `- ${g.statement}`).join('\n')
+        : '';
 
     return `==============================================================
 DIRECTOR'S BRIEF — READ THIS FIRST. IT OVERRIDES ALL DEFAULTS.
@@ -97,6 +104,22 @@ ${blueprint.employerInsight}
 
 ACHIEVEMENTS WITH STRATEGIC FRAMING INSTRUCTIONS:
 ${achievementBlock}
+
+${bridgedBlock ? `
+==============================================================
+CONFIRMED CAPABILITIES (the candidate possesses these — weave in as genuine experience)
+==============================================================
+${bridgedBlock}
+` : ''}
+==============================================================
+CONTRADICTION GUARD — NON-NEGOTIABLE
+==============================================================
+NEVER state, imply, or hedge that the candidate lacks, has not used, is unfamiliar with,
+or is "eager/looking forward to learn" any skill listed above (CONFIRMED CAPABILITIES) or
+any skill in the candidate's Skills data. Banned phrasings include: "although I have not",
+"while I don't have direct experience", "I lack", "I am eager to learn", "I have yet to".
+If the candidate genuinely lacks a requirement, OMIT it — never narrate the absence.
+NEVER invent a number or metric; use only metrics already present in the text.
 
 ==============================================================
 BLOCK THESE PHRASES — THEY MUST NOT APPEAR ANYWHERE IN THE OUTPUT:
@@ -177,6 +200,8 @@ The user has requested the following specific changes to this regeneration:
 CONSTRAINTS:
 - Do NOT include any meta-talk or pleasantries.
 - Do NOT fabricate data not present in CANDIDATE DATA above.
+- Only use a [VERIFY: ...] token when a needed fact is genuinely absent from CANDIDATE DATA. If a value already exists in the data (e.g. an achievement metric), use it — never replace a known value with a placeholder.
+- Before finalising, re-read every paragraph: each sentence must be grammatically complete. Do not output sentence fragments.
 - Output ONLY a valid JSON object with this exact structure. No preamble, no explanation, no markdown code fences.
 
 {
