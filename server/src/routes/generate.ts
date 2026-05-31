@@ -563,6 +563,7 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
         analysisContext,
         jobApplicationId,
         companyResearch,  // { salutation, highlights, companySize, hiringManager }
+        bridgedGaps: bridgedGapsRaw,
     } = req.body;
 
     if (!jobDescription) {
@@ -595,6 +596,9 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
         if (!profile) {
             return res.status(404).json({ error: 'Profile not found' });
         }
+
+        const { normalizeBridgedGaps } = await import('../lib/bridgedGaps');
+        const bridgedGaps = normalizeBridgedGaps(bridgedGapsRaw);
 
         const { buildAchievementContext } = await import('../services/generation');
         const selectedAchievements = await buildAchievementContext(
@@ -678,7 +682,8 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
             blueprintResult.blueprint,
             analysisContext,
             companyResearch,
-            parsedJD.employerQuestions.length > 0 ? parsedJD.employerQuestions : undefined
+            parsedJD.employerQuestions.length > 0 ? parsedJD.employerQuestions : undefined,
+            bridgedGaps,
         );
 
         console.log('[ResumeStructured] Stage 2: calling Llama for structured resume...');
@@ -706,6 +711,7 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
             achievementSources: selectedAchievements
                 .map((a: any) => a?.description ?? '')
                 .filter((s: string) => s && s.length > 0),
+            bridgedGaps,
         });
 
         // ── Persist document ────────────────────────────────────────────────
@@ -756,6 +762,7 @@ router.post('/cover-letter-structured', authenticate, async (req: any, res: any)
         jobApplicationId,
         companyResearch,
         companyIntel: companyIntelFromBody,
+        bridgedGaps: bridgedGapsRaw,
     } = req.body;
 
     if (!jobDescription) {
@@ -792,6 +799,9 @@ router.post('/cover-letter-structured', authenticate, async (req: any, res: any)
         if (!profile) {
             return res.status(404).json({ error: 'Profile not found' });
         }
+
+        const { normalizeBridgedGaps } = await import('../lib/bridgedGaps');
+        const bridgedGaps = normalizeBridgedGaps(bridgedGapsRaw);
 
         const { buildAchievementContext } = await import('../services/generation');
         const selectedAchievements = await buildAchievementContext(
@@ -889,6 +899,7 @@ router.post('/cover-letter-structured', authenticate, async (req: any, res: any)
             analysisContext,
             companyResearch,
             companyIntel,
+            bridgedGaps,
         );
 
         console.log('[CoverLetterStructured] Stage 2: calling Llama for structured cover letter...');
