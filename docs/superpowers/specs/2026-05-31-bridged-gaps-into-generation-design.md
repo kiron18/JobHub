@@ -153,14 +153,29 @@ the rule applies whether or not any gaps were bridged, since the denial anti-pat
 surface for plain profile skills too.
 
 ### Résumé (`/resume-structured`, two-stage pipeline)
-- **Stage 1 (Blueprint, Claude):** pass the bridged `statement`s into the blueprint
-  input so the strategy accounts for them (coherence — so a bullet and the summary don't
-  conflict).
+- **Stage 1 (Blueprint, Claude):** unchanged. Threading bridged gaps into the blueprint
+  generator's internals is high-risk for low gain (coherence only); deliberately out of
+  scope for a stable build. Bridged gaps enter at Stage 2 and the skills merge instead.
 - **Stage 2 (structured JSON, Llama → `RESUME_STRUCTURED_PROMPT`):** instruct the model
-  that each bridged gap should become **a tailored work-experience bullet under the most
-  relevant role**, and that any **named tool/skill** in a statement (Adobe Creative
-  Suite, Mailchimp, a CMS, etc.) should also be **added to the Skills section**. This is
-  the "bullet + skill" decision and directly fixes the static-résumé problem.
+  that each bridged gap is a **confirmed capability** that should become **a tailored
+  work-experience bullet under the most relevant role**. (The model output schema is
+  `{ summary, experience[] }` — it does NOT emit skills.)
+- **Skills section (server-side, `buildTemplateResume`):** the résumé Skills block is
+  rendered from `profile.skills` verbatim — which is *why* it never changes across jobs.
+  The "skill" half of the bullet+skill decision is therefore a **deterministic merge**:
+  `buildTemplateResume` appends each bridged gap's concise `skill` label (≤ 5 words, e.g.
+  "Adobe Creative Suite", "Trade Shows") to the Skills string under a "Role-specific:"
+  line, de-duplicated against existing skills. Sentence-like gap labels (e.g. "Experience
+  using website CMS platforms") are NOT added to Skills — they reach the résumé through
+  the experience bullet instead. This is deterministic and testable; no LLM schema, Zod,
+  or renderer change.
+
+**Scope note (stable build):** broader "surface every JD tool in the Skills section even
+when not bridged" is deliberately *not* in scope — it would need an LLM schema change
+(risk) or fuzzy JD-keyword extraction. The existing prompt already pushes JD keywords
+into the summary/bullets (`RESUME_STRUCTURED_PROMPT` rule "JD KEYWORD INTEGRATION"). #3
+here is scoped to **bridged-gap skills reaching the Skills section**, which fixes the
+Adobe/Trade-Shows case concretely.
 
 ## Bundled generator-faithfulness fixes
 
@@ -204,9 +219,12 @@ Manager") and, when used, was pasted verbatim including a clunky parenthetical
 | `src/pages/StepperWorkspace.tsx` | Read `bridgedGaps`; add to both payloads; sessionStorage persist/rehydrate of entry context |
 | `server/src/routes/generate.ts` | Accept `bridgedGaps` on both structured endpoints; pass to prompts/blueprint |
 | `server/src/services/prompts/coverLetterSlotsPrompt.ts` | Bridged-gaps section; contradiction guard; salutation-from-contact rule (#5); `[VERIFY:]`-only-when-missing + proofread (#6) |
-| `server/src/services/prompts/resumeStructuredPrompt.ts` | Bridged-gaps → bullets + skills; JD-tool surfacing (#3); `[VERIFY:]` + proofread (#6) |
+| `server/src/services/prompts/resumeStructuredPrompt.ts` | Bridged-gaps → confirmed-capability bullets; `[VERIFY:]` + proofread (#6) |
+| `server/src/lib/buildTemplateResume.ts` | Merge concise bridged-gap skill labels into Skills string (#3) |
+| `server/src/lib/buildTemplateResume.test.ts` (new) | Unit tests for the skills merge |
 | `server/src/services/companyIntel.ts` | `salutationTitle()` helper — strip parenthetical / "X or Y" → first option (#5) |
-| `server/src/services/generation.ts` (blueprint) | Accept bridged statements into blueprint input |
+| `server/src/lib/bridgedGaps.ts` (new) | Server-side `normalizeBridgedGaps()` integrity guard — strips residual `[…]` placeholders before prompt injection |
+| `server/src/lib/bridgedGaps.test.ts` (new) | Vitest tests for the server guard |
 
 ## Testing
 
