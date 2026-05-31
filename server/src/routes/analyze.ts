@@ -12,6 +12,8 @@ import { authenticate } from '../middleware/auth';
 import { analyzeRateLimit } from '../middleware/analyzeRateLimit';
 import { callLLM } from '../services/llm';
 import { callLLMWithRetry } from '../utils/callLLMWithRetry';
+import crypto from 'crypto';
+import { readAnalysisCache, writeAnalysisCache } from '../lib/analysisCache';
 import { searchAchievements } from '../services/vector';
 import { JOB_ANALYSIS_PROMPT, DUAL_SIGNAL_PROMPT, ACHIEVEMENT_DRAFT_PROMPT, DRAFT_CRITIQUE_PROMPT } from '../services/prompts';
 import { parseLLMJson } from '../utils/parseLLMResponse';
@@ -461,20 +463,35 @@ router.post('/dual', async (req: any, res: any) => {
         // ── Build prompt + invoke LLM ──────────────────────────────────────
         const prompt = DUAL_SIGNAL_PROMPT({ jobDescription, positioningStatement, achievements: achievementBank, hardGapHints });
 
-        let raw;
-        try {
-            raw = await callLLMWithRetry(prompt, true);
-        } catch (err: any) {
-            console.error('[analyze/dual] LLM call failed:', err.message);
-            return res.status(503).json({ error: 'Analysis is temporarily unavailable. Please try again in 30 seconds.' });
-        }
+        // ── Determinism cache — keyed by a fingerprint of the whole prompt ──
+        // Same JD + unchanged profile => identical prompt => identical result,
+        // surviving restarts. Any profile/JD change alters the prompt and misses.
+        const ANALYSIS_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+        const promptHash = crypto.createHash('sha256').update(prompt).digest('hex');
 
-        let analysis: any;
-        try {
-            analysis = parseLLMJson(raw);
-        } catch (err: any) {
-            console.error('[analyze/dual] failed to parse LLM JSON:', err?.message);
-            return res.status(500).json({ error: 'Failed to process analysis. Please retry.' });
+        let analysis: any = readAnalysisCache(
+            (profile as any).analysisCache, promptHash, Date.now(), ANALYSIS_CACHE_TTL_MS,
+        );
+
+        if (!analysis) {
+            let raw;
+            try {
+                raw = await callLLMWithRetry(prompt, true);
+            } catch (err: any) {
+                console.error('[analyze/dual] LLM call failed:', err.message);
+                return res.status(503).json({ error: 'Analysis is temporarily unavailable. Please try again in 30 seconds.' });
+            }
+            try {
+                analysis = parseLLMJson(raw);
+            } catch (err: any) {
+                console.error('[analyze/dual] failed to parse LLM JSON:', err?.message);
+                return res.status(500).json({ error: 'Failed to process analysis. Please retry.' });
+            }
+            const nextCache = writeAnalysisCache((profile as any).analysisCache, promptHash, analysis, Date.now());
+            prisma.candidateProfile.update({
+                where: { userId } as any,
+                data: ({ analysisCache: nextCache } as any),
+            }).catch((e: any) => console.warn('[analyze/dual] cache persist failed:', e?.message));
         }
 
         // ── Normalise + safety-clamp ───────────────────────────────────────
