@@ -1,5 +1,6 @@
 import { StrategyBlueprint } from './strategy';
 import { computeYearsOfExperience, todayIso } from '../../lib/profileMath';
+import type { BridgedGap } from '../../lib/bridgedGaps';
 
 // =============================================================================
 // STRUCTURED RESUME PROMPT — JSON output (structured template path)
@@ -31,7 +32,8 @@ export const RESUME_STRUCTURED_PROMPT = (
     blueprint: StrategyBlueprint,
     analysisContext?: { tone?: string; competencies?: string[]; regenerateFeedback?: string },
     companyResearch?: { salutation?: string; highlights?: string[]; companySize?: string; hiringManager?: string } | null,
-    employerQuestions?: string[]
+    employerQuestions?: string[],
+    bridgedGaps?: BridgedGap[]
 ): string => {
     const todayDate = todayIso();
     const yearsOfExperience = computeYearsOfExperience(profile?.experience);
@@ -56,6 +58,10 @@ export const RESUME_STRUCTURED_PROMPT = (
             return `- [ID: ${a.id}] ${a.title}: ${a.description} (Metric: ${a.metric ?? 'none'}) [supporting evidence — use as context only]`;
         }).join('\n\n')
         : 'No achievements selected. Draw on candidate experience data only.';
+
+    const bridgedBlock = (bridgedGaps && bridgedGaps.length > 0)
+        ? bridgedGaps.map(g => `- ${g.statement}`).join('\n')
+        : '';
 
     // Tone: blueprint takes precedence; fall back to analysisContext for
     // backward compatibility with callers that have not yet adopted the blueprint.
@@ -104,6 +110,15 @@ ${blueprint.employerInsight}
 
 ACHIEVEMENTS WITH STRATEGIC FRAMING INSTRUCTIONS:
 ${achievementBlock}
+${bridgedBlock ? `
+==============================================================
+CONFIRMED CAPABILITIES (the candidate possesses these — integrate as real experience)
+==============================================================
+Turn each into a tailored work-experience bullet under the most relevant role. These are
+genuine capabilities, not aspirations. NEVER invent a number or metric — use only metrics
+already present in the statement text. NEVER write that the candidate lacks any of these.
+${bridgedBlock}
+` : ''}
 
 ==============================================================
 BLOCK THESE PHRASES — THEY MUST NOT APPEAR ANYWHERE IN THE OUTPUT:
@@ -181,6 +196,8 @@ Apply this feedback directly and deliberately. This overrides default choices wh
 
 CONSTRAINTS:
 - Do NOT include any meta-talk or pleasantries.
+- Only use a [VERIFY: ...] token when a needed fact is genuinely absent from CANDIDATE DATA. If a value already exists (e.g. an achievement metric like "150+ assets"), use it verbatim — never replace a known value with a placeholder.
+- Before finalising, re-read each bullet and the summary: every sentence must be grammatically complete. No fragments.
 - Do NOT fabricate any data not present in CANDIDATE DATA above.
 - The DIRECTOR'S BRIEF takes precedence. Where the brief specifies framing, use it.
 - Output ONLY a valid JSON object with this exact structure. No preamble, no explanation, no markdown code fences.
