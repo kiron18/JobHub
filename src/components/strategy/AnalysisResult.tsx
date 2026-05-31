@@ -121,11 +121,8 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip: _on
                 </div>
             )}
 
-            {/* Sticky apply bar */}
+            {/* Apply CTA */}
             <div style={{
-                position: 'sticky',
-                top: 24,
-                zIndex: 20,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
