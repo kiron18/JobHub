@@ -3,11 +3,12 @@ import { callLLM } from '../services/llm';
 export async function callLLMWithRetry(
   prompt: string,
   isJson: boolean,
-  maxRetries = 3
+  maxRetries = 3,
+  temperature = 0
 ): Promise<string> {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      return await callLLM(prompt, isJson);
+      return await callLLM(prompt, isJson, temperature);
     } catch (error) {
       if (attempt === maxRetries) throw error;
       const delay = Math.pow(2, attempt) * 1000;

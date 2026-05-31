@@ -29,7 +29,7 @@ async function retryWithBackoff(fn: () => Promise<any>, retries: number = 2, del
  * @param jsonMode - If true, requests JSON output.
  * @returns Raw content string or parsed object as requested.
  */
-export async function callLLM(prompt: string, jsonMode: boolean = true) {
+export async function callLLM(prompt: string, jsonMode: boolean = true, temperature: number = 0) {
     if (!OPENROUTER_API_KEY) {
         throw new Error('OPENROUTER_API_KEY is not set in environment variables.');
     }
@@ -39,6 +39,7 @@ export async function callLLM(prompt: string, jsonMode: boolean = true) {
             OPENROUTER_URL,
             {
                 model: 'meta-llama/llama-3.3-70b-instruct',
+                temperature,
                 max_tokens: 8192,
                 messages: [
                     {
