@@ -17,6 +17,20 @@
 - **Do exactly what each task says. If reality diverges from the plan — a file's contents
   don't match the snippet, a signature differs, a test fails for a reason not described —
   STOP and report. Do not improvise a fix or expand scope.**
+- **Do the tasks in numerical order (1 → 12).** Tasks 4–6 depend on the types/functions
+  created in Tasks 1–3. Building out of order will not compile.
+- **NEVER use a global find/replace (replace_all) on common tokens** like `state.`,
+  `companyIntel`, or `skills`. Every edit in this plan is a targeted, anchored change.
+  A blind replace_all on `state.` WILL clobber unrelated `setState`/`useState` calls and
+  break the build. Edit only the exact blocks shown.
+- **All new function/parameter names are fixed:** `BridgedGap`, `normalizeBridgedGaps`,
+  `stripPlaceholders`, `mergeBridgedSkills`, `salutationTitle`, `capabilityStatement`,
+  and the request field `bridgedGaps`. Do not rename or pluralise them differently.
+- **Two `BridgedGap` types exist on purpose** — one client (`src/lib/bridgedGaps.ts`),
+  one server (`server/src/lib/bridgedGaps.ts`). They are NOT shared via import across the
+  client/server boundary. Do not try to make one import the other.
+- After each task, run the exact verification command shown and confirm the expected
+  output BEFORE committing. Do not claim a step passed without running it.
 - The client (`src/`) has **no test runner**. Client tasks are verified by `npx tsc` +
   `npm run build`, never by writing client unit tests. Do NOT add a client test runner.
 - Server tasks use vitest. Run only the named test file, not the whole suite, unless told.
@@ -265,9 +279,24 @@ git commit -m "feat(company-intel): add salutationTitle() helper for clean greet
 
 The Skills block renders from `profile.skills` verbatim. This task appends concise bridged-gap skill labels (≤ 5 words) to the skills string, de-duplicated, under a "Role-specific:" line. First read the current `buildTemplateResume` signature and body.
 
-- [ ] **Step 0: Read the current orchestrator**
+- [ ] **Step 0: Confirm the orchestrator matches (verified at plan time)**
 
-Run: `Read server/src/lib/buildTemplateResume.ts` lines 290–360 (the `buildTemplateResume` function and its options type). Confirm the options object shape and where `profileToResumeData` / `applyPolish` / `profileToMarkdown` are called. If the function does not match the assumptions in Step 3 (an options object with `candidateName`, `yearsOfExperience`, `achievementSources`), STOP and report.
+The orchestrator was read at plan time and is exactly:
+
+```ts
+export function buildTemplateResume(
+  profile: ProfileWithRelations,
+  polish: PolishPayload | null,
+  options?: BuildTemplateOptions
+): string {
+  let data = profileToResumeData(profile);
+  if (polish) { data = applyPolish(data, polish); }
+  data = enforceResumeQuality(data, { candidateName: options?.candidateName, yearsOfExperience: options?.yearsOfExperience, achievementSources: options?.achievementSources });
+  return profileToMarkdown(data);
+}
+```
+
+The options interface `BuildTemplateOptions` ends with `achievementSources?: string[];` followed by `}`. The param is named `options` (NOT `opts`). `data` is a reassignable `let`. If what you read differs from this, STOP and report — do not adapt.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -352,19 +381,23 @@ export function mergeBridgedSkills(
 }
 ```
 
-Then wire it into the orchestrator. In `buildTemplateResume(...)`, add `bridgedGaps` to the options type and apply the merge to the `ResumeData.skills` after `applyPolish`. Locate the block that builds the final `ResumeData` (it calls `profileToResumeData`, then `applyPolish` if polish exists). Immediately before rendering with `profileToMarkdown`, insert:
+Then wire it in with these two EXACT edits (no restructuring):
+
+Edit A — extend the `BuildTemplateOptions` interface. Find the line `  achievementSources?: string[];` and the `}` that closes the interface immediately after it. Add one line so it reads:
 
 ```ts
-data = { ...data, skills: mergeBridgedSkills(data.skills, opts?.bridgedGaps) };
+  achievementSources?: string[];
+  bridgedGaps?: BridgedGap[];
+}
 ```
 
-and extend the options parameter type with:
+Edit B — apply the merge just before the final render. Find the line `  return profileToMarkdown(data);` (the last line of `buildTemplateResume`). Insert ABOVE it:
 
 ```ts
-bridgedGaps?: BridgedGap[];
+  data = { ...data, skills: mergeBridgedSkills(data.skills, options?.bridgedGaps) };
 ```
 
-If the orchestrator uses `const data` (not reassignable) or a differently-named variable, adapt the variable name only — do NOT restructure the function. If the rendering call is not `profileToMarkdown(data)`, STOP and report.
+Use `options?.bridgedGaps` (the param is named `options`). Do NOT rename anything. Do NOT touch `enforceResumeQuality`. If the line `  return profileToMarkdown(data);` does not exist verbatim, STOP and report.
 
 - [ ] **Step 4: Run test + typecheck**
 
@@ -856,53 +889,62 @@ git commit -m "feat(strategy-hub): carry bridged gaps into the apply flow"
 **Files:**
 - Modify: `src/pages/StepperWorkspace.tsx`
 
-- [ ] **Step 1: Extend the location.state type**
+**IMPORTANT:** This task keeps the variable named `state` so that NO downstream reference changes. Do NOT rename `state` to anything. Do NOT run a find/replace on `state.`. The ONLY change is how `state` is initialised.
 
-In the `const state = (location.state ?? {}) as { ... }` block (line 346), add `bridgedGaps`:
+- [ ] **Step 1: Replace the `state` initialisation with a refresh-surviving version**
+
+Find this exact block (starts at line ~346):
 
 ```ts
+    const state = (location.state ?? {}) as {
+        jobDescription?: string;
+        sc?: boolean;
+        company?: string;
+        role?: string;
+        feedItemId?: string;
+        sourceUrl?: string;
         sourcePlatform?: string;
-        bridgedGaps?: import('../lib/bridgedGaps').BridgedGap[];
     };
 ```
 
-- [ ] **Step 2: sessionStorage persist/rehydrate of the entry context**
-
-Replace the line `const state = (location.state ?? {}) as { ... };` mechanism so that an empty `location.state` (a refresh) rehydrates from sessionStorage. Directly AFTER the `state` type block, add:
+Replace the ENTIRE block with (keeps the name `state`, adds `bridgedGaps`, adds sessionStorage persist/rehydrate):
 
 ```ts
+    type ApplyState = {
+        jobDescription?: string;
+        sc?: boolean;
+        company?: string;
+        role?: string;
+        feedItemId?: string;
+        sourceUrl?: string;
+        sourcePlatform?: string;
+        bridgedGaps?: import('../lib/bridgedGaps').BridgedGap[];
+    };
     const APPLY_CTX_KEY = 'apply:context';
-    const resolvedState = useMemo(() => {
-        const hasState = location.state && Object.keys(location.state as object).length > 0;
-        if (hasState) {
-            try { sessionStorage.setItem(APPLY_CTX_KEY, JSON.stringify(location.state)); } catch { /* noop */ }
-            return location.state as typeof state;
+    const state = useMemo<ApplyState>(() => {
+        const incoming = (location.state ?? null) as ApplyState | null;
+        if (incoming && Object.keys(incoming).length > 0) {
+            try { sessionStorage.setItem(APPLY_CTX_KEY, JSON.stringify(incoming)); } catch { /* noop */ }
+            return incoming;
         }
         try {
             const cached = sessionStorage.getItem(APPLY_CTX_KEY);
-            if (cached) return JSON.parse(cached) as typeof state;
+            if (cached) return JSON.parse(cached) as ApplyState;
         } catch { /* noop */ }
-        return {} as typeof state;
+        return {};
     }, [location.state]);
 ```
 
-Then change every downstream reference from `state.` to `resolvedState.`. Specifically update:
-- `const jobDescription = state.jobDescription ?? '';` → `resolvedState.jobDescription`
-- `const wantsSC = state.sc === true;` → `resolvedState.sc`
-- the company-intel prewarm effect: `state.company`, `state.role` → `resolvedState.company`, `resolvedState.role`
-- the apply/track payloads that read `state.company`, `state.role`, `state.feedItemId`, `state.sourceUrl`, `state.sourcePlatform`.
+`useMemo` is already imported in this file (it is used for `workspaceKey`). Every existing `state.xxx` reference downstream now works unchanged. Do NOT touch any other line in this step.
 
-Run `Grep "state\." src/pages/StepperWorkspace.tsx` first and update each occurrence that refers to THIS `state` object (do not touch unrelated `setState`/`useState` calls). If any reference is ambiguous, STOP and report it rather than guessing.
+- [ ] **Step 2: Add bridgedGaps to both generate payloads**
 
-- [ ] **Step 3: Read bridgedGaps and add to both generate payloads**
-
-In the `generate` function, after `const payload: Record<string, unknown> = { jobDescription };`, add bridgedGaps to both structured branches. Modify the `stepId === 'resume'` and `cover-letter` handling so both include it:
+In the inner step component's `generate` function, find the endpoint branch block:
 
 ```ts
             let endpoint = `/generate/${stepId}`;
             if (stepId === 'resume') {
                 endpoint = '/generate/resume-structured';
-                payload.bridgedGaps = resolvedState.bridgedGaps ?? [];
             } else if (stepId === 'cover-letter') {
                 endpoint = '/generate/cover-letter-structured';
                 payload.analysisContext = {
@@ -911,20 +953,56 @@ In the `generate` function, after `const payload: Record<string, unknown> = { jo
                     title: role ?? '',
                 };
                 payload.companyIntel = companyIntel ?? null;
-                payload.bridgedGaps = resolvedState.bridgedGaps ?? [];
             }
 ```
 
-Note: `company` and `role` are props of the inner step component. Confirm they derive from `resolvedState` upstream (they are passed from the parent — verify the parent passes `resolvedState.company`/`resolvedState.role`). If the inner component receives `company`/`role` as props already, no change needed there beyond Step 2's parent-level rename.
+**Target ONLY the `DocumentStep` component** — it owns the `generate` function above. There is also a `TrackStep` component with a `companyIntel` prop: do NOT add `bridgedGaps` to `TrackStep` (it would be an unused prop and `noUnusedLocals`/`noUnusedParameters` are both ON → build fails).
 
-- [ ] **Step 4: Typecheck + build**
+The `DocumentStep` component does NOT have direct access to the parent `state`, so pass the gaps as a prop. Three edits on `DocumentStep` only:
+
+1. In `DocumentStep`'s props TYPE (the block containing `companyIntel?: CompanyIntel | null;`, near line 591), add:
+
+```ts
+    bridgedGaps?: import('../lib/bridgedGaps').BridgedGap[];
+```
+
+2. In `DocumentStep`'s destructured parameter list (the block containing `companyIntel,`, near line 581), add `bridgedGaps,`.
+
+3. At the `<DocumentStep ... />` render site (near line 499–506, the `: (` branch that passes `companyIntel={companyIntel}` — NOT the `<TrackStep>` one), add:
+
+```tsx
+                        bridgedGaps={state.bridgedGaps ?? []}
+```
+
+Then update the endpoint branch block to:
+
+```ts
+            let endpoint = `/generate/${stepId}`;
+            if (stepId === 'resume') {
+                endpoint = '/generate/resume-structured';
+                payload.bridgedGaps = bridgedGaps ?? [];
+            } else if (stepId === 'cover-letter') {
+                endpoint = '/generate/cover-letter-structured';
+                payload.analysisContext = {
+                    tone: 'Professional, polished, direct.',
+                    company: company ?? '',
+                    title: role ?? '',
+                };
+                payload.companyIntel = companyIntel ?? null;
+                payload.bridgedGaps = bridgedGaps ?? [];
+            }
+```
+
+Do nothing beyond the three `DocumentStep` edits + the two `payload.bridgedGaps` lines. If `DocumentStep` does not contain `companyIntel` in its props type, destructure, and a render site exactly as described, STOP and report.
+
+- [ ] **Step 3: Typecheck + build**
 
 Run: `npx tsc --noEmit -p tsconfig.json`
 Expected: exit 0.
 Run: `npm run build`
 Expected: succeeds.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
 git add src/pages/StepperWorkspace.tsx
