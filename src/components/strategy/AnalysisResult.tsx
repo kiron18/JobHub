@@ -468,11 +468,17 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip: _on
                 suggestion={draftItem?.suggestion ?? ''}
                 jobRole={extractedMetadata.role}
                 jobCompany={extractedMetadata.company}
-                onSaved={() => {
+                onSaved={(finalDescription) => {
                     if (draftIndex !== null) {
+                        const idx = draftIndex;
+                        setBridgedText(prev => {
+                            const next = new Map(prev);
+                            next.set(idx, finalDescription);
+                            return next;
+                        });
                         setBridgedIndices(prev => {
                             const next = new Set(prev);
-                            next.add(draftIndex);
+                            next.add(idx);
                             return next;
                         });
                     }
