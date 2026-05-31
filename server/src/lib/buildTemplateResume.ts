@@ -18,6 +18,7 @@
 
 import { enforceResumeQuality } from './resumeQualityEnforcers';
 import type { ResumeData } from './resumeData';
+import type { BridgedGap } from './bridgedGaps';
 
 // =============================================================================
 // PolishPayload — mirrors src/lib/applyPolish.ts
@@ -107,6 +108,35 @@ function normalizeSkillsString(skills: string | null | undefined): string | unde
     }
   }
   return skills;
+}
+
+/**
+ * Appends concise bridged-gap skill labels to a normalised skills string under
+ * a "Role-specific:" line, de-duplicated against existing skills. Labels longer
+ * than 5 words are skipped (they reach the resume as experience bullets instead).
+ */
+export function mergeBridgedSkills(
+  skills: string | undefined,
+  bridgedGaps: BridgedGap[] | undefined,
+): string {
+  const base = (skills || '').trim();
+  if (!bridgedGaps || bridgedGaps.length === 0) return base;
+  const existingTokens = base.toLowerCase().split(/[,:\n]/).map(s => s.trim()).filter(Boolean);
+  const concise = bridgedGaps
+    .map(g => g.skill.trim())
+    .filter(label => label.length > 0 && label.split(/\s+/).length <= 5)
+    .filter(label => !existingTokens.includes(label.toLowerCase()));
+  // De-dup within the new labels themselves (case-insensitive).
+  const seen = new Set<string>();
+  const unique = concise.filter(l => {
+    const k = l.toLowerCase();
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+  if (unique.length === 0) return base;
+  const line = `Role-specific: ${unique.join(', ')}`;
+  return base ? `${base}\n${line}` : line;
 }
 
 // =============================================================================
@@ -288,6 +318,7 @@ export interface BuildTemplateOptions {
   candidateName?: string | null;
   yearsOfExperience?: number | null;
   achievementSources?: string[];
+  bridgedGaps?: BridgedGap[];
 }
 
 /**
@@ -318,6 +349,9 @@ export function buildTemplateResume(
     achievementSources: options?.achievementSources,
   });
 
-  // Step 4: Render to markdown
+  // Step 4: Merge bridged-gap skills into the Skills section
+  data = { ...data, skills: mergeBridgedSkills(data.skills, options?.bridgedGaps) };
+
+  // Step 5: Render to markdown
   return profileToMarkdown(data);
 }
