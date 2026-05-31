@@ -1,4 +1,4 @@
-# Bridged Gaps → Document Generation
+# Generators Use All Their Data (Bridged Gaps + Faithfulness Bundle)
 
 **Date:** 2026-05-31
 **Status:** Approved (design)
@@ -26,12 +26,26 @@ Observed consequences in QA (`QA test 3.txt`):
 
 ## Goal
 
-Thread bridged gaps from the analysis screen through to both generated documents,
-**without ever fabricating a metric**, and make them **survive a page refresh** so
-the flow is deterministic rather than "random".
+Make the two generators **faithfully use all the data they are given**. Concretely this
+bundles five tightly-coupled QA findings that all live in the same generator surface
+(`resume-structured`, `cover-letter-structured`, and their prompt files):
 
-Out of scope: analysis determinism itself (QA item #4), Company Insight reliability
-(already addressed), generation grammar glitches (QA item #6).
+1. **(QA #1)** Thread bridged gaps from the analysis screen through to both documents,
+   **without ever fabricating a metric**, surviving a page refresh.
+2. **(QA #2)** Contradiction guard — the cover letter never disclaims claimed experience.
+3. **(QA #3)** Résumé actually tailors — JD tools/skills reach the Skills section.
+4. **(QA #5)** Salutation cleanup — always use the suggested contact, cleanly formatted.
+5. **(QA #6)** Stop `[VERIFY:]` firing when the data exists; best-effort proofread pass.
+
+Doing these together avoids contradictory prompt edits and one risky second pass through
+the same files.
+
+**Out of scope (separate follow-up spec):** QA #4 — analysis determinism (the
+`/analyze/dual` endpoint + `StrategyHub`). That is a *different subsystem* (re-running a
+job reshuffles the gaps); folding it in would mix two unrelated machines and reduce build
+stability. This spec's sessionStorage persistence handles *refresh* randomness; #4 handles
+*re-analyse* randomness and gets its own spec → plan. Company Insight JSON reliability was
+already addressed (commit `808c837`); only the salutation *usage* (#5) is in scope here.
 
 ## Data model
 
@@ -148,6 +162,37 @@ surface for plain profile skills too.
   Suite, Mailchimp, a CMS, etc.) should also be **added to the Skills section**. This is
   the "bullet + skill" decision and directly fixes the static-résumé problem.
 
+## Bundled generator-faithfulness fixes
+
+### QA #3 — Résumé Skills section reflects the JD (beyond bridged gaps)
+QA showed an identical Skills block across four very different jobs. Independently of
+bridged gaps, the Stage-2 résumé prompt instruction is strengthened: the Skills section
+must **surface tools/platforms named in the job description that the candidate
+legitimately holds** (from profile skills, experience, or bridged gaps). It must **not**
+invent a tool the candidate has never indicated. Net effect: a Mailchimp/Adobe/CMS role
+produces a Skills block that names those tools when the candidate has them, instead of a
+frozen default list.
+
+### QA #5 — Salutation from the suggested contact
+`companyIntel.suggestedContact.title` is sometimes ignored (generic "Dear Hiring
+Manager") and, when used, was pasted verbatim including a clunky parenthetical
+("…(National Partnership Office, Surry Hills)"). Fix:
+- When `companyIntel.suggestedContact.title` is present, the cover-letter prompt **must**
+  use it for the salutation rather than defaulting to "Dear Hiring Manager".
+- Strip any trailing parenthetical and collapse an "X or Y" title to the first option, so
+  the greeting reads "Dear Head of Marketing," not the full descriptor. Done as a small
+  helper applied to the title before it enters the prompt (sits next to the existing
+  `clean()` citation-stripping in `companyIntel.ts`).
+
+### QA #6 — `[VERIFY:]` only when data is genuinely missing; proofread
+- The generators currently emit `[VERIFY: number of]` even when the figure ("150+
+  assets") is present in the achievements. Prompt instruction: **only** emit a
+  `[VERIFY:]` token when the needed fact is absent from the provided
+  profile/achievements/JD — never when a value is already available.
+- Add a closing proofread instruction to both prompts: "Re-read the final text; every
+  sentence must be grammatical and complete." This is **best-effort** quality nudging
+  (model-dependent), not a guaranteed fix for fragments like "I am a who is…".
+
 ## Files touched
 
 | File | Change |
@@ -158,21 +203,26 @@ surface for plain profile skills too.
 | `src/pages/StrategyHub.tsx` | Hold `bridgedGaps`; include in `/apply` nav state |
 | `src/pages/StepperWorkspace.tsx` | Read `bridgedGaps`; add to both payloads; sessionStorage persist/rehydrate of entry context |
 | `server/src/routes/generate.ts` | Accept `bridgedGaps` on both structured endpoints; pass to prompts/blueprint |
-| `server/src/services/prompts/coverLetterSlotsPrompt.ts` | Render bridged-gaps section |
-| `server/src/services/prompts/resumeStructuredPrompt.ts` | Render bridged-gaps → bullets + skills instruction |
+| `server/src/services/prompts/coverLetterSlotsPrompt.ts` | Bridged-gaps section; contradiction guard; salutation-from-contact rule (#5); `[VERIFY:]`-only-when-missing + proofread (#6) |
+| `server/src/services/prompts/resumeStructuredPrompt.ts` | Bridged-gaps → bullets + skills; JD-tool surfacing (#3); `[VERIFY:]` + proofread (#6) |
+| `server/src/services/companyIntel.ts` | `salutationTitle()` helper — strip parenthetical / "X or Y" → first option (#5) |
 | `server/src/services/generation.ts` (blueprint) | Accept bridged statements into blueprint input |
 
 ## Testing
 
 - **Unit:** `capabilityStatement()` — placeholder clause stripped; no-placeholder
   unchanged; multiple clause forms (`by`, `resulting in`, `reaching`, comma).
+- **Unit:** `salutationTitle()` (#5) — strips trailing parenthetical; "Head of Marketing
+  or Marketing Manager" → "Head of Marketing"; empty/undefined → falls back to null.
 - **Integration (API):** POST both structured endpoints with `bridgedGaps`; assert the
   statements/skills surface in output and no `[…]` placeholder appears. For the cover
   letter, assert the output contains **no denial phrasing** ("have not had experience",
-  "I lack", "eager to learn") for any confirmed/bridged skill.
+  "I lack", "eager to learn") for any confirmed/bridged skill, and that the salutation
+  uses the suggested-contact title when present (#5).
 - **Manual:** re-run a QA job (e.g. Temperzone): tick Adobe gap → confirm résumé Skills
   lists Adobe and the cover letter no longer denies Adobe experience; refresh `/apply` →
-  confirm gaps persist.
+  confirm gaps persist. Confirm Skills block differs across two different-domain jobs
+  (#3) and that a known figure ("150+ assets") is not replaced by `[VERIFY:]` (#6).
 
 ## Risks / notes
 
