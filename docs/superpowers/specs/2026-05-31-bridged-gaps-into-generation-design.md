@@ -66,6 +66,25 @@ No fabricated numbers reach any document. Enforced in two places:
    Weave them in as genuine experience. **Never invent numbers or metrics** — use only
    metrics already present in the statement text."
 
+### Contradiction guard (cover letter)
+
+QA showed a cover letter that *denied* a capability the user had just bridged
+("Although I have not had direct experience with Adobe Creative Suite…"). Passing the
+bridged gap (above) removes the root cause, but we also add an explicit guard so the
+letter can never disclaim claimed experience:
+
+- The cover-letter prompt gets a hard rule: **never state, imply, or hedge that the
+  candidate lacks, has not used, is unfamiliar with, or is only "eager to learn" any
+  skill that appears in the candidate's confirmed profile skills OR the bridged gaps.**
+- Banned phrasings include "although I have not…", "while I don't have direct
+  experience with…", "I lack…", "I am eager to learn…". The model must **omit** a
+  weakness rather than narrate it — a hard gap the candidate genuinely lacks is simply
+  not mentioned, never explicitly disclaimed.
+
+Scope decision (stated, not asked): the guard covers **confirmed profile skills + bridged
+gaps**, not every keyword in the JD — so the model still won't over-claim a skill the
+candidate has never indicated.
+
 ## UI: nudge to add a metric
 
 On the Bridgeable Gap card (`AnalysisResult.tsx`), when an item is bridged, show a
@@ -115,7 +134,9 @@ not just the gaps.
 Add a `bridgedGaps` section to the prompt: a bullet list of `statement` values under a
 header explaining they are confirmed capabilities to weave in naturally, with the
 no-fabrication instruction above. The model already receives `companyIntel`; this slots
-in alongside.
+in alongside. The prompt also gains the **contradiction guard** (see Integrity rule) —
+the rule applies whether or not any gaps were bridged, since the denial anti-pattern can
+surface for plain profile skills too.
 
 ### Résumé (`/resume-structured`, two-stage pipeline)
 - **Stage 1 (Blueprint, Claude):** pass the bridged `statement`s into the blueprint
@@ -146,7 +167,9 @@ in alongside.
 - **Unit:** `capabilityStatement()` — placeholder clause stripped; no-placeholder
   unchanged; multiple clause forms (`by`, `resulting in`, `reaching`, comma).
 - **Integration (API):** POST both structured endpoints with `bridgedGaps`; assert the
-  statements/skills surface in output and no `[…]` placeholder appears.
+  statements/skills surface in output and no `[…]` placeholder appears. For the cover
+  letter, assert the output contains **no denial phrasing** ("have not had experience",
+  "I lack", "eager to learn") for any confirmed/bridged skill.
 - **Manual:** re-run a QA job (e.g. Temperzone): tick Adobe gap → confirm résumé Skills
   lists Adobe and the cover letter no longer denies Adobe experience; refresh `/apply` →
   confirm gaps persist.
