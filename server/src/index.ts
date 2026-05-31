@@ -217,7 +217,8 @@ async function ensureColumns() {
         ADD COLUMN IF NOT EXISTS "resumeFilename" TEXT,
         ADD COLUMN IF NOT EXISTS "coverLetterFilename" TEXT,
         ADD COLUMN IF NOT EXISTS "coverLetterFilename2" TEXT,
-        ADD COLUMN IF NOT EXISTS "documentsUpdatedAt" TIMESTAMP(3);
+        ADD COLUMN IF NOT EXISTS "documentsUpdatedAt" TIMESTAMP(3),
+        ADD COLUMN IF NOT EXISTS "analysisCache" JSONB;
     `);
     await prisma.$executeRawUnsafe(`
       ALTER TABLE "DiagnosticReport"
