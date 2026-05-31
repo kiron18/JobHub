@@ -83,8 +83,22 @@ export async function fetchCompanyIntel(
 }
 
 /**
+ * Cleans a suggestedContact.title for use as a salutation: drops a trailing
+ * parenthetical and collapses an "X or Y" title to the first option, so the
+ * greeting reads "Dear Head of Marketing," not the full descriptor.
+ * Returns null for empty input so callers can fall back to "Hiring Manager".
+ */
+export function salutationTitle(title: string | null | undefined): string | null {
+  let t = (title || '').trim();
+  if (!t) return null;
+  t = t.replace(/\s*\([^)]*\)\s*$/g, '').trim();   // trailing parenthetical
+  t = t.split(/\s+or\s+/i)[0].trim();              // "X or Y" -> "X"
+  return t || null;
+}
+
+/**
  * Builds the candidate skills preview from profile data for the intel prompt.
- * Extracts the top N skills, preferring those that are strings over object shapes.
+ * Extracts the top N skills, preferring those that are string over object shapes.
  */
 export function buildSkillsPreview(
   rawSkills: any,
