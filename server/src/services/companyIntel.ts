@@ -37,9 +37,10 @@ export async function fetchCompanyIntel(
     'Research the intersection of this candidate, this job, and this company.',
     'Find specific, concrete connections the candidate can reference in a cover letter.',
     '',
-    'Return JSON with this exact structure:',
+    'Return JSON with this exact structure.',
+    'Plain text only inside string values — NO markdown (no ** or #), NO citation markers like [1].',
     '{',
-    '  "summary": "3-4 sentence paragraph — specific tools, projects, initiatives, or culture signals that connect the candidate to this company",',
+    '  "summary": "Max 3 sentences — specific tools, projects, initiatives, or culture signals that connect the candidate to this company",',
     '  "suggestedContact": {',
     '    "title": "e.g. Head of Marketing, CTO, HR Manager, Founder/CEO",',
     '    "reason": "One sentence explaining why this person is the right contact"',
@@ -61,11 +62,20 @@ export async function fetchCompanyIntel(
     throw new Error('Company Intel response missing required fields');
   }
 
+  // sonar-pro often leaks citation markers ([1]) and markdown despite the prompt —
+  // strip them so the read-only insight card renders clean prose.
+  const clean = (s: string): string =>
+    (s || '')
+      .replace(/\[\d+\](?:\[\d+\])*/g, '')   // citation markers, incl. runs like [3][5]
+      .replace(/\*\*/g, '')                   // bold markers
+      .replace(/\s{2,}/g, ' ')                // collapse whitespace left behind
+      .trim();
+
   return {
-    summary: parsed.summary,
+    summary: clean(parsed.summary),
     suggestedContact: {
-      title: parsed.suggestedContact.title,
-      reason: parsed.suggestedContact.reason ?? '',
+      title: clean(parsed.suggestedContact.title),
+      reason: clean(parsed.suggestedContact.reason ?? ''),
     },
     citations: result.citations ?? [],
     fetchedAt: new Date().toISOString(),

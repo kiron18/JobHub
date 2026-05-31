@@ -391,7 +391,7 @@ export function StepperWorkspace() {
         let cancelled = false;
         api.post('/research/company-intel', { company, title: state.role ?? '', jobDescription })
             .then(({ data }) => { if (!cancelled) setCompanyIntel(data); })
-            .catch(() => { /* non-fatal */ });
+            .catch((err) => { console.warn('[company-intel] prewarm failed (non-fatal):', err?.response?.status, err?.message); });
         return () => { cancelled = true; };
     }, [state.company, state.role, jobDescription, jdEmpty]);
 

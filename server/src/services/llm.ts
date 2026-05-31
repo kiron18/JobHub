@@ -142,7 +142,9 @@ export async function callPerplexity(
       {
         model: 'perplexity/sonar-pro',
         temperature: 0,
-        max_tokens: 1024,
+        // sonar-pro is verbose (markdown + inline citations); 1024 truncated the
+        // JSON mid-string and broke parsing. 2500 leaves headroom to close it.
+        max_tokens: 2500,
         messages: [
           {
             role: 'system',
@@ -167,7 +169,11 @@ export async function callPerplexity(
       }
     );
 
-    const content = response.data.choices[0].message.content as string;
+    const choice = response.data.choices[0];
+    const content = choice.message.content as string;
+    if (choice.finish_reason === 'length') {
+      console.warn('[callPerplexity] response hit max_tokens — output truncated, JSON may be incomplete');
+    }
     const citations: string[] = (response.data as any).citations ?? [];
     return { content, citations };
   });
