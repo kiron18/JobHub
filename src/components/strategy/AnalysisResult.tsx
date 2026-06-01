@@ -385,6 +385,28 @@ export function AnalysisResult({ result, jobDescription, onContinue, onSkip: _on
                                     );
                                 })}
                             </ul>
+                            <button
+                                onClick={onContinue}
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: 6,
+                                    padding: '10px 20px',
+                                    fontSize: 13,
+                                    fontWeight: 700,
+                                    color: warm.colors.bgCanvas,
+                                    background: bridgedIndices.size > 0 ? warm.colors.accentPetrol : 'rgba(125,166,125,0.50)',
+                                    border: 'none',
+                                    borderRadius: 10,
+                                    cursor: 'pointer',
+                                    transition: 'background 0.25s',
+                                    marginTop: 4,
+                                }}
+                            >
+                                Apply for this role
+                                <ArrowRight size={14} />
+                            </button>
                         </div>
                     }
                 />
