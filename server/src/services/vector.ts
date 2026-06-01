@@ -7,6 +7,13 @@ dotenv.config();
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY;
 const PINECONE_INDEX_NAME = process.env.PINECONE_INDEX_NAME || 'jobhub-achievements';
 
+// All achievements live in ONE namespace, isolated per-user by a userId metadata
+// filter on query. The old design used one namespace per user, which hit the
+// serverless 100-namespace cap once we crossed 100 users (every user past 100
+// silently failed to index). A single namespace has no such cap, and achievement
+// IDs are globally unique so they never collide across users.
+export const SHARED_NAMESPACE = 'achievements';
+
 // Lazy singleton — avoids crash at startup when PINECONE_API_KEY is missing
 let _pc: Pinecone | null = null;
 function getPinecone(): Pinecone {
@@ -38,7 +45,7 @@ export async function indexAchievement(
         Object.entries(metadata).filter(([, v]) => v !== null && v !== undefined)
     );
 
-    await index.namespace(userId).upsert({
+    await index.namespace(SHARED_NAMESPACE).upsert({
         records: [
             {
                 id: achievementId,
@@ -52,7 +59,7 @@ export async function indexAchievement(
             }
         ]
     });
-    console.log(`Indexed achievement ${achievementId} in Pinecone namespace ${userId}`);
+    console.log(`Indexed achievement ${achievementId} for user ${userId}`);
 }
 
 /**
@@ -63,10 +70,12 @@ export async function searchAchievements(userId: string, query: string, topK: nu
         const index = getPinecone().index(PINECONE_INDEX_NAME);
         const vector = await embedText(query);
 
-        const results = await index.namespace(userId).query({
+        const results = await index.namespace(SHARED_NAMESPACE).query({
             vector,
             topK,
             includeMetadata: true,
+            // Isolate to this user's achievements within the shared namespace.
+            filter: { userId: { $eq: userId } },
         });
 
         return results.matches;
@@ -82,8 +91,10 @@ export async function searchAchievements(userId: string, query: string, topK: nu
 export async function deleteAchievement(userId: string, achievementId: string) {
     try {
         const index = getPinecone().index(PINECONE_INDEX_NAME);
-        await index.namespace(userId).deleteOne({ id: achievementId });
-        console.log(`🗑️ Deleted achievement ${achievementId} from Pinecone namespace ${userId}`);
+        // Achievement IDs are globally unique, so delete-by-id in the shared
+        // namespace targets exactly this record.
+        await index.namespace(SHARED_NAMESPACE).deleteOne({ id: achievementId });
+        console.log(`🗑️ Deleted achievement ${achievementId} (user ${userId})`);
     } catch (error) {
         console.error('Pinecone Deletion Error:', error);
     }
