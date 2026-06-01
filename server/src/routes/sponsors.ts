@@ -3,6 +3,7 @@ import { prisma } from '../index';
 import { Prisma } from '@prisma/client';
 import crypto from 'crypto';
 import { optionalAuthenticate } from '../middleware/auth';
+import { searchSponsorVectors } from '../services/vector';
 
 const router = Router();
 
@@ -84,54 +85,71 @@ router.get('/search', async (req: any, res: any) => {
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const size = Math.min(100, Math.max(1, parseInt(pageSize, 10) || 20));
 
-    const where: Prisma.SponsorWhereInput[] = [];
+    // Non-text filters always AND together.
+    const filterConds: Prisma.SponsorWhereInput[] = [];
+    if (industry.trim()) filterConds.push({ industry: { equals: industry.trim(), mode: 'insensitive' } });
+    if (location.trim()) filterConds.push({ locations: { has: location.trim() } });
+    if (highConfidence === 'true') filterConds.push({ confidence: 'high' });
 
-    // Text search: cleanName + hiringProfile
-    if (q.trim()) {
-      where.push({
+    const term = q.trim();
+    let pageResults: any[];
+    let total: number;
+    let hasMore: boolean;
+
+    if (term) {
+      // ── Hybrid: literal substring match OR semantic (Pinecone) match ──
+      // Literal handles exact name/keyword hits ("lab" → "laboratory"); semantic
+      // handles meaning ("lab analyst" → pathology/scientist employers that never
+      // literally say "lab analyst"). Semantic is non-fatal: [] on failure → the
+      // query degrades to literal-only.
+      const sem = await searchSponsorVectors(term, 60);
+      const scoreMap = new Map(sem.map((s) => [s.id, s.score]));
+      const literalCond: Prisma.SponsorWhereInput = {
         OR: [
-          { cleanName: { contains: q.trim(), mode: 'insensitive' } },
-          { hiringProfile: { contains: q.trim(), mode: 'insensitive' } },
+          { cleanName: { contains: term, mode: 'insensitive' } },
+          { hiringProfile: { contains: term, mode: 'insensitive' } },
         ],
+      };
+      const candidates = await prisma.sponsor.findMany({
+        where: { AND: [...filterConds, { OR: [literalCond, { id: { in: sem.map((s) => s.id) } }] }] },
+        take: 200,
       });
+
+      const lc = term.toLowerCase();
+      const isLiteral = (r: any) =>
+        r.cleanName.toLowerCase().includes(lc) || r.hiringProfile.toLowerCase().includes(lc);
+      candidates.sort((a, b) => {
+        // Literal matches first, then by semantic score, then confidence, then name.
+        const la = isLiteral(a) ? 1 : 0, lb = isLiteral(b) ? 1 : 0;
+        if (la !== lb) return lb - la;
+        const sa = scoreMap.get(a.id) ?? 0, sb = scoreMap.get(b.id) ?? 0;
+        if (sb !== sa) return sb - sa;
+        return a.cleanName.localeCompare(b.cleanName);
+      });
+
+      total = candidates.length;
+      const start = (pageNum - 1) * size;
+      pageResults = candidates.slice(start, start + size);
+      hasMore = start + size < candidates.length;
+    } else {
+      // ── No query: filtered/unfiltered list with DB-level pagination ──
+      // confidence enum is declared high → medium → low, so ascending puts
+      // high-confidence (best data) first. cleanName breaks ties.
+      const whereClause = filterConds.length > 0 ? { AND: filterConds } : {};
+      const rawResults = await prisma.sponsor.findMany({
+        where: whereClause,
+        orderBy: [{ confidence: 'asc' }, { cleanName: 'asc' }],
+        skip: (pageNum - 1) * size,
+        take: size + 1,
+      });
+      hasMore = rawResults.length > size;
+      // Cached global count for the unfiltered list avoids a round-trip; filtered
+      // queries need the real matching count for an accurate "X sponsors" hook.
+      total = filterConds.length > 0
+        ? await prisma.sponsor.count({ where: whereClause })
+        : cachedTotal;
+      pageResults = hasMore ? rawResults.slice(0, size) : rawResults;
     }
-
-    // Industry filter
-    if (industry.trim()) {
-      where.push({ industry: { equals: industry.trim(), mode: 'insensitive' } });
-    }
-
-    // Location filter (array contains)
-    if (location.trim()) {
-      where.push({ locations: { has: location.trim() } });
-    }
-
-    // High-confidence only
-    if (highConfidence === 'true') {
-      where.push({ confidence: 'high' });
-    }
-
-    const whereClause = where.length > 0 ? { AND: where } : {};
-    const isFiltered = where.length > 0;
-
-    // confidence enum is declared high → medium → low, so ascending puts
-    // high-confidence (best data) first. cleanName breaks ties.
-    const rawResults = await prisma.sponsor.findMany({
-      where: whereClause,
-      orderBy: [{ confidence: 'asc' }, { cleanName: 'asc' }],
-      skip: (pageNum - 1) * size,
-      take: size + 1,
-    });
-
-    const hasMore = rawResults.length > size;
-
-    // Total: use the cached global count for the unfiltered list (avoids a
-    // round-trip on the common case). For filtered queries we need the real
-    // matching count so the "X sponsors in Y" hook is accurate.
-    const total = isFiltered
-      ? await prisma.sponsor.count({ where: whereClause })
-      : cachedTotal;
-    const pageResults = hasMore ? rawResults.slice(0, size) : rawResults;
 
     // Gate: strip locked fields from anonymous results
     const unlocked = isUnlocked(req);
