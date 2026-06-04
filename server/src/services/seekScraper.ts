@@ -70,7 +70,10 @@ function mapSeekResult(item: any, city: string): RawJob | null {
   };
 }
 
-export async function fetchSeekJobsForCluster(cluster: ClusterKey): Promise<RawJob[]> {
+export async function fetchSeekJobsForCluster(
+  cluster: ClusterKey,
+  opts?: { maxResults?: number; dateRange?: number },
+): Promise<RawJob[]> {
   const feedDate = todayFeedDate();
 
   const cached = await prisma.seekJobCache.findUnique({
@@ -99,9 +102,9 @@ export async function fetchSeekJobsForCluster(cluster: ClusterKey): Promise<RawJ
       {
         searchTerm: cluster.role,
         location: cluster.city,
-        maxResults: 30,
+        maxResults: opts?.maxResults ?? 30,
         sortBy: 'date',
-        dateRange: 7,
+        dateRange: opts?.dateRange ?? 7,
       },
       { waitSecs: 180 }
     );
