@@ -308,15 +308,19 @@ async function ensureSponsorsSeeded() {
   }
 }
 
-app.listen(PORT, async () => {
-    console.log(`Job Ready Backend running on http://localhost:${PORT}`);
-    await ensureColumns();
-    await ensureSponsorsSeeded();
-    await loadSponsorFilterCache();
-    startJobFeedCron();
-    startTrialReminderCron();
-    startFollowUpReminderCron();
-    console.log('[cron] Job feed cron scheduled (21:00 UTC daily)');
-    console.log('[cron] Trial reminder cron scheduled (10:00 UTC daily)');
-    console.log('[cron] Follow-up reminder cron scheduled (09:00 UTC daily)');
-});
+if (process.env.SKIP_SERVER === 'true') {
+  console.log('[index] SKIP_SERVER=true — script mode, HTTP server not started.');
+} else {
+  app.listen(PORT, async () => {
+      console.log(`Job Ready Backend running on http://localhost:${PORT}`);
+      await ensureColumns();
+      await ensureSponsorsSeeded();
+      await loadSponsorFilterCache();
+      startJobFeedCron();
+      startTrialReminderCron();
+      startFollowUpReminderCron();
+      console.log('[cron] Job feed cron scheduled (21:00 UTC daily)');
+      console.log('[cron] Trial reminder cron scheduled (10:00 UTC daily)');
+      console.log('[cron] Follow-up reminder cron scheduled (09:00 UTC daily)');
+  });
+}
