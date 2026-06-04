@@ -360,9 +360,46 @@ model Sponsor {
   @@index([cleanName])
 }
 
+model CvScanLead {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  firstName    String?
+  fullName     String?
+  inferredRole String?
+  score        Int?
+  createdAt    DateTime @default(now())
+}
+
 model SponsorLead {
   id         String   @id @default(uuid())
   email      String   @unique
   createdAt  DateTime @default(now())
   unlockedAt DateTime @default(now())
+}
+
+model SponsorJob {
+  id                String   @id @default(uuid())
+  sourceUrl         String   @unique
+  title             String
+  company           String
+  normalizedCompany String
+  location          String?
+  salary            String?
+  description       String
+  sourcePlatform    String
+  postedAt          DateTime?
+  confidence        String
+  employerMatched   Boolean
+  sponsorCleanName  String?
+  positivePhraseHit Boolean
+  negationPhraseHit Boolean
+  matchedPhrases    Json?
+  scanQuery         String
+  firstSeenAt       DateTime @default(now())
+  lastSeenAt        DateTime @updatedAt
+  feedDate          String
+
+  @@index([confidence])
+  @@index([normalizedCompany])
+  @@index([feedDate])
 }

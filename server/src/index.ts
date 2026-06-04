@@ -29,10 +29,12 @@ import stripeRouter, { stripeWebhookHandler } from './routes/stripe';
 import enrichmentRouter from './routes/enrichment';
 import insightsRouter from './routes/insights';
 import sponsorsRouter, { loadFilterCache as loadSponsorFilterCache } from './routes/sponsors';
+import { cvScanRouter } from './routes/cv-scan';
 import { startJobFeedCron } from './cron/jobFeedCron';
 import { startTrialReminderCron } from './cron/trialReminderCron';
 import { startFollowUpReminderCron } from './cron/followUpReminderCron';
 import { analyzeRateLimit } from './middleware/analyzeRateLimit';
+import { ensureSponsorJobTable } from './db/ensureSponsorJobTable';
 
 dotenv.config();
 
@@ -154,6 +156,7 @@ app.use('/api/stripe', stripeRouter);
 app.use('/api/enrichment', enrichmentRouter);
 app.use('/api/insights', insightsRouter);
 app.use('/api/sponsors', sponsorsRouter);
+app.use('/api/cv-scan', cvScanRouter);
 
 // Sentry error handler - must be before any other error handling middleware
 Sentry.setupExpressErrorHandler(app);
@@ -235,6 +238,18 @@ async function ensureColumns() {
         "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
     `);
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "CvScanLead" (
+        id TEXT PRIMARY KEY,
+        email TEXT UNIQUE NOT NULL,
+        "firstName" TEXT,
+        "fullName" TEXT,
+        "inferredRole" TEXT,
+        score INTEGER,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    await ensureSponsorJobTable(prisma);
     console.log('[startup] schema columns verified');
   } catch (err) {
     console.warn('[startup] ensureColumns skipped:', err);
