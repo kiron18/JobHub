@@ -11,5 +11,5 @@ export const SPONSOR_SCAN_QUERIES = [
 ];
 
 export const SPONSOR_SCAN_LOCATION    = 'All Australia';
-export const SPONSOR_SCAN_MAX_RESULTS = 700; // full live pool per query; tiny cost
+export const SPONSOR_SCAN_MAX_RESULTS = 500; // Apify actor caps at 550; full pool is ~600-700 anywa
 export const SPONSOR_SCAN_DATE_RANGE  = 30;  // capture the full live set, not just last 7d

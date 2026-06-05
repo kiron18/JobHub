@@ -103,7 +103,7 @@ export async function fetchSeekJobsForCluster(
         searchTerm: cluster.role,
         location: cluster.city,
         maxResults: opts?.maxResults ?? 30,
-        sortBy: 'date',
+        sortBy: 'ListedDate',
         dateRange: opts?.dateRange ?? 7,
       },
       { waitSecs: 180 }
