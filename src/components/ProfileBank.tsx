@@ -788,6 +788,8 @@ const ExperienceIsland: React.FC<ExperienceIslandProps> = ({ experience, achieve
   const [forms, setForms] = useState<Record<string, {
     company: string; role: string; startDate: string; endDate: string; description: string;
   }>>({});
+  const [isAdding, setIsAdding] = useState(false);
+  const [addForm, setAddForm] = useState({ role: '', company: '', startDate: '', endDate: '', description: '' });
 
   const mutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Record<string, string> }) =>
@@ -800,15 +802,66 @@ const ExperienceIsland: React.FC<ExperienceIslandProps> = ({ experience, achieve
     onError: () => toast.error('Failed to save. Please try again.'),
   });
 
+  const addMutation = useMutation({
+    mutationFn: (data: typeof addForm) => api.post('/experience', { ...data, type: 'work' }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['profile'] });
+      setIsAdding(false);
+      setAddForm({ role: '', company: '', startDate: '', endDate: '', description: '' });
+      toast.success('Experience added.');
+    },
+    onError: () => toast.error('Failed to add experience.'),
+  });
+
+  const submitAdd = () => {
+    if (!addForm.role.trim() || !addForm.company.trim() || !addForm.startDate.trim()) {
+      toast.error('Role, company and start date are required.');
+      return;
+    }
+    addMutation.mutate(addForm);
+  };
+
   const inp = inputStyle();
   const workEntries = experience.filter(e => !e.type || e.type === 'work');
 
   return (
     <Island>
-      <SectionHeader icon={<Briefcase size={13} />} title="Work Experience" />
-      {workEntries.length === 0 && (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <SectionHeader icon={<Briefcase size={13} />} title="Work Experience" />
+        {!isAdding && (
+          <button onClick={() => setIsAdding(true)} style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>
+            + Add
+          </button>
+        )}
+      </div>
+
+      {/* Add form */}
+      <AnimatePresence>
+        {isAdding && (
+          <motion.div key="add-experience" {...slideIn} style={{ marginBottom: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 14px' }}>
+              {(['role', 'company', 'startDate', 'endDate'] as const).map(f => (
+                <div key={f}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', display: 'block', marginBottom: 4 }}>
+                    {f === 'startDate' ? 'Start' : f === 'endDate' ? 'End' : f.charAt(0).toUpperCase() + f.slice(1)}
+                  </span>
+                  <input style={inp} value={addForm[f]} onChange={e => setAddForm(p => ({ ...p, [f]: e.target.value }))} />
+                </div>
+              ))}
+            </div>
+            <div style={{ marginTop: 10 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', display: 'block', marginBottom: 4 }}>Description</span>
+              <textarea rows={4} style={{ ...inp, resize: 'vertical' }} value={addForm.description}
+                onChange={e => setAddForm(p => ({ ...p, description: e.target.value }))} />
+            </div>
+            <SaveCancelButtons onSave={submitAdd} onCancel={() => setIsAdding(false)} saving={addMutation.isPending} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {workEntries.length === 0 && !isAdding && (
         <p style={{ fontSize: 13, color: '#9ca3af', fontStyle: 'italic' }}>
-          No experience found. Upload a resume to populate this section.
+          No experience yet. Upload a resume, or click <strong>+ Add</strong> above.
         </p>
       )}
       {workEntries.map(exp => {
