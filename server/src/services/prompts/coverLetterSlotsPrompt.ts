@@ -200,7 +200,7 @@ The user has requested the following specific changes to this regeneration:
 CONSTRAINTS:
 - Do NOT include any meta-talk or pleasantries.
 - Do NOT fabricate data not present in CANDIDATE DATA above.
-- Only use a [VERIFY: ...] token when a needed fact is genuinely absent from CANDIDATE DATA. If a value already exists in the data (e.g. an achievement metric), use it — never replace a known value with a placeholder.
+- NEVER emit a bracketed placeholder of any kind — not [VERIFY: ...], [ADD: ...], [INSERT: ...], [TBD], [PLACEHOLDER], or anything similar. The finished letter must read as complete, signable work with no gaps for the candidate to fill in. When a specific detail is genuinely absent from CANDIDATE DATA, either omit it or rephrase the sentence around it so it stays true and complete. NEVER fabricate a number, metric, credential, or fact to fill a gap. If a value already exists in the data (e.g. an achievement metric), use it verbatim.
 - Before finalising, re-read every paragraph: each sentence must be grammatically complete. Do not output sentence fragments.
 - Output ONLY a valid JSON object with this exact structure. No preamble, no explanation, no markdown code fences.
 
