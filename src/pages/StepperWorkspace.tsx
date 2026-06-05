@@ -69,6 +69,10 @@ interface CompanyIntel {
 
 const VERIFY_MARKER_RE = /\[(?:VERIFY|Verify|verify|ADD|Add|INSERT|Insert|TBD|PLACEHOLDER)(?:[:\s]\s*([^\]]*))?\]/g;
 
+// Same token set, but no capture group and no /g flag — safe for repeated
+// `.test()` calls (a global regex advances lastIndex and alternates results).
+const VERIFY_TOKEN_RE = /\[(?:VERIFY|Verify|verify|ADD|Add|INSERT|Insert|TBD|PLACEHOLDER)(?:[:\s][^\]]*)?\]/;
+
 /** Strip common AI-generation artifacts before rendering or storage. */
 function sanitizeContent(raw: string): string {
     return raw
@@ -760,13 +764,36 @@ function DocumentStep({
     // INSERT/Insert, TBD, PLACEHOLDER. Resume drafts use these interchangeably,
     // which is why the previous narrow `[VERIFY:` check missed them.
     // We warn on continue rather than block — calm-ally, not gatekeeper.
-    const hasVerifyTokens = useMemo(
-        () => /\[(?:VERIFY|Verify|verify|ADD|Add|INSERT|Insert|TBD|PLACEHOLDER)(?:[:\s][^\]]*)?\]/.test(content),
-        [content],
-    );
+    const hasVerifyTokens = useMemo(() => VERIFY_TOKEN_RE.test(content), [content]);
+
+    // Commit any in-progress inline edit to content + localStorage. Idempotent:
+    // a no-op when not editing or nothing changed, and it never toggles
+    // `editing` itself (callers own that). That makes it safe to fire from the
+    // textarea's onBlur without fighting the button click that follows. Returns
+    // the effective post-commit content so callers can act on the fresh value
+    // without waiting for the async setContent.
+    const commitEdit = (): string => {
+        if (!editing) return content;
+        const trimmed = editBuffer.trim();
+        if (trimmed.length > 0 && trimmed !== content) {
+            setContent(trimmed);
+            saveDraft(workspaceKey, stepId, {
+                content: trimmed,
+                generatedAt: new Date().toISOString(),
+                edited: true,
+            });
+            toast.success('Edits saved');
+            return trimmed;
+        }
+        return content;
+    };
 
     const handleContinueWithVerifyCheck = () => {
-        if (hasVerifyTokens) {
+        // Flush any pending inline edit FIRST — the big "Save & continue" button
+        // must honour its label even when the user never clicked "Done".
+        const effective = commitEdit();
+        setEditing(false);
+        if (VERIFY_TOKEN_RE.test(effective)) {
             const ok = confirm(
                 'This draft still contains [VERIFY: ...] notes — spots where the AI flagged details for you to confirm or fill in before sending. Continue anyway?'
             );
@@ -777,17 +804,7 @@ function DocumentStep({
 
     const handleEditToggle = () => {
         if (editing) {
-            // Save edits
-            const trimmed = editBuffer.trim();
-            if (trimmed.length > 0 && trimmed !== content) {
-                setContent(trimmed);
-                saveDraft(workspaceKey, stepId, {
-                    content: trimmed,
-                    generatedAt: new Date().toISOString(),
-                    edited: true,
-                });
-                toast.success('Edits saved');
-            }
+            commitEdit();
             setEditing(false);
         } else {
             setEditBuffer(content);
@@ -977,6 +994,7 @@ function DocumentStep({
                     <textarea
                         value={editBuffer}
                         onChange={(e) => setEditBuffer(e.target.value)}
+                        onBlur={() => commitEdit()}
                         spellCheck
                         style={{
                             width: '100%',
@@ -1038,7 +1056,7 @@ function DocumentStep({
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     {onBack && (
                         <button
-                            onClick={onBack}
+                            onClick={() => { commitEdit(); setEditing(false); onBack(); }}
                             disabled={generating}
                             style={ghostButtonStyle(generating)}
                         >
