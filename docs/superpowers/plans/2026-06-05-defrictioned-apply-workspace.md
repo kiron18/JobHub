@@ -71,7 +71,7 @@ const profile = { name: 'Jane Doe', email: 'jane@example.com', experience: [], e
 describe('RESUME_STRUCTURED_PROMPT', () => {
   it('does not instruct the model to emit [VERIFY] tokens', () => {
     const out = RESUME_STRUCTURED_PROMPT('Some JD text', profile, [], blueprint);
-    expect(out).not.toContain('[VERIFY');
+    expect(out).not.toContain('Only use a [VERIFY');
   });
 
   it('carries the no-placeholder rule', () => {
@@ -84,7 +84,7 @@ describe('RESUME_STRUCTURED_PROMPT', () => {
 - [ ] **Step 2: Run to verify it fails**
 
 Run (from `server/`): `npx vitest run src/services/prompts/resumeStructuredPrompt.test.ts`
-Expected: FAIL — the first test fails because the current prompt contains `[VERIFY: ...]`.
+Expected: FAIL — the first test fails because the current prompt still contains the old `Only use a [VERIFY` instruction.
 
 - [ ] **Step 3: Implement** — in `server/src/services/prompts/resumeStructuredPrompt.ts`, replace this exact line (in the CONSTRAINTS block):
 
@@ -140,7 +140,7 @@ const profile = { name: 'Jane Doe', email: 'jane@example.com', experience: [], e
 describe('COVER_LETTER_SLOTS_PROMPT', () => {
   it('does not instruct the model to emit [VERIFY] tokens', () => {
     const out = COVER_LETTER_SLOTS_PROMPT('Some JD text', profile, [], blueprint);
-    expect(out).not.toContain('[VERIFY');
+    expect(out).not.toContain('Only use a [VERIFY');
   });
 
   it('carries the no-placeholder rule', () => {
@@ -153,7 +153,7 @@ describe('COVER_LETTER_SLOTS_PROMPT', () => {
 - [ ] **Step 2: Run to verify it fails**
 
 Run (from `server/`): `npx vitest run src/services/prompts/coverLetterSlotsPrompt.test.ts`
-Expected: FAIL — first test fails (current prompt contains `[VERIFY: ...]`).
+Expected: FAIL — first test fails (current prompt still contains the old `Only use a [VERIFY` instruction).
 
 - [ ] **Step 3: Implement** — in `server/src/services/prompts/coverLetterSlotsPrompt.ts`, replace this exact line (in the CONSTRAINTS block):
 
