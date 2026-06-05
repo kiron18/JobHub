@@ -31,6 +31,7 @@ import insightsRouter from './routes/insights';
 import sponsorsRouter, { loadFilterCache as loadSponsorFilterCache } from './routes/sponsors';
 import { cvScanRouter } from './routes/cv-scan';
 import { startJobFeedCron } from './cron/jobFeedCron';
+import { startSponsorJobScanCron } from './cron/sponsorJobScanCron';
 import { startTrialReminderCron } from './cron/trialReminderCron';
 import { startFollowUpReminderCron } from './cron/followUpReminderCron';
 import { analyzeRateLimit } from './middleware/analyzeRateLimit';
@@ -317,6 +318,7 @@ if (process.env.SKIP_SERVER === 'true') {
       await ensureSponsorsSeeded();
       await loadSponsorFilterCache();
       startJobFeedCron();
+      startSponsorJobScanCron();
       startTrialReminderCron();
       startFollowUpReminderCron();
       console.log('[cron] Job feed cron scheduled (21:00 UTC daily)');
