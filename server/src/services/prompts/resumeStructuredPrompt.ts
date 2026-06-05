@@ -196,7 +196,7 @@ Apply this feedback directly and deliberately. This overrides default choices wh
 
 CONSTRAINTS:
 - Do NOT include any meta-talk or pleasantries.
-- Only use a [VERIFY: ...] token when a needed fact is genuinely absent from CANDIDATE DATA. If a value already exists (e.g. an achievement metric like "150+ assets"), use it verbatim — never replace a known value with a placeholder.
+- NEVER emit a bracketed placeholder of any kind — not [VERIFY: ...], [ADD: ...], [INSERT: ...], [TBD], [PLACEHOLDER], or anything similar. The finished resume must read as complete, signable work with no gaps for the candidate to fill in. When a specific detail (a metric, a date, a certification) is genuinely absent from CANDIDATE DATA, either omit it or rephrase the sentence around it so it stays true and complete — e.g. "grew the audience substantially" rather than "grew the audience by [X]%". NEVER fabricate a number, metric, credential, or fact to fill a gap. If a value already exists in CANDIDATE DATA (e.g. an achievement metric like "150+ assets"), use it verbatim.
 - Before finalising, re-read each bullet and the summary: every sentence must be grammatically complete. No fragments.
 - Do NOT fabricate any data not present in CANDIDATE DATA above.
 - The DIRECTOR'S BRIEF takes precedence. Where the brief specifies framing, use it.
