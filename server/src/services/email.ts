@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import type { CvGapResult, RoadmapStep } from './cvGapScan';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -173,13 +174,40 @@ export async function sendFollowUpReminderEmail(params: {
 }
 
 export async function sendAdminPaymentAlert(params: {
-  event: 'payment_succeeded' | 'payment_failed';
+  event: 'payment_succeeded' | 'payment_failed' | 'payment_unmatched';
   userEmail: string;
   plan: string;
   subscriptionId: string;
 }): Promise<void> {
   if (!process.env.RESEND_API_KEY) return;
   const { event, userEmail, plan, subscriptionId } = params;
+
+  // A payment Stripe collected that we could NOT tie to a JobHub account
+  // (e.g. a manually-created payment link with no userId metadata and an
+  // email that matches no profile). Needs manual reconciliation — the
+  // customer has paid but won't have access until granted.
+  if (event === 'payment_unmatched') {
+    await resend.emails.send({
+      from: FROM_ADDRESS,
+      to: ADMIN_EMAIL,
+      subject: `[JobHub] ⚠️ PAID BUT UNMATCHED — ${userEmail}`,
+      text: [
+        'A payment was collected but could NOT be matched to a JobHub account.',
+        'The customer has paid and will be capped until you grant access manually.',
+        '',
+        `Customer email: ${userEmail}`,
+        `Plan / amount:  ${plan}`,
+        `Reference:      ${subscriptionId}`,
+        '',
+        'To grant access, run from server/:',
+        `  npx tsx src/scripts/grant_access.ts ${userEmail} three_month`,
+        '',
+        `Stripe: https://dashboard.stripe.com/payments`,
+      ].join('\n'),
+    });
+    return;
+  }
+
   const succeeded = event === 'payment_succeeded';
   await resend.emails.send({
     from: FROM_ADDRESS,
@@ -229,5 +257,62 @@ export async function sendTrialReminderEmail(to: string, name: string): Promise<
       'Good luck with the applications,',
       'The Aussie Grad Careers team',
     ].join('\n'),
+  });
+}
+
+export async function sendRoadmapEmail(
+  to: string,
+  firstName: string,
+  result: { score: number; inferredRole: string },
+  roadmap: RoadmapStep[],
+): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[email] RESEND_API_KEY not set — skipping roadmap email');
+    return;
+  }
+
+  const salutation = firstName ? `Hi ${firstName},` : "G'day,";
+
+  const stepsHtml = roadmap
+    .map(
+      (s) =>
+        `<tr><td style="padding: 0 0 16px 0; vertical-align: top; font-family: Arial, sans-serif; font-size: 14px; color: #1a1814;">
+          <table cellpadding="0" cellspacing="0" style="width: 100%;">
+            <tr>
+              <td style="width: 28px; vertical-align: top; padding: 0 8px 0 0;">
+                <span style="display: inline-block; width: 24px; height: 24px; background: #2d5a6e; color: #faf7f2; border-radius: 50%; text-align: center; line-height: 24px; font-size: 12px; font-weight: 700;">${s.rank}</span>
+              </td>
+              <td>
+                <strong style="font-size: 14px; color: #1a1814;">${s.title}</strong><br/>
+                <span style="font-size: 13px; color: #6b6559;">${s.why}</span>
+              </td>
+            </tr>
+          </table>
+        </td></tr>`,
+    )
+    .join('');
+
+  await resend.emails.send({
+    from: FROM_ADDRESS,
+    to,
+    subject: `${firstName ? firstName + ', ' : ''}your CV roadmap — 7 fixes, in order`,
+    html: [
+      `<table cellpadding="0" cellspacing="0" style="width: 100%; max-width: 560px; margin: 0 auto; font-family: Arial, sans-serif;">`,
+      `<tr><td style="padding: 32px 24px; background: #f5f3ef; border-radius: 12px;">`,
+      `<h1 style="font-size: 20px; font-weight: 600; color: #1a1814; margin: 0 0 8px;">Your CV Roadmap</h1>`,
+      `<p style="font-size: 14px; color: #6b6559; margin: 0 0 16px;">${salutation}</p>`,
+      `<p style="font-size: 14px; color: #6b6559; margin: 0 0 4px;"><strong>Your CV score: ${result.score}/100</strong></p>`,
+      result.inferredRole ? `<p style="font-size: 14px; color: #6b6559; margin: 0 0 20px;">Scanned as: ${result.inferredRole}</p>` : '',
+      `<p style="font-size: 14px; color: #6b6559; margin: 0 0 20px;">Here are your 7 prioritised fixes, ranked by impact:</p>`,
+      `<table cellpadding="0" cellspacing="0" style="width: 100%;">`,
+      stepsHtml,
+      `</table>`,
+      `<p style="font-size: 13px; color: #6b6559; margin: 24px 0 0; border-top: 1px solid #dddad2; padding-top: 16px;">`,
+      `Start with step 1 this week. Each fix builds on the one before.<br/>`,
+      `The Aussie Grad Careers team &middot; <a href="${APP_URL}" style="color: #2d5a6e;">aussiegradcareers.com.au</a>`,
+      `</p>`,
+      `</td></tr>`,
+      `</table>`,
+    ].join(''),
   });
 }
