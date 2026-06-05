@@ -15,6 +15,7 @@ import { SectionIntroBanner } from './processStrip';
 import { ProfileExplainerModal, hasSeenProfileExplainer } from './ProfileExplainerModal';
 import { ManageSubscriptionModal } from './ManageSubscriptionModal';
 import { AchievementVideoModal } from './AchievementVideoModal';
+import { trackAchievementAdded } from '../lib/analytics';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -713,6 +714,67 @@ const AchievementRow: React.FC<AchievementRowProps> = ({ ach }) => {
   );
 };
 
+// ── AddAchievementForm ────────────────────────────────────────────────────────
+// Inline "+ Add achievement" affordance shown under each role. Self-contained
+// so it can drop into both ExperienceIsland and ProjectsIsland. POSTs with
+// experienceId so the new entry nests under the role it was added from.
+
+const AddAchievementForm: React.FC<{ experienceId: string }> = ({ experienceId }) => {
+  const qc = useQueryClient();
+  const [isAdding, setIsAdding] = useState(false);
+  const [form, setForm] = useState({ title: '', description: '', metric: '', metricType: '' });
+  const inp = inputStyle();
+
+  const reset = () => {
+    setForm({ title: '', description: '', metric: '', metricType: '' });
+    setIsAdding(false);
+  };
+
+  const addMutation = useMutation({
+    mutationFn: (data: typeof form) => api.post('/achievements', { ...data, experienceId }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['profile'] });
+      trackAchievementAdded();
+      reset();
+      toast.success('Achievement added.');
+    },
+    onError: () => toast.error('Failed to add achievement.'),
+  });
+
+  const submit = () => {
+    if (!form.title.trim() || !form.description.trim()) {
+      toast.error('Add a title and a short description first.');
+      return;
+    }
+    addMutation.mutate(form);
+  };
+
+  if (!isAdding) {
+    return (
+      <button
+        onClick={() => setIsAdding(true)}
+        style={{ marginTop: 4, fontSize: 11, fontWeight: 700, color: '#818cf8', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}
+      >
+        + Add achievement
+      </button>
+    );
+  }
+
+  return (
+    <motion.div key="add-achievement" {...slideIn} style={{ marginTop: 4 }}>
+      <div style={{ display: 'grid', gap: 8 }}>
+        <input autoFocus style={inp} value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Title" />
+        <textarea rows={3} style={{ ...inp, resize: 'vertical' }} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="What you did and why it mattered." />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <input style={inp} value={form.metric} onChange={e => setForm(f => ({ ...f, metric: e.target.value }))} placeholder="Metric (e.g. 40%)" />
+          <input style={inp} value={form.metricType} onChange={e => setForm(f => ({ ...f, metricType: e.target.value }))} placeholder="Type (e.g. revenue growth)" />
+        </div>
+      </div>
+      <SaveCancelButtons onSave={submit} onCancel={reset} saving={addMutation.isPending} />
+    </motion.div>
+  );
+};
+
 // ── ExperienceIsland ──────────────────────────────────────────────────────────
 
 interface ExperienceIslandProps {
@@ -815,20 +877,19 @@ const ExperienceIsland: React.FC<ExperienceIslandProps> = ({ experience, achieve
             </div>
 
             {/* Nested achievements */}
-            {linked.length > 0 && (
-              <div style={{
-                marginTop: 12, marginLeft: 16,
-                paddingLeft: 16,
-                borderLeft: `2px solid ${'rgba(99,102,241,0.2)'}`,
-              }}>
-                <p style={{ fontSize: 10, fontWeight: 700, color: '#818cf8', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>
-                  Achievements
-                </p>
-                {linked.map(ach => (
-                  <AchievementRow key={ach.id} ach={ach} />
-                ))}
-              </div>
-            )}
+            <div style={{
+              marginTop: 12, marginLeft: 16,
+              paddingLeft: 16,
+              borderLeft: `2px solid ${'rgba(99,102,241,0.2)'}`,
+            }}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: '#818cf8', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>
+                Achievements
+              </p>
+              {linked.map(ach => (
+                <AchievementRow key={ach.id} ach={ach} />
+              ))}
+              <AddAchievementForm experienceId={exp.id} />
+            </div>
           </div>
         );
       })}
@@ -859,17 +920,16 @@ const ProjectsIsland: React.FC<{ experience: Experience[]; achievements: Achieve
             {proj.description && (
               <p style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.6, marginTop: 6 }}>{proj.description}</p>
             )}
-            {linked.length > 0 && (
-              <div style={{
-                marginTop: 12, marginLeft: 16, paddingLeft: 16,
-                borderLeft: `2px solid ${'rgba(99,102,241,0.2)'}`,
-              }}>
-                <p style={{ fontSize: 10, fontWeight: 700, color: '#818cf8', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>
-                  Achievements
-                </p>
-                {linked.map(ach => <AchievementRow key={ach.id} ach={ach} />)}
-              </div>
-            )}
+            <div style={{
+              marginTop: 12, marginLeft: 16, paddingLeft: 16,
+              borderLeft: `2px solid ${'rgba(99,102,241,0.2)'}`,
+            }}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: '#818cf8', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>
+                Achievements
+              </p>
+              {linked.map(ach => <AchievementRow key={ach.id} ach={ach} />)}
+              <AddAchievementForm experienceId={proj.id} />
+            </div>
           </div>
         );
       })}
