@@ -51,7 +51,7 @@ router.get('/achievements/count', authenticate, async (req, res) => {
 
 // POST /api/achievements
 router.post('/achievements', authenticate, async (req, res) => {
-    const { title, description, metric, metricType, skills } = req.body;
+    const { title, description, metric, metricType, skills, experienceId } = req.body;
     const userId = (req as any).user.id;
 
     try {
@@ -61,10 +61,22 @@ router.post('/achievements', authenticate, async (req, res) => {
 
         if (!profile) return res.status(404).json({ error: 'Profile not found' });
 
+        // Only link to an experience the user actually owns — guards against a
+        // client passing an arbitrary/foreign experienceId.
+        let linkedExperienceId: string | null = null;
+        if (experienceId) {
+            const exp = await prisma.experience.findFirst({
+                where: { id: experienceId, candidateProfileId: profile.id },
+                select: { id: true },
+            });
+            linkedExperienceId = exp?.id ?? null;
+        }
+
         const achievement = await prisma.achievement.create({
             data: {
                 candidateProfileId: profile.id,
                 userId,
+                experienceId: linkedExperienceId,
                 title,
                 description,
                 skills: Array.isArray(skills) ? skills.join(', ') : (skills || ''),
