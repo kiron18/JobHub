@@ -26,6 +26,9 @@ const AdminDashboard = React.lazy(() =>
 const AdminFunnel = React.lazy(() =>
   import('./pages/AdminFunnel').then(m => ({ default: m.AdminFunnel }))
 );
+const AdminUserUsage = React.lazy(() =>
+  import('./pages/AdminUserUsage').then(m => ({ default: m.AdminUserUsage }))
+);
 const MindsetPage = React.lazy(() =>
   import('./pages/MindsetPage').then(m => ({ default: m.MindsetPage }))
 );
@@ -409,6 +412,7 @@ function ReportOrDashboard() {
                 <Route path="/mindset" element={<MindsetPage />} />
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/admin/funnel" element={<AdminFunnel />} />
+                <Route path="/admin/users" element={<AdminUserUsage />} />
                 <Route path="/admin/friday-brief" element={<FridayBriefPage />} />
                 <Route path="*" element={<StrategyHub />} />
               </Routes>
