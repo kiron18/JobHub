@@ -41,12 +41,14 @@ import { DraftCritiquePanel, type CritiqueResult } from '../components/strategy/
 import { ApplyDeepLinkButton } from '../components/strategy/ApplyDeepLinkButton';
 import ReactMarkdown from 'react-markdown';
 import React from 'react';
-import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import api from '../lib/api';
 import { warm } from '../lib/theme/warmTokens';
 import { GenerationProgress } from '../components/shared/GenerationProgress';
 import { CoverLetterPersonalisationPanel } from '../components/CoverLetterPersonalisationPanel';
+import { GapConfirmModal } from '../components/GapConfirmModal';
+import { applyWorkspaceCopy } from './applyWorkspaceCopy';
+import { capabilityStatement, type BridgedGap } from '../lib/bridgedGaps';
 
 // Perplexity company intel, pre-fetched on apply-flow entry and fed into the
 // structured cover-letter route. Shape mirrors the server's CompanyIntelResult.
@@ -57,21 +59,7 @@ interface CompanyIntel {
     fetchedAt?: string;
 }
 
-// ── Placeholder marker rendering ────────────────────────────────────────────
-//
-// The generator emits placeholder tokens (`[VERIFY: ...]`, `[ADD: ...]`,
-// `[TBD]`, etc.) wherever it lacks confidence. Showing the literal bracket
-// syntax inline is ugly; this helper rewrites them to a small gold chip with
-// a rich hover/click popover explaining what the chip means and how the
-// user prevents it next time (by adding the missing detail to their
-// candidate profile). Raw markers stay in the stored content; on .docx /
-// .pdf export they are stripped entirely by the shared sanitizer.
-
-const VERIFY_MARKER_RE = /\[(?:VERIFY|Verify|verify|ADD|Add|INSERT|Insert|TBD|PLACEHOLDER)(?:[:\s]\s*([^\]]*))?\]/g;
-
-// Same token set, but no capture group and no /g flag — safe for repeated
-// `.test()` calls (a global regex advances lastIndex and alternates results).
-const VERIFY_TOKEN_RE = /\[(?:VERIFY|Verify|verify|ADD|Add|INSERT|Insert|TBD|PLACEHOLDER)(?:[:\s][^\]]*)?\]/;
+// VERIFY marker UI removed — prompts no longer emit placeholder tokens.
 
 /** Strip common AI-generation artifacts before rendering or storage. */
 function sanitizeContent(raw: string): string {
@@ -80,214 +68,22 @@ function sanitizeContent(raw: string): string {
         // before contact lines (e.g. "NFP?\n📞 +61...").
         .replace(/^NFP\?\s*/gm, '')
         .replace(/\bNFP\?\s*/g, '')
+        // Strip any stray bracketed placeholder the generator should no longer
+        // emit (belt-and-suspenders so nothing bracketed can ever render).
+        .replace(/\s*\[(?:VERIFY|ADD|INSERT|TBD|PLACEHOLDER)\b[^\]]*\]/gi, '')
+        .replace(/[ \t]{2,}/g, ' ')
         .trim();
-}
-
-function VerifyMarker({ note }: { note: string }) {
-    const [open, setOpen] = React.useState(false);
-    const wrapperRef = React.useRef<HTMLSpanElement>(null);
-    const [tipPos, setTipPos] = React.useState<{ top: number; left: number; arrowX: number } | null>(null);
-
-    // Recalculate tooltip position whenever it opens or the window resizes/scrolls.
-    React.useEffect(() => {
-        if (!open || !wrapperRef.current) { setTipPos(null); return; }
-
-        const TIP_WIDTH = 280;
-        const MARGIN = 12;
-
-        const recompute = () => {
-            const el = wrapperRef.current;
-            if (!el) return;
-            const r = el.getBoundingClientRect();
-            // Default: centred horizontally over the marker.
-            const idealLeft = r.left + r.width / 2 - TIP_WIDTH / 2;
-            // Clamp to viewport so we never get clipped by an overflow:hidden ancestor.
-            const left = Math.max(MARGIN, Math.min(idealLeft, window.innerWidth - TIP_WIDTH - MARGIN));
-            const top = r.top - 10; // tooltip sits above the marker; tooltip is anchored bottom-up via translateY(-100%)
-            // Arrow follows the marker no matter where the tooltip clamped to.
-            const arrowX = Math.max(12, Math.min(r.left + r.width / 2 - left, TIP_WIDTH - 12));
-            setTipPos({ top, left, arrowX });
-        };
-
-        recompute();
-        window.addEventListener('scroll', recompute, true);
-        window.addEventListener('resize', recompute);
-        return () => {
-            window.removeEventListener('scroll', recompute, true);
-            window.removeEventListener('resize', recompute);
-        };
-    }, [open]);
-
-    return (
-        <span
-            ref={wrapperRef}
-            style={{
-                position: 'relative',
-                display: 'inline-block',
-                verticalAlign: 'baseline',
-                marginInline: 2,
-                lineHeight: 0,
-            }}
-            onMouseEnter={() => setOpen(true)}
-            onMouseLeave={() => setOpen(false)}
-        >
-            <span
-                role="button"
-                tabIndex={0}
-                onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
-                onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        setOpen((v) => !v);
-                    } else if (e.key === 'Escape') {
-                        setOpen(false);
-                    }
-                }}
-                aria-label={note ? `Placeholder: ${note}` : 'Placeholder'}
-                aria-expanded={open}
-                style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: 18,
-                    height: 18,
-                    background: 'rgba(197,160,89,0.18)',
-                    color: '#C5A059',
-                    borderRadius: 4,
-                    fontSize: 11,
-                    fontWeight: 700,
-                    cursor: 'help',
-                    userSelect: 'none',
-                    border: '1px solid rgba(197,160,89,0.32)',
-                    lineHeight: 1,
-                    verticalAlign: 'baseline',
-                }}
-            >
-                !
-            </span>
-
-            {open && tipPos && createPortal(
-                <span
-                    role="tooltip"
-                    onMouseEnter={() => setOpen(true)}
-                    onMouseLeave={() => setOpen(false)}
-                    onClick={(e) => e.stopPropagation()}
-                    style={{
-                        position: 'fixed',
-                        top: tipPos.top,
-                        left: tipPos.left,
-                        transform: 'translateY(-100%)',
-                        width: 280,
-                        background: warm.colors.bgSurface,
-                        border: `1px solid ${warm.colors.borderWhisper}`,
-                        borderRadius: 12,
-                        padding: '12px 14px 14px',
-                        boxShadow: '0 8px 32px rgba(0,0,0,0.45)',
-                        zIndex: 1000,
-                        textAlign: 'left',
-                        cursor: 'auto',
-                        lineHeight: 1.55,
-                        whiteSpace: 'normal',
-                        display: 'block',
-                    }}
-                >
-                    <span style={{
-                        display: 'block',
-                        fontSize: 10,
-                        fontWeight: 800,
-                        letterSpacing: '0.14em',
-                        textTransform: 'uppercase',
-                        color: '#C5A059',
-                        marginBottom: 6,
-                    }}>
-                        Placeholder, needs filling in
-                    </span>
-                    {note && (
-                        <span style={{
-                            display: 'block',
-                            fontSize: 12,
-                            color: warm.colors.textPrimary,
-                            fontStyle: 'italic',
-                            marginBottom: 10,
-                            background: 'rgba(197,160,89,0.06)',
-                            padding: '6px 10px',
-                            borderRadius: 6,
-                            border: '1px solid rgba(197,160,89,0.18)',
-                        }}>
-                            "{note}"
-                        </span>
-                    )}
-                    <span style={{ display: 'block', fontSize: 12, color: warm.colors.textMuted, marginBottom: 10 }}>
-                        We added this because your profile didn't have the specific detail the role asked for. Adding it to your profile means future drafts use the real value instead of a placeholder.
-                    </span>
-                    <Link
-                        to="/workspace"
-                        style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 4,
-                            fontSize: 12,
-                            fontWeight: 700,
-                            color: '#7DA67D',
-                            textDecoration: 'underline',
-                            textUnderlineOffset: 3,
-                        }}
-                    >
-                        Open profile to add this →
-                    </Link>
-                    {/* Pointer arrow follows the marker even when the tooltip clamps to viewport edge */}
-                    <span style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: tipPos.arrowX,
-                        transform: 'translateX(-50%)',
-                        width: 0,
-                        height: 0,
-                        borderLeft: '6px solid transparent',
-                        borderRight: '6px solid transparent',
-                        borderTop: `6px solid ${warm.colors.bgSurface}`,
-                    }} />
-                </span>,
-                document.body,
-            )}
-        </span>
-    );
-}
-
-function replaceVerifyMarkersInString(text: string): React.ReactNode {
-    VERIFY_MARKER_RE.lastIndex = 0;
-    const out: React.ReactNode[] = [];
-    let lastIndex = 0;
-    let match: RegExpExecArray | null;
-    while ((match = VERIFY_MARKER_RE.exec(text)) !== null) {
-        if (match.index > lastIndex) out.push(text.slice(lastIndex, match.index));
-        out.push(<VerifyMarker key={`v-${match.index}`} note={(match[1] || '').trim()} />);
-        lastIndex = match.index + match[0].length;
-    }
-    if (lastIndex < text.length) out.push(text.slice(lastIndex));
-    return out.length > 0 ? <>{out}</> : text;
-}
-
-function processMarkers(children: React.ReactNode): React.ReactNode {
-    return React.Children.map(children, (child) => {
-        if (typeof child === 'string') return replaceVerifyMarkersInString(child);
-        return child;
-    });
 }
 
 const HEADING_COLOR: React.CSSProperties = { color: warm.colors.textPrimary };
 const STRONG_COLOR: React.CSSProperties = { color: warm.colors.textPrimary, fontWeight: 700 };
 
 const MARKDOWN_COMPONENTS = {
-    p: ({ children }: { children?: React.ReactNode }) => <p>{processMarkers(children)}</p>,
-    li: ({ children }: { children?: React.ReactNode }) => <li>{processMarkers(children)}</li>,
-    strong: ({ children }: { children?: React.ReactNode }) => <strong style={STRONG_COLOR}>{processMarkers(children)}</strong>,
-    em: ({ children }: { children?: React.ReactNode }) => <em>{processMarkers(children)}</em>,
-    td: ({ children }: { children?: React.ReactNode }) => <td>{processMarkers(children)}</td>,
-    h1: ({ children }: { children?: React.ReactNode }) => <h1 style={HEADING_COLOR}>{processMarkers(children)}</h1>,
-    h2: ({ children }: { children?: React.ReactNode }) => <h2 style={HEADING_COLOR}>{processMarkers(children)}</h2>,
-    h3: ({ children }: { children?: React.ReactNode }) => <h3 style={HEADING_COLOR}>{processMarkers(children)}</h3>,
-    h4: ({ children }: { children?: React.ReactNode }) => <h4 style={HEADING_COLOR}>{processMarkers(children)}</h4>,
+    strong: ({ children }: { children?: React.ReactNode }) => <strong style={STRONG_COLOR}>{children}</strong>,
+    h1: ({ children }: { children?: React.ReactNode }) => <h1 style={HEADING_COLOR}>{children}</h1>,
+    h2: ({ children }: { children?: React.ReactNode }) => <h2 style={HEADING_COLOR}>{children}</h2>,
+    h3: ({ children }: { children?: React.ReactNode }) => <h3 style={HEADING_COLOR}>{children}</h3>,
+    h4: ({ children }: { children?: React.ReactNode }) => <h4 style={HEADING_COLOR}>{children}</h4>,
 };
 
 type StepId = 'resume' | 'cover-letter' | 'selection-criteria' | 'track';
@@ -392,6 +188,22 @@ export function StepperWorkspace() {
     const [jdExpanded, setJdExpanded] = useState(false);
     const [companyIntel, setCompanyIntel] = useState<CompanyIntel | null>(null);
 
+    // ── De-frictioned generation orchestration ───────────────────────────────
+    // Live path: on entry we derive bridgeable gaps from /analyze/dual (the
+    // perceived "already working"), confirm 2–3 strengths in a modal, then
+    // generate resume + cover letter in parallel. Legacy path (gaps passed in
+    // from the old analysis screen) skips straight to generation.
+    const legacyGaps = state.bridgedGaps;
+    const [gaps, setGaps] = useState<BridgedGap[]>(legacyGaps ?? []);
+    const [gapPhase, setGapPhase] = useState<'deriving' | 'confirming' | 'ready'>(
+        legacyGaps !== undefined ? 'ready' : 'deriving',
+    );
+    const [intelSettled, setIntelSettled] = useState(false);
+    const [genStatus, setGenStatus] = useState<Record<'resume' | 'cover-letter', 'idle' | 'generating' | 'done' | 'error'>>({
+        resume: 'idle',
+        'cover-letter': 'idle',
+    });
+
     const currentStep = steps[currentIndex];
     const isFinalStep = currentStep?.id === 'track';
 
@@ -400,18 +212,77 @@ export function StepperWorkspace() {
         if (jdEmpty) navigate('/', { replace: true });
     }, [jdEmpty, navigate]);
 
-    // Pre-warm Perplexity company intel in the background on entry, so it's ready
-    // by the cover-letter step (runs while the user works on the resume). Fully
-    // non-fatal — the letter still generates without it.
+    // Pre-warm Perplexity company intel in the background on entry, so it's woven
+    // into the cover letter. `intelSettled` flips true once intel resolves, errors,
+    // or there's no company to fetch — cover-letter generation waits on it. Fully
+    // non-fatal — the letter still generates without intel.
     useEffect(() => {
         const company = state.company?.trim();
-        if (jdEmpty || !company || company === 'Unknown Company') return;
+        if (jdEmpty) return;
+        if (!company || company === 'Unknown Company') { setIntelSettled(true); return; }
         let cancelled = false;
         api.post('/research/company-intel', { company, title: state.role ?? '', jobDescription })
             .then(({ data }) => { if (!cancelled) setCompanyIntel(data); })
-            .catch((err) => { console.warn('[company-intel] prewarm failed (non-fatal):', err?.response?.status, err?.message); });
+            .catch((err) => { console.warn('[company-intel] prewarm failed (non-fatal):', err?.response?.status, err?.message); })
+            .finally(() => { if (!cancelled) setIntelSettled(true); });
         return () => { cancelled = true; };
     }, [state.company, state.role, jobDescription, jdEmpty]);
+
+    // Derive bridgeable gaps on entry (live path only). This is the instant-on
+    // "already working" — generation waits until the user confirms.
+    useEffect(() => {
+        if (jdEmpty || legacyGaps !== undefined) return;
+        let cancelled = false;
+        setGapPhase('deriving');
+        api.post('/analyze/dual', { jobDescription })
+            .then(({ data }) => {
+                if (cancelled) return;
+                const items: Array<{ skill?: string; suggestion?: string }> = data?.fitBands?.bridgeableGap?.items ?? [];
+                const derived: BridgedGap[] = items
+                    .slice(0, 3)
+                    .map((it) => ({ skill: (it?.skill ?? '').trim(), statement: capabilityStatement(it?.suggestion ?? '') }))
+                    .filter((g) => g.skill.length > 0 && g.statement.length > 0);
+                if (derived.length > 0) { setGaps(derived); setGapPhase('confirming'); }
+                else { setGaps([]); setGapPhase('ready'); }
+            })
+            .catch(() => { if (!cancelled) { setGaps([]); setGapPhase('ready'); } });
+        return () => { cancelled = true; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [jobDescription, jdEmpty]);
+
+    // Once gaps are confirmed (or skipped), generate resume + cover letter in
+    // parallel, writing each draft to localStorage as it lands. Never regenerates
+    // a step that already has a draft (Back-never-regenerates / revisit).
+    useEffect(() => {
+        if (gapPhase !== 'ready' || jdEmpty) return;
+
+        const kickOff = (step: 'resume' | 'cover-letter') => {
+            if (loadDraft(workspaceKey, step) || genStatus[step] !== 'idle') return;
+            setGenStatus((s) => ({ ...s, [step]: 'generating' }));
+            const payload: Record<string, unknown> = { jobDescription };
+            let endpoint: string;
+            if (step === 'resume') {
+                endpoint = '/generate/resume-structured';
+                payload.bridgedGaps = gaps;
+            } else {
+                endpoint = '/generate/cover-letter-structured';
+                payload.analysisContext = { tone: 'Professional, polished, direct.', company: state.company ?? '', title: state.role ?? '' };
+                payload.companyIntel = companyIntel ?? null;
+                payload.bridgedGaps = gaps;
+            }
+            api.post<{ content: string }>(endpoint, payload)
+                .then(({ data }) => {
+                    const text = typeof data?.content === 'string' ? sanitizeContent(data.content) : '';
+                    saveDraft(workspaceKey, step, { content: text, generatedAt: new Date().toISOString(), edited: false });
+                    setGenStatus((s) => ({ ...s, [step]: 'done' }));
+                })
+                .catch(() => { setGenStatus((s) => ({ ...s, [step]: 'error' })); });
+        };
+
+        kickOff('resume');
+        if (intelSettled) kickOff('cover-letter');
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [gapPhase, intelSettled, jdEmpty, workspaceKey]);
 
     if (jdEmpty) return null;
 
@@ -521,13 +392,27 @@ export function StepperWorkspace() {
                         company={state.company}
                         role={state.role}
                         companyIntel={companyIntel}
-                        bridgedGaps={state.bridgedGaps ?? []}
+                        bridgedGaps={gaps}
+                        sourceUrl={state.sourceUrl}
+                        feedItemId={state.feedItemId}
+                        generationStatus={
+                            currentStep.id === 'resume' || currentStep.id === 'cover-letter'
+                                ? genStatus[currentStep.id]
+                                : 'idle'
+                        }
                         onBack={currentIndex > 0 ? () => setCurrentIndex(currentIndex - 1) : null}
                         onContinue={() => setCurrentIndex(currentIndex + 1)}
                         isLast={currentIndex === steps.length - 1}
                     />
                 )}
             </div>
+
+            {gapPhase === 'confirming' && (
+                <GapConfirmModal
+                    gaps={gaps}
+                    onConfirm={(confirmed) => { setGaps(confirmed); setGapPhase('ready'); }}
+                />
+            )}
         </div>
     );
 }
@@ -599,6 +484,9 @@ function DocumentStep({
     role,
     companyIntel,
     bridgedGaps,
+    sourceUrl,
+    feedItemId,
+    generationStatus,
     onBack,
     onContinue,
     isLast,
@@ -610,6 +498,9 @@ function DocumentStep({
     role?: string;
     companyIntel?: CompanyIntel | null;
     bridgedGaps?: import('../lib/bridgedGaps').BridgedGap[];
+    sourceUrl?: string;
+    feedItemId?: string;
+    generationStatus: 'idle' | 'generating' | 'done' | 'error';
     onBack: (() => void) | null;
     onContinue: () => void;
     isLast: boolean;
@@ -630,6 +521,7 @@ function DocumentStep({
     const [formatMenuOpen, setFormatMenuOpen] = useState(false);
 
     const isCoverLetter = stepId === 'cover-letter';
+    void feedItemId; // consumed in Task 3 completion handler
 
     // ── Selection-criteria-only state ────────────────────────────────────
     const criteriaStorageKey = `jobhub_stepper_${workspaceKey}_criteria_text`;
@@ -693,7 +585,7 @@ function DocumentStep({
                 setCriteriaPanelOpen(stored.trim().length === 0 && !draft);
             } catch { /* noop */ }
         }
-    }, [workspaceKey, stepId, isSC, criteriaStorageKey]);
+    }, [workspaceKey, stepId, isSC, criteriaStorageKey, generationStatus]);
 
     const handleSaveCriteria = (next: string) => {
         setCriteriaText(next);
@@ -757,15 +649,6 @@ function DocumentStep({
         toast.success('Copied');
     };
 
-    // Placeholder tokens — inserted by the generator wherever the AI lacks
-    // confidence (job title gaps, fabricated metrics, etc.) and needs human
-    // review. The regex catches the full set of variants the generator emits
-    // across resume / cover letter / SC: VERIFY/Verify/verify, ADD/Add,
-    // INSERT/Insert, TBD, PLACEHOLDER. Resume drafts use these interchangeably,
-    // which is why the previous narrow `[VERIFY:` check missed them.
-    // We warn on continue rather than block — calm-ally, not gatekeeper.
-    const hasVerifyTokens = useMemo(() => VERIFY_TOKEN_RE.test(content), [content]);
-
     // Commit any in-progress inline edit to content + localStorage. Idempotent:
     // a no-op when not editing or nothing changed, and it never toggles
     // `editing` itself (callers own that). That makes it safe to fire from the
@@ -788,17 +671,11 @@ function DocumentStep({
         return content;
     };
 
-    const handleContinueWithVerifyCheck = () => {
-        // Flush any pending inline edit FIRST — the big "Save & continue" button
-        // must honour its label even when the user never clicked "Done".
-        const effective = commitEdit();
+    const handleContinue = () => {
+        // Flush any pending inline edit FIRST — the "Save & continue" button must
+        // honour its label even when the user never clicked "Done".
+        commitEdit();
         setEditing(false);
-        if (VERIFY_TOKEN_RE.test(effective)) {
-            const ok = confirm(
-                'This draft still contains [VERIFY: ...] notes — spots where the AI flagged details for you to confirm or fill in before sending. Continue anyway?'
-            );
-            if (!ok) return;
-        }
         onContinue();
     };
 
@@ -865,6 +742,7 @@ function DocumentStep({
                                 onClick={handleReviewDraft}
                             />
                             <ToolbarButton icon={<Copy size={13} />} label="Copy" onClick={handleCopy} />
+                            {/* Per-step download label (spec §8.7) */}
                             <DownloadSplit
                                 format={downloadFormat}
                                 open={formatMenuOpen}
@@ -872,11 +750,45 @@ function DocumentStep({
                                 onCloseMenu={() => setFormatMenuOpen(false)}
                                 onDownload={() => handleDownload()}
                                 onChoose={(f) => handleDownload(f)}
+                                label={isCoverLetter ? 'Download cover letter' : 'Download resume'}
                             />
+                            {/* Download both — cover-letter step only */}
+                            {isCoverLetter && (
+                                <ToolbarButton
+                                    icon={<Download size={13} />}
+                                    label="Download both"
+                                    onClick={async () => {
+                                        try {
+                                            const fmt = downloadFormat;
+                                            const resumeDraft = loadDraft(workspaceKey, 'resume');
+                                            if (resumeDraft?.content) {
+                                                if (fmt === 'pdf') {
+                                                    const { exportPdf } = await import('../lib/exportPdf');
+                                                    await exportPdf(resumeDraft.content, 'resume', '', '');
+                                                } else {
+                                                    const { exportDocx } = await import('../lib/exportDocx');
+                                                    await exportDocx(resumeDraft.content, 'resume', '');
+                                                }
+                                            }
+                                            await handleDownload();
+                                            toast.success('Downloaded both documents');
+                                        } catch {
+                                            toast.error('Download failed. Copy the content instead.');
+                                        }
+                                    }}
+                                />
+                            )}
                         </>
                     )}
                 </div>
             </header>
+
+            {/* Review framing — the documents are already done; read & trim. */}
+            {hasDraft && !generating && generationStatus !== 'generating' && (stepId === 'resume' || stepId === 'cover-letter') && (
+                <p style={{ margin: 0, fontSize: 12.5, color: warm.colors.textSecondary, lineHeight: 1.6 }}>
+                    {stepId === 'resume' ? applyWorkspaceCopy.reviewFraming.resume : applyWorkspaceCopy.reviewFraming.coverLetter}
+                </p>
+            )}
 
             {/* Cover letter educational note */}
             {stepId === 'cover-letter' && (
@@ -988,7 +900,7 @@ function DocumentStep({
                     </button>
                 )}
 
-                {generating ? (
+                {generating || (generationStatus === 'generating' && !content) ? (
                     <GenerationProgress docType={stepId === 'cover-letter' ? 'cover-letter' : stepId === 'selection-criteria' ? 'selection-criteria' : 'resume'} />
                 ) : editing ? (
                     <textarea
@@ -1022,7 +934,9 @@ function DocumentStep({
                         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, maxWidth: 380 }}>
                             {isSC
                                 ? 'Paste the selection criteria above, then Generate. We will write a STAR response per criterion, drawing on your achievement bank.'
-                                : 'Click Generate to draft this from your profile and the job description.'}
+                                : generationStatus === 'error'
+                                    ? 'That draft didn\'t come through. Use Regenerate to try again.'
+                                    : 'Preparing this document…'}
                         </p>
                     </div>
                 )}
@@ -1048,6 +962,32 @@ function DocumentStep({
                         jobDescription={jobDescription}
                         company={company}
                     />
+                </div>
+            )}
+
+            {/* Seek submission banner — cover-letter step only (spec §8.3) */}
+            {isCoverLetter && content && sourceUrl && (
+                <div style={{
+                    border: `1px solid ${warm.colors.accentPetrol}`, borderRadius: 12,
+                    background: warm.colors.bgAlt, padding: '16px 18px',
+                    display: 'flex', flexDirection: 'column', gap: 8,
+                }}>
+                    <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: warm.colors.textPrimary }}>Last step: submit on Seek</p>
+                    <p style={{ margin: 0, fontSize: 13, color: warm.colors.textSecondary }}>
+                        Download your resume and cover letter, then submit them on the live listing. We open it for you in a new tab.
+                    </p>
+                    <a
+                        href={sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                            alignSelf: 'flex-start', marginTop: 4, fontSize: 13.5, fontWeight: 700,
+                            padding: '9px 18px', borderRadius: 10, textDecoration: 'none',
+                            background: warm.colors.accentPetrol, color: warm.colors.textOnDeep,
+                        }}
+                    >
+                        Submit on Seek
+                    </a>
                 </div>
             )}
 
@@ -1077,22 +1017,31 @@ function DocumentStep({
                             Regenerate
                         </button>
                     )}
-                    {!hasDraft && (
+                    {!hasDraft && isSC && (
                         <button
                             onClick={() => generate(false)}
-                            disabled={generating || (isSC && !hasCriteria)}
-                            style={primaryButtonStyle(generating || (isSC && !hasCriteria))}
-                            title={isSC && !hasCriteria ? 'Paste the selection criteria first' : undefined}
+                            disabled={generating || !hasCriteria}
+                            style={primaryButtonStyle(generating || !hasCriteria)}
+                            title={!hasCriteria ? 'Paste the selection criteria first' : undefined}
                         >
                             {generating ? (<><Loader2 size={14} className="animate-spin" /> Generating…</>) : (<>Generate<ArrowRight size={14} /></>)}
                         </button>
                     )}
-                    {hasDraft && (
+                    {!hasDraft && !isSC && generationStatus === 'error' && (
                         <button
-                            onClick={handleContinueWithVerifyCheck}
+                            onClick={() => generate(false)}
                             disabled={generating}
                             style={primaryButtonStyle(generating)}
-                            title={hasVerifyTokens ? 'This draft has unverified placeholders' : undefined}
+                            title="Regenerate this document"
+                        >
+                            {generating ? (<><Loader2 size={14} className="animate-spin" /> Generating…</>) : (<><RefreshCw size={13} /> Regenerate</>)}
+                        </button>
+                    )}
+                    {hasDraft && (
+                        <button
+                            onClick={handleContinue}
+                            disabled={generating}
+                            style={primaryButtonStyle(generating)}
                         >
                             {isLast ? 'Finish' : 'Save & continue'}
                             <ArrowRight size={14} />
@@ -1505,6 +1454,7 @@ function DownloadSplit({
     onCloseMenu,
     onDownload,
     onChoose,
+    label,
 }: {
     format: 'docx' | 'pdf';
     open: boolean;
@@ -1512,6 +1462,7 @@ function DownloadSplit({
     onCloseMenu: () => void;
     onDownload: () => void;
     onChoose: (next: 'docx' | 'pdf') => void;
+    label?: string;
 }) {
     return (
         <div style={{ position: 'relative', display: 'inline-flex' }} onMouseLeave={onCloseMenu}>
@@ -1535,7 +1486,7 @@ function DownloadSplit({
                 }}
             >
                 <Download size={13} />
-                {`.${format}`}
+                {label ?? `.${format}`}
             </button>
             <button
                 onClick={onToggleMenu}
