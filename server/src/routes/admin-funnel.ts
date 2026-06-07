@@ -296,4 +296,79 @@ router.get('/trials', authenticate, requireAdmin, async (_req, res) => {
   }
 });
 
+// GET /api/admin/funnel/user-usage — per-user usage snapshot for evaluation calls.
+router.get('/user-usage', authenticate, requireAdmin, async (_req, res) => {
+  try {
+    const now = Date.now();
+
+    const profiles = await prisma.candidateProfile.findMany({
+      select: { userId: true, name: true, email: true, plan: true, planStatus: true, trialEndDate: true, createdAt: true },
+      orderBy: { createdAt: 'desc' },
+      take: 500,
+    });
+
+    // Application counts per user (total + applied).
+    const appsAll = await prisma.jobApplication.groupBy({ by: ['userId'], _count: { _all: true } });
+    const appsApplied = await prisma.jobApplication.groupBy({ by: ['userId'], where: { status: 'APPLIED' }, _count: { _all: true } });
+    const latestApp = await prisma.jobApplication.findMany({
+      select: { userId: true, createdAt: true }, orderBy: { createdAt: 'desc' },
+    });
+
+    // Document counts per user (by type) + edited (updatedAt > createdAt) + latest activity.
+    const docs = await prisma.document.findMany({
+      select: { userId: true, type: true, createdAt: true, updatedAt: true },
+    });
+
+    const totalApps = new Map<string, number>();
+    for (const a of appsAll) totalApps.set(a.userId, a._count._all);
+    const sentApps = new Map<string, number>();
+    for (const a of appsApplied) sentApps.set(a.userId, a._count._all);
+    const lastAppAt = new Map<string, number>();
+    for (const a of latestApp) if (!lastAppAt.has(a.userId)) lastAppAt.set(a.userId, a.createdAt.getTime());
+
+    const resumes = new Map<string, number>();
+    const covers = new Map<string, number>();
+    const edited = new Map<string, number>();
+    const lastDocAt = new Map<string, number>();
+    for (const d of docs) {
+      if (d.type === 'RESUME') resumes.set(d.userId, (resumes.get(d.userId) ?? 0) + 1);
+      if (d.type === 'COVER_LETTER') covers.set(d.userId, (covers.get(d.userId) ?? 0) + 1);
+      if (d.updatedAt.getTime() > d.createdAt.getTime() + 1000) edited.set(d.userId, (edited.get(d.userId) ?? 0) + 1);
+      const t = d.updatedAt.getTime();
+      if (t > (lastDocAt.get(d.userId) ?? 0)) lastDocAt.set(d.userId, t);
+    }
+
+    const users = profiles.map(p => {
+      const trialDay = p.trialEndDate
+        ? 7 - Math.max(0, Math.ceil((p.trialEndDate.getTime() - now) / (1000 * 60 * 60 * 24)))
+        : null;
+      const lastActive = Math.max(
+        p.createdAt.getTime(),
+        lastAppAt.get(p.userId) ?? 0,
+        lastDocAt.get(p.userId) ?? 0,
+      );
+      return {
+        userId: p.userId,
+        name: p.name ?? null,
+        email: p.email ?? null,
+        plan: p.plan ?? 'free',
+        planStatus: p.planStatus ?? 'active',
+        trialDay: trialDay !== null && trialDay >= 1 && trialDay <= 7 ? trialDay : null,
+        signedUpAt: p.createdAt.toISOString(),
+        lastActiveAt: new Date(lastActive).toISOString(),
+        applicationsStarted: totalApps.get(p.userId) ?? 0,
+        applicationsSent: sentApps.get(p.userId) ?? 0,
+        resumesGenerated: resumes.get(p.userId) ?? 0,
+        coverLettersGenerated: covers.get(p.userId) ?? 0,
+        documentsEdited: edited.get(p.userId) ?? 0,
+      };
+    });
+
+    res.json({ users });
+  } catch (err: any) {
+    console.error('[admin/user-usage]', err?.message ?? err);
+    res.status(500).json({ error: 'Failed to load user usage' });
+  }
+});
+
 export default router;
