@@ -21,11 +21,15 @@ import { AnalysisResult, type DualSignalResult } from '../components/strategy/An
 import { CoherenceCard, type CoherenceSignal } from '../components/strategy/CoherenceCard';
 import { StrategicIntelligenceCard } from '../components/StrategicIntelligenceCard';
 import { ApplyFeedStrip } from '../components/strategy/ApplyFeedStrip';
+import { JobStream } from '../components/strategy/JobStream';
 import { StaleApplicationsCard } from '../components/strategy/StaleApplicationsCard';
 import { FirstApplicationCelebration } from '../components/FirstApplicationCelebration';
 import type { JobFeedItem } from '../components/jobs/JobCard';
 import type { BridgedGap } from '../lib/bridgedGaps';
 import { warm } from '../lib/theme/warmTokens';
+
+// Hidden on the dashboard per founder request (kept wired for easy restore).
+const SHOW_DASHBOARD_INSIGHTS = false;
 
 // Warm theme tokens — replaces T.* from ThemeContext. ThemeContext preserved per spec §7.4.
 const warmT = {
@@ -102,7 +106,7 @@ function HubHeader({ profile, jobs }: { profile?: ProfileLite; jobs: JobLite[] }
                     letterSpacing: '-0.01em',
                 }}
             >
-                Paste any job description. Get a tailored resume and cover letter in 3 minutes.
+                Real roles we found for you, ready to apply to in minutes. Pick one and we will tailor your resume and cover letter.
             </p>
         </header>
     );
@@ -419,12 +423,41 @@ function AnalysisHeroCard() {
     }, [result]);
 
     const [pickedFeedItem, setPickedFeedItem] = useState<JobFeedItem | null>(null);
+    const [showPaste, setShowPaste] = useState(false);
+    // Slice C replaces this with the real start-apply + navigate. For Slice B it
+    // routes through the existing paste-and-analyse path so the card is testable.
+    const handleStreamApply = (job: import('../components/jobs/JobCard').JobFeedItem) => {
+        setJd(job.description ?? '');
+        setPickedFeedItem(job);
+        setShowPaste(true);
+    };
 
     const handleFeedPick = (description: string, item: JobFeedItem) => {
         setJd(description);
         setPickedFeedItem(item);
         setResult(null);
     };
+
+    // Preload the freshly-scraped job (stashed by the get-started flow) into the
+    // paste box so the user can apply immediately on their first visit.
+    const prefilledRef = useRef(false);
+    useEffect(() => {
+        if (prefilledRef.current || jd.trim().length > 0) return;
+        try {
+            const raw = localStorage.getItem('jobhub_preload_jd');
+            if (!raw) return;
+            const job = JSON.parse(raw);
+            if (job?.description) {
+                prefilledRef.current = true;
+                setJd(job.description);
+                setPickedFeedItem({
+                    id: '', title: job.title, company: job.company, location: job.location,
+                    sourceUrl: job.sourceUrl, sourcePlatform: job.sourcePlatform,
+                } as JobFeedItem);
+            }
+            localStorage.removeItem('jobhub_preload_jd');
+        } catch { /* ignore malformed cache */ }
+    }, [jd]);
 
     const trimmed = jd.trim();
     const tooShort = trimmed.length > 0 && trimmed.length < 100;
@@ -452,8 +485,22 @@ function AnalysisHeroCard() {
         setResult(null);
         try {
             const { data } = await api.post<DualSignalResult>('/analyze/dual', { jobDescription: trimmed });
-            setResult(data);
             window.dispatchEvent(new CustomEvent('process:analysed'));
+            // Apply = one action: analyse, then go straight to generating the
+            // tailored resume + cover letter (the /apply pipeline runs both).
+            navigate('/apply', {
+                state: {
+                    jobDescription: trimmed,
+                    sc: scToggle,
+                    company: data?.extractedMetadata?.company,
+                    role: data?.extractedMetadata?.role,
+                    feedItemId: pickedFeedItem?.id,
+                    sourceUrl: pickedFeedItem?.sourceUrl,
+                    sourcePlatform: pickedFeedItem?.sourcePlatform,
+                    bridgedGaps,
+                },
+            });
+            return;
         } catch (err: any) {
             const status = err?.response?.status;
             const message =
@@ -503,9 +550,36 @@ function AnalysisHeroCard() {
                 boxShadow: warmT.cardShadow,
             }}
         >
+            <JobStream onApply={handleStreamApply} />
+
+            <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+                <button
+                    onClick={() => setShowPaste(v => !v)}
+                    style={{
+                        flex: 1, padding: '12px 16px', borderRadius: 12,
+                        border: `1px solid ${warm.colors.borderDefined}`, background: 'transparent',
+                        color: warm.colors.textSecondary, fontSize: 13.5, fontWeight: 600, cursor: 'pointer',
+                    }}
+                >
+                    Paste your own job
+                </button>
+                <button
+                    onClick={() => { setShowPaste(true); }}
+                    style={{
+                        flex: 1, padding: '12px 16px', borderRadius: 12,
+                        border: `1px solid ${warm.colors.borderDefined}`, background: 'transparent',
+                        color: warm.colors.textSecondary, fontSize: 13.5, fontWeight: 600, cursor: 'pointer',
+                    }}
+                >
+                    Selection criteria
+                </button>
+            </div>
+
+            {showPaste && (
+            <>
             <p
                 style={{
-                    margin: '0 0 16px',
+                    margin: '16px 0 16px',
                     fontSize: 11,
                     fontWeight: 700,
                     letterSpacing: '0.14em',
@@ -673,16 +747,18 @@ function AnalysisHeroCard() {
                     {analysing ? (
                         <>
                             <Loader2 size={16} className="animate-spin" />
-                            Analysing…
+                            Applying…
                         </>
                     ) : (
                         <>
-                            Analyse
+                            Apply
                             <ChevronRight size={16} />
                         </>
                     )}
                 </button>
             </div>
+            </>
+            )}
 
             {/* SC auto-flip notification */}
             {scAutoFlipped && (
@@ -868,15 +944,19 @@ export function StrategyHub() {
                         <CoherenceCard signals={profile.coherence} />
                     </DimPeer>
                 )}
-                <DimPeer style={{ marginBottom: 32 }}>
-                    <StrategicInsightsPanel />
-                </DimPeer>
+                {SHOW_DASHBOARD_INSIGHTS && (
+                    <DimPeer style={{ marginBottom: 32 }}>
+                        <StrategicInsightsPanel />
+                    </DimPeer>
+                )}
                 <DimPeer style={{ marginBottom: 32 }}>
                     <StaleApplicationsCard />
                 </DimPeer>
-                <DimPeer style={{ marginBottom: 32 }}>
-                    <StrategicIntelligenceCard />
-                </DimPeer>
+                {SHOW_DASHBOARD_INSIGHTS && (
+                    <DimPeer style={{ marginBottom: 32 }}>
+                        <StrategicIntelligenceCard />
+                    </DimPeer>
+                )}
                 <DimPeer>
                     <PipelineGlance jobs={jobs ?? []} />
                 </DimPeer>
