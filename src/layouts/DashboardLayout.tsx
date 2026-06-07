@@ -18,7 +18,6 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../lib/api';
-import { ProcessStrip } from '../components/processStrip';
 import { warm } from '../lib/theme/warmTokens';
 
 const COLLAPSED_WIDTH = 72;
@@ -349,9 +348,6 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                     className="max-w-5xl mx-auto px-6 md:px-10 pt-10 pb-6"
                     style={{ paddingTop: isTouch ? 64 : 40 }}
                 >
-                    <div style={{ marginBottom: 24 }}>
-                        <ProcessStrip />
-                    </div>
                     {children}
                 </div>
 

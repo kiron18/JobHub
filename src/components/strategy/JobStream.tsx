@@ -25,7 +25,7 @@ export function JobStream({ onApply, applyingId, appliedId }: JobStreamProps) {
 
   const allJobs = data?.jobs ?? [];
   const sentCount = useMemo(
-    () => allJobs.filter(j => APPLIED_STATUSES.has(String((j as any).applicationStatus ?? ''))).length,
+    () => allJobs.filter(j => APPLIED_STATUSES.has(String(j.applicationStatus ?? ''))).length,
     [allJobs],
   );
 
@@ -44,7 +44,7 @@ export function JobStream({ onApply, applyingId, appliedId }: JobStreamProps) {
   }, [appliedId, queryClient]);
 
   const visible = useMemo(() => {
-    const unApplied = allJobs.filter(j => !APPLIED_STATUSES.has(String((j as any).applicationStatus ?? '')));
+    const unApplied = allJobs.filter(j => !APPLIED_STATUSES.has(String(j.applicationStatus ?? '')));
     // While celebrating, keep the applied card in view so its beat is seen.
     if (celebratingId) {
       const celeb = allJobs.find(j => j.id === celebratingId);

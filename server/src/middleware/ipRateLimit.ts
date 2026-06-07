@@ -35,6 +35,10 @@ function getClientIp(req: Request): string {
 }
 
 export function ipRateLimit(req: Request, res: Response, next: NextFunction): void {
+  // Dev convenience: this limit is a production cost-guard, not security. Skip it
+  // locally so testing the funnel does not burn through 8 scans and force a restart.
+  if (process.env.NODE_ENV !== 'production') { next(); return; }
+
   const ip = getClientIp(req);
 
   const now = Date.now();

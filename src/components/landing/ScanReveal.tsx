@@ -1,0 +1,493 @@
+/**
+ * ScanReveal — the full-screen "WOW" reveal for the first CV scan.
+ *
+ * Mac-style genie expand into a full-screen takeover, then a sequence of
+ * above-the-fold beats in the voice of a calm friend who works in Australian HR.
+ * Understanding + hope, not a score. The arc is ordered for maximum impact:
+ *
+ *   1. Punch + insider POV  — the hiring manager's 6-second reaction
+ *   2. Relief               — "this isn't your fault"
+ *   3. Cultural translation — what you wrote vs. what she hears (skipped if none)
+ *   4. Hope + CTA           — the fix is close; unlock the roadmap
+ *
+ * The email/roadmap funnel is owned by the caller (ScanPanel) and passed in,
+ * so this component only renders + drives the beats.
+ */
+import { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowRight, ArrowDown, X } from 'lucide-react';
+import { colors, type as typeTokens } from './tokens';
+
+const EASE = [0.25, 1, 0.5, 1] as const;
+
+interface RevealResult {
+  firstName: string;
+  inferredRole: string;
+  firstImpression?: string;
+  reassurance?: string;
+  hiringManager?: { name: string; archetype: string; view: string };
+  culturalTranslations?: { wrote: string; reads: string; instead: string }[];
+  items: { severity: 'critical' | 'warning' | 'good'; text: string }[];
+  quickWins: { heading: string; description: string }[];
+}
+
+interface RoadmapStep { rank: number; title: string; why: string }
+
+export interface ScanRevealProps {
+  result: RevealResult;
+  email: string;
+  setEmail: (v: string) => void;
+  emailLoading: boolean;
+  onEmailSubmit: () => void;
+  roadmap: RoadmapStep[] | null;
+  roadmapError: string | null;
+  onRetry: () => void;
+  onClose: () => void;
+  onEnterDashboard: () => void;
+}
+
+type BeatId = 'punch' | 'relief' | 'translation' | 'hope';
+
+const display = (size: string): React.CSSProperties => ({
+  fontFamily: typeTokens.display,
+  fontWeight: 600,
+  letterSpacing: '-0.02em',
+  lineHeight: 1.08,
+  color: colors.textPrimary,
+  fontSize: size,
+  margin: 0,
+});
+
+const eyebrowStyle: React.CSSProperties = {
+  fontFamily: typeTokens.body,
+  fontSize: 12,
+  fontWeight: 700,
+  letterSpacing: '0.18em',
+  textTransform: 'uppercase',
+  color: colors.accentGold,
+  margin: 0,
+};
+
+const bodyStyle: React.CSSProperties = {
+  fontFamily: typeTokens.body,
+  fontSize: 16,
+  lineHeight: 1.6,
+  color: colors.textSecondary,
+  margin: 0,
+};
+
+export function ScanReveal({
+  result,
+  email,
+  setEmail,
+  emailLoading,
+  onEmailSubmit,
+  roadmap,
+  roadmapError,
+  onClose,
+  onEnterDashboard,
+}: ScanRevealProps) {
+  const hm = result.hiringManager;
+  const translations = (result.culturalTranslations ?? []).slice(0, 2);
+
+  const beats: BeatId[] = ['punch', 'relief'];
+  if (translations.length > 0) beats.push('translation');
+  beats.push('hope');
+
+  const emailInputRef = useRef<HTMLInputElement>(null);
+  const [emailHint, setEmailHint] = useState(false);
+
+  // The CTA stays visually live and inviting even before an email is typed; if
+  // clicked empty it nudges the field instead of sitting there greyed out.
+  const handlePlanClick = () => {
+    if (emailLoading) return;
+    if (!email) {
+      setEmailHint(true);
+      emailInputRef.current?.focus();
+      return;
+    }
+    setEmailHint(false);
+    onEmailSubmit();
+  };
+
+  const [idx, setIdx] = useState(0);
+  const beat = beats[idx];
+  const isLast = idx === beats.length - 1;
+  const advance = () => setIdx(i => Math.min(i + 1, beats.length - 1));
+
+  // The advance button names the next discovery, keeping anticipation high.
+  const nextBeat = beats[Math.min(idx + 1, beats.length - 1)];
+  const advanceLabel =
+    nextBeat === 'relief' ? 'Why this keeps happening' :
+    nextBeat === 'translation' ? 'See it in your own words' :
+    nextBeat === 'hope' ? 'Show me how to fix it' :
+    'Continue';
+
+  // First-impression verdict is variable length (the LLM writes it, capped ~48
+  // chars). Scale the display size by length so it settles on ~2 lines instead
+  // of an ugly 3-line break for the longer verdicts.
+  const fiText = (result.firstImpression || 'Easy to overlook').trim();
+  const fiSize =
+    fiText.length > 38 ? 'clamp(24px, 3.6vw, 38px)' :
+    fiText.length > 26 ? 'clamp(28px, 4.6vw, 46px)' :
+    'clamp(34px, 6vw, 58px)';
+
+  const sharpItems = result.items
+    .filter(i => i.severity !== 'good')
+    .slice(0, 2);
+
+  return createPortal(
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.3 }}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 2000,
+        background: colors.bgCanvas,
+        overflow: 'hidden',
+      }}
+    >
+      {/* genie / rise-and-open container */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.92, y: 28 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: EASE }}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          // soft warm top-light, no glassmorphism
+          background: `radial-gradient(120% 80% at 50% -10%, ${colors.bgSurface} 0%, ${colors.bgCanvas} 55%)`,
+        }}
+      >
+        {/* top bar: progress dots + close */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ display: 'flex', gap: 7 }}>
+              {beats.map((b, i) => (
+                <span
+                  key={b}
+                  style={{
+                    width: i === idx ? 22 : 7,
+                    height: 7,
+                    borderRadius: 999,
+                    background: i <= idx ? colors.accentPetrol : colors.borderDefined,
+                    transition: 'width 280ms cubic-bezier(0.25,1,0.5,1), background 280ms',
+                  }}
+                />
+              ))}
+            </div>
+            <span style={{ fontFamily: typeTokens.body, fontSize: 11, fontWeight: 700, letterSpacing: '0.04em', color: colors.textMuted }}>
+              {Math.min(idx + 1, beats.length)} of {beats.length}
+            </span>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: colors.textMuted, padding: 6 }}
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* beat stage — scrollable so tall beats never slide under the footer CTA.
+            margin:auto centres short beats without clipping the top of tall ones. */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', padding: '16px 24px', minHeight: 0 }}>
+          <div style={{ width: '100%', maxWidth: 680, margin: 'auto auto' }}>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={beat}
+                initial={{ opacity: 0, x: 24 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -24 }}
+                transition={{ duration: 0.42, ease: EASE }}
+              >
+                {beat === 'punch' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                    <p style={eyebrowStyle}>
+                      {result.firstName ? `Hey ${result.firstName}` : 'The 6-second test'}
+                    </p>
+                    <p style={{ ...bodyStyle, fontSize: 18, color: colors.textPrimary }}>
+                      Hiring managers spend about 6 seconds on each of the hundreds of resumes they see every day. Here is what comes to mind when they glance at yours:
+                    </p>
+                    <h1 style={display(fiSize)}>
+                      “{fiText}.”
+                    </h1>
+                    {hm && (
+                      <p style={bodyStyle}>
+                        That's the impression {hm.name}, {hm.archetype}, forms before they reach your best work. {hm.view}
+                      </p>
+                    )}
+                    {sharpItems.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
+                        <p style={{ ...bodyStyle, fontSize: 13, fontWeight: 700, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                          What catches their eye first
+                        </p>
+                        {sharpItems.map((it, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#C2603F', marginTop: 8, flexShrink: 0 }} />
+                            <span style={{ ...bodyStyle, fontSize: 15 }}>{it.text}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {beat === 'relief' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                    <p style={eyebrowStyle}>The part nobody tells you</p>
+                    <h1 style={display('clamp(30px, 5vw, 50px)')}>
+                      This isn't a talent problem.
+                    </h1>
+                    <p style={{ ...bodyStyle, fontSize: 18, color: colors.textPrimary }}>
+                      {result.reassurance || "This isn't your fault. You were never taught the local rules. Your experience is real, it's just written in a way Australian employers don't read yet."}
+                    </p>
+                    <p style={bodyStyle}>
+                      {result.firstName ? `${result.firstName}, you're` : "You're"} not competing on talent here. {result.inferredRole ? `Your experience as a ${result.inferredRole} is real, and it counts. ` : ''}You're competing on translation, and that's a far easier gap to close.
+                    </p>
+                  </div>
+                )}
+
+                {beat === 'translation' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+                    <p style={eyebrowStyle}>What you wrote vs. what they hear</p>
+                    <h1 style={display('clamp(26px, 4vw, 40px)')}>
+                      The same line, read two completely different ways.
+                    </h1>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 4 }}>
+                      {translations.map((t, i) => (
+                        <div
+                          key={i}
+                          style={{
+                            border: `1px solid ${colors.borderWhisper}`,
+                            borderRadius: 16,
+                            background: colors.bgSurface,
+                            padding: '18px 20px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 12,
+                          }}
+                        >
+                          <div>
+                            <span style={{ ...eyebrowStyle, color: colors.textMuted, fontSize: 10.5 }}>You wrote</span>
+                            <p style={{ ...bodyStyle, fontSize: 15, color: colors.textPrimary, marginTop: 4 }}>“{t.wrote}”</p>
+                          </div>
+                          <div style={{ borderLeft: `2px solid #C2603F`, paddingLeft: 14 }}>
+                            <span style={{ ...eyebrowStyle, color: '#C2603F', fontSize: 10.5 }}>They hear</span>
+                            <p style={{ ...bodyStyle, fontSize: 15, fontStyle: 'italic', marginTop: 4 }}>{t.reads}</p>
+                          </div>
+                          <div style={{ borderLeft: `2px solid ${colors.success}`, paddingLeft: 14 }}>
+                            <span style={{ ...eyebrowStyle, color: colors.success, fontSize: 10.5 }}>Write this instead</span>
+                            <p style={{ ...bodyStyle, fontSize: 15, color: colors.textPrimary, marginTop: 4 }}>{t.instead}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {beat === 'hope' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                    {!roadmap ? (
+                      <>
+                        <p style={eyebrowStyle}>The good news</p>
+                        <h1 style={display('clamp(30px, 5vw, 50px)')}>
+                          This is fixable, and faster than you think.
+                        </h1>
+                        <p style={bodyStyle}>
+                          There are a handful of specific changes between your CV and the callback pile. Here are two you can make in the next five minutes:
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          {(result.quickWins || []).slice(0, 2).map((w, i) => (
+                            <div
+                              key={i}
+                              style={{
+                                background: 'rgba(42,157,111,0.06)',
+                                border: '1px solid rgba(42,157,111,0.18)',
+                                borderRadius: 12,
+                                padding: '12px 16px',
+                              }}
+                            >
+                              <span style={{ fontFamily: typeTokens.body, fontSize: 14, fontWeight: 700, color: colors.textPrimary }}>{w.heading}</span>
+                              <p style={{ ...bodyStyle, fontSize: 14, marginTop: 3 }}>{w.description}</p>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* prominent CTA — the obvious next step */}
+                        <div style={{ marginTop: 8 }}>
+                          <p style={{ ...bodyStyle, fontSize: 15, color: colors.textPrimary, marginBottom: 12 }}>
+                            Want the rest? I'll send the full step-by-step plan, plus the Australian hiring rules recruiters never say out loud.
+                          </p>
+                          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                            <input
+                              ref={emailInputRef}
+                              type="email"
+                              value={email}
+                              onChange={e => { setEmail(e.target.value); if (e.target.value) setEmailHint(false); }}
+                              placeholder="Enter your email"
+                              onKeyDown={e => { if (e.key === 'Enter') handlePlanClick(); }}
+                              style={{
+                                flex: '1 1 240px',
+                                fontFamily: typeTokens.body,
+                                fontSize: 15,
+                                padding: '15px 18px',
+                                borderRadius: 14,
+                                border: `1px solid ${colors.borderDefined}`,
+                                background: colors.bgSurface,
+                                color: colors.textPrimary,
+                                outline: 'none',
+                              }}
+                            />
+                            <motion.button
+                              onClick={handlePlanClick}
+                              disabled={emailLoading}
+                              animate={emailLoading ? {} : { boxShadow: ['0 0 0 0 rgba(45,90,110,0)', '0 0 0 8px rgba(45,90,110,0.14)', '0 0 0 0 rgba(45,90,110,0)'] }}
+                              transition={{ duration: 1.8, ease: EASE, repeat: Infinity, repeatDelay: 0.8 }}
+                              style={{
+                                fontFamily: typeTokens.body,
+                                fontSize: 16,
+                                fontWeight: 700,
+                                cursor: emailLoading ? 'wait' : 'pointer',
+                                padding: '15px 26px',
+                                borderRadius: 14,
+                                border: 'none',
+                                whiteSpace: 'nowrap',
+                                background: colors.accentPetrol,
+                                color: colors.textOnDeep,
+                                opacity: emailLoading ? 0.7 : 1,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 8,
+                              }}
+                            >
+                              {emailLoading ? 'Building your plan…' : 'Show me the plan'}
+                              {!emailLoading && <ArrowRight size={18} />}
+                            </motion.button>
+                          </div>
+                          {emailHint && !email && (
+                            <p style={{ fontFamily: typeTokens.body, fontSize: 12.5, color: colors.accentPetrol, fontWeight: 600, margin: '10px 0 0' }}>
+                              Pop your email in and I'll build your plan.
+                            </p>
+                          )}
+                          {roadmapError && (
+                            <p style={{ fontFamily: typeTokens.body, fontSize: 12, color: '#C2603F', margin: '10px 0 0' }}>{roadmapError}</p>
+                          )}
+                          <p style={{ fontFamily: typeTokens.body, fontSize: 11.5, color: colors.textMuted, margin: '12px 0 0' }}>
+                            No spam, unsubscribe anytime.{' '}
+                            <a href="/legal/privacy" target="_blank" rel="noreferrer" style={{ color: colors.accentPetrol }}>Privacy</a>
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p style={eyebrowStyle}>Your plan is ready</p>
+                        <h1 style={display('clamp(28px, 4.4vw, 44px)')}>
+                          {result.firstName ? `${result.firstName}, this is what gets you the callback.` : 'This is what gets you the callback.'}
+                        </h1>
+                        <p style={bodyStyle}>
+                          Each step below closes one gap between your resume and a recruiter saying yes. Do them with me now, in one sitting, and walk out with a resume built for how Australia actually hires.
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: '46vh', overflowY: 'auto', paddingRight: 4 }}>
+                          {roadmap.map(s => (
+                            <div
+                              key={s.rank}
+                              style={{
+                                display: 'flex',
+                                gap: 14,
+                                alignItems: 'flex-start',
+                                background: colors.bgSurface,
+                                borderRadius: 12,
+                                padding: '14px 16px',
+                                border: `1px solid ${colors.borderWhisper}`,
+                              }}
+                            >
+                              <span style={{
+                                width: 26, height: 26, borderRadius: '50%', background: colors.accentPetrol,
+                                color: colors.textOnDeep, fontFamily: typeTokens.body, fontSize: 12, fontWeight: 700,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1,
+                              }}>{s.rank}</span>
+                              <div>
+                                <span style={{ fontFamily: typeTokens.body, fontSize: 14, fontWeight: 700, color: colors.textPrimary }}>{s.title}</span>
+                                <p style={{ ...bodyStyle, fontSize: 13.5, marginTop: 3 }}>{s.why}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </div>
+
+        {/* footer: advance button (the visible next step), or scan-another on the final roadmap state */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px 24px 32px', minHeight: 92, flexShrink: 0, background: colors.bgCanvas, position: 'relative', zIndex: 1 }}>
+          {!isLast ? (
+            <motion.button
+              onClick={advance}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              style={{
+                fontFamily: typeTokens.body,
+                fontSize: 16,
+                fontWeight: 700,
+                cursor: 'pointer',
+                padding: '15px 30px',
+                borderRadius: 14,
+                border: 'none',
+                background: colors.accentPetrol,
+                color: colors.textOnDeep,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                boxShadow: '0 8px 24px rgba(45,90,110,0.22)',
+              }}
+            >
+              {advanceLabel}
+              <ArrowDown size={18} />
+            </motion.button>
+          ) : roadmap ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, width: '100%', maxWidth: 420 }}>
+              <motion.button
+                onClick={onEnterDashboard}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                animate={{ boxShadow: ['0 8px 24px rgba(45,90,110,0.22)', '0 8px 30px rgba(45,90,110,0.34)', '0 8px 24px rgba(45,90,110,0.22)'] }}
+                transition={{ duration: 2.2, ease: EASE, repeat: Infinity }}
+                style={{
+                  fontFamily: typeTokens.body,
+                  fontSize: 16,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  padding: '15px 30px',
+                  borderRadius: 14,
+                  border: 'none',
+                  width: '100%',
+                  background: colors.accentPetrol,
+                  color: colors.textOnDeep,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                }}
+              >
+                Fix my resume
+                <ArrowRight size={18} />
+              </motion.button>
+            </div>
+          ) : null}
+        </div>
+      </motion.div>
+    </motion.div>,
+    document.body,
+  );
+}

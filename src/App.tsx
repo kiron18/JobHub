@@ -38,14 +38,17 @@ const FromScratchCapture = React.lazy(() =>
 const StrategyHub = React.lazy(() =>
   import('./pages/StrategyHub').then(m => ({ default: m.StrategyHub }))
 );
-const LandingPage = React.lazy(() =>
-  import('./pages/LandingPage').then(m => ({ default: m.LandingPage }))
-);
 const StepperWorkspace = React.lazy(() =>
   import('./pages/StepperWorkspace').then(m => ({ default: m.StepperWorkspace }))
 );
 const VisaSponsorsPage = React.lazy(() =>
   import('./pages/VisaSponsorsPage').then(m => ({ default: m.VisaSponsorsPage }))
+);
+const MockLandingPage = React.lazy(() =>
+  import('./pages/MockLandingPage').then(m => ({ default: m.MockLandingPage }))
+);
+const AnimationTest = React.lazy(() =>
+  import('./pages/AnimationTest').then(m => ({ default: m.AnimationTest }))
 );
 
 // Auth & Context
@@ -287,7 +290,7 @@ function LandingPageOrExisting() {
   if (loading) return null;
   if (!user) return (
     <React.Suspense fallback={null}>
-      <LandingPage />
+      <MockLandingPage />
     </React.Suspense>
   );
   // Authenticated — render the existing protected route content
@@ -435,6 +438,16 @@ function App() {
               <Route path="/visa-sponsors" element={
                 <React.Suspense fallback={null}>
                   <VisaSponsorsPage />
+                </React.Suspense>
+              } />
+              <Route path="/anim-test" element={
+                <React.Suspense fallback={null}>
+                  <AnimationTest />
+                </React.Suspense>
+              } />
+              <Route path="/mock-landing" element={
+                <React.Suspense fallback={null}>
+                  <MockLandingPage />
                 </React.Suspense>
               } />
 

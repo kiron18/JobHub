@@ -839,7 +839,7 @@ function DocumentStep({
                         <div style={{ fontSize: 11.5, lineHeight: 1.5, color: warm.colors.textMuted }}>
                             <span style={{ fontWeight: 700, color: warm.colors.textPrimary }}>Suggested contact: </span>
                             {companyIntel.suggestedContact.title}
-                            {companyIntel.suggestedContact.reason ? ` — ${companyIntel.suggestedContact.reason}` : ''}
+                            {companyIntel.suggestedContact.reason ? ` - ${companyIntel.suggestedContact.reason}` : ''}
                         </div>
                     )}
 

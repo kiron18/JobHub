@@ -14,11 +14,31 @@ export interface QuickWin {
   description: string; // e.g. "Change 'Responsible for...' to 'Delivered...' — action-oriented openings get read."
 }
 
+// ── WOW-reveal narrative layer (additive, optional) ──────────────────────────
+// The "calm friend who works in Australian HR" voice rendered by the full-screen
+// scan reveal. Understanding + hope, not metrics.
+
+export interface HiringManager {
+  name: string;       // friendly persona first name, e.g. "Sarah"
+  archetype: string;  // personalised to the candidate, e.g. "a hiring manager at a Melbourne fintech"
+  view: string;       // 1–2 sentences: what she actually thinks reading THIS resume. Calm, specific, insider.
+}
+
+export interface CulturalTranslation {
+  wrote: string;     // a real phrase from THIS resume, e.g. "Responsible for the social media accounts"
+  reads: string;     // how an Australian hiring manager actually hears it
+  instead: string;   // the reframe that lands here
+}
+
 export interface CvGapResult {
-  score: number;          // integer 0–100
+  score: number;          // integer 0–100 (kept for internal logic; NOT shown in the reveal)
+  firstImpression?: string;   // qualitative verdict replacing the number, ≤48 chars, e.g. "Easy to overlook"
   inferredRole: string;   // e.g. "Data Analyst (mid-level)" — shown for transparency
   firstName: string;      // extracted from resume header — "" if not clearly present
   fullName: string;       // extracted from resume header — "" if not clearly present
+  reassurance?: string;                          // the relief beat — calm authority, ≤200 chars
+  hiringManager?: HiringManager;                 // the insider-POV beat
+  culturalTranslations?: CulturalTranslation[];  // 1–2, grounded in real resume phrases
   items: CvGapItem[];     // 4–5 items, at least 1 'good', ordered most→least severe
   quickWins: QuickWin[];  // 2 immediate, actionable wins
 }
@@ -29,8 +49,11 @@ interface LlmResponse {
   inferredRole: string;
   firstName: string;
   fullName: string;
+  firstImpression: string;
+  reassurance: string;
+  hiringManager: { name: string; archetype: string; view: string };
+  culturalTranslations: { wrote: string; reads: string; instead: string }[];
   expectedKeywords: string[];
-  presentKeywords: string[];
   items: { severity: 'critical' | 'warning' | 'good'; text: string; evidence: string }[];
   quickWins: { heading: string; description: string }[];
 }
@@ -92,61 +115,96 @@ function computeSignals(resumeText: string): DeterministicSignals {
 
 // ── Step 2 – LLM call ────────────────────────────────────────────────────────
 
-function buildPrompt(resumeText: string, signals: DeterministicSignals): string {
+// The instruction block is byte-for-byte identical on every scan, so it is sent
+// as a cacheable system prefix (see callClaude's `cachedSystem`). Keep it free of
+// any per-resume data — the moment a resume leaks in here, the cache stops hitting.
+function buildScanInstructions(): string {
   return `You are a senior Australian recruiter doing a fast first-scan of a CV.
 
-THE 6-SECOND RULE: Your reader has 6 seconds and no patience. Every \`text\` is a tight VERDICT of ≤64 characters, one line, no trailing period — a fact about THIS resume they can read at a glance. Not advice. Not a sentence with a recommendation. A verdict.
+PUNCTUATION RULE (absolute): NEVER use an em dash (—) or en dash (–) anywhere in any string you output. They are banned. Use a comma, a full stop, a colon, or the word "and" instead. This applies to every field without exception.
 
-GOOD \`text\`: \`Opening bullet leads with a duty, not an outcome\` · \`No quantified result in your last 2 roles\` · \`Strong, specific job titles — keep these\`
+THE 6-SECOND RULE: Your reader has 6 seconds and no patience. Every \`text\` is a tight VERDICT of ≤64 characters, one line, no trailing period: a fact about THIS resume they can read at a glance. Not advice. Not a sentence with a recommendation. A verdict.
+
+GOOD \`text\`: \`Opening bullet leads with a duty, not an outcome\` · \`No quantified result in your last 2 roles\` · \`Strong, specific job titles, keep these\`
 BAD \`text\`: \`You should add more quantifiable achievements to show impact\` (advice + too long) · \`Your resume could be improved by tailoring it\` (generic)
 
-\`text\` vs \`evidence\`: \`text\` is the short verdict shown to the user. \`evidence\` is the real snippet from THIS resume that proves the verdict — a literal substring of the resume for any non-good item. The user never sees \`evidence\`; it exists so we can prove the verdict is real.
+\`text\` vs \`evidence\`: \`text\` is the short verdict shown to the user. \`evidence\` is the real snippet from THIS resume that proves the verdict, a literal substring of the resume for any non-good item. The user never sees \`evidence\`; it exists so we can prove the verdict is real.
 
-BANNED generic outputs — never produce as \`text\`: 'add quantifiable achievements', 'use strong action verbs', 'tailor your resume to the role', 'improve formatting', or anything that would apply to every resume on earth. If your verdict would be true of most resumes, delete it.
+BANNED generic outputs, never produce as \`text\`: 'add quantifiable achievements', 'use strong action verbs', 'tailor your resume to the role', 'improve formatting', or anything that would apply to every resume on earth. If your verdict would be true of most resumes, delete it.
 
 BANNED topics entirely (never mention in items or quickWins): visa status, visa sponsorship, visa anything. That information belongs in the cover letter or interview stage, not the CV or scan results.
 
 Never exceed 64 characters in \`text\`. Count them.
 
-Items: produce 4–5. At least one \`severity:'good'\` that names a real strength from their resume. Order by severity.
+Items: produce 4 to 5. At least one \`severity:'good'\` that names a real strength from their resume. Order by severity.
 
 \`quickWins\`: produce exactly 2 immediate, actionable wins. Each has a short \`heading\` (≤40 chars, no period) and a \`description\` (a sentence that explains what to do and why, ≤120 chars, no period). One win is a quick CV fix they can do in 5 minutes (e.g., reword an opening bullet, add a quantified result they already have), the other is an Australian hiring strategy insight (e.g., tailoring for the STAR format Aussie gov roles expect).
 
 BANNED from quickWins: never mention visa status, visa sponsorship, or visa anything. That belongs in the cover letter or interview stage, not the CV. If your win would involve visa advice, delete it and pick something else.
 
+── THE INSIDER LAYER (this is what makes the scan feel like a friend in HR, not a tool) ──
+Beyond the verdicts, write a short narrative layer in ONE voice: a calm, experienced friend who works in Australian HR and is finally explaining what is really going on behind the glass. Warm, direct, never lecturing or shaming. Specific to THIS resume and this person's likely field and city. The feeling to leave them with is understanding + hope, never a grade. Same banned-generic and absolutely-no-visa rules apply to every field below.
+
+\`firstImpression\`: a blunt-but-kind qualitative read of the resume's 6-second first impression. NOT a number, NOT a grade, NOT a percentage. ≤48 characters, no trailing period. e.g. "Easy to overlook", "Competent but forgettable", "Strong story, buried on page two".
+
+\`reassurance\`: the relief line. Land hard that this is NOT about being unqualified; it is about never being taught the local rules. ≤200 characters, calm authority. e.g. "This isn't your fault. Your experience is real, it's just written in a dialect Australian employers don't read. That's fixable, and it's not a talent problem."
+
+\`hiringManager\`: put the reader on the OTHER side of the desk. Infer a plausible Australian hiring manager for this person's field and most likely city (read both from the resume). Give them a common Anglo-Australian first \`name\` (for example Sarah, Emma, James, Tom, Hannah, Lucy, Mark, Claire), never a name that signals a specific ethnic background, an \`archetype\` like "a hiring manager at a Melbourne fintech" or "a recruiter for NSW government roles", and a \`view\`: 1 to 2 sentences of exactly what that person thinks in the first few seconds reading THIS resume. Specific, insider, a little uncomfortable, never cruel. Reference something real from the resume.
+
+\`culturalTranslations\`: 1 to 2 entries, the most "insider" part. Take a REAL phrase the candidate actually wrote (\`wrote\`: a literal or near-literal snippet from the resume, especially duty-openings like "responsible for"), explain how an Australian hiring manager actually hears it (\`reads\`: the honest, unflattering subtext), then the reframe that lands here (\`instead\`). Make it feel like access nobody ever gave them. If the resume genuinely contains no such phrase, return an empty array.
+
 \`firstName\` / \`fullName\`: extract from the resume's header/contact block. If a real human name is not clearly present, return "" for both. NEVER guess or invent a name.
 
 \`inferredRole\`: infer the single most likely target role + level from the resume's trajectory; format like "Data Analyst (mid-level)".
-\`expectedKeywords\`: 6–10 keywords a typical Australian JD for \`inferredRole\` expects.
-\`presentKeywords\`: which of those literally appear in the resume text (case-insensitive).
-
-Computed signals from this resume (for context — align your commentary with these facts):
-- Bullet lines found: ${signals.bulletCount}
-- Quantification ratio (fraction of bullets with digits/%/$/quant-words): ${signals.quantificationRatio.toFixed(2)}
-- Duty-like openings (bullets starting with "responsible for", "worked on", etc.): ${signals.dutyOpeningCount}
-
-Resume text:
-${resumeText}
+\`expectedKeywords\`: 6 to 10 keywords a typical Australian JD for \`inferredRole\` expects.
 
 Return ONLY the JSON object. No markdown, no prose:
 {
   "inferredRole": string,
   "firstName": string,
   "fullName": string,
+  "firstImpression": string,
+  "reassurance": string,
+  "hiringManager": { "name": string, "archetype": string, "view": string },
+  "culturalTranslations": [{ "wrote": string, "reads": string, "instead": string }],
   "expectedKeywords": string[],
-  "presentKeywords": string[],
   "items": [{ "severity": "critical"|"warning"|"good", "text": string, "evidence": string }],
   "quickWins": [{ "heading": string, "description": string }]
 }`;
 }
 
+// The only part that changes between scans — sent as the user message so the
+// instruction prefix above stays cacheable.
+function buildScanInput(resumeText: string, signals: DeterministicSignals): string {
+  return `Computed signals from this resume (for context, align your commentary with these facts):
+- Bullet lines found: ${signals.bulletCount}
+- Quantification ratio (fraction of bullets with digits/%/$/quant-words): ${signals.quantificationRatio.toFixed(2)}
+- Duty-like openings (bullets starting with "responsible for", "worked on", etc.): ${signals.dutyOpeningCount}
+
+Resume text:
+${resumeText}`;
+}
+
+// Deterministic keyword presence: which expected keywords literally appear in the
+// resume (case-insensitive). Replaces asking the LLM to echo this back — it cost
+// output tokens on the hot path and the model occasionally returned keywords that
+// weren't actually present. Computing it here is faster and provably correct.
+export function matchPresentKeywords(resumeText: string, expectedKeywords: string[]): string[] {
+  const hay = resumeText.toLowerCase();
+  return expectedKeywords.filter(k => {
+    const needle = k?.toLowerCase().trim();
+    return needle ? hay.includes(needle) : false;
+  });
+}
+
 async function callLlmForScan(resumeText: string, signals: DeterministicSignals): Promise<LlmResponse> {
-  const prompt = buildPrompt(resumeText, signals);
+  const instructions = buildScanInstructions();
+  const input = buildScanInput(resumeText, signals);
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      const { content } = await callClaude(prompt, true);
+      const { content } = await callClaude(input, true, instructions);
       // Strip markdown code fences if the LLM wraps JSON in ```json ... ```
       const cleaned = content.replace(/^```(?:json)?\s*/m, '').replace(/\s*```$/m, '').trim();
       if (!cleaned.startsWith('{')) {
@@ -205,6 +263,12 @@ function assembleResult(
   expectedKeywords: string[],
   presentKeywords: string[],
   quickWins: { heading: string; description: string }[],
+  narrative: {
+    firstImpression?: string;
+    reassurance?: string;
+    hiringManager?: { name: string; archetype: string; view: string };
+    culturalTranslations?: { wrote: string; reads: string; instead: string }[];
+  },
 ): CvGapResult {
   let items: CvGapItem[] = llmItems as CvGapItem[];
 
@@ -233,7 +297,7 @@ function assembleResult(
     items.push({
       severity: 'good',
       text: 'Clear, well-structured resume format',
-      evidence: 'No specific issue found — resume passes structural scan',
+      evidence: 'No specific issue found, resume passes structural scan',
     });
   }
 
@@ -253,7 +317,29 @@ function assembleResult(
     });
   }
 
-  return { score, inferredRole, firstName, fullName, items, quickWins: safeWins };
+  // Narrative layer — always populated so the reveal never renders an empty beat.
+  const hm = narrative.hiringManager;
+  return {
+    score,
+    inferredRole,
+    firstName,
+    fullName,
+    items,
+    quickWins: safeWins,
+    firstImpression: (narrative.firstImpression || '').trim().slice(0, 48) || 'Easy to overlook',
+    reassurance: (narrative.reassurance || '').trim()
+      || "This isn't your fault. Your experience is real, it's just written in a dialect Australian employers don't read yet. That's a fixable problem, not a talent one.",
+    hiringManager: hm && hm.view && hm.view.trim()
+      ? { name: hm.name || 'Sarah', archetype: hm.archetype || 'an Australian hiring manager', view: hm.view }
+      : {
+          name: 'Sarah',
+          archetype: inferredRole ? `a hiring manager hiring for ${inferredRole}` : 'an Australian hiring manager',
+          view: 'She scans the top third in seconds, hunting for a clear, outcome-led story, and right now it takes too long to find what you actually delivered.',
+        },
+    culturalTranslations: Array.isArray(narrative.culturalTranslations)
+      ? narrative.culturalTranslations.filter(t => t && t.wrote && t.instead).slice(0, 2)
+      : [],
+  };
 }
 
 // ── §D – Roadmap generation ──────────────────────────────────────────────────
@@ -267,11 +353,13 @@ export interface RoadmapStep {
 function buildRoadmapPrompt(resumeText: string, firstName: string): string {
   return `You are a senior Australian recruiter. Produce a prioritised, specific action plan to fix this resume.
 
+PUNCTUATION RULE (absolute): NEVER use an em dash (—) or en dash (–) anywhere in any string you output. They are banned. Use a comma, a full stop, a colon, or the word "and" instead.
+
 Produce exactly 7 prioritised, specific action steps to fix this resume, ranked 1 (highest leverage) to 7.
 
-Each \`title\` ≤60 characters, imperative mood — "Rewrite your opening bullet", "Add quantified results to your last role". Each \`why\` ≤140 characters — names the concrete payoff (more callbacks, passes ATS, recruiter stops scrolling).
+Each \`title\` ≤60 characters, imperative mood, e.g. "Rewrite your opening bullet", "Add quantified results to your last role". Each \`why\` ≤140 characters, naming the concrete payoff (more callbacks, passes ATS, recruiter stops scrolling).
 
-Grounded + specific — reference real elements of THIS resume. Same banned-generic rules and no-visa-talk rule as the base scan prompt.
+Grounded and specific: reference real elements of THIS resume. Same banned-generic rules and no-visa-talk rule as the base scan prompt.
 
 Sequenced so ${firstName || 'they'} knows exactly what to do first. Accountable tone: numbered, concrete, this-week-able.
 
@@ -318,6 +406,16 @@ export async function runRoadmap(resumeText: string, firstName: string): Promise
 export async function runCvGapScan(resumeText: string): Promise<CvGapResult> {
   const signals = computeSignals(resumeText);
   const llm = await callLlmForScan(resumeText, signals);
-  const score = computeScore(signals, llm.expectedKeywords.length, llm.presentKeywords.length);
-  return assembleResult(score, llm.inferredRole, llm.firstName ?? '', llm.fullName ?? '', llm.items, llm.expectedKeywords, llm.presentKeywords, llm.quickWins);
+  const presentKeywords = matchPresentKeywords(resumeText, llm.expectedKeywords ?? []);
+  const score = computeScore(signals, llm.expectedKeywords.length, presentKeywords.length);
+  return assembleResult(
+    score, llm.inferredRole, llm.firstName ?? '', llm.fullName ?? '', llm.items,
+    llm.expectedKeywords, presentKeywords, llm.quickWins,
+    {
+      firstImpression: llm.firstImpression,
+      reassurance: llm.reassurance,
+      hiringManager: llm.hiringManager,
+      culturalTranslations: llm.culturalTranslations,
+    },
+  );
 }

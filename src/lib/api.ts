@@ -13,9 +13,6 @@ api.interceptors.request.use(
     const token = session?.access_token;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log('API Request:', config.method?.toUpperCase(), config.url, 'Token injected');
-    } else {
-      console.warn('API Request:', config.method?.toUpperCase(), config.url, 'No token found');
     }
     return config;
   },

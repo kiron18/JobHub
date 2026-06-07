@@ -18,7 +18,7 @@ export const applyWorkspaceCopy = {
   // Pre-checked strengths the role wants; the user confirms in one tap.
   gapModal: {
     header: 'Quick check before we write',
-    sub: "We spotted a few strengths this role is asking for. Confirm they're true and we'll build them into your resume — untick anything that isn't you.",
+    sub: "We spotted a few strengths this role is asking for. Confirm they're true and we'll build them into your resume. Untick anything that isn't you.",
     editHint: 'Tap the text to adjust the wording.',
     cta: 'Looks right',
   },
@@ -28,7 +28,7 @@ export const applyWorkspaceCopy = {
   // "review and trim". The documents are already done.
   reviewFraming: {
     resume:
-      "Your resume's done. Read it once, trim anything that doesn't fit, then download — it's yours to edit.",
+      "Your resume's done. Read it once, trim anything that doesn't fit, then download. It's yours to edit.",
     coverLetter:
       "Your cover letter's done. Read it once, trim anything that doesn't fit, then download.",
   },

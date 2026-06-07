@@ -1,0 +1,95 @@
+I've read all four trials and confirmed the key finding against the actual code. Here's the report. 
+
+  ---
+  Cover Letter & Resume QA — Are We Using the Data?
+
+  The one-line verdict
+
+  The cover letters are good and getting better — Company Insight genuinely lifts them. But the resume  is nearly static across every job, and "bridged gaps" (the core thing you click) mostly fall on the 
+  floor and never reach either document. We're pulling great data and then throwing half of it away.  
+
+  Scorecard — what we pull vs. what actually lands
+
+  ┌─────────────────────────────────────┬─────────────────────┬───────────────────────────────────┐   
+  │          Data we generate           │   Reaches Resume?   │       Reaches Cover Letter?       │   
+  ├─────────────────────────────────────┼─────────────────────┼───────────────────────────────────┤   
+  │ Match achievements ("Include in     │ ✅  Yes              │ ✅  Yes                            │   
+  │ resume")                            │                     │                                   │   
+  ├─────────────────────────────────────┼─────────────────────┼───────────────────────────────────┤   
+  │ Bridged gaps — ticked only          │ ❌  Never            │ ❌  Never                          │   
+  ├─────────────────────────────────────┼─────────────────────┼───────────────────────────────────┤   
+  │ Bridged gaps — manually drafted     │ ⚠️ Rarely           │ ❌  No                             │   
+  │ (with real metrics)                 │                     │                                   │   
+  ├─────────────────────────────────────┼─────────────────────┼───────────────────────────────────┤   
+  │ Company Insight summary             │ n/a                 │ ⚠️ Sometimes great, sometimes     │   
+  │ (Perplexity)                        │                     │ ignored, once empty               │   
+  ├─────────────────────────────────────┼─────────────────────┼───────────────────────────────────┤   
+  │ Suggested contact (for salutation)  │ n/a                 │ ⚠️ Used in Job 3, ignored in Job  │   
+  │                                     │                     │ 4                                 │   
+  ├─────────────────────────────────────┼─────────────────────┼───────────────────────────────────┤   
+  │ JD-specific skills/tools (Adobe,    │ ❌  Skills list      │ ⚠️ Partial                        │   
+  │ Mailchimp, CRMs)                    │ never changes       │                                   │   
+  ├─────────────────────────────────────┼─────────────────────┼───────────────────────────────────┤   
+  │ Strategic notes                     │ ❌  No               │ ❌  No                             │   
+  └─────────────────────────────────────┴─────────────────────┴───────────────────────────────────┘   
+
+  What's working ✅
+
+  - Cover letters are well-written, on-tone, and genuinely tailored to each JD.
+  - Company Insight is the standout new feature — in Job 3 (TravelManagers) it drove the whole opening  paragraph and the salutation. That's exactly what it's for.
+  - The "Include in resume" achievements reliably make it into the resume.
+  - Small intelligence wins: it caught the "pineapple" instruction (Job 4) and wove in
+  work-rights/citizenship (Job 1). The National Police Check was correctly flagged as "not on profile"  rather than faked.
+
+  What's broken ❌  (in priority order)
+
+  1. Bridged gaps don't reach the documents — this is the big one.
+  I confirmed it in code: when you generate, the resume request sends only the job description, and   
+  the cover letter adds only company/title/tone + Company Insight. The list of gaps you tick is local 
+  screen state that is never sent anywhere. So ticking a gap changes a checkbox and nothing else.     
+  Worse, your best material dies here — the manually edited bridges with hard numbers ("coordinated 5 
+  marketers → 21% productivity", "150% output increase", "21% client satisfaction") never appear in   
+  any output. Those are gold and we drop them.
+
+  2. The cover letter contradicts a bridged gap (Job 4). You bridged "I utilised Adobe Creative Suite…  increasing output by 150%", but the letter says "Although I have not had direct experience with     
+  Adobe Creative Suite…". Because the bridge never reached the generator, the letter actively undercut  the claim you made. That's not just a miss, it's harmful.
+
+  3. The resume barely changes between jobs. The Skills section is identical in all four (Microsoft   
+  Office, Excel, Data Analysis, AI workflows, HubSpot-Meta) — even when the JD screams Adobe Creative 
+  Suite, Mailchimp, Cvent, Sugar CRM. Work-experience bullets are light rewordings of the same three  
+  achievements. The resume is anchored to the base profile and isn't absorbing JD keywords or bridged 
+  skills.
+
+  4. The analysis isn't deterministic. Job 1 run twice (after your restart) gave 60% then 40%, with   
+  completely different gaps each time. Your own note — "we are kinda just generating random gaps" — is  correct and well-founded. Re-running the same job shouldn't reshuffle the diagnosis.
+
+  5. Company Insight is inconsistent:
+  - Job 2: header rendered but empty (the JSON-truncation bug we just fixed — verify after the staging  deploy).
+  - Job 3: citation markers leaked into the text (…growth in the travel sector.[5][6][7]) — also      
+  addressed by the fix we just pushed (citation stripping).
+  - Salutation: used in Job 3 but the whole verbose string became the greeting — "Dear Head of        
+  Marketing or Marketing Manager (National Partnership Office, Surry Hills)," — clunky. And Job 4     
+  ignored the suggested contact entirely → generic "Dear Hiring Manager".
+
+  6. Generation glitches. Broken sentences slipped through: "I am a who is solutions-focused" (Job 2),  "bring my skills and experience to a new challenge" (Job 4, missing subject). And a [VERIFY: number 
+  of] token surfaced in Job 1's letter even though "150+ assets" was right there in the data — so it  
+  asked you to verify a number we already had.
+
+  What we need to do next (priority order)
+
+  1. Wire bridged gaps into the generation payload for both resume and cover letter — especially the  
+  manually-edited ones with metrics. This is the highest-leverage fix and unblocks the whole "bridge  
+  your gaps" UX. (Ticked gaps currently aren't even persisted — they need to be captured and passed.) 
+  2. Add a contradiction guard so the letter never denies experience the candidate just claimed (the  
+  Adobe case).
+  3. Make the resume actually tailor: inject JD tools/skills into the Skills section and turn bridged 
+  statements into real bullets.
+  4. Stabilise the analysis (lower temperature / cache the result per job) so re-runs don't change the  %/gaps.
+  5. Confirm Company Insight reliability post-deploy (Job 2 empty + Job 3 citations should both be    
+  fixed already), and clean up the salutation (use just the role title; always use it when present).  
+  6. Tidy generation glitches and stop [VERIFY:] firing when the data exists.
+
+  ---
+  I'd start with #1 — it's the difference between "nice analysis screen" and "the analysis actually   
+  changes my documents." Want me to dig into the resume-structured / cover-letter-structured endpoints  and lay out exactly how to thread the bridged gaps through? I can also confirm whether manual       
+  drafts are saving to the profile in time to be picked up.

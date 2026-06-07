@@ -99,10 +99,11 @@ export async function buildAchievementContext(
     });
   }
 
-  // Fallback: Get top 5 ranked achievements
+  // Fallback: get the top ranked achievements. 8 (was 5) gives the generator
+  // more proof points to build a richer, more impressive resume.
   const ranked = await rankAchievements(userId, jobDescription, []);
 
-  const topIds = ranked.slice(0, 5).map(a => a.id);
+  const topIds = ranked.slice(0, 8).map(a => a.id);
   return await prisma.achievement.findMany({
     where: {
       id: { in: topIds },

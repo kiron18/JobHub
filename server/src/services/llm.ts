@@ -76,11 +76,30 @@ const CLAUDE_MODEL = process.env.CLAUDE_MODEL || 'anthropic/claude-sonnet-4-5';
  */
 export async function callClaude(
     prompt: string,
-    jsonMode: boolean = true
+    jsonMode: boolean = true,
+    cachedSystem?: string
 ): Promise<{ content: string; usage: { promptTokens: number; completionTokens: number } }> {
     if (!OPENROUTER_API_KEY) {
         throw new Error('OPENROUTER_API_KEY is not set in environment variables.');
     }
+
+    const baseSystem = jsonMode
+        ? 'You are a strategic analyst. Return ONLY valid JSON. No preamble, no markdown fences.'
+        : 'You are a strategic analyst.';
+
+    // When a static instruction block is supplied, send it as a cached prefix.
+    // The `cache_control` breakpoint tells Anthropic (via OpenRouter) to reuse the
+    // prefix across calls within the cache TTL — cheaper tokens + faster first byte.
+    // Identical on every call, so it only pays the write cost once under load.
+    const systemMessage = cachedSystem
+        ? {
+            role: 'system',
+            content: [
+                { type: 'text', text: baseSystem },
+                { type: 'text', text: cachedSystem, cache_control: { type: 'ephemeral' } },
+            ],
+        }
+        : { role: 'system', content: baseSystem };
 
     return await retryWithBackoff(async () => {
         const response = await axios.post(
@@ -90,12 +109,7 @@ export async function callClaude(
                 temperature: 0,
                 max_tokens: 8192,
                 messages: [
-                    {
-                        role: 'system',
-                        content: jsonMode
-                            ? 'You are a strategic analyst. Return ONLY valid JSON. No preamble, no markdown fences.'
-                            : 'You are a strategic analyst.'
-                    },
+                    systemMessage,
                     {
                         role: 'user',
                         content: prompt

@@ -10,12 +10,14 @@ import { PrimaryButton } from '../components/shared/PrimaryButton';
 import { Card } from '../components/shared/Card';
 
 export const AuthPage: React.FC = () => {
-  const [email, setEmail] = useState('');
+  const [searchParams] = useSearchParams();
+  // Prefill the email when we arrive carrying it (e.g. from the CV-scan funnel or
+  // a returning-user redirect), so the user doesn't retype what we already have.
+  const [email, setEmail] = useState(() => searchParams.get('email') ?? '');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const [isSignup, setIsSignup] = useState(() => searchParams.get('intent') === 'signup');
   const { user, signOut } = useAuth();
 
