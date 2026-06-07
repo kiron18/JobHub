@@ -520,8 +520,21 @@ function DocumentStep({
     });
     const [formatMenuOpen, setFormatMenuOpen] = useState(false);
 
+    const navigate = useNavigate();
     const isCoverLetter = stepId === 'cover-letter';
-    void feedItemId; // consumed in Task 3 completion handler
+
+    // ── Finish application: marks applied on the backend and returns to workspace.
+    const handleFinishApplication = async () => {
+        commitEdit();
+        try {
+            if (feedItemId) {
+                await api.post(`/job-feed/${feedItemId}/mark-applied`);
+            }
+        } catch (err) {
+            console.warn('[apply] mark-applied failed (non-fatal):', err);
+        }
+        navigate('/', { state: { appliedFeedItemId: feedItemId ?? null } });
+    };
 
     // ── Selection-criteria-only state ────────────────────────────────────
     const criteriaStorageKey = `jobhub_stepper_${workspaceKey}_criteria_text`;
@@ -1039,11 +1052,11 @@ function DocumentStep({
                     )}
                     {hasDraft && (
                         <button
-                            onClick={handleContinue}
+                            onClick={isLast && feedItemId ? handleFinishApplication : handleContinue}
                             disabled={generating}
                             style={primaryButtonStyle(generating)}
                         >
-                            {isLast ? 'Finish' : 'Save & continue'}
+                            {isLast && feedItemId ? 'Back to my jobs' : isLast ? 'Finish' : 'Save & continue'}
                             <ArrowRight size={14} />
                         </button>
                     )}
