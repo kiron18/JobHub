@@ -9,7 +9,7 @@
  * insights) below the hero card. No navigation away.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, NavLink } from 'react-router-dom';
+import { useNavigate, NavLink, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, Loader2, Target, X, Check } from 'lucide-react';
@@ -404,6 +404,15 @@ function GoalEditor({
 
 function AnalysisHeroCard() {
     const navigate = useNavigate();
+    const location = useLocation();
+    const appliedFeedItemId = (location.state as { appliedFeedItemId?: string } | null)?.appliedFeedItemId ?? null;
+    useEffect(() => {
+        if (appliedFeedItemId) {
+            // clear so a refresh/re-render does not replay the beat
+            window.history.replaceState({}, '');
+        }
+    }, [appliedFeedItemId]);
+
     const [jd, setJd] = useState('');
     const [scToggle, setScToggle] = useState(false);
     const [scAutoFlipped, setScAutoFlipped] = useState(false);
@@ -582,7 +591,7 @@ function AnalysisHeroCard() {
                 </div>
             )}
 
-            <JobStream onApply={handleStreamApply} applyingId={applyingId} />
+            <JobStream onApply={handleStreamApply} applyingId={applyingId} appliedId={appliedFeedItemId} />
 
             <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
                 <button
