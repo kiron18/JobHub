@@ -4,6 +4,7 @@ import { prisma } from '../index';
 import { authenticate } from '../middleware/auth';
 import { analyzeRateLimit } from '../middleware/analyzeRateLimit';
 import { checkAccess, hasActiveAccess } from '../middleware/accessControl';
+import { DAILY_APPLICATION_CAP, countTodaysApplications } from '../services/applicationCap';
 import {
   buildDailyFeed,
   generateBullets,
@@ -362,6 +363,52 @@ router.post('/:id/mark-applied', async (req: any, res: any) => {
   } catch (err: any) {
     console.error('[job-feed/mark-applied]', err);
     return res.status(500).json({ error: 'Failed to mark as applied' });
+  }
+});
+
+// POST /api/job-feed/:id/start-apply — enforce the daily cap and seed the
+// application row before the user enters the generation flow.
+router.post('/:id/start-apply', async (req: any, res: any) => {
+  const userId = req.user.id;
+  const { id } = req.params;
+  try {
+    if (!(await requirePremium(userId, res))) return;
+
+    const used = await countTodaysApplications(userId);
+    if (used >= DAILY_APPLICATION_CAP) {
+      return res.status(429).json({ error: 'DAILY_CAP_REACHED', cap: DAILY_APPLICATION_CAP, used });
+    }
+
+    const item = await prisma.jobFeedItem.findUnique({ where: { id } });
+    if (!item || item.userId !== userId) return res.status(404).json({ error: 'Not found' });
+
+    const profile = await prisma.candidateProfile.findUnique({ where: { userId }, select: { id: true } });
+    if (!profile) return res.status(404).json({ error: 'Profile not found' });
+
+    // Reuse an existing row for this job if present (avoids duplicates on retry),
+    // else create one in SAVED status. mark-applied later flips it to APPLIED.
+    let jobApp = await prisma.jobApplication.findFirst({
+      where: { userId, title: item.title, company: item.company },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!jobApp) {
+      jobApp = await prisma.jobApplication.create({
+        data: {
+          userId,
+          candidateProfileId: profile.id,
+          title: item.title,
+          company: item.company,
+          description: item.description,
+          sourceUrl: item.sourceUrl,
+          status: 'SAVED',
+        },
+      });
+    }
+
+    return res.json({ ok: true, jobApplicationId: jobApp.id, used: used + 1, cap: DAILY_APPLICATION_CAP });
+  } catch (err: any) {
+    console.error('[job-feed/start-apply]', err?.message ?? err);
+    return res.status(500).json({ error: 'Could not start the application' });
   }
 });
 
