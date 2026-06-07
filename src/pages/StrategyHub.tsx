@@ -424,12 +424,30 @@ function AnalysisHeroCard() {
 
     const [pickedFeedItem, setPickedFeedItem] = useState<JobFeedItem | null>(null);
     const [showPaste, setShowPaste] = useState(false);
-    // Slice C replaces this with the real start-apply + navigate. For Slice B it
-    // routes through the existing paste-and-analyse path so the card is testable.
-    const handleStreamApply = (job: import('../components/jobs/JobCard').JobFeedItem) => {
-        setJd(job.description ?? '');
-        setPickedFeedItem(job);
-        setShowPaste(true);
+    const [applyingId, setApplyingId] = useState<string | null>(null);
+    const [capMessage, setCapMessage] = useState(false);
+
+    const handleStreamApply = async (job: import('../components/jobs/JobCard').JobFeedItem) => {
+        if (applyingId) return;
+        setApplyingId(job.id);
+        try {
+            await api.post(`/job-feed/${job.id}/start-apply`);
+        } catch (err: any) {
+            setApplyingId(null);
+            if (err?.response?.status === 429) { setCapMessage(true); return; }
+            toast.error('Could not start that application. Please try again.');
+            return;
+        }
+        navigate('/apply', {
+            state: {
+                jobDescription: job.description ?? '',
+                company: job.company,
+                role: job.title,
+                sourceUrl: job.sourceUrl,
+                feedItemId: job.id,
+                sourcePlatform: job.sourcePlatform,
+            },
+        });
     };
 
     const handleFeedPick = (description: string, item: JobFeedItem) => {
@@ -550,7 +568,21 @@ function AnalysisHeroCard() {
                 boxShadow: warmT.cardShadow,
             }}
         >
-            <JobStream onApply={handleStreamApply} />
+            {capMessage && (
+                <div style={{
+                    border: `1px solid ${warm.colors.borderDefined}`, borderRadius: 12,
+                    background: warm.colors.bgAlt, padding: '14px 16px', marginBottom: 14,
+                }}>
+                    <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: warm.colors.textPrimary }}>
+                        That is 25 applications today. Serious effort.
+                    </p>
+                    <p style={{ margin: '4px 0 0', fontSize: 13, color: warm.colors.textSecondary }}>
+                        Come back tomorrow for a fresh batch. Your trial keeps running, and the more you apply, the sooner the callbacks start.
+                    </p>
+                </div>
+            )}
+
+            <JobStream onApply={handleStreamApply} applyingId={applyingId} />
 
             <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
                 <button
