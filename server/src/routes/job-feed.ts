@@ -3,7 +3,7 @@ import axios from 'axios';
 import { prisma } from '../index';
 import { authenticate } from '../middleware/auth';
 import { analyzeRateLimit } from '../middleware/analyzeRateLimit';
-import { checkAccess } from '../middleware/accessControl';
+import { checkAccess, hasActiveAccess } from '../middleware/accessControl';
 import {
   buildDailyFeed,
   generateBullets,
@@ -25,11 +25,9 @@ router.use(authenticate);
 async function requirePremium(userId: string, res: Response): Promise<boolean> {
   const profile = await prisma.candidateProfile.findUnique({
     where: { userId },
-    select: { plan: true, planStatus: true, accessExpiresAt: true, dashboardAccess: true },
+    select: { plan: true, planStatus: true, accessExpiresAt: true, dashboardAccess: true, trialEndDate: true },
   });
-  const isPaid = profile?.dashboardAccess === true
-    || (profile?.plan !== 'free' && (profile?.planStatus === 'active' || profile?.planStatus === 'trialing'));
-  if (!isPaid) {
+  if (!profile || !hasActiveAccess(profile)) {
     res.status(403).json({ error: 'Subscription required' });
     return false;
   }
