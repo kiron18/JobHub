@@ -7,6 +7,12 @@ import { extractTextFromBuffer } from '../services/pdf';
 import { runCvGapScan, runRoadmap, CvGapResult } from '../services/cvGapScan';
 import { prisma } from '../index';
 import { sendRoadmapEmail } from '../services/email';
+import { authenticate, AuthRequest } from '../middleware/auth';
+import type { RawJob } from '../services/jobFeed';
+import { suggestJobTitles } from '../services/jobTitleSuggest';
+import { scrapeJobsForTitles } from '../services/userJobScrape';
+import { todayAEST } from '../services/jobFeed';
+import { parseResumeToStructure, persistExtracted, autoExtractAchievements, type ParsedResume } from '../services/autoExtract';
 
 const router = Router();
 
@@ -68,6 +74,62 @@ function trimScanStore() {
   for (const [k, v] of sorted.slice(0, 100)) scanStore.set(k, v);
 }
 
+// ── Job scrape store (titles + background scrape, keyed by scanId) ──────────
+
+type ScrapeStatus = 'pending' | 'ready' | 'error';
+interface ScrapeEntry { requestId: string; status: ScrapeStatus; titles: string[]; location: string; jobs: RawJob[]; error: string | null; at: number; }
+const jobScrapeStore = new Map<string, ScrapeEntry>();
+
+function trimJobScrapeStore() {
+  if (jobScrapeStore.size <= 100) return;
+  const sorted = [...jobScrapeStore.entries()].sort((a, b) => b[1].at - a[1].at);
+  jobScrapeStore.clear();
+  for (const [k, v] of sorted.slice(0, 100)) jobScrapeStore.set(k, v);
+}
+
+function normalizeTitles(t: unknown): string[] {
+  const arr = Array.isArray(t) ? t : [];
+  const cleaned = arr.map(x => String(x).trim()).filter(Boolean);
+  return [...new Set(cleaned)].slice(0, 3);
+}
+
+function fireScrape(scanId: string, titles: string[], location: string) {
+  const requestId = randomUUID();
+  jobScrapeStore.set(scanId, { requestId, status: 'pending', titles, location, jobs: [], error: null, at: Date.now() });
+  trimJobScrapeStore();
+  scrapeJobsForTitles(titles, location)
+    .then(jobs => { const e = jobScrapeStore.get(scanId); if (e && e.requestId === requestId) jobScrapeStore.set(scanId, { ...e, status: 'ready', jobs, at: Date.now() }); })
+    .catch(err => { const e = jobScrapeStore.get(scanId); if (e && e.requestId === requestId) jobScrapeStore.set(scanId, { ...e, status: 'error', error: err?.message ?? 'scrape failed', at: Date.now() }); });
+}
+
+// ── Resume parse store — runs the slow LLM resume parse during the scan so the
+// structured bank can be persisted instantly at claim, keeping the funnel snappy ──
+
+type ParseStatus = 'pending' | 'ready' | 'error';
+interface ParseEntry { status: ParseStatus; parsed: ParsedResume | null; at: number; }
+const resumeParseStore = new Map<string, ParseEntry>();
+
+function trimResumeParseStore() {
+  if (resumeParseStore.size <= 100) return;
+  const sorted = [...resumeParseStore.entries()].sort((a, b) => b[1].at - a[1].at);
+  resumeParseStore.clear();
+  for (const [k, v] of sorted.slice(0, 100)) resumeParseStore.set(k, v);
+}
+
+// Fire-and-forget: parse the resume into structured data in the background, keyed
+// by scanId. Overlaps with the user reading the reveal + entering email/password,
+// so the bank is ready to persist by the time they reach claim. Never blocks.
+function fireResumeParse(scanId: string, resumeText: string) {
+  resumeParseStore.set(scanId, { status: 'pending', parsed: null, at: Date.now() });
+  trimResumeParseStore();
+  parseResumeToStructure(resumeText)
+    .then(parsed => { resumeParseStore.set(scanId, { status: 'ready', parsed, at: Date.now() }); })
+    .catch(err => {
+      console.warn('[cv-scan/parse] background resume parse failed (non-fatal):', err?.message);
+      resumeParseStore.set(scanId, { status: 'error', parsed: null, at: Date.now() });
+    });
+}
+
 function buildScanResponse(scanId: string, result: CvGapResult) {
   return {
     scanId,
@@ -77,6 +139,13 @@ function buildScanResponse(scanId: string, result: CvGapResult) {
     fullName: result.fullName,
     items: result.items,
     quickWins: result.quickWins,
+    // Narrative layer for the reveal. These were being dropped here, so the
+    // client always fell back to the hardcoded "Easy to overlook" default and
+    // the relief/translation beats lost their CV-specific context.
+    firstImpression: result.firstImpression,
+    reassurance: result.reassurance,
+    hiringManager: result.hiringManager,
+    culturalTranslations: result.culturalTranslations,
     lockedGapCount: 7,
   };
 }
@@ -110,6 +179,7 @@ router.post(
           const scanId = randomUUID();
           scanStore.set(scanId, { resumeText: text, result, at: Date.now() });
           trimScanStore();
+          fireResumeParse(scanId, text);
           res.json(buildScanResponse(scanId, result));
           return;
         }
@@ -132,6 +202,8 @@ router.post(
       const scanId = randomUUID();
       scanStore.set(scanId, { resumeText: text, result, at: Date.now() });
       trimScanStore();
+      // Kick off the structured resume parse now so the bank is ready by claim.
+      fireResumeParse(scanId, text);
 
       res.json(buildScanResponse(scanId, result));
     } catch (err) {
@@ -199,5 +271,136 @@ router.post(
     }
   },
 );
+
+// ── Slice A — Account seam (job-titles, scrape-jobs, claim) ─────────────────
+
+// Safety ceiling only. The scrape is fired in parallel at modal-open and warms
+// while the user reads the modal and types a password, so by claim time it is
+// almost always already 'ready' and this returns instantly. 45s is the bound for
+// a cold worst case, not the expected wait.
+async function waitForScrape(scanId: string, maxMs = 45_000): Promise<RawJob[]> {
+  const start = Date.now();
+  for (;;) {
+    const e = jobScrapeStore.get(scanId);
+    if (e && e.status === 'ready') return e.jobs;
+    if (e && e.status === 'error') return [];
+    if (Date.now() - start >= maxMs) return e?.jobs ?? [];
+    await new Promise(r => setTimeout(r, 1000));
+  }
+}
+
+router.post('/job-titles', ipRateLimit, async (req, res) => {
+  try {
+    const { scanId } = req.body || {};
+    const entry = scanStore.get(scanId);
+    if (!entry || Date.now() - entry.at >= SCAN_STORE_TTL) { res.status(404).json({ error: 'SESSION_EXPIRED' }); return; }
+    const { titles, location } = await suggestJobTitles(entry.resumeText, entry.result);
+    const loc = location ?? 'All Australia';
+    fireScrape(scanId, titles, loc);
+    res.json({ titles, location: loc, firstName: entry.result.firstName ?? '' });
+  } catch (err) {
+    console.error('[cv-scan/job-titles]', err instanceof Error ? err.message : String(err));
+    res.status(502).json({ error: 'Could not suggest roles, please try again.' });
+  }
+});
+
+router.post('/scrape-jobs', ipRateLimit, (req, res) => {
+  const { scanId, titles, location } = req.body || {};
+  if (!scanStore.has(scanId)) { res.status(404).json({ error: 'SESSION_EXPIRED' }); return; }
+  fireScrape(scanId, normalizeTitles(titles), String(location || '').trim() || 'All Australia');
+  res.json({ status: 'started' });
+});
+
+router.get('/scrape-jobs', (req, res) => {
+  const e = jobScrapeStore.get(String(req.query.scanId || ''));
+  if (!e) { res.json({ status: 'pending', count: 0 }); return; }
+  res.json({ status: e.status, count: e.jobs.length });
+});
+
+router.post('/claim', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const email = req.user!.email ?? null;
+    const { scanId, titles, location } = req.body || {};
+    const entry = scanStore.get(scanId);
+    if (!entry || Date.now() - entry.at >= SCAN_STORE_TTL) { res.status(410).json({ error: 'Your scan expired, please scan again.' }); return; }
+
+    const cleanTitles = normalizeTitles(titles);
+    const loc = String(location || '').trim() || null;
+    const targetRole = cleanTitles[0] || entry.result.inferredRole || null;
+
+    const trialEndDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const profileData = {
+      trialEndDate,
+      email,
+      name: entry.result.fullName || null,
+      resumeRawText: entry.resumeText,
+      targetRole,
+      targetCity: loc,
+      location: loc,
+      hasCompletedOnboarding: true,
+      marketingConsent: true,
+      marketingEmail: email,
+    };
+    try {
+      await prisma.candidateProfile.upsert({
+        where: { userId },
+        create: { userId, ...profileData },
+        update: profileData,
+      });
+    } catch (e) {
+      // email is @unique: a returning user already has a profile under this email
+      // (different userId). Migrate that profile onto the current account rather
+      // than 502, which would dump them back into onboarding.
+      if ((e as { code?: string })?.code === 'P2002' && email) {
+        await prisma.candidateProfile.update({
+          where: { email },
+          data: { userId, ...profileData },
+        });
+      } else {
+        throw e;
+      }
+    }
+
+    // Populate the structured bank (achievements/experience/education) so the
+    // /apply generation pipeline has rich inputs. Fire-and-forget: never block
+    // the user landing on the dashboard. Prefer the parse that ran during the
+    // scan; fall back to a full background extract if it isn't ready.
+    const parseEntry = resumeParseStore.get(scanId);
+    if (parseEntry?.status === 'ready' && parseEntry.parsed) {
+      persistExtracted(userId, parseEntry.parsed).catch(err => console.warn('[cv-scan/claim] persistExtracted failed (non-fatal):', err?.message));
+    } else {
+      autoExtractAchievements(userId, entry.resumeText).catch(err => console.warn('[cv-scan/claim] autoExtract failed (non-fatal):', err?.message));
+    }
+
+    // make sure the head-start scrape exists; if the modal never fired it, fire now.
+    if (!jobScrapeStore.has(scanId) && cleanTitles.length) fireScrape(scanId, cleanTitles, loc || 'All Australia');
+    const jobs = await waitForScrape(scanId);
+
+    // feedDate = AEST today, matching jobFeed.ts (reuse its exported helper).
+    const today = todayAEST();
+    await prisma.jobFeedItem.deleteMany({ where: { userId, feedDate: today } });
+    if (jobs.length) {
+      await prisma.jobFeedItem.createMany({
+        data: jobs.map(j => ({
+          userId, feedDate: today,
+          title: j.title, company: j.company, location: j.location, salary: j.salary,
+          description: j.description, sourceUrl: j.sourceUrl, sourcePlatform: j.sourcePlatform,
+          postedAt: j.postedAt, matchScore: null,
+        })),
+      });
+    }
+    // Hand the first job back so the dashboard can preload it into the apply box
+    // instantly, without waiting on the (slow) feed read.
+    const f = jobs[0];
+    const firstJob = f
+      ? { title: f.title, company: f.company, location: f.location, description: f.description, sourceUrl: f.sourceUrl, sourcePlatform: f.sourcePlatform }
+      : null;
+    res.json({ jobCount: jobs.length, firstJob });
+  } catch (err) {
+    console.error('[cv-scan/claim]', err instanceof Error ? `${err.name}: ${err.message}` : String(err));
+    res.status(502).json({ error: 'Could not set up your workspace, please try again.' });
+  }
+});
 
 export { router as cvScanRouter };
