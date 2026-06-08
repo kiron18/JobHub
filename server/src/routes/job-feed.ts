@@ -411,6 +411,39 @@ router.post('/:id/mark-applied', async (req: any, res: any) => {
   }
 });
 
+// POST /api/job-feed/application/:applicationId/revert — Undo for a just-applied
+// job. body.restore === 'DELETE' deletes the row we just created; any other value
+// is treated as a status to restore (and clears dateApplied).
+router.post('/application/:applicationId/revert', async (req: any, res: any) => {
+  const userId = req.user.id;
+  const { applicationId } = req.params;
+  const restore = String((req.body?.restore ?? '')).trim();
+
+  try {
+    if (!(await requirePremium(userId, res))) return;
+
+    const app = await prisma.jobApplication.findUnique({ where: { id: applicationId } });
+    if (!app || app.userId !== userId) return res.status(404).json({ error: 'Not found' });
+
+    if (restore === 'DELETE') {
+      await prisma.jobApplication.delete({ where: { id: applicationId } });
+      return res.json({ ok: true, deleted: true });
+    }
+
+    const allowed = new Set(['SAVED', 'APPLIED', 'INTERVIEW', 'OFFER', 'REJECTED']);
+    if (!allowed.has(restore)) return res.status(400).json({ error: 'Invalid restore status' });
+
+    await prisma.jobApplication.update({
+      where: { id: applicationId },
+      data: { status: restore as any, dateApplied: restore === 'APPLIED' ? new Date() : null },
+    });
+    return res.json({ ok: true, status: restore });
+  } catch (err: any) {
+    console.error('[job-feed/revert]', err?.message ?? err);
+    return res.status(500).json({ error: 'Failed to undo' });
+  }
+});
+
 // POST /api/job-feed/:id/start-apply — enforce the daily cap and seed the
 // application row before the user enters the generation flow.
 router.post('/:id/start-apply', async (req: any, res: any) => {
