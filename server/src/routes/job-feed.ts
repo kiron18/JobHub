@@ -3,7 +3,7 @@ import axios from 'axios';
 import { prisma } from '../index';
 import { authenticate } from '../middleware/auth';
 import { analyzeRateLimit } from '../middleware/analyzeRateLimit';
-import { checkAccess, hasActiveAccess } from '../middleware/accessControl';
+import { checkAccess, hasActiveAccess, isPaidOrExempt } from '../middleware/accessControl';
 import { DAILY_APPLICATION_CAP, countTodaysApplications } from '../services/applicationCap';
 import {
   buildDailyFeed,
@@ -13,6 +13,7 @@ import {
   type RawJob,
 } from '../services/jobFeed';
 import { scoreJobForFeed } from '../services/jobAnalysis';
+import { reconcileApplication } from '../lib/applicationReconcile';
 
 const router = Router();
 
@@ -315,13 +316,17 @@ router.post('/:id/save', async (req: any, res: any) => {
   }
 });
 
-// POST /api/job-feed/:id/mark-applied — save (if needed) + mark as APPLIED in one step
+// POST /api/job-feed/:id/mark-applied — reconcile the feed item against the tracker
+// and ensure it ends up APPLIED. Matches an existing application by sourceUrl first
+// (the key the feed read uses), then title+company. Reports whether we created a
+// fresh row (likely an external apply) so the client can offer Undo.
 router.post('/:id/mark-applied', async (req: any, res: any) => {
   const userId = req.user.id;
   const { id } = req.params;
 
   try {
     if (!(await requirePremium(userId, res))) return;
+
     const item = await prisma.jobFeedItem.findUnique({ where: { id } });
     if (!item || item.userId !== userId) return res.status(404).json({ error: 'Not found' });
 
@@ -331,37 +336,77 @@ router.post('/:id/mark-applied', async (req: any, res: any) => {
     });
     if (!profile) return res.status(404).json({ error: 'Profile not found' });
 
-    // Find existing application by title + company for this user
-    let jobApp = await prisma.jobApplication.findFirst({
-      where: { userId, title: item.title, company: item.company },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    if (jobApp) {
-      await prisma.jobApplication.update({
-        where: { id: jobApp.id },
-        data: { status: 'APPLIED', dateApplied: new Date() },
+    // Match by sourceUrl first (what the feed uses to tag applicationStatus), then
+    // fall back to title+company for older rows that never stored a sourceUrl.
+    let existing = item.sourceUrl
+      ? await prisma.jobApplication.findFirst({
+          where: { userId, sourceUrl: item.sourceUrl },
+          orderBy: { createdAt: 'desc' },
+        })
+      : null;
+    if (!existing) {
+      existing = await prisma.jobApplication.findFirst({
+        where: { userId, title: item.title, company: item.company },
+        orderBy: { createdAt: 'desc' },
       });
-    } else {
-      jobApp = await prisma.jobApplication.create({
-        data: {
-          userId,
-          candidateProfileId: profile.id,
-          title: item.title,
-          company: item.company,
-          description: item.description,
-          sourceUrl: item.sourceUrl,
-          notes: `Source: ${item.sourceUrl}`,
-          status: 'APPLIED',
-          dateApplied: new Date(),
-        },
-      });
-      await prisma.jobFeedItem.update({ where: { id }, data: { isSaved: true } });
     }
 
-    return res.json({ ok: true, jobApplicationId: jobApp.id });
+    const action = reconcileApplication(existing);
+
+    if (action.kind === 'already_applied') {
+      return res.json({
+        ok: true,
+        jobApplicationId: existing!.id,
+        created: false,
+        previousStatus: 'APPLIED',
+        alreadyApplied: true,
+      });
+    }
+
+    if (action.kind === 'promote') {
+      await prisma.jobApplication.update({
+        where: { id: existing!.id },
+        data: {
+          status: 'APPLIED',
+          dateApplied: new Date(),
+          // Backfill sourceUrl so future feed reads match this row by URL.
+          ...(existing!.sourceUrl ? {} : { sourceUrl: item.sourceUrl }),
+        },
+      });
+      return res.json({
+        ok: true,
+        jobApplicationId: existing!.id,
+        created: false,
+        previousStatus: action.previousStatus,
+        alreadyApplied: false,
+      });
+    }
+
+    // action.kind === 'create'
+    const jobApp = await prisma.jobApplication.create({
+      data: {
+        userId,
+        candidateProfileId: profile.id,
+        title: item.title,
+        company: item.company,
+        description: item.description,
+        sourceUrl: item.sourceUrl,
+        notes: `Source: ${item.sourceUrl}`,
+        status: 'APPLIED',
+        dateApplied: new Date(),
+      },
+    });
+    await prisma.jobFeedItem.update({ where: { id }, data: { isSaved: true } });
+
+    return res.json({
+      ok: true,
+      jobApplicationId: jobApp.id,
+      created: true,
+      previousStatus: null,
+      alreadyApplied: false,
+    });
   } catch (err: any) {
-    console.error('[job-feed/mark-applied]', err);
+    console.error('[job-feed/mark-applied]', err?.message ?? err);
     return res.status(500).json({ error: 'Failed to mark as applied' });
   }
 });
@@ -374,16 +419,25 @@ router.post('/:id/start-apply', async (req: any, res: any) => {
   try {
     if (!(await requirePremium(userId, res))) return;
 
-    const used = await countTodaysApplications(userId);
-    if (used >= DAILY_APPLICATION_CAP) {
-      return res.status(429).json({ error: 'DAILY_CAP_REACHED', cap: DAILY_APPLICATION_CAP, used });
+    const userEmail = (req.user?.email ?? '').toLowerCase();
+    const profile = await prisma.candidateProfile.findUnique({
+      where: { userId },
+      select: { id: true, plan: true, planStatus: true, dashboardAccess: true, trialEndDate: true },
+    });
+    if (!profile) return res.status(404).json({ error: 'Profile not found' });
+
+    // The daily cap is a TRIAL cost-guard only. Paid/exempt customers are never
+    // throttled. Trial-by-default users (free plan + trialEndDate) still get it.
+    let used = 0;
+    if (!isPaidOrExempt(profile, userEmail)) {
+      used = await countTodaysApplications(userId);
+      if (used >= DAILY_APPLICATION_CAP) {
+        return res.status(429).json({ error: 'DAILY_CAP_REACHED', cap: DAILY_APPLICATION_CAP, used });
+      }
     }
 
     const item = await prisma.jobFeedItem.findUnique({ where: { id } });
     if (!item || item.userId !== userId) return res.status(404).json({ error: 'Not found' });
-
-    const profile = await prisma.candidateProfile.findUnique({ where: { userId }, select: { id: true } });
-    if (!profile) return res.status(404).json({ error: 'Profile not found' });
 
     // Reuse an existing row for this job if present (avoids duplicates on retry),
     // else create one in SAVED status. mark-applied later flips it to APPLIED.
