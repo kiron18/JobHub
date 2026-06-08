@@ -117,6 +117,49 @@ export function computeYearsOfExperience(experience: ExperienceEntry[] | null | 
 }
 
 /**
+ * Pull an explicitly-stated years-of-experience figure from resume text
+ * (e.g. "9+ years of experience", "9 years experience"). The candidate's own
+ * statement is the source of truth and beats a computed career span, which can't
+ * see study/career gaps (e.g. a 2016-2018 MBA between roles). Returns null when
+ * no figure is stated. The "of/in + experience" requirement keeps it from matching
+ * incidental phrases like "over 3 years" inside a bullet.
+ */
+export function statedYearsOfExperience(...texts: (string | null | undefined)[]): number | null {
+    for (const t of texts) {
+        if (!t || typeof t !== 'string') continue;
+        const m = t.match(/(\d{1,2})\s*\+?\s*years?(?:\s+of)?\s+(?:experience|exp)\b/i);
+        if (m) {
+            const n = parseInt(m[1], 10);
+            if (n > 0 && n < 60) return n;
+        }
+    }
+    return null;
+}
+
+/**
+ * Resolve years of experience: prefer the figure the candidate explicitly states
+ * in their resume; fall back to the computed career span only when none is stated.
+ * Covers both scenarios — a resume that declares "9+ years" and one that doesn't.
+ */
+export function resolveYearsOfExperience(
+    statedSources: (string | null | undefined)[],
+    experience: ExperienceEntry[] | null | undefined,
+): number | null {
+    return statedYearsOfExperience(...statedSources) ?? computeYearsOfExperience(experience);
+}
+
+/**
+ * Extract the contact email from resume text — the first email-like token, which
+ * on a resume is the header contact address. The resume is the source of truth for
+ * contact details, so this beats the account/login email stored on the profile.
+ */
+export function extractContactEmail(text: string | null | undefined): string | null {
+    if (!text || typeof text !== 'string') return null;
+    const m = text.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/);
+    return m ? m[0] : null;
+}
+
+/**
  * ISO yyyy-mm-dd for today, suitable for prompt injection.
  */
 export function todayIso(): string {

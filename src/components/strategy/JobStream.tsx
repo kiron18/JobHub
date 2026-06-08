@@ -17,10 +17,13 @@ const APPLIED_STATUSES = new Set(['APPLIED', 'INTERVIEW', 'REJECTED', 'OFFER']);
 
 export function JobStream({ onApply, applyingId, appliedId }: JobStreamProps) {
   const queryClient = useQueryClient();
-  const { data } = useQuery<{ jobs?: JobFeedItem[] }>({
+  const { data, isLoading } = useQuery<{ jobs?: JobFeedItem[]; building?: boolean; total?: number }>({
     queryKey: ['job-feed', 0],
     queryFn: async () => (await api.get('/job-feed/feed?offset=0')).data,
     staleTime: 5 * 60 * 1000,
+    // While the feed is still building server-side it returns { jobs: [], building: true }.
+    // Poll until the build lands so the stream fills in without a manual refresh.
+    refetchInterval: (query) => (query.state.data?.building ? 4000 : false),
   });
 
   const allJobs = data?.jobs ?? [];
@@ -53,6 +56,20 @@ export function JobStream({ onApply, applyingId, appliedId }: JobStreamProps) {
     }
     return unApplied.slice(0, 3);
   }, [allJobs, celebratingId]);
+
+  // Still assembling the feed server-side (or the very first load) — show a finding
+  // state, never the "that is every match" copy, which reads to the user as "no jobs".
+  const buildingFeed = Boolean(data?.building) || (isLoading && !data);
+  if (buildingFeed && visible.length === 0) {
+    return (
+      <div style={{ border: `1px solid ${warm.colors.borderWhisper}`, borderRadius: 14, background: warm.colors.bgSurface, padding: '28px 18px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+        <div style={{ width: 22, height: 22, borderRadius: '50%', border: `2px solid ${warm.colors.borderWhisper}`, borderTopColor: warm.colors.accentGold, animation: 'jsspin 0.8s linear infinite' }} />
+        <style>{`@keyframes jsspin { to { transform: rotate(360deg); } }`}</style>
+        <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: warm.colors.textPrimary }}>Finding roles that fit you…</p>
+        <p style={{ margin: 0, fontSize: 13, color: warm.colors.textSecondary }}>This takes a moment. Fresh matches appear here automatically.</p>
+      </div>
+    );
+  }
 
   if (visible.length === 0) {
     return (

@@ -72,12 +72,14 @@ export async function parseResumeToStructure(resumeText: string): Promise<Parsed
 
 // ── Persist a parsed resume to a user's structured bank. Idempotent: skips if the
 // user already has achievements. Needs the profile row to already exist. ──
-export async function persistExtracted(userId: string, parsed: ParsedResume): Promise<void> {
+export async function persistExtracted(userId: string, parsed: ParsedResume, opts: { replace?: boolean } = {}): Promise<void> {
   try {
-    const existingCount = await prisma.achievement.count({ where: { userId } });
-    if (existingCount > 0) {
-      console.log(`[AutoExtract] Skipping persist — user ${userId} already has ${existingCount} achievements`);
-      return;
+    if (!opts.replace) {
+      const existingCount = await prisma.achievement.count({ where: { userId } });
+      if (existingCount > 0) {
+        console.log(`[AutoExtract] Skipping persist — user ${userId} already has ${existingCount} achievements`);
+        return;
+      }
     }
 
     const { stage1Data, achievements } = parsed;
@@ -96,6 +98,19 @@ export async function persistExtracted(userId: string, parsed: ParsedResume): Pr
     const skills = stage1Data.skills;
 
     await prisma.$transaction(async (tx) => {
+      // Replace mode: wipe every existing bank section first so a re-uploaded or
+      // re-claimed resume fully supersedes the previous one. Done inside the same
+      // transaction as the inserts below, so the bank is never observably empty
+      // and stale sections (education, certs, languages) can't bleed across resumes.
+      if (opts.replace) {
+        await tx.achievement.deleteMany({ where: { candidateProfileId: profileId } });
+        await tx.experience.deleteMany({ where: { candidateProfileId: profileId } });
+        await tx.education.deleteMany({ where: { candidateProfileId: profileId } });
+        await tx.certification.deleteMany({ where: { candidateProfileId: profileId } });
+        await tx.language.deleteMany({ where: { candidateProfileId: profileId } });
+        await tx.volunteering.deleteMany({ where: { candidateProfileId: profileId } });
+      }
+
       // Save extracted scalar profile fields — only non-null, never overwrite onboarding fields
       const scalarUpdate: Record<string, any> = {};
       if (profile.name)                scalarUpdate.name                = profile.name;
@@ -113,37 +128,61 @@ export async function persistExtracted(userId: string, parsed: ParsedResume): Pr
         });
       }
 
-      // Work experience
-      const experienceToCreate = (stage1Data.experience || []).map((exp: any) => ({
-        candidateProfileId: profileId,
-        company: exp.company || 'Unknown Company',
-        role: exp.role || 'Unknown Role',
-        startDate: exp.startDate || 'Unknown',
-        endDate: exp.endDate ?? null,
-        type: 'work',
-        description: exp.bullets?.join('\n') || exp.description || '',
-        coachingTips: Array.isArray(exp.coachingTips)
-          ? exp.coachingTips.join(' | ')
-          : (exp.coachingTips || null),
-      }));
+      // Existing experience rows, used to dedup so a second extraction run never
+      // duplicates roles (was producing every role twice). Key on company+role.
+      const existingExp = await tx.experience.findMany({
+        where: { candidateProfileId: profileId },
+        select: { company: true, role: true },
+      });
+      const expKey = (company: string, role: string) =>
+        `${(company || '').toLowerCase().trim()}||${(role || '').toLowerCase().trim()}`;
+      const existingExpKeys = new Set(existingExp.map(e => expKey(e.company, e.role)));
+
+      // Work experience (dedup against existing + within this batch)
+      const experienceToCreate = (stage1Data.experience || [])
+        .map((exp: any) => ({
+          candidateProfileId: profileId,
+          company: exp.company || 'Unknown Company',
+          role: exp.role || 'Unknown Role',
+          startDate: exp.startDate || 'Unknown',
+          endDate: exp.endDate ?? null,
+          type: 'work',
+          description: exp.bullets?.join('\n') || exp.description || '',
+          coachingTips: Array.isArray(exp.coachingTips)
+            ? exp.coachingTips.join(' | ')
+            : (exp.coachingTips || null),
+        }))
+        .filter((e: any) => {
+          const k = expKey(e.company, e.role);
+          if (existingExpKeys.has(k)) return false;
+          existingExpKeys.add(k);
+          return true;
+        });
 
       if (experienceToCreate.length > 0) {
         await tx.experience.createMany({ data: experienceToCreate });
       }
 
-      // Projects (stored as Experience type='project')
-      const projectsToCreate = (stage1Data.projects || []).map((proj: any) => ({
-        candidateProfileId: profileId,
-        company: proj.org || 'University Project',
-        role: proj.title || 'Project',
-        startDate: proj.startDate || 'Unknown',
-        endDate: proj.endDate ?? null,
-        type: 'project',
-        description: proj.bullets?.join('\n') || '',
-        coachingTips: Array.isArray(proj.coachingTips)
-          ? proj.coachingTips.join(' | ')
-          : (proj.coachingTips || null),
-      }));
+      // Projects (stored as Experience type='project'), same dedup
+      const projectsToCreate = (stage1Data.projects || [])
+        .map((proj: any) => ({
+          candidateProfileId: profileId,
+          company: proj.org || 'University Project',
+          role: proj.title || 'Project',
+          startDate: proj.startDate || 'Unknown',
+          endDate: proj.endDate ?? null,
+          type: 'project',
+          description: proj.bullets?.join('\n') || '',
+          coachingTips: Array.isArray(proj.coachingTips)
+            ? proj.coachingTips.join(' | ')
+            : (proj.coachingTips || null),
+        }))
+        .filter((p: any) => {
+          const k = expKey(p.company, p.role);
+          if (existingExpKeys.has(k)) return false;
+          existingExpKeys.add(k);
+          return true;
+        });
 
       if (projectsToCreate.length > 0) {
         await tx.experience.createMany({ data: projectsToCreate });
@@ -334,16 +373,18 @@ export async function persistExtracted(userId: string, parsed: ParsedResume): Pr
 }
 
 // Convenience wrapper used by the onboarding path: parse + persist in one call.
-export async function autoExtractAchievements(userId: string, resumeText: string): Promise<void> {
+export async function autoExtractAchievements(userId: string, resumeText: string, opts: { replace?: boolean } = {}): Promise<void> {
   try {
-    const existingCount = await prisma.achievement.count({ where: { userId } });
-    if (existingCount > 0) {
-      console.log(`[AutoExtract] Skipping — user ${userId} already has ${existingCount} achievements`);
-      return;
+    if (!opts.replace) {
+      const existingCount = await prisma.achievement.count({ where: { userId } });
+      if (existingCount > 0) {
+        console.log(`[AutoExtract] Skipping — user ${userId} already has ${existingCount} achievements`);
+        return;
+      }
     }
     console.log(`[AutoExtract] Running parse for userId: ${userId}`);
     const parsed = await parseResumeToStructure(resumeText);
-    await persistExtracted(userId, parsed);
+    await persistExtracted(userId, parsed, opts);
   } catch (err) {
     console.error('[AutoExtract] Error during auto-extraction:', err);
   }
@@ -352,24 +393,24 @@ export async function autoExtractAchievements(userId: string, resumeText: string
 // Forces a full re-extraction of achievements and experience from a new resume.
 // Called from the source-documents route when the user re-uploads their resume.
 export async function forceAutoExtract(userId: string, resumeText: string): Promise<void> {
+  const profile = await prisma.candidateProfile.findUnique({
+    where: { userId },
+    select: { id: true },
+  });
+  if (!profile) return;
+
+  // Parse the NEW resume first, before touching the DB. The previous version
+  // deleted experience + achievements up front, then repopulated 30-90s later
+  // via slow LLM calls — leaving a long window where the bank looked empty, and
+  // never clearing education/certs/languages/skills, so old resumes' sections
+  // bled into the new one. Parsing first keeps the old bank intact until we have
+  // replacement data; persistExtracted({ replace: true }) then swaps every
+  // section atomically in a single transaction.
   try {
-    const profile = await prisma.candidateProfile.findUnique({
-      where: { userId },
-      select: { id: true },
-    });
-    if (!profile) return;
-
-    await prisma.$transaction([
-      prisma.achievement.deleteMany({ where: { candidateProfileId: profile.id } }),
-      prisma.experience.deleteMany({ where: { candidateProfileId: profile.id } }),
-    ]);
-
-    console.log(`[ForceExtract] Cleared experience + achievements for userId: ${userId}`);
+    const parsed = await parseResumeToStructure(resumeText);
+    await persistExtracted(userId, parsed, { replace: true });
+    console.log(`[ForceExtract] Replaced bank for userId: ${userId}`);
   } catch (err) {
-    console.error('[ForceExtract] Failed to clear existing data:', err);
-    return;
+    console.error('[ForceExtract] Re-extraction failed, existing bank left intact:', err);
   }
-
-  // Now run standard extraction — achievement count is 0 so the guard won't skip
-  await autoExtractAchievements(userId, resumeText);
 }

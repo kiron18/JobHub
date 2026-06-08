@@ -109,6 +109,7 @@ Return STRICT JSON, no markdown fences, no preamble:
 - Strengths: 1-3 entries max. Only genuine strengths. No empty pleasantries.
 - No em dashes (—) in any output string. Use periods, commas, or colons.
 - Australian English in your prose: organisation, programme, behaviour.
+- AUSTRALIAN RESUME CONVENTION (absolute): a referees section, or the line "References available on request", is standard and expected on an Australian resume. NEVER advise removing, deleting, shortening, or replacing the referees or references section, and never call it outdated, filler, or unnecessary. This is correct local practice, not a flaw.
 - Output ONLY the JSON object. Nothing else.
 `;
 }

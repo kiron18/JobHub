@@ -18,7 +18,7 @@ import api from '../lib/api';
 import { DimRegion, DimTarget, DimPeer } from '../components/Dim';
 import { pickInsights } from '../data/strategicInsights';
 import { AnalysisResult, type DualSignalResult } from '../components/strategy/AnalysisResult';
-import { CoherenceCard, type CoherenceSignal } from '../components/strategy/CoherenceCard';
+import type { CoherenceSignal } from '../components/strategy/CoherenceCard';
 import { StrategicIntelligenceCard } from '../components/StrategicIntelligenceCard';
 import { ApplyFeedStrip } from '../components/strategy/ApplyFeedStrip';
 import { JobStream } from '../components/strategy/JobStream';
@@ -452,6 +452,7 @@ function AnalysisHeroCard() {
                 jobDescription: job.description ?? '',
                 company: job.company,
                 role: job.title,
+                location: job.location,
                 sourceUrl: job.sourceUrl,
                 feedItemId: job.id,
                 sourcePlatform: job.sourcePlatform,
@@ -980,11 +981,7 @@ export function StrategyHub() {
                 <DimTarget style={{ marginBottom: 40 }}>
                     <AnalysisHeroCard />
                 </DimTarget>
-                {profile?.coherence && profile.coherence.length > 0 && (
-                    <DimPeer style={{ marginBottom: 32 }}>
-                        <CoherenceCard signals={profile.coherence} />
-                    </DimPeer>
-                )}
+                {/* CoherenceCard (story health) removed per user request 2026-06-08 */}
                 {SHOW_DASHBOARD_INSIGHTS && (
                     <DimPeer style={{ marginBottom: 32 }}>
                         <StrategicInsightsPanel />

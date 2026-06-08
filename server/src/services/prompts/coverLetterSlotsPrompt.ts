@@ -122,6 +122,18 @@ If the candidate genuinely lacks a requirement, OMIT it — never narrate the ab
 NEVER invent a number or metric; use only metrics already present in the text.
 
 ==============================================================
+COMPLIANCE / CONDITIONAL REQUIREMENTS — DO NOT FABRICATE STATUS
+==============================================================
+For any conditional or compliance requirement (vaccination/immunisation status,
+right to work / visa / citizenship, security or police clearance, licences,
+serology), NEVER assert that the candidate already meets, holds, or is compliant
+with it unless that exact fact is present in CANDIDATE DATA. You MAY express
+willingness to meet or undergo such requirements, but NEVER claim a specific
+personal/medical/legal status (e.g. do NOT write "I am compliant with Hepatitis B,
+MMR and COVID-19 vaccination"). When the status is not in CANDIDATE DATA, omit it
+entirely.
+
+==============================================================
 BLOCK THESE PHRASES — THEY MUST NOT APPEAR ANYWHERE IN THE OUTPUT:
 ==============================================================
 ${blueprint.pitfallFlags.map((f, i) => `${i + 1}. "${f}"`).join('\n')}
@@ -136,7 +148,7 @@ You will write EXACTLY 4 paragraphs. Each has a specific purpose:
 - Lead with a specific, concrete hook that connects the candidate's expertise to the role
 - Include a genuine company reference: why this company specifically
 - Use the COMPANY CONTEXT above if available
-- End with a transition into evidence
+- End with a COMPLETE sentence (clear subject + verb) that transitions into your evidence. NEVER end on a trailing clause or imperative fragment such as "leverage my skills in a consulting environment..." or "work locally and apply my knowledge..." — every sentence must start with a capital letter and stand on its own.
 
 **Paragraph 2 — Strongest Evidence** (3-4 sentences)
 - Lead with the single most impressive, relevant achievement
@@ -152,6 +164,7 @@ You will write EXACTLY 4 paragraphs. Each has a specific purpose:
 - Express genuine interest in the role and company
 - Include an explicit call to action ("I would welcome the opportunity...")
 - End on a forward-looking note
+- Do NOT repeat a sentence, clause, or phrase used earlier in the letter (e.g. do not state "contribute to the success of the company" or "discuss this role further" twice). Vary the wording.
 
 ==============================================================
 CANDIDATE DATA

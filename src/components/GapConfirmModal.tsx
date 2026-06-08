@@ -60,6 +60,8 @@ export function GapConfirmModal({ gaps, onConfirm }: Props) {
           style={{
             width: '100%',
             maxWidth: 460,
+            maxHeight: '85vh',
+            overflowY: 'auto',
             background: warm.colors.bgSurface,
             border: `1px solid ${warm.colors.borderWhisper}`,
             borderRadius: 18,
@@ -101,20 +103,28 @@ export function GapConfirmModal({ gaps, onConfirm }: Props) {
                   <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 700, color: warm.colors.textPrimary }}>
                     {g.skill}
                   </p>
-                  <input
+                  <textarea
                     value={statements[i]}
                     onChange={e => edit(i, e.target.value)}
                     disabled={!checked[i]}
                     title={C.gapModal.editHint}
+                    rows={3}
                     style={{
                       width: '100%',
-                      border: 'none',
-                      background: 'transparent',
+                      boxSizing: 'border-box',
+                      // White, bordered field so it reads clearly as an editable input
+                      // rather than static text sitting on the card background.
+                      border: `1px solid ${checked[i] ? 'rgba(45,90,110,0.30)' : warm.colors.borderWhisper}`,
+                      background: checked[i] ? '#FFFFFF' : warm.colors.bgAlt,
+                      borderRadius: 8,
+                      padding: '8px 10px',
                       outline: 'none',
+                      resize: 'vertical',
                       fontSize: 13,
+                      lineHeight: 1.5,
                       color: warm.colors.textSecondary,
-                      fontStyle: 'italic',
                       fontFamily: 'inherit',
+                      cursor: checked[i] ? 'text' : 'not-allowed',
                     }}
                   />
                 </div>

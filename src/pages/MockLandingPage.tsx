@@ -189,6 +189,15 @@ function ScanningState() {
     'Writing your verdict…',
   ];
   const [idx, setIdx] = useState(0);
+  // Thin progress bar: runs 0 → ~92% over ~120s so the user always sees
+  // forward motion even when LlamaParse takes the full minute. Never hits
+  // 100% — that waits for the server response.
+  const [progress, setProgress] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setProgress(p => Math.min(p + 0.25, 92)), 300);
+    return () => clearInterval(t);
+  }, []);
+
   useEffect(() => {
     // Dwell long enough that each line reads like a real step finishing, not a
     // flicker. ~2.4s per phrase; advance but hold on the last so it never loops
@@ -210,6 +219,15 @@ function ScanningState() {
   return (
     <div>
       <span style={{ fontFamily: typeTokens.body, fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: colors.textMuted }}>Scanning your CV…</span>
+      {/* Thin progress bar — sits just below the eyebrow, gives the user a
+          real-time sense that time is finite and moving. */}
+      <div style={{ position: 'relative', marginTop: 12, height: 3, borderRadius: 2, background: colors.bgAlt, overflow: 'hidden' }}>
+        <motion.div
+          style={{ height: '100%', borderRadius: 2, background: colors.accentPetrol, transformOrigin: 'left' }}
+          animate={{ scaleX: progress / 100 }}
+          transition={{ duration: 0.3, ease: 'linear' }}
+        />
+      </div>
       <div style={{ position: 'relative', marginTop: 14, padding: 16, border: `1px solid ${colors.borderWhisper}`, borderRadius: 14, background: colors.bgSurface, overflow: 'hidden' }}>
         {/* faint scan sheen — single slow downward drift that fades in and out (no bobbing) */}
         <motion.div
@@ -330,7 +348,9 @@ function ScanPanel({ onResult, onInteract }: { onResult?: (result: CvGapResult, 
       const formData = new FormData();
       formData.append('resume', file);
       const res = await api.post('/cv-scan', formData, {
-        timeout: 30000,
+        // LlamaParse extraction (~30-60s) + the LLM gap scan (~10-40s) routinely
+        // run past 30s. Inherit the 120s global default instead of aborting early.
+        timeout: 120000,
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       setResult(res.data);
@@ -359,7 +379,7 @@ function ScanPanel({ onResult, onInteract }: { onResult?: (result: CvGapResult, 
     setEmailLoading(true);
     setRoadmapError(null);
     try {
-      const res = await api.post('/cv-scan/lead', { scanId: result.scanId, email }, { timeout: 30000 });
+      const res = await api.post('/cv-scan/lead', { scanId: result.scanId, email }, { timeout: 120000 });
       setRoadmap(res.data.roadmap);
       toast.success('Roadmap also sent to your inbox');
     } catch (err: any) {

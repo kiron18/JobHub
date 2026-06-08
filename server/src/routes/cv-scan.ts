@@ -342,6 +342,10 @@ router.post('/claim', authenticate, async (req: AuthRequest, res) => {
       marketingConsent: true,
       marketingEmail: email,
     };
+    // When we re-bind an existing-by-email profile, its structured bank belongs to
+    // a previous resume. The freshly claimed resume is authoritative, so we force a
+    // full bank replace below instead of letting the persist guards keep stale rows.
+    let rebondExistingProfile = false;
     try {
       await prisma.candidateProfile.upsert({
         where: { userId },
@@ -357,6 +361,7 @@ router.post('/claim', authenticate, async (req: AuthRequest, res) => {
           where: { email },
           data: { userId, ...profileData },
         });
+        rebondExistingProfile = true;
       } else {
         throw e;
       }
@@ -368,9 +373,9 @@ router.post('/claim', authenticate, async (req: AuthRequest, res) => {
     // scan; fall back to a full background extract if it isn't ready.
     const parseEntry = resumeParseStore.get(scanId);
     if (parseEntry?.status === 'ready' && parseEntry.parsed) {
-      persistExtracted(userId, parseEntry.parsed).catch(err => console.warn('[cv-scan/claim] persistExtracted failed (non-fatal):', err?.message));
+      persistExtracted(userId, parseEntry.parsed, { replace: rebondExistingProfile }).catch(err => console.warn('[cv-scan/claim] persistExtracted failed (non-fatal):', err?.message));
     } else {
-      autoExtractAchievements(userId, entry.resumeText).catch(err => console.warn('[cv-scan/claim] autoExtract failed (non-fatal):', err?.message));
+      autoExtractAchievements(userId, entry.resumeText, { replace: rebondExistingProfile }).catch(err => console.warn('[cv-scan/claim] autoExtract failed (non-fatal):', err?.message));
     }
 
     // make sure the head-start scrape exists; if the modal never fired it, fire now.

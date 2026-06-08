@@ -45,7 +45,6 @@ import { toast } from 'sonner';
 import api from '../lib/api';
 import { warm } from '../lib/theme/warmTokens';
 import { GenerationProgress } from '../components/shared/GenerationProgress';
-import { CoverLetterPersonalisationPanel } from '../components/CoverLetterPersonalisationPanel';
 import { GapConfirmModal } from '../components/GapConfirmModal';
 import { applyWorkspaceCopy } from './applyWorkspaceCopy';
 import { capabilityStatement, type BridgedGap } from '../lib/bridgedGaps';
@@ -148,6 +147,7 @@ export function StepperWorkspace() {
         sc?: boolean;
         company?: string;
         role?: string;
+        location?: string;
         feedItemId?: string;
         sourceUrl?: string;
         sourcePlatform?: string;
@@ -308,6 +308,22 @@ export function StepperWorkspace() {
             >
                 {jdExpanded ? (
                     <>
+                        {/* Job header — mirrors the feed card so the role title, company
+                            and location stay visible while generating, not just the JD body. */}
+                        {(state.role || state.company) && (
+                            <div style={{ margin: '0 0 14px', paddingBottom: 12, borderBottom: `1px solid ${warm.colors.borderWhisper}` }}>
+                                {state.role && (
+                                    <p style={{ margin: '0 0 3px', fontSize: 15, fontWeight: 700, color: warm.colors.textPrimary, lineHeight: 1.3 }}>
+                                        {state.role}
+                                    </p>
+                                )}
+                                {(state.company || state.location) && (
+                                    <p style={{ margin: 0, fontSize: 12, color: warm.colors.textMuted, lineHeight: 1.4 }}>
+                                        {[state.company, state.location].filter(Boolean).join(' · ')}
+                                    </p>
+                                )}
+                            </div>
+                        )}
                         <p style={{
                             margin: '0 0 12px',
                             fontSize: 10,
@@ -484,7 +500,6 @@ function DocumentStep({
     role,
     companyIntel,
     bridgedGaps,
-    sourceUrl,
     feedItemId,
     generationStatus,
     onBack,
@@ -826,7 +841,6 @@ function DocumentStep({
                         <span style={{ fontSize: 10, fontWeight: 800, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                             Company Insight
                         </span>
-                        <span style={{ fontSize: 9, color: warm.colors.textMuted, opacity: 0.7 }}>· via Perplexity</span>
                     </div>
 
                     {companyIntel.summary && (
@@ -966,43 +980,6 @@ function DocumentStep({
                     />
                 )}
             </AnimatePresence>
-
-            {/* Cover-letter personalisation score — mounts once a draft exists */}
-            {isCoverLetter && content && !generating && !editing && (
-                <div style={{ border: `1px solid ${warm.colors.borderWhisper}`, borderRadius: 12, padding: '14px 16px' }}>
-                    <CoverLetterPersonalisationPanel
-                        document={content}
-                        jobDescription={jobDescription}
-                        company={company}
-                    />
-                </div>
-            )}
-
-            {/* Seek submission banner — cover-letter step only (spec §8.3) */}
-            {isCoverLetter && content && sourceUrl && (
-                <div style={{
-                    border: `1px solid ${warm.colors.accentPetrol}`, borderRadius: 12,
-                    background: warm.colors.bgAlt, padding: '16px 18px',
-                    display: 'flex', flexDirection: 'column', gap: 8,
-                }}>
-                    <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: warm.colors.textPrimary }}>Last step: submit on Seek</p>
-                    <p style={{ margin: 0, fontSize: 13, color: warm.colors.textSecondary }}>
-                        Download your resume and cover letter, then submit them on the live listing. We open it for you in a new tab.
-                    </p>
-                    <a
-                        href={sourceUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                            alignSelf: 'flex-start', marginTop: 4, fontSize: 13.5, fontWeight: 700,
-                            padding: '9px 18px', borderRadius: 10, textDecoration: 'none',
-                            background: warm.colors.accentPetrol, color: warm.colors.textOnDeep,
-                        }}
-                    >
-                        Submit on Seek
-                    </a>
-                </div>
-            )}
 
             {/* CTAs */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>

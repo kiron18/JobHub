@@ -123,6 +123,8 @@ function buildScanInstructions(): string {
 
 PUNCTUATION RULE (absolute): NEVER use an em dash (—) or en dash (–) anywhere in any string you output. They are banned. Use a comma, a full stop, a colon, or the word "and" instead. This applies to every field without exception.
 
+AUSTRALIAN RESUME CONVENTION (absolute): a referees section, or the line "References available on request", is standard and expected on an Australian resume. NEVER flag, criticise, or advise removing the referees or references section, and never call it outdated, filler, or a waste of space. It is correct local practice, not a problem.
+
 THE 6-SECOND RULE: Your reader has 6 seconds and no patience. Every \`text\` is a tight VERDICT of ≤64 characters, one line, no trailing period: a fact about THIS resume they can read at a glance. Not advice. Not a sentence with a recommendation. A verdict.
 
 GOOD \`text\`: \`Opening bullet leads with a duty, not an outcome\` · \`No quantified result in your last 2 roles\` · \`Strong, specific job titles, keep these\`
@@ -360,6 +362,8 @@ Produce exactly 7 prioritised, specific action steps to fix this resume, ranked 
 Each \`title\` ≤60 characters, imperative mood, e.g. "Rewrite your opening bullet", "Add quantified results to your last role". Each \`why\` ≤140 characters, naming the concrete payoff (more callbacks, passes ATS, recruiter stops scrolling).
 
 Grounded and specific: reference real elements of THIS resume. Same banned-generic rules and no-visa-talk rule as the base scan prompt.
+
+AUSTRALIAN RESUME CONVENTION (absolute): a referees section, or the line "References available on request", is standard and expected on an Australian resume. NEVER make a step about removing, deleting, or cutting the referees or references section, and never call it outdated, filler, or a waste of space. That advice is wrong for the Australian market.
 
 Sequenced so ${firstName || 'they'} knows exactly what to do first. Accountable tone: numbered, concrete, this-week-able.
 

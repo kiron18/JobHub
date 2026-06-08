@@ -22,6 +22,18 @@ export function hasActiveAccess(p: AccessProfileLike): boolean {
   return false;
 }
 
+// True when the user is a genuinely PAID/exempt customer (NOT the free 7-day
+// trial). Used to exempt paying customers from the trial-only daily cap so they
+// are never throttled. Trial-by-default users (free plan + trialEndDate) are NOT
+// paid, so the cap still applies to them.
+export function isPaidOrExempt(p: AccessProfileLike, email?: string | null): boolean {
+  if (email && EXEMPT_EMAILS.includes(email.toLowerCase())) return true;
+  if (p.dashboardAccess === true) return true;
+  const plan = p.plan ?? 'free';
+  const planStatus = p.planStatus ?? 'active';
+  return plan !== 'free' && (planStatus === 'active' || planStatus === 'trialing');
+}
+
 const FREE_LIMITS: Record<FeatureType, number> = {
   generation: 5,
   analysis: 5,

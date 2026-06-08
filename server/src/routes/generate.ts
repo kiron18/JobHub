@@ -11,10 +11,11 @@ import { buildPerCriterionAchievements } from '../services/generation';
 import { reviewDocument } from '../services/quality-gate';
 import { tagAIRewrites } from '../lib/provenanceTagging';
 import { enforceFirstPersonSummary, scrubAITells, enforceFirstPersonCoverLetter, scrubBannedPhrases } from '../lib/voiceEnforcer';
-import { computeYearsOfExperience } from '../lib/profileMath';
+import { resolveYearsOfExperience, extractContactEmail } from '../lib/profileMath';
 import { checkAtsKeywords } from '../lib/atsKeywords';
 import { collectSignals } from '../lib/qualitySignals';
 import { parseJD } from '../lib/jdParser';
+import { classifyExperiences } from '../services/experienceRelevance';
 import fs from 'fs';
 import path from 'path';
 
@@ -336,7 +337,8 @@ router.post('/:type', authenticate, async (req, res, next) => {
             if (parseSucceeded) {
                 stage2Raw = buildTemplateResume(profile, polish, {
                     candidateName: profile.name,
-                    yearsOfExperience: computeYearsOfExperience(profile.experience),
+                    yearsOfExperience: resolveYearsOfExperience([profile.professionalSummary, profile.resumeRawText], profile.experience),
+                    contactEmail: extractContactEmail(profile.resumeRawText),
                     achievementSources: selectedAchievements.map((a: any) => a?.description ?? ''),
                 });
                 console.log(`[Generation] Structured resume rendered via buildTemplateResume. ${stage2Raw.length} characters.`);
@@ -421,7 +423,7 @@ router.post('/:type', authenticate, async (req, res, next) => {
             if (docType === 'RESUME') {
                 finalContent = enforceFirstPersonSummary(finalContent, {
                     candidateName: profile?.name,
-                    yearsOfExperience: computeYearsOfExperience(profile?.experience),
+                    yearsOfExperience: resolveYearsOfExperience([profile?.professionalSummary, profile?.resumeRawText], profile?.experience),
                 });
             }
 
@@ -705,13 +707,26 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
             console.warn('[ResumeStructured] LLM output failed Zod validation — falling back to unpolished resume');
         }
 
+        // Curate which past roles appear on the resume for THIS job (irrelevant
+        // casual roles bloat Australian resumes). Non-fatal: on any failure the
+        // classifier returns null and buildTemplateResume keeps all experience.
+        const experienceFlags = await classifyExperiences(
+            jobDescription,
+            (profile?.experience ?? []).map((e: any) => ({
+                role: e.role, company: e.company, location: e.location,
+                startDate: e.startDate, endDate: e.endDate,
+            })),
+        );
+
         const finalContent = buildTemplateResume(profile, polish, {
             candidateName: profile?.name,
-            yearsOfExperience: computeYearsOfExperience(profile?.experience),
+            yearsOfExperience: resolveYearsOfExperience([profile?.professionalSummary, profile?.resumeRawText], profile?.experience),
+            contactEmail: extractContactEmail(profile?.resumeRawText),
             achievementSources: selectedAchievements
                 .map((a: any) => a?.description ?? '')
                 .filter((s: string) => s && s.length > 0),
             bridgedGaps,
+            experienceFlags,
         });
 
         // ── Persist document ────────────────────────────────────────────────
