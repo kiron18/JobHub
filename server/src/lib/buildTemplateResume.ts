@@ -17,6 +17,8 @@
  */
 
 import { enforceResumeQuality } from './resumeQualityEnforcers';
+import { displayName } from './nameUtils';
+import { selectFeaturedExperience, type ExperienceFlag } from './experienceSelection';
 import type { ResumeData } from './resumeData';
 import type { BridgedGap } from './bridgedGaps';
 
@@ -240,7 +242,7 @@ export function profileToMarkdown(d: ResumeData): string {
     push(d.professionalSummary.trim());
   }
 
-  if (d.experience.length) {
+  if (d.experience.length || d.additionalExperienceLine) {
     section('Work Experience');
     d.experience.forEach((exp, i) => {
       push(`### ${exp.role} | ${exp.company}`);
@@ -253,6 +255,10 @@ export function profileToMarkdown(d: ResumeData): string {
       }
       if (i < d.experience.length - 1) push('');
     });
+    if (d.additionalExperienceLine) {
+      if (d.experience.length) push('');
+      push(d.additionalExperienceLine);
+    }
   }
 
   if (d.education.length) {
@@ -317,6 +323,10 @@ export function profileToMarkdown(d: ResumeData): string {
 export interface BuildTemplateOptions {
   candidateName?: string | null;
   yearsOfExperience?: number | null;
+  /** Resume-derived contact email; overrides the account email on the profile. */
+  contactEmail?: string | null;
+  /** Per-experience relevance/locality flags; when present, curates the experience list. */
+  experienceFlags?: ExperienceFlag[] | null;
   achievementSources?: string[];
   bridgedGaps?: BridgedGap[];
 }
@@ -337,9 +347,35 @@ export function buildTemplateResume(
   // Step 1: Profile → ResumeData
   let data = profileToResumeData(profile);
 
+  // Contact email comes from the resume, not the account/login email. Only the
+  // account email is stored on profile.email (extraction skips the resume email to
+  // avoid clashing with the unique account address), so override it here.
+  if (options?.contactEmail) {
+    data = { ...data, email: options.contactEmail };
+  }
+
+  // Use the preferred display name (first + last) in the header so a long legal
+  // name like "Pawan Kanthaka Lokugan Hewage" reads as "Pawan Hewage".
+  const headerName = displayName(profile.name);
+  if (headerName) {
+    data = { ...data, name: headerName };
+  }
+
   // Step 2: Merge polish (if valid)
   if (polish) {
     data = applyPolish(data, polish);
+  }
+
+  // Step 2.5: Curate experience — feature relevant roles in full, fold irrelevant
+  // Australian-local roles into one line, drop irrelevant non-local roles. Runs after
+  // applyPolish so the bullet-to-experience index mapping is already resolved.
+  {
+    const selection = selectFeaturedExperience(data.experience, options?.experienceFlags ?? null);
+    data = {
+      ...data,
+      experience: selection.featured,
+      additionalExperienceLine: selection.additionalExperienceLine ?? undefined,
+    };
   }
 
   // Step 3: Quality enforcers
