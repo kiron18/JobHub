@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Send, Save, Eye, MousePointer } from 'lucide-react';
+import { Send, Save } from 'lucide-react';
 import api from '../lib/api';
 
 export default function AdminBroadcasts() {

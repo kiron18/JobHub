@@ -30,16 +30,16 @@ const AdminUserUsage = React.lazy(() =>
   import('./pages/AdminUserUsage').then(m => ({ default: m.AdminUserUsage }))
 );
 const AdminContacts = React.lazy(() =>
-  import('./pages/AdminContacts').then(m => ({ default: m.AdminContacts }))
+  import('./pages/AdminContacts').then(m => ({ default: m.default }))
 );
 const AdminContactDetail = React.lazy(() =>
-  import('./pages/AdminContactDetail').then(m => ({ default: m.AdminContactDetail }))
+  import('./pages/AdminContactDetail').then(m => ({ default: m.default }))
 );
 const AdminBroadcasts = React.lazy(() =>
-  import('./pages/AdminBroadcasts').then(m => ({ default: m.AdminBroadcasts }))
+  import('./pages/AdminBroadcasts').then(m => ({ default: m.default }))
 );
 const EmailAnalytics = React.lazy(() =>
-  import('./pages/EmailAnalytics').then(m => ({ default: m.EmailAnalytics }))
+  import('./pages/EmailAnalytics').then(m => ({ default: m.default }))
 );
 const MindsetPage = React.lazy(() =>
   import('./pages/MindsetPage').then(m => ({ default: m.MindsetPage }))
