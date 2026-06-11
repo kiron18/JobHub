@@ -28,6 +28,10 @@ import type { JobFeedItem } from '../components/jobs/JobCard';
 import type { BridgedGap } from '../lib/bridgedGaps';
 import { warm } from '../lib/theme/warmTokens';
 
+/** Detect whether a job description mentions selection criteria. */
+export const jdMentionsSelectionCriteria = (jd: string): boolean =>
+  /selection criteria|key selection criteria|statement of claims|address the following criteria|capability statement/i.test(jd || '');
+
 // Hidden on the dashboard per founder request (kept wired for easy restore).
 const SHOW_DASHBOARD_INSIGHTS = false;
 
@@ -414,9 +418,6 @@ function AnalysisHeroCard() {
     }, [appliedFeedItemId]);
 
     const [jd, setJd] = useState('');
-    const [scToggle, setScToggle] = useState(false);
-    const [scAutoFlipped, setScAutoFlipped] = useState(false);
-    const [scUserOverride, setScUserOverride] = useState(false);
     const [analysing, setAnalysing] = useState(false);
     const [result, setResult] = useState<DualSignalResult | null>(null);
     const [bridgedGaps, setBridgedGaps] = useState<BridgedGap[]>([]);
@@ -491,22 +492,6 @@ function AnalysisHeroCard() {
     const tooShort = trimmed.length > 0 && trimmed.length < 100;
     const canSubmit = trimmed.length >= 50 && !analysing;
 
-    // When a new analysis arrives, auto-flip SC toggle on (unless the user
-    // has manually overridden it). Surface a single dismissible notification.
-    useEffect(() => {
-        if (!result) return;
-        if (result.scDetected && !scToggle && !scUserOverride) {
-            setScToggle(true);
-            setScAutoFlipped(true);
-        }
-    }, [result, scToggle, scUserOverride]);
-
-    const handleScToggle = () => {
-        setScUserOverride(true);
-        setScAutoFlipped(false);
-        setScToggle((v) => !v);
-    };
-
     const handleAnalyse = async () => {
         if (!canSubmit) return;
         setAnalysing(true);
@@ -519,7 +504,7 @@ function AnalysisHeroCard() {
             navigate('/apply', {
                 state: {
                     jobDescription: trimmed,
-                    sc: scToggle,
+                    sc: jdMentionsSelectionCriteria(trimmed),
                     company: data?.extractedMetadata?.company,
                     role: data?.extractedMetadata?.role,
                     feedItemId: pickedFeedItem?.id,
@@ -547,7 +532,7 @@ function AnalysisHeroCard() {
         navigate('/apply', {
             state: {
                 jobDescription: trimmed,
-                sc: scToggle,
+                sc: jdMentionsSelectionCriteria(trimmed),
                 company: result?.extractedMetadata?.company,
                 role: result?.extractedMetadata?.role,
                 feedItemId: pickedFeedItem?.id,
@@ -563,9 +548,6 @@ function AnalysisHeroCard() {
         setBridgedGaps([]);
         setJd('');
         setPickedFeedItem(null);
-        setScToggle(false);
-        setScUserOverride(false);
-        setScAutoFlipped(false);
     };
 
     return (
@@ -715,54 +697,6 @@ function AnalysisHeroCard() {
                     flexWrap: 'wrap',
                 }}
             >
-                <label
-                    style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 10,
-                        fontSize: 13,
-                        color: warmT.textMuted,
-                        cursor: 'pointer',
-                        userSelect: 'none',
-                    }}
-                >
-                    <span
-                        role="switch"
-                        aria-checked={scToggle}
-                        onClick={handleScToggle}
-                        onKeyDown={(e) => {
-                            if (e.key === ' ' || e.key === 'Enter') {
-                                e.preventDefault();
-                                handleScToggle();
-                            }
-                        }}
-                        tabIndex={0}
-                        style={{
-                            width: 34,
-                            height: 20,
-                            borderRadius: 999,
-                            background: scToggle ? warmT.accentSecondary : warmT.cardBorder,
-                            position: 'relative',
-                            transition: 'background 200ms',
-                            cursor: 'pointer',
-                            flexShrink: 0,
-                        }}
-                    >
-                        <span
-                            style={{
-                                position: 'absolute',
-                                top: 2,
-                                left: scToggle ? 16 : 2,
-                                width: 16,
-                                height: 16,
-                                borderRadius: 999,
-                                background: scToggle ? warmT.btnText : warmT.textMuted,
-                                transition: 'left 200ms',
-                            }}
-                        />
-                    </span>
-                    Generate selection criteria responses
-                </label>
 
                 <button
                     data-process-step="analyse"
@@ -800,40 +734,6 @@ function AnalysisHeroCard() {
                 </button>
             </div>
             </>
-            )}
-
-            {/* SC auto-flip notification */}
-            {scAutoFlipped && (
-                <div style={{
-                    marginTop: 14,
-                    padding: '10px 14px',
-                    background: 'rgba(125,166,125,0.08)',
-                    border: '1px solid rgba(125,166,125,0.25)',
-                    borderRadius: 10,
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    justifyContent: 'space-between',
-                    gap: 12,
-                }}>
-                    <p style={{ margin: 0, fontSize: 12, color: warmT.text, lineHeight: 1.55 }}>
-                        This role lists selection criteria. We'll generate responses as a separate document.
-                    </p>
-                    <button
-                        onClick={() => setScAutoFlipped(false)}
-                        style={{
-                            background: 'transparent',
-                            border: 'none',
-                            color: warmT.textFaint,
-                            fontSize: 14,
-                            cursor: 'pointer',
-                            padding: 0,
-                            lineHeight: 1,
-                        }}
-                        aria-label="Dismiss notification"
-                    >
-                        ×
-                    </button>
-                </div>
             )}
 
             {/* Inline result */}

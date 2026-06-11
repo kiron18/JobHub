@@ -1,4 +1,5 @@
 import { callClaude } from './llm';
+import type { AtsStructure } from '../lib/atsStructure';
 
 // ── Exported types (frozen — do not change shape) ────────────────────────────
 
@@ -67,6 +68,16 @@ const DUTY_OPENINGS = [
   'duties included', 'tasked with', 'participated in',
 ];
 
+// Trim to a word boundary at a generous cap so a heading, title, or description
+// is never chopped off mid-word. Shared by the quick wins and the roadmap.
+function clampWords(s: string, max: number): string {
+  const t = (s || '').trim();
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max);
+  const lastSpace = cut.lastIndexOf(' ');
+  return (lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).trim();
+}
+
 export function splitBulletLines(text: string): string[] {
   const lines = text.split('\n');
   return lines
@@ -130,6 +141,8 @@ THE 6-SECOND RULE: Your reader has 6 seconds and no patience. Every \`text\` is 
 GOOD \`text\`: \`Opening bullet leads with a duty, not an outcome\` · \`No quantified result in your last 2 roles\` · \`Strong, specific job titles, keep these\`
 BAD \`text\`: \`You should add more quantifiable achievements to show impact\` (advice + too long) · \`Your resume could be improved by tailoring it\` (generic)
 
+VOICE — DIRECT AND PLAIN (absolute): State the flaw straight. No clever wordplay, no cute metaphors, no "quotable" one-liners, no fortune-cookie phrasing. You are a blunt expert telling a friend the truth, not a copywriter being clever. "Built in text boxes the ATS cannot read" is right. "Polished design the ATS silently drops" is WRONG — it is trying to sound clever instead of being clear. This applies to every string in every field.
+
 \`text\` vs \`evidence\`: \`text\` is the short verdict shown to the user. \`evidence\` is the real snippet from THIS resume that proves the verdict, a literal substring of the resume for any non-good item. The user never sees \`evidence\`; it exists so we can prove the verdict is real.
 
 BANNED generic outputs, never produce as \`text\`: 'add quantifiable achievements', 'use strong action verbs', 'tailor your resume to the role', 'improve formatting', or anything that would apply to every resume on earth. If your verdict would be true of most resumes, delete it.
@@ -140,7 +153,15 @@ Never exceed 64 characters in \`text\`. Count them.
 
 Items: produce 4 to 5. At least one \`severity:'good'\` that names a real strength from their resume. Order by severity.
 
-\`quickWins\`: produce exactly 2 immediate, actionable wins. Each has a short \`heading\` (≤40 chars, no period) and a \`description\` (a sentence that explains what to do and why, ≤120 chars, no period). One win is a quick CV fix they can do in 5 minutes (e.g., reword an opening bullet, add a quantified result they already have), the other is an Australian hiring strategy insight (e.g., tailoring for the STAR format Aussie gov roles expect).
+\`quickWins\`: produce exactly 2 immediate, actionable wins. Each has a short \`heading\` (a complete imperative phrase, ≤70 chars, no period, never cut off mid-word) and a \`description\` (one complete sentence that explains what to do and why, ≤180 chars, no period). One win is a quick CV fix they can do in 5 minutes (e.g., reword an opening bullet, add a quantified result they already have), the other is an Australian hiring strategy insight (e.g., tailoring for the STAR format Aussie gov roles expect). Write each heading and description as a finished thought — never trail off.
+
+── DOCUMENT STRUCTURE / ATS PARSING (this is high priority) ──
+The user input includes a "Document structure" note describing how this file parses for an applicant tracking system. When that note lists one or more parsing problems (text boxes, tables, images, layout that does not read top to bottom), this is the MOST important thing to tell them, stated plainly and without sugar-coating: an ATS cannot read this resume, so a human very likely never sees it, no matter how good the content is. You MUST:
+- make it the FIRST \`item\`, severity 'critical', \`text\` a direct verdict of the real problem (≤64 chars), e.g. "Built in text boxes the ATS cannot read", "Tables and graphics stop the ATS reading it", or "This format is likely auto-rejected by the ATS", with \`evidence\` quoting the structure note;
+- set \`firstImpression\` to a direct statement of this, e.g. "Likely filtered out before a human reads it" (a plain fact, NOT a clever quote);
+- write \`hiringManager.view\` as the plain mechanics: the ATS scores a resume it cannot parse near zero and filters it out, so the manager never receives it. Name the specific cause (text boxes / tables / images) and say the fix is a simple, consistent single-column format that both the software and a person can read top to bottom. Empathetic, never blame.
+- make ONE \`quickWin\` about rebuilding it as a clean single-column, ATS-safe layout (no text boxes, tables, or graphics), naming the payoff plainly: it actually reaches a human.
+When the structure note says the file parses cleanly, do NOT invent a format problem.
 
 BANNED from quickWins: never mention visa status, visa sponsorship, or visa anything. That belongs in the cover letter or interview stage, not the CV. If your win would involve visa advice, delete it and pick something else.
 
@@ -151,7 +172,7 @@ Beyond the verdicts, write a short narrative layer in ONE voice: a calm, experie
 
 \`reassurance\`: the relief line. Land hard that this is NOT about being unqualified; it is about never being taught the local rules. ≤200 characters, calm authority. e.g. "This isn't your fault. Your experience is real, it's just written in a dialect Australian employers don't read. That's fixable, and it's not a talent problem."
 
-\`hiringManager\`: put the reader on the OTHER side of the desk. Infer a plausible Australian hiring manager for this person's field and most likely city (read both from the resume). Give them a common Anglo-Australian first \`name\` (for example Sarah, Emma, James, Tom, Hannah, Lucy, Mark, Claire), never a name that signals a specific ethnic background, an \`archetype\` like "a hiring manager at a Melbourne fintech" or "a recruiter for NSW government roles", and a \`view\`: 1 to 2 sentences of exactly what that person thinks in the first few seconds reading THIS resume. Specific, insider, a little uncomfortable, never cruel. Reference something real from the resume.
+\`hiringManager\`: put the reader on the OTHER side of the desk. Infer a plausible Australian hiring manager for this person's field and most likely city (read both from the resume). Give them a common Anglo-Australian first \`name\`, and alternate gender evenly — pick a man's name as readily as a woman's, and do NOT default to a woman. Men's pool: James, Tom, Mark, Andrew, Daniel, Luke, Matt, Scott. Women's pool: Sarah, Emma, Hannah, Lucy, Claire, Kate, Rachel, Megan. Never use a name that signals a specific ethnic background, an \`archetype\` like "a hiring manager at a Melbourne fintech" or "a recruiter for NSW government roles", and a \`view\`: 1 to 2 sentences of exactly what that person thinks in the first few seconds reading THIS resume. Specific, insider, a little uncomfortable, never cruel. Reference something real from the resume.
 
 \`culturalTranslations\`: 1 to 2 entries, the most "insider" part. Take a REAL phrase the candidate actually wrote (\`wrote\`: a literal or near-literal snippet from the resume, especially duty-openings like "responsible for"), explain how an Australian hiring manager actually hears it (\`reads\`: the honest, unflattering subtext), then the reframe that lands here (\`instead\`). Make it feel like access nobody ever gave them. If the resume genuinely contains no such phrase, return an empty array.
 
@@ -177,11 +198,18 @@ Return ONLY the JSON object. No markdown, no prose:
 
 // The only part that changes between scans — sent as the user message so the
 // instruction prefix above stays cacheable.
-function buildScanInput(resumeText: string, signals: DeterministicSignals): string {
+function buildScanInput(resumeText: string, signals: DeterministicSignals, ats?: AtsStructure): string {
+  const structureNote = ats && ats.risk
+    ? ats.reasons.map(r => `- ${r}`).join('\n')
+    : '- Parses cleanly: standard single-column layout, no text boxes, tables, or graphics blocking the text.';
+
   return `Computed signals from this resume (for context, align your commentary with these facts):
 - Bullet lines found: ${signals.bulletCount}
 - Quantification ratio (fraction of bullets with digits/%/$/quant-words): ${signals.quantificationRatio.toFixed(2)}
 - Duty-like openings (bullets starting with "responsible for", "worked on", etc.): ${signals.dutyOpeningCount}
+
+Document structure (how this file parses for an ATS):
+${structureNote}
 
 Resume text:
 ${resumeText}`;
@@ -199,9 +227,9 @@ export function matchPresentKeywords(resumeText: string, expectedKeywords: strin
   });
 }
 
-async function callLlmForScan(resumeText: string, signals: DeterministicSignals): Promise<LlmResponse> {
+async function callLlmForScan(resumeText: string, signals: DeterministicSignals, ats?: AtsStructure): Promise<LlmResponse> {
   const instructions = buildScanInstructions();
-  const input = buildScanInput(resumeText, signals);
+  const input = buildScanInput(resumeText, signals, ats);
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -307,10 +335,10 @@ function assembleResult(
   const order = { critical: 0, warning: 1, good: 2 };
   items.sort((a, b) => order[a.severity] - order[b.severity]);
 
-  // Ensure exactly 2 quick wins, cap heading/description length
+  // Ensure exactly 2 quick wins. Generous word-safe caps (see clampWords).
   const safeWins = (quickWins || []).slice(0, 2).map(w => ({
-    heading: w.heading.substring(0, 40),
-    description: w.description.substring(0, 120),
+    heading: clampWords(w.heading, 80),
+    description: clampWords(w.description, 200),
   }));
   while (safeWins.length < 2) {
     safeWins.push({
@@ -359,7 +387,7 @@ PUNCTUATION RULE (absolute): NEVER use an em dash (—) or en dash (–) anywher
 
 Produce exactly 7 prioritised, specific action steps to fix this resume, ranked 1 (highest leverage) to 7.
 
-Each \`title\` ≤60 characters, imperative mood, e.g. "Rewrite your opening bullet", "Add quantified results to your last role". Each \`why\` ≤140 characters, naming the concrete payoff (more callbacks, passes ATS, recruiter stops scrolling).
+Each \`title\` is a COMPLETE imperative phrase, ≤80 characters, never cut off mid-word, e.g. "Move your Professional Profile to the top", "Add a quantified result to your last role". Each \`why\` is one complete sentence ≤180 characters naming the concrete payoff (more callbacks, passes ATS, recruiter stops scrolling). Write both as finished thoughts — never trail off.
 
 Grounded and specific: reference real elements of THIS resume. Same banned-generic rules and no-visa-talk rule as the base scan prompt.
 
@@ -393,8 +421,8 @@ export async function runRoadmap(resumeText: string, firstName: string): Promise
       }
       return parsed.roadmap.slice(0, 7).map((s: any) => ({
         rank: s.rank,
-        title: s.title?.substring(0, 60) ?? '',
-        why: s.why?.substring(0, 140) ?? '',
+        title: clampWords(s.title ?? '', 90),
+        why: clampWords(s.why ?? '', 200),
       }));
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
@@ -407,9 +435,9 @@ export async function runRoadmap(resumeText: string, firstName: string): Promise
 
 // ── Main export ──────────────────────────────────────────────────────────────
 
-export async function runCvGapScan(resumeText: string): Promise<CvGapResult> {
+export async function runCvGapScan(resumeText: string, ats?: AtsStructure): Promise<CvGapResult> {
   const signals = computeSignals(resumeText);
-  const llm = await callLlmForScan(resumeText, signals);
+  const llm = await callLlmForScan(resumeText, signals, ats);
   const presentKeywords = matchPresentKeywords(resumeText, llm.expectedKeywords ?? []);
   const score = computeScore(signals, llm.expectedKeywords.length, presentKeywords.length);
   return assembleResult(

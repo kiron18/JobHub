@@ -19,7 +19,8 @@ export async function generateBlueprint(
     profile: any,
     selectedAchievements: any[],
     docType: 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE',
-    identityCard?: { label: string; summary: string; tone: string; keyStrengths: string[] } | null
+    identityCard?: { label: string; summary: string; tone: string; keyStrengths: string[] } | null,
+    achievementsUserSelected?: boolean,
 ): Promise<BlueprintResult> {
     // Check cache — Claude runs once per job, not once per document type
     const cached = getCachedBlueprint(jobApplicationId);
@@ -29,7 +30,7 @@ export async function generateBlueprint(
     }
 
     console.log(`[Strategy] Cache miss — calling Claude for jobApplicationId: ${jobApplicationId}`);
-    const prompt = STRATEGY_BLUEPRINT_PROMPT(jd, profile, selectedAchievements, docType, identityCard);
+    const prompt = STRATEGY_BLUEPRINT_PROMPT(jd, profile, selectedAchievements, docType, identityCard, achievementsUserSelected);
 
     const { content, usage } = await callClaude(prompt, true);
 

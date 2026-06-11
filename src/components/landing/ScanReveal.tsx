@@ -281,10 +281,12 @@ export function ScanReveal({
                           <div style={{ borderLeft: `2px solid #C2603F`, paddingLeft: 14 }}>
                             <span style={{ ...eyebrowStyle, color: '#C2603F', fontSize: 10.5 }}>They hear</span>
                             <p style={{ ...bodyStyle, fontSize: 15, fontStyle: 'italic', marginTop: 4 }}>{t.reads}</p>
+                            <p style={{ ...bodyStyle, fontSize: 12.5, color: colors.textMuted, marginTop: 6 }}>This is a weak signal. It says nothing about your contribution or capacity.</p>
                           </div>
                           <div style={{ borderLeft: `2px solid ${colors.success}`, paddingLeft: 14 }}>
                             <span style={{ ...eyebrowStyle, color: colors.success, fontSize: 10.5 }}>Write this instead</span>
                             <p style={{ ...bodyStyle, fontSize: 15, color: colors.textPrimary, marginTop: 4 }}>{t.instead}</p>
+                            <p style={{ ...bodyStyle, fontSize: 12.5, color: colors.textMuted, marginTop: 6 }}>This is how a candidate who gets hired speaks.</p>
                           </div>
                         </div>
                       ))}

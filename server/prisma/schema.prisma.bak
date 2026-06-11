@@ -1,0 +1,405 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model CandidateProfile {
+  id                           String            @id @default(uuid())
+  userId                       String            @unique
+  name                         String?
+  email                        String?           @unique
+  phone                        String?
+  linkedin                     String?
+  location                     String?
+  professionalSummary          String?
+  skills                       String?
+  coachingAlerts               Json?
+  createdAt                    DateTime          @default(now())
+  updatedAt                    DateTime          @updatedAt
+  applicationsCount            String?
+  channels                     Json?
+  coverLetterRawText           String?
+  coverLetterRawText2          String?
+  hasCompletedOnboarding       Boolean           @default(false)
+  industry                     String?
+  perceivedBlocker             String?
+  responsePattern              String?
+  resumeRawText                String?
+  searchDuration               String?
+  seniority                    String?
+  targetCity                   String?
+  targetRole                   String?
+  marketingConsent             Boolean           @default(false)
+  marketingEmail               String?
+  marketingEmailSent           Boolean           @default(false)
+  visaStatus                   String?
+  dashboardAccess              Boolean           @default(false)
+  dashboardAccessRequested     Boolean           @default(false)
+  skoolJoined                  Boolean           @default(false)
+  skoolCommunityEmail          String?
+  stripeCustomerId       String?
+  stripeSubscriptionId   String?
+  subscriptionStatus     String?
+  plan                   String    @default("free")
+  planStatus             String    @default("active")
+  trialEndDate           DateTime?
+  accessExpiresAt        DateTime?
+  freeGenerationsUsed    Int       @default(0)
+  freeAnalysesUsed       Int       @default(0)
+  freeJobSearchesUsed    Int       @default(0)
+  freeMatchScoresUsed    Int       @default(0)
+  achievementCountAtDerivation Int?
+  identityCards                Json?
+  identityCardsUpdatedAt       DateTime?
+  profileAdvisorCallsToday     Int               @default(0)
+  profileAdvisorCallsDate      DateTime?
+  headshotUrl                  String?
+  headshotGenerationsToday     Int               @default(0)
+  headshotGenerationsDate      DateTime?
+  resumeFilename               String?
+  coverLetterFilename          String?
+  coverLetterFilename2         String?
+  documentsUpdatedAt           DateTime?
+  positioningStatement         Json?
+  analysisCache                Json?
+  achievements                 Achievement[]
+  certifications               Certification[]
+  diagnosticReport             DiagnosticReport?
+  education                    Education[]
+  experience                   Experience[]
+  jobApplications              JobApplication[]
+  jobFeedItems                 JobFeedItem[]
+  languages                    Language[]
+  resumeVersions               ResumeVersion[]
+  volunteering                 Volunteering[]
+}
+
+model ResumeVersion {
+  id                 String           @id @default(cuid())
+  userId             String
+  candidateProfileId String
+  label              String
+  rawText            String?
+  createdAt          DateTime         @default(now())
+  candidateProfile   CandidateProfile @relation(fields: [candidateProfileId], references: [id], onDelete: Cascade)
+}
+
+model Experience {
+  id                 String           @id @default(uuid())
+  candidateProfileId String
+  company            String
+  role               String
+  startDate          String
+  endDate            String?
+  isCurrent          Boolean          @default(false)
+  type               String           @default("work")
+  description        String?
+  coachingTips       String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  achievements       Achievement[]
+  candidateProfile   CandidateProfile @relation(fields: [candidateProfileId], references: [id], onDelete: Cascade)
+}
+
+model Education {
+  id                 String           @id @default(uuid())
+  candidateProfileId String
+  institution        String
+  degree             String
+  field              String?
+  startDate          String?
+  endDate            String?
+  year               String?
+  location           String?
+  coachingTips       String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  candidateProfile   CandidateProfile @relation(fields: [candidateProfileId], references: [id], onDelete: Cascade)
+}
+
+model Volunteering {
+  id                 String           @id @default(uuid())
+  candidateProfileId String
+  organization       String
+  role               String
+  description        String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  candidateProfile   CandidateProfile @relation(fields: [candidateProfileId], references: [id], onDelete: Cascade)
+}
+
+model Certification {
+  id                 String           @id @default(uuid())
+  candidateProfileId String
+  name               String
+  issuingBody        String
+  year               String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  candidateProfile   CandidateProfile @relation(fields: [candidateProfileId], references: [id], onDelete: Cascade)
+}
+
+model Language {
+  id                 String           @id @default(uuid())
+  candidateProfileId String
+  name               String
+  proficiency        String
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  candidateProfile   CandidateProfile @relation(fields: [candidateProfileId], references: [id], onDelete: Cascade)
+}
+
+model Achievement {
+  id                 String           @id @default(uuid())
+  userId             String
+  candidateProfileId String
+  experienceId       String?
+  title              String
+  description        String
+  metric             String?
+  metricType         String?
+  industry           String?
+  skills             String?
+  tags               String?
+  isStaged           Boolean          @default(false)
+  coachingTips       String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  candidateProfile   CandidateProfile @relation(fields: [candidateProfileId], references: [id], onDelete: Cascade)
+  experience         Experience?      @relation(fields: [experienceId], references: [id])
+}
+
+model JobApplication {
+  id                  String            @id @default(uuid())
+  userId              String
+  candidateProfileId  String
+  title               String
+  company             String
+  description         String
+  sourceUrl           String?
+  dateApplied         DateTime?
+  status              ApplicationStatus @default(SAVED)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  notes               String?
+  priority            JobPriority?
+  closingDate         DateTime?
+  blueprintJson       Json?
+  australianFlags     Json?
+  dimensions          Json?
+  matchedIdentityCard String?
+  overallGrade        String?
+  followUpSentAt      DateTime?
+  companyIntel        Json?
+  documents           Document[]
+  candidateProfile    CandidateProfile  @relation(fields: [candidateProfileId], references: [id])
+
+  @@index([userId])
+  @@index([candidateProfileId])
+}
+
+model JobFeedItem {
+  id                   String           @id @default(uuid())
+  userId               String
+  feedDate             DateTime         @db.Date
+  title                String
+  company              String
+  location             String?
+  salary               String?
+  description          String
+  bullets              Json?
+  sourceUrl            String
+  sourcePlatform       String
+  postedAt             DateTime?
+  suggestedAddressee   String?
+  addresseeTitle       String?
+  addresseeConfidence  String?
+  addresseeSource      String?
+  matchScore           Int?
+  matchDetails         Json?
+  isRead               Boolean          @default(false)
+  isSaved              Boolean          @default(false)
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  candidateProfile     CandidateProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([userId, feedDate])
+}
+
+model SeekJobCache {
+  id          String   @id @default(cuid())
+  queryHash   String
+  queryMeta   Json
+  feedDate    String
+  results     Json
+  resultCount Int
+  fetchedAt   DateTime @default(now())
+
+  @@unique([queryHash, feedDate])
+  @@index([feedDate])
+}
+
+model Document {
+  id               String             @id @default(uuid())
+  userId           String
+  title            String?
+  jobApplicationId String?
+  type             DocumentType
+  content          String
+  templateConfig   Json?
+  qualitySignals   Json?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  jobApplication   JobApplication?    @relation(fields: [jobApplicationId], references: [id])
+  feedback         DocumentFeedback[]
+
+  @@index([userId])
+  @@index([jobApplicationId])
+}
+
+model DocumentFeedback {
+  id           String       @id @default(uuid())
+  documentId   String
+  userId       String
+  rating       Int
+  documentType DocumentType
+  weakSection  String?
+  freeText     String?
+  createdAt    DateTime     @default(now())
+  document     Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+}
+
+model DiagnosticReport {
+  id               String                     @id @default(uuid())
+  userId           String                     @unique
+  status           DiagnosticStatus           @default(PROCESSING)
+  intakeAnswers    Json
+  reportMarkdown   String?
+  overallRating    Int?
+  ratingChips      String[]
+  ratingComment    String?
+  ratedAt          DateTime?
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
+  candidateProfile CandidateProfile           @relation(fields: [userId], references: [userId])
+  feedback         DiagnosticReportFeedback[]
+}
+
+model DiagnosticReportFeedback {
+  id             String           @id @default(uuid())
+  reportId       String
+  sectionKey     String
+  relevanceScore String
+  createdAt      DateTime         @default(now())
+  report         DiagnosticReport @relation(fields: [reportId], references: [id])
+}
+
+enum ApplicationStatus {
+  SAVED
+  APPLIED
+  INTERVIEW
+  REJECTED
+  OFFER
+}
+
+enum DocumentType {
+  RESUME
+  COVER_LETTER
+  STAR_RESPONSE
+  BASELINE_RESUME
+}
+
+enum JobPriority {
+  DREAM
+  TARGET
+  BACKUP
+}
+
+enum DiagnosticStatus {
+  PROCESSING
+  COMPLETE
+  FAILED
+}
+
+enum SponsorConfidence {
+  high
+  medium
+  low
+}
+
+model FridayBrief {
+  id          String   @id @default(uuid())
+  windowStart DateTime @unique
+  windowEnd   DateTime
+  script      String
+  reportCount Int
+  generatedAt DateTime @default(now())
+}
+
+model Sponsor {
+  id               String             @id @default(uuid())
+  cleanName        String             @unique
+  rawName          String
+  website          String?
+  careersUrl       String?
+  careersSearchUrl String?
+  industry         String
+  locations        String[]
+  hiringProfile    String
+  confidence       SponsorConfidence
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  @@index([industry])
+  @@index([confidence])
+  @@index([cleanName])
+}
+
+model CvScanLead {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  firstName    String?
+  fullName     String?
+  inferredRole String?
+  score        Int?
+  createdAt    DateTime @default(now())
+}
+
+model SponsorLead {
+  id         String   @id @default(uuid())
+  email      String   @unique
+  createdAt  DateTime @default(now())
+  unlockedAt DateTime @default(now())
+}
+
+model SponsorJob {
+  id                String   @id @default(uuid())
+  sourceUrl         String   @unique
+  title             String
+  company           String
+  normalizedCompany String
+  location          String?
+  salary            String?
+  description       String
+  sourcePlatform    String
+  postedAt          DateTime?
+  confidence        String
+  employerMatched   Boolean
+  sponsorCleanName  String?
+  positivePhraseHit Boolean
+  negationPhraseHit Boolean
+  matchedPhrases    Json?
+  scanQuery         String
+  firstSeenAt       DateTime @default(now())
+  lastSeenAt        DateTime @updatedAt
+  feedDate          String
+
+  @@index([confidence])
+  @@index([normalizedCompany])
+  @@index([feedDate])
+}

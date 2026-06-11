@@ -40,6 +40,9 @@ export const JobFeedPage: React.FC = () => {
       return data;
     },
     staleTime: 5 * 60 * 1000,
+    // While the server is still generating bullets for the first page, poll every
+    // 4s so the skeleton rows fill in. Stops automatically once bullets land.
+    refetchInterval: (query) => ((query.state.data as any)?.bulletsPending ? 4000 : false),
   });
 
   // Sync query data into local state, runs on both fresh fetch AND cache hit on remount.

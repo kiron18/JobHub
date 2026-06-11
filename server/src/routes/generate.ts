@@ -15,7 +15,6 @@ import { resolveYearsOfExperience, extractContactEmail } from '../lib/profileMat
 import { checkAtsKeywords } from '../lib/atsKeywords';
 import { collectSignals } from '../lib/qualitySignals';
 import { parseJD } from '../lib/jdParser';
-import { classifyExperiences } from '../services/experienceRelevance';
 import fs from 'fs';
 import path from 'path';
 
@@ -27,6 +26,10 @@ const QUALITY_GATE_ENABLED = process.env.QUALITY_GATE_ENABLED !== 'false';
 // Llama pricing (OpenRouter)
 const LLAMA_INPUT_COST_PER_M = 0.12;
 const LLAMA_OUTPUT_COST_PER_M = 0.30;
+
+// Claude pricing (OpenRouter) — single-pass resume + cover letter generation
+const CLAUDE_INPUT_COST_PER_M = 3.00;
+const CLAUDE_OUTPUT_COST_PER_M = 15.00;
 
 async function getRuleBase(type: string) {
     try {
@@ -103,7 +106,7 @@ router.post('/:type', authenticate, async (req, res, next) => {
     // registered AFTER this wildcard, so Express matches them here first. Without
     // this passthrough they get treated as an unknown type and default to RESUME —
     // which is why cover letters were rendering as resumes. Hand them off.
-    if (type === 'resume-structured' || type === 'cover-letter-structured') return next();
+    if (type === 'resume-structured' || type === 'cover-letter-structured' || type === 'selection-criteria-structured') return next();
     const userId = (req as any).user.id as string;
     const {
         jobDescription,
@@ -194,7 +197,8 @@ router.post('/:type', authenticate, async (req, res, next) => {
                 profile,
                 selectedAchievements,
                 docType,
-                resolvedIdentityCard
+                resolvedIdentityCard,
+                Array.isArray(selectedAchievementIds) && selectedAchievementIds.length > 0,
             );
             stage1Info = { cached: blueprintResult.cached, tokens: blueprintResult.tokens };
             console.log(`[Generation] Stage 1 complete. Cached: ${blueprintResult.cached}`);
@@ -565,7 +569,6 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
         analysisContext,
         jobApplicationId,
         companyResearch,  // { salutation, highlights, companySize, hiringManager }
-        bridgedGaps: bridgedGapsRaw,
     } = req.body;
 
     if (!jobDescription) {
@@ -599,9 +602,6 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
             return res.status(404).json({ error: 'Profile not found' });
         }
 
-        const { normalizeBridgedGaps } = await import('../lib/bridgedGaps');
-        const bridgedGaps = normalizeBridgedGaps(bridgedGapsRaw);
-
         const { buildAchievementContext } = await import('../services/generation');
         const selectedAchievements = await buildAchievementContext(
             userId,
@@ -610,95 +610,48 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
         );
 
         const sanitizedJobAppId = jobApplicationId === 'temp-id' ? null : (jobApplicationId || null);
-        const docType = 'RESUME';
-
-        // ── STAGE 1: Strategic Blueprint (Claude) ──────────────────────────
-        let blueprintResult;
-        let stage1Info: { cached: boolean; tokens?: { input: number; output: number; cost_usd: number } } = { cached: false };
-
-        const { buildSearchContextBlock } = await import('../services/prompts');
-        const searchContext = buildSearchContextBlock(profile);
-
-        // Pre-populate DB blueprint cache
-        if (sanitizedJobAppId) {
-            const jobApp = await prisma.jobApplication.findUnique({
-                where: { id: sanitizedJobAppId },
-                select: { blueprintJson: true },
-            });
-            if (jobApp?.blueprintJson) {
-                setCachedBlueprint(sanitizedJobAppId, jobApp.blueprintJson as any);
-                console.log(`[ResumeStructured] DB blueprint cache hit for ${sanitizedJobAppId}`);
-            }
-        }
-
-        const matchedCardLabel: string | null = analysisContext?.matchedIdentityCard ?? null;
-        let resolvedIdentityCard: any = null;
-        if (matchedCardLabel && Array.isArray((profile as any)?.identityCards)) {
-            resolvedIdentityCard = (profile as any).identityCards.find(
-                (c: any) => c.label === matchedCardLabel
-            ) ?? null;
-        }
-
-        const cacheKey = sanitizedJobAppId || `${userId}-${Date.now()}`;
-        try {
-            blueprintResult = await generateBlueprint(
-                cacheKey,
-                searchContext + jobDescription,
-                profile,
-                selectedAchievements,
-                docType,
-                resolvedIdentityCard
-            );
-            stage1Info = { cached: blueprintResult.cached, tokens: blueprintResult.tokens };
-            console.log(`[ResumeStructured] Stage 1 complete. Cached: ${blueprintResult.cached}`);
-
-            if (!blueprintResult.cached && sanitizedJobAppId) {
-                prisma.jobApplication.update({
-                    where: { id: sanitizedJobAppId },
-                    data: { blueprintJson: blueprintResult.blueprint as any },
-                }).catch(err => console.error('[ResumeStructured] Failed to persist blueprint to DB:', err));
-            }
-        } catch (blueprintError: any) {
-            console.error('[ResumeStructured] Stage 1 failed — aborting:', blueprintError.message);
-            return res.status(500).json({ error: 'Strategy generation failed' });
-        }
-
-        // ── STAGE 2: Structured JSON generation (Llama) ────────────────────
-        // Load the structured prompt dynamically so it can be imported alongside
-        // the existing prompts without breaking the index re-export.
+        // ── Single-pass generation (one capable model; no separate strategist) ──
         const { RESUME_STRUCTURED_PROMPT } = await import('../services/prompts/resumeStructuredPrompt');
-
-        // Override employerInsight if company research was provided
-        if (companyResearch?.highlights?.length > 0) {
-            blueprintResult.blueprint.employerInsight =
-                companyResearch.highlights.join(' — ');
-        }
-
         const { parseJD } = await import('../lib/jdParser');
         const parsedJD = parseJD(jobDescription);
+
+        // Minimal blueprint stub — generation no longer depends on a separate
+        // strategist stage. Only employerInsight is carried through from research.
+        const blueprint = {
+            positioningStatement: '',
+            proofPoints: [],
+            messagingAngles: [],
+            pitfallFlags: [],
+            toneBlueprint: '',
+            structureNotes: '',
+            employerInsight: companyResearch?.highlights?.length
+                ? companyResearch.highlights.join(' - ')
+                : '',
+            sector: 'GENERAL' as const,
+            openingHook: '',
+        };
 
         const prompt = RESUME_STRUCTURED_PROMPT(
             jobDescription,
             profile,
             selectedAchievements,
-            blueprintResult.blueprint,
+            blueprint,
             analysisContext,
             companyResearch,
             parsedJD.employerQuestions.length > 0 ? parsedJD.employerQuestions : undefined,
-            bridgedGaps,
+            undefined, // bridged gaps removed — never inject invented capabilities
+            undefined, // years are not injected — enforced post-curation below
         );
 
-        console.log('[ResumeStructured] Stage 2: calling Llama for structured resume...');
-        const stage2Raw = await callLLMWithRetry(prompt, false);
-        console.log(`[ResumeStructured] Stage 2 complete. ${stage2Raw.length} characters.`);
+        console.log('[ResumeStructured] Generating resume (single Claude pass)...');
+        const { content: stage2Raw, usage } = await callClaude(prompt, true);
+        console.log(`[ResumeStructured] Generation complete. ${stage2Raw.length} characters.`);
 
-        const stage2InputTokens = Math.round(prompt.length / 4);
-        const stage2OutputTokens = Math.round(stage2Raw.length / 4);
         const stage2Cost =
-            (stage2InputTokens / 1_000_000) * LLAMA_INPUT_COST_PER_M +
-            (stage2OutputTokens / 1_000_000) * LLAMA_OUTPUT_COST_PER_M;
+            (usage.promptTokens / 1_000_000) * CLAUDE_INPUT_COST_PER_M +
+            (usage.completionTokens / 1_000_000) * CLAUDE_OUTPUT_COST_PER_M;
 
-        // ── STAGE 3: Validate + build template resume ──────────────────────
+        // ── Validate + build template resume (renderer unchanged) ──────────
         const { parsePolishJson } = await import('../lib/validatePolish');
         const { buildTemplateResume } = await import('../lib/buildTemplateResume');
 
@@ -707,26 +660,36 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
             console.warn('[ResumeStructured] LLM output failed Zod validation — falling back to unpolished resume');
         }
 
-        // Curate which past roles appear on the resume for THIS job (irrelevant
-        // casual roles bloat Australian resumes). Non-fatal: on any failure the
-        // classifier returns null and buildTemplateResume keeps all experience.
-        const experienceFlags = await classifyExperiences(
-            jobDescription,
-            (profile?.experience ?? []).map((e: any) => ({
-                role: e.role, company: e.company, location: e.location,
-                startDate: e.startDate, endDate: e.endDate,
-            })),
+        // Curation flags from the single pass: feature substantive roles, fold or
+        // drop casual ones. Years are then summed over the FEATURED roles only, so
+        // casual jobs never inflate the figure; the summary's years number is
+        // corrected to this figure by the first-person enforcer in buildTemplateResume.
+        const allExperience = (profile?.experience ?? []) as any[];
+        const rawFlags = (polish?.experience ?? []).map((e: any, i: number) => ({
+            index: i,
+            relevant: e?.casual !== true,          // keep unless explicitly a casual job
+            australianLocal: e?.australianLocal === true,
+        }));
+        const alignedFlags = rawFlags.length === allExperience.length ? rawFlags : null;
+        const featured = alignedFlags
+            ? allExperience.filter((_, i) => alignedFlags[i].relevant)
+            : allExperience;
+        // Hard guard: curation must never empty the work history. If every role was
+        // marked casual, ignore the flags and show them all.
+        const experienceFlags = (alignedFlags && featured.length > 0) ? alignedFlags : null;
+        const resumeYears = resolveYearsOfExperience(
+            [profile?.professionalSummary, profile?.resumeRawText],
+            featured.length > 0 ? featured : allExperience,
         );
 
         const finalContent = buildTemplateResume(profile, polish, {
             candidateName: profile?.name,
-            yearsOfExperience: resolveYearsOfExperience([profile?.professionalSummary, profile?.resumeRawText], profile?.experience),
+            yearsOfExperience: resumeYears,
             contactEmail: extractContactEmail(profile?.resumeRawText),
             achievementSources: selectedAchievements
                 .map((a: any) => a?.description ?? '')
                 .filter((s: string) => s && s.length > 0),
-            bridgedGaps,
-            experienceFlags,
+            experienceFlags: experienceFlags ?? undefined,
         });
 
         // ── Persist document ────────────────────────────────────────────────
@@ -740,14 +703,10 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
             },
         });
 
-        const total_cost_usd =
-            (stage1Info.tokens?.cost_usd ?? 0) + stage2Cost;
-
         const costBreakdown = {
-            stage1_cached: stage1Info.cached,
-            stage1_tokens: stage1Info.tokens,
-            stage2_tokens: { input: stage2InputTokens, output: stage2OutputTokens, cost_usd: stage2Cost },
-            total_cost_usd,
+            stage1_cached: false,
+            stage2_tokens: { input: usage.promptTokens, output: usage.completionTokens, cost_usd: stage2Cost },
+            total_cost_usd: stage2Cost,
         };
         console.log('[ResumeStructured] Cost breakdown:', JSON.stringify(costBreakdown));
 
@@ -755,7 +714,7 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
             content: finalContent,
             id: doc.id,
             costBreakdown,
-            blueprint: blueprintResult.blueprint ?? null,
+            blueprint: null,
             polishAccepted: polish !== null,
         });
     } catch (error) {
@@ -777,7 +736,6 @@ router.post('/cover-letter-structured', authenticate, async (req: any, res: any)
         jobApplicationId,
         companyResearch,
         companyIntel: companyIntelFromBody,
-        bridgedGaps: bridgedGapsRaw,
     } = req.body;
 
     if (!jobDescription) {
@@ -815,9 +773,6 @@ router.post('/cover-letter-structured', authenticate, async (req: any, res: any)
             return res.status(404).json({ error: 'Profile not found' });
         }
 
-        const { normalizeBridgedGaps } = await import('../lib/bridgedGaps');
-        const bridgedGaps = normalizeBridgedGaps(bridgedGapsRaw);
-
         const { buildAchievementContext } = await import('../services/generation');
         const selectedAchievements = await buildAchievementContext(
             userId,
@@ -842,90 +797,45 @@ router.post('/cover-letter-structured', authenticate, async (req: any, res: any)
             }
         }
 
-        // ── STAGE 1: Strategic Blueprint (Claude) ──────────────────────────
-        let blueprintResult;
-        let stage1Info: { cached: boolean; tokens?: { input: number; output: number; cost_usd: number } } = { cached: false };
-
-        const { generateBlueprint } = await import('../services/strategy');
-        const { buildSearchContextBlock } = await import('../services/prompts');
-        const searchContext = buildSearchContextBlock(profile);
-
-        // Pre-populate DB blueprint cache
-        if (sanitizedJobAppId) {
-            const jobApp = await prisma.jobApplication.findUnique({
-                where: { id: sanitizedJobAppId },
-                select: { blueprintJson: true },
-            });
-            if (jobApp?.blueprintJson) {
-                setCachedBlueprint(sanitizedJobAppId, jobApp.blueprintJson as any);
-                console.log(`[CoverLetterStructured] DB blueprint cache hit for ${sanitizedJobAppId}`);
-            }
-        }
-
-        const matchedCardLabel: string | null = analysisContext?.matchedIdentityCard ?? null;
-        let resolvedIdentityCard: any = null;
-        if (matchedCardLabel && Array.isArray((profile as any)?.identityCards)) {
-            resolvedIdentityCard = (profile as any).identityCards.find(
-                (c: any) => c.label === matchedCardLabel
-            ) ?? null;
-        }
-
-        const cacheKey = sanitizedJobAppId || `${userId}-${Date.now()}`;
-        try {
-            blueprintResult = await generateBlueprint(
-                cacheKey,
-                searchContext + jobDescription,
-                profile,
-                selectedAchievements,
-                'COVER_LETTER',
-                resolvedIdentityCard
-            );
-            stage1Info = { cached: blueprintResult.cached, tokens: blueprintResult.tokens };
-            console.log(`[CoverLetterStructured] Stage 1 complete. Cached: ${blueprintResult.cached}`);
-
-            if (!blueprintResult.cached && sanitizedJobAppId) {
-                prisma.jobApplication.update({
-                    where: { id: sanitizedJobAppId },
-                    data: { blueprintJson: blueprintResult.blueprint as any },
-                }).catch(err => console.error('[CoverLetterStructured] Failed to persist blueprint to DB:', err));
-            }
-        } catch (blueprintError: any) {
-            console.error('[CoverLetterStructured] Stage 1 failed — aborting:', blueprintError.message);
-            return res.status(500).json({ error: 'Strategy generation failed' });
-        }
-
-        // ── STAGE 2: Structured JSON generation (Llama) ────────────────────
+        // ── Single-pass generation (one capable model; no separate strategist) ──
         const { COVER_LETTER_SLOTS_PROMPT } = await import('../services/prompts/coverLetterSlotsPrompt');
-
-        // Override employerInsight if company research was provided
-        if (companyResearch?.highlights?.length > 0) {
-            blueprintResult.blueprint.employerInsight =
-                companyResearch.highlights.join(' — ');
-        }
-
         const { scrubInjection } = await import('../services/scrubInjection');
         const { scrubbed: cleanJd } = scrubInjection(jobDescription);
+
+        // Minimal blueprint stub — generation no longer depends on a separate
+        // strategist stage. Only employerInsight is carried through from research.
+        const blueprint = {
+            positioningStatement: '',
+            proofPoints: [],
+            messagingAngles: [],
+            pitfallFlags: [],
+            toneBlueprint: '',
+            structureNotes: '',
+            employerInsight: companyResearch?.highlights?.length
+                ? companyResearch.highlights.join(' - ')
+                : '',
+            sector: 'GENERAL' as const,
+            openingHook: '',
+        };
 
         const prompt = COVER_LETTER_SLOTS_PROMPT(
             cleanJd,
             profile,
             selectedAchievements,
-            blueprintResult.blueprint,
+            blueprint,
             analysisContext,
             companyResearch,
             companyIntel,
-            bridgedGaps,
+            undefined, // bridged gaps removed — never inject invented capabilities
         );
 
-        console.log('[CoverLetterStructured] Stage 2: calling Llama for structured cover letter...');
-        const stage2Raw = await callLLMWithRetry(prompt, false);
-        console.log(`[CoverLetterStructured] Stage 2 complete. ${stage2Raw.length} characters.`);
+        console.log('[CoverLetterStructured] Generating cover letter (single Claude pass)...');
+        const { content: stage2Raw, usage } = await callClaude(prompt, true);
+        console.log(`[CoverLetterStructured] Generation complete. ${stage2Raw.length} characters.`);
 
-        const stage2InputTokens = Math.round(prompt.length / 4);
-        const stage2OutputTokens = Math.round(stage2Raw.length / 4);
         const stage2Cost =
-            (stage2InputTokens / 1_000_000) * LLAMA_INPUT_COST_PER_M +
-            (stage2OutputTokens / 1_000_000) * LLAMA_OUTPUT_COST_PER_M;
+            (usage.promptTokens / 1_000_000) * CLAUDE_INPUT_COST_PER_M +
+            (usage.completionTokens / 1_000_000) * CLAUDE_OUTPUT_COST_PER_M;
 
         // ── STAGE 3: Validate + build template cover letter ────────────────
         const { parseCoverLetterPolishJson } = await import('../lib/validateCoverLetterPolish');
@@ -970,14 +880,10 @@ router.post('/cover-letter-structured', authenticate, async (req: any, res: any)
             },
         });
 
-        const total_cost_usd =
-            (stage1Info.tokens?.cost_usd ?? 0) + stage2Cost;
-
         const costBreakdown = {
-            stage1_cached: stage1Info.cached,
-            stage1_tokens: stage1Info.tokens,
-            stage2_tokens: { input: stage2InputTokens, output: stage2OutputTokens, cost_usd: stage2Cost },
-            total_cost_usd,
+            stage1_cached: false,
+            stage2_tokens: { input: usage.promptTokens, output: usage.completionTokens, cost_usd: stage2Cost },
+            total_cost_usd: stage2Cost,
         };
         console.log('[CoverLetterStructured] Cost breakdown:', JSON.stringify(costBreakdown));
 
@@ -985,12 +891,70 @@ router.post('/cover-letter-structured', authenticate, async (req: any, res: any)
             content: finalContent,
             id: doc.id,
             costBreakdown,
-            blueprint: blueprintResult.blueprint ?? null,
+            blueprint: null,
             polishAccepted: polish !== null,
         });
     } catch (error) {
         console.error('[CoverLetterStructured] Generation Error:', error);
         res.status(500).json({ error: 'Failed to generate cover letter' });
+    }
+});
+
+// ── Structured selection-criteria generation ────────────────────────────────
+// One Claude pass over the candidate's real resume + the job + the pasted
+// criteria. Produces labelled STAR responses as markdown. No blueprint/executor.
+router.post('/selection-criteria-structured', authenticate, async (req: any, res: any) => {
+    const userId = (req as any).user?.id as string;
+    const { jobDescription, selectionCriteriaText, jobApplicationId } = req.body;
+
+    if (!jobDescription) return res.status(400).json({ error: 'Job description is required' });
+    if (!selectionCriteriaText || String(selectionCriteriaText).trim().length < 10) {
+        return res.status(400).json({ error: 'Selection criteria text is required' });
+    }
+
+    try {
+        const userEmail = ((req as any).user?.email ?? '').toLowerCase();
+        const access = await checkAccess(userId, 'generation', userEmail);
+        if (!access.allowed) {
+            return res.status(402).json({ error: 'Generation limit reached', upgradeRequired: true, remaining: 0 });
+        }
+
+        const profile = await prisma.candidateProfile.findUnique({
+            where: { userId },
+            include: { experience: true, education: true },
+        });
+        if (!profile) return res.status(404).json({ error: 'Profile not found' });
+
+        const sanitizedJobAppId = jobApplicationId === 'temp-id' ? null : (jobApplicationId || null);
+
+        const { SELECTION_CRITERIA_PROMPT } = await import('../services/prompts/selectionCriteriaPrompt');
+        const prompt = SELECTION_CRITERIA_PROMPT(jobDescription, profile, String(selectionCriteriaText));
+
+        console.log('[SelectionCriteria] Generating responses (single Claude pass)...');
+        const { content: raw, usage } = await callClaude(prompt, false);
+
+        // Final safety net: strip em dashes (banned in output).
+        const finalContent = raw.split('—').join(' - ').split('–').join(' - ').trim();
+
+        const stage2Cost =
+            (usage.promptTokens / 1_000_000) * CLAUDE_INPUT_COST_PER_M +
+            (usage.completionTokens / 1_000_000) * CLAUDE_OUTPUT_COST_PER_M;
+
+        const doc = await prisma.document.create({
+            data: {
+                title: `SELECTION CRITERIA - ${profile.name || 'Draft'}`,
+                content: finalContent,
+                type: 'STAR_RESPONSE',
+                userId,
+                jobApplicationId: sanitizedJobAppId,
+            },
+        });
+
+        console.log('[SelectionCriteria] Cost:', stage2Cost.toFixed(4));
+        res.json({ content: finalContent, id: doc.id });
+    } catch (error) {
+        console.error('[SelectionCriteria] Generation Error:', error);
+        res.status(500).json({ error: 'Failed to generate selection criteria responses' });
     }
 });
 

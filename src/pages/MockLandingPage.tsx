@@ -1204,6 +1204,32 @@ function Hero({ scrollToScan, onScanResult }: { scrollToScan: () => void; onScan
           <p style={{ fontFamily: typeTokens.body, fontSize: '1.125rem', lineHeight: 1.6, color: colors.textSecondary, margin: '20px 0 0', maxWidth: 520 }}>
             Drop your CV and we will show you the exact gaps a recruiter spots in their six-second scan.
           </p>
+          <div style={{ marginTop: 28, maxWidth: 520 }}>
+            <p style={{ fontFamily: typeTokens.body, fontSize: '0.875rem', fontWeight: 600, color: colors.textSecondary, margin: '0 0 12px' }}>
+              Join <span style={{ color: colors.accentGold, fontWeight: 700 }}>1,000+</span> graduates who landed their dream roles
+            </p>
+            <div className="testimonial-grid">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((num) => (
+                <div key={num} className="testimonial-card">
+                  <img
+                    src={`/Assets/testimonials/card_${num}.jpg`}
+                    alt="Graduate success testimonial"
+                    style={{ width: '100%', height: 'auto', display: 'block' }}
+                  />
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 14 }}>
+              <span style={{ fontFamily: typeTokens.body, fontSize: '0.8125rem', fontWeight: 600, color: colors.textSecondary }}>
+                <span style={{ fontWeight: 700, color: colors.textPrimary }}>4.9/5</span> average rating from 350+ students
+              </span>
+              <div style={{ display: 'flex', gap: 2 }}>
+                {[...Array(5)].map((_, i) => (
+                  <span key={i} style={{ color: colors.accentGold, fontSize: '0.9rem' }}>★</span>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
 
         <div>
@@ -1408,11 +1434,33 @@ export function MockLandingPage() {
       <Footer />
 
       <style>{`
+        .testimonial-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 10px;
+        }
+        .testimonial-card {
+          width: 100%;
+          border-radius: 8px;
+          overflow: hidden;
+          box-shadow: 0 1px 3px rgba(26,24,20,0.04), 0 4px 12px rgba(26,24,20,0.05);
+          border: 1px solid rgba(26,24,20,0.06);
+          transition: transform 0.25s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.25s ease;
+        }
+        .testimonial-card:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 1px 3px rgba(26,24,20,0.04), 0 12px 24px rgba(26,24,20,0.12);
+        }
         @media (max-width: 860px) {
           .hero-grid { grid-template-columns: 1fr !important; }
           .founder-grid { grid-template-columns: 1fr !important; }
           .feature-grid { grid-template-columns: 1fr !important; }
           .feature-grid > *:first-child { order: 2; }
+        }
+        @media (max-width: 560px) {
+          .testimonial-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
         }
       `}</style>
     </div>

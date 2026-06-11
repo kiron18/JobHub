@@ -131,41 +131,21 @@ export const UpgradeModal: React.FC<Props> = ({ trigger, onClose }) => {
           </div>
           <h2 className="text-xl font-black text-[#1A1814] mb-1">{TRIGGER_HEADLINES[trigger]}</h2>
           <p className="text-sm text-[#5C5750] mb-6">
-            Start your 7-day free trial, no charge until day 8, cancel anytime.
+            One payment unlocks full access for 90 days. No subscription, no recurring charge.
           </p>
 
-          <div className="grid grid-cols-3 gap-3 mb-5">
+          <div className="max-w-xs mx-auto mb-5">
             <PlanCard
-              name="Monthly"
-              price="$97 AUD/mo"
-              weekly="$25/week"
-              billing="Billed monthly"
-              trial="7-day free trial"
-              cta="Start Free Trial"
-              onSelect={() => handleCheckout('monthly')}
-              loading={loading === 'monthly'}
-            />
-            <PlanCard
-              name="3-Month Bundle"
+              name="3-Month Access"
               price="$197 AUD"
-              weekly="Best value for job seekers"
+              weekly="Full access for your job hunt"
               billing="One payment, 90 days access"
               trial={null}
-              savings={"Three months for $197. That's $65 a month — $94 less than paying monthly.\nAfterpay and Zip both work at checkout."}
+              savings={"One payment of $197 for three months. That's about $65 a month.\nAfterpay and Zip both work at checkout."}
               cta="Get 3-Month Access"
               recommended
               onSelect={() => handleCheckout('three_month')}
               loading={loading === 'three_month'}
-            />
-            <PlanCard
-              name="Annual"
-              price="$597 AUD/yr"
-              weekly="$11.50/week"
-              billing="Billed annually"
-              trial="7-day free trial"
-              cta="Start Free Trial"
-              onSelect={() => handleCheckout('annual')}
-              loading={loading === 'annual'}
             />
           </div>
 

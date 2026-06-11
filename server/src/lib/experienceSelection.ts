@@ -5,7 +5,7 @@ export interface ExperienceLike {
   startDate: string;
   endDate?: string | null;
   isCurrent?: boolean;
-  description?: string;
+  description?: string | null;
 }
 
 export interface ExperienceFlag {

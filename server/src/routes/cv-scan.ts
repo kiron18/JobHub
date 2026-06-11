@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { randomUUID } from 'crypto';
 import { ipRateLimit } from '../middleware/ipRateLimit';
 import { extractTextFromBuffer } from '../services/pdf';
+import { detectAtsStructure } from '../lib/atsStructure';
 import { runCvGapScan, runRoadmap, CvGapResult } from '../services/cvGapScan';
 import { prisma } from '../index';
 import { sendRoadmapEmail } from '../services/email';
@@ -170,7 +171,13 @@ router.post(
         return;
       }
 
-      const hash = crypto.createHash('sha256').update(text).digest('hex');
+      // Deterministic ATS-layout check from the raw file (text boxes, tables,
+      // images, reading order) so the scan can flag format problems the text
+      // alone cannot reveal. Non-fatal — on any failure it reports no risk.
+      const ats = await detectAtsStructure(file.buffer, file.mimetype, file.originalname, text)
+        .catch(() => ({ risk: false, reasons: [] as string[] }));
+
+      const hash = crypto.createHash('sha256').update(`${text} ${ats.reasons.join('|')}`).digest('hex');
       const cached = resultCache.get(hash);
       if (cached && Date.now() - cached.at < RESULT_CACHE_TTL) {
         const result = cached.result;
@@ -186,7 +193,7 @@ router.post(
         // Stale schema — fall through and re-scan
       }
 
-      const result = await runCvGapScan(text);
+      const result = await runCvGapScan(text, ats);
       resultCache.set(hash, { result, at: Date.now() });
 
       // Trim cache to newest 50 entries on write

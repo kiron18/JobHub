@@ -163,8 +163,9 @@ describe('profileToResumeData → profileToMarkdown formatting invariants', () =
     const data = profileToResumeData(profile);
     const md = profileToMarkdown(data);
     // Check date ranges appear in italics on the meta line
-    expect(md).toContain('Jan 2020 — Jun 2023');
-    expect(md).toContain('Jul 2023 — Present');
+    // Hyphen separator, not an em dash (em/en dashes are banned in output).
+    expect(md).toContain('Jan 2020 - Jun 2023');
+    expect(md).toContain('Jul 2023 - Present');
   });
 
   // -- Additional tests for profileToResumeData directly --

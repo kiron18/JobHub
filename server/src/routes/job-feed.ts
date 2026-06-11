@@ -20,6 +20,49 @@ const router = Router();
 // Tracks which userIds have a feed build currently in flight
 const buildingNow = new Set<string>();
 
+// Tracks feed items whose bullets are currently being generated (by item id), so
+// repeated /feed polls while generation is in flight don't double-fire the LLM.
+const bulletGenInFlight = new Set<string>();
+
+// Fire-and-forget bullet generation. Returns immediately; writes bullets to the
+// DB as they land so the next /feed read (client polls while bulletsPending) picks
+// them up. The feed itself renders instantly instead of blocking ~26s on the LLM.
+interface BulletGenItem {
+  id: string; title: string; company: string; location: string | null;
+  salary: string | null; description: string; sourceUrl: string;
+  sourcePlatform: string; postedAt: Date | null;
+}
+
+function kickoffBulletGeneration(items: BulletGenItem[]): void {
+  const toGenerate = items.filter(i => !bulletGenInFlight.has(i.id));
+  if (toGenerate.length === 0) return;
+  toGenerate.forEach(i => bulletGenInFlight.add(i.id));
+
+  const rawJobs = toGenerate.map(i => ({
+    title: i.title,
+    company: i.company,
+    location: i.location ?? '',
+    salary: i.salary,
+    description: i.description,
+    sourceUrl: i.sourceUrl,
+    sourcePlatform: i.sourcePlatform,
+    postedAt: i.postedAt,
+  })) as RawJob[];
+
+  generateBullets(rawJobs)
+    .then((bulletArrays) =>
+      Promise.all(
+        toGenerate.map((item, idx) =>
+          bulletArrays[idx]
+            ? prisma.jobFeedItem.update({ where: { id: item.id }, data: { bullets: bulletArrays[idx] } })
+            : Promise.resolve()
+        )
+      )
+    )
+    .catch((err: any) => console.error('[job-feed] background bullet gen failed:', err?.message ?? err))
+    .finally(() => toGenerate.forEach(i => bulletGenInFlight.delete(i.id)));
+}
+
 // All routes require auth
 router.use(authenticate);
 
@@ -130,40 +173,12 @@ router.get('/feed', async (req: any, res: any) => {
     });
     const appStatusMap = new Map(applications.map(a => [a.sourceUrl, a.status]));
 
-    // Generate bullets for any items that don't have them
+    // Kick off bullet generation for any items lacking them, but DON'T block the
+    // response on it. The feed renders immediately with skeleton rows; the client
+    // polls while bulletsPending and the bullets fill in as they land server-side.
     const nullBulletItems = items.filter(i => i.bullets === null);
     if (nullBulletItems.length > 0) {
-      const rawJobs = nullBulletItems.map(i => ({
-        title: i.title,
-        company: i.company,
-        location: i.location ?? '',
-        salary: i.salary,
-        description: i.description,
-        sourceUrl: i.sourceUrl,
-        sourcePlatform: i.sourcePlatform,
-        postedAt: i.postedAt,
-      })) as RawJob[];
-
-      const bulletArrays = await generateBullets(rawJobs);
-
-      await Promise.all(
-        nullBulletItems.map((item, idx) =>
-          bulletArrays[idx]
-            ? prisma.jobFeedItem.update({
-                where: { id: item.id },
-                data: { bullets: bulletArrays[idx] },
-              })
-            : Promise.resolve()
-        )
-      );
-
-      // Merge generated bullets into response
-      for (const item of items) {
-        const idx = nullBulletItems.findIndex(n => n.id === item.id);
-        if (idx !== -1 && bulletArrays[idx]) {
-          (item as any).bullets = bulletArrays[idx];
-        }
-      }
+      kickoffBulletGeneration(nullBulletItems);
     }
 
     // Mark as read (fire and forget)
@@ -182,6 +197,7 @@ router.get('/feed', async (req: any, res: any) => {
       total,
       hasMore: offset + items.length < total,
       feedDate: today.toISOString().slice(0, 10),
+      bulletsPending: nullBulletItems.length > 0,
     });
   } catch (err: any) {
     console.error('[job-feed/feed]', err);

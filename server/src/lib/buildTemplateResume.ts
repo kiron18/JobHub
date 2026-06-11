@@ -211,10 +211,26 @@ export function applyPolish(data: ResumeData, polish: PolishPayload): ResumeData
 // =============================================================================
 // profileToMarkdown — deterministic markdown renderer
 // =============================================================================
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// Render dates as "Feb 2024" / "Present", never "2024-02". Passes through values
+// that are already human-formatted or that we cannot parse.
+const formatMonthYear = (s?: string | null): string => {
+  if (!s) return '';
+  const t = String(s).trim();
+  if (/^present$/i.test(t) || /^current$/i.test(t)) return 'Present';
+  let m = t.match(/^(\d{4})[-/.](\d{1,2})$/);          // YYYY-MM
+  if (m) { const i = +m[2] - 1; if (i >= 0 && i < 12) return `${MONTHS[i]} ${m[1]}`; }
+  m = t.match(/^(\d{1,2})[-/.](\d{4})$/);               // MM-YYYY
+  if (m) { const i = +m[1] - 1; if (i >= 0 && i < 12) return `${MONTHS[i]} ${m[2]}`; }
+  return t; // bare year, "Feb 2024", or anything else — leave as-is
+};
+
 const dateRange = (start?: string, end?: string | null, isCurrent?: boolean) => {
-  const right = isCurrent ? 'Present' : (end || '');
-  if (start && right) return `${start} — ${right}`;
-  return start || right || '';
+  const left = formatMonthYear(start);
+  const right = isCurrent ? 'Present' : formatMonthYear(end);
+  if (left && right) return left === right ? left : `${left} - ${right}`;
+  return left || right || '';
 };
 
 const cleanBullets = (description?: string): string[] => {
@@ -265,9 +281,9 @@ export function profileToMarkdown(d: ResumeData): string {
     section('Education');
     d.education.forEach(ed => {
       const right = ed.year || dateRange(ed.startDate, ed.endDate);
-      const head = `**${ed.degree}${ed.field ? ` — ${ed.field}` : ''}**${right ? `  ·  ${right}` : ''}`;
+      const head = `**${ed.degree}${ed.field ? ` - ${ed.field}` : ''}**${right ? `  ·  ${right}` : ''}`;
       push(head);
-      const sub = [ed.institution, ed.location].filter(Boolean).join(' — ');
+      const sub = [ed.institution, ed.location].filter(Boolean).join(' - ');
       if (sub) push(sub);
       push('');
     });
@@ -289,7 +305,7 @@ export function profileToMarkdown(d: ResumeData): string {
   if (d.certifications?.length) {
     section('Certifications & Professional Development');
     d.certifications.forEach(c => {
-      push(`- **${c.name}** — ${c.issuingBody}${c.year ? `  ·  ${c.year}` : ''}`);
+      push(`- **${c.name}** - ${c.issuingBody}${c.year ? `  ·  ${c.year}` : ''}`);
     });
   }
 
@@ -301,7 +317,7 @@ export function profileToMarkdown(d: ResumeData): string {
   if (d.volunteering?.length) {
     section('Volunteering & Community Involvement');
     d.volunteering.forEach(v => {
-      push(`**${v.role}** — ${v.organization}`);
+      push(`**${v.role}** - ${v.organization}`);
       if (v.description) push(v.description.trim());
       push('');
     });
@@ -314,6 +330,21 @@ export function profileToMarkdown(d: ResumeData): string {
 
   // Trim trailing blanks, collapse 3+ consecutive newlines to 2
   return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n';
+}
+
+// =============================================================================
+// Two-page curation helpers
+// =============================================================================
+const TERTIARY_RE = /bachelor|master|phd|doctorate|doctor of|diploma|graduate certificate|degree|b\.?\s?tech|b\.?\s?sc|b\.?\s?eng|m\.?\s?sc|mba|honours|postgrad/i;
+const SCHOOL_RE = /secondary school|high school|pre-?university|matriculation|\bhsc\b|\bssc\b|\bpcmb\b|school certificate|year 1[02]/i;
+
+function curateEducationAndVolunteering(data: ResumeData): ResumeData {
+  const hasTertiary = data.education.some(e => TERTIARY_RE.test(`${e.degree} ${e.field ?? ''}`));
+  const education = hasTertiary
+    ? data.education.filter(e => !SCHOOL_RE.test(`${e.degree} ${e.field ?? ''} ${e.institution}`))
+    : data.education;
+  const volunteering = (data.volunteering ?? []).slice(0, 3);
+  return { ...data, education, volunteering };
 }
 
 // =============================================================================
@@ -377,6 +408,11 @@ export function buildTemplateResume(
       additionalExperienceLine: selection.additionalExperienceLine ?? undefined,
     };
   }
+
+  // Step 2.6: Two-page curation. When the candidate holds a tertiary qualification,
+  // drop school-level education (secondary / pre-university) — it adds length, not
+  // signal — and cap volunteering to the three strongest entries.
+  data = curateEducationAndVolunteering(data);
 
   // Step 3: Quality enforcers
   data = enforceResumeQuality(data, {

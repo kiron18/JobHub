@@ -20,6 +20,9 @@ export async function ensureEmailTables(prisma: PrismaClient): Promise<void> {
     );
   `);
   await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "Contact_email_key" ON "Contact"("email");`);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Contact_source_idx" ON "Contact"("source");`);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Contact_createdAt_idx" ON "Contact"("createdAt");`);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Contact_lastActivityAt_idx" ON "Contact"("lastActivityAt");`);
 
   await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS "ContactNote" (
@@ -140,7 +143,8 @@ export async function ensureEmailTables(prisma: PrismaClient): Promise<void> {
     );
   `);
   await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "ContactSequence_contactId_sequenceId_key" ON "ContactSequence"("contactId", "sequenceId");`);
-  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "ContactSequence_contactId_currentStep_completed_idx" ON "ContactSequence"("contactId", "currentStep", "completed");`);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "ContactSequence_contactId_idx" ON "ContactSequence"("contactId");`);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "ContactSequence_currentStep_completed_idx" ON "ContactSequence"("currentStep") WHERE "completed" = false;`);
   await prisma.$executeRawUnsafe(`
     DO $$ BEGIN
       IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ContactSequence_contactId_fkey') THEN
@@ -173,6 +177,7 @@ export async function ensureEmailTables(prisma: PrismaClient): Promise<void> {
   `);
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "EmailSend_contactId_sentAt_idx" ON "EmailSend"("contactId", "sentAt");`);
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "EmailSend_sentAt_idx" ON "EmailSend"("sentAt");`);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "EmailSend_broadcastId_idx" ON "EmailSend"("broadcastId");`);
   await prisma.$executeRawUnsafe(`
     DO $$ BEGIN
       IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'EmailSend_contactId_fkey') THEN

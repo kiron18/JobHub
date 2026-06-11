@@ -10,6 +10,10 @@ export const PolishPayloadSchema = z.object({
       z.object({
         id: z.string(),
         bullets: z.array(z.string()),
+        // Per-role curation: casual=true marks an odd/survival job to fold or drop.
+        // Optional so older callers/output still validate.
+        casual: z.boolean().optional(),
+        australianLocal: z.boolean().optional(),
       }),
     )
     .optional(),

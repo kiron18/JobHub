@@ -27,54 +27,22 @@ interface PlanDef {
 
 const PLANS: PlanDef[] = [
   {
-    id: 'monthly',
-    name: 'Monthly',
-    price: '$97 AUD',
-    weekly: '≈ $25/week',
-    billing: 'per month, billed monthly',
-    trial: '7-day free trial',
-    cta: 'Start Free Trial',
-    features: [
-      'Unlimited document generations',
-      'Unlimited job analyses',
-      'Daily AI job feed',
-      'Match scoring',
-      'Cancel anytime',
-    ],
-  },
-  {
     id: 'three_month',
-    name: '3-Month Bundle',
+    name: '3-Month Access',
     price: '$197 AUD',
-    weekly: 'Best value for active job seekers',
+    weekly: 'Full access for your job hunt',
     billing: 'one payment · 90 days access',
     trial: null,
     cta: 'Get 3-Month Access',
     recommended: true,
     features: [
-      'Everything in Monthly',
-      'No recurring charge',
-      'Pay once, apply for 90 days',
-      'Great for structured job hunts',
+      'Unlimited document generations',
+      'Unlimited job analyses & match scoring',
+      'Daily AI job feed',
+      'Pay once, full access for 90 days',
       'Lifetime access to your documents',
     ],
-    savings: 'Three months for $197. That\'s $65 a month — $94 less than paying monthly.\nAfterpay and Zip both work at checkout.',
-  },
-  {
-    id: 'annual',
-    name: 'Annual',
-    price: '$597 AUD',
-    weekly: '≈ $11.50/week',
-    billing: 'per year, billed annually',
-    trial: '7-day free trial',
-    cta: 'Start Free Trial',
-    features: [
-      'Everything in Monthly',
-      'Lowest weekly rate',
-      'Best for ongoing career management',
-      'Annual billing saves $567 vs monthly',
-      'Cancel anytime',
-    ],
+    savings: 'One payment of $197 for three months. That\'s about $65 a month.\nAfterpay and Zip both work at checkout.',
   },
 ];
 
@@ -82,23 +50,23 @@ const PLANS: PlanDef[] = [
 
 const FAQS = [
   {
-    q: 'Can I cancel anytime?',
-    a: 'Yes. Monthly and Annual plans can be cancelled any time from your account. You retain access until the end of the billing period. The 3-Month Bundle is a one-time payment — no recurring charge, no cancellation needed.',
+    q: 'Is this a subscription?',
+    a: "No. It's a single payment of $197 for 90 days of full access. No recurring charge, nothing to cancel.",
   },
   {
     q: 'What happens when I get a job?',
-    a: "Congratulations — that's exactly what this is for. You can cancel your subscription immediately and keep all the documents you've created. We don't lock anything away.",
+    a: "Congratulations, that's exactly what this is for. You keep every document you've created, and there's no subscription to cancel. We don't lock anything away.",
   },
   {
-    q: 'Why is there a 3-month option?',
-    a: "Most job searches take 6–12 weeks. The 3-Month Bundle is designed to match a focused job hunt — pay once, get full access for 90 days, no ongoing commitment. It's our most popular plan for a reason.",
+    q: 'Why 3 months?',
+    a: "Most job searches take 6 to 12 weeks. Full access for 90 days is built to match a focused job hunt: pay once, no ongoing commitment.",
   },
   {
     q: 'Is my card charged immediately?',
-    a: "For the 3-Month Bundle, yes — it's a one-time payment charged immediately. For Monthly and Annual plans, your free trial starts immediately and your card is charged on day 8 unless you cancel first.",
+    a: "Yes. It's a single one-time payment charged at checkout. No trial, no recurring billing.",
   },
   {
-    q: 'Can I use Afterpay or Zip for the 3-Month Bundle?',
+    q: 'Can I use Afterpay or Zip?',
     a: 'Yes. Both are supported at checkout. Afterpay splits $197 into four fortnightly payments. No interest, no ongoing commitment.',
   },
 ];
@@ -118,23 +86,6 @@ function PlanCard({ plan, onSelect, loading }: { plan: PlanDef; onSelect: () => 
         background: warm.colors.bgSurface,
       }}
     >
-      {plan.recommended && (
-        <div style={{ position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)' }}>
-          <span style={{
-            background: warm.colors.accentPetrol,
-            color: warm.colors.textOnDeep,
-            fontSize: 9,
-            fontWeight: 900,
-            letterSpacing: '0.15em',
-            textTransform: 'uppercase',
-            padding: '4px 14px',
-            borderRadius: 99,
-          }}>
-            Recommended
-          </span>
-        </div>
-      )}
-
       <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 900, letterSpacing: '0.12em', textTransform: 'uppercase', color: warm.colors.textMuted }}>{plan.name}</p>
       <p style={{ margin: '0 0 2px', fontSize: 32, fontWeight: 900, color: warm.colors.textPrimary, lineHeight: 1 }}>{plan.price}</p>
       <p style={{ margin: '0 0 4px', fontSize: 11, color: warm.colors.textMuted }}>{plan.billing}</p>
@@ -290,8 +241,8 @@ export function PricingPage() {
           </p>
         </div>
 
-        {/* Plans */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, marginBottom: 80 }}>
+        {/* Plan */}
+        <div style={{ maxWidth: 380, margin: '0 auto 80px' }}>
           {PLANS.map(plan => (
             <PlanCard
               key={plan.id}

@@ -73,46 +73,64 @@ interface ExperienceEntry {
 }
 
 /**
- * Compute total professional experience as the span from the candidate's
- * earliest work-role start date to today (or to the latest end date if
- * nothing is current). Returns a whole number of years, or null when the
- * experience array is empty / unparseable.
+ * Compute total professional experience as the SUM of actual time worked across
+ * all work roles, merging overlapping roles so concurrent jobs are never double
+ * counted, and EXCLUDING the gaps between roles (study breaks, job searches).
  *
- * This is "years of experience" the way candidates phrase it on resumes
- * (career span), not active-employment time net of gaps.
+ * This is the honest "how many years have you actually worked" figure a
+ * candidate would defend in an interview, not the earliest-start-to-today
+ * career span (which silently counts every gap as experience and inflates a
+ * recent graduate with one old internship into "7 years").
+ *
+ * The caller is responsible for passing only the roles that should count —
+ * casual or irrelevant roles should already be filtered out (e.g. via
+ * selectFeaturedExperience) so they don't pad the figure.
+ *
+ * Returns a whole number of years (minimum 1), or null when the experience
+ * array is empty / unparseable.
  */
 export function computeYearsOfExperience(experience: ExperienceEntry[] | null | undefined): number | null {
     if (!Array.isArray(experience) || experience.length === 0) return null;
 
-    let earliestStart: Date | null = null;
-    let latestEnd: Date | null = null;
-    let hasCurrent = false;
+    const MONTH_MS = 30 * 24 * 60 * 60 * 1000;
+    const intervals: Array<[number, number]> = [];
 
     for (const e of experience) {
         if (e?.type && e.type !== 'work') continue;
         const start = parseFlexibleDate(e?.startDate);
         if (!start) continue;
-        if (!earliestStart || start.getTime() < earliestStart.getTime()) {
-            earliestStart = start;
-        }
 
-        if (e?.isCurrent || !e?.endDate || /^(present|current|now|ongoing)$/i.test(String(e.endDate).trim())) {
-            hasCurrent = true;
-        } else {
-            const end = parseFlexibleDate(e.endDate);
-            if (end && (!latestEnd || end.getTime() > latestEnd.getTime())) {
-                latestEnd = end;
-            }
-        }
+        const isCurrent = e?.isCurrent || !e?.endDate
+            || /^(present|current|now|ongoing)$/i.test(String(e?.endDate ?? '').trim());
+        const end = isCurrent ? new Date() : (parseFlexibleDate(e?.endDate) ?? new Date());
+
+        const startMs = start.getTime();
+        // A same-month or malformed range still represents a real (short) stint,
+        // so floor its length to ~1 month rather than dropping it to zero.
+        let endMs = end.getTime();
+        if (endMs <= startMs) endMs = startMs + MONTH_MS;
+        intervals.push([startMs, endMs]);
     }
 
-    if (!earliestStart) return null;
+    if (intervals.length === 0) return null;
 
-    const endRef = hasCurrent ? new Date() : (latestEnd ?? new Date());
-    const ms = endRef.getTime() - earliestStart.getTime();
-    if (ms <= 0) return null;
+    // Merge overlapping intervals, then sum their lengths (gaps excluded).
+    intervals.sort((a, b) => a[0] - b[0]);
+    let totalMs = 0;
+    let [curStart, curEnd] = intervals[0];
+    for (let i = 1; i < intervals.length; i++) {
+        const [s, en] = intervals[i];
+        if (s <= curEnd) {
+            if (en > curEnd) curEnd = en;
+        } else {
+            totalMs += curEnd - curStart;
+            curStart = s;
+            curEnd = en;
+        }
+    }
+    totalMs += curEnd - curStart;
 
-    const years = ms / (365.25 * 24 * 60 * 60 * 1000);
+    const years = totalMs / (365.25 * 24 * 60 * 60 * 1000);
     return Math.max(1, Math.round(years));
 }
 

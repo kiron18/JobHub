@@ -45,9 +45,7 @@ import { toast } from 'sonner';
 import api from '../lib/api';
 import { warm } from '../lib/theme/warmTokens';
 import { GenerationProgress } from '../components/shared/GenerationProgress';
-import { GapConfirmModal } from '../components/GapConfirmModal';
 import { applyWorkspaceCopy } from './applyWorkspaceCopy';
-import { capabilityStatement, type BridgedGap } from '../lib/bridgedGaps';
 
 // Perplexity company intel, pre-fetched on apply-flow entry and fed into the
 // structured cover-letter route. Shape mirrors the server's CompanyIntelResult.
@@ -93,6 +91,9 @@ interface StepDef {
     label: string;
     icon: React.ReactNode;
     optional?: boolean;
+    /** When true, the step does not appear as a chip; it's reachable only via
+     *  a discreet "Responding to selection criteria?" link. */
+    manualOnly?: boolean;
 }
 
 interface PersistedDraft {
@@ -151,7 +152,6 @@ export function StepperWorkspace() {
         feedItemId?: string;
         sourceUrl?: string;
         sourcePlatform?: string;
-        bridgedGaps?: import('../lib/bridgedGaps').BridgedGap[];
     };
     const APPLY_CTX_KEY = 'apply:context';
     const state = useMemo<ApplyState>(() => {
@@ -177,9 +177,13 @@ export function StepperWorkspace() {
             { id: 'resume',        label: 'Resume',          icon: <FileText size={14} /> },
             { id: 'cover-letter',  label: 'Cover Letter',    icon: <Mail size={14} /> },
         ];
-        if (wantsSC) {
-            base.push({ id: 'selection-criteria', label: 'Selection Criteria', icon: <ListChecks size={14} />, optional: true });
-        }
+        // SC step is always present. When the JD mentions SC it shows as a
+        // normal step chip; when not it's hidden behind a discreet manual link.
+        base.push({
+            id: 'selection-criteria', label: 'Selection Criteria',
+            icon: <ListChecks size={14} />, optional: true,
+            manualOnly: !wantsSC,
+        });
         base.push({ id: 'track', label: 'Track', icon: <Briefcase size={14} /> });
         return base;
     }, [wantsSC]);
@@ -189,15 +193,9 @@ export function StepperWorkspace() {
     const [companyIntel, setCompanyIntel] = useState<CompanyIntel | null>(null);
 
     // ── De-frictioned generation orchestration ───────────────────────────────
-    // Live path: on entry we derive bridgeable gaps from /analyze/dual (the
-    // perceived "already working"), confirm 2–3 strengths in a modal, then
-    // generate resume + cover letter in parallel. Legacy path (gaps passed in
-    // from the old analysis screen) skips straight to generation.
-    const legacyGaps = state.bridgedGaps;
-    const [gaps, setGaps] = useState<BridgedGap[]>(legacyGaps ?? []);
-    const [gapPhase, setGapPhase] = useState<'deriving' | 'confirming' | 'ready'>(
-        legacyGaps !== undefined ? 'ready' : 'deriving',
-    );
+    // On entry we generate resume + cover letter in parallel. No gap-confirmation
+    // step: documents are written strictly from the candidate's real resume + the
+    // job, never from invented "bridgeable" capabilities.
     const [intelSettled, setIntelSettled] = useState(false);
     const [genStatus, setGenStatus] = useState<Record<'resume' | 'cover-letter', 'idle' | 'generating' | 'done' | 'error'>>({
         resume: 'idle',
@@ -228,33 +226,12 @@ export function StepperWorkspace() {
         return () => { cancelled = true; };
     }, [state.company, state.role, jobDescription, jdEmpty]);
 
-    // Derive bridgeable gaps on entry (live path only). This is the instant-on
-    // "already working" — generation waits until the user confirms.
+    // On entry, generate resume + cover letter in parallel, writing each draft to
+    // localStorage as it lands. Never regenerates a step that already has a draft
+    // (Back-never-regenerates / revisit). Resume fires immediately; the cover letter
+    // waits for company intel so it can be woven in.
     useEffect(() => {
-        if (jdEmpty || legacyGaps !== undefined) return;
-        let cancelled = false;
-        setGapPhase('deriving');
-        api.post('/analyze/dual', { jobDescription })
-            .then(({ data }) => {
-                if (cancelled) return;
-                const items: Array<{ skill?: string; suggestion?: string }> = data?.fitBands?.bridgeableGap?.items ?? [];
-                const derived: BridgedGap[] = items
-                    .slice(0, 3)
-                    .map((it) => ({ skill: (it?.skill ?? '').trim(), statement: capabilityStatement(it?.suggestion ?? '') }))
-                    .filter((g) => g.skill.length > 0 && g.statement.length > 0);
-                if (derived.length > 0) { setGaps(derived); setGapPhase('confirming'); }
-                else { setGaps([]); setGapPhase('ready'); }
-            })
-            .catch(() => { if (!cancelled) { setGaps([]); setGapPhase('ready'); } });
-        return () => { cancelled = true; };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [jobDescription, jdEmpty]);
-
-    // Once gaps are confirmed (or skipped), generate resume + cover letter in
-    // parallel, writing each draft to localStorage as it lands. Never regenerates
-    // a step that already has a draft (Back-never-regenerates / revisit).
-    useEffect(() => {
-        if (gapPhase !== 'ready' || jdEmpty) return;
+        if (jdEmpty) return;
 
         const kickOff = (step: 'resume' | 'cover-letter') => {
             if (loadDraft(workspaceKey, step) || genStatus[step] !== 'idle') return;
@@ -263,12 +240,10 @@ export function StepperWorkspace() {
             let endpoint: string;
             if (step === 'resume') {
                 endpoint = '/generate/resume-structured';
-                payload.bridgedGaps = gaps;
             } else {
                 endpoint = '/generate/cover-letter-structured';
                 payload.analysisContext = { tone: 'Professional, polished, direct.', company: state.company ?? '', title: state.role ?? '' };
                 payload.companyIntel = companyIntel ?? null;
-                payload.bridgedGaps = gaps;
             }
             api.post<{ content: string }>(endpoint, payload)
                 .then(({ data }) => {
@@ -282,7 +257,7 @@ export function StepperWorkspace() {
         kickOff('resume');
         if (intelSettled) kickOff('cover-letter');
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [gapPhase, intelSettled, jdEmpty, workspaceKey]);
+    }, [intelSettled, jdEmpty, workspaceKey]);
 
     if (jdEmpty) return null;
 
@@ -408,7 +383,6 @@ export function StepperWorkspace() {
                         company={state.company}
                         role={state.role}
                         companyIntel={companyIntel}
-                        bridgedGaps={gaps}
                         sourceUrl={state.sourceUrl}
                         feedItemId={state.feedItemId}
                         generationStatus={
@@ -416,19 +390,13 @@ export function StepperWorkspace() {
                                 ? genStatus[currentStep.id]
                                 : 'idle'
                         }
+                        jobHasSC={wantsSC}
                         onBack={currentIndex > 0 ? () => setCurrentIndex(currentIndex - 1) : null}
                         onContinue={() => setCurrentIndex(currentIndex + 1)}
                         isLast={currentIndex === steps.length - 1}
                     />
                 )}
             </div>
-
-            {gapPhase === 'confirming' && (
-                <GapConfirmModal
-                    gaps={gaps}
-                    onConfirm={(confirmed) => { setGaps(confirmed); setGapPhase('ready'); }}
-                />
-            )}
         </div>
     );
 }
@@ -444,6 +412,10 @@ function Stepper({
     currentIndex: number;
     onSelect: (i: number) => void;
 }) {
+    const visibleSteps = steps.filter(s => !s.manualOnly);
+    const manualSCStepIndex = steps.findIndex(s => s.id === 'selection-criteria' && s.manualOnly);
+    const isOnManualSC = manualSCStepIndex >= 0 && currentIndex === manualSCStepIndex;
+
     return (
         <div style={{
             display: 'flex',
@@ -453,15 +425,18 @@ function Stepper({
             background: warm.colors.bgSurface,
             border: `1px solid ${warm.colors.borderWhisper}`,
             borderRadius: 12,
+            flexWrap: 'wrap',
         }}>
-            {steps.map((step, i) => {
-                const isActive = i === currentIndex;
-                const isDone = i < currentIndex;
+            {visibleSteps.map((step) => {
+                // Map the visible-step index back to the real index in the steps array
+                const realIndex = steps.indexOf(step);
+                const isActive = realIndex === currentIndex;
+                const isDone = realIndex < currentIndex;
                 const color = isActive ? warm.colors.accentGold : isDone ? warm.colors.accentPetrol : warm.colors.textMuted;
                 return (
                     <button
                         key={step.id}
-                        onClick={() => onSelect(i)}
+                        onClick={() => onSelect(realIndex)}
                         style={{
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -480,12 +455,33 @@ function Stepper({
                     >
                         {isDone ? <Check size={13} /> : step.icon}
                         {step.label}
-                        {i < steps.length - 1 && (
+                        {realIndex < steps.length - 1 && (
                             <ChevronRight size={12} style={{ color: warm.colors.textMuted, marginLeft: 4 }} />
                         )}
                     </button>
                 );
             })}
+
+            {/* Discreet manual SC link when the job doesn't mention SC */}
+            {manualSCStepIndex >= 0 && !isOnManualSC && (
+                <button
+                    onClick={() => onSelect(manualSCStepIndex)}
+                    style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: warm.colors.textMuted,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        textDecoration: 'underline',
+                        textUnderlineOffset: 3,
+                        cursor: 'pointer',
+                        padding: '4px 8px',
+                        opacity: 0.65,
+                    }}
+                >
+                    Responding to selection criteria?
+                </button>
+            )}
         </div>
     );
 }
@@ -499,9 +495,9 @@ function DocumentStep({
     company,
     role,
     companyIntel,
-    bridgedGaps,
     feedItemId,
     generationStatus,
+    jobHasSC,
     onBack,
     onContinue,
     isLast,
@@ -512,10 +508,10 @@ function DocumentStep({
     company?: string;
     role?: string;
     companyIntel?: CompanyIntel | null;
-    bridgedGaps?: import('../lib/bridgedGaps').BridgedGap[];
     sourceUrl?: string;
     feedItemId?: string;
     generationStatus: 'idle' | 'generating' | 'done' | 'error';
+    jobHasSC?: boolean;
     onBack: (() => void) | null;
     onContinue: () => void;
     isLast: boolean;
@@ -524,6 +520,7 @@ function DocumentStep({
     const [generating, setGenerating] = useState(false);
     const [hasDraft, setHasDraft] = useState(false);
     const [editing, setEditing] = useState(false);
+    const [confirmRegen, setConfirmRegen] = useState(false);
     const [editBuffer, setEditBuffer] = useState('');
     const [downloadFormat, setDownloadFormat] = useState<'docx' | 'pdf'>(() => {
         try {
@@ -559,6 +556,17 @@ function DocumentStep({
     const [criteriaPanelOpen, setCriteriaPanelOpen] = useState<boolean>(false);
     const isSC = stepId === 'selection-criteria';
     const hasCriteria = isSC && criteriaText.trim().length >= 40;
+
+    // ── Word counter helper for SC ──────────────────────────────────────
+    const detectWordLimit = (t: string): number | null => {
+        const m = (t || '').match(/(\d{2,4})\s*words?\b/i) || (t || '').match(/\bwords?\s*[:-]?\s*(\d{2,4})/i);
+        return m ? parseInt(m[1], 10) : null;
+    };
+    const limit = useMemo(() => detectWordLimit(criteriaText), [criteriaText]);
+    const wordCount = useMemo(() => {
+        const words = (content || '').trim().split(/\s+/);
+        return words.length && words[0] !== '' ? words.length : 0;
+    }, [content]);
 
     // Draft critique — button-driven, never auto-run (LLM cost control).
     const [critiqueOpen, setCritiqueOpen] = useState(false);
@@ -620,26 +628,17 @@ function DocumentStep({
         try { localStorage.setItem(criteriaStorageKey, next); } catch { /* noop */ }
     };
 
-    const generate = async (regenerate = false) => {
-        if (generating) return;
-        if (isSC && !hasCriteria) {
-            toast.error('Paste the selection criteria first.');
-            setCriteriaPanelOpen(true);
-            return;
-        }
-        if (regenerate && hasDraft && !confirm('Regenerate this document? The current draft will be replaced.')) return;
-
+    const runGeneration = async () => {
         setGenerating(true);
         try {
             const payload: Record<string, unknown> = { jobDescription };
             if (isSC) payload.selectionCriteriaText = criteriaText.trim();
 
-            // Canonical structured routes: resume + cover letter render from
-            // Zod-validated JSON templates. SC stays on the legacy markdown route.
+            // Structured endpoints: resume, cover-letter, and SC use dedicated
+            // Zod-validated routes. Everything else falls through to the wildcard.
             let endpoint = `/generate/${stepId}`;
             if (stepId === 'resume') {
                 endpoint = '/generate/resume-structured';
-                payload.bridgedGaps = bridgedGaps ?? [];
             } else if (stepId === 'cover-letter') {
                 endpoint = '/generate/cover-letter-structured';
                 payload.analysisContext = {
@@ -648,7 +647,8 @@ function DocumentStep({
                     title: role ?? '',
                 };
                 payload.companyIntel = companyIntel ?? null;
-                payload.bridgedGaps = bridgedGaps ?? [];
+            } else if (stepId === 'selection-criteria') {
+                endpoint = '/generate/selection-criteria-structured';
             }
 
             const { data } = await api.post<{ content: string }>(endpoint, payload);
@@ -670,6 +670,19 @@ function DocumentStep({
             setGenerating(false);
         }
     };
+
+    const generate = async (regenerate = false) => {
+        if (generating) return;
+        if (isSC && !hasCriteria) {
+            toast.error('Paste the selection criteria first.');
+            setCriteriaPanelOpen(true);
+            return;
+        }
+        if (regenerate && hasDraft) { setConfirmRegen(true); return; }
+        await runGeneration();
+    };
+
+    const confirmRegenerate = async () => { setConfirmRegen(false); await runGeneration(); };
 
     const handleCopy = () => {
         if (!content) return;
@@ -778,7 +791,7 @@ function DocumentStep({
                                 onCloseMenu={() => setFormatMenuOpen(false)}
                                 onDownload={() => handleDownload()}
                                 onChoose={(f) => handleDownload(f)}
-                                label={isCoverLetter ? 'Download cover letter' : 'Download resume'}
+                                label={isCoverLetter ? 'Download cover letter' : isSC ? 'Download Selection Criteria' : 'Download resume'}
                             />
                             {/* Download both — cover-letter step only */}
                             {isCoverLetter && (
@@ -815,6 +828,13 @@ function DocumentStep({
             {hasDraft && !generating && generationStatus !== 'generating' && (stepId === 'resume' || stepId === 'cover-letter') && (
                 <p style={{ margin: 0, fontSize: 12.5, color: warm.colors.textSecondary, lineHeight: 1.6 }}>
                     {stepId === 'resume' ? applyWorkspaceCopy.reviewFraming.resume : applyWorkspaceCopy.reviewFraming.coverLetter}
+                </p>
+            )}
+
+            {/* Numbers tip — outside the editor, under the review framing (resume only). */}
+            {stepId === 'resume' && hasDraft && !generating && generationStatus !== 'generating' && (
+                <p style={{ margin: 0, fontSize: 12, color: warm.colors.textMuted, lineHeight: 1.6 }}>
+                    Tip: wherever you can, add a real number to a result, a %, a $, a count, or time saved. One genuine figure makes a bullet land far harder.
                 </p>
             )}
 
@@ -887,6 +907,7 @@ function DocumentStep({
                     criteriaText={criteriaText}
                     onSave={handleSaveCriteria}
                     hasCriteria={hasCriteria}
+                    jobHasSC={jobHasSC}
                 />
             )}
 
@@ -952,9 +973,24 @@ function DocumentStep({
                         }}
                     />
                 ) : content ? (
-                    <div className="prose prose-invert max-w-none" style={{ color: warm.colors.textPrimary, fontSize: 13.5, lineHeight: 1.7 }}>
-                        <ReactMarkdown components={MARKDOWN_COMPONENTS as any}>{content}</ReactMarkdown>
-                    </div>
+                    <>
+                        <div className="prose prose-invert max-w-none" style={{ color: warm.colors.textPrimary, fontSize: 13.5, lineHeight: 1.7 }}>
+                            <ReactMarkdown components={MARKDOWN_COMPONENTS as any}>{content}</ReactMarkdown>
+                        </div>
+                        {/* Live word counter — SC only */}
+                        {isSC && (
+                            <div style={{
+                                marginTop: 14,
+                                fontSize: 11,
+                                fontWeight: 700,
+                                letterSpacing: '0.04em',
+                                color: limit !== null && wordCount > limit ? '#c0392b' : warm.colors.textMuted,
+                                textAlign: 'right',
+                            }}>
+                                {wordCount} words{limit !== null ? ` / ${limit} limit` : ''}
+                            </div>
+                        )}
+                    </>
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, padding: '40px 0', color: warm.colors.textMuted, textAlign: 'center' }}>
                         <PenLine size={28} />
@@ -1039,6 +1075,33 @@ function DocumentStep({
                     )}
                 </div>
             </div>
+
+            {confirmRegen && (
+                <div
+                    onClick={() => setConfirmRegen(false)}
+                    style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(26,24,20,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+                >
+                    <div
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ width: '100%', maxWidth: 420, background: warm.colors.bgCanvas, border: `1px solid ${warm.colors.borderWhisper}`, borderRadius: 16, padding: '24px 24px 20px', boxShadow: '0 20px 60px rgba(26,24,20,0.25)' }}
+                    >
+                        <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: warm.colors.textPrimary }}>
+                            Regenerate this {isSC ? 'response' : isCoverLetter ? 'cover letter' : 'resume'}?
+                        </h3>
+                        <p style={{ margin: '10px 0 20px', fontSize: 13.5, lineHeight: 1.55, color: warm.colors.textSecondary }}>
+                            Your current draft, including any edits you have made, will be replaced. This cannot be undone.
+                        </p>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                            <button onClick={() => setConfirmRegen(false)} style={{ padding: '9px 16px', fontSize: 13, fontWeight: 600, color: warm.colors.textSecondary, background: 'transparent', border: `1px solid ${warm.colors.borderWhisper}`, borderRadius: 9, cursor: 'pointer' }}>
+                                Keep current
+                            </button>
+                            <button onClick={confirmRegenerate} style={{ padding: '9px 16px', fontSize: 13, fontWeight: 700, color: warm.colors.textOnDeep, background: warm.colors.accentPetrol, border: 'none', borderRadius: 9, cursor: 'pointer' }}>
+                                Regenerate
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -1306,6 +1369,7 @@ function CriteriaPanel({
     criteriaText,
     onSave,
     hasCriteria,
+    jobHasSC,
 }: {
     open: boolean;
     onOpen: () => void;
@@ -1313,15 +1377,11 @@ function CriteriaPanel({
     criteriaText: string;
     onSave: (next: string) => void;
     hasCriteria: boolean;
+    jobHasSC?: boolean;
 }) {
     const [buffer, setBuffer] = useState(criteriaText);
 
     useEffect(() => { setBuffer(criteriaText); }, [criteriaText]);
-
-    const handleSave = () => {
-        onSave(buffer.trim());
-        onClose();
-    };
 
     return (
         <div>
@@ -1384,9 +1444,16 @@ function CriteriaPanel({
                                     Hide
                                 </button>
                             </div>
+
+                            {/* "Not found" note when the job didn't mention SC */}
+                            {jobHasSC === false && (
+                                <p style={{ margin: '0 0 10px', fontSize: 12.5, color: warm.colors.textMuted, lineHeight: 1.55, fontStyle: 'italic', padding: '8px 12px', border: `1px solid ${warm.colors.borderWhisper}`, borderRadius: 8, background: warm.colors.bgCanvas }}>
+                                    We didn't find a selection criteria requirement in this job. If the role asks for one, paste it below. Otherwise you're done — focus on getting your application in.
+                                </p>
+                            )}
                             <textarea
                                 value={buffer}
-                                onChange={(e) => setBuffer(e.target.value)}
+                                onChange={(e) => { setBuffer(e.target.value); onSave(e.target.value); }}
                                 placeholder={CRITERIA_PLACEHOLDER}
                                 rows={10}
                                 spellCheck
@@ -1407,25 +1474,13 @@ function CriteriaPanel({
                             />
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, gap: 12 }}>
                                 <p style={{ margin: 0, fontSize: 11, color: warm.colors.textMuted, lineHeight: 1.5 }}>
-                                    {buffer.trim().length} characters · we recommend pasting all numbered criteria together.
+                                    {buffer.trim().length} characters · paste all numbered criteria together, then hit Generate.
                                 </p>
-                                <button
-                                    onClick={handleSave}
-                                    disabled={buffer.trim().length < 40}
-                                    style={{
-                                        padding: '7px 14px',
-                                        fontSize: 12,
-                                        fontWeight: 700,
-                                        color: warm.colors.textOnDeep,
-                                        background: buffer.trim().length < 40 ? 'rgba(45,90,110,0.4)' : warm.colors.accentPetrol,
-                                        border: 'none',
-                                        borderRadius: 8,
-                                        cursor: buffer.trim().length < 40 ? 'not-allowed' : 'pointer',
-                                        opacity: buffer.trim().length < 40 ? 0.6 : 1,
-                                    }}
-                                >
-                                    Use these criteria
-                                </button>
+                                {hasCriteria && (
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: warm.colors.accentPetrol }}>
+                                        <Check size={12} /> Ready to generate
+                                    </span>
+                                )}
                             </div>
                         </div>
                     </motion.div>

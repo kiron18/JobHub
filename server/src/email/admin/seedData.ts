@@ -2,22 +2,25 @@ import type { PrismaClient } from '@prisma/client';
 
 /**
  * Seed default tags used for contact classification.
+ * Matches the spec: signed_up, cv_scanned, cv_fixed, sales_call_booked,
+ * sales_call_completed, hot_lead, client.
  * Uses upsert so it's safe to call on every boot.
  */
 export async function seedTags(prisma: PrismaClient): Promise<void> {
   const tags = [
-    { name: 'cv-scan-lead', label: 'CV Scan Lead' },
-    { name: 'diy-job-seeker', label: 'DIY Job Seeker' },
-    { name: 'coaching-prospect', label: 'Coaching Prospect' },
-    { name: 'referred', label: 'Referred' },
-    { name: 'high-intent', label: 'High Intent' },
-    { name: 'paused', label: 'Paused / Do Not Contact' },
+    { name: 'signed_up', label: 'Signed Up' },
+    { name: 'cv_scanned', label: 'CV Scanned' },
+    { name: 'cv_fixed', label: 'CV Fixed' },
+    { name: 'sales_call_booked', label: 'Sales Call Booked' },
+    { name: 'sales_call_completed', label: 'Sales Call Completed' },
+    { name: 'hot_lead', label: 'Hot Lead' },
+    { name: 'client', label: 'Client' },
   ];
 
   for (const tag of tags) {
     await prisma.tag.upsert({
       where: { name: tag.name },
-      update: {},
+      update: { label: tag.label },
       create: tag,
     });
   }
@@ -26,48 +29,20 @@ export async function seedTags(prisma: PrismaClient): Promise<void> {
 }
 
 /**
- * Seed default email templates used by the automated sequences.
+ * Seed default email templates used by automated sequences.
  * Uses upsert on name so it's safe to call on every boot.
  */
 export async function seedTemplates(prisma: PrismaClient): Promise<void> {
   const templates = [
     {
-      name: 'welcome-cv-scan',
-      subject: 'Your CV Scan Results Are Ready',
-      bodyText: `Hi {{firstName}},
-
-Thanks for trusting us with your CV. Here's what we found — and what's costing you callbacks.
-
-[Link to scan report]
-
-Cheers,
-The Aussie Grad Careers Team`,
+      name: 'welcome_step0',
+      subject: 'Welcome to Aussie Grad Careers',
+      bodyText: 'Welcome aboard!\n\nGet started by optimising your resume and finding the right roles.',
     },
     {
-      name: 'day-3-follow-up',
-      subject: 'Did you check your CV scan?',
-      bodyText: `Hi {{firstName}},
-
-Just a quick nudge — your free CV scan report is waiting. Most grads find at least 3 blind spots in their application.
-
-[Link to scan report]
-
-Cheers,
-The Aussie Grad Careers Team`,
-    },
-    {
-      name: 'day-7-educational',
-      subject: 'The #1 mistake Aussie grads make on their resume',
-      bodyText: `Hi {{firstName}},
-
-Hope the scan was helpful. Here's a quick tip most grads miss: your resume needs to pass the 6-second test before it even gets read.
-
-Want to make sure yours does?
-
-[Link to resource or booking]
-
-Cheers,
-The Aussie Grad Careers Team`,
+      name: 'cv_scan_followup_day3',
+      subject: 'Your CV roadmap — 3 day check-in',
+      bodyText: "Hi,\n\nIt's been a few days since your CV scan. Have you started on the first fix?",
     },
   ];
 
@@ -83,56 +58,58 @@ The Aussie Grad Careers Team`,
 }
 
 /**
- * Seed default email sequences (CV scan follow-up nurture).
- * References templates by name. Uses upsert on sequence name.
+ * Seed default email sequences with priority-based nurture funnel.
+ * Priority scale: 1=highest (client_onboarding), 4=lowest (welcome_sequence).
+ * Uses upsert on sequence name so it's safe to call on every boot.
  */
 export async function seedSequences(prisma: PrismaClient): Promise<void> {
-  // Define the sequence
-  const sequenceName = 'cv-scan-nurture';
-  const sequenceDesc = '3-step nurture sequence for new CV scan leads';
+  // welcome_sequence: priority 4 (lowest nurture)
+  const welcomeSeq = await prisma.emailSequence.upsert({
+    where: { name: 'welcome_sequence' },
+    update: { description: 'Welcome drip for new signups', priority: 4, active: true },
+    create: { name: 'welcome_sequence', description: 'Welcome drip for new signups', priority: 4, active: true },
+  });
+  await seedStep(prisma, welcomeSeq.id, 0, 0, 'welcome_step0');
 
-  // Upsert the sequence
-  const sequence = await prisma.emailSequence.upsert({
-    where: { name: sequenceName },
-    update: { description: sequenceDesc, priority: 100, active: true },
-    create: {
-      name: sequenceName,
-      description: sequenceDesc,
-      priority: 100,
-      active: true,
-    },
+  // cv_scan_followup: priority 3
+  const cvSeq = await prisma.emailSequence.upsert({
+    where: { name: 'cv_scan_followup' },
+    update: { description: 'Follow-up sequence after CV scan', priority: 3, active: true },
+    create: { name: 'cv_scan_followup', description: 'Follow-up sequence after CV scan', priority: 3, active: true },
+  });
+  await seedStep(prisma, cvSeq.id, 0, 3, 'cv_scan_followup_day3');
+
+  // sales_nurture: priority 2
+  await prisma.emailSequence.upsert({
+    where: { name: 'sales_nurture' },
+    update: { description: 'Nurture sequence for sales call booked contacts', priority: 2, active: true },
+    create: { name: 'sales_nurture', description: 'Nurture sequence for sales call booked contacts', priority: 2, active: true },
   });
 
-  // Map template names -> templates
-  const templates = await prisma.emailTemplate.findMany({
-    where: { name: { in: ['welcome-cv-scan', 'day-3-follow-up', 'day-7-educational'] } },
+  // client_onboarding: priority 1 (highest)
+  await prisma.emailSequence.upsert({
+    where: { name: 'client_onboarding' },
+    update: { description: 'Onboarding sequence for paying clients', priority: 1, active: true },
+    create: { name: 'client_onboarding', description: 'Onboarding sequence for paying clients', priority: 1, active: true },
   });
-  const templateByName = Object.fromEntries(templates.map((t) => [t.name, t.id]));
 
-  // Define steps — delete existing and recreate to keep in sync
-  await prisma.sequenceStep.deleteMany({ where: { sequenceId: sequence.id } });
+  console.log('[seedSequences] seeded sequences');
+}
 
-  const steps = [
-    { stepOrder: 0, delayDays: 0, templateName: 'welcome-cv-scan' },
-    { stepOrder: 1, delayDays: 3, templateName: 'day-3-follow-up' },
-    { stepOrder: 2, delayDays: 7, templateName: 'day-7-educational' },
-  ];
-
-  for (const step of steps) {
-    const templateId = templateByName[step.templateName];
-    if (!templateId) {
-      console.warn(`[seedSequences] template "${step.templateName}" not found, skipping step`);
-      continue;
-    }
-    await prisma.sequenceStep.create({
-      data: {
-        sequenceId: sequence.id,
-        stepOrder: step.stepOrder,
-        delayDays: step.delayDays,
-        templateId,
-      },
-    });
+async function seedStep(prisma: PrismaClient, sequenceId: string, stepOrder: number, delayDays: number, templateName: string): Promise<void> {
+  const template = await prisma.emailTemplate.findUnique({ where: { name: templateName } });
+  if (!template) {
+    console.warn(`[seedSequences] template "${templateName}" not found, skipping step`);
+    return;
   }
 
-  console.log(`[seedSequences] seeded "${sequenceName}" with ${steps.length} steps`);
+  try {
+    await prisma.sequenceStep.upsert({
+      where: { sequenceId_stepOrder: { sequenceId, stepOrder } },
+      update: { delayDays, templateId: template.id },
+      create: { sequenceId, stepOrder, delayDays, templateId: template.id },
+    });
+  } catch {
+    // Race condition on concurrent seed — safe to ignore
+  }
 }

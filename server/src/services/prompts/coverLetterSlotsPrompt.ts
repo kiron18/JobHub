@@ -3,63 +3,33 @@ import type { BridgedGap } from '../../lib/bridgedGaps';
 import { salutationTitle } from '../companyIntel';
 
 // =============================================================================
-// COVER LETTER SLOTS PROMPT — JSON output (structured template path)
+// COVER LETTER SLOTS PROMPT — single capable-model pass, JSON output.
 // =============================================================================
 
 /**
- * COVER_LETTER_SLOTS_PROMPT — for Llama 3.3 70B (executor role).
+ * COVER_LETTER_SLOTS_PROMPT — single-pass cover letter.
  *
- * The LLM writes prose for fixed slots; code owns paragraph structure.
- * Outputs structured JSON instead of markdown. The JSON is validated with
- * Zod, merged into CoverLetterData via applyCoverLetterPolish, and rendered
- * to deterministic markdown via coverLetterToMarkdown.
+ * One capable model receives the candidate's full resume (raw text), the job
+ * description, and real company research, and writes a four-paragraph cover
+ * letter as the { salutation, p1, p2, p3, p4, signoff } JSON the deterministic
+ * renderer (coverLetterToMarkdown) already consumes — so the look never changes.
  *
- * Advantages:
- * - Higher paragraph quality (LLM focuses on content, not formatting)
- * - Output is machine-validated (Zod catches structural errors)
- * - Markdown rendering is deterministic (no LLM formatting drift)
- * - Company intel is consumed directly in the prompt
+ * Guiding principle: persuade using only what is true of this candidate, and
+ * make the company connection real. Invent nothing.
+ *
+ * Signature is unchanged so the route call site does not change. `blueprint`,
+ * `selectedAchievements` and `bridgedGaps` are no longer used by the body.
  */
 export const COVER_LETTER_SLOTS_PROMPT = (
     jd: string,
     profile: any,
-    selectedAchievements: any[],
-    blueprint: StrategyBlueprint,
+    _selectedAchievements: any[],
+    _blueprint: StrategyBlueprint,
     analysisContext?: { tone?: string; competencies?: string[]; regenerateFeedback?: string },
     companyResearch?: { salutation?: string; highlights?: string[]; companySize?: string; hiringManager?: string } | null,
     companyIntel?: { summary?: string | null; suggestedContact?: { title?: string | null } | null } | null,
-    bridgedGaps?: BridgedGap[],
+    _bridgedGaps?: BridgedGap[],
 ): string => {
-    const todayDate = new Date().toISOString().split('T')[0];
-
-    // Build the proof point lookup
-    const proofPointMap = new Map(
-        blueprint.proofPoints.map(pp => [pp.achievementId, pp])
-    );
-
-    // Render achievements with strategic framing
-    const achievementBlock = selectedAchievements.length > 0
-        ? selectedAchievements.map(a => {
-            const pp = proofPointMap.get(a.id);
-            if (pp) {
-                return [
-                    `- [ID: ${a.id}] ${a.title}: ${a.description} (Metric: ${a.metric ?? 'none'})`,
-                    `  FRAMING ANGLE: ${pp.framingAngle}`,
-                    `  JD CONNECTION: ${pp.jdConnection}`,
-                    `  NARRATIVE NOTE: ${pp.narrativeNote}`,
-                ].join('\n');
-            }
-            return `- [ID: ${a.id}] ${a.title}: ${a.description} (Metric: ${a.metric ?? 'none'}) [supporting evidence — use as context only]`;
-        }).join('\n\n')
-        : 'No achievements selected. Draw on candidate experience data only.';
-
-    const toneInstruction = blueprint.toneBlueprint
-        || (analysisContext?.tone ? `Mirror this style: ${analysisContext.tone}` : 'Professional, direct Australian English.');
-
-    const focusAreas = blueprint.messagingAngles.length > 0
-        ? blueprint.messagingAngles.map(a => `- ${a}`).join('\n')
-        : (analysisContext?.competencies?.map(c => `- ${c}`).join('\n') ?? 'Map candidate strengths to JD requirements.');
-
     const contactTitle = salutationTitle(companyIntel?.suggestedContact?.title)
         || companyResearch?.salutation
         || 'Hiring Manager';
@@ -67,168 +37,61 @@ export const COVER_LETTER_SLOTS_PROMPT = (
     const companySummary = companyIntel?.summary
         || (companyResearch?.highlights?.length ? companyResearch.highlights.join(' ') : '');
 
-    const bridgedBlock = (bridgedGaps && bridgedGaps.length > 0)
-        ? bridgedGaps.map(g => `- ${g.statement}`).join('\n')
-        : '';
+    const rawResume = (profile?.resumeRawText ?? '').trim();
+    const signoff = contactTitle === 'Hiring Manager' ? 'Yours faithfully,' : 'Yours sincerely,';
 
-    return `==============================================================
-DIRECTOR'S BRIEF — READ THIS FIRST. IT OVERRIDES ALL DEFAULTS.
-==============================================================
+    return `You are an expert Australian cover letter writer. Write a cover letter that makes this candidate the obvious person to interview for the specific job below.
 
-You are writing a cover letter for a specific job application. The strategist has prepared a blueprint. Follow it exactly. You will output structured JSON, not markdown.
-
-SALUTATION TARGET: ${contactTitle}
-${companySummary ? `COMPANY CONTEXT (use this in paragraph 1 — it's from real research on this company):\n${companySummary}\n` : ''}
-COMPANY NAME: ${companyIntel ? 'see intel above' : (companyResearch ? 'see research above' : 'the company from the job description')}
-
-POSITIONING STATEMENT (shape the opening around this):
-${blueprint.positioningStatement}
-
-MESSAGING ANGLES (these themes must recur across the cover letter):
-${focusAreas}
-
-TONE DIRECTIVE:
-${toneInstruction}
-
-STRUCTURE NOTES FOR THIS DOCUMENT:
-${blueprint.structureNotes}
-
-SECTOR: ${blueprint.sector}
-${blueprint.sector === 'GOVERNMENT' ? '→ Apply formal tone, reference APS values language if present in JD, use capability framework terminology.' : ''}
-${blueprint.sector === 'TECH_STARTUP' ? '→ Warmer, direct tone acceptable. Conciseness rewarded.' : ''}
-${blueprint.sector === 'HEALTHCARE' ? '→ Emphasise patient outcomes and care quality alongside operational metrics.' : ''}
-${blueprint.sector === 'NFP' ? '→ Values alignment is essential. Community impact must be evidenced, not asserted.' : ''}
-
-EMPLOYER INSIGHT (use in company connection paragraph — if MISSING flag present, omit the company connection paragraph entirely):
-${blueprint.employerInsight}
-
-ACHIEVEMENTS WITH STRATEGIC FRAMING INSTRUCTIONS:
-${achievementBlock}
-
-${bridgedBlock ? `
-==============================================================
-CONFIRMED CAPABILITIES (the candidate possesses these — weave in as genuine experience)
-==============================================================
-${bridgedBlock}
-` : ''}
-==============================================================
-CONTRADICTION GUARD — NON-NEGOTIABLE
-==============================================================
-NEVER state, imply, or hedge that the candidate lacks, has not used, is unfamiliar with,
-or is "eager/looking forward to learn" any skill listed above (CONFIRMED CAPABILITIES) or
-any skill in the candidate's Skills data. Banned phrasings include: "although I have not",
-"while I don't have direct experience", "I lack", "I am eager to learn", "I have yet to".
-If the candidate genuinely lacks a requirement, OMIT it — never narrate the absence.
-NEVER invent a number or metric; use only metrics already present in the text.
+Persuade using only what is genuinely true of this candidate, drawn from their resume. Invent nothing.
 
 ==============================================================
-COMPLIANCE / CONDITIONAL REQUIREMENTS — DO NOT FABRICATE STATUS
+THE CANDIDATE'S RESUME (the single source of truth)
 ==============================================================
-For any conditional or compliance requirement (vaccination/immunisation status,
-right to work / visa / citizenship, security or police clearance, licences,
-serology), NEVER assert that the candidate already meets, holds, or is compliant
-with it unless that exact fact is present in CANDIDATE DATA. You MAY express
-willingness to meet or undergo such requirements, but NEVER claim a specific
-personal/medical/legal status (e.g. do NOT write "I am compliant with Hepatitis B,
-MMR and COVID-19 vaccination"). When the status is not in CANDIDATE DATA, omit it
-entirely.
+${rawResume || '(raw resume text unavailable — work only from the structured profile below)\n' + `Name: ${profile?.name ?? ''}\nSummary: ${profile?.professionalSummary ?? ''}\nExperience: ${profile?.experience?.length ? JSON.stringify(profile.experience) : '(none)'}`}
 
 ==============================================================
-BLOCK THESE PHRASES — THEY MUST NOT APPEAR ANYWHERE IN THE OUTPUT:
+THE JOB
 ==============================================================
-${blueprint.pitfallFlags.map((f, i) => `${i + 1}. "${f}"`).join('\n')}
-
-==============================================================
-COVER LETTER STRUCTURE — 4 PARAGRAPHS, EACH WITH A SPECIFIC JOB
-==============================================================
-
-You will write EXACTLY 4 paragraphs. Each has a specific purpose:
-
-**Paragraph 1 — Opening Hook + Company Connection** (3-4 sentences)
-- Lead with a specific, concrete hook that connects the candidate's expertise to the role
-- Include a genuine company reference: why this company specifically
-- Use the COMPANY CONTEXT above if available
-- End with a COMPLETE sentence (clear subject + verb) that transitions into your evidence. NEVER end on a trailing clause or imperative fragment such as "leverage my skills in a consulting environment..." or "work locally and apply my knowledge..." — every sentence must start with a capital letter and stand on its own.
-
-**Paragraph 2 — Strongest Evidence** (3-4 sentences)
-- Lead with the single most impressive, relevant achievement
-- MUST include at least one numerical metric
-- Show impact, not just responsibilities
-
-**Paragraph 3 — Bridge + Second Evidence** (3-4 sentences)
-- Address a skill or requirement from the JD not yet covered
-- Provide a second concrete achievement or experience
-- Show the candidate is well-rounded
-
-**Paragraph 4 — Enthusiasm + CTA** (2-3 sentences)
-- Express genuine interest in the role and company
-- Include an explicit call to action ("I would welcome the opportunity...")
-- End on a forward-looking note
-- Do NOT repeat a sentence, clause, or phrase used earlier in the letter (e.g. do not state "contribute to the success of the company" or "discuss this role further" twice). Vary the wording.
-
-==============================================================
-CANDIDATE DATA
-==============================================================
-TODAY'S DATE: ${todayDate}
-
-Name: ${profile.name}
-Current role/target: ${profile.targetRole || 'N/A'}
-Location: ${profile.location || 'N/A'}
-Professional Summary: ${profile.professionalSummary || 'N/A'}
-Skills: ${typeof profile.skills === 'string' ? profile.skills : '(none)'}
-Experience: ${profile.experience?.length ? JSON.stringify(profile.experience) : '(none)'}
-Education: ${profile.education?.length ? JSON.stringify(profile.education) : '(none)'}
-
-JOB DESCRIPTION:
 ${jd}
 
 ==============================================================
-TASK: GENERATE THE STRUCTURED COVER LETTER JSON
+WHAT WE KNOW ABOUT THE EMPLOYER (use for the company connection — do NOT invent beyond this)
 ==============================================================
-Write the cover letter content as a JSON object. Write every paragraph in FIRST PERSON active voice. NEVER use third person (he/she/they) to refer to the candidate.
+${companySummary || '(no specific company research available — do not fabricate company facts; connect through the role and what the job description itself reveals about the company)'}
 
-1. Use Australian English throughout (organised, analysed, recognised, colour).
-
-2. PARAGRAPH RULES:
-   - Each paragraph MUST be 2-5 complete sentences
-   - Do NOT include any markdown formatting, headers, or bullet points
-   - Do NOT include salutation or signoff in paragraphs — those are separate fields
-   - Write flowing prose, not bullet points
-
-3. SALUTATION RULE:
-   - Use "Dear ${contactTitle}," — exactly as specified
-   - If the contact title is "Hiring Manager", signoff must be "Yours faithfully,"
-   - Otherwise signoff must be "Yours sincerely,"
-
-4. MISSING DATA RULE: Never fabricate company intel or candidate data. If the candidate's experience section is empty, draw from their professional summary and skills instead.
-
-${analysisContext?.regenerateFeedback ? `
 ==============================================================
-USER IMPROVEMENT REQUEST (HIGHEST PRIORITY — apply this)
+HOW TO WRITE IT
 ==============================================================
-The user has requested the following specific changes to this regeneration:
-"${analysisContext.regenerateFeedback}"
-` : ''}
+1. SOURCE OF TRUTH. Every claim must be supported by the resume. NEVER state or imply experience, skills, qualifications, years, or industry exposure the candidate does not have. Do NOT add specifics the resume does not state: no funding bodies or grants, no awards, no certifications, no tools or software, and no proficiency levels (for example "advanced Excel") unless they appear in the resume. If the candidate does not meet a requirement, do not mention it and do not claim it; lead with their genuine, relevant strengths instead. Never write that they lack something, and never claim a compliance status (visa, clearance, vaccination, licence) that is not in the resume.
 
-CONSTRAINTS:
-- Do NOT include any meta-talk or pleasantries.
-- Do NOT fabricate data not present in CANDIDATE DATA above.
-- NEVER emit a bracketed placeholder of any kind — not [VERIFY: ...], [ADD: ...], [INSERT: ...], [TBD], [PLACEHOLDER], or anything similar. The finished letter must read as complete, signable work with no gaps for the candidate to fill in. When a specific detail is genuinely absent from CANDIDATE DATA, either omit it or rephrase the sentence around it so it stays true and complete. NEVER fabricate a number, metric, credential, or fact to fill a gap. If a value already exists in the data (e.g. an achievement metric), use it verbatim.
-- Before finalising, re-read every paragraph: each sentence must be grammatically complete. Do not output sentence fragments.
-- Output ONLY a valid JSON object with this exact structure. No preamble, no explanation, no markdown code fences.
+2. NUMBERS, HONESTLY. Use a specific figure only when it is in the resume. Otherwise lead with the concrete result or scope in plain words. Never invent, estimate, or inflate a number or a number of years.
+
+3. FOUR PARAGRAPHS, each with a job:
+   - Paragraph 1 — Hook + company connection. Open with a specific, genuine reason this candidate fits THIS role, and connect to THIS employer using the research above. No "I am writing to apply".
+   - Paragraph 2 — Strongest evidence. The single most relevant, real achievement or experience for this job, shown with impact.
+   - Paragraph 3 — Second evidence / breadth. Another genuine, relevant strength that covers a different part of what the job needs.
+   - Paragraph 4 — Close. Confident, warm, a clear call to a conversation. No grovelling.
+
+4. THE COMPETITOR TEST. Paragraph 1 and the company connection must NOT be sentences that could be sent to any other employer. If they could, rewrite them to reference something specific about this company or role.
+
+5. VOICE. First person. Warm, direct, professional Australian English (organised, specialised, programme, behaviour). No em dashes or en dashes — use commas, full stops, or "and". No markdown, no bullet points. No placeholders of any kind. No AI cliches ("I am writing to express my interest", "I believe I would be a great fit", "team player", "passionate", "I am excited to apply").
+
+6. LENGTH. Tight and readable: roughly 250 to 350 words across the four paragraphs. Every sentence earns its place.
+
+${analysisContext?.regenerateFeedback ? `The user asked for this specific change — apply it: "${analysisContext.regenerateFeedback}"\n` : ''}
+==============================================================
+OUTPUT
+==============================================================
+Return ONLY this JSON object. No preamble, no explanation, no markdown fences.
 
 {
-  "salutation": "string — exactly 'Dear {contactTitle},'",
-  "p1": "string — opening hook paragraph (3-4 sentences)",
-  "p2": "string — strongest evidence paragraph with metric (3-4 sentences)",
-  "p3": "string — bridge + second evidence paragraph (3-4 sentences)",
-  "p4": "string — enthusiasm + CTA paragraph (2-3 sentences)",
-  "signoff": "string — 'Yours sincerely,{newline}Candidate Name' or 'Yours faithfully,{newline}Candidate Name'"
+  "salutation": "Dear ${contactTitle},",
+  "p1": "opening hook + genuine company connection, 3-4 sentences",
+  "p2": "strongest real evidence for this job, 3-4 sentences",
+  "p3": "second genuine strength covering another requirement, 3-4 sentences",
+  "p4": "confident close with a call to a conversation, 2-3 sentences",
+  "signoff": "${signoff}\\n${profile?.name ?? ''}"
 }
 
-CRITICAL OUTPUT RULES:
-- Output NOTHING except the JSON object. No commentary. No markdown fences. No "Here is your cover letter JSON:".
-- Each paragraph must be 2-5 sentences of flowing prose.
-- Never include bullet points or dashes in paragraph text.
-- The signoff must include the candidate's full name on a new line after the sincerity/faithfully line.`;
+Output nothing except the JSON.`;
 };
