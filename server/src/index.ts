@@ -36,6 +36,9 @@ import { startTrialReminderCron } from './cron/trialReminderCron';
 import { startFollowUpReminderCron } from './cron/followUpReminderCron';
 import { analyzeRateLimit } from './middleware/analyzeRateLimit';
 import { ensureSponsorJobTable } from './db/ensureSponsorJobTable';
+import { ensureEmailTables } from './db/ensureEmailTables';
+import { seedTags, seedTemplates, seedSequences } from './email/admin/seedData';
+import { startSequenceCron } from './cron/sequenceCron';
 
 dotenv.config();
 
@@ -251,6 +254,10 @@ async function ensureColumns() {
       );
     `);
     await ensureSponsorJobTable(prisma);
+    await ensureEmailTables(prisma);
+    await seedTags(prisma);
+    await seedTemplates(prisma);
+    await seedSequences(prisma);
     console.log('[startup] schema columns verified');
   } catch (err) {
     console.warn('[startup] ensureColumns skipped:', err);
@@ -321,6 +328,7 @@ if (process.env.SKIP_SERVER === 'true') {
       startSponsorJobScanCron();
       startTrialReminderCron();
       startFollowUpReminderCron();
+      startSequenceCron();
       console.log('[cron] Job feed cron scheduled (21:00 UTC daily)');
       console.log('[cron] Trial reminder cron scheduled (10:00 UTC daily)');
       console.log('[cron] Follow-up reminder cron scheduled (09:00 UTC daily)');
