@@ -141,6 +141,16 @@ export function GetStartedModal({ scanId, firstName, email, onClose }: GetStarte
       setAccountCreated(true);
     }
 
+    // Step 1b: Ensure a session exists before claiming. signUp auto-signs in when
+    // email confirmation is off, but may not when it's on (staging). Explicitly
+    // signing in guarantees a valid token regardless of Supabase project settings.
+    const { data: { session }, error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+    if (signInErr || !session) {
+      setError(getStartedCopy.errSignup);
+      setSubmitting(false);
+      return;
+    }
+
     // Step 2: Claim the workspace
     try {
       const resp = await api.post('/cv-scan/claim', { scanId, titles, location });
