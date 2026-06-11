@@ -2,10 +2,17 @@ import { Router } from 'express';
 import type { Response, NextFunction } from 'express';
 import { prisma } from '../../index';
 import { authenticate, AuthRequest } from '../../middleware/auth';
+import { EXEMPT_EMAILS } from '../../routes/stripe';
 
 const router = Router();
 
-router.use(authenticate);
+async function requireAdmin(req: AuthRequest, res: Response, next: NextFunction) {
+  const email = (req.user?.email ?? '').toLowerCase();
+  if (!email || !EXEMPT_EMAILS.includes(email)) return res.status(403).json({ error: 'Forbidden' });
+  next();
+}
+
+router.use(authenticate, requireAdmin);
 
 // GET /admin/email-analytics — Aggregate email analytics
 router.get('/admin/email-analytics', async (req: AuthRequest, res: Response, next: NextFunction) => {

@@ -3,6 +3,11 @@ import { sendEmail } from '../send/sendEmail';
 import { unenrollFromSequence } from './enrollment';
 
 export async function processSequenceEmails(): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[sequenceEngine] RESEND_API_KEY not set — skipping sequence processing');
+    return;
+  }
+
   const now = new Date();
   let sent = 0;
 

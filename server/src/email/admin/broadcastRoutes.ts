@@ -2,11 +2,18 @@ import { Router } from 'express';
 import type { Response, NextFunction } from 'express';
 import { prisma } from '../../index';
 import { authenticate, AuthRequest } from '../../middleware/auth';
+import { EXEMPT_EMAILS } from '../../routes/stripe';
 import { sendBroadcast } from '../broadcast/broadcastService';
 
 const router = Router();
 
-router.use(authenticate);
+async function requireAdmin(req: AuthRequest, res: Response, next: NextFunction) {
+  const email = (req.user?.email ?? '').toLowerCase();
+  if (!email || !EXEMPT_EMAILS.includes(email)) return res.status(403).json({ error: 'Forbidden' });
+  next();
+}
+
+router.use(authenticate, requireAdmin);
 
 // GET /admin/broadcasts — List all broadcasts (ordered by createdAt desc)
 router.get('/admin/broadcasts', async (req: AuthRequest, res: Response, next: NextFunction) => {

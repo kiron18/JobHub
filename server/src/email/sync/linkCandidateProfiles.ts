@@ -39,25 +39,32 @@ export async function linkCandidateProfiles(): Promise<void> {
       continue;
     }
 
-    // Upsert by email — if a Contact already exists for this email, link it.
-    const contact = await prisma.contact.upsert({
-      where: { email },
-      update: {},
-      create: {
-        email,
-        firstName: profile.name ?? null,
-        lastName: null,
-        source: 'profile_backfill',
-        emailOptIn: true,
-      },
-    });
+    try {
+      // Upsert by email — if a Contact already exists for this email, link it.
+      const contact = await prisma.contact.upsert({
+        where: { email },
+        update: {},
+        create: {
+          email,
+          firstName: profile.name ?? null,
+          lastName: null,
+          source: 'profile_backfill',
+          emailOptIn: true,
+        },
+      });
 
-    await prisma.candidateProfile.update({
-      where: { id: profile.id },
-      data: { contactId: contact.id },
-    });
+      await prisma.candidateProfile.update({
+        where: { id: profile.id },
+        data: { contactId: contact.id },
+      });
 
-    created++;
+      created++;
+    } catch (err: any) {
+      // P2002 = unique constraint — another profile already claimed this contactId.
+      // Skip rather than aborting the whole backfill.
+      console.warn(`[linkCandidateProfiles] Skipping profile ${profile.id} (${email}): ${err?.message ?? err}`);
+      skipped++;
+    }
   }
 
   console.log(`[linkCandidateProfiles] Done — ${created} Contact records created/linked, ${skipped} profiles skipped (no email)`);

@@ -55,10 +55,10 @@ export async function ensureEmailTables(prisma: PrismaClient): Promise<void> {
     CREATE TABLE IF NOT EXISTS "ContactTag" (
       "contactId" TEXT NOT NULL,
       "tagId" TEXT NOT NULL,
-      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY ("contactId", "tagId")
     );
   `);
-  await prisma.$executeRawUnsafe(`ALTER TABLE "ContactTag" ADD PRIMARY KEY ("contactId", "tagId");`);
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "ContactTag_tagId_idx" ON "ContactTag"("tagId");`);
   await prisma.$executeRawUnsafe(`
     DO $$ BEGIN
