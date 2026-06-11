@@ -43,6 +43,8 @@ import emailOpenRouter from './email/tracking/openTracker';
 import emailClickRouter from './email/tracking/clickTracker';
 import emailContactRouter from './email/admin/contactRoutes';
 import emailTagRouter from './email/admin/tagRoutes';
+import emailBroadcastRouter from './email/admin/broadcastRoutes';
+import emailAnalyticsRouter from './email/admin/analyticsRoutes';
 
 dotenv.config();
 
@@ -169,6 +171,8 @@ app.use('/api', emailOpenRouter);
 app.use('/api', emailClickRouter);
 app.use('/api', emailContactRouter);
 app.use('/api', emailTagRouter);
+app.use('/api', emailBroadcastRouter);
+app.use('/api', emailAnalyticsRouter);
 
 // Sentry error handler - must be before any other error handling middleware
 Sentry.setupExpressErrorHandler(app);
