@@ -1,19 +1,21 @@
 import cron from 'node-cron';
+import { processSequenceEmails } from '../email/engine/sequenceEngine';
 
 let cronStarted = false;
 
-/**
- * Sequence cron driver — processes ContactSequence enrollments daily.
- * Stub: will be implemented in Task 4.
- */
 export function startSequenceCron(): void {
   if (cronStarted) return;
   cronStarted = true;
 
-  // 08:00 UTC daily = 18:00 AEST
-  cron.schedule('0 8 * * *', async () => {
-    console.log('[sequenceCron] daily sequence processing tick (stub — not yet implemented)');
+  // Every hour
+  cron.schedule('0 * * * *', async () => {
+    console.log('[sequenceCron] Starting email sequence processing');
+    try {
+      await processSequenceEmails();
+    } catch (err) {
+      console.error('[sequenceCron] Error:', err);
+    }
   });
 
-  console.log('[cron] Sequence processing cron scheduled (08:00 UTC daily)');
+  console.log('[sequenceCron] Scheduled (hourly)');
 }
