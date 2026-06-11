@@ -29,6 +29,18 @@ const AdminFunnel = React.lazy(() =>
 const AdminUserUsage = React.lazy(() =>
   import('./pages/AdminUserUsage').then(m => ({ default: m.AdminUserUsage }))
 );
+const AdminContacts = React.lazy(() =>
+  import('./pages/AdminContacts').then(m => ({ default: m.AdminContacts }))
+);
+const AdminContactDetail = React.lazy(() =>
+  import('./pages/AdminContactDetail').then(m => ({ default: m.AdminContactDetail }))
+);
+const AdminBroadcasts = React.lazy(() =>
+  import('./pages/AdminBroadcasts').then(m => ({ default: m.AdminBroadcasts }))
+);
+const EmailAnalytics = React.lazy(() =>
+  import('./pages/EmailAnalytics').then(m => ({ default: m.EmailAnalytics }))
+);
 const MindsetPage = React.lazy(() =>
   import('./pages/MindsetPage').then(m => ({ default: m.MindsetPage }))
 );
@@ -414,6 +426,11 @@ function ReportOrDashboard() {
                 <Route path="/admin/funnel" element={<AdminFunnel />} />
                 <Route path="/admin/users" element={<AdminUserUsage />} />
                 <Route path="/admin/friday-brief" element={<FridayBriefPage />} />
+                <Route path="/admin/contacts" element={<AdminContacts />} />
+                <Route path="/admin/contacts/new" element={<AdminContactDetail />} />
+                <Route path="/admin/contacts/:id" element={<AdminContactDetail />} />
+                <Route path="/admin/broadcasts" element={<AdminBroadcasts />} />
+                <Route path="/admin/email-analytics" element={<EmailAnalytics />} />
                 <Route path="*" element={<StrategyHub />} />
               </Routes>
             </React.Suspense>
