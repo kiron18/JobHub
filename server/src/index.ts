@@ -39,6 +39,8 @@ import { ensureSponsorJobTable } from './db/ensureSponsorJobTable';
 import { ensureEmailTables } from './db/ensureEmailTables';
 import { seedTags, seedTemplates, seedSequences } from './email/admin/seedData';
 import { startSequenceCron } from './cron/sequenceCron';
+import emailOpenRouter from './email/tracking/openTracker';
+import emailClickRouter from './email/tracking/clickTracker';
 
 dotenv.config();
 
@@ -161,6 +163,8 @@ app.use('/api/enrichment', enrichmentRouter);
 app.use('/api/insights', insightsRouter);
 app.use('/api/sponsors', sponsorsRouter);
 app.use('/api/cv-scan', cvScanRouter);
+app.use('/api', emailOpenRouter);
+app.use('/api', emailClickRouter);
 
 // Sentry error handler - must be before any other error handling middleware
 Sentry.setupExpressErrorHandler(app);
