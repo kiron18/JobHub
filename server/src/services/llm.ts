@@ -64,7 +64,11 @@ export async function callLLM(prompt: string, jsonMode: boolean = true, temperat
             }
         );
 
-        return response.data.choices[0].message.content;
+        const choices = response.data.choices;
+        if (!choices?.length) {
+            throw new Error(`OpenRouter returned no choices. Body: ${JSON.stringify(response.data).substring(0, 300)}`);
+        }
+        return choices[0].message.content;
     });
 }
 
@@ -127,7 +131,11 @@ export async function callClaude(
             }
         );
 
-        const content = response.data.choices[0].message.content as string;
+        const choices = response.data.choices;
+        if (!choices?.length) {
+            throw new Error(`OpenRouter returned no choices. Body: ${JSON.stringify(response.data).substring(0, 300)}`);
+        }
+        const content = choices[0].message.content as string;
         const usage = response.data.usage || {};
         return {
             content,
@@ -184,7 +192,11 @@ export async function callPerplexity(
       }
     );
 
-    const choice = response.data.choices[0];
+    const choices = response.data.choices;
+    if (!choices?.length) {
+      throw new Error(`OpenRouter returned no choices. Body: ${JSON.stringify(response.data).substring(0, 300)}`);
+    }
+    const choice = choices[0];
     const content = choice.message.content as string;
     if (choice.finish_reason === 'length') {
       console.warn('[callPerplexity] response hit max_tokens — output truncated, JSON may be incomplete');
