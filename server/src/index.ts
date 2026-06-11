@@ -41,6 +41,8 @@ import { seedTags, seedTemplates, seedSequences } from './email/admin/seedData';
 import { startSequenceCron } from './cron/sequenceCron';
 import emailOpenRouter from './email/tracking/openTracker';
 import emailClickRouter from './email/tracking/clickTracker';
+import emailContactRouter from './email/admin/contactRoutes';
+import emailTagRouter from './email/admin/tagRoutes';
 
 dotenv.config();
 
@@ -165,6 +167,8 @@ app.use('/api/sponsors', sponsorsRouter);
 app.use('/api/cv-scan', cvScanRouter);
 app.use('/api', emailOpenRouter);
 app.use('/api', emailClickRouter);
+app.use('/api', emailContactRouter);
+app.use('/api', emailTagRouter);
 
 // Sentry error handler - must be before any other error handling middleware
 Sentry.setupExpressErrorHandler(app);
