@@ -39,6 +39,7 @@ import { ensureSponsorJobTable } from './db/ensureSponsorJobTable';
 import { ensureEmailTables } from './db/ensureEmailTables';
 import { seedTags, seedTemplates, seedSequences } from './email/admin/seedData';
 import { startSequenceCron } from './cron/sequenceCron';
+import { linkCandidateProfiles } from './email/sync/linkCandidateProfiles';
 import emailOpenRouter from './email/tracking/openTracker';
 import emailClickRouter from './email/tracking/clickTracker';
 import emailContactRouter from './email/admin/contactRoutes';
@@ -270,6 +271,7 @@ async function ensureColumns() {
     await seedTags(prisma);
     await seedTemplates(prisma);
     await seedSequences(prisma);
+    await linkCandidateProfiles();
     console.log('[startup] schema columns verified');
   } catch (err) {
     console.warn('[startup] ensureColumns skipped:', err);
