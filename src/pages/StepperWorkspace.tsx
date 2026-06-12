@@ -46,6 +46,7 @@ import api from '../lib/api';
 import { warm } from '../lib/theme/warmTokens';
 import { GenerationProgress } from '../components/shared/GenerationProgress';
 import { applyWorkspaceCopy } from './applyWorkspaceCopy';
+import { extractReactText } from '../lib/extractReactText';
 
 // Perplexity company intel, pre-fetched on apply-flow entry and fed into the
 // structured cover-letter route. Shape mirrors the server's CompanyIntelResult.
@@ -54,6 +55,11 @@ interface CompanyIntel {
     suggestedContact: { title: string; reason: string };
     citations?: string[];
     fetchedAt?: string;
+}
+
+interface ResumeTip {
+  bulletKey: string;
+  suggestion: string;
 }
 
 // VERIFY marker UI removed — prompts no longer emit placeholder tokens.
@@ -75,13 +81,91 @@ function sanitizeContent(raw: string): string {
 const HEADING_COLOR: React.CSSProperties = { color: warm.colors.textPrimary };
 const STRONG_COLOR: React.CSSProperties = { color: warm.colors.textPrimary, fontWeight: 700 };
 
-const MARKDOWN_COMPONENTS = {
-    strong: ({ children }: { children?: React.ReactNode }) => <strong style={STRONG_COLOR}>{children}</strong>,
-    h1: ({ children }: { children?: React.ReactNode }) => <h1 style={HEADING_COLOR}>{children}</h1>,
-    h2: ({ children }: { children?: React.ReactNode }) => <h2 style={HEADING_COLOR}>{children}</h2>,
-    h3: ({ children }: { children?: React.ReactNode }) => <h3 style={HEADING_COLOR}>{children}</h3>,
-    h4: ({ children }: { children?: React.ReactNode }) => <h4 style={HEADING_COLOR}>{children}</h4>,
-};
+/** Inline tip icon rendered next to bullets that need a metric. */
+function TipIcon({ suggestion }: { suggestion: string }) {
+    const [open, setOpen] = React.useState(false);
+    return (
+        <span style={{ position: 'relative', display: 'inline-block', marginLeft: 6, verticalAlign: 'middle' }}>
+            <span
+                role="button"
+                aria-label="Tip: strengthen this bullet"
+                onClick={() => setOpen(o => !o)}
+                style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 16,
+                    height: 16,
+                    borderRadius: '50%',
+                    background: '#d97706',
+                    color: '#fff',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    lineHeight: 1,
+                }}
+            >
+                i
+            </span>
+            {open && (
+                <span
+                    style={{
+                        position: 'absolute',
+                        bottom: 22,
+                        left: 0,
+                        zIndex: 50,
+                        background: '#1c1917',
+                        border: '1px solid #44403c',
+                        borderRadius: 6,
+                        padding: '8px 12px',
+                        width: 260,
+                        fontSize: 12,
+                        lineHeight: 1.5,
+                        color: '#e7e5e4',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                        whiteSpace: 'normal',
+                    }}
+                >
+                    {suggestion}
+                </span>
+            )}
+        </span>
+    );
+}
+
+function buildMarkdownComponents(tips: ResumeTip[], showTips: boolean) {
+    return {
+        strong: ({ children }: { children?: React.ReactNode }) => (
+            <strong style={STRONG_COLOR}>{children}</strong>
+        ),
+        h1: ({ children }: { children?: React.ReactNode }) => (
+            <h1 style={HEADING_COLOR}>{children}</h1>
+        ),
+        h2: ({ children }: { children?: React.ReactNode }) => (
+            <h2 style={HEADING_COLOR}>{children}</h2>
+        ),
+        h3: ({ children }: { children?: React.ReactNode }) => (
+            <h3 style={HEADING_COLOR}>{children}</h3>
+        ),
+        h4: ({ children }: { children?: React.ReactNode }) => (
+            <h4 style={HEADING_COLOR}>{children}</h4>
+        ),
+        li: ({ children }: { children?: React.ReactNode }) => {
+            if (showTips && tips.length > 0) {
+                const text = extractReactText(children).trim();
+                const tip = tips.find(t => text.startsWith(t.bulletKey.slice(0, 35)));
+                return (
+                    <li>
+                        {children}
+                        {tip && <TipIcon suggestion={tip.suggestion} />}
+                    </li>
+                );
+            }
+            return <li>{children}</li>;
+        },
+    };
+}
 
 type StepId = 'resume' | 'cover-letter' | 'selection-criteria' | 'track';
 type GenerateType = 'resume' | 'cover-letter' | 'selection-criteria';
@@ -100,6 +184,8 @@ interface PersistedDraft {
     content: string;
     generatedAt: string;
     edited: boolean;
+    tips?: ResumeTip[];
+    estimatedPages?: number;
 }
 
 // ── Workspace key ───────────────────────────────────────────────────────────
@@ -531,6 +617,9 @@ function DocumentStep({
         }
     });
     const [formatMenuOpen, setFormatMenuOpen] = useState(false);
+    const [resumeTips, setResumeTips] = useState<ResumeTip[]>([]);
+    const [estimatedPages, setEstimatedPages] = useState<number | null>(null);
+    const [showTips, setShowTips] = useState(false);
 
     const navigate = useNavigate();
     const isCoverLetter = stepId === 'cover-letter';
@@ -608,6 +697,8 @@ function DocumentStep({
         if (draft) {
             setContent(draft.content);
             setHasDraft(true);
+            if (draft.tips) setResumeTips(draft.tips);
+            if (draft.estimatedPages) setEstimatedPages(draft.estimatedPages);
         } else {
             setContent('');
             setHasDraft(false);
@@ -651,13 +742,23 @@ function DocumentStep({
                 endpoint = '/generate/selection-criteria-structured';
             }
 
-            const { data } = await api.post<{ content: string }>(endpoint, payload);
+            const { data } = await api.post<{
+                content: string;
+                tips?: ResumeTip[];
+                estimatedPages?: number;
+            }>(endpoint, payload);
             const text = typeof data?.content === 'string' ? sanitizeContent(data.content) : '';
             setContent(text);
+            const tips = stepId === 'resume' ? (data?.tips ?? []) : [];
+            const pages = stepId === 'resume' ? (data?.estimatedPages ?? null) : null;
+            setResumeTips(tips);
+            setEstimatedPages(pages);
             saveDraft(workspaceKey, stepId, {
                 content: text,
                 generatedAt: new Date().toISOString(),
                 edited: false,
+                tips,
+                estimatedPages: pages ?? undefined,
             });
             setHasDraft(true);
         } catch (err: any) {
@@ -758,6 +859,11 @@ function DocumentStep({
 
     const stepLabel = stepId === 'resume' ? 'Tailored Resume' : stepId === 'cover-letter' ? 'Cover Letter' : 'Selection Criteria';
     const coverLetterNote = 'Most candidates skip the cover letter. Australian recruiters use it to filter genuine interest from automated applications, a tailored cover letter measurably increases callback rates.';
+
+    const markdownComponents = React.useMemo(
+        () => buildMarkdownComponents(resumeTips, showTips),
+        [resumeTips, showTips],
+    );
 
     return (
         <div style={{
@@ -948,6 +1054,30 @@ function DocumentStep({
                     </button>
                 )}
 
+                {stepId === 'resume' && resumeTips.length > 0 && !editing && (
+                    <button
+                        onClick={() => setShowTips(t => !t)}
+                        style={{
+                            position: 'absolute',
+                            top: 38,
+                            right: 16,
+                            background: showTips ? 'rgba(217, 119, 6, 0.15)' : 'transparent',
+                            border: `1px solid ${showTips ? '#d97706' : 'rgba(255,255,255,0.15)'}`,
+                            borderRadius: 6,
+                            color: showTips ? '#d97706' : warm.colors.textMuted,
+                            fontSize: 11,
+                            fontWeight: 600,
+                            padding: '4px 10px',
+                            cursor: 'pointer',
+                            letterSpacing: '0.03em',
+                            zIndex: 1,
+                        }}
+                        title={showTips ? 'Hide metric tips' : 'Show metric tips'}
+                    >
+                        {showTips ? 'Tips on' : 'Tips'}
+                    </button>
+                )}
+
                 {generating || (generationStatus === 'generating' && !content) ? (
                     <GenerationProgress docType={stepId === 'cover-letter' ? 'cover-letter' : stepId === 'selection-criteria' ? 'selection-criteria' : 'resume'} />
                 ) : editing ? (
@@ -974,8 +1104,25 @@ function DocumentStep({
                     />
                 ) : content ? (
                     <>
+                        {stepId === 'resume' && estimatedPages !== null && estimatedPages > 2 && (
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                padding: '8px 12px',
+                                marginBottom: 12,
+                                background: 'rgba(217, 119, 6, 0.12)',
+                                border: '1px solid rgba(217, 119, 6, 0.35)',
+                                borderRadius: 6,
+                                fontSize: 12,
+                                color: '#d97706',
+                                fontWeight: 500,
+                            }}>
+                                <span>Your resume is estimated at {estimatedPages} pages. Most roles shortlist resumes under 2 pages. Consider trimming less relevant roles or bullets before downloading.</span>
+                            </div>
+                        )}
                         <div className="prose prose-invert max-w-none" style={{ color: warm.colors.textPrimary, fontSize: 13.5, lineHeight: 1.7 }}>
-                            <ReactMarkdown components={MARKDOWN_COMPONENTS as any}>{content}</ReactMarkdown>
+                            <ReactMarkdown components={markdownComponents as any}>{content}</ReactMarkdown>
                         </div>
                         {/* Live word counter — SC only */}
                         {isSC && (
