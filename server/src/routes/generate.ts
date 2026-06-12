@@ -660,26 +660,9 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
             console.warn('[ResumeStructured] LLM output failed Zod validation — falling back to unpolished resume');
         }
 
-        // Curation flags from the single pass: feature substantive roles, fold or
-        // drop casual ones. Years are then summed over the FEATURED roles only, so
-        // casual jobs never inflate the figure; the summary's years number is
-        // corrected to this figure by the first-person enforcer in buildTemplateResume.
-        const allExperience = (profile?.experience ?? []) as any[];
-        const rawFlags = (polish?.experience ?? []).map((e: any, i: number) => ({
-            index: i,
-            relevant: e?.casual !== true,          // keep unless explicitly a casual job
-            australianLocal: e?.australianLocal === true,
-        }));
-        const alignedFlags = rawFlags.length === allExperience.length ? rawFlags : null;
-        const featured = alignedFlags
-            ? allExperience.filter((_, i) => alignedFlags[i].relevant)
-            : allExperience;
-        // Hard guard: curation must never empty the work history. If every role was
-        // marked casual, ignore the flags and show them all.
-        const experienceFlags = (alignedFlags && featured.length > 0) ? alignedFlags : null;
         const resumeYears = resolveYearsOfExperience(
             [profile?.professionalSummary, profile?.resumeRawText],
-            featured.length > 0 ? featured : allExperience,
+            profile?.experience ?? [],
         );
 
         const finalContent = buildTemplateResume(profile, polish, {
@@ -689,8 +672,27 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
             achievementSources: selectedAchievements
                 .map((a: any) => a?.description ?? '')
                 .filter((s: string) => s && s.length > 0),
-            experienceFlags: experienceFlags ?? undefined,
         });
+
+        // Estimate pages: ~45 non-empty lines per A4 page at standard margins.
+        const nonEmptyLines = finalContent.split('\n').filter(l => l.trim().length > 0).length;
+        const estimatedPages = Math.ceil(nonEmptyLines / 45);
+
+        // Flatten per-bullet tips from polish into { bulletKey, suggestion } pairs.
+        const resumeTips: Array<{ bulletKey: string; suggestion: string }> = [];
+        if (polish?.experience) {
+            for (const exp of polish.experience) {
+                for (const tip of (exp.tips ?? [])) {
+                    const bullet = exp.bullets?.[tip.bulletIndex];
+                    if (bullet && bullet.trim().length > 0) {
+                        resumeTips.push({
+                            bulletKey: bullet.trim().slice(0, 40),
+                            suggestion: tip.suggestion,
+                        });
+                    }
+                }
+            }
+        }
 
         // ── Persist document ────────────────────────────────────────────────
         const doc = await prisma.document.create({
@@ -716,6 +718,9 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
             costBreakdown,
             blueprint: null,
             polishAccepted: polish !== null,
+            estimatedPages,
+            tips: resumeTips,
+            pageBudgetWarning: polish?.pageBudgetWarning ?? false,
         });
     } catch (error) {
         console.error('[ResumeStructured] Generation Error:', error);
