@@ -27,9 +27,16 @@ import type { BridgedGap } from './bridgedGaps';
 // =============================================================================
 export interface PolishPayload {
   summary?: string;
+  targetRoleTitle?: string;
+  pageBudgetWarning?: boolean;
+  experienceOrder?: string[];
   experience?: Array<{
     id: string;
     bullets: string[];
+    casual?: boolean;
+    australianLocal?: boolean;
+    display?: 'full' | 'fold' | 'omit';
+    tips?: Array<{ bulletIndex: number; suggestion: string }>;
   }>;
 }
 
@@ -139,6 +146,44 @@ export function mergeBridgedSkills(
   if (unique.length === 0) return base;
   const line = `Role-specific: ${unique.join(', ')}`;
   return base ? `${base}\n${line}` : line;
+}
+
+// =============================================================================
+// reorderExperience — pure, testable
+// =============================================================================
+
+/**
+ * Returns a new array with experiences sorted by the provided ID sequence.
+ * Experiences whose IDs are not in orderIds are appended at the end in their
+ * original relative order. The input array is never mutated.
+ */
+export function reorderExperience<T extends { id: string }>(
+  experiences: T[],
+  orderIds: string[],
+): T[] {
+  if (orderIds.length === 0) return [...experiences];
+  const byId = new Map(experiences.map(e => [e.id, e]));
+  const ordered: T[] = orderIds
+    .map(id => byId.get(id))
+    .filter((e): e is T => e !== undefined);
+  const orderedIdSet = new Set(orderIds);
+  const remaining = experiences.filter(e => !orderedIdSet.has(e.id));
+  return [...ordered, ...remaining];
+}
+
+// =============================================================================
+// enforceSummaryWordCount — pure, testable
+// =============================================================================
+
+/**
+ * Hard-trims a professional summary to maxWords words.
+ * The LLM is instructed to stay within bounds, but this is the backstop.
+ */
+export function enforceSummaryWordCount(summary: string, maxWords = 80): string {
+  if (!summary) return summary;
+  const words = summary.trim().split(/\s+/);
+  if (words.length <= maxWords) return summary;
+  return words.slice(0, maxWords).join(' ');
 }
 
 // =============================================================================
