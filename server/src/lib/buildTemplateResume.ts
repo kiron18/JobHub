@@ -13,7 +13,7 @@
  * This duplicates the canonical frontend implementations at src/lib/ because
  * the server tsconfig sets rootDir: ./src (server/src/) and cannot import
  * from ../../../src/lib/ (outside rootDir). The frontend files remain the
- * canonical source of truth for any future UI reads.
+ * canonical source of origin for any future UI reads.
  */
 
 import { enforceResumeQuality } from './resumeQualityEnforcers';
@@ -409,44 +409,95 @@ export interface BuildTemplateOptions {
 
 /**
  * buildTemplateResume — orchestrator that:
- *   1. Converts Prisma profile to ResumeData
- *   2. Merges LLM polish JSON
- *   3. Runs quality enforcers (first-person, banned phrases, AI-tell scrub, provenance)
- *   4. Renders to deterministic markdown
- *   5. Returns the final markdown string
+ *   1. Reorders profile.experience + aligns polish.experience by polish.experienceOrder
+ *   2. Converts Prisma profile to ResumeData (profileToResumeData)
+ *   3. Merges LLM polish JSON (applyPolish)
+ *   4. Enforces summary word count backstop
+ *   5. Curates experience via display flags (new path) or experienceFlags (legacy path)
+ *   6. Curates education + volunteering for two-page fit
+ *   7. Runs quality enforcers (first-person, banned phrases, AI-tell scrub, provenance)
+ *   8. Merges bridged-gap skills
+ *   9. Renders to deterministic markdown
+ *   10. Returns the final markdown string
  */
 export function buildTemplateResume(
   profile: ProfileWithRelations,
   polish: PolishPayload | null,
   options?: BuildTemplateOptions
 ): string {
-  // Step 1: Profile → ResumeData
-  let data = profileToResumeData(profile);
+  // ── Step 0: Reorder profile.experience + align polish.experience ────────────
+  // Both arrays must be in the same order before index-based applyPolish runs.
+  let orderedProfile = profile;
+  let orderedPolish = polish;
 
-  // Contact email comes from the resume, not the account/login email. Only the
-  // account email is stored on profile.email (extraction skips the resume email to
-  // avoid clashing with the unique account address), so override it here.
+  if (polish?.experienceOrder && polish.experienceOrder.length > 0) {
+    const reorderedProfileExps = reorderExperience(profile.experience, polish.experienceOrder);
+    orderedProfile = { ...profile, experience: reorderedProfileExps };
+
+    if (polish.experience && polish.experience.length > 0) {
+      const reorderedPolishExps = reorderExperience(
+        polish.experience as Array<{ id: string } & (typeof polish.experience)[number]>,
+        polish.experienceOrder,
+      );
+      orderedPolish = { ...polish, experience: reorderedPolishExps };
+    }
+  }
+
+  // ── Step 1: Profile → ResumeData ────────────────────────────────────────────
+  let data = profileToResumeData(orderedProfile);
+
+  // Contact email comes from the resume raw text, not the account/login email.
   if (options?.contactEmail) {
     data = { ...data, email: options.contactEmail };
   }
 
-  // Use the preferred display name (first + last) in the header so a long legal
-  // name like "Pawan Kanthaka Lokugan Hewage" reads as "Pawan Hewage".
+  // JD-derived role headline overrides the stored profileRole when provided.
+  if (orderedPolish?.targetRoleTitle) {
+    data = { ...data, targetRole: orderedPolish.targetRoleTitle };
+  }
+
+  // Preferred display name (first + last) so long legal names read cleanly.
   const headerName = displayName(profile.name);
   if (headerName) {
     data = { ...data, name: headerName };
   }
 
-  // Step 2: Merge polish (if valid)
-  if (polish) {
-    data = applyPolish(data, polish);
+  // ── Step 2: Merge polish (bullets, summary) ─────────────────────────────────
+  if (orderedPolish) {
+    data = applyPolish(data, orderedPolish);
   }
 
-  // Step 2.5: Curate experience — feature relevant roles in full, fold irrelevant
-  // Australian-local roles into one line, drop irrelevant non-local roles. Runs after
-  // applyPolish so the bullet-to-experience index mapping is already resolved.
+  // ── Step 2.1: Enforce summary word count (hard backstop: 80 words max) ──────
+  if (data.professionalSummary) {
+    data = { ...data, professionalSummary: enforceSummaryWordCount(data.professionalSummary) };
+  }
+
+  // ── Step 2.5: Feature/fold/omit curation ────────────────────────────────────
+  // Prefer display flags from polish (new path) over options.experienceFlags
+  // (old wildcard path). Build flags from display when any entry has one set.
+  const polishExps = orderedPolish?.experience ?? [];
+  const hasDisplayFlags = polishExps.some(e => e.display !== undefined);
+
+  let experienceFlagsToUse = options?.experienceFlags ?? null;
+
+  if (hasDisplayFlags && polishExps.length === orderedProfile.experience.length) {
+    const rawFlags = polishExps.map((e, i) => {
+      if (e.display === 'omit') return { index: i, relevant: false, australianLocal: false };
+      if (e.display === 'fold') return { index: i, relevant: false, australianLocal: true };
+      // 'full' or undefined — treat as relevant; fall back to casual flag if present
+      return {
+        index: i,
+        relevant: e.casual !== true,
+        australianLocal: e.australianLocal === true,
+      };
+    });
+    // Hard guard: never empty the work history section
+    const featured = data.experience.filter((_, i) => rawFlags[i]?.relevant !== false);
+    experienceFlagsToUse = featured.length > 0 ? rawFlags : null;
+  }
+
   {
-    const selection = selectFeaturedExperience(data.experience, options?.experienceFlags ?? null);
+    const selection = selectFeaturedExperience(data.experience, experienceFlagsToUse);
     data = {
       ...data,
       experience: selection.featured,
@@ -454,21 +505,19 @@ export function buildTemplateResume(
     };
   }
 
-  // Step 2.6: Two-page curation. When the candidate holds a tertiary qualification,
-  // drop school-level education (secondary / pre-university) — it adds length, not
-  // signal — and cap volunteering to the three strongest entries.
+  // ── Step 2.6: Two-page curation (education + volunteering) ─────────────────
   data = curateEducationAndVolunteering(data);
 
-  // Step 3: Quality enforcers
+  // ── Step 3: Quality enforcers ───────────────────────────────────────────────
   data = enforceResumeQuality(data, {
     candidateName: options?.candidateName,
     yearsOfExperience: options?.yearsOfExperience,
     achievementSources: options?.achievementSources,
   });
 
-  // Step 4: Merge bridged-gap skills into the Skills section
+  // ── Step 4: Merge bridged-gap skills ────────────────────────────────────────
   data = { ...data, skills: mergeBridgedSkills(data.skills, options?.bridgedGaps) };
 
-  // Step 5: Render to markdown
+  // ── Step 5: Render to markdown ──────────────────────────────────────────────
   return profileToMarkdown(data);
 }

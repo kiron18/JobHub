@@ -11,7 +11,6 @@ export type ResumeData = {
     location?: string;
     professionalSummary?: string;
     skills?: string;
-    /** Optional one-line summary of irrelevant Australian-local roles, rendered under Work Experience. */
     additionalExperienceLine?: string;
     experience: Array<{
         role: string;
