@@ -101,15 +101,40 @@ Return ONLY this JSON object. No preamble, no explanation, no markdown fences.
 
 {
   "summary": "first-person professional summary, 3-4 sentences, no name, no he/she/they",
+  "targetRoleTitle": "exact job title from the job ad — copy it word for word",
+  "pageBudgetWarning": false,
+  "experienceOrder": ["id of most relevant role", "id of 2nd most relevant", "...continue for ALL ids"],
   "experience": [
     {
       "id": "the exact id from the work history above",
       "casual": false,
       "australianLocal": true,
-      "bullets": ["tailored bullet", "tailored bullet"]
+      "display": "full",
+      "bullets": ["tailored bullet", "tailored bullet"],
+      "tips": [
+        {
+          "bulletIndex": 0,
+          "suggestion": "Adding what % or volume figure here would make this achievement significantly stronger — for example, how many tonnes of seed were processed per season, or what yield improvement was achieved."
+        }
+      ]
     }
   ]
 }
 
-Return one experience object for EVERY entry in the work history, in the same order, each carrying its exact id, casual, australianLocal, and bullets. Output nothing except the JSON.`;
+FIELD RULES:
+
+targetRoleTitle: Copy the job title exactly from the job ad. This becomes the candidate’s resume headline. Do not invent a title not in the ad.
+
+experienceOrder: List ALL experience IDs from the work history, sorted from most to least relevant to this specific job. Every id must appear exactly once. This is the order they will appear on the resume.
+
+display: Set one value per experience entry.
+- "full" — any substantive professional, technical, managerial, academic, or research role. This is the default for almost every role.
+- "fold" — a casual or survival job only: retail assistant, kitchen hand, delivery driver, warehouse picker, cleaning staff, or similar work with no professional skill relevance to any career. A restaurant MANAGER is NOT casual — set "full". When in doubt, set "full".
+- "omit" — only for a role that is both irrelevant to this job AND was performed entirely outside Australia. Never omit Australian roles.
+
+pageBudgetWarning: Set true only if you estimate the resume content you have written will still exceed 2 pages after all your curation decisions. Be honest — a false alarm is better than silently producing a 3-page resume.
+
+tips (optional, per experience): Add a tip ONLY when a bullet would be significantly stronger with a specific metric that you cannot invent from the resume. Each tip must be one concrete, specific sentence spelling out exactly what the candidate should add — name the type of number (%, $, volume, timeframe, headcount). Do not add a tip for a bullet that is already quantified. Maximum 2 tips per experience entry, 5 tips total across the entire resume. If no bullet needs a tip, omit the tips array entirely.
+
+Return one experience object for EVERY entry in the work history. Every object must carry its exact id. Output nothing except the JSON.`;
 };
