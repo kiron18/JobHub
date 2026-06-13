@@ -78,7 +78,7 @@ export function selectFeaturedExperience<T extends ExperienceLike>(
     if (years.length > 0) {
       const min = Math.min(...years);
       const max = Math.max(...years);
-      range = min === max ? ` (${min})` : ` (${min}–${max})`;
+      range = min === max ? ` (${min})` : ` (${min}-${max})`;
     }
 
     additionalExperienceLine = `**Additional Australian experience:** ${shownRoles.join(', ')}${range}`;

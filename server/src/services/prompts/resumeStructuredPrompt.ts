@@ -49,7 +49,32 @@ export const RESUME_STRUCTURED_PROMPT = (
 
     const rawResume = (profile?.resumeRawText ?? '').trim();
 
-    return `You are an expert Australian resume writer. Rewrite this candidate's resume so it wins an interview for the specific job below.
+    	    // Normalised skills the model may reorder/trim (never add to). Handles the
+	    // JSON-object skills shape ({technical, industryKnowledge, softSkills}) and a
+	    // plain string. Falls back to whatever string is stored.
+	    const skillsBlock = (() => {
+	        const s = profile?.skills;
+	        if (!s) return '(no skills listed)';
+	        if (typeof s === 'string') {
+	            const t = s.trim();
+	            if (!t.startsWith('{') && !t.startsWith('[')) return t || '(no skills listed)';
+	            try {
+	                const parsed = JSON.parse(t);
+	                if (Array.isArray(parsed)) return parsed.join(', ');
+	                return Object.entries(parsed)
+	                    .map(([k, v]) => {
+	                        const label = k.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase());
+	                        return `${label}: ${Array.isArray(v) ? v.join(', ') : String(v)}`;
+	                    })
+	                    .join('\n');
+	            } catch {
+	                return t;
+	            }
+	        }
+	        return '(no skills listed)';
+	    })();
+
+	    return `You are an expert Australian resume writer. Rewrite this candidate's resume so it wins an interview for the specific job below.
 
 Your job is simple: take what is already in their resume, rearrange and sharpen it for this role, and tailor the language to the job. Do not invent anything.
 
@@ -62,6 +87,11 @@ ${experienceBlock}
 ORIGINAL RESUME TEXT (reference only — the structured work history above is authoritative and supersedes this wherever they differ, because the candidate may have edited their profile since uploading)
 ==============================================================
 ${rawResume || '(raw resume text unavailable)'}
+
+==============================================================
+THEIR SKILLS (reorder and trim for this job — never add a skill not listed here)
+==============================================================
+${skillsBlock}
 
 ==============================================================
 THE JOB THEY ARE APPLYING FOR
@@ -85,11 +115,13 @@ HOW TO WRITE IT
 
 7. KEEP IT TO TWO PAGES (hard limit). This MUST fit two pages, so budget the space by relevance to THIS job. Give the 2 to 3 roles most relevant to the job 3 to 4 tight bullets each. Give clearly less-relevant professional roles (for example an unrelated hospitality or retail management role on a technical application) just 1 to 2 bullets, focused only on the one thing this job actually values from it, such as safety, compliance, or stakeholder communication. Across the whole resume aim for roughly 10 to 14 bullets in total, never more. When in doubt, cut.
 
-8. AUSTRALIAN ENGLISH. organised, analysed, recognised, programme, labour, colour, specialised.
+8. SKILLS, RETARGETED. Output a skills block tailored to this job. Start from THEIR SKILLS above and use only those, never add a skill the candidate does not have. Put the skills this job names first, drop skills with no relevance to this job, and keep the candidate's category labels (for example Technical, Industry Knowledge, Soft Skills). Format as one line per category in the form "Label: item, item, item". If the candidate clearly has a skill the job names under different wording, you may use the job's wording for that same skill, but never introduce a capability the resume does not show.
 
-9. NO GAPS, NO PLACEHOLDERS. The result must read as finished, signable work. Never output [VERIFY], [ADD], [TBD], or any bracketed placeholder. Every sentence must be complete.${employerQuestions && employerQuestions.length > 0 ? `
+9. AUSTRALIAN ENGLISH. organised, analysed, recognised, programme, labour, colour, specialised.
 
-10. The job asks the candidate to address these — weave answers naturally into the summary or bullets where the resume supports them:
+10. NO GAPS, NO PLACEHOLDERS. The result must read as finished, signable work. Never output [VERIFY], [ADD], [TBD], or any bracketed placeholder. Every sentence must be complete.${employerQuestions && employerQuestions.length > 0 ? `
+
+11. The job asks the candidate to address these — weave answers naturally into the summary or bullets where the resume supports them:
 ${employerQuestions.map(q => `   - ${q}`).join('\n')}` : ''}${analysisContext?.regenerateFeedback ? `
 
 The user asked for this specific change — apply it: "${analysisContext.regenerateFeedback}"` : ''}
@@ -101,6 +133,7 @@ Return ONLY this JSON object. No preamble, no explanation, no markdown fences.
 
 {
   "summary": "first-person professional summary, 3-4 sentences, no name, no he/she/they",
+  "skills": "one line per category, e.g. 'Technical: SAP, Microsoft Excel, inventory reconciliation\\nIndustry Knowledge: stock control, cycle counting'",
   "targetRoleTitle": "exact job title from the job ad — copy it word for word",
   "pageBudgetWarning": false,
   "experienceOrder": ["id of most relevant role", "id of 2nd most relevant", "...continue for ALL ids"],

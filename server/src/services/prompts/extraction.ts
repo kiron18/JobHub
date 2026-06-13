@@ -56,7 +56,7 @@ Schema:
     {
       "institution": "University Name",
       "degree": "Degree Name",
-      "field": "Field of Study",
+      "field": "Field of Study — copy only if a field of study is explicitly named. If none is stated, return null. Never infer a field from the qualification name (for example, do NOT label 'IGCSE & A Levels' as 'General Education').",
       "startDate": "YYYY",
       "endDate": "YYYY or present",
       "coachingTips": "Missing graduation year? Add it."

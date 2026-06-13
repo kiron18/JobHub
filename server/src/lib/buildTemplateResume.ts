@@ -27,6 +27,7 @@ import type { BridgedGap } from './bridgedGaps';
 // =============================================================================
 export interface PolishPayload {
   summary?: string;
+  skills?: string;
   targetRoleTitle?: string;
   pageBudgetWarning?: boolean;
   experienceOrder?: string[];
@@ -183,7 +184,22 @@ export function enforceSummaryWordCount(summary: string, maxWords = 80): string 
   if (!summary) return summary;
   const words = summary.trim().split(/\s+/);
   if (words.length <= maxWords) return summary;
-  return words.slice(0, maxWords).join(' ');
+  const truncated = words.slice(0, maxWords).join(' ');
+  // Already ends on a complete sentence — keep as-is.
+  if (/[.!?]$/.test(truncated)) return truncated;
+  // Prefer ending on the last complete sentence so the summary never breaks
+  // mid-clause (e.g. "...experience in GMP-regulated settings,").
+  const lastSentenceEnd = Math.max(
+    truncated.lastIndexOf('. '),
+    truncated.lastIndexOf('! '),
+    truncated.lastIndexOf('? '),
+  );
+  if (lastSentenceEnd > 0) {
+    return truncated.slice(0, lastSentenceEnd + 1).trim();
+  }
+  // No earlier sentence boundary — fall back to the hard word slice, stripped of
+  // any dangling punctuation so it never ends on a comma or colon.
+  return truncated.replace(/[,;:]+\s*$/, '').trim();
 }
 
 // =============================================================================
@@ -242,6 +258,7 @@ export function applyPolish(data: ResumeData, polish: PolishPayload): ResumeData
   return {
     ...data,
     professionalSummary: polish.summary ?? data.professionalSummary,
+    skills: polish.skills ?? data.skills,
     experience: data.experience.map((exp, i) => {
       const match = (polish.experience ?? [])[i];
       if (!match) return exp;
@@ -326,7 +343,10 @@ export function profileToMarkdown(d: ResumeData): string {
     section('Education');
     d.education.forEach(ed => {
       const right = ed.year || dateRange(ed.startDate, ed.endDate);
-      const head = `**${ed.degree}${ed.field ? ` - ${ed.field}` : ''}**${right ? `  ·  ${right}` : ''}`;
+      // Suppress the field when it is already named in the degree, e.g.
+      // "Bachelor of Science (Chemistry)" + field "Chemistry" → no " - Chemistry".
+      const showField = ed.field && !ed.degree.toLowerCase().includes(ed.field.toLowerCase());
+      const head = `**${ed.degree}${showField ? ` - ${ed.field}` : ''}**${right ? `  ·  ${right}` : ''}`;
       push(head);
       const sub = [ed.institution, ed.location].filter(Boolean).join(' - ');
       if (sub) push(sub);

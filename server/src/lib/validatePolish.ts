@@ -5,6 +5,7 @@ import { z } from 'zod';
 
 export const PolishPayloadSchema = z.object({
   summary: z.string().optional(),
+  skills: z.string().optional(),
   /** JD-derived role title to use as the candidate's header headline. */
   targetRoleTitle: z.string().optional(),
   /** true when Claude estimates content still exceeds 2 pages after curation. */

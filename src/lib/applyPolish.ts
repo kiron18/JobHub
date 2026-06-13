@@ -5,6 +5,7 @@ import type { ResumeData } from './resumeData';
 
 export interface PolishPayload {
   summary?: string;
+  skills?: string;
   experience?: Array<{
     id: string;
     bullets: string[];
@@ -31,6 +32,7 @@ export function applyPolish(data: ResumeData, polish: PolishPayload): ResumeData
   return {
     ...data,
     professionalSummary: polish.summary ?? data.professionalSummary,
+    skills: polish.skills ?? data.skills,
     experience: data.experience.map((exp, i) => {
       const match = (polish.experience ?? [])[i];
       if (!match) return exp;

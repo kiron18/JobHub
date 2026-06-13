@@ -107,6 +107,15 @@ router.post('/:type', authenticate, async (req, res, next) => {
     // this passthrough they get treated as an unknown type and default to RESUME —
     // which is why cover letters were rendering as resumes. Hand them off.
     if (type === 'resume-structured' || type === 'cover-letter-structured' || type === 'selection-criteria-structured') return next();
+    // The resume, cover letter, and selection-criteria documents are now generated
+    // exclusively by the single Claude pass on the dedicated -structured routes
+    // below. The old Llama path for these three is retired. Fail loudly rather than
+    // silently serving a lower-quality Llama document if anything ever routes here.
+    if (type === 'resume' || type === 'cover-letter' || type === 'selection-criteria') {
+        return res.status(410).json({
+            error: `The ${type} generator has moved. Use /generate/${type}-structured.`,
+        });
+    }
     const userId = (req as any).user.id as string;
     const {
         jobDescription,

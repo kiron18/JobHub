@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { reorderExperience, enforceSummaryWordCount } from '../buildTemplateResume';
+import { reorderExperience, enforceSummaryWordCount, applyPolish } from '../buildTemplateResume';
 
 describe('reorderExperience', () => {
   const exps = [
@@ -56,5 +56,32 @@ describe('enforceSummaryWordCount', () => {
   it('respects a custom maxWords argument', () => {
     const s = 'word '.repeat(10).trim();
     expect(enforceSummaryWordCount(s, 5).split(/\s+/).length).toBe(5);
+  });
+
+  it('trims to a complete sentence rather than breaking mid-clause', () => {
+    // Two full sentences (~20 words) then a third that runs past the budget and
+    // would otherwise be chopped on a comma, like "...GMP-regulated settings,".
+    const s =
+      'I am a chemistry graduate with hands on laboratory experience. ' +
+      'I bring strong analytical and quality control skills. ' +
+      'My technical foundation in chemical analysis, paired with experience in GMP regulated settings, prepares me well.';
+    const result = enforceSummaryWordCount(s, 20);
+    expect(result.endsWith('.')).toBe(true);
+    expect(/[,;:]$/.test(result)).toBe(false);
+    expect(result.split(/\s+/).length).toBeLessThanOrEqual(20);
+  });
+});
+
+describe('applyPolish skills override', () => {
+  const base: any = { name: 'X', experience: [], education: [], skills: 'Technical: Chemistry' };
+
+  it('overrides skills when polish provides them', () => {
+    const out = applyPolish(base, { skills: 'Technical: SAP, Excel' } as any);
+    expect(out.skills).toBe('Technical: SAP, Excel');
+  });
+
+  it('keeps existing skills when polish omits them', () => {
+    const out = applyPolish(base, { summary: 'hi' } as any);
+    expect(out.skills).toBe('Technical: Chemistry');
   });
 });

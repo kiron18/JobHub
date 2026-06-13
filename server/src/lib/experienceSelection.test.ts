@@ -32,7 +32,7 @@ describe('selectFeaturedExperience', () => {
     ];
     const out = selectFeaturedExperience(experience, flags);
     expect(out.featured.map(f => f.role)).toEqual(['Lab Tech']);
-    expect(out.additionalExperienceLine).toBe('**Additional Australian experience:** Food Handler, Kitchen Hand (2024–2025)');
+    expect(out.additionalExperienceLine).toBe('**Additional Australian experience:** Food Handler, Kitchen Hand (2024-2025)');
   });
 
   it('de-duplicates role titles and caps at 5 with "and more"', () => {

@@ -197,6 +197,8 @@ export async function persistExtracted(userId: string, parsed: ParsedResume, opt
           institution: edu.institution || 'Unknown Institution',
           degree: edu.degree || 'Unknown Degree',
           field: edu.field ?? null,
+          startDate: edu.startDate ?? null,
+          endDate: edu.endDate ?? null,
           year: edu.year ?? null,
           coachingTips: Array.isArray(edu.coachingTips)
             ? edu.coachingTips.join(' | ')
