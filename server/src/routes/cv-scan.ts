@@ -63,6 +63,7 @@ const RESULT_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 interface ScanStoreEntry {
   resumeText: string;
   result: CvGapResult;
+  filename: string | null;
   at: number;
 }
 const scanStore = new Map<string, ScanStoreEntry>();
@@ -184,7 +185,7 @@ router.post(
         // Guard: old cache entries may be missing fields from a schema version change
         if ((result as any).quickWins && (result as any).firstName !== undefined) {
           const scanId = randomUUID();
-          scanStore.set(scanId, { resumeText: text, result, at: Date.now() });
+          scanStore.set(scanId, { resumeText: text, result, filename: file.originalname ?? null, at: Date.now() });
           trimScanStore();
           fireResumeParse(scanId, text);
           res.json(buildScanResponse(scanId, result));
@@ -207,7 +208,7 @@ router.post(
 
       // Store in scanStore for later roadmap generation
       const scanId = randomUUID();
-      scanStore.set(scanId, { resumeText: text, result, at: Date.now() });
+      scanStore.set(scanId, { resumeText: text, result, filename: file.originalname ?? null, at: Date.now() });
       trimScanStore();
       // Kick off the structured resume parse now so the bank is ready by claim.
       fireResumeParse(scanId, text);
@@ -342,6 +343,8 @@ router.post('/claim', authenticate, async (req: AuthRequest, res) => {
       email,
       name: entry.result.fullName || null,
       resumeRawText: entry.resumeText,
+      resumeFilename: entry.filename,
+      documentsUpdatedAt: new Date(),
       targetRole,
       targetCity: loc,
       location: loc,

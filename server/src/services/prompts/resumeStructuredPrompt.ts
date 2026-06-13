@@ -54,14 +54,14 @@ export const RESUME_STRUCTURED_PROMPT = (
 Your job is simple: take what is already in their resume, rearrange and sharpen it for this role, and tailor the language to the job. Do not invent anything.
 
 ==============================================================
-THE CANDIDATE'S RESUME (the single source of truth)
-==============================================================
-${rawResume || '(raw resume text unavailable — work only from the structured work history below)'}
-
-==============================================================
-THEIR WORK HISTORY (return one object for EACH entry; keep the same order and ids)
+THEIR WORK HISTORY (the single source of truth — return one object for EACH entry; keep the same order and ids)
 ==============================================================
 ${experienceBlock}
+
+==============================================================
+ORIGINAL RESUME TEXT (reference only — the structured work history above is authoritative and supersedes this wherever they differ, because the candidate may have edited their profile since uploading)
+==============================================================
+${rawResume || '(raw resume text unavailable)'}
 
 ==============================================================
 THE JOB THEY ARE APPLYING FOR
@@ -71,7 +71,7 @@ ${jd}
 ==============================================================
 HOW TO WRITE IT
 ==============================================================
-1. SOURCE OF TRUTH. Use only facts that appear in the resume. Never invent a company, role, date, qualification, tool, or metric. If the resume does not contain something the job wants, leave it out — do not claim it, and do not write that the candidate lacks it.
+1. SOURCE OF TRUTH. Use only facts that appear in the structured work history above, which the candidate has reviewed and edited. The original resume text is reference only. Where they differ, the structured work history wins. Never invent a company, role, date, qualification, tool, or metric. If the resume does not contain something the job wants, leave it out — do not claim it, and do not write that the candidate lacks it.
 
 2. NUMBERS, HONESTLY. Lead a bullet with a figure ONLY when that exact figure is in the resume. When there is no number, lead with the concrete result, scope, or action instead. Never make up, estimate, or round a number. This is the most important rule.
 

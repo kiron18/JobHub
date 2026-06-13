@@ -3,7 +3,7 @@
 // the scan) and a persist step (DB writes, needs userId). autoExtractAchievements
 // remains the convenience wrapper used by the onboarding path.
 
-import { callLLM } from './llm';
+import { callClaude } from './llm';
 import { STAGE_1_PROMPT, STAGE_2_PROMPT } from './prompts';
 import { prisma } from '../index';
 import { parseLLMJson } from '../utils/parseLLMResponse';
@@ -18,7 +18,7 @@ export interface ParsedResume {
 // kicked off during the scan, keyed by scanId, then persisted later at claim). ──
 export async function parseResumeToStructure(resumeText: string): Promise<ParsedResume> {
   // Stage 1 — profile structure
-  const stage1Raw = await callLLM(STAGE_1_PROMPT(resumeText));
+  const { content: stage1Raw } = await callClaude(STAGE_1_PROMPT(resumeText), true);
   const stage1Data = parseLLMJson(stage1Raw); // throws on bad JSON; caller handles
 
   console.log(`[AutoExtract] Stage 1 parsed — education: ${stage1Data.education?.length ?? 0}, experience: ${stage1Data.experience?.length ?? 0}, projects: ${stage1Data.projects?.length ?? 0}, certs: ${stage1Data.certifications?.length ?? 0}`);
@@ -45,7 +45,7 @@ export async function parseResumeToStructure(resumeText: string): Promise<Parsed
 
   for (const entry of allEntries) {
     try {
-      const stage2Raw = await callLLM(STAGE_2_PROMPT(entry.role, entry.company, entry.bullets));
+      const { content: stage2Raw } = await callClaude(STAGE_2_PROMPT(entry.role, entry.company, entry.bullets), true);
       let stage2Data: any;
       try {
         stage2Data = parseLLMJson(stage2Raw);
@@ -142,7 +142,7 @@ export async function persistExtracted(userId: string, parsed: ParsedResume, opt
       const experienceToCreate = (stage1Data.experience || [])
         .map((exp: any) => ({
           candidateProfileId: profileId,
-          company: exp.company || 'Unknown Company',
+          company: exp.company || '',
           role: exp.role || 'Unknown Role',
           startDate: exp.startDate || 'Unknown',
           endDate: exp.endDate ?? null,
