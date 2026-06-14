@@ -236,6 +236,9 @@ export function ScanReveal({
                         ))}
                       </div>
                     )}
+                    <p style={{ ...bodyStyle, fontSize: 15, color: colors.textPrimary, marginTop: 4 }}>
+                      Most resumes with these gaps never get a reply. Not a rejection, just silence, because they are filtered or skimmed past before anyone reads the detail.
+                    </p>
                   </div>
                 )}
 
@@ -325,7 +328,7 @@ export function ScanReveal({
                         {/* prominent CTA — the obvious next step */}
                         <div style={{ marginTop: 8 }}>
                           <p style={{ ...bodyStyle, fontSize: 15, color: colors.textPrimary, marginBottom: 12 }}>
-                            Want the rest? I'll send the full step-by-step plan, plus the Australian hiring rules recruiters never say out loud.
+                            Want the rest? I'll send your full fix list, step by step, plus the Australian hiring rules recruiters never say out loud. Career coaches charge hundreds for this read. Yours is free, I just need an email to send it.
                           </p>
                           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                             <input
@@ -421,6 +424,13 @@ export function ScanReveal({
                               </div>
                             </div>
                           ))}
+                        </div>
+                        <div style={{ marginTop: 4, padding: '16px 18px', border: `1px solid ${colors.borderWhisper}`, borderRadius: 14, background: colors.bgSurface, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <p style={eyebrowStyle}>Fixing it once is the easy part</p>
+                          <p style={{ ...bodyStyle, fontSize: 15, color: colors.textPrimary }}>
+                            The real reason good people stay stuck is they fix one resume, then send it into a void, to jobs that may not even sponsor a visa. We rewrite your resume for every job automatically, and show you the Australian employers hiring and sponsoring right now.
+                          </p>
+                          <p style={{ ...bodyStyle, fontSize: 12.5, color: colors.textMuted }}>Free to start. No card needed.</p>
                         </div>
                       </>
                     )}
