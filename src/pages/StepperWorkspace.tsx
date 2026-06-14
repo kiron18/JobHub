@@ -263,12 +263,14 @@ export function StepperWorkspace() {
             { id: 'resume',        label: 'Resume',          icon: <FileText size={14} /> },
             { id: 'cover-letter',  label: 'Cover Letter',    icon: <Mail size={14} /> },
         ];
-        // SC step is always present. When the JD mentions SC it shows as a
-        // normal step chip; when not it's hidden behind a discreet manual link.
+        // SC step is always present but always opt-in: it never sits in the
+        // default forward flow (cover letter advances straight to Track/Apply).
+        // Most jobs have no selection criteria, so the user reaches it only via
+        // the discreet manual link near the step chips when they actually need it.
         base.push({
             id: 'selection-criteria', label: 'Selection Criteria',
             icon: <ListChecks size={14} />, optional: true,
-            manualOnly: !wantsSC,
+            manualOnly: true,
         });
         base.push({ id: 'track', label: 'Track', icon: <Briefcase size={14} /> });
         return base;

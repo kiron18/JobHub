@@ -104,7 +104,7 @@ function BeatSection({
   return (
     <section
       ref={ref}
-      style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', position: 'relative', padding: '48px 24px' }}
+      style={{ display: 'flex', alignItems: 'center', position: 'relative', padding: '48px 24px' }}
     >
       {imgBeat && !narrow && (
         <img
