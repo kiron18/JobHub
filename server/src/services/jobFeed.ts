@@ -165,6 +165,14 @@ const SENIOR_SIGNALS = [
   'manager', '5+ years', 'minimum 5 years', 'extensive experience',
 ];
 
+// Title/description signals that mark a listing as junior/entry-level. Matching
+// listings are promoted up the feed. Seek's search query is a hard AND-filter, so
+// junior bias must happen here in ranking, not in the search URL.
+const JUNIOR_SIGNALS = [
+  'junior', 'graduate', 'entry level', 'entry-level', 'trainee', 'apprentice',
+  'cadet', 'no experience', 'early career', '0-2 years', '1-2 years', 'assistant',
+];
+
 function quickScore(skillsJson: any, job: RawJob): number {
   if (!skillsJson) return 50;
   try {
@@ -183,6 +191,9 @@ function quickScore(skillsJson: any, job: RawJob): number {
     let score = Math.min(99, Math.round((matches.length / allSkills.length) * 100));
     if (SENIOR_SIGNALS.some(sig => haystack.includes(sig))) {
       score -= 1000; // pushes senior roles to the bottom without dropping them
+    }
+    if (JUNIOR_SIGNALS.some(sig => haystack.includes(sig))) {
+      score += 25;
     }
     return score;
   } catch {
