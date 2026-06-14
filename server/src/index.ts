@@ -3,9 +3,11 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
-import { PrismaClient } from '@prisma/client';
 import fs from 'fs';
 import path from 'path';
+import { prisma } from './db';
+export { prisma };
+
 // Routers
 import extractRouter from './routes/extract';
 import analyzeRouter from './routes/analyze';
@@ -64,15 +66,6 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('CRITICAL: Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
-function buildDatabaseUrl() {
-  const url = process.env.DATABASE_URL ?? '';
-  const withPgBouncer = url.includes('pgbouncer=true') ? url : `${url}${url.includes('?') ? '&' : '?'}pgbouncer=true`;
-  return withPgBouncer.includes('connection_limit=') ? withPgBouncer : `${withPgBouncer}&connection_limit=5`;
-}
-
-export const prisma = new PrismaClient({
-  datasources: { db: { url: buildDatabaseUrl() } },
-});
 const app = express();
 const PORT = process.env.PORT || 3002;
 

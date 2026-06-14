@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import { prisma } from '../../index';
 import { authenticate } from '../../middleware/auth';
-import { indexAchievement, deleteAchievement } from '../../services/vector';
 
 const router = Router();
 
-// GET /api/achievements
+// GET /api/achievements — read-only access to achievements
+// NOTE: Creation and editing removed. Users update their profile by re-uploading their resume.
 router.get('/achievements', authenticate, async (req, res) => {
     const userId = (req as any).user.id;
     console.log(`Handling GET /api/achievements for user: ${userId}`);
@@ -46,127 +46,6 @@ router.get('/achievements/count', authenticate, async (req, res) => {
     } catch (error) {
         console.error('Failed to fetch achievement count:', error);
         res.status(500).json({ error: 'Failed to fetch achievement count' });
-    }
-});
-
-// POST /api/achievements
-router.post('/achievements', authenticate, async (req, res) => {
-    const { title, description, metric, metricType, skills, experienceId } = req.body;
-    const userId = (req as any).user.id;
-
-    try {
-        const profile = await prisma.candidateProfile.findUnique({
-            where: { userId }
-        });
-
-        if (!profile) return res.status(404).json({ error: 'Profile not found' });
-
-        // Only link to an experience the user actually owns — guards against a
-        // client passing an arbitrary/foreign experienceId.
-        let linkedExperienceId: string | null = null;
-        if (experienceId) {
-            const exp = await prisma.experience.findFirst({
-                where: { id: experienceId, candidateProfileId: profile.id },
-                select: { id: true },
-            });
-            linkedExperienceId = exp?.id ?? null;
-        }
-
-        const achievement = await prisma.achievement.create({
-            data: {
-                candidateProfileId: profile.id,
-                userId,
-                experienceId: linkedExperienceId,
-                title,
-                description,
-                skills: Array.isArray(skills) ? skills.join(', ') : (skills || ''),
-                metric: metric || null,
-                metricType: metricType || null,
-                isStaged: true
-            }
-        });
-
-        // Index in Pinecone with userId namespace
-        // Non-blocking: DB save is the critical path; Pinecone indexing
-        // failures are logged but must not prevent the response.
-        indexAchievement(
-            userId,
-            achievement.id,
-            `${achievement.title}: ${achievement.description}`,
-            {
-                metric: achievement.metric,
-                metricType: achievement.metricType,
-                skills: achievement.skills
-            }
-        ).catch((err: any) => {
-            console.error(`Pinecone index FAILED for achievement ${achievement.id} (user ${userId}):`, err?.message ?? err);
-        });
-
-        res.json(achievement);
-    } catch (error) {
-        console.error('Create Achievement Error:', error);
-        res.status(500).json({ error: 'Failed to create achievement' });
-    }
-});
-
-// PATCH /api/achievements/:id
-router.patch('/achievements/:id', authenticate, async (req, res) => {
-    const { id } = req.params as any;
-    const { title, description, metric, metricType, skills } = req.body as any;
-    const userId = (req as any).user.id;
-
-    try {
-        const achievement = await prisma.achievement.update({
-            where: {
-                id,
-                candidateProfile: { userId }
-            },
-            data: {
-                title,
-                description,
-                metric,
-                metricType,
-                skills: (Array.isArray(skills) ? skills.join(', ') : (skills as string | undefined))
-            }
-        });
-
-        indexAchievement(
-            userId,
-            achievement.id,
-            `${achievement.title}: ${achievement.description}`,
-            {
-                metric: achievement.metric,
-                metricType: achievement.metricType,
-                skills: achievement.skills
-            }
-        ).catch((err: any) => {
-            console.error(`Pinecone re-index FAILED for achievement ${achievement.id} (user ${userId}):`, err?.message ?? err);
-        });
-
-        res.json(achievement);
-    } catch (error) {
-        console.error('Update Achievement Error:', error);
-        res.status(500).json({ error: 'Failed to update achievement' });
-    }
-});
-
-// DELETE /api/achievements/:id
-router.delete('/achievements/:id', authenticate, async (req, res) => {
-    const { id } = req.params as any;
-    const userId = (req as any).user.id;
-
-    try {
-        await prisma.achievement.delete({
-            where: {
-                id: id as string,
-                candidateProfile: { userId }
-            }
-        });
-        await deleteAchievement(userId, id as string);
-        res.json({ success: true });
-    } catch (error) {
-        console.error('Delete Achievement Error:', error);
-        res.status(500).json({ error: 'Failed to delete achievement' });
     }
 });
 

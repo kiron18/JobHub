@@ -247,10 +247,9 @@ router.post('/profile', authenticate, async (req, res) => {
                 }) as any;
 
             } else {
-                // ── EXISTING PROFILE — merge, never wipe ──────────────────────
-
-                // Scalar fields: only overwrite when the incoming value is non-empty
-                // so a partial re-import doesn't blank out fields already on record.
+                // ── EXISTING PROFILE — scalar updates only, no relation edits ──────────────────────
+                // Profile editing feature removed. Users update their data by re-uploading their resume.
+                // Only scalar fields are updated here for onboarding completion.
                 const scalarUpdate: Record<string, any> = {};
                 if (profile.name)                 scalarUpdate.name                = profile.name;
                 if (profile.email)                scalarUpdate.email               = profile.email;
@@ -264,123 +263,7 @@ router.post('/profile', authenticate, async (req, res) => {
 
                 await tx.candidateProfile.update({ where: { userId }, data: scalarUpdate });
 
-                // ── Experience: match on (company + title), update or insert ──
-                // Entries in DB that are NOT in the incoming payload are left alone.
-                if (experience && experience.length > 0) {
-                    for (const exp of experience) {
-                        const company = exp.company || 'Unknown Company';
-                        const role    = exp.role    || 'Unknown Role';
-                        const existing = await tx.experience.findFirst({
-                            where: {
-                                candidateProfileId: existingProfile.id,
-                                company: { equals: company, mode: 'insensitive' },
-                                role:    { equals: role,    mode: 'insensitive' }
-                            }
-                        });
-                        const expData = {
-                            company,
-                            role,
-                            startDate:    exp.startDate || 'Unknown',
-                            endDate:      exp.endDate   ?? null,
-                            description:  exp.bullets?.join('\n') || exp.description || '',
-                            coachingTips: Array.isArray(exp.coachingTips) ? exp.coachingTips.join(' | ') : (exp.coachingTips || null)
-                        };
-                        if (existing) {
-                            await tx.experience.update({ where: { id: existing.id }, data: expData });
-                        } else {
-                            await tx.experience.create({ data: { candidateProfileId: existingProfile.id, ...expData } });
-                        }
-                    }
-                }
-
-                // ── Education: match on (institution + degree), update or insert
-                if (education && education.length > 0) {
-                    for (const edu of education) {
-                        const institution = edu.institution || 'Unknown Institution';
-                        const degree      = edu.degree      || 'Unknown Degree';
-                        const existing = await tx.education.findFirst({
-                            where: {
-                                candidateProfileId: existingProfile.id,
-                                institution: { equals: institution, mode: 'insensitive' },
-                                degree:      { equals: degree,      mode: 'insensitive' }
-                            }
-                        });
-                        const eduData = {
-                            institution,
-                            degree,
-                            year:         edu.year          ?? null,
-                            coachingTips: Array.isArray(edu.coachingTips) ? edu.coachingTips.join(' | ') : (edu.coachingTips || null)
-                        };
-                        if (existing) {
-                            await tx.education.update({ where: { id: existing.id }, data: eduData });
-                        } else {
-                            await tx.education.create({ data: { candidateProfileId: existingProfile.id, ...eduData } });
-                        }
-                    }
-                }
-
-                // ── Certifications: append-only, deduplicate by name ───────────
-                if (certifications && certifications.length > 0) {
-                    const existingCerts = await tx.certification.findMany({
-                        where: { candidateProfileId: existingProfile.id },
-                        select: { name: true }
-                    });
-                    const existingCertNames = new Set(existingCerts.map((c: any) => c.name.toLowerCase().trim()));
-                    const newCerts = certifications
-                        .filter((cert: any) => cert.name && !existingCertNames.has(cert.name.toLowerCase().trim()))
-                        .map((cert: any) => ({
-                            candidateProfileId: existingProfile.id,
-                            name: cert.name,
-                            issuingBody: cert.issuer || cert.issuingBody || 'Unknown',
-                            year: cert.year ?? null
-                        }));
-                    if (newCerts.length > 0) await tx.certification.createMany({ data: newCerts });
-                }
-
-                // ── Volunteering: append-only, deduplicate by organization+role ─
-                if (volunteering && volunteering.length > 0) {
-                    const existingVols = await tx.volunteering.findMany({
-                        where: { candidateProfileId: existingProfile.id },
-                        select: { organization: true, role: true }
-                    });
-                    const existingVolKeys = new Set(
-                        existingVols.map((v: any) => `${v.organization.toLowerCase().trim()}||${v.role.toLowerCase().trim()}`)
-                    );
-                    const newVols = volunteering
-                        .filter((vol: any) => vol.org || vol.organization)
-                        .filter((vol: any) => {
-                            const org  = (vol.org || vol.organization || '').toLowerCase().trim();
-                            const role = (vol.role || 'Volunteer').toLowerCase().trim();
-                            return !existingVolKeys.has(`${org}||${role}`);
-                        })
-                        .map((vol: any) => ({
-                            candidateProfileId: existingProfile.id,
-                            organization: vol.org || vol.organization || 'Unknown Organisation',
-                            role: vol.role || 'Volunteer',
-                            description: vol.desc || vol.description || null
-                        }));
-                    if (newVols.length > 0) await tx.volunteering.createMany({ data: newVols });
-                }
-
-                // ── Languages: append-only, deduplicate by name ────────────────
-                if (languages && languages.length > 0) {
-                    const existingLangs = await tx.language.findMany({
-                        where: { candidateProfileId: existingProfile.id },
-                        select: { name: true }
-                    });
-                    const existingLangNames = new Set(existingLangs.map((l: any) => l.name.toLowerCase().trim()));
-                    const newLangs = languages
-                        .filter((lang: any) => lang.name && !existingLangNames.has(lang.name.toLowerCase().trim()))
-                        .map((lang: any) => ({
-                            candidateProfileId: existingProfile.id,
-                            name: lang.name,
-                            proficiency: lang.proficiency || 'Conversational'
-                        }));
-                    if (newLangs.length > 0) await tx.language.createMany({ data: newLangs });
-                }
-
-                // Re-fetch the profile with updated relations so achievement linking
-                // (experienceIndex -> experienceId) resolves against the current state.
+                // Re-fetch the profile with relations for achievement linking
                 updatedProfile = await tx.candidateProfile.findUnique({
                     where: { userId },
                     include: { experience: true, achievements: true }
@@ -477,25 +360,6 @@ router.post('/profile', authenticate, async (req, res) => {
             details: error.message
         });
     }
-});
-
-// PATCH /api/profile
-router.patch('/profile', authenticate, async (req, res) => {
-  const userId = (req as any).user.id;
-  const { name, email, phone, linkedin, location, professionalSummary } = req.body;
-  const data: Record<string, any> = {};
-  if (name !== undefined) data.name = name;
-  if (email !== undefined) data.email = email;
-  if (phone !== undefined) data.phone = phone;
-  if (linkedin !== undefined) data.linkedin = linkedin;
-  if (location !== undefined) data.location = location;
-  if (professionalSummary !== undefined) data.professionalSummary = professionalSummary;
-  try {
-    await prisma.candidateProfile.update({ where: { userId }, data });
-    return res.json({ success: true });
-  } catch (error) {
-    return res.status(500).json({ error: 'Failed to update profile' });
-  }
 });
 
 // POST /api/profile/claim

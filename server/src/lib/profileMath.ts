@@ -70,6 +70,7 @@ interface ExperienceEntry {
     startDate?: string | null;
     endDate?: string | null;
     isCurrent?: boolean | null;
+    isCasual?: boolean | null;
 }
 
 /**
@@ -97,6 +98,7 @@ export function computeYearsOfExperience(experience: ExperienceEntry[] | null | 
 
     for (const e of experience) {
         if (e?.type && e.type !== 'work') continue;
+        if (e?.isCasual === true) continue; // Exclude casual/survival jobs
         const start = parseFlexibleDate(e?.startDate);
         if (!start) continue;
 

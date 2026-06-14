@@ -7,7 +7,7 @@ FIDELITY (most important rule): Extract only what is explicitly written in the r
 STRUCTURE: Keep each role intact. Do not split one role's bullets into separate entries. A task, assignment, or sub-project performed inside a job stays as a bullet under that job. Only create a PROJECTS entry when the resume itself presents the item under a distinct projects or portfolio heading, or as a clearly standalone project with its own title. When in doubt, keep it as a bullet under the role it belongs to.
 
 Specific Instructions:
-1. EXPERIENCE: Paid or unpaid work roles only. Do NOT include academic projects here.
+1. EXPERIENCE: Paid or unpaid work roles only. Do NOT include academic projects here. For each experience entry set "isCasual": true ONLY when the role is a casual or survival job unrelated to a professional career — retail or sales assistant, kitchen hand, cleaning, food handling, delivery, warehouse temp, hospitality floor or bar work, event patron staff, or similar. Set "isCasual": false for every skilled, technical, managerial, supervisory, research, academic, trade, or professional role, even a restaurant or shift MANAGER, and even when the role is in a different field from the candidate's target. When unsure, set false.
 2. PROJECTS: Extract a project only when the resume presents it as a distinct, separately headed project (academic, personal, freelance, open source, capstone). Do not promote a single bullet from a job into a project. Use the institution or organisation name as "org". If genuinely none is stated, use "Personal Project".
 3. VOLUNTEERING: Community work, student societies, extracurriculars.
 4. CERTIFICATIONS: Professional credentials and short courses only, not degrees.
@@ -37,6 +37,7 @@ Schema:
       "role": "Job Title",
       "startDate": "YYYY-MM",
       "endDate": "YYYY-MM or present",
+      "isCasual": false,
       "bullets": ["Point 1", "Point 2"],
       "coachingTips": ["Add a metric to bullet 1"]
     }

@@ -4,51 +4,20 @@ import { authenticate } from '../../middleware/auth';
 
 const router = Router();
 
-router.post('/volunteering', authenticate, async (req, res) => {
+// GET /api/volunteering — read-only access to volunteering entries
+// NOTE: Creation and editing removed. Users update their profile by re-uploading their resume.
+router.get('/volunteering', authenticate, async (req, res) => {
   const userId = (req as any).user.id;
-  const { organization, role, description } = req.body as { organization?: string; role?: string; description?: string };
-  if (!organization || !role) return res.status(400).json({ error: 'organization and role required' });
   try {
-    const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
-    if (!profile) return res.status(404).json({ error: 'Profile not found' });
-    const vol = await prisma.volunteering.create({
-      data: { organization, role, description: description || null, candidateProfileId: profile.id },
+    const profile = await prisma.candidateProfile.findUnique({
+      where: { userId },
+      include: { volunteering: true },
     });
-    return res.status(201).json(vol);
-  } catch {
-    return res.status(500).json({ error: 'Failed to create volunteering' });
-  }
-});
-
-router.patch('/volunteering/:id', authenticate, async (req, res) => {
-  const id = req.params['id'] as string;
-  const userId = (req as any).user.id;
-  const { organization, role, description } = req.body as { organization?: string; role?: string; description?: string };
-  try {
-    const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
     if (!profile) return res.status(404).json({ error: 'Profile not found' });
-    const vol = await prisma.volunteering.update({
-      where: { id, candidateProfileId: profile.id },
-      data: { ...(organization && { organization }), ...(role && { role }), ...(description !== undefined && { description: description || null }) },
-    });
-    return res.json(vol);
-  } catch (err: any) {
-    if (err?.code === 'P2025') return res.status(404).json({ error: 'Record not found' });
-    return res.status(500).json({ error: 'Failed to update volunteering' });
-  }
-});
-
-router.delete('/volunteering/:id', authenticate, async (req, res) => {
-  const id = req.params['id'] as string;
-  const userId = (req as any).user.id;
-  try {
-    const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
-    if (!profile) return res.status(404).json({ error: 'Profile not found' });
-    await prisma.volunteering.delete({ where: { id, candidateProfileId: profile.id } });
-    return res.json({ ok: true });
-  } catch (err: any) {
-    if (err?.code === 'P2025') return res.status(404).json({ error: 'Record not found' });
-    return res.status(500).json({ error: 'Failed to delete volunteering' });
+    return res.json(profile.volunteering);
+  } catch (error) {
+    console.error('[volunteering] fetch failed:', error);
+    return res.status(500).json({ error: 'Failed to fetch volunteering' });
   }
 });
 

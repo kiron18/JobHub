@@ -5,10 +5,11 @@
 
 import { callClaude } from './llm';
 import { STAGE_1_PROMPT, STAGE_2_PROMPT } from './prompts';
-import { prisma } from '../index';
+import { prisma } from '../db';
 import { parseLLMJson } from '../utils/parseLLMResponse';
 import { deriveIdentityCards } from './identityDerivation';
 import { resolveYearsOfExperience } from '../lib/profileMath';
+import { groundExtraction } from '../lib/fidelityGuard';
 
 export interface ParsedResume {
   stage1Data: any;
@@ -20,7 +21,14 @@ export interface ParsedResume {
 export async function parseResumeToStructure(resumeText: string): Promise<ParsedResume> {
   // Stage 1 — profile structure
   const { content: stage1Raw } = await callClaude(STAGE_1_PROMPT(resumeText), true);
-  const stage1Data = parseLLMJson(stage1Raw); // throws on bad JSON; caller handles
+  let stage1Data = parseLLMJson(stage1Raw); // throws on bad JSON; caller handles
+
+  // Fidelity guard: strip invented employers, institutions, etc.
+  const { cleaned, stripped } = groundExtraction(stage1Data, resumeText);
+  stage1Data = cleaned;
+  for (const s of stripped) {
+    console.warn(`[FidelityGuard] Stripped ${s.field}: "${s.value}" — ${s.reason}`);
+  }
 
   console.log(`[AutoExtract] Stage 1 parsed — education: ${stage1Data.education?.length ?? 0}, experience: ${stage1Data.experience?.length ?? 0}, projects: ${stage1Data.projects?.length ?? 0}, certs: ${stage1Data.certifications?.length ?? 0}`);
 
@@ -147,6 +155,7 @@ export async function persistExtracted(userId: string, parsed: ParsedResume, opt
           role: exp.role || 'Unknown Role',
           startDate: exp.startDate || 'Unknown',
           endDate: exp.endDate ?? null,
+          isCasual: exp.isCasual === true,
           type: 'work',
           description: exp.bullets?.join('\n') || exp.description || '',
           coachingTips: Array.isArray(exp.coachingTips)
@@ -365,9 +374,10 @@ export async function persistExtracted(userId: string, parsed: ParsedResume, opt
     }, { timeout: 30000 });
 
     // Compute and store years of experience from the persisted experience rows
+    // Filter out casual/survival jobs so they don't inflate the figure
     const computedYears = resolveYearsOfExperience(
       [candidateProfile.professionalSummary, candidateProfile.resumeRawText],
-      stage1Data.experience ?? [],
+      (stage1Data.experience ?? []).filter((e: any) => (e.type ?? 'work') === 'work' && e.isCasual !== true),
     );
     await prisma.candidateProfile.update({
       where: { userId },

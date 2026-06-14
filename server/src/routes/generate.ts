@@ -12,6 +12,8 @@ import { reviewDocument } from '../services/quality-gate';
 import { tagAIRewrites } from '../lib/provenanceTagging';
 import { enforceFirstPersonSummary, scrubAITells, enforceFirstPersonCoverLetter, scrubBannedPhrases } from '../lib/voiceEnforcer';
 import { resolveYearsOfExperience, extractContactEmail } from '../lib/profileMath';
+import { detectYearsClaim, getYearsFeedbackInstruction, removeSentencesWithYears } from '../lib/yearsClaimDetector';
+import { logEmployerGroundingCheck } from '../lib/employerGroundingCheck';
 import { checkAtsKeywords } from '../lib/atsKeywords';
 import { collectSignals } from '../lib/qualitySignals';
 import { parseJD } from '../lib/jdParser';
@@ -671,7 +673,7 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
 
         const resumeYears = profile.yearsOfExperience ?? undefined;
 
-        const finalContent = buildTemplateResume(profile, polish, {
+        let finalContent = buildTemplateResume(profile, polish, {
             candidateName: profile?.name,
             yearsOfExperience: resumeYears,
             contactEmail: extractContactEmail(profile?.resumeRawText),
@@ -679,6 +681,51 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
                 .map((a: any) => a?.description ?? '')
                 .filter((s: string) => s && s.length > 0),
         });
+
+        // ── Years claim detection + regeneration (Stage 5 specification) ──
+        const yearsDetection = detectYearsClaim(finalContent, profile.yearsOfExperience ?? null);
+        if (yearsDetection.violates && !analysisContext?.regenerateFeedback) {
+            // First violation: regenerate with corrective feedback (max one regeneration)
+            const feedback = getYearsFeedbackInstruction(profile.yearsOfExperience ?? null);
+            console.log(`[Resume] Years claim violation detected (${yearsDetection.value} years), regenerating with feedback...`);
+
+            const regeneratePrompt = RESUME_STRUCTURED_PROMPT(
+                sanitizedJobAppId ? (await prisma.jobApplication.findUnique({ where: { id: sanitizedJobAppId } }))?.description || jobDescription : jobDescription,
+                profile,
+                selectedAchievements,
+                blueprint,
+                { ...analysisContext, regenerateFeedback: feedback },
+                companyResearch,
+                parsedJD.employerQuestions.length > 0 ? parsedJD.employerQuestions : undefined,
+            );
+
+            const { content: regeneratedRaw, usage: regenUsage } = await callClaude(regeneratePrompt, true, undefined, PREMIUM_MODEL);
+
+            // Parse regenerated output
+            const regeneratedPolish = parsePolishJson(regeneratedRaw);
+            const regeneratedContent = buildTemplateResume(profile, regeneratedPolish, {
+                candidateName: profile?.name,
+                yearsOfExperience: resumeYears,
+                contactEmail: extractContactEmail(profile?.resumeRawText),
+                achievementSources: selectedAchievements
+                    .map((a: any) => a?.description ?? '')
+                    .filter((s: string) => s && s.length > 0),
+            });
+
+            // Re-check for violation
+            const recheck = detectYearsClaim(regeneratedContent, profile.yearsOfExperience ?? null);
+            if (recheck.violates) {
+                // Still violates after regeneration: remove complete sentences (last resort)
+                console.log(`[Resume] Years claim still violates after regeneration, removing sentences...`);
+                finalContent = removeSentencesWithYears(regeneratedContent);
+            } else {
+                finalContent = regeneratedContent;
+            }
+        } else if (yearsDetection.violates && analysisContext?.regenerateFeedback) {
+            // Already regenerated once, still violates: remove complete sentences
+            console.log(`[Resume] Years claim violates after regeneration, removing sentences...`);
+            finalContent = removeSentencesWithYears(finalContent);
+        }
 
         // Estimate pages: ~45 non-empty lines per A4 page at standard margins.
         const nonEmptyLines = finalContent.split('\n').filter(l => l.trim().length > 0).length;
@@ -879,7 +926,60 @@ router.post('/cover-letter-structured', authenticate, async (req: any, res: any)
         });
 
         // Render to deterministic markdown
-        const finalContent = coverLetterToMarkdown(coverData);
+        let finalContent = coverLetterToMarkdown(coverData);
+
+        // ── Years claim detection + regeneration (Stage 5 specification) ──
+        const yearsDetection = detectYearsClaim(finalContent, profile.yearsOfExperience ?? null);
+        if (yearsDetection.violates && !analysisContext?.regenerateFeedback) {
+            // First violation: regenerate with corrective feedback (max one regeneration)
+            const feedback = getYearsFeedbackInstruction(profile.yearsOfExperience ?? null);
+            console.log(`[CoverLetter] Years claim violation detected (${yearsDetection.value} years), regenerating with feedback...`);
+
+            const regeneratePrompt = COVER_LETTER_SLOTS_PROMPT(
+                cleanJd,
+                profile,
+                selectedAchievements,
+                blueprint,
+                { ...analysisContext, regenerateFeedback: feedback },
+                companyResearch,
+                companyIntel,
+                undefined,
+                profile.yearsOfExperience,
+            );
+
+            const { content: regeneratedRaw, usage: regenUsage } = await callClaude(regeneratePrompt, true, undefined, PREMIUM_MODEL);
+
+            // Parse regenerated output
+            const regeneratedPolish = parseCoverLetterPolishJson(regeneratedRaw);
+            let regeneratedCoverData = profileToCoverLetterData(profile, {
+                title: analysisContext?.title || '',
+                company: companyResearch?.name || analysisContext?.company || '',
+                companyIntel,
+            });
+
+            if (regeneratedPolish) {
+                regeneratedCoverData = applyCoverLetterPolish(regeneratedCoverData, regeneratedPolish);
+            }
+            regeneratedCoverData = enforceCoverLetterQuality(regeneratedCoverData, { candidateName: profile?.name });
+            const regeneratedContent = coverLetterToMarkdown(regeneratedCoverData);
+
+            // Re-check for violation
+            const recheck = detectYearsClaim(regeneratedContent, profile.yearsOfExperience ?? null);
+            if (recheck.violates) {
+                // Still violates after regeneration: remove complete sentences (last resort)
+                console.log(`[CoverLetter] Years claim still violates after regeneration, removing sentences...`);
+                finalContent = removeSentencesWithYears(regeneratedContent);
+            } else {
+                finalContent = regeneratedContent;
+            }
+        } else if (yearsDetection.violates && analysisContext?.regenerateFeedback) {
+            // Already regenerated once, still violates: remove complete sentences
+            console.log(`[CoverLetter] Years claim violates after regeneration, removing sentences...`);
+            finalContent = removeSentencesWithYears(finalContent);
+        }
+
+        // Report-only employer grounding check (STOP and review before any auto-removal)
+        logEmployerGroundingCheck(finalContent, profile, 'CoverLetter');
 
         // ── Persist document ────────────────────────────────────────────────
         const doc = await prisma.document.create({
