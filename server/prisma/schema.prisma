@@ -237,6 +237,20 @@ model JobFeedItem {
   @@index([userId, feedDate])
 }
 
+model SkippedJob {
+  id        String    @id @default(uuid())
+  userId    String
+  sourceUrl String
+  title     String
+  company   String
+  location  String
+  postedAt  DateTime?
+  skippedAt DateTime  @default(now())
+
+  @@unique([userId, sourceUrl])
+  @@index([userId, skippedAt])
+}
+
 model SeekJobCache {
   id          String   @id @default(cuid())
   queryHash   String
