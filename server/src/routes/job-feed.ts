@@ -133,9 +133,11 @@ router.get('/feed', async (req: any, res: any) => {
       return res.json({ jobs: [], total: 0, hasMore: false, feedDate: today.toISOString().slice(0, 10), profileIncomplete: true });
     }
 
-    const count = await prisma.jobFeedItem.count({ where: { userId, feedDate: today, skipped: false } });
+    // Has ANY feed been built for today? Gates the build trigger independently of
+    // exclusions, so a user who acted on everything does not loop-rebuild.
+    const builtToday = await prisma.jobFeedItem.count({ where: { userId, feedDate: today } });
 
-    if (count === 0) {
+    if (builtToday === 0) {
       // Gate the BUILD (not the read) — free tier gets 1 lifetime feed build
       const access = await checkAccess(userId, 'job_search', userEmail);
       if (!access.allowed) {
@@ -158,9 +160,22 @@ router.get('/feed', async (req: any, res: any) => {
       });
     }
 
-    const total = await prisma.jobFeedItem.count({ where: { userId, feedDate: today, skipped: false } });
+    // Never show jobs the user applied to or skipped.
+    const [appliedRows, skippedRows] = await Promise.all([
+      prisma.jobApplication.findMany({ where: { userId, sourceUrl: { not: null } }, select: { sourceUrl: true } }),
+      prisma.skippedJob.findMany({ where: { userId }, select: { sourceUrl: true } }),
+    ]);
+    const excludedUrls = Array.from(new Set<string>([
+      ...appliedRows.map(r => r.sourceUrl as string),
+      ...skippedRows.map(r => r.sourceUrl),
+    ]));
+
+    const where: any = { userId, feedDate: today, skipped: false };
+    if (excludedUrls.length > 0) where.sourceUrl = { notIn: excludedUrls };
+
+    const total = await prisma.jobFeedItem.count({ where });
     const items = await prisma.jobFeedItem.findMany({
-      where: { userId, feedDate: today, skipped: false },
+      where,
       orderBy: [{ matchScore: 'desc' }, { postedAt: 'desc' }, { createdAt: 'desc' }],
       skip: offset,
       take: 10,
@@ -594,10 +609,37 @@ router.patch('/:id/skip', async (req: any, res: any) => {
   const { skipped } = req.body;
   const item = await prisma.jobFeedItem.findFirst({ where: { id, userId } });
   if (!item) return res.status(404).json({ error: 'Job not found' });
+
   await prisma.jobFeedItem.update({
     where: { id },
     data: { skipped: !!skipped, skippedAt: skipped ? new Date() : null },
   });
+
+  if (skipped) {
+    // Durable skip keyed by sourceUrl so it survives daily feed rebuilds.
+    await prisma.skippedJob.upsert({
+      where: { userId_sourceUrl: { userId, sourceUrl: item.sourceUrl } },
+      update: {
+        skippedAt: new Date(),
+        title: item.title,
+        company: item.company,
+        location: item.location,
+        postedAt: item.postedAt,
+      },
+      create: {
+        userId,
+        sourceUrl: item.sourceUrl,
+        title: item.title,
+        company: item.company,
+        location: item.location,
+        postedAt: item.postedAt,
+      },
+    });
+  } else {
+    // Undo — drop the durable record so the job can return to the feed.
+    await prisma.skippedJob.deleteMany({ where: { userId, sourceUrl: item.sourceUrl } });
+  }
+
   res.json({ ok: true, skipped: !!skipped });
 });
 
