@@ -669,10 +669,7 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
             console.warn('[ResumeStructured] LLM output failed Zod validation — falling back to unpolished resume');
         }
 
-        const resumeYears = resolveYearsOfExperience(
-            [profile?.professionalSummary, profile?.resumeRawText],
-            profile?.experience ?? [],
-        );
+        const resumeYears = profile.yearsOfExperience ?? undefined;
 
         const finalContent = buildTemplateResume(profile, polish, {
             candidateName: profile?.name,
@@ -841,6 +838,7 @@ router.post('/cover-letter-structured', authenticate, async (req: any, res: any)
             companyResearch,
             companyIntel,
             undefined, // bridged gaps removed — never inject invented capabilities
+            profile.yearsOfExperience,
         );
 
         console.log('[CoverLetterStructured] Generating cover letter (single Claude pass)...');

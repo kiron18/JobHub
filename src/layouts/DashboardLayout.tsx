@@ -13,7 +13,6 @@ import {
     ShieldCheck,
     Menu,
     X,
-    Stethoscope,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
@@ -127,8 +126,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
         { to: '/documents', icon: Library, label: 'Documents' },
         { to: '/workspace', icon: FileText, label: 'Profile' },
         { to: '/jobs', icon: Sparkles, label: 'Job Feed' },
-        { onClick: () => window.dispatchEvent(new CustomEvent('show-diagnostic')), icon: Stethoscope, label: 'Diagnostic' },
-        { to: '/linkedin', icon: Linkedin, label: 'LinkedIn' },
+            { to: '/linkedin', icon: Linkedin, label: 'LinkedIn' },
         { to: '/email-templates', icon: Mail, label: 'Email Templates' },
         { to: '/visa-sponsors', icon: ShieldCheck, label: 'Visa Sponsors' },
     ];

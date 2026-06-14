@@ -110,7 +110,13 @@ export const JobFeedPage: React.FC = () => {
   };
 
   const handleUpdate = useCallback((updated: Partial<JobFeedItem> & { id: string }) => {
-    setJobs(prev => prev.map(j => (j.id === updated.id ? { ...j, ...updated } : j)));
+    setJobs(prev => {
+      // If the item was skipped, remove it from the visible list
+      if (updated.skipped === true) {
+        return prev.filter(j => j.id !== updated.id);
+      }
+      return prev.map(j => (j.id === updated.id ? { ...j, ...updated } : j));
+    });
   }, []);
 
   if (isLoading) {

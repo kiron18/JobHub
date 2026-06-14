@@ -8,6 +8,7 @@ import { STAGE_1_PROMPT, STAGE_2_PROMPT } from './prompts';
 import { prisma } from '../index';
 import { parseLLMJson } from '../utils/parseLLMResponse';
 import { deriveIdentityCards } from './identityDerivation';
+import { resolveYearsOfExperience } from '../lib/profileMath';
 
 export interface ParsedResume {
   stage1Data: any;
@@ -362,6 +363,18 @@ export async function persistExtracted(userId: string, parsed: ParsedResume, opt
         }
       }
     }, { timeout: 30000 });
+
+    // Compute and store years of experience from the persisted experience rows
+    const computedYears = resolveYearsOfExperience(
+      [candidateProfile.professionalSummary, candidateProfile.resumeRawText],
+      stage1Data.experience ?? [],
+    );
+    await prisma.candidateProfile.update({
+      where: { userId },
+      data: { yearsOfExperience: computedYears !== null && computedYears >= 2 ? computedYears : null },
+    }).catch((err: any) => {
+      console.warn('[AutoExtract] Failed to persist yearsOfExperience (non-fatal):', err.message);
+    });
 
     // Stage 3 — Identity Derivation (fire-and-forget)
     deriveIdentityCards(userId).catch(err => {

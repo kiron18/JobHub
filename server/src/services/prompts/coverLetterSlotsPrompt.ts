@@ -29,7 +29,12 @@ export const COVER_LETTER_SLOTS_PROMPT = (
     companyResearch?: { salutation?: string; highlights?: string[]; companySize?: string; hiringManager?: string } | null,
     companyIntel?: { summary?: string | null; suggestedContact?: { title?: string | null } | null } | null,
     _bridgedGaps?: BridgedGap[],
+    yearsOfExperience?: number | null,
 ): string => {
+    const yearsBlock = (yearsOfExperience && yearsOfExperience >= 2)
+      ? `YEARS OF EXPERIENCE: The candidate has ${yearsOfExperience} years of professional experience. When you refer to length of experience, use exactly this number. Never state a different figure.`
+      : `YEARS OF EXPERIENCE: Do not state any number of years of experience. Lead with the qualification and the nature of the experience instead.`;
+
     const contactTitle = salutationTitle(companyIntel?.suggestedContact?.title)
         || companyResearch?.salutation
         || 'Hiring Manager';
@@ -41,6 +46,8 @@ export const COVER_LETTER_SLOTS_PROMPT = (
     const signoff = contactTitle === 'Hiring Manager' ? 'Yours faithfully,' : 'Yours sincerely,';
 
     return `You are an expert Australian cover letter writer. Write a cover letter that makes this candidate the obvious person to interview for the specific job below.
+
+${yearsBlock}
 
 Persuade using only what is genuinely true of this candidate, drawn from their resume. Invent nothing.
 

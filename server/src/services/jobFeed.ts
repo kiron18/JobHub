@@ -2,7 +2,7 @@ import axios from 'axios';
 import { prisma } from '../index';
 import { callLLMWithRetry } from '../utils/callLLMWithRetry';
 import { parseLLMJson } from '../utils/parseLLMResponse';
-import { buildSeekClusterKey, fetchSeekJobsForCluster } from './seekScraper';
+import { buildSeekClusterKey, buildEntryLevelSearchTerm, fetchSeekJobsForCluster } from './seekScraper';
 import { buildLinkedInClusterKey, fetchLinkedInJobsForCluster } from './linkedinScraper';
 import { deduplicateJobs } from '../utils/deduplicateJobs';
 
@@ -158,6 +158,13 @@ ${JSON.stringify(input)}`;
 
 // ─── Quick keyword pre-scorer ─────────────────────────────────────────────────
 
+// Title/description signals that mark a listing as too senior for an entry-level
+// candidate. Listings matching any of these are pushed down the feed, not removed.
+const SENIOR_SIGNALS = [
+  'senior', 'principal', 'lead ', 'team lead', 'head of', 'director',
+  'manager', '5+ years', 'minimum 5 years', 'extensive experience',
+];
+
 function quickScore(skillsJson: any, job: RawJob): number {
   if (!skillsJson) return 50;
   try {
@@ -173,7 +180,11 @@ function quickScore(skillsJson: any, job: RawJob): number {
 
     const haystack = `${job.title} ${job.description}`.toLowerCase();
     const matches = allSkills.filter(s => haystack.includes(s));
-    return Math.min(99, Math.round((matches.length / allSkills.length) * 100));
+    let score = Math.min(99, Math.round((matches.length / allSkills.length) * 100));
+    if (SENIOR_SIGNALS.some(sig => haystack.includes(sig))) {
+      score -= 1000; // pushes senior roles to the bottom without dropping them
+    }
+    return score;
   } catch {
     return 50;
   }
@@ -184,7 +195,7 @@ function quickScore(skillsJson: any, job: RawJob): number {
 export async function buildDailyFeed(userId: string): Promise<void> {
   const profile = await prisma.candidateProfile.findUnique({
     where: { userId },
-    select: { targetRole: true, targetCity: true, location: true, industry: true, skills: true },
+    select: { targetRole: true, targetRoles: true, targetCity: true, location: true, industry: true, skills: true },
   });
 
   const effectiveCity = profile?.targetCity || profile?.location;
@@ -192,7 +203,12 @@ export async function buildDailyFeed(userId: string): Promise<void> {
     throw new Error('Profile incomplete — set a target role and city first');
   }
 
-  const seekCluster = buildSeekClusterKey(profile.targetRole, effectiveCity, profile.industry);
+  const rolesArray: string[] = Array.isArray(profile.targetRoles) && profile.targetRoles.length > 0
+    ? (profile.targetRoles as string[])
+    : [profile.targetRole];
+  const seekSearchTerm = buildEntryLevelSearchTerm(rolesArray);
+
+  const seekCluster = buildSeekClusterKey(seekSearchTerm, effectiveCity, profile.industry);
   const linkedInCluster = buildLinkedInClusterKey(profile.targetRole, effectiveCity, profile.industry);
 
   const [adzunaJobs, seekJobs, linkedInJobs] = await Promise.all([

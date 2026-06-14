@@ -3,6 +3,18 @@ import { ApifyClient } from 'apify-client';
 import { prisma } from '../index';
 import type { RawJob } from './jobFeed';
 
+// Entry-level qualifier prefix for Seek natural-language search. Seek treats these
+// as soft relevance signals, not hard filters, so B5 still demotes senior listings.
+export const ENTRY_LEVEL_QUALIFIERS = 'entry level graduate junior starter';
+
+// Build one natural-language Seek search term from the candidate's target roles
+// plus the entry-level qualifiers. Seek ranks across all the words.
+export function buildEntryLevelSearchTerm(roles: string[]): string {
+  const cleaned = roles.map(r => r.trim()).filter(r => r.length > 0);
+  const joined = cleaned.join(' ');
+  return `${ENTRY_LEVEL_QUALIFIERS} ${joined}`.trim();
+}
+
 const SEEK_ACTOR_ID = 'websift/seek-job-scraper';
 
 export interface ClusterKey {
@@ -102,7 +114,7 @@ export async function fetchSeekJobsForCluster(
       {
         searchTerm: cluster.role,
         location: cluster.city,
-        maxResults: opts?.maxResults ?? 30,
+        maxResults: opts?.maxResults ?? 75,
         sortBy: 'ListedDate',
         dateRange: opts?.dateRange ?? 7,
       },

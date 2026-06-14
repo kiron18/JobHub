@@ -14,7 +14,7 @@ export function startJobFeedCron(): void {
   cron.schedule('0 21 * * *', async () => {
     console.log('[jobFeedCron] Starting daily feed pre-fetch');
 
-    let users: { userId: string; targetRole: string; targetCity: string; industry: string | null }[] = [];
+    let users: { userId: string; targetRole: string; targetRoles: any; targetCity: string; industry: string | null }[] = [];
     try {
       const profiles = await prisma.candidateProfile.findMany({
         where: {
@@ -22,7 +22,7 @@ export function startJobFeedCron(): void {
           plan: { not: 'free' },
           planStatus: { in: ['active', 'trialing'] },
         },
-        select: { userId: true, targetRole: true, targetCity: true, industry: true },
+        select: { userId: true, targetRole: true, targetRoles: true, targetCity: true, industry: true },
       });
       users = profiles.filter(
         (p): p is typeof users[number] => !!p.targetRole && !!p.targetCity

@@ -133,7 +133,7 @@ router.get('/feed', async (req: any, res: any) => {
       return res.json({ jobs: [], total: 0, hasMore: false, feedDate: today.toISOString().slice(0, 10), profileIncomplete: true });
     }
 
-    const count = await prisma.jobFeedItem.count({ where: { userId, feedDate: today } });
+    const count = await prisma.jobFeedItem.count({ where: { userId, feedDate: today, skipped: false } });
 
     if (count === 0) {
       // Gate the BUILD (not the read) — free tier gets 1 lifetime feed build
@@ -158,9 +158,9 @@ router.get('/feed', async (req: any, res: any) => {
       });
     }
 
-    const total = await prisma.jobFeedItem.count({ where: { userId, feedDate: today } });
+    const total = await prisma.jobFeedItem.count({ where: { userId, feedDate: today, skipped: false } });
     const items = await prisma.jobFeedItem.findMany({
-      where: { userId, feedDate: today },
+      where: { userId, feedDate: today, skipped: false },
       orderBy: [{ matchScore: 'desc' }, { postedAt: 'desc' }, { createdAt: 'desc' }],
       skip: offset,
       take: 10,
@@ -585,6 +585,20 @@ router.post('/:id/fetch-description', analyzeRateLimit, async (req: any, res: an
     console.error('[job-feed/fetch-description]', err.message);
     return res.status(500).json({ error: 'Could not load the full description — open the listing directly and paste the job description.' });
   }
+});
+
+// PATCH /api/job-feed/:id/skip  body: { skipped: boolean }
+router.patch('/:id/skip', async (req: any, res: any) => {
+  const userId = req.user.id as string;
+  const { id } = req.params;
+  const { skipped } = req.body;
+  const item = await prisma.jobFeedItem.findFirst({ where: { id, userId } });
+  if (!item) return res.status(404).json({ error: 'Job not found' });
+  await prisma.jobFeedItem.update({
+    where: { id },
+    data: { skipped: !!skipped, skippedAt: skipped ? new Date() : null },
+  });
+  res.json({ ok: true, skipped: !!skipped });
 });
 
 export default router;

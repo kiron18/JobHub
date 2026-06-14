@@ -32,8 +32,10 @@ model CandidateProfile {
   resumeRawText                String?
   searchDuration               String?
   seniority                    String?
+  yearsOfExperience            Int?
   targetCity                   String?
   targetRole                   String?
+  targetRoles                  Json?
   marketingConsent             Boolean           @default(false)
   marketingEmail               String?
   marketingEmailSent           Boolean           @default(false)
@@ -226,6 +228,8 @@ model JobFeedItem {
   matchDetails         Json?
   isRead               Boolean          @default(false)
   isSaved              Boolean          @default(false)
+  skipped              Boolean          @default(false)
+  skippedAt            DateTime?
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt
   candidateProfile     CandidateProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
