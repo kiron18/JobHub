@@ -335,7 +335,7 @@ function ReportOrDashboard() {
     if (params.get('view') === 'report') {
       window.history.replaceState({}, '', '/');
       localStorage.removeItem('jobhub_report_seen');
-      return 'diagnostic';
+      return 'dashboard';
     }
     if (localStorage.getItem('jobhub_report_seen') === 'true') return 'dashboard';
     return 'loading';
@@ -347,7 +347,7 @@ function ReportOrDashboard() {
     if (isEssentiallyEmptyProfile(profile) && !profile?.hasCompletedOnboarding) {
       setStage('from-scratch');
     } else {
-      setStage('diagnostic');
+      setStage('dashboard');
     }
   }, [stage, profileLoading, profileFetching, profile]);
 
