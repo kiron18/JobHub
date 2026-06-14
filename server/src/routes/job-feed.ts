@@ -643,4 +643,39 @@ router.patch('/:id/skip', async (req: any, res: any) => {
   res.json({ ok: true, skipped: !!skipped });
 });
 
+// GET /api/job-feed/skipped — durable list of jobs the user skipped
+router.get('/skipped', async (req: any, res: any) => {
+  const userId = req.user.id as string;
+  try {
+    const items = await prisma.skippedJob.findMany({
+      where: { userId },
+      orderBy: { skippedAt: 'desc' },
+      take: 100,
+    });
+    return res.json({ jobs: items });
+  } catch (err: any) {
+    console.error('[job-feed/skipped]', err.message);
+    return res.status(500).json({ error: 'Failed to load skipped jobs' });
+  }
+});
+
+// POST /api/job-feed/skipped/restore  body: { sourceUrl } — undo a skip
+router.post('/skipped/restore', async (req: any, res: any) => {
+  const userId = req.user.id as string;
+  const { sourceUrl } = req.body;
+  if (!sourceUrl) return res.status(400).json({ error: 'sourceUrl required' });
+  try {
+    await prisma.skippedJob.deleteMany({ where: { userId, sourceUrl } });
+    // If today's feed still has this row, un-skip it so it reappears immediately.
+    await prisma.jobFeedItem.updateMany({
+      where: { userId, sourceUrl },
+      data: { skipped: false, skippedAt: null },
+    });
+    return res.json({ ok: true });
+  } catch (err: any) {
+    console.error('[job-feed/skipped/restore]', err.message);
+    return res.status(500).json({ error: 'Failed to restore job' });
+  }
+});
+
 export default router;
