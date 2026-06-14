@@ -17,6 +17,7 @@
 import { useState, useRef, useEffect, Component } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ScanReveal } from '../components/landing/ScanReveal';
+import { ScanChamber } from '../components/landing/ScanChamber';
 import { GetStartedModal } from './GetStartedModal';
 import type { ReactNode } from 'react';
 import { motion, useInView, animate, AnimatePresence } from 'framer-motion';
@@ -403,7 +404,7 @@ function ScanPanel({ onResult, onInteract }: { onResult?: (result: CvGapResult, 
       borderRadius: 20, padding: 24, textAlign: 'left',
       boxShadow: '0 1px 3px rgba(26,24,20,0.04), 0 12px 36px rgba(26,24,20,0.07)',
     }}>
-      {status === 'scanning' && <ScanningState />}
+      {status === 'scanning' && <ScanChamber />}
 
       {status === 'done' && result && (
         <ScanReveal
