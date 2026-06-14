@@ -24,7 +24,6 @@
     "@prisma/client": "^6.19.2",
     "@sentry/node": "^10.45.0",
     "@supabase/supabase-js": "^2.99.1",
-    "apify-client": "^2.23.0",
     "axios": "^1.13.6",
     "cheerio": "^1.2.0",
     "cookie-parser": "^1.4.7",
