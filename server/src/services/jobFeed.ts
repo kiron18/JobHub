@@ -34,19 +34,10 @@ function extractPlatform(url: string): string {
     if (host.includes('indeed.com')) return 'indeed';
     if (host.includes('jora.com')) return 'jora';
     if (host.includes('linkedin.com')) return 'linkedin';
-    if (host.includes('adzuna.com')) return 'other';
     return 'other';
   } catch {
     return 'other';
   }
-}
-
-function formatSalary(min?: number, max?: number): string | null {
-  if (!min && !max) return null;
-  if (min && max) return `$${Math.round(min / 1000)}k–$${Math.round(max / 1000)}k`;
-  if (min) return `From $${Math.round(min / 1000)}k`;
-  if (max) return `Up to $${Math.round(max / 1000)}k`;
-  return null;
 }
 
 /** Filters out jobs that are clearly location-mismatched and non-remote. */
@@ -69,56 +60,6 @@ export function todayAEST(): Date {
   // en-AU locale returns "DD/MM/YYYY"
   const [day, month, year] = s.split('/');
   return new Date(`${year}-${month}-${day}T00:00:00.000Z`);
-}
-
-// ─── Adzuna fetch ─────────────────────────────────────────────────────────────
-
-export async function fetchAdzunaJobs(role: string, city: string): Promise<RawJob[]> {
-  const APP_ID = process.env.ADZUNA_APP_ID;
-  const APP_KEY = process.env.ADZUNA_APP_KEY;
-  if (!APP_ID || !APP_KEY) throw new Error('Adzuna credentials not configured');
-
-  const base = 'https://api.adzuna.com/v1/api/jobs/au/search';
-  const params = {
-    app_id: APP_ID,
-    app_key: APP_KEY,
-    what: role,
-    where: city,
-    results_per_page: 50,
-    'content-type': 'application/json',
-  };
-
-  const [page1, page2] = await Promise.all([
-    axios.get(`${base}/1`, { params }).catch(() => null),
-    axios.get(`${base}/2`, { params }).catch(() => null),
-  ]);
-
-  const raw: any[] = [
-    ...(page1?.data?.results ?? []),
-    ...(page2?.data?.results ?? []),
-  ];
-
-  const seen = new Set<string>();
-  const jobs: RawJob[] = [];
-
-  for (const r of raw) {
-    const url: string = r.redirect_url ?? '';
-    if (!url || seen.has(url)) continue;
-    seen.add(url);
-
-    jobs.push({
-      title: r.title ?? 'Untitled',
-      company: r.company?.display_name ?? 'Unknown Company',
-      location: r.location?.display_name ?? city,
-      salary: formatSalary(r.salary_min, r.salary_max),
-      description: r.description ?? '',
-      sourceUrl: url,
-      sourcePlatform: extractPlatform(url),
-      postedAt: r.created ? new Date(r.created) : null,
-    });
-  }
-
-  return jobs;
 }
 
 // ─── Bullet generation ────────────────────────────────────────────────────────
@@ -220,18 +161,12 @@ export async function buildDailyFeed(userId: string): Promise<void> {
 
   const seekCluster = buildSeekClusterKey(seekSearchTerm, effectiveCity, profile.industry);
 
-  const [adzunaJobs, seekJobs] = await Promise.all([
-    fetchAdzunaJobs(profile.targetRole, effectiveCity).catch((err: Error) => {
-      console.error(`[buildDailyFeed] Adzuna failed for ${userId}:`, err.message);
-      return [] as RawJob[];
-    }),
-    fetchSeekJobsForCluster(seekCluster).catch((err: Error) => {
-      console.error(`[buildDailyFeed] Seek failed for ${userId}:`, err.message);
-      return [] as RawJob[];
-    }),
-  ]);
+  const seekJobs = await fetchSeekJobsForCluster(seekCluster).catch((err: Error) => {
+    console.error(`[buildDailyFeed] Seek failed for ${userId}:`, err.message);
+    return [] as RawJob[];
+  });
 
-  const jobs = deduplicateJobs(seekJobs, adzunaJobs);
+  const jobs = deduplicateJobs(seekJobs, []);
   const today = todayAEST();
 
   if (jobs.length === 0) return;

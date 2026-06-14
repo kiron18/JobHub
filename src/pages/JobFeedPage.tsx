@@ -169,7 +169,7 @@ export const JobFeedPage: React.FC = () => {
             <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: warm.colors.textPrimary }}>Searching live listings for you…</p>
             <p style={{ margin: '4px 0 0', fontSize: 14, color: warm.colors.textSecondary }}>
               Finding <span style={{ color: warm.colors.textPrimary }}>{profile?.targetRole}</span> roles
-              in <span style={{ color: warm.colors.textPrimary }}>{profile?.targetCity}</span> across Seek, LinkedIn, and Adzuna.
+              in <span style={{ color: warm.colors.textPrimary }}>{profile?.targetCity}</span> on Seek.
             </p>
             <p style={{ margin: '8px 0 0', fontSize: 12, color: warm.colors.textMuted }}>
               {pollCount.current >= 8

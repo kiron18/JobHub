@@ -38,7 +38,7 @@ export function startJobFeedCron(): void {
       console.error('[jobFeedCron] Prewarm failed (non-fatal):', err);
     }
 
-    // Build per-user feeds — scrapers use cache, Adzuna fetched per user
+    // Build per-user feeds — Seek scraper, cached per cluster per day
     for (const { userId } of users) {
       try {
         await buildDailyFeed(userId);

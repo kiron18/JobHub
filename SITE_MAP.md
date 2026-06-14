@@ -694,7 +694,7 @@ Buttons: Clear / Cancel / Save (with checkmark)
 **Building (first load):**
 - Spinner
 - "Searching live listings for you…"
-- "Finding {targetRole} roles in {targetCity} across Seek, LinkedIn, and Adzuna."
+- "Finding {targetRole} roles in {targetCity} on Seek."
 - "This takes 1–2 minutes on first load. Grab a coffee, we'll check back automatically."
 - After 8 minutes: "Taking longer than usual, try refreshing manually."
 
