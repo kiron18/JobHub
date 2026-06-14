@@ -3,7 +3,6 @@ import { prisma } from '../index';
 import { callLLMWithRetry } from '../utils/callLLMWithRetry';
 import { parseLLMJson } from '../utils/parseLLMResponse';
 import { buildSeekClusterKey, buildEntryLevelSearchTerm, fetchSeekJobsForCluster } from './seekScraper';
-import { buildLinkedInClusterKey, fetchLinkedInJobsForCluster } from './linkedinScraper';
 import { deduplicateJobs } from '../utils/deduplicateJobs';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -220,9 +219,8 @@ export async function buildDailyFeed(userId: string): Promise<void> {
   const seekSearchTerm = buildEntryLevelSearchTerm(rolesArray);
 
   const seekCluster = buildSeekClusterKey(seekSearchTerm, effectiveCity, profile.industry);
-  const linkedInCluster = buildLinkedInClusterKey(profile.targetRole, effectiveCity, profile.industry);
 
-  const [adzunaJobs, seekJobs, linkedInJobs] = await Promise.all([
+  const [adzunaJobs, seekJobs] = await Promise.all([
     fetchAdzunaJobs(profile.targetRole, effectiveCity).catch((err: Error) => {
       console.error(`[buildDailyFeed] Adzuna failed for ${userId}:`, err.message);
       return [] as RawJob[];
@@ -231,13 +229,9 @@ export async function buildDailyFeed(userId: string): Promise<void> {
       console.error(`[buildDailyFeed] Seek failed for ${userId}:`, err.message);
       return [] as RawJob[];
     }),
-    fetchLinkedInJobsForCluster(linkedInCluster).catch((err: Error) => {
-      console.error(`[buildDailyFeed] LinkedIn failed for ${userId}:`, err.message);
-      return [] as RawJob[];
-    }),
   ]);
 
-  const jobs = deduplicateJobs([...seekJobs, ...linkedInJobs], adzunaJobs);
+  const jobs = deduplicateJobs(seekJobs, adzunaJobs);
   const today = todayAEST();
 
   if (jobs.length === 0) return;
