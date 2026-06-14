@@ -200,3 +200,205 @@ export function extractJobDetail(html: string, cardRelativeDate: string | null):
 
   return { description, workType, postedAt };
 }
+
+// ─── Network layer ─────────────────────────────────────────────────────────────
+async function fetchHtml(url: string, timeout: number): Promise<string | null> {
+  try {
+    const res = await axios.get(url, {
+      headers: {
+        'User-Agent': USER_AGENT,
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-AU,en;q=0.9',
+      },
+      timeout,
+      maxRedirects: 5,
+      validateStatus: (s) => s >= 200 && s < 400,
+    });
+    return typeof res.data === 'string' ? res.data : null;
+  } catch (err: any) {
+    console.error(`[seekHtmlScraper] fetch failed ${url.slice(0, 90)}: ${err.message}`);
+    return null;
+  }
+}
+
+// Returns null ONLY on a first-page fetch failure (so the caller can avoid caching
+// a transient failure as a genuine empty result). Returns [] for a real empty search.
+async function fetchAllJobCards(
+  role: string,
+  city: string,
+  dateRange?: number,
+): Promise<SeekHtmlJobCard[] | null> {
+  const baseUrl = buildSeekSearchUrl(role, city, dateRange);
+  const firstHtml = await fetchHtml(baseUrl, SEEK_REQUEST_TIMEOUT);
+  if (!firstHtml || firstHtml.length < 1000) return null;
+
+  const seen = new Set<string>();
+  const all: SeekHtmlJobCard[] = [];
+  for (const c of parseSearchResultsPage(firstHtml)) {
+    if (!seen.has(c.jobId)) {
+      seen.add(c.jobId);
+      all.push(c);
+    }
+  }
+
+  const { totalPages } = extractPageInfo(firstHtml);
+  const extraPages = Math.min(totalPages, MAX_PAGES) - 1;
+  if (extraPages > 0) {
+    const results = await Promise.allSettled(
+      Array.from({ length: extraPages }, (_, i) =>
+        fetchHtml(buildPageUrl(baseUrl, i + 2), SEEK_REQUEST_TIMEOUT),
+      ),
+    );
+    for (const r of results) {
+      if (r.status !== 'fulfilled' || !r.value) continue;
+      for (const c of parseSearchResultsPage(r.value)) {
+        if (!seen.has(c.jobId)) {
+          seen.add(c.jobId);
+          all.push(c);
+        }
+      }
+    }
+  }
+  return all;
+}
+
+// Simple concurrency limiter — caps simultaneous detail fetches.
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const out: R[] = new Array(items.length);
+  let idx = 0;
+  async function worker() {
+    while (idx < items.length) {
+      const cur = idx++;
+      try {
+        out[cur] = await fn(items[cur]);
+      } catch {
+        out[cur] = undefined as unknown as R;
+      }
+    }
+  }
+  const workers = Array.from({ length: Math.min(limit, items.length || 1) }, worker);
+  await Promise.all(workers);
+  return out;
+}
+
+async function mapCardToRawJob(card: SeekHtmlJobCard): Promise<RawJob> {
+  const html = await fetchHtml(card.searchUrl, SEEK_DETAIL_TIMEOUT);
+  const detail = html
+    ? extractJobDetail(html, card.relativeDate)
+    : {
+        description: card.teaser ?? '',
+        workType: null,
+        postedAt: parseRelativeDate(card.relativeDate),
+      };
+  const description =
+    detail.description.length >= 50
+      ? detail.description
+      : card.teaser ?? detail.description;
+  return {
+    title: card.title,
+    company: card.company,
+    location: card.location,
+    salary: null,
+    description,
+    sourceUrl: card.sourceUrl,
+    sourcePlatform: 'seek',
+    postedAt: detail.postedAt,
+  };
+}
+
+// ─── Date helper ────────────────────────────────────────────────────────────────
+function todayFeedDate(): string {
+  const s = new Intl.DateTimeFormat('en-AU', {
+    timeZone: 'Australia/Sydney',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+  const [day, month, year] = s.split('/');
+  return `${year}-${month}-${day}`;
+}
+
+// ─── Public API ────────────────────────────────────────────────────────────────
+export async function fetchSeekJobsForCluster(
+  cluster: SeekHtmlClusterKey,
+  opts?: { maxResults?: number; dateRange?: number },
+): Promise<RawJob[]> {
+  const feedDate = todayFeedDate();
+
+  const cached = await prisma.seekJobCache.findUnique({
+    where: { queryHash_feedDate: { queryHash: cluster.hash, feedDate } },
+  });
+  if (cached) {
+    const items = (cached.results as any[]) ?? [];
+    return (Array.isArray(items) ? items : []).map((it: any): RawJob => ({
+      title: it.title ?? 'Untitled',
+      company: it.company ?? 'Unknown Company',
+      location: it.location ?? cluster.city,
+      salary: it.salary ?? null,
+      description: it.description ?? '',
+      sourceUrl: it.sourceUrl ?? '',
+      sourcePlatform: 'seek',
+      postedAt: it.postedAt ? new Date(it.postedAt) : null,
+    }));
+  }
+
+  const cards = await fetchAllJobCards(cluster.role, cluster.city, opts?.dateRange);
+  if (cards === null) return []; // transient fetch failure — do not cache
+
+  const limited = opts?.maxResults != null ? cards.slice(0, opts.maxResults) : cards;
+  const mapped = await mapWithConcurrency(limited, DETAIL_CONCURRENCY, mapCardToRawJob);
+  const jobs = mapped.filter((j): j is RawJob => !!j);
+
+  try {
+    await prisma.seekJobCache.create({
+      data: {
+        queryHash: cluster.hash,
+        queryMeta: {
+          source: 'seek-html',
+          role: cluster.role,
+          city: cluster.city,
+          industry: cluster.industry,
+        },
+        feedDate,
+        results: jobs.map((j) => ({
+          ...j,
+          postedAt: j.postedAt?.toISOString() ?? null,
+        })),
+        resultCount: jobs.length,
+      },
+    });
+  } catch (e: any) {
+    console.warn('[seekHtmlScraper] cache write failed (non-fatal):', e.message);
+  }
+
+  return jobs;
+}
+
+export async function prewarmSeekClusters(
+  users: {
+    userId: string;
+    targetRole: string;
+    targetCity: string;
+    industry: string | null;
+  }[],
+): Promise<void> {
+  const seen = new Map<string, SeekHtmlClusterKey>();
+  for (const u of users) {
+    const key = buildSeekClusterKey(u.targetRole, u.targetCity, u.industry);
+    if (!seen.has(key.hash)) seen.set(key.hash, key);
+  }
+  const clusters = Array.from(seen.values());
+  console.log(`[seekHtmlScraper] Prewarming ${clusters.length} Seek cluster(s)`);
+  for (const c of clusters) {
+    try {
+      const jobs = await fetchSeekJobsForCluster(c);
+      console.log(`[seekHtmlScraper] ok ${c.role}/${c.city} -> ${jobs.length} jobs`);
+    } catch (e: any) {
+      console.error(`[seekHtmlScraper] fail ${c.role}/${c.city}:`, e.message);
+    }
+  }
+}
