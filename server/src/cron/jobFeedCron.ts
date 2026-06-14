@@ -2,7 +2,6 @@ import cron from 'node-cron';
 import { prisma } from '../index';
 import { buildDailyFeed } from '../services/jobFeed';
 import { prewarmSeekClusters } from '../services/seekScraper';
-import { prewarmLinkedInClusters } from '../services/linkedinScraper';
 
 let cronStarted = false;
 
@@ -32,12 +31,9 @@ export function startJobFeedCron(): void {
       return;
     }
 
-    // Prewarm Seek and LinkedIn caches in parallel across unique clusters
+    // Prewarm Seek caches across unique clusters
     try {
-      await Promise.all([
-        prewarmSeekClusters(users),
-        prewarmLinkedInClusters(users),
-      ]);
+      await prewarmSeekClusters(users);
     } catch (err) {
       console.error('[jobFeedCron] Prewarm failed (non-fatal):', err);
     }
