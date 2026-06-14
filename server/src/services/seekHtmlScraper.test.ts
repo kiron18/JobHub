@@ -10,6 +10,7 @@ import {
   parseRelativeDate,
   parseSearchResultsPage,
   extractPageInfo,
+  extractJobDetail,
 } from './seekHtmlScraper';
 
 const searchHtml = readFileSync(join(__dirname, '__fixtures__/seek-search.html'), 'utf8');
@@ -110,5 +111,21 @@ describe('extractPageInfo (fixture)', () => {
     const info = extractPageInfo(searchHtml);
     expect(info.pageSize).toBe(32);
     expect(info.totalPages).toBe(3);
+  });
+});
+
+const detailHtml = readFileSync(join(__dirname, '__fixtures__/seek-detail.html'), 'utf8');
+
+describe('extractJobDetail (fixture)', () => {
+  const d = extractJobDetail(detailHtml, null);
+  it('pulls the full description from jobAdDetails', () => {
+    expect(d.description.length).toBeGreaterThan(1000);
+    expect(d.description).toContain('Nucleus Network');
+  });
+  it('pulls the work type', () => {
+    expect(d.workType).toBe('Full time');
+  });
+  it('parses the "Posted Nd ago" span into a date', () => {
+    expect(d.postedAt).toBeInstanceOf(Date);
   });
 });

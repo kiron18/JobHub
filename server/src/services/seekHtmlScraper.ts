@@ -168,3 +168,35 @@ function buildPageUrl(baseUrl: string, page: number): string {
   const sep = baseUrl.includes('?') ? '&' : '?';
   return `${baseUrl}${sep}page=${page}`;
 }
+
+// ─── Detail page extraction ────────────────────────────────────────────────────
+export interface JobDetail {
+  description: string;
+  workType: string | null;
+  postedAt: Date | null;
+}
+
+// cardRelativeDate is the search-card date used as the primary postedAt source;
+// the detail page's "Posted Nd ago" span is the fallback.
+export function extractJobDetail(html: string, cardRelativeDate: string | null): JobDetail {
+  const $ = cheerio.load(html);
+
+  const detailsEl = $('[data-automation="jobAdDetails"]').first();
+  detailsEl.find('script, style').remove();
+  const description = detailsEl.text().replace(/\s+/g, ' ').trim();
+
+  const workType = $('[data-automation="job-detail-work-type"]').first().text().trim() || null;
+
+  let postedAt = parseRelativeDate(cardRelativeDate);
+  if (!postedAt) {
+    let postedText: string | null = null;
+    $('span').each((_, el) => {
+      if (postedText) return;
+      const own = $(el).clone().children().remove().end().text().trim();
+      if (/^posted\s+\d/i.test(own)) postedText = own;
+    });
+    postedAt = parseRelativeDate(postedText);
+  }
+
+  return { description, workType, postedAt };
+}
