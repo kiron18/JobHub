@@ -144,6 +144,12 @@ function quickScore(skillsJson: any, job: RawJob): number {
 // ─── Build daily feed ─────────────────────────────────────────────────────────
 
 export async function buildDailyFeed(userId: string): Promise<void> {
+  // Job feed removed — the app runs on pasted jobs only. Disabled so nothing
+  // scrapes Seek (which was 403-blocked at source). Set FEED_ENABLED = true to
+  // restore the daily feed build.
+  const FEED_ENABLED: boolean = false;
+  if (!FEED_ENABLED) return;
+
   const profile = await prisma.candidateProfile.findUnique({
     where: { userId },
     select: { targetRole: true, targetRoles: true, targetCity: true, location: true, industry: true, skills: true },

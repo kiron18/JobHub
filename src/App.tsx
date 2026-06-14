@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { motion } from 'framer-motion';
@@ -14,9 +14,6 @@ const ProfileBank          = React.lazy(() => import('./components/ProfileBank')
 const DocumentLibrary      = React.lazy(() => import('./components/DocumentLibrary').then(m => ({ default: m.DocumentLibrary })));
 const EmailTemplatesLibrary = React.lazy(() => import('./components/EmailTemplatesLibrary').then(m => ({ default: m.EmailTemplatesLibrary })));
 const LinkedInPage         = React.lazy(() => import('./pages/LinkedInPage').then(m => ({ default: m.LinkedInPage })));
-const JobFeedPage = React.lazy(() =>
-  import('./pages/JobFeedPage').then(m => ({ default: m.JobFeedPage }))
-);
 const FridayBriefPage = React.lazy(() =>
   import('./pages/FridayBriefPage').then(m => ({ default: m.FridayBriefPage }))
 );
@@ -420,7 +417,8 @@ function ReportOrDashboard() {
                 <Route path="/documents" element={<DocumentLibrary />} />
                 <Route path="/email-templates" element={<EmailTemplatesLibrary />} />
                 <Route path="/linkedin" element={<LinkedInPage />} />
-                <Route path="/jobs" element={<JobFeedPage />} />
+                {/* Job feed removed — app runs on pasted jobs. Stray links to /jobs land on the dashboard. */}
+                <Route path="/jobs" element={<Navigate to="/" replace />} />
                 <Route path="/mindset" element={<MindsetPage />} />
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/admin/funnel" element={<AdminFunnel />} />

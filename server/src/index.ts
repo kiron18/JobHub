@@ -338,12 +338,13 @@ if (process.env.SKIP_SERVER === 'true') {
       await ensureColumns();
       await ensureSponsorsSeeded();
       await loadSponsorFilterCache();
-      startJobFeedCron();
+      // Job feed removed — app runs on pasted jobs. Cron left off so the daily
+      // prewarm never scrapes Seek (was 403-blocked). Re-enable to restore.
+      // startJobFeedCron();
       startSponsorJobScanCron();
       startTrialReminderCron();
       startFollowUpReminderCron();
       startSequenceCron();
-      console.log('[cron] Job feed cron scheduled (21:00 UTC daily)');
       console.log('[cron] Trial reminder cron scheduled (10:00 UTC daily)');
       console.log('[cron] Follow-up reminder cron scheduled (09:00 UTC daily)');
   });
