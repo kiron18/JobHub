@@ -6,7 +6,7 @@
  *
  * Follow-up (optional, after ~1 week stable): delete this file, rename
  * seekHtmlScraper.ts to seekScraper.ts, update the 4 import sites, and remove
- * apify-client + APIFY_API_KEY.
+ * the old apify dependency and APIFY_API_KEY.
  */
 export {
   fetchSeekJobsForCluster,
