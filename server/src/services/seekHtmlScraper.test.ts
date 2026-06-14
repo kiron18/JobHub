@@ -5,6 +5,7 @@ import {
   stripEntryLevelQualifiers,
   buildSeekSearchUrl,
   buildSeekClusterKey,
+  parseRelativeDate,
 } from './seekHtmlScraper';
 
 describe('qualifier helpers', () => {
@@ -47,5 +48,28 @@ describe('buildSeekClusterKey', () => {
     expect(buildSeekClusterKey('A', 'Sydney', null).hash).not.toBe(
       buildSeekClusterKey('B', 'Sydney', null).hash,
     );
+  });
+});
+
+describe('parseRelativeDate', () => {
+  const NOW = new Date('2026-06-14T00:00:00.000Z');
+  it('parses "6d ago" to 6 days before now', () => {
+    const d = parseRelativeDate('6d ago', NOW)!;
+    expect(d.toISOString().slice(0, 10)).toBe('2026-06-08');
+  });
+  it('parses "Posted 3d ago"', () => {
+    const d = parseRelativeDate('Posted 3d ago', NOW)!;
+    expect(d.toISOString().slice(0, 10)).toBe('2026-06-11');
+  });
+  it('parses "Today" as now', () => {
+    expect(parseRelativeDate('Today', NOW)!.toISOString()).toBe(NOW.toISOString());
+  });
+  it('parses "30+ days ago"', () => {
+    const d = parseRelativeDate('30+ days ago', NOW)!;
+    expect(d.toISOString().slice(0, 10)).toBe('2026-05-15');
+  });
+  it('returns null for "Featured" and empty input', () => {
+    expect(parseRelativeDate('Featured', NOW)).toBeNull();
+    expect(parseRelativeDate(null, NOW)).toBeNull();
   });
 });

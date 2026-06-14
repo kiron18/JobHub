@@ -69,3 +69,24 @@ export function buildSeekClusterKey(
     hash: createHash('sha256').update(raw).digest('hex'),
   };
 }
+
+// ─── Relative date parsing ─────────────────────────────────────────────────────
+const DAY_MS = 86_400_000;
+
+export function parseRelativeDate(text: string | null, now: Date = new Date()): Date | null {
+  if (!text) return null;
+  const t = text.toLowerCase();
+  if (/\btoday\b/.test(t)) return now;
+  if (/\byesterday\b/.test(t)) return new Date(now.getTime() - DAY_MS);
+  const m = t.match(/(\d+)\s*\+?\s*(months?|mo|weeks?|w|days?|d|hours?|h|minutes?|min|m)\b/);
+  if (!m) return null;
+  const n = parseInt(m[1], 10);
+  const unit = m[2];
+  let ms = 0;
+  if (unit.startsWith('mo') || unit.startsWith('month')) ms = n * 30 * DAY_MS;
+  else if (unit.startsWith('w')) ms = n * 7 * DAY_MS;
+  else if (unit.startsWith('d')) ms = n * DAY_MS;
+  else if (unit.startsWith('h')) ms = n * 3_600_000;
+  else if (unit === 'm' || unit.startsWith('min')) ms = n * 60_000;
+  return ms ? new Date(now.getTime() - ms) : null;
+}
