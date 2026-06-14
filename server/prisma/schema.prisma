@@ -243,7 +243,7 @@ model SkippedJob {
   sourceUrl String
   title     String
   company   String
-  location  String
+  location  String?
   postedAt  DateTime?
   skippedAt DateTime  @default(now())
 

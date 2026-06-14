@@ -5,7 +5,7 @@ CREATE TABLE "SkippedJob" (
     "sourceUrl" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "company" TEXT NOT NULL,
-    "location" TEXT NOT NULL,
+    "location" TEXT,
     "postedAt" TIMESTAMP(3),
     "skippedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
