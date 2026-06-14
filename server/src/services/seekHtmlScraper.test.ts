@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { describe, it, expect } from 'vitest';
 import {
   ENTRY_LEVEL_QUALIFIERS,
@@ -6,7 +8,11 @@ import {
   buildSeekSearchUrl,
   buildSeekClusterKey,
   parseRelativeDate,
+  parseSearchResultsPage,
+  extractPageInfo,
 } from './seekHtmlScraper';
+
+const searchHtml = readFileSync(join(__dirname, '__fixtures__/seek-search.html'), 'utf8');
 
 describe('qualifier helpers', () => {
   it('builds the entry-level search term', () => {
@@ -71,5 +77,38 @@ describe('parseRelativeDate', () => {
   it('returns null for "Featured" and empty input', () => {
     expect(parseRelativeDate('Featured', NOW)).toBeNull();
     expect(parseRelativeDate(null, NOW)).toBeNull();
+  });
+});
+
+describe('parseSearchResultsPage (fixture)', () => {
+  const cards = parseSearchResultsPage(searchHtml);
+  it('extracts all 32 cards', () => {
+    expect(cards.length).toBe(32);
+  });
+  it('extracts the first card fields', () => {
+    const c = cards[0];
+    expect(c.jobId).toBe('92646985');
+    expect(c.title).toBe('Product Technologist - Gummies Development and Manufacturing');
+    expect(c.company).toBe('Essence Group');
+  });
+  it('dedupes the doubled location text', () => {
+    expect(cards[0].location).toBe('Sydney NSW'); // not "Sydney NSW, Sydney NSW"
+  });
+  it('keeps a parseable relative date and nulls "Featured"', () => {
+    const dated = cards.find((c) => c.jobId === '92578601')!;
+    expect(dated.relativeDate).toMatch(/ago/i);
+    expect(cards[0].relativeDate).toBeNull(); // first card is Featured
+  });
+  it('builds the au.seek.com fetch url and www canonical sourceUrl', () => {
+    expect(cards[0].searchUrl).toBe('https://au.seek.com/job/92646985');
+    expect(cards[0].sourceUrl).toBe('https://www.seek.com.au/job/92646985');
+  });
+});
+
+describe('extractPageInfo (fixture)', () => {
+  it('reads totalCount/pageSize and computes 3 pages', () => {
+    const info = extractPageInfo(searchHtml);
+    expect(info.pageSize).toBe(32);
+    expect(info.totalPages).toBe(3);
   });
 });

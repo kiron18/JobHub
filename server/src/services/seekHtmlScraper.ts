@@ -90,3 +90,81 @@ export function parseRelativeDate(text: string | null, now: Date = new Date()): 
   else if (unit === 'm' || unit.startsWith('min')) ms = n * 60_000;
   return ms ? new Date(now.getTime() - ms) : null;
 }
+
+// ─── Search card parsing ───────────────────────────────────────────────────────
+export interface SeekHtmlJobCard {
+  jobId: string;
+  title: string;
+  company: string;
+  location: string;
+  relativeDate: string | null;
+  teaser: string | null;
+  searchUrl: string; // au.seek.com host — used for the detail FETCH
+  sourceUrl: string; // www.seek.com.au — stored for the user
+}
+
+function dedupeDoubledText(raw: string): string {
+  const t = raw.trim();
+  if (t.length > 1 && t.length % 2 === 0) {
+    const half = t.slice(0, t.length / 2);
+    if (half === t.slice(t.length / 2)) return half.trim();
+  }
+  return t;
+}
+
+export function parseSearchResultsPage(html: string): SeekHtmlJobCard[] {
+  const $ = cheerio.load(html);
+  const cards: SeekHtmlJobCard[] = [];
+  $('article[data-testid="job-card"]').each((_, el) => {
+    const a = $(el);
+    const jobId = (a.attr('data-job-id') ?? '').trim();
+    if (!jobId) return;
+
+    const title = a.find('[data-automation="jobTitle"]').first().text().trim() || 'Untitled';
+    const company = a.find('[data-automation="jobCompany"]').first().text().trim() || 'Unknown Company';
+
+    const locs = new Set<string>();
+    a.find('[data-automation="jobCardLocation"], [data-automation="jobLocation"]').each((_, le) => {
+      const v = dedupeDoubledText($(le).text());
+      if (v) locs.add(v);
+    });
+    const location = Array.from(locs).join(', ') || 'Australia';
+
+    const rawDate = dedupeDoubledText(a.find('[data-automation="jobListingDate"]').first().text());
+    const relativeDate = /ago|today|yesterday/i.test(rawDate) ? rawDate : null;
+
+    const teaser = a.find('[data-automation="jobShortDescription"]').first().text().trim() || null;
+
+    cards.push({
+      jobId,
+      title,
+      company,
+      location,
+      relativeDate,
+      teaser,
+      searchUrl: `${SEEK_HOST}/job/${jobId}`,
+      sourceUrl: `${SEEK_CANONICAL_HOST}/job/${jobId}`,
+    });
+  });
+  return cards;
+}
+
+// ─── Pagination ────────────────────────────────────────────────────────────────
+export interface PageInfo {
+  totalCount: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export function extractPageInfo(html: string): PageInfo {
+  const totalCount = Number(html.match(/"totalCount"\s*:\s*(\d+)/)?.[1] ?? 0);
+  const pageSize = Number(html.match(/"pageSize"\s*:\s*(\d+)/)?.[1] ?? 32) || 32;
+  const capped = Math.min(totalCount, MAX_PAGES * pageSize);
+  const totalPages = Math.max(1, Math.ceil((capped || 0) / pageSize));
+  return { totalCount: capped, pageSize, totalPages };
+}
+
+function buildPageUrl(baseUrl: string, page: number): string {
+  const sep = baseUrl.includes('?') ? '&' : '?';
+  return `${baseUrl}${sep}page=${page}`;
+}
