@@ -438,11 +438,20 @@ export function StepperWorkspace() {
                     currentIndex={currentIndex}
                     onSelect={(i) => {
                         // Allow jumping to any step that has a draft, or the next un-drafted step.
+                        // But never land on a manualOnly step via chip click — if the user
+                        // targeted one, nudge forward past it.
                         if (i <= currentIndex) {
                             setCurrentIndex(i);
                         } else {
                             const drafted = loadDraft(workspaceKey, steps[currentIndex].id) != null;
-                            if (drafted) setCurrentIndex(i);
+                            if (drafted) {
+                                // If the target step is manualOnly, skip past it to the next
+                                // visible step — manual steps are only reachable via their
+                                // discreet link, not via the chip bar.
+                                let target = i;
+                                while (target < steps.length && steps[target].manualOnly) target++;
+                                setCurrentIndex(target);
+                            }
                         }
                     }}
                 />
@@ -478,7 +487,14 @@ export function StepperWorkspace() {
                         }
                         jobHasSC={wantsSC}
                         onBack={currentIndex > 0 ? () => setCurrentIndex(currentIndex - 1) : null}
-                        onContinue={() => setCurrentIndex(currentIndex + 1)}
+                        onContinue={() => {
+                            // Skip any manualOnly steps (e.g. selection-criteria when
+                            // the JD never mentioned it) so the default forward flow
+                            // goes cover letter → track.
+                            let next = currentIndex + 1;
+                            while (next < steps.length && steps[next].manualOnly) next++;
+                            setCurrentIndex(next);
+                        }}
                         isLast={currentIndex === steps.length - 1}
                     />
                 )}

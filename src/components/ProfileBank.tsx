@@ -1467,16 +1467,6 @@ export const ProfileBank: React.FC = () => {
                 <HelpCircle size={16} />
               </button>
             </div>
-            <button
-              onClick={() => { window.location.href = '/?view=report'; }}
-              style={{
-                fontSize: 12, fontWeight: 600, color: '#9ca3af',
-                background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0',
-                textDecoration: 'underline', textUnderlineOffset: 3, flexShrink: 0,
-              }}
-            >
-              {(profile as any)?.hasCompletedOnboarding ? 'View Diagnostic' : 'Run Diagnostic'}
-            </button>
           </div>
           <p style={{ fontSize: 14, color: '#6b7280', marginTop: 4 }}>
             Your achievement bank, the source of truth for every resume and cover letter JobHub generates. Complete it once, use it forever.
