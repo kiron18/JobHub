@@ -74,14 +74,22 @@ export async function callLLM(prompt: string, jsonMode: boolean = true, temperat
 
 const CLAUDE_MODEL = process.env.CLAUDE_MODEL || 'anthropic/claude-sonnet-4-5';
 
+// Premium model for the high-value, wow-factor reasoning calls (CV scan, the
+// generated resume/cover/SC, the diagnostic). Defaults to CLAUDE_MODEL so nothing
+// breaks until CLAUDE_MODEL_PREMIUM is set in the environment. Set it to an Opus
+// slug (e.g. anthropic/claude-opus-4-8) to turn premium on without code changes.
+export const PREMIUM_MODEL = process.env.CLAUDE_MODEL_PREMIUM || CLAUDE_MODEL;
+
 /**
  * Calls Claude via OpenRouter for strategic/reasoning tasks.
  * Returns content + usage for cost tracking.
+ * Pass `model` (e.g. PREMIUM_MODEL) to override the default per call.
  */
 export async function callClaude(
     prompt: string,
     jsonMode: boolean = true,
-    cachedSystem?: string
+    cachedSystem?: string,
+    model?: string
 ): Promise<{ content: string; usage: { promptTokens: number; completionTokens: number } }> {
     if (!OPENROUTER_API_KEY) {
         throw new Error('OPENROUTER_API_KEY is not set in environment variables.');
@@ -109,7 +117,7 @@ export async function callClaude(
         const response = await axios.post(
             OPENROUTER_URL,
             {
-                model: CLAUDE_MODEL,
+                model: model || CLAUDE_MODEL,
                 temperature: 0,
                 max_tokens: 8192,
                 messages: [

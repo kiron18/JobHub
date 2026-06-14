@@ -3,7 +3,7 @@ import { prisma } from '../index';
 import { authenticate } from '../middleware/auth';
 import { checkAccess } from '../middleware/accessControl';
 import { callLLMWithRetry } from '../utils/callLLMWithRetry';
-import { callClaude } from '../services/llm';
+import { callClaude, PREMIUM_MODEL } from '../services/llm';
 import { DOCUMENT_GENERATION_PROMPT_WITH_BLUEPRINT, DOCUMENT_GENERATION_PROMPT, buildSearchContextBlock } from '../services/prompts';
 import { generateBlueprint } from '../services/strategy';
 import { setCachedBlueprint } from '../services/blueprint-cache';
@@ -653,7 +653,7 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
         );
 
         console.log('[ResumeStructured] Generating resume (single Claude pass)...');
-        const { content: stage2Raw, usage } = await callClaude(prompt, true);
+        const { content: stage2Raw, usage } = await callClaude(prompt, true, undefined, PREMIUM_MODEL);
         console.log(`[ResumeStructured] Generation complete. ${stage2Raw.length} characters.`);
 
         const stage2Cost =
@@ -844,7 +844,7 @@ router.post('/cover-letter-structured', authenticate, async (req: any, res: any)
         );
 
         console.log('[CoverLetterStructured] Generating cover letter (single Claude pass)...');
-        const { content: stage2Raw, usage } = await callClaude(prompt, true);
+        const { content: stage2Raw, usage } = await callClaude(prompt, true, undefined, PREMIUM_MODEL);
         console.log(`[CoverLetterStructured] Generation complete. ${stage2Raw.length} characters.`);
 
         const stage2Cost =
@@ -945,7 +945,7 @@ router.post('/selection-criteria-structured', authenticate, async (req: any, res
         const prompt = SELECTION_CRITERIA_PROMPT(jobDescription, profile, String(selectionCriteriaText));
 
         console.log('[SelectionCriteria] Generating responses (single Claude pass)...');
-        const { content: raw, usage } = await callClaude(prompt, false);
+        const { content: raw, usage } = await callClaude(prompt, false, undefined, PREMIUM_MODEL);
 
         // Final safety net: strip em dashes (banned in output).
         const finalContent = raw.split('—').join(' - ').split('–').join(' - ').trim();

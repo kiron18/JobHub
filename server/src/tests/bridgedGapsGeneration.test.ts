@@ -44,6 +44,7 @@ vi.mock('../middleware/accessControl', () => ({
 vi.mock('../services/llm', () => ({
   callLLM: vi.fn(),
   callClaude: vi.fn(),
+  PREMIUM_MODEL: 'mock-premium-model',
 }));
 
 // Mock callLLMWithRetry (used in Stage 2) — this module calls callLLM internally,

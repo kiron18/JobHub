@@ -1,4 +1,4 @@
-import { callClaude } from './llm';
+import { callClaude, PREMIUM_MODEL } from './llm';
 
 export interface DiagnosticReportInput {
   targetRole: string;
@@ -192,7 +192,7 @@ Close with warmth and forward momentum. Based on their specific situation, expla
 
 export async function generateDiagnosticReport(input: DiagnosticReportInput): Promise<string> {
   const prompt = buildDiagnosticPrompt(input);
-  const { content } = await callClaude(prompt, false);
+  const { content } = await callClaude(prompt, false, undefined, PREMIUM_MODEL);
   return content;
 }
 
