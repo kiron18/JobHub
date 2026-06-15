@@ -62,12 +62,6 @@ interface ResumeTip {
   suggestion: string;
 }
 
-// VERIFY marker UI removed — prompts no longer emit placeholder tokens.
-
-// Same token set, but no capture group and no /g flag — safe for repeated
-// `.test()` calls (a global regex advances lastIndex and alternates results).
-const VERIFY_TOKEN_RE = /\[(?:VERIFY|Verify|verify|ADD|Add|INSERT|Insert|TBD|PLACEHOLDER)(?:[:\s][^\]]*)?\]/;
-
 /** Strip common AI-generation artifacts before rendering or storage. */
 function sanitizeContent(raw: string): string {
     return raw
