@@ -4,9 +4,8 @@
  * Single-purpose: anchor identity, surface the analysis primary action, give
  * a rotating qualitative insight, and orient the user against their pipeline.
  *
- * Phase 2: clicking Analyse calls /api/analyze/dual and renders an inline
- * Distance-to-Match result (Direct Match / Hard Gap + insights) below the
- * hero card. No navigation away.
+ * Clicking Apply navigates directly to the StepperWorkspace where resume
+ * and cover letter generation happens.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, NavLink, useLocation } from 'react-router-dom';
@@ -17,8 +16,6 @@ import { toast } from 'sonner';
 import api from '../lib/api';
 import { DimRegion, DimTarget, DimPeer } from '../components/Dim';
 import { pickInsights } from '../data/strategicInsights';
-import { AnalysisResult, type DualSignalResult } from '../components/strategy/AnalysisResult';
-import type { CoherenceSignal } from '../components/strategy/CoherenceCard';
 import { StrategicIntelligenceCard } from '../components/StrategicIntelligenceCard';
 import { ApplyFeedStrip } from '../components/strategy/ApplyFeedStrip';
 import { JobStream } from '../components/strategy/JobStream';
@@ -59,7 +56,6 @@ interface ProfileLite {
     targetRole?: string;
     targetCity?: string;
     seniority?: string;
-    coherence?: CoherenceSignal[];
 }
 
 function HubHeader({ profile, jobs }: { profile?: ProfileLite; jobs: JobLite[] }) {
@@ -418,18 +414,6 @@ function AnalysisHeroCard() {
 
     const [jd, setJd] = useState('');
     const [analysing, setAnalysing] = useState(false);
-    const [result, setResult] = useState<DualSignalResult | null>(null);
-    const resultRef = useRef<HTMLDivElement>(null);
-
-    // Auto-scroll to analysis result when it appears
-    useEffect(() => {
-        if (result) {
-            setTimeout(() => {
-                resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 100);
-        }
-    }, [result]);
-
     const [pickedFeedItem, setPickedFeedItem] = useState<JobFeedItem | null>(null);
     const [showPaste, setShowPaste] = useState(false);
     const [applyingId, setApplyingId] = useState<string | null>(null);
@@ -462,7 +446,6 @@ function AnalysisHeroCard() {
     const handleFeedPick = (description: string, item: JobFeedItem) => {
         setJd(description);
         setPickedFeedItem(item);
-        setResult(null);
     };
 
     // Preload the freshly-scraped job (stashed by the get-started flow) into the
@@ -493,56 +476,24 @@ function AnalysisHeroCard() {
     const handleAnalyse = async () => {
         if (!canSubmit) return;
         setAnalysing(true);
-        setResult(null);
         try {
-            const { data } = await api.post<DualSignalResult>('/analyze/dual', { jobDescription: trimmed });
-            window.dispatchEvent(new CustomEvent('process:analysed'));
-            // Apply = one action: analyse, then go straight to generating the
-            // tailored resume + cover letter (the /apply pipeline runs both).
+            // Navigate directly to apply - generation will handle access control
             navigate('/apply', {
                 state: {
                     jobDescription: trimmed,
                     sc: jdMentionsSelectionCriteria(trimmed),
-                    company: data?.extractedMetadata?.company,
-                    role: data?.extractedMetadata?.role,
+                    company: pickedFeedItem?.company,
+                    role: pickedFeedItem?.title,
                     feedItemId: pickedFeedItem?.id,
                     sourceUrl: pickedFeedItem?.sourceUrl,
                     sourcePlatform: pickedFeedItem?.sourcePlatform,
                 },
             });
-            return;
         } catch (err: any) {
-            const status = err?.response?.status;
-            const message =
-                status === 402 ? 'Analysis limit reached. Upgrade to keep analysing roles.'
-                : status === 400 ? 'That job description looks too short. Paste the full posting.'
-                : status === 404 ? 'Set up your profile first.'
-                : status === 503 ? 'Analysis is temporarily unavailable. Please try again in 30 seconds.'
-                : 'Analysis failed. Please retry.';
-            toast.error(message);
+            toast.error('Could not start application. Please try again.');
         } finally {
             setAnalysing(false);
         }
-    };
-
-    const handleContinue = () => {
-        navigate('/apply', {
-            state: {
-                jobDescription: trimmed,
-                sc: jdMentionsSelectionCriteria(trimmed),
-                company: result?.extractedMetadata?.company,
-                role: result?.extractedMetadata?.role,
-                feedItemId: pickedFeedItem?.id,
-                sourceUrl: pickedFeedItem?.sourceUrl,
-                sourcePlatform: pickedFeedItem?.sourcePlatform,
-            },
-        });
-    };
-
-    const handleSkip = () => {
-        setResult(null);
-        setJd('');
-        setPickedFeedItem(null);
     };
 
     return (
@@ -729,18 +680,6 @@ function AnalysisHeroCard() {
                 </button>
             </div>
             </>
-            )}
-
-            {/* Inline result */}
-            {result && (
-                <div ref={resultRef}>
-                    <AnalysisResult
-                        result={result}
-                        jobDescription={trimmed}
-                        onContinue={handleContinue}
-                        onSkip={handleSkip}
-                    />
-                </div>
             )}
         </div>
     );

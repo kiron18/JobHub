@@ -12,16 +12,13 @@ import { authenticate } from '../middleware/auth';
 import { analyzeRateLimit } from '../middleware/analyzeRateLimit';
 import { callLLM } from '../services/llm';
 import { callLLMWithRetry } from '../utils/callLLMWithRetry';
-import crypto from 'crypto';
-import { readAnalysisCache, writeAnalysisCache } from '../lib/analysisCache';
 import { searchAchievements } from '../services/vector';
-import { JOB_ANALYSIS_PROMPT, DUAL_SIGNAL_PROMPT, ACHIEVEMENT_DRAFT_PROMPT, DRAFT_CRITIQUE_PROMPT } from '../services/prompts';
+import { JOB_ANALYSIS_PROMPT, ACHIEVEMENT_DRAFT_PROMPT, DRAFT_CRITIQUE_PROMPT } from '../services/prompts';
 import { parseLLMJson } from '../utils/parseLLMResponse';
 import { addGrades, computeComposite } from '../services/compositeScoring';
 import { EXEMPT_EMAILS } from './stripe';
 import type { DimensionScores } from '../services/compositeScoring';
-import { derivePositioningStatement, type PositioningStatement } from '../services/positioningStatement';
-import { detectHardGapHints, detectSelectionCriteria } from '../data/hardGapKeywords';
+import type { PositioningStatement } from '../services/positioningStatement';
 import { findDuplicateApplication } from '../services/duplicateDetection';
 import { isRealMetric } from '../lib/achievementHeuristics';
 
@@ -386,179 +383,6 @@ Return ONLY valid JSON. Use null for anything not explicitly in the JD.`;
     } catch (err: any) {
         console.error('[JD Summary] Error:', err.message);
         res.status(500).json({ error: 'Failed to parse job description.' });
-    }
-});
-
-// ════════════════════════════════════════════════════════════════════════════
-// POST /api/analyze/dual — Dual-Signal analysis (Strategy Hub hero card)
-// ════════════════════════════════════════════════════════════════════════════
-//
-// Returns the Distance-to-Match output described in the Strategy Hub spec:
-//   - directMatch:    what the candidate has PROVED (achievements)
-//   - bridgeableGap:  what they likely have but haven't named (positioning)
-//   - hardGap:        credentialled requirements they don't claim
-//   - insights:       3 calm qualitative observations
-//   - scDetected:     whether the JD mentions selection criteria
-//
-// Does NOT persist a JobApplication (the Strategy Hub flow is analysis-first;
-// saving the application happens when the user proceeds to the workspace).
-// Caching, duplicate-job detection, and the LLM-based SC verifier are
-// deferred to follow-up commits in Phase 2.
-
-router.post('/dual', async (req: any, res: any) => {
-    try {
-        const userId = req.user.id;
-        const { jobDescription } = req.body as { jobDescription?: string };
-
-        if (!jobDescription || jobDescription.trim().length < 50) {
-            return res.status(400).json({ error: 'Job description is too short (min 50 chars).' });
-        }
-
-        const profile = await prisma.candidateProfile.findUnique({
-            where: { userId } as any,
-            include: { achievements: true, experience: true, education: true }
-        }) as any;
-
-        if (!profile) {
-            return res.status(404).json({ error: 'Please set up your profile first.' });
-        }
-
-        // ── Access control (shares the same gating as /job) ─────────────────
-        const userEmail = ((req as any).user?.email ?? '').toLowerCase();
-        const { checkAccess } = await import('../middleware/accessControl');
-        const access = await checkAccess(userId, 'analysis', userEmail);
-        if (!access.allowed) {
-            return res.status(402).json({ error: 'Analysis limit reached', upgradeRequired: true, remaining: 0 });
-        }
-
-        // ── Positioning Statement (Floor) ──────────────────────────────────
-        // Prefer the stored value (refreshed on every /profile GET). Fall back
-        // to a fresh derivation in case the profile was never fetched.
-        let positioningStatement: PositioningStatement | null = profile.positioningStatement ?? null;
-        if (!positioningStatement && profile.experience?.length) {
-            const profileVersion = profile.updatedAt ? new Date(profile.updatedAt).getTime() : Date.now();
-            positioningStatement = derivePositioningStatement(
-                {
-                    experience: profile.experience.map((e: any) => ({
-                        role: e.role, company: e.company, startDate: e.startDate, endDate: e.endDate, isCurrent: e.isCurrent,
-                    })),
-                    education: (profile.education ?? []).map((e: any) => ({ degree: e.degree, institution: e.institution })),
-                },
-                profileVersion,
-            );
-        }
-
-        // ── Achievement Bank (Ceiling) ─────────────────────────────────────
-        const achievementBank = (profile.achievements ?? []).map((a: any) => ({
-            id: a.id,
-            title: a.title ?? null,
-            description: a.description ?? null,
-            metric: a.metric ?? null,
-        }));
-
-        // ── Hard-gap hints + SC detection ──────────────────────────────────
-        const hardGapHints = detectHardGapHints(jobDescription);
-        const scDetected = detectSelectionCriteria(jobDescription);
-
-        // ── Build prompt + invoke LLM ──────────────────────────────────────
-        const prompt = DUAL_SIGNAL_PROMPT({ jobDescription, positioningStatement, achievements: achievementBank, hardGapHints });
-
-        // ── Determinism cache — keyed by a fingerprint of the whole prompt ──
-        // Same JD + unchanged profile => identical prompt => identical result,
-        // surviving restarts. Any profile/JD change alters the prompt and misses.
-        const ANALYSIS_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-        const promptHash = crypto.createHash('sha256').update(prompt).digest('hex');
-
-        let analysis: any = readAnalysisCache(
-            (profile as any).analysisCache, promptHash, Date.now(), ANALYSIS_CACHE_TTL_MS,
-        );
-
-        if (!analysis) {
-            let raw;
-            try {
-                raw = await callLLMWithRetry(prompt, true);
-            } catch (err: any) {
-                console.error('[analyze/dual] LLM call failed:', err.message);
-                return res.status(503).json({ error: 'Analysis is temporarily unavailable. Please try again in 30 seconds.' });
-            }
-            try {
-                analysis = parseLLMJson(raw);
-            } catch (err: any) {
-                console.error('[analyze/dual] failed to parse LLM JSON:', err?.message);
-                return res.status(500).json({ error: 'Failed to process analysis. Please retry.' });
-            }
-            const nextCache = writeAnalysisCache((profile as any).analysisCache, promptHash, analysis, Date.now());
-            prisma.candidateProfile.update({
-                where: { userId } as any,
-                data: ({ analysisCache: nextCache } as any),
-            }).catch((e: any) => console.warn('[analyze/dual] cache persist failed:', e?.message));
-        }
-
-        // ── Normalise + safety-clamp ───────────────────────────────────────
-        const directPct = Math.max(0, Math.min(100, Math.round(analysis?.directMatch?.pct ?? 0)));
-
-        const evidence: string[] = Array.isArray(analysis?.directMatch?.evidence)
-            ? analysis.directMatch.evidence.slice(0, 5).filter((s: any) => typeof s === 'string')
-            : [];
-
-        const hardGapItems = Array.isArray(analysis?.hardGap?.items)
-            ? analysis.hardGap.items.filter((s: any) => typeof s === 'string').slice(0, 5)
-            : [];
-
-        const insights = Array.isArray(analysis?.insights)
-            ? analysis.insights.filter((s: any) => typeof s === 'string').slice(0, 3)
-            : [];
-
-        const company = (analysis?.extractedMetadata?.company || 'Unknown Company').toString();
-        const role = (analysis?.extractedMetadata?.role || 'Unknown Position').toString();
-
-        // ── Duplicate-job detection ────────────────────────────────────────
-        // Soft warning only — never blocks. Fires when the candidate has an
-        // existing JobApplication in the last 180 days with overlapping
-        // company + role tokens.
-        const duplicate = await findDuplicateApplication({ userId, company, role });
-
-        // ── Enrichment candidates ──────────────────────────────────────────
-        // Achievements that match this JD but lack a real metric — surfaced
-        // to the frontend so it can prompt the user to enrich them before
-        // they generate. Hard cap at 3.
-        let enrichmentCandidates: Array<{ achievementId: string; title: string; text: string }> = [];
-        try {
-            const enrichMatches = await searchAchievements(userId, jobDescription, 8);
-            enrichmentCandidates = (enrichMatches ?? [])
-                .filter((m: any) => !isRealMetric(m?.metadata?.metric))
-                .slice(0, 3)
-                .map((m: any) => ({
-                    achievementId: m.id,
-                    title: m.metadata?.title ?? '',
-                    text: m.metadata?.text ?? '',
-                }));
-        } catch (err: any) {
-            console.warn('[analyze/dual] enrichment-candidates lookup failed:', err?.message);
-        }
-
-        // Determine the dominant band for the result-state UI.
-        // Note: bridgeableGap feature removed; only directMatch vs hardGap remain.
-        const dominantBand: 'directMatch' | 'hardGap' =
-            hardGapItems.length > 0 && directPct < 60 ? 'hardGap' : 'directMatch';
-
-        return res.json({
-            positioningStatement: positioningStatement?.raw ?? null,
-            extractedMetadata: { company, role },
-            fitBands: {
-                directMatch: { pct: directPct, evidence },
-                bridgeableGap: { pct: 0, items: [] },  // Deprecated: always empty for backward compat
-                hardGap: { items: hardGapItems },
-            },
-            dominantBand,
-            insights,
-            scDetected,
-            duplicate,
-            enrichmentCandidates,
-        });
-    } catch (err: any) {
-        console.error('[analyze/dual] unexpected error:', err);
-        return res.status(500).json({ error: 'Analysis failed due to a server error.' });
     }
 });
 
