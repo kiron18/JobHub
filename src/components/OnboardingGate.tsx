@@ -133,10 +133,12 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
     }
     tryClaim();
     return () => { cancelled = true; };
-  // Intentionally NOT including isLoading in deps — it toggles on every invalidate
-  // and would re-trigger the claim. We gate on claimFiredRef instead.
+  // isLoading IS included: the claim must re-evaluate when the profile query
+  // finishes (loading true -> false). The claimFiredRef guard above prevents the
+  // invalidate loop, so watching isLoading is safe and avoids the deadlock where a
+  // null-profile new user strands the spinner (deps never change after load).
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile?.hasCompletedOnboarding, user?.email]);
+  }, [profile?.hasCompletedOnboarding, user?.email, isLoading]);
 
   // Show spinner while profile is loading, while the returning-user claim is still
   // resolving (stops the onboarding intake flashing on a fresh userId whose profile
