@@ -1428,10 +1428,6 @@ export function MockLandingPage() {
     <div ref={scanRef} style={{ background: colors.bgCanvas, height: '100vh', overflowY: 'auto' }}>
       <Nav />
       <Hero scrollToScan={scrollToScan} />
-      <section style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 24px', textAlign: 'center' }}>
-        <img src="/images/scan/scan-landing.png" alt="From rejection to your first Australian job" loading="lazy"
-             style={{ width: '100%', maxWidth: 760, height: 'auto', margin: '0 auto', display: 'block' }} />
-      </section>
       <Founder />
       <Testimonials />
       <Features />
