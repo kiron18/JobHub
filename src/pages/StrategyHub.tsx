@@ -5,8 +5,8 @@
  * a rotating qualitative insight, and orient the user against their pipeline.
  *
  * Phase 2: clicking Analyse calls /api/analyze/dual and renders an inline
- * Distance-to-Match result (Direct Match / Bridgeable Gap / Hard Gap +
- * insights) below the hero card. No navigation away.
+ * Distance-to-Match result (Direct Match / Hard Gap + insights) below the
+ * hero card. No navigation away.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, NavLink, useLocation } from 'react-router-dom';
@@ -25,7 +25,6 @@ import { JobStream } from '../components/strategy/JobStream';
 import { StaleApplicationsCard } from '../components/strategy/StaleApplicationsCard';
 import { FirstApplicationCelebration } from '../components/FirstApplicationCelebration';
 import type { JobFeedItem } from '../components/jobs/JobCard';
-import type { BridgedGap } from '../lib/bridgedGaps';
 import { warm } from '../lib/theme/warmTokens';
 
 /** Detect whether a job description mentions selection criteria. */
@@ -420,7 +419,6 @@ function AnalysisHeroCard() {
     const [jd, setJd] = useState('');
     const [analysing, setAnalysing] = useState(false);
     const [result, setResult] = useState<DualSignalResult | null>(null);
-    const [bridgedGaps, setBridgedGaps] = useState<BridgedGap[]>([]);
     const resultRef = useRef<HTMLDivElement>(null);
 
     // Auto-scroll to analysis result when it appears
@@ -510,7 +508,6 @@ function AnalysisHeroCard() {
                     feedItemId: pickedFeedItem?.id,
                     sourceUrl: pickedFeedItem?.sourceUrl,
                     sourcePlatform: pickedFeedItem?.sourcePlatform,
-                    bridgedGaps,
                 },
             });
             return;
@@ -538,14 +535,12 @@ function AnalysisHeroCard() {
                 feedItemId: pickedFeedItem?.id,
                 sourceUrl: pickedFeedItem?.sourceUrl,
                 sourcePlatform: pickedFeedItem?.sourcePlatform,
-                bridgedGaps,
             },
         });
     };
 
     const handleSkip = () => {
         setResult(null);
-        setBridgedGaps([]);
         setJd('');
         setPickedFeedItem(null);
     };
@@ -744,7 +739,6 @@ function AnalysisHeroCard() {
                         jobDescription={trimmed}
                         onContinue={handleContinue}
                         onSkip={handleSkip}
-                        onBridgedGapsChange={setBridgedGaps}
                     />
                 </div>
             )}
