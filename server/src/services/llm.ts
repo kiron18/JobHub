@@ -64,38 +64,64 @@ export async function callLLM(prompt: string, jsonMode: boolean = true, temperat
             }
         );
 
-        return response.data.choices[0].message.content;
+        const choices = response.data.choices;
+        if (!choices?.length) {
+            throw new Error(`OpenRouter returned no choices. Body: ${JSON.stringify(response.data).substring(0, 300)}`);
+        }
+        return choices[0].message.content;
     });
 }
 
 const CLAUDE_MODEL = process.env.CLAUDE_MODEL || 'anthropic/claude-sonnet-4-5';
 
+// Premium model for the high-value, wow-factor reasoning calls (CV scan, the
+// generated resume/cover/SC, the diagnostic). Defaults to CLAUDE_MODEL so nothing
+// breaks until CLAUDE_MODEL_PREMIUM is set in the environment. Set it to an Opus
+// slug (e.g. anthropic/claude-opus-4-8) to turn premium on without code changes.
+export const PREMIUM_MODEL = process.env.CLAUDE_MODEL_PREMIUM || CLAUDE_MODEL;
+
 /**
  * Calls Claude via OpenRouter for strategic/reasoning tasks.
  * Returns content + usage for cost tracking.
+ * Pass `model` (e.g. PREMIUM_MODEL) to override the default per call.
  */
 export async function callClaude(
     prompt: string,
-    jsonMode: boolean = true
+    jsonMode: boolean = true,
+    cachedSystem?: string,
+    model?: string
 ): Promise<{ content: string; usage: { promptTokens: number; completionTokens: number } }> {
     if (!OPENROUTER_API_KEY) {
         throw new Error('OPENROUTER_API_KEY is not set in environment variables.');
     }
 
+    const baseSystem = jsonMode
+        ? 'You are a strategic analyst. Return ONLY valid JSON. No preamble, no markdown fences.'
+        : 'You are a strategic analyst.';
+
+    // When a static instruction block is supplied, send it as a cached prefix.
+    // The `cache_control` breakpoint tells Anthropic (via OpenRouter) to reuse the
+    // prefix across calls within the cache TTL — cheaper tokens + faster first byte.
+    // Identical on every call, so it only pays the write cost once under load.
+    const systemMessage = cachedSystem
+        ? {
+            role: 'system',
+            content: [
+                { type: 'text', text: baseSystem },
+                { type: 'text', text: cachedSystem, cache_control: { type: 'ephemeral' } },
+            ],
+        }
+        : { role: 'system', content: baseSystem };
+
     return await retryWithBackoff(async () => {
         const response = await axios.post(
             OPENROUTER_URL,
             {
-                model: CLAUDE_MODEL,
+                model: model || CLAUDE_MODEL,
                 temperature: 0,
                 max_tokens: 8192,
                 messages: [
-                    {
-                        role: 'system',
-                        content: jsonMode
-                            ? 'You are a strategic analyst. Return ONLY valid JSON. No preamble, no markdown fences.'
-                            : 'You are a strategic analyst.'
-                    },
+                    systemMessage,
                     {
                         role: 'user',
                         content: prompt
@@ -113,7 +139,11 @@ export async function callClaude(
             }
         );
 
-        const content = response.data.choices[0].message.content as string;
+        const choices = response.data.choices;
+        if (!choices?.length) {
+            throw new Error(`OpenRouter returned no choices. Body: ${JSON.stringify(response.data).substring(0, 300)}`);
+        }
+        const content = choices[0].message.content as string;
         const usage = response.data.usage || {};
         return {
             content,
@@ -170,7 +200,11 @@ export async function callPerplexity(
       }
     );
 
-    const choice = response.data.choices[0];
+    const choices = response.data.choices;
+    if (!choices?.length) {
+      throw new Error(`OpenRouter returned no choices. Body: ${JSON.stringify(response.data).substring(0, 300)}`);
+    }
+    const choice = choices[0];
     const content = choice.message.content as string;
     if (choice.finish_reason === 'length') {
       console.warn('[callPerplexity] response hit max_tokens — output truncated, JSON may be incomplete');

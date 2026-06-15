@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { motion } from 'framer-motion';
@@ -14,9 +14,6 @@ const ProfileBank          = React.lazy(() => import('./components/ProfileBank')
 const DocumentLibrary      = React.lazy(() => import('./components/DocumentLibrary').then(m => ({ default: m.DocumentLibrary })));
 const EmailTemplatesLibrary = React.lazy(() => import('./components/EmailTemplatesLibrary').then(m => ({ default: m.EmailTemplatesLibrary })));
 const LinkedInPage         = React.lazy(() => import('./pages/LinkedInPage').then(m => ({ default: m.LinkedInPage })));
-const JobFeedPage = React.lazy(() =>
-  import('./pages/JobFeedPage').then(m => ({ default: m.JobFeedPage }))
-);
 const FridayBriefPage = React.lazy(() =>
   import('./pages/FridayBriefPage').then(m => ({ default: m.FridayBriefPage }))
 );
@@ -25,6 +22,21 @@ const AdminDashboard = React.lazy(() =>
 );
 const AdminFunnel = React.lazy(() =>
   import('./pages/AdminFunnel').then(m => ({ default: m.AdminFunnel }))
+);
+const AdminUserUsage = React.lazy(() =>
+  import('./pages/AdminUserUsage').then(m => ({ default: m.AdminUserUsage }))
+);
+const AdminContacts = React.lazy(() =>
+  import('./pages/AdminContacts').then(m => ({ default: m.default }))
+);
+const AdminContactDetail = React.lazy(() =>
+  import('./pages/AdminContactDetail').then(m => ({ default: m.default }))
+);
+const AdminBroadcasts = React.lazy(() =>
+  import('./pages/AdminBroadcasts').then(m => ({ default: m.default }))
+);
+const EmailAnalytics = React.lazy(() =>
+  import('./pages/EmailAnalytics').then(m => ({ default: m.default }))
 );
 const MindsetPage = React.lazy(() =>
   import('./pages/MindsetPage').then(m => ({ default: m.MindsetPage }))
@@ -38,14 +50,17 @@ const FromScratchCapture = React.lazy(() =>
 const StrategyHub = React.lazy(() =>
   import('./pages/StrategyHub').then(m => ({ default: m.StrategyHub }))
 );
-const LandingPage = React.lazy(() =>
-  import('./pages/LandingPage').then(m => ({ default: m.LandingPage }))
-);
 const StepperWorkspace = React.lazy(() =>
   import('./pages/StepperWorkspace').then(m => ({ default: m.StepperWorkspace }))
 );
 const VisaSponsorsPage = React.lazy(() =>
   import('./pages/VisaSponsorsPage').then(m => ({ default: m.VisaSponsorsPage }))
+);
+const MockLandingPage = React.lazy(() =>
+  import('./pages/MockLandingPage').then(m => ({ default: m.MockLandingPage }))
+);
+const AnimationTest = React.lazy(() =>
+  import('./pages/AnimationTest').then(m => ({ default: m.AnimationTest }))
 );
 
 // Auth & Context
@@ -287,7 +302,7 @@ function LandingPageOrExisting() {
   if (loading) return null;
   if (!user) return (
     <React.Suspense fallback={null}>
-      <LandingPage />
+      <MockLandingPage />
     </React.Suspense>
   );
   // Authenticated — render the existing protected route content
@@ -320,7 +335,7 @@ function ReportOrDashboard() {
     if (params.get('view') === 'report') {
       window.history.replaceState({}, '', '/');
       localStorage.removeItem('jobhub_report_seen');
-      return 'diagnostic';
+      return 'dashboard';
     }
     if (localStorage.getItem('jobhub_report_seen') === 'true') return 'dashboard';
     return 'loading';
@@ -332,7 +347,7 @@ function ReportOrDashboard() {
     if (isEssentiallyEmptyProfile(profile) && !profile?.hasCompletedOnboarding) {
       setStage('from-scratch');
     } else {
-      setStage('diagnostic');
+      setStage('dashboard');
     }
   }, [stage, profileLoading, profileFetching, profile]);
 
@@ -402,11 +417,18 @@ function ReportOrDashboard() {
                 <Route path="/documents" element={<DocumentLibrary />} />
                 <Route path="/email-templates" element={<EmailTemplatesLibrary />} />
                 <Route path="/linkedin" element={<LinkedInPage />} />
-                <Route path="/jobs" element={<JobFeedPage />} />
+                {/* Job feed removed — app runs on pasted jobs. Stray links to /jobs land on the dashboard. */}
+                <Route path="/jobs" element={<Navigate to="/" replace />} />
                 <Route path="/mindset" element={<MindsetPage />} />
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/admin/funnel" element={<AdminFunnel />} />
+                <Route path="/admin/users" element={<AdminUserUsage />} />
                 <Route path="/admin/friday-brief" element={<FridayBriefPage />} />
+                <Route path="/admin/contacts" element={<AdminContacts />} />
+                <Route path="/admin/contacts/new" element={<AdminContactDetail />} />
+                <Route path="/admin/contacts/:id" element={<AdminContactDetail />} />
+                <Route path="/admin/broadcasts" element={<AdminBroadcasts />} />
+                <Route path="/admin/email-analytics" element={<EmailAnalytics />} />
                 <Route path="*" element={<StrategyHub />} />
               </Routes>
             </React.Suspense>
@@ -435,6 +457,16 @@ function App() {
               <Route path="/visa-sponsors" element={
                 <React.Suspense fallback={null}>
                   <VisaSponsorsPage />
+                </React.Suspense>
+              } />
+              <Route path="/anim-test" element={
+                <React.Suspense fallback={null}>
+                  <AnimationTest />
+                </React.Suspense>
+              } />
+              <Route path="/mock-landing" element={
+                <React.Suspense fallback={null}>
+                  <MockLandingPage />
                 </React.Suspense>
               } />
 

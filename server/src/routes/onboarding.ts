@@ -107,6 +107,7 @@ router.post(
         create: {
           userId,
           targetRole: answers.targetRole,
+          targetRoles: [answers.targetRole],
           targetCity: answers.targetCity,
           seniority: answers.seniority,
           industry: answers.industry,
@@ -128,6 +129,7 @@ router.post(
         },
         update: {
           targetRole: answers.targetRole,
+          targetRoles: [answers.targetRole],
           targetCity: answers.targetCity,
           seniority: answers.seniority,
           industry: answers.industry,

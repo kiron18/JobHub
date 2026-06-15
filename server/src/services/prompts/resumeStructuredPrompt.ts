@@ -1,220 +1,173 @@
 import { StrategyBlueprint } from './strategy';
-import { computeYearsOfExperience, todayIso } from '../../lib/profileMath';
 import type { BridgedGap } from '../../lib/bridgedGaps';
 
 // =============================================================================
-// STRUCTURED RESUME PROMPT — JSON output (structured template path)
+// STRUCTURED RESUME PROMPT — single capable-model pass, JSON output.
 // =============================================================================
 
 /**
- * RESUME_STRUCTURED_PROMPT — for Llama 3.3 70B (executor role).
+ * RESUME_STRUCTURED_PROMPT — single-pass resume tailoring.
  *
- * Identical to DOCUMENT_GENERATION_PROMPT_WITH_BLUEPRINT in all strategic
- * inputs (blueprint, achievements, profile data, rules, analysis context,
- * company research, employer questions). The ONLY difference is the output
- * instruction: the LLM produces a structured JSON object instead of markdown.
+ * One capable model receives the candidate's full resume (raw text) plus their
+ * structured work history (with ids) and the target job description, and:
+ *   1. rewrites the professional summary + per-role bullets, tailored to the job,
+ *   2. tags each role `feature` (substantive professional role) vs casual/odd job,
+ *      and `australianLocal`, so the renderer can fold or drop survival jobs.
  *
- * The JSON is then validated with Zod (parsePolishJson), merged into a
- * ResumeData struct via buildTemplateResume, and rendered to markdown
- * server-side using the deterministic profileToMarkdown renderer.
+ * The output { summary, experience: [{ id, feature, australianLocal, bullets }] }
+ * is consumed by the deterministic renderer (buildTemplateResume) — the document's
+ * look never changes, only the words and which roles are featured.
  *
- * Advantages:
- * - Bullet quality is higher (LLM focuses on content, not formatting)
- * - Output is machine-validated (Zod catches structural errors)
- * - Markdown rendering is deterministic (no LLM formatting drift)
- * - Enforcers (first-person, banned phrases, provenance tagging) run on
- *   structured fields, not regex on raw text
+ * Guiding principle: take what is already in the resume, rearrange and sharpen it
+ * for this job, and invent nothing.
+ *
+ * Signature is unchanged from the blueprint-era prompt so the route call sites do
+ * not change. `blueprint`, `selectedAchievements`, `companyResearch`, `bridgedGaps`
+ * and `precomputedYears` are no longer used by the body.
  */
 export const RESUME_STRUCTURED_PROMPT = (
     jd: string,
     profile: any,
-    selectedAchievements: any[],
-    blueprint: StrategyBlueprint,
+    _selectedAchievements: any[],
+    _blueprint: StrategyBlueprint,
     analysisContext?: { tone?: string; competencies?: string[]; regenerateFeedback?: string },
-    companyResearch?: { salutation?: string; highlights?: string[]; companySize?: string; hiringManager?: string } | null,
+    _companyResearch?: { salutation?: string; highlights?: string[]; companySize?: string; hiringManager?: string } | null,
     employerQuestions?: string[],
-    bridgedGaps?: BridgedGap[]
+    _bridgedGaps?: BridgedGap[],
+    _precomputedYears?: number | null,
 ): string => {
-    const todayDate = todayIso();
-    const yearsOfExperience = computeYearsOfExperience(profile?.experience);
-
-    // Build the proof point lookup for inline rendering
-    const proofPointMap = new Map(
-        blueprint.proofPoints.map(pp => [pp.achievementId, pp])
-    );
-
-    // Render achievements with their blueprint framing instructions inline
-    const achievementBlock = selectedAchievements.length > 0
-        ? selectedAchievements.map(a => {
-            const pp = proofPointMap.get(a.id);
-            if (pp) {
-                return [
-                    `- [ID: ${a.id}] ${a.title}: ${a.description} (Metric: ${a.metric ?? 'none'})`,
-                    `  FRAMING ANGLE: ${pp.framingAngle}`,
-                    `  JD CONNECTION: ${pp.jdConnection}`,
-                    `  NARRATIVE NOTE: ${pp.narrativeNote}`,
-                ].join('\n');
-            }
-            return `- [ID: ${a.id}] ${a.title}: ${a.description} (Metric: ${a.metric ?? 'none'}) [supporting evidence — use as context only]`;
+    // Structured work history → the output rows. Each entry's id MUST come back so
+    // the renderer maps bullets to the right role; keep the same order.
+    const experienceBlock = (profile?.experience ?? []).length
+        ? (profile.experience as any[]).map((e, i) => {
+            const dates = [e.startDate, e.isCurrent ? 'Present' : e.endDate].filter(Boolean).join(' to ');
+            const header = `[${i + 1}] id: ${e.id} — ${e.role ?? ''}${e.company ? ` at ${e.company}` : ''}${dates ? ` (${dates})` : ''}`;
+            return header;
         }).join('\n\n')
-        : 'No achievements selected. Draw on candidate experience data only.';
+        : '(no structured work history)';
 
-    const bridgedBlock = (bridgedGaps && bridgedGaps.length > 0)
-        ? bridgedGaps.map(g => `- ${g.statement}`).join('\n')
-        : '';
+    const rawResume = (profile?.resumeRawText ?? '').trim();
 
-    // Tone: blueprint takes precedence; fall back to analysisContext for
-    // backward compatibility with callers that have not yet adopted the blueprint.
-    const toneInstruction = blueprint.toneBlueprint
-        || (analysisContext?.tone ? `Mirror this style: ${analysisContext.tone}` : 'Professional, direct Australian English.');
+    	    // Normalised skills the model may reorder/trim (never add to). Handles the
+	    // JSON-object skills shape ({technical, industryKnowledge, softSkills}) and a
+	    // plain string. Falls back to whatever string is stored.
+	    const skillsBlock = (() => {
+	        const s = profile?.skills;
+	        if (!s) return '(no skills listed)';
+	        if (typeof s === 'string') {
+	            const t = s.trim();
+	            if (!t.startsWith('{') && !t.startsWith('[')) return t || '(no skills listed)';
+	            try {
+	                const parsed = JSON.parse(t);
+	                if (Array.isArray(parsed)) return parsed.join(', ');
+	                return Object.entries(parsed)
+	                    .map(([k, v]) => {
+	                        const label = k.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase());
+	                        return `${label}: ${Array.isArray(v) ? v.join(', ') : String(v)}`;
+	                    })
+	                    .join('\n');
+	            } catch {
+	                return t;
+	            }
+	        }
+	        return '(no skills listed)';
+	    })();
 
-    // Focus areas: blueprint messagingAngles replace analysisContext competencies
-    // when present
-    const focusAreas = blueprint.messagingAngles.length > 0
-        ? blueprint.messagingAngles.map(a => `- ${a}`).join('\n')
-        : (analysisContext?.competencies?.map(c => `- ${c}`).join('\n') ?? 'Map candidate strengths to JD requirements.');
+	    return `You are an expert Australian resume writer. Rewrite this candidate's resume so it wins an interview for the specific job below.
 
-    return `==============================================================
-DIRECTOR'S BRIEF — READ THIS FIRST. IT OVERRIDES ALL DEFAULTS.
-==============================================================
-
-You are executing a document strategy designed by a senior career strategist. Your job is to write the RESUME exactly as the strategist has specified. You will output structured JSON, not markdown.
-
-PROFESSIONAL SUMMARY DIRECTIVE:
-Write a 3-4 sentence professional summary that leads with years of experience + core professional identity, then top 2-3 quantified outcomes, then a forward-looking capability statement. It must NOT begin with a company-specific hook. It must be scannable and role-agnostic enough to work across similar applications.
-
-VOICE — NON-NEGOTIABLE: Write the professional summary in FIRST PERSON. The candidate is speaking, not being described. NEVER open with the candidate's name (e.g. "${profile?.name ?? 'Jane'} brings...", "${profile?.name ?? 'Jane'} is a..."). NEVER use "he", "she", or "they" to refer to the candidate. Use "I" when a subject is needed, or write agentless first-person ("Seasoned Business Analyst with 15 years..." — "I" implied). This applies to the Professional Summary ONLY; work experience bullets use imperative voice (no "I" prefix needed).${yearsOfExperience !== null ? `
-
-YEARS OF EXPERIENCE — USE EXACTLY THIS NUMBER: ${yearsOfExperience}. This figure has been pre-computed from the candidate's actual employment history (earliest start date to today, ${todayDate}). Write it verbatim — e.g. "I bring ${yearsOfExperience} years of marketing experience..." or "${yearsOfExperience}+ years in...". Do NOT recalculate. Do NOT estimate.` : ''}
-
-POSITIONING STATEMENT (shape the professional summary around this):
-${blueprint.positioningStatement}
-
-MESSAGING ANGLES (these themes must recur across the document using this exact language):
-${focusAreas}
-
-TONE DIRECTIVE:
-${toneInstruction}
-
-STRUCTURE NOTES FOR THIS DOCUMENT:
-${blueprint.structureNotes}
-
-SECTOR: ${blueprint.sector}
-${blueprint.sector === 'GOVERNMENT' ? '→ Apply formal tone, reference APS values language if present in JD, use capability framework terminology.' : ''}
-${blueprint.sector === 'TECH_STARTUP' ? '→ Warmer, direct tone acceptable. Conciseness rewarded. Bold opening is appropriate.' : ''}
-${blueprint.sector === 'HEALTHCARE' ? '→ Emphasise patient outcomes and care quality alongside operational metrics.' : ''}
-${blueprint.sector === 'NFP' ? '→ Values alignment is essential. Community impact must be evidenced, not asserted.' : ''}
-
-EMPLOYER INSIGHT (use in company connection paragraph — if MISSING flag present, omit the company connection paragraph entirely rather than fabricating):
-${blueprint.employerInsight}
-
-ACHIEVEMENTS WITH STRATEGIC FRAMING INSTRUCTIONS:
-${achievementBlock}
-${bridgedBlock ? `
-==============================================================
-CONFIRMED CAPABILITIES (the candidate possesses these — integrate as real experience)
-==============================================================
-Turn each into a tailored work-experience bullet under the most relevant role. These are
-genuine capabilities, not aspirations. NEVER invent a number or metric — use only metrics
-already present in the statement text. NEVER write that the candidate lacks any of these.
-${bridgedBlock}
-` : ''}
+Your job is simple: take what is already in their resume, rearrange and sharpen it for this role, and tailor the language to the job. Do not invent anything.
 
 ==============================================================
-BLOCK THESE PHRASES — THEY MUST NOT APPEAR ANYWHERE IN THE OUTPUT:
+WORK HISTORY INDEX (mechanics only — NOT the content source)
+Use this ONLY to: (1) know which roles exist and their exact ids, (2) return one output object per id, (3) decide ordering, and (4) set the casual flag. Draw every fact, bullet, and detail from THE CANDIDATE'S RESUME below, never from this index.
 ==============================================================
-${blueprint.pitfallFlags.map((f, i) => `${i + 1}. "${f}"`).join('\n')}
-
-If you find yourself about to write any of the above, stop and rewrite using the evidence from the achievements instead.
+${experienceBlock}
 
 ==============================================================
-CANDIDATE DATA
+THE CANDIDATE'S RESUME — THE SINGLE SOURCE OF TRUTH FOR ALL CONTENT AND FACTS
 ==============================================================
-IMPORTANT: If a section below is marked "(none — omit this section)" you MUST omit that entire section. Do not write placeholder text.
+${rawResume || '(raw resume text unavailable)'}
 
-TODAY'S DATE: ${todayDate}${yearsOfExperience !== null ? `
-TOTAL YEARS OF EXPERIENCE (pre-computed from work history — use verbatim): ${yearsOfExperience}` : ''}
-
-Name: ${profile.name}
-Contact (use | as separator on one line): ${[profile.email, profile.phone, profile.linkedin, profile.location].filter(Boolean).join(' | ')}
-Professional Summary: ${profile.professionalSummary}
-Skills: ${typeof profile.skills === 'string' ? profile.skills : '(none — omit this section)'}
-Experience: ${profile.experience?.length ? JSON.stringify(profile.experience) : '(none — omit this section)'}
-Education: ${profile.education?.length ? JSON.stringify(profile.education) : '(none — omit this section)'}
-Certifications: ${profile.certifications?.length ? JSON.stringify(profile.certifications) : '(none — omit this section)'}
-Volunteering: ${profile.volunteering?.length ? JSON.stringify(profile.volunteering) : '(none — omit this section)'}
-Languages: ${profile.languages?.length ? JSON.stringify(profile.languages) : '(none — omit this section)'}
-${profile.coverLetterRawText ? `
 ==============================================================
-VOICE REFERENCE
+THEIR SKILLS (reorder and trim for this job — never add a skill not listed here)
 ==============================================================
-The candidate has uploaded a previous cover letter. Match their vocabulary level, sentence rhythm, and formality register. Preserve their natural writing style — do NOT homogenise into generic AI output.
+${skillsBlock}
 
-SAMPLE (first 600 chars):
-${profile.coverLetterRawText.slice(0, 600)}
-` : ''}
-JOB DESCRIPTION:
+==============================================================
+THE JOB THEY ARE APPLYING FOR
+==============================================================
 ${jd}
 
 ==============================================================
-TASK: GENERATE THE STRUCTURED RESUME JSON
+HOW TO WRITE IT
 ==============================================================
-Write the resume content as a JSON object. Each experience entry's bullets MUST be rewritten using the strategic framing from ACHIEVEMENTS WITH STRATEGIC FRAMING INSTRUCTIONS above. Map each achievement to the most impactful bullet under the relevant experience entry by matching the achievement's title/description to the experience entry it belongs to.
+1. SOURCE OF TRUTH. The candidate's resume above is the single source of truth for every fact: every employer, role, date, qualification, tool, achievement, and number. The work history index is only a list of ids and ordering — never draw content from it. Never invent a company, role, date, qualification, tool, or metric that is not in the resume. If the resume does not contain something the job wants, leave it out — do not claim it, and do not write that the candidate lacks it.
 
-1. Use Australian English throughout (organised, analysed, recognised, programme, labour, colour).
+2. NUMBERS, HONESTLY. Lead a bullet with a figure ONLY when that exact figure is in the resume. When there is no number, lead with the concrete result, scope, or action instead. Never make up, estimate, or round a number. This is the most important rule.
 
-2. MISSING DATA RULE: If a section has no data in CANDIDATE DATA, omit that section from the JSON. Never insert empty arrays for sections with no data — omit the key entirely. Never write "Available upon request" for sections that do not exist.
+3. TAILOR TO THE JOB. Surface the most relevant experience first. Mirror the important words and skills from the job description wherever the candidate genuinely has that experience.
 
-3. ACHIEVEMENT INTEGRATION: Map each achievement to the most impactful bullet under the relevant experience entry. Use the FRAMING ANGLE to position each bullet for this specific role. Achievements without a proofPoint entry are supporting evidence — use them as context only.
+4. PROFESSIONAL SUMMARY. Write it in the first person (the candidate speaking). Never use their name or "he", "she", or "they". Open with their years of PROFESSIONAL experience and their professional identity, then their two or three strongest, most relevant strengths. 3 to 4 sentences. When you state years, count only substantive professional roles — do NOT count casual, part-time survival, or odd jobs.
 
-4. FORMATTING:
-   - Write each bullet as a single, complete imperative sentence (no "I" prefix — bullets use imperative voice).
-   - Every bullet demonstrates domain expertise. Cut generic filler. Quality over quantity — 3 sharp bullets beat 6 weak ones.
-   - Do NOT use bold or any markdown formatting inside bullet strings.
+5. BULLETS — TIGHT AND OUTCOME-FIRST. Never copy a bullet from the source resume word-for-word. Rewrite each so it leads with the result (what improved, changed, was maintained, or was prevented), even with no number, then the how in a few words. Keep each bullet to ONE sentence of about 15 to 22 words. Do NOT write dense 30-plus-word sentences that pile on three trailing clauses — that is the single most common failure here. Cut adjectives and filler. Example: "Managed daily water quality testing and adjusted nutrient parameters across aquaponics systems" becomes "Held water quality within target range across commercial aquaponics systems, sustaining high yields and healthy fish stock." Active voice, no "I" prefix, no markdown, no bold.
 
-5. ALL EXPERIENCE ENTRIES: You MUST generate rewritten bullets for EVERY experience entry in the CANDIDATE DATA, not just the ones with matched achievements. Entries without a matched achievement should get 1-2 relevant bullets drawn from their existing data.
-   - Correct: All experience entries are present in the output with rewritten bullets.
-   - Wrong: Only experience entries that have matched achievements appear in the output.
+6. CASUAL JOBS ONLY (set this per entry). Almost every role belongs on the resume. Set "casual": true ONLY for a casual or odd survival job — retail, hospitality filler, kitchen hand, cleaning, delivery, warehouse temp, or similar work unrelated to a professional career. EVERY skilled, technical, managerial, professional, research, engineering, or trade role is NOT casual: set "casual": false — even when the role is in a different field from this job. NEVER mark a real professional role casual just because it does not match this job; relevance is handled by how you write the bullets, not by removing roles. Also set "australianLocal": true if the role was performed in Australia. For a casual role write just ONE short factual bullet (it will be folded into a single line); for every other role write full bullets per the rules above.
 
-6. JD KEYWORD INTEGRATION (mandatory): Identify the most important technical skills, tools, certifications, role titles, and industry terminology from the JD above. Embed these naturally throughout the professional summary and experience bullets where the candidate's actual experience supports them. Every term must be contextually accurate — do NOT insert keywords the candidate cannot substantiate.
+7. KEEP IT TO TWO PAGES (hard limit). This MUST fit two pages, so budget the space by relevance to THIS job. Give the 2 to 3 roles most relevant to the job 3 to 4 tight bullets each. Give clearly less-relevant professional roles (for example an unrelated hospitality or retail management role on a technical application) just 1 to 2 bullets, focused only on the one thing this job actually values from it, such as safety, compliance, or stakeholder communication. Across the whole resume aim for roughly 10 to 14 bullets in total, never more. When in doubt, cut.
 
-${employerQuestions && employerQuestions.length > 0 ? `
-EMPLOYER QUESTIONS — the JD asks the candidate to answer these. Where relevant, weave responses into the professional summary or experience bullets naturally:
-${employerQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}
-` : ''}
+8. SKILLS, RETARGETED. Output a skills block tailored to this job. Start from THEIR SKILLS above and use only those, never add a skill the candidate does not have. Put the skills this job names first, drop skills with no relevance to this job, and keep the candidate's category labels (for example Technical, Industry Knowledge, Soft Skills). Format as one line per category in the form "Label: item, item, item". If the candidate clearly has a skill the job names under different wording, you may use the job's wording for that same skill, but never introduce a capability the resume does not show.
 
-${analysisContext?.regenerateFeedback ? `
+9. AUSTRALIAN ENGLISH. organised, analysed, recognised, programme, labour, colour, specialised.
+
+10. NO GAPS, NO PLACEHOLDERS. The result must read as finished, signable work. Never output [VERIFY], [ADD], [TBD], or any bracketed placeholder. Every sentence must be complete.${employerQuestions && employerQuestions.length > 0 ? `
+
+11. The job asks the candidate to address these — weave answers naturally into the summary or bullets where the resume supports them:
+${employerQuestions.map(q => `   - ${q}`).join('\n')}` : ''}${analysisContext?.regenerateFeedback ? `
+
+The user asked for this specific change — apply it: "${analysisContext.regenerateFeedback}"` : ''}
+
 ==============================================================
-USER IMPROVEMENT REQUEST (HIGHEST PRIORITY — apply this)
+OUTPUT
 ==============================================================
-The user has requested the following specific changes to this regeneration:
-"${analysisContext.regenerateFeedback}"
-
-Apply this feedback directly and deliberately. This overrides default choices where there is a conflict.
-==============================================================
-` : ''}
-
-CONSTRAINTS:
-- Do NOT include any meta-talk or pleasantries.
-- Only use a [VERIFY: ...] token when a needed fact is genuinely absent from CANDIDATE DATA. If a value already exists (e.g. an achievement metric like "150+ assets"), use it verbatim — never replace a known value with a placeholder.
-- Before finalising, re-read each bullet and the summary: every sentence must be grammatically complete. No fragments.
-- Do NOT fabricate any data not present in CANDIDATE DATA above.
-- The DIRECTOR'S BRIEF takes precedence. Where the brief specifies framing, use it.
-- Output ONLY a valid JSON object with this exact structure. No preamble, no explanation, no markdown code fences.
+Return ONLY this JSON object. No preamble, no explanation, no markdown fences.
 
 {
-  "summary": "string — rewritten professional summary in FIRST PERSON. Never use the candidate's name or third person (he/she/they). Start with 'I' or use agentless first person (e.g. 'Engineering leader with...'). 3-5 sentences.",
+  "summary": "first-person professional summary, 3-4 sentences, no name, no he/she/they",
+  "skills": "one line per category, e.g. 'Technical: SAP, Microsoft Excel, inventory reconciliation\\nIndustry Knowledge: stock control, cycle counting'",
+  "targetRoleTitle": "exact job title from the job ad — copy it word for word",
+  "pageBudgetWarning": false,
+  "experienceOrder": ["id of most relevant role", "id of 2nd most relevant", "...continue for ALL ids"],
   "experience": [
     {
-      "id": "string — the exact experience ID from the profile data",
-      "bullets": ["string — rewritten bullet point", "string — another bullet"]
+      "id": "the exact id from the work history above",
+      "casual": false,
+      "australianLocal": true,
+      "display": "full",
+      "bullets": ["tailored bullet", "tailored bullet"],
+      "tips": [
+        {
+          "bulletIndex": 0,
+          "suggestion": "Adding what % or volume figure here would make this achievement significantly stronger — for example, how many tonnes of seed were processed per season, or what yield improvement was achieved."
+        }
+      ]
     }
   ]
 }
 
-CRITICAL OUTPUT RULES:
-- The "experience" array MUST contain an entry for EVERY experience entry in the CANDIDATE DATA, matched by exact ID.
-- The "bullets" array for each experience entry MUST contain rewritten bullets, not the original description text.
-- If you cannot find a strategic framing for an experience entry, write 1-2 strong bullets based on the entry's existing description.
-- Output NOTHING except the JSON object. No commentary. No markdown fences. No "Here is your resume JSON:". Just the JSON.`;
+FIELD RULES:
+
+targetRoleTitle: Copy the job title exactly from the job ad. This becomes the candidate’s resume headline. Do not invent a title not in the ad.
+
+experienceOrder: List ALL experience IDs from the work history, sorted from most to least relevant to this specific job. Every id must appear exactly once. This is the order they will appear on the resume.
+
+display: Set one value per experience entry.
+- "full" — any substantive professional, technical, managerial, academic, or research role. This is the default for almost every role.
+- "fold" — a casual or survival job only: retail assistant, kitchen hand, delivery driver, warehouse picker, cleaning staff, or similar work with no professional skill relevance to any career. A restaurant MANAGER is NOT casual — set "full". When in doubt, set "full".
+- "omit" — only for a role that is both irrelevant to this job AND was performed entirely outside Australia. Never omit Australian roles.
+
+pageBudgetWarning: Set true only if you estimate the resume content you have written will still exceed 2 pages after all your curation decisions. Be honest — a false alarm is better than silently producing a 3-page resume.
+
+tips (optional, per experience): Add a tip ONLY when a bullet would be significantly stronger with a specific metric that you cannot invent from the resume. Each tip must be one concrete, specific sentence spelling out exactly what the candidate should add — name the type of number (%, $, volume, timeframe, headcount). Do not add a tip for a bullet that is already quantified. Maximum 2 tips per experience entry, 5 tips total across the entire resume. If no bullet needs a tip, omit the tips array entirely.
+
+Return one experience object for EVERY entry in the work history. Every object must carry its exact id. Output nothing except the JSON.`;
 };

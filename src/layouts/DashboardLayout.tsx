@@ -9,16 +9,13 @@ import {
     Library,
     Mail,
     Linkedin,
-    Sparkles,
     ShieldCheck,
     Menu,
     X,
-    Stethoscope,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../lib/api';
-import { ProcessStrip } from '../components/processStrip';
 import { warm } from '../lib/theme/warmTokens';
 
 const COLLAPSED_WIDTH = 72;
@@ -127,9 +124,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
         { to: '/tracker', icon: Briefcase, label: 'Applications' },
         { to: '/documents', icon: Library, label: 'Documents' },
         { to: '/workspace', icon: FileText, label: 'Profile' },
-        { to: '/jobs', icon: Sparkles, label: 'Job Feed' },
-        { onClick: () => window.dispatchEvent(new CustomEvent('show-diagnostic')), icon: Stethoscope, label: 'Diagnostic' },
-        { to: '/linkedin', icon: Linkedin, label: 'LinkedIn' },
+            { to: '/linkedin', icon: Linkedin, label: 'LinkedIn' },
         { to: '/email-templates', icon: Mail, label: 'Email Templates' },
         { to: '/visa-sponsors', icon: ShieldCheck, label: 'Visa Sponsors' },
     ];
@@ -349,9 +344,6 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                     className="max-w-5xl mx-auto px-6 md:px-10 pt-10 pb-6"
                     style={{ paddingTop: isTouch ? 64 : 40 }}
                 >
-                    <div style={{ marginBottom: 24 }}>
-                        <ProcessStrip />
-                    </div>
                     {children}
                 </div>
 

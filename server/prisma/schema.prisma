@@ -32,8 +32,10 @@ model CandidateProfile {
   resumeRawText                String?
   searchDuration               String?
   seniority                    String?
+  yearsOfExperience            Int?
   targetCity                   String?
   targetRole                   String?
+  targetRoles                  Json?
   marketingConsent             Boolean           @default(false)
   marketingEmail               String?
   marketingEmailSent           Boolean           @default(false)
@@ -77,6 +79,8 @@ model CandidateProfile {
   languages                    Language[]
   resumeVersions               ResumeVersion[]
   volunteering                 Volunteering[]
+  contactId                    String?   @unique
+  contact                      Contact?       @relation(fields: [contactId], references: [id])
 }
 
 model ResumeVersion {
@@ -97,6 +101,7 @@ model Experience {
   startDate          String
   endDate            String?
   isCurrent          Boolean          @default(false)
+  isCasual           Boolean          @default(false)
   type               String           @default("work")
   description        String?
   coachingTips       String?
@@ -224,11 +229,27 @@ model JobFeedItem {
   matchDetails         Json?
   isRead               Boolean          @default(false)
   isSaved              Boolean          @default(false)
+  skipped              Boolean          @default(false)
+  skippedAt            DateTime?
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt
   candidateProfile     CandidateProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
 
   @@index([userId, feedDate])
+}
+
+model SkippedJob {
+  id        String    @id @default(uuid())
+  userId    String
+  sourceUrl String
+  title     String
+  company   String
+  location  String?
+  postedAt  DateTime?
+  skippedAt DateTime  @default(now())
+
+  @@unique([userId, sourceUrl])
+  @@index([userId, skippedAt])
 }
 
 model SeekJobCache {
@@ -360,9 +381,216 @@ model Sponsor {
   @@index([cleanName])
 }
 
+model CvScanLead {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  firstName    String?
+  fullName     String?
+  inferredRole String?
+  score        Int?
+  createdAt    DateTime @default(now())
+}
+
 model SponsorLead {
   id         String   @id @default(uuid())
   email      String   @unique
   createdAt  DateTime @default(now())
   unlockedAt DateTime @default(now())
 }
+
+model SponsorJob {
+  id                String   @id @default(uuid())
+  sourceUrl         String   @unique
+  title             String
+  company           String
+  normalizedCompany String
+  location          String?
+  salary            String?
+  description       String
+  sourcePlatform    String
+  postedAt          DateTime?
+  confidence        String
+  employerMatched   Boolean
+  sponsorCleanName  String?
+  positivePhraseHit Boolean
+  negationPhraseHit Boolean
+  matchedPhrases    Json?
+  scanQuery         String
+  firstSeenAt       DateTime @default(now())
+  lastSeenAt        DateTime @updatedAt
+  feedDate          String
+
+  @@index([confidence])
+  @@index([normalizedCompany])
+  @@index([feedDate])
+}
+
+model Contact {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  firstName       String?
+  lastName        String?
+  source          String    @default("manual")
+  metadata        Json?
+  emailOptIn      Boolean   @default(true)
+  unsubscribedAt  DateTime?
+  lastActivityAt  DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tags              ContactTag[]
+  sequences         ContactSequence[]
+  emailSends        EmailSend[]
+  notes             ContactNote[]
+  candidateProfile  CandidateProfile?
+}
+
+model ContactNote {
+  id        String   @id @default(uuid())
+  contactId String
+  content   String
+  createdAt DateTime @default(now())
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  @@index([contactId])
+}
+
+model Tag {
+  id        String       @id @default(uuid())
+  name      String       @unique
+  label     String?
+  createdAt DateTime     @default(now())
+  contacts  ContactTag[]
+}
+
+model ContactTag {
+  contactId String
+  tagId     String
+  createdAt DateTime @default(now())
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Restrict)
+
+  @@id([contactId, tagId])
+  @@index([tagId])
+}
+
+model EmailTemplate {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  subject   String
+  bodyText  String?
+  bodyHtml  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  steps     SequenceStep[]
+  emailSends  EmailSend[]
+}
+
+model EmailSequence {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  priority    Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  steps SequenceStep[]
+  contactSequences  ContactSequence[]
+  emailSends        EmailSend[]
+}
+
+model SequenceStep {
+  id         String   @id @default(uuid())
+  sequenceId String
+  stepOrder  Int
+  delayDays  Int
+  templateId String
+  createdAt  DateTime @default(now())
+
+  sequence EmailSequence  @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  template EmailTemplate  @relation(fields: [templateId], references: [id])
+
+  @@unique([sequenceId, stepOrder])
+  @@index([sequenceId])
+  @@index([templateId])
+}
+
+model ContactSequence {
+  id                String    @id @default(uuid())
+  contactId         String
+  sequenceId        String
+  currentStep       Int       @default(0)
+  completed         Boolean   @default(false)
+  lastStepSentAt    DateTime?
+  enrolledAt        DateTime  @default(now())
+  completedAt       DateTime?
+  unenrolledAt      DateTime?
+  unenrolledReason  String?
+
+  contact  Contact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  sequence EmailSequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+
+  @@unique([contactId, sequenceId])
+  @@index([contactId, currentStep, completed])
+}
+
+model EmailSend {
+  id              String   @id @default(uuid())
+  contactId       String
+  sequenceId      String?
+  sequenceStepId  String?
+  templateId      String?
+  broadcastId     String?
+  resendEmailId   String?
+  subject         String
+  fromEmail       String
+  toEmail         String
+  sentAt          DateTime @default(now())
+
+  contact     Contact        @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  sequence    EmailSequence?  @relation(fields: [sequenceId], references: [id])
+  template    EmailTemplate?  @relation(fields: [templateId], references: [id])
+  opens       EmailOpen[]
+  clicks      EmailClick[]
+
+  @@index([contactId, sentAt])
+  @@index([sentAt])
+}
+
+model EmailOpen {
+  id          String   @id @default(uuid())
+  emailSendId String
+  openedAt    DateTime @default(now())
+  userAgent   String?
+  ipAddress   String?
+
+  emailSend EmailSend @relation(fields: [emailSendId], references: [id], onDelete: Cascade)
+  @@index([emailSendId])
+}
+
+model EmailClick {
+  id          String   @id @default(uuid())
+  emailSendId String
+  url         String
+  clickedAt   DateTime @default(now())
+  userAgent   String?
+  ipAddress   String?
+
+  emailSend EmailSend @relation(fields: [emailSendId], references: [id], onDelete: Cascade)
+  @@index([emailSendId])
+}
+
+model Broadcast {
+  id        String   @id @default(uuid())
+  name      String
+  subject   String
+  bodyText  String?
+  bodyHtml  String?
+  targetCriteria Json?
+  status    String   @default("draft")
+  sentAt    DateTime?
+  createdAt DateTime @default(now())
+}
+

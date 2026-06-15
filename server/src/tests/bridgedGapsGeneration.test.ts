@@ -44,6 +44,7 @@ vi.mock('../middleware/accessControl', () => ({
 vi.mock('../services/llm', () => ({
   callLLM: vi.fn(),
   callClaude: vi.fn(),
+  PREMIUM_MODEL: 'mock-premium-model',
 }));
 
 // Mock callLLMWithRetry (used in Stage 2) — this module calls callLLM internally,
@@ -83,9 +84,16 @@ vi.mock('../services/scrubInjection', () => ({
 
 import generateRouter from '../routes/generate';
 import { prisma } from '../index';
-import { callLLM } from '../services/llm';
+import { callLLM, callClaude } from '../services/llm';
 import { callLLMWithRetry } from '../utils/callLLMWithRetry';
 import { generateBlueprint } from '../services/strategy';
+
+// Cover-letter generation is now a single Claude pass; callClaude returns
+// { content, usage }. Helper builds that shape from a JSON content string.
+const claudeReply = (content: string) => ({
+  content,
+  usage: { promptTokens: 500, completionTokens: 300 },
+});
 
 const app = express();
 app.use(express.json());
@@ -181,7 +189,7 @@ const MOCK_COVER_LETTER_JSON = JSON.stringify({
 
 // ── Tests ───────────────────────────────────────────────────────────────────
 
-describe('POST /generate/cover-letter-structured — bridgedGaps injection', () => {
+describe('POST /generate/cover-letter-structured — no invented capabilities', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
@@ -203,60 +211,47 @@ describe('POST /generate/cover-letter-structured — bridgedGaps injection', () 
     // Stage 1: generateBlueprint returns a mock blueprint
     (generateBlueprint as any).mockResolvedValue(MOCK_BLUEPRINT_RESULT);
 
-    // Stage 2: callLLMWithRetry returns mock cover letter JSON
-    (callLLMWithRetry as any).mockResolvedValue(MOCK_COVER_LETTER_JSON);
+    // Generation: callClaude returns the mock cover letter JSON (single pass)
+    (callClaude as any).mockResolvedValue(claudeReply(MOCK_COVER_LETTER_JSON));
 
-    // We also mock callLLM directly in case any fallback code path hits it
+    // Legacy paths (not used by the structured route any more) kept harmlessly mocked
+    (callLLMWithRetry as any).mockResolvedValue(MOCK_COVER_LETTER_JSON);
     (callLLM as any).mockResolvedValue(MOCK_COVER_LETTER_JSON);
   });
 
-  it('passes bridgedGaps into the prompt as CONFIRMED CAPABILITIES', async () => {
+  it('never injects an invented-capability block, even when a client still sends bridgedGaps', async () => {
     let capturedPrompt: string | undefined;
 
-    // Override callLLMWithRetry to capture the prompt and then return mock data
-    (callLLMWithRetry as any).mockImplementation((prompt: string) => {
+    (callClaude as any).mockImplementation((prompt: string) => {
       capturedPrompt = prompt;
-      return Promise.resolve(MOCK_COVER_LETTER_JSON);
+      return Promise.resolve(claudeReply(MOCK_COVER_LETTER_JSON));
     });
 
+    // VALID_BODY still carries a legacy bridgedGaps array; the route must ignore it.
     const res = await request(app)
       .post('/generate/cover-letter-structured')
       .set('Authorization', 'Bearer test-token')
       .send(VALID_BODY);
 
-    // Assert the HTTP response is successful
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('content');
 
-    // Assert the prompt contains the bridgedGaps data
+    // The bridged-gaps feature is gone: the gap CONTENT (the invented capability)
+    // must never reach the prompt, regardless of what a legacy client sends.
     expect(capturedPrompt).toBeDefined();
-    expect(capturedPrompt!).toContain('CONFIRMED CAPABILITIES');
-    expect(capturedPrompt!).toContain('Adobe');
-    expect(capturedPrompt!).toContain('CONTRADICTION GUARD');
+    expect(capturedPrompt!).not.toContain('Adobe');
+    expect(capturedPrompt!).not.toContain('CONFIRMED CAPABILITIES (the candidate possesses');
   });
 
-  it('does not include the CONFIRMED CAPABILITIES header block when bridgedGaps is empty', async () => {
-    let capturedPrompt: string | undefined;
-
-    (callLLMWithRetry as any).mockImplementation((prompt: string) => {
-      capturedPrompt = prompt;
-      return Promise.resolve(MOCK_COVER_LETTER_JSON);
-    });
-
-    const bodyWithoutGaps = { ...VALID_BODY, bridgedGaps: [] };
+  it('generates a cover letter from the candidate profile and JD', async () => {
+    (callClaude as any).mockResolvedValue(claudeReply(MOCK_COVER_LETTER_JSON));
 
     const res = await request(app)
       .post('/generate/cover-letter-structured')
       .set('Authorization', 'Bearer test-token')
-      .send(bodyWithoutGaps);
+      .send({ ...VALID_BODY, bridgedGaps: [] });
 
     expect(res.status).toBe(200);
-
-    expect(capturedPrompt).toBeDefined();
-    // The CONFIRMED CAPABILITIES header SECTION is only rendered when
-    // bridgedGaps.length > 0. The phrase also appears in the CONTRADICTION GUARD
-    // text ("any skill listed above (CONFIRMED CAPABILITIES)") so we check for
-    // the actual header line with equals signs that wraps the section.
-    expect(capturedPrompt!).not.toContain('CONFIRMED CAPABILITIES (the candidate possesses these');
+    expect(res.body).toHaveProperty('content');
   });
 });

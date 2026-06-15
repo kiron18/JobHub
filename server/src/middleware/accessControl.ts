@@ -3,6 +3,37 @@ import { EXEMPT_EMAILS } from '../routes/stripe';
 
 export type FeatureType = 'generation' | 'analysis' | 'job_search' | 'match_score';
 
+export interface AccessProfileLike {
+  plan?: string | null;
+  planStatus?: string | null;
+  trialEndDate?: Date | null;
+  dashboardAccess?: boolean | null;
+  accessExpiresAt?: Date | null;
+}
+
+// True when the user should have unlimited feature access: an explicit grant,
+// a live paid plan, or an active 7-day trial (free plan with a future trialEndDate).
+export function hasActiveAccess(p: AccessProfileLike): boolean {
+  if (p.dashboardAccess === true) return true;
+  const plan = p.plan ?? 'free';
+  const planStatus = p.planStatus ?? 'active';
+  if (plan !== 'free' && (planStatus === 'active' || planStatus === 'trialing')) return true;
+  if (p.trialEndDate && p.trialEndDate > new Date()) return true;
+  return false;
+}
+
+// True when the user is a genuinely PAID/exempt customer (NOT the free 7-day
+// trial). Used to exempt paying customers from the trial-only daily cap so they
+// are never throttled. Trial-by-default users (free plan + trialEndDate) are NOT
+// paid, so the cap still applies to them.
+export function isPaidOrExempt(p: AccessProfileLike, email?: string | null): boolean {
+  if (email && EXEMPT_EMAILS.includes(email.toLowerCase())) return true;
+  if (p.dashboardAccess === true) return true;
+  const plan = p.plan ?? 'free';
+  const planStatus = p.planStatus ?? 'active';
+  return plan !== 'free' && (planStatus === 'active' || planStatus === 'trialing');
+}
+
 const FREE_LIMITS: Record<FeatureType, number> = {
   generation: 5,
   analysis: 5,
@@ -39,6 +70,8 @@ export async function checkAccess(
       plan: true,
       planStatus: true,
       accessExpiresAt: true,
+      trialEndDate: true,
+      dashboardAccess: true,
       freeGenerationsUsed: true,
       freeAnalysesUsed: true,
       freeJobSearchesUsed: true,
@@ -64,8 +97,8 @@ export async function checkAccess(
     return { allowed: true };
   }
 
-  // Active/trialing paid plan
-  if (plan !== 'free' && (planStatus === 'active' || planStatus === 'trialing')) {
+  // Active trial or paid plan: unlimited feature access.
+  if (hasActiveAccess(profile)) {
     return { allowed: true };
   }
 

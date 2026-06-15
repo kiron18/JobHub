@@ -2,8 +2,7 @@ import axios from 'axios';
 import { prisma } from '../index';
 import { callLLMWithRetry } from '../utils/callLLMWithRetry';
 import { parseLLMJson } from '../utils/parseLLMResponse';
-import { buildSeekClusterKey, fetchSeekJobsForCluster } from './seekScraper';
-import { buildLinkedInClusterKey, fetchLinkedInJobsForCluster } from './linkedinScraper';
+import { buildSeekClusterKey, buildEntryLevelSearchTerm, fetchSeekJobsForCluster } from './seekScraper';
 import { deduplicateJobs } from '../utils/deduplicateJobs';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -35,19 +34,10 @@ function extractPlatform(url: string): string {
     if (host.includes('indeed.com')) return 'indeed';
     if (host.includes('jora.com')) return 'jora';
     if (host.includes('linkedin.com')) return 'linkedin';
-    if (host.includes('adzuna.com')) return 'other';
     return 'other';
   } catch {
     return 'other';
   }
-}
-
-function formatSalary(min?: number, max?: number): string | null {
-  if (!min && !max) return null;
-  if (min && max) return `$${Math.round(min / 1000)}k–$${Math.round(max / 1000)}k`;
-  if (min) return `From $${Math.round(min / 1000)}k`;
-  if (max) return `Up to $${Math.round(max / 1000)}k`;
-  return null;
 }
 
 /** Filters out jobs that are clearly location-mismatched and non-remote. */
@@ -70,56 +60,6 @@ export function todayAEST(): Date {
   // en-AU locale returns "DD/MM/YYYY"
   const [day, month, year] = s.split('/');
   return new Date(`${year}-${month}-${day}T00:00:00.000Z`);
-}
-
-// ─── Adzuna fetch ─────────────────────────────────────────────────────────────
-
-export async function fetchAdzunaJobs(role: string, city: string): Promise<RawJob[]> {
-  const APP_ID = process.env.ADZUNA_APP_ID;
-  const APP_KEY = process.env.ADZUNA_APP_KEY;
-  if (!APP_ID || !APP_KEY) throw new Error('Adzuna credentials not configured');
-
-  const base = 'https://api.adzuna.com/v1/api/jobs/au/search';
-  const params = {
-    app_id: APP_ID,
-    app_key: APP_KEY,
-    what: role,
-    where: city,
-    results_per_page: 50,
-    'content-type': 'application/json',
-  };
-
-  const [page1, page2] = await Promise.all([
-    axios.get(`${base}/1`, { params }).catch(() => null),
-    axios.get(`${base}/2`, { params }).catch(() => null),
-  ]);
-
-  const raw: any[] = [
-    ...(page1?.data?.results ?? []),
-    ...(page2?.data?.results ?? []),
-  ];
-
-  const seen = new Set<string>();
-  const jobs: RawJob[] = [];
-
-  for (const r of raw) {
-    const url: string = r.redirect_url ?? '';
-    if (!url || seen.has(url)) continue;
-    seen.add(url);
-
-    jobs.push({
-      title: r.title ?? 'Untitled',
-      company: r.company?.display_name ?? 'Unknown Company',
-      location: r.location?.display_name ?? city,
-      salary: formatSalary(r.salary_min, r.salary_max),
-      description: r.description ?? '',
-      sourceUrl: url,
-      sourcePlatform: extractPlatform(url),
-      postedAt: r.created ? new Date(r.created) : null,
-    });
-  }
-
-  return jobs;
 }
 
 // ─── Bullet generation ────────────────────────────────────────────────────────
@@ -158,6 +98,21 @@ ${JSON.stringify(input)}`;
 
 // ─── Quick keyword pre-scorer ─────────────────────────────────────────────────
 
+// Title/description signals that mark a listing as too senior for an entry-level
+// candidate. Listings matching any of these are pushed down the feed, not removed.
+const SENIOR_SIGNALS = [
+  'senior', 'principal', 'lead ', 'team lead', 'head of', 'director',
+  'manager', '5+ years', 'minimum 5 years', 'extensive experience',
+];
+
+// Title/description signals that mark a listing as junior/entry-level. Matching
+// listings are promoted up the feed. Seek's search query is a hard AND-filter, so
+// junior bias must happen here in ranking, not in the search URL.
+const JUNIOR_SIGNALS = [
+  'junior', 'graduate', 'entry level', 'entry-level', 'trainee', 'apprentice',
+  'cadet', 'no experience', 'early career', '0-2 years', '1-2 years', 'assistant',
+];
+
 function quickScore(skillsJson: any, job: RawJob): number {
   if (!skillsJson) return 50;
   try {
@@ -173,7 +128,14 @@ function quickScore(skillsJson: any, job: RawJob): number {
 
     const haystack = `${job.title} ${job.description}`.toLowerCase();
     const matches = allSkills.filter(s => haystack.includes(s));
-    return Math.min(99, Math.round((matches.length / allSkills.length) * 100));
+    let score = Math.min(99, Math.round((matches.length / allSkills.length) * 100));
+    if (SENIOR_SIGNALS.some(sig => haystack.includes(sig))) {
+      score -= 1000; // pushes senior roles to the bottom without dropping them
+    }
+    if (JUNIOR_SIGNALS.some(sig => haystack.includes(sig))) {
+      score += 25;
+    }
+    return score;
   } catch {
     return 50;
   }
@@ -182,9 +144,15 @@ function quickScore(skillsJson: any, job: RawJob): number {
 // ─── Build daily feed ─────────────────────────────────────────────────────────
 
 export async function buildDailyFeed(userId: string): Promise<void> {
+  // Job feed removed — the app runs on pasted jobs only. Disabled so nothing
+  // scrapes Seek (which was 403-blocked at source). Set FEED_ENABLED = true to
+  // restore the daily feed build.
+  const FEED_ENABLED: boolean = false;
+  if (!FEED_ENABLED) return;
+
   const profile = await prisma.candidateProfile.findUnique({
     where: { userId },
-    select: { targetRole: true, targetCity: true, location: true, industry: true, skills: true },
+    select: { targetRole: true, targetRoles: true, targetCity: true, location: true, industry: true, skills: true },
   });
 
   const effectiveCity = profile?.targetCity || profile?.location;
@@ -192,25 +160,19 @@ export async function buildDailyFeed(userId: string): Promise<void> {
     throw new Error('Profile incomplete — set a target role and city first');
   }
 
-  const seekCluster = buildSeekClusterKey(profile.targetRole, effectiveCity, profile.industry);
-  const linkedInCluster = buildLinkedInClusterKey(profile.targetRole, effectiveCity, profile.industry);
+  const rolesArray: string[] = Array.isArray(profile.targetRoles) && profile.targetRoles.length > 0
+    ? (profile.targetRoles as string[])
+    : [profile.targetRole];
+  const seekSearchTerm = buildEntryLevelSearchTerm(rolesArray);
 
-  const [adzunaJobs, seekJobs, linkedInJobs] = await Promise.all([
-    fetchAdzunaJobs(profile.targetRole, effectiveCity).catch((err: Error) => {
-      console.error(`[buildDailyFeed] Adzuna failed for ${userId}:`, err.message);
-      return [] as RawJob[];
-    }),
-    fetchSeekJobsForCluster(seekCluster).catch((err: Error) => {
-      console.error(`[buildDailyFeed] Seek failed for ${userId}:`, err.message);
-      return [] as RawJob[];
-    }),
-    fetchLinkedInJobsForCluster(linkedInCluster).catch((err: Error) => {
-      console.error(`[buildDailyFeed] LinkedIn failed for ${userId}:`, err.message);
-      return [] as RawJob[];
-    }),
-  ]);
+  const seekCluster = buildSeekClusterKey(seekSearchTerm, effectiveCity, profile.industry);
 
-  const jobs = deduplicateJobs([...seekJobs, ...linkedInJobs], adzunaJobs);
+  const seekJobs = await fetchSeekJobsForCluster(seekCluster).catch((err: Error) => {
+    console.error(`[buildDailyFeed] Seek failed for ${userId}:`, err.message);
+    return [] as RawJob[];
+  });
+
+  const jobs = deduplicateJobs(seekJobs, []);
   const today = todayAEST();
 
   if (jobs.length === 0) return;

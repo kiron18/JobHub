@@ -230,6 +230,11 @@ function scrubBody(body: string, firstName: string, yearsOfExperience?: number |
         });
     }
 
+    // 6b. Singular-year grammar: "over 1 years" must read "over 1 year".
+    const beforeGrammar = scrubbed;
+    scrubbed = scrubbed.replace(/\b1 years\b/g, '1 year');
+    if (scrubbed !== beforeGrammar) stats.push(`grammar: "1 years" -> "1 year"`);
+
     // 7. Strip any [VERIFY:] tokens that ask the user to compute years of
     //    experience — we have the answer server-side, no verification needed.
     scrubbed = scrubbed.replace(/\[VERIFY:[^\]]*years?[^\]]*\]/gi, (match) => {

@@ -70,50 +70,113 @@ interface ExperienceEntry {
     startDate?: string | null;
     endDate?: string | null;
     isCurrent?: boolean | null;
+    isCasual?: boolean | null;
 }
 
 /**
- * Compute total professional experience as the span from the candidate's
- * earliest work-role start date to today (or to the latest end date if
- * nothing is current). Returns a whole number of years, or null when the
- * experience array is empty / unparseable.
+ * Compute total professional experience as the SUM of actual time worked across
+ * all work roles, merging overlapping roles so concurrent jobs are never double
+ * counted, and EXCLUDING the gaps between roles (study breaks, job searches).
  *
- * This is "years of experience" the way candidates phrase it on resumes
- * (career span), not active-employment time net of gaps.
+ * This is the honest "how many years have you actually worked" figure a
+ * candidate would defend in an interview, not the earliest-start-to-today
+ * career span (which silently counts every gap as experience and inflates a
+ * recent graduate with one old internship into "7 years").
+ *
+ * The caller is responsible for passing only the roles that should count —
+ * casual or irrelevant roles should already be filtered out (e.g. via
+ * selectFeaturedExperience) so they don't pad the figure.
+ *
+ * Returns a whole number of years (minimum 1), or null when the experience
+ * array is empty / unparseable.
  */
 export function computeYearsOfExperience(experience: ExperienceEntry[] | null | undefined): number | null {
     if (!Array.isArray(experience) || experience.length === 0) return null;
 
-    let earliestStart: Date | null = null;
-    let latestEnd: Date | null = null;
-    let hasCurrent = false;
+    const MONTH_MS = 30 * 24 * 60 * 60 * 1000;
+    const intervals: Array<[number, number]> = [];
 
     for (const e of experience) {
         if (e?.type && e.type !== 'work') continue;
+        if (e?.isCasual === true) continue; // Exclude casual/survival jobs
         const start = parseFlexibleDate(e?.startDate);
         if (!start) continue;
-        if (!earliestStart || start.getTime() < earliestStart.getTime()) {
-            earliestStart = start;
-        }
 
-        if (e?.isCurrent || !e?.endDate || /^(present|current|now|ongoing)$/i.test(String(e.endDate).trim())) {
-            hasCurrent = true;
-        } else {
-            const end = parseFlexibleDate(e.endDate);
-            if (end && (!latestEnd || end.getTime() > latestEnd.getTime())) {
-                latestEnd = end;
-            }
-        }
+        const isCurrent = e?.isCurrent || !e?.endDate
+            || /^(present|current|now|ongoing)$/i.test(String(e?.endDate ?? '').trim());
+        const end = isCurrent ? new Date() : (parseFlexibleDate(e?.endDate) ?? new Date());
+
+        const startMs = start.getTime();
+        // A same-month or malformed range still represents a real (short) stint,
+        // so floor its length to ~1 month rather than dropping it to zero.
+        let endMs = end.getTime();
+        if (endMs <= startMs) endMs = startMs + MONTH_MS;
+        intervals.push([startMs, endMs]);
     }
 
-    if (!earliestStart) return null;
+    if (intervals.length === 0) return null;
 
-    const endRef = hasCurrent ? new Date() : (latestEnd ?? new Date());
-    const ms = endRef.getTime() - earliestStart.getTime();
-    if (ms <= 0) return null;
+    // Merge overlapping intervals, then sum their lengths (gaps excluded).
+    intervals.sort((a, b) => a[0] - b[0]);
+    let totalMs = 0;
+    let [curStart, curEnd] = intervals[0];
+    for (let i = 1; i < intervals.length; i++) {
+        const [s, en] = intervals[i];
+        if (s <= curEnd) {
+            if (en > curEnd) curEnd = en;
+        } else {
+            totalMs += curEnd - curStart;
+            curStart = s;
+            curEnd = en;
+        }
+    }
+    totalMs += curEnd - curStart;
 
-    const years = ms / (365.25 * 24 * 60 * 60 * 1000);
+    const years = totalMs / (365.25 * 24 * 60 * 60 * 1000);
     return Math.max(1, Math.round(years));
+}
+
+/**
+ * Pull an explicitly-stated years-of-experience figure from resume text
+ * (e.g. "9+ years of experience", "9 years experience"). The candidate's own
+ * statement is the source of truth and beats a computed career span, which can't
+ * see study/career gaps (e.g. a 2016-2018 MBA between roles). Returns null when
+ * no figure is stated. The "of/in + experience" requirement keeps it from matching
+ * incidental phrases like "over 3 years" inside a bullet.
+ */
+export function statedYearsOfExperience(...texts: (string | null | undefined)[]): number | null {
+    for (const t of texts) {
+        if (!t || typeof t !== 'string') continue;
+        const m = t.match(/(\d{1,2})\s*\+?\s*years?(?:\s+of)?\s+(?:experience|exp)\b/i);
+        if (m) {
+            const n = parseInt(m[1], 10);
+            if (n > 0 && n < 60) return n;
+        }
+    }
+    return null;
+}
+
+/**
+ * Resolve years of experience: prefer the figure the candidate explicitly states
+ * in their resume; fall back to the computed career span only when none is stated.
+ * Covers both scenarios — a resume that declares "9+ years" and one that doesn't.
+ */
+export function resolveYearsOfExperience(
+    statedSources: (string | null | undefined)[],
+    experience: ExperienceEntry[] | null | undefined,
+): number | null {
+    return statedYearsOfExperience(...statedSources) ?? computeYearsOfExperience(experience);
+}
+
+/**
+ * Extract the contact email from resume text — the first email-like token, which
+ * on a resume is the header contact address. The resume is the source of truth for
+ * contact details, so this beats the account/login email stored on the profile.
+ */
+export function extractContactEmail(text: string | null | undefined): string | null {
+    if (!text || typeof text !== 'string') return null;
+    const m = text.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/);
+    return m ? m[0] : null;
 }
 
 /**

@@ -1,6 +1,6 @@
 import { callLLMWithRetry } from '../utils/callLLMWithRetry';
 import { IDENTITY_DERIVATION_PROMPT, IdentityCard } from './prompts/identity';
-import { prisma } from '../index';
+import { prisma } from '../db';
 import { parseLLMJson } from '../utils/parseLLMResponse';
 
 export async function deriveIdentityCards(userId: string): Promise<void> {

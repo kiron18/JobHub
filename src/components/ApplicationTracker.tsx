@@ -6,6 +6,9 @@ import {
     Clock,
     Trophy,
     Loader2,
+    EyeOff,
+    ExternalLink,
+    RotateCcw,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -30,7 +33,7 @@ function daysSinceApplied(dateApplied: string | null): number | null {
 
 export const ApplicationTracker: React.FC = () => {
     const queryClient = useQueryClient();
-    const [filterStatus, setFilterStatus] = useState<ApplicationStatus | 'ALL'>('ALL');
+    const [filterStatus, setFilterStatus] = useState<ApplicationStatus | 'ALL' | 'SKIPPED'>('ALL');
     const [sortBy, setSortBy] = useState<SortBy>('match');
     const [gradeFilter, setGradeFilter] = useState<'ALL' | 'AB' | 'C' | 'DF'>('ALL');
     const [showAddForm, setShowAddForm] = useState(false);
@@ -43,6 +46,30 @@ export const ApplicationTracker: React.FC = () => {
             return data;
         },
         refetchOnMount: true
+    });
+
+    const { data: skippedJobs = [], isLoading: skippedLoading } = useQuery<any[]>({
+        queryKey: ['skipped-jobs'],
+        queryFn: async () => {
+            const { data } = await api.get('/job-feed/skipped');
+            return data.jobs ?? [];
+        },
+        enabled: filterStatus === 'SKIPPED',
+    });
+
+    const restoreSkipMutation = useMutation({
+        mutationFn: async (sourceUrl: string) => {
+            const { data } = await api.post('/job-feed/skipped/restore', { sourceUrl });
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['skipped-jobs'] });
+            queryClient.invalidateQueries({ queryKey: ['job-feed'] });
+            toast.success('Restored to feed');
+        },
+        onError: () => {
+            toast.error('Failed to restore job');
+        },
     });
 
     const updateJobMutation = useMutation({
@@ -398,13 +425,14 @@ export const ApplicationTracker: React.FC = () => {
 
             {/* Filters + Sort */}
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
-                {(['ALL', ...STATUS_FLOW] as const).map(status => {
-                    const count = counts[status];
-                    const config = status === 'ALL' ? null : STATUS_CONFIG[status];
+                {(['ALL', 'SKIPPED', ...STATUS_FLOW] as const).map(status => {
+                    const isSkipped = status === 'SKIPPED';
+                    const config = isSkipped ? null : status === 'ALL' ? null : STATUS_CONFIG[status];
                     const active = filterStatus === status;
+                    const count = isSkipped ? skippedJobs.length : counts[status];
                     return (
                         <button
-                            key={status}
+                            key={status as string}
                             onClick={() => setFilterStatus(status)}
                             style={{
                                 display: 'flex', alignItems: 'center', gap: 4,
@@ -412,12 +440,12 @@ export const ApplicationTracker: React.FC = () => {
                                 textTransform: 'uppercase', letterSpacing: '0.06em',
                                 cursor: 'pointer', transition: 'all 0.15s',
                                 ...(active
-                                    ? (config ? config.style : { color: warm.colors.textPrimary, background: warm.colors.bgAlt, border: `1px solid ${warm.colors.borderDefined}` })
+                                    ? { color: warm.colors.textPrimary, background: warm.colors.bgAlt, border: `1px solid ${warm.colors.borderDefined}` }
                                     : { color: warm.colors.textMuted, background: warm.colors.bgSurface, border: `1px solid ${warm.colors.borderWhisper}` }),
                             }}
                         >
-                            {config && <config.icon size={10} />}
-                            {status === 'ALL' ? 'All' : STATUS_CONFIG[status].label}
+                            {isSkipped ? <EyeOff size={10} /> : config && <config.icon size={10} />}
+                            {isSkipped ? 'Skipped' : status === 'ALL' ? 'All' : STATUS_CONFIG[status].label}
                             <span style={{ marginLeft: 4, opacity: 0.6 }}>{count}</span>
                         </button>
                     );
@@ -455,7 +483,74 @@ export const ApplicationTracker: React.FC = () => {
             </div>
 
             {/* Job list */}
-            {isLoading ? (
+            {filterStatus === 'SKIPPED' ? (
+                skippedLoading ? (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '80px 0' }}>
+                        <div style={{ width: 32, height: 32, border: `2px solid ${warm.colors.borderWhisper}`, borderTopColor: warm.colors.accentPetrol, borderRadius: '50%', animation: 'dspin 0.8s linear infinite' }} />
+                    </div>
+                ) : skippedJobs.length === 0 ? (
+                    <div style={{
+                        background: warm.colors.bgSurface,
+                        border: `1px solid ${warm.colors.borderWhisper}`,
+                        borderRadius: 18, padding: 64,
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, textAlign: 'center',
+                    }}>
+                        <EyeOff size={40} style={{ color: warm.colors.borderWhisper }} />
+                        <div>
+                            <p style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 700, color: warm.colors.textSecondary }}>No skipped jobs</p>
+                            <p style={{ margin: 0, fontSize: 13, color: warm.colors.textMuted, marginTop: 4 }}>
+                                Jobs you skip in the feed will appear here so you can review or restore them.
+                            </p>
+                        </div>
+                    </div>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {skippedJobs.map((job: any) => (
+                            <div
+                                key={job.id}
+                                style={{
+                                    background: warm.colors.bgSurface,
+                                    border: `1px solid ${warm.colors.borderWhisper}`,
+                                    borderRadius: 16, padding: '14px 18px',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                                }}
+                            >
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <a
+                                        href={job.sourceUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ fontSize: 13, fontWeight: 700, color: warm.colors.textPrimary, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                                    >
+                                        {job.title}
+                                        <ExternalLink size={10} className="opacity-40" />
+                                    </a>
+                                    <p style={{ margin: '2px 0 0', fontSize: 11, color: warm.colors.textMuted }}>
+                                        {job.company}{job.location ? ` · ${job.location}` : ''}
+                                    </p>
+                                    <p style={{ margin: '2px 0 0', fontSize: 10, color: warm.colors.textMuted }}>
+                                        Skipped {new Date(job.skippedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => restoreSkipMutation.mutate(job.sourceUrl)}
+                                    disabled={restoreSkipMutation.isPending}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', flexShrink: 0,
+                                        borderRadius: 8, fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em',
+                                        border: `1px solid ${warm.colors.borderDefined}`,
+                                        color: warm.colors.textSecondary, background: warm.colors.bgAlt, cursor: restoreSkipMutation.isPending ? 'default' : 'pointer',
+                                        opacity: restoreSkipMutation.isPending ? 0.5 : 1,
+                                    }}
+                                >
+                                    {restoreSkipMutation.isPending ? <Loader2 size={11} className="animate-spin" /> : <RotateCcw size={11} />}
+                                    Undo
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )
+            ) : isLoading ? (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '80px 0' }}>
                     <div style={{ width: 32, height: 32, border: `2px solid ${warm.colors.borderWhisper}`, borderTopColor: warm.colors.accentPetrol, borderRadius: '50%', animation: 'dspin 0.8s linear infinite' }} />
                 </div>

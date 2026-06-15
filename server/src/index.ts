@@ -3,9 +3,11 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
-import { PrismaClient } from '@prisma/client';
 import fs from 'fs';
 import path from 'path';
+import { prisma } from './db';
+export { prisma };
+
 // Routers
 import extractRouter from './routes/extract';
 import analyzeRouter from './routes/analyze';
@@ -29,10 +31,23 @@ import stripeRouter, { stripeWebhookHandler } from './routes/stripe';
 import enrichmentRouter from './routes/enrichment';
 import insightsRouter from './routes/insights';
 import sponsorsRouter, { loadFilterCache as loadSponsorFilterCache } from './routes/sponsors';
+import { cvScanRouter } from './routes/cv-scan';
 import { startJobFeedCron } from './cron/jobFeedCron';
+import { startSponsorJobScanCron } from './cron/sponsorJobScanCron';
 import { startTrialReminderCron } from './cron/trialReminderCron';
 import { startFollowUpReminderCron } from './cron/followUpReminderCron';
 import { analyzeRateLimit } from './middleware/analyzeRateLimit';
+import { ensureSponsorJobTable } from './db/ensureSponsorJobTable';
+import { ensureEmailTables } from './db/ensureEmailTables';
+import { seedTags, seedTemplates, seedSequences } from './email/admin/seedData';
+import { startSequenceCron } from './cron/sequenceCron';
+import { linkCandidateProfiles } from './email/sync/linkCandidateProfiles';
+import emailOpenRouter from './email/tracking/openTracker';
+import emailClickRouter from './email/tracking/clickTracker';
+import emailContactRouter from './email/admin/contactRoutes';
+import emailTagRouter from './email/admin/tagRoutes';
+import emailBroadcastRouter from './email/admin/broadcastRoutes';
+import emailAnalyticsRouter from './email/admin/analyticsRoutes';
 
 dotenv.config();
 
@@ -51,15 +66,6 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('CRITICAL: Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
-function buildDatabaseUrl() {
-  const url = process.env.DATABASE_URL ?? '';
-  const withPgBouncer = url.includes('pgbouncer=true') ? url : `${url}${url.includes('?') ? '&' : '?'}pgbouncer=true`;
-  return withPgBouncer.includes('connection_limit=') ? withPgBouncer : `${withPgBouncer}&connection_limit=5`;
-}
-
-export const prisma = new PrismaClient({
-  datasources: { db: { url: buildDatabaseUrl() } },
-});
 const app = express();
 const PORT = process.env.PORT || 3002;
 
@@ -154,6 +160,13 @@ app.use('/api/stripe', stripeRouter);
 app.use('/api/enrichment', enrichmentRouter);
 app.use('/api/insights', insightsRouter);
 app.use('/api/sponsors', sponsorsRouter);
+app.use('/api/cv-scan', cvScanRouter);
+app.use('/api', emailOpenRouter);
+app.use('/api', emailClickRouter);
+app.use('/api', emailContactRouter);
+app.use('/api', emailTagRouter);
+app.use('/api', emailBroadcastRouter);
+app.use('/api', emailAnalyticsRouter);
 
 // Sentry error handler - must be before any other error handling middleware
 Sentry.setupExpressErrorHandler(app);
@@ -235,6 +248,23 @@ async function ensureColumns() {
         "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
     `);
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "CvScanLead" (
+        id TEXT PRIMARY KEY,
+        email TEXT UNIQUE NOT NULL,
+        "firstName" TEXT,
+        "fullName" TEXT,
+        "inferredRole" TEXT,
+        score INTEGER,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    await ensureSponsorJobTable(prisma);
+    await ensureEmailTables(prisma);
+    await seedTags(prisma);
+    await seedTemplates(prisma);
+    await seedSequences(prisma);
+    await linkCandidateProfiles();
     console.log('[startup] schema columns verified');
   } catch (err) {
     console.warn('[startup] ensureColumns skipped:', err);
@@ -293,15 +323,22 @@ async function ensureSponsorsSeeded() {
   }
 }
 
-app.listen(PORT, async () => {
-    console.log(`Job Ready Backend running on http://localhost:${PORT}`);
-    await ensureColumns();
-    await ensureSponsorsSeeded();
-    await loadSponsorFilterCache();
-    startJobFeedCron();
-    startTrialReminderCron();
-    startFollowUpReminderCron();
-    console.log('[cron] Job feed cron scheduled (21:00 UTC daily)');
-    console.log('[cron] Trial reminder cron scheduled (10:00 UTC daily)');
-    console.log('[cron] Follow-up reminder cron scheduled (09:00 UTC daily)');
-});
+if (process.env.SKIP_SERVER === 'true') {
+  console.log('[index] SKIP_SERVER=true — script mode, HTTP server not started.');
+} else {
+  app.listen(PORT, async () => {
+      console.log(`Job Ready Backend running on http://localhost:${PORT}`);
+      await ensureColumns();
+      await ensureSponsorsSeeded();
+      await loadSponsorFilterCache();
+      // Job feed removed — app runs on pasted jobs. Cron left off so the daily
+      // prewarm never scrapes Seek (was 403-blocked). Re-enable to restore.
+      // startJobFeedCron();
+      startSponsorJobScanCron();
+      startTrialReminderCron();
+      startFollowUpReminderCron();
+      startSequenceCron();
+      console.log('[cron] Trial reminder cron scheduled (10:00 UTC daily)');
+      console.log('[cron] Follow-up reminder cron scheduled (09:00 UTC daily)');
+  });
+}

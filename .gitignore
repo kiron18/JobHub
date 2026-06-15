@@ -10,6 +10,7 @@ server/.env.staging
 
 # Large/generated files
 Resumes/
+evals/fixtures/resumes/
 
 # Marketing automation scripts (contain local keys, not part of web app)
 instagram_analysis.py

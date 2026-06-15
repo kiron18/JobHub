@@ -1,0 +1,184 @@
+-- RESUME FABRICATION BUG INVESTIGATION QUERIES
+-- JobHub - Supabase PostgreSQL
+-- Run these in psql or Supabase SQL Editor
+
+-- =====================================================
+-- 1. CHECK FOR EMPTY/MISSING resume_raw_text
+-- =====================================================
+-- Problem: If resume_raw_text is empty, generators fall back to
+-- poisoned bank data instead of using the original resume
+
+SELECT
+    id,
+    user_id,
+    LENGTH(resume_raw_text) as raw_text_length,
+    resume_raw_text IS NULL as is_null,
+    resume_raw_text = '' as is_empty,
+    updated_at
+FROM profiles
+WHERE resume_raw_text IS NULL
+   OR LENGTH(TRIM(resume_raw_text)) = 0
+ORDER BY updated_at DESC;
+
+-- WHAT TO LOOK FOR:
+-- - Any rows returned = profiles with NO raw resume text
+-- - These profiles will use bank data for generation (dangerous if bank is poisoned)
+-- - Check the count - if many profiles are affected, this is a systemic issue
+
+
+-- =====================================================
+-- 2. COMPARE years_of_experience: profiles vs profile_bank
+-- =====================================================
+-- Problem: Mismatches indicate the bank was modified after initial scan
+
+SELECT
+    p.id,
+    p.user_id,
+    p.years_of_experience as profile_years,
+    pb.years_of_experience as bank_years,
+    p.years_of_experience = pb.years_of_experience as matches,
+    p.years_of_experience IS NULL as profile_years_null,
+    pb.years_of_experience IS NULL as bank_years_null
+FROM profiles p
+LEFT JOIN profile_bank pb ON p.user_id = pb.user_id
+WHERE pb.years_of_experience IS NOT NULL
+ORDER BY p.updated_at DESC
+LIMIT 100;
+
+-- Alternative: Show only mismatches
+SELECT
+    p.user_id,
+    p.years_of_experience as profile_years,
+    pb.years_of_experience as bank_years,
+    p.updated_at as profile_updated,
+    pb.updated_at as bank_updated
+FROM profiles p
+JOIN profile_bank pb ON p.user_id = pb.user_id
+WHERE p.years_of_experience IS DISTINCT FROM pb.years_of_experience
+ORDER BY GREATEST(p.updated_at, pb.updated_at) DESC;
+
+-- WHAT TO LOOK FOR:
+-- - profile_years vs bank_years don't match
+-- - If bank_years has a round number like "2" while profile_years is different/null
+-- - This suggests the bank was poisoned with fabricated tenure
+
+
+-- =====================================================
+-- 3. SEARCH FOR FABRICATED ENTRIES IN profile_bank
+-- =====================================================
+-- Problem: Known fabricated data signatures
+
+-- 3a. Search for "Ascend Financial" (fake company name)
+SELECT
+    pb.user_id,
+    'experience' as field_type,
+    pb.experience as content
+FROM profile_bank pb
+WHERE pb.experience ILIKE '%Ascend Financial%'
+
+UNION ALL
+
+SELECT
+    pb.user_id,
+    'education' as field_type,
+    pb.education as content
+FROM profile_bank pb
+WHERE pb.education ILIKE '%Ascend Financial%'
+
+UNION ALL
+
+SELECT
+    pb.user_id,
+    'skills' as field_type,
+    pb.skills as content
+FROM profile_bank pb
+WHERE pb.skills ILIKE '%Ascend Financial%'
+
+ORDER BY user_id;
+
+-- 3b. Search for "2 years experience" pattern (fabricated tenure)
+SELECT
+    pb.user_id,
+    pb.years_of_experience,
+    pb.experience as content_snippet
+FROM profile_bank pb
+WHERE pb.experience ILIKE '%2 years experience%'
+   OR pb.experience ILIKE '%two years experience%'
+   OR pb.years_of_experience = 2
+ORDER BY pb.updated_at DESC;
+
+-- 3c. Search for other suspicious patterns
+SELECT
+    pb.user_id,
+    'suspicious_pattern' as check_type,
+    pb.experience as content
+FROM profile_bank pb
+WHERE pb.experience ILIKE '%Financial Services Professional%'
+   OR pb.experience ILIKE '%Business Administration%'
+   OR pb.experience ILIKE '%Customer Relationship Management%'
+   AND pb.experience ILIKE '%Present%'
+ORDER BY pb.updated_at DESC;
+
+-- WHAT TO LOOK FOR:
+-- - "Ascend Financial" = known fabricated employer from LLM hallucination
+-- - "2 years experience" = fabricated tenure (Pawan's accurate 2 years is the benchmark)
+-- - Vague job titles + perfect dates = LLM-invented content
+-- - Any rows returned = poisoned bank entries
+
+
+-- =====================================================
+-- 4. BONUS: CHECK FOR BANK POLLUTION PATTERN
+-- =====================================================
+-- Problem: Bank updated AFTER profile scan indicates re-upload pollution
+
+SELECT
+    p.user_id,
+    p.resume_filename,
+    p.updated_at as profile_updated,
+    pb.updated_at as bank_updated,
+    EXTRACT(EPOCH FROM (pb.updated_at - p.updated_at))/60 as minutes_difference,
+    pb.updated_at > p.updated_at as bank_newer_than_profile
+FROM profiles p
+JOIN profile_bank pb ON p.user_id = pb.user_id
+WHERE pb.updated_at > p.updated_at
+ORDER BY pb.updated_at - p.updated_at DESC;
+
+-- WHAT TO LOOK FOR:
+-- - bank_updated significantly newer than profile_updated
+-- - Indicates bank was overwritten during re-upload/re-claim flow
+-- - The 2026-06-08 fix should prevent this, but old data may still be polluted
+
+
+-- =====================================================
+-- 5. SUMMARY QUERY: AFFECTED USERS OVERVIEW
+-- =====================================================
+
+SELECT
+    COUNT(*) FILTER (WHERE resume_raw_text IS NULL OR LENGTH(TRIM(resume_raw_text)) = 0) as empty_raw_text_count,
+    COUNT(*) FILTER (WHERE EXISTS (
+        SELECT 1 FROM profile_bank pb
+        WHERE pb.user_id = profiles.user_id
+        AND pb.experience ILIKE '%Ascend Financial%'
+    )) as ascend_financial_count,
+    COUNT(*) FILTER (WHERE EXISTS (
+        SELECT 1 FROM profile_bank pb
+        WHERE pb.user_id = profiles.user_id
+        AND pb.experience ILIKE '%2 years experience%'
+    )) as two_years_pattern_count
+FROM profiles;
+
+-- =====================================================
+-- INVESTIGATION CHECKLIST
+-- =====================================================
+-- [ ] Run query 1: Note how many profiles lack resume_raw_text
+-- [ ] Run query 2: Document any years_of_experience mismatches
+-- [ ] Run query 3a: Check for "Ascend Financial" contamination
+-- [ ] Run query 3b: Check for "2 years experience" fabrication
+-- [ ] Run query 4: Identify potentially polluted re-upload cases
+-- [ ] Run query 5: Get overall impact numbers
+
+-- ROOT CAUSE (from memory):
+-- - Greedy schema-extraction at CV scan fills missing fields
+-- - Invented employer, invented tenure stored in bank
+-- - Generators use bank when resume_raw_text is empty
+-- - FIX: Raw resume as generation source + extraction preserves blanks

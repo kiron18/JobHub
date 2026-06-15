@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ExternalLink, ChevronDown, ChevronUp, Loader2, BookmarkPlus, BookmarkCheck, AlertTriangle, User } from 'lucide-react';
+import { ExternalLink, ChevronDown, ChevronUp, Loader2, BookmarkPlus, BookmarkCheck, AlertTriangle, User, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
@@ -25,6 +25,7 @@ export interface JobFeedItem {
   matchDetails: { overallGrade?: string; gaps?: string[]; keywords?: string[] } | null;
   isRead: boolean;
   isSaved: boolean;
+  skipped?: boolean;
   applicationStatus: string | null;
 }
 
@@ -103,6 +104,27 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
           setAddresseeLoading(false);
         }
       }
+    }
+  };
+
+  const handleSkip = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await api.patch(`/job-feed/${item.id}/skip`, { skipped: true });
+      toast('Hidden from your feed', {
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            try {
+              await api.patch(`/job-feed/${item.id}/skip`, { skipped: false });
+              onUpdate({ id: item.id, skipped: false });
+            } catch { /* undo already handled optimistically */ }
+          },
+        },
+      });
+      onUpdate({ id: item.id, skipped: true });
+    } catch {
+      toast.error('Failed to hide job');
     }
   };
 
@@ -380,6 +402,15 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
                   >
                     {saving ? <Loader2 size={11} className="animate-spin" /> : item.isSaved ? <BookmarkCheck size={11} className="text-emerald-400" /> : <BookmarkPlus size={11} />}
                     {item.isSaved ? 'Saved' : 'Save'}
+                  </button>
+                  <button
+                    onClick={handleSkip}
+                    title="Skip"
+                    aria-label="Skip"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider border border-[rgba(26,24,20,0.16)] text-[#8B847B] hover:border-[rgba(26,24,20,0.24)] hover:text-[#1A1814] transition-colors"
+                  >
+                    <EyeOff size={11} />
+                    Skip
                   </button>
                   <a
                     href={item.sourceUrl}

@@ -4,12 +4,11 @@
  * Single-purpose: anchor identity, surface the analysis primary action, give
  * a rotating qualitative insight, and orient the user against their pipeline.
  *
- * Phase 2: clicking Analyse calls /api/analyze/dual and renders an inline
- * Distance-to-Match result (Direct Match / Bridgeable Gap / Hard Gap +
- * insights) below the hero card. No navigation away.
+ * Clicking Apply navigates directly to the StepperWorkspace where resume
+ * and cover letter generation happens.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, NavLink } from 'react-router-dom';
+import { useNavigate, NavLink, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, Loader2, Target, X, Check } from 'lucide-react';
@@ -17,15 +16,20 @@ import { toast } from 'sonner';
 import api from '../lib/api';
 import { DimRegion, DimTarget, DimPeer } from '../components/Dim';
 import { pickInsights } from '../data/strategicInsights';
-import { AnalysisResult, type DualSignalResult } from '../components/strategy/AnalysisResult';
-import { CoherenceCard, type CoherenceSignal } from '../components/strategy/CoherenceCard';
 import { StrategicIntelligenceCard } from '../components/StrategicIntelligenceCard';
 import { ApplyFeedStrip } from '../components/strategy/ApplyFeedStrip';
+import { JobStream } from '../components/strategy/JobStream';
 import { StaleApplicationsCard } from '../components/strategy/StaleApplicationsCard';
 import { FirstApplicationCelebration } from '../components/FirstApplicationCelebration';
 import type { JobFeedItem } from '../components/jobs/JobCard';
-import type { BridgedGap } from '../lib/bridgedGaps';
 import { warm } from '../lib/theme/warmTokens';
+
+/** Detect whether a job description mentions selection criteria. */
+export const jdMentionsSelectionCriteria = (jd: string): boolean =>
+  /selection criteria|key selection criteria|statement of claims|address the following criteria|capability statement/i.test(jd || '');
+
+// Hidden on the dashboard per founder request (kept wired for easy restore).
+const SHOW_DASHBOARD_INSIGHTS = false;
 
 // Warm theme tokens — replaces T.* from ThemeContext. ThemeContext preserved per spec §7.4.
 const warmT = {
@@ -52,7 +56,6 @@ interface ProfileLite {
     targetRole?: string;
     targetCity?: string;
     seniority?: string;
-    coherence?: CoherenceSignal[];
 }
 
 function HubHeader({ profile, jobs }: { profile?: ProfileLite; jobs: JobLite[] }) {
@@ -102,7 +105,7 @@ function HubHeader({ profile, jobs }: { profile?: ProfileLite; jobs: JobLite[] }
                     letterSpacing: '-0.01em',
                 }}
             >
-                Paste any job description. Get a tailored resume and cover letter in 3 minutes.
+                Real roles we found for you, ready to apply to in minutes. Pick one and we will tailor your resume and cover letter.
             </p>
         </header>
     );
@@ -400,97 +403,113 @@ function GoalEditor({
 
 function AnalysisHeroCard() {
     const navigate = useNavigate();
-    const [jd, setJd] = useState('');
-    const [scToggle, setScToggle] = useState(false);
-    const [scAutoFlipped, setScAutoFlipped] = useState(false);
-    const [scUserOverride, setScUserOverride] = useState(false);
-    const [analysing, setAnalysing] = useState(false);
-    const [result, setResult] = useState<DualSignalResult | null>(null);
-    const [bridgedGaps, setBridgedGaps] = useState<BridgedGap[]>([]);
-    const resultRef = useRef<HTMLDivElement>(null);
-
-    // Auto-scroll to analysis result when it appears
+    const location = useLocation();
+    const appliedFeedItemId = (location.state as { appliedFeedItemId?: string } | null)?.appliedFeedItemId ?? null;
     useEffect(() => {
-        if (result) {
-            setTimeout(() => {
-                resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 100);
+        if (appliedFeedItemId) {
+            // clear so a refresh/re-render does not replay the beat
+            window.history.replaceState({}, '');
         }
-    }, [result]);
+    }, [appliedFeedItemId]);
 
+    const [jd, setJd] = useState('');
+    const [analysing, setAnalysing] = useState(false);
     const [pickedFeedItem, setPickedFeedItem] = useState<JobFeedItem | null>(null);
+    const [showPaste, setShowPaste] = useState(false);
+    const [applyingId, setApplyingId] = useState<string | null>(null);
+    const [capMessage, setCapMessage] = useState(false);
+
+    const handleStreamApply = async (job: import('../components/jobs/JobCard').JobFeedItem) => {
+        if (applyingId) return;
+        setApplyingId(job.id);
+        try {
+            await api.post(`/job-feed/${job.id}/start-apply`);
+        } catch (err: any) {
+            setApplyingId(null);
+            if (err?.response?.status === 429) { setCapMessage(true); return; }
+            toast.error('Could not start that application. Please try again.');
+            return;
+        }
+        navigate('/apply', {
+            state: {
+                jobDescription: job.description ?? '',
+                company: job.company,
+                role: job.title,
+                location: job.location,
+                sourceUrl: job.sourceUrl,
+                feedItemId: job.id,
+                sourcePlatform: job.sourcePlatform,
+            },
+        });
+    };
 
     const handleFeedPick = (description: string, item: JobFeedItem) => {
         setJd(description);
         setPickedFeedItem(item);
-        setResult(null);
     };
+
+    // Preload the freshly-scraped job (stashed by the get-started flow) into the
+    // paste box so the user can apply immediately on their first visit.
+    const prefilledRef = useRef(false);
+    useEffect(() => {
+        if (prefilledRef.current || jd.trim().length > 0) return;
+        try {
+            const raw = localStorage.getItem('jobhub_preload_jd');
+            if (!raw) return;
+            const job = JSON.parse(raw);
+            if (job?.description) {
+                prefilledRef.current = true;
+                setJd(job.description);
+                setPickedFeedItem({
+                    id: '', title: job.title, company: job.company, location: job.location,
+                    sourceUrl: job.sourceUrl, sourcePlatform: job.sourcePlatform,
+                } as JobFeedItem);
+            }
+            localStorage.removeItem('jobhub_preload_jd');
+        } catch { /* ignore malformed cache */ }
+    }, [jd]);
 
     const trimmed = jd.trim();
     const tooShort = trimmed.length > 0 && trimmed.length < 100;
     const canSubmit = trimmed.length >= 50 && !analysing;
 
-    // When a new analysis arrives, auto-flip SC toggle on (unless the user
-    // has manually overridden it). Surface a single dismissible notification.
-    useEffect(() => {
-        if (!result) return;
-        if (result.scDetected && !scToggle && !scUserOverride) {
-            setScToggle(true);
-            setScAutoFlipped(true);
-        }
-    }, [result, scToggle, scUserOverride]);
-
-    const handleScToggle = () => {
-        setScUserOverride(true);
-        setScAutoFlipped(false);
-        setScToggle((v) => !v);
+    // Extract company/role from JD text when not from feed (simplified extraction)
+    const extractFromJD = (jd: string): { company?: string; role?: string } => {
+        if (pickedFeedItem) return { company: pickedFeedItem.company, role: pickedFeedItem.title };
+        // Try to extract from first few lines - look for common patterns
+        const lines = jd.split('\n').slice(0, 10).filter(l => l.trim().length > 0);
+        // Look for "at Company" pattern
+        const atMatch = jd.match(/\bat\s+([A-Z][A-Za-z0-9\s&]+?)(?:\s*[\n\r,]|\s+[-–]|\s+\()/i);
+        const company = atMatch ? atMatch[1].trim() : undefined;
+        // Role often has keywords like "engineer", "manager", etc.
+        const roleKeywords = /\b(engineer|developer|manager|analyst|designer|director|coordinator|specialist|lead|head of|VP|chief)\b/i;
+        const roleLine = lines.find(l => roleKeywords.test(l));
+        const role = roleLine ? roleLine.replace(/[\n\r]/g, '').slice(0, 80) : undefined;
+        return { company, role };
     };
 
     const handleAnalyse = async () => {
         if (!canSubmit) return;
         setAnalysing(true);
-        setResult(null);
+        const { company, role } = extractFromJD(trimmed);
         try {
-            const { data } = await api.post<DualSignalResult>('/analyze/dual', { jobDescription: trimmed });
-            setResult(data);
-            window.dispatchEvent(new CustomEvent('process:analysed'));
+            // Navigate directly to apply - generation will handle access control
+            navigate('/apply', {
+                state: {
+                    jobDescription: trimmed,
+                    sc: jdMentionsSelectionCriteria(trimmed),
+                    company,
+                    role,
+                    feedItemId: pickedFeedItem?.id,
+                    sourceUrl: pickedFeedItem?.sourceUrl,
+                    sourcePlatform: pickedFeedItem?.sourcePlatform,
+                },
+            });
         } catch (err: any) {
-            const status = err?.response?.status;
-            const message =
-                status === 402 ? 'Analysis limit reached. Upgrade to keep analysing roles.'
-                : status === 400 ? 'That job description looks too short. Paste the full posting.'
-                : status === 404 ? 'Set up your profile first.'
-                : status === 503 ? 'Analysis is temporarily unavailable. Please try again in 30 seconds.'
-                : 'Analysis failed. Please retry.';
-            toast.error(message);
+            toast.error('Could not start application. Please try again.');
         } finally {
             setAnalysing(false);
         }
-    };
-
-    const handleContinue = () => {
-        navigate('/apply', {
-            state: {
-                jobDescription: trimmed,
-                sc: scToggle,
-                company: result?.extractedMetadata?.company,
-                role: result?.extractedMetadata?.role,
-                feedItemId: pickedFeedItem?.id,
-                sourceUrl: pickedFeedItem?.sourceUrl,
-                sourcePlatform: pickedFeedItem?.sourcePlatform,
-                bridgedGaps,
-            },
-        });
-    };
-
-    const handleSkip = () => {
-        setResult(null);
-        setBridgedGaps([]);
-        setJd('');
-        setPickedFeedItem(null);
-        setScToggle(false);
-        setScUserOverride(false);
-        setScAutoFlipped(false);
     };
 
     return (
@@ -503,9 +522,50 @@ function AnalysisHeroCard() {
                 boxShadow: warmT.cardShadow,
             }}
         >
+            {capMessage && (
+                <div style={{
+                    border: `1px solid ${warm.colors.borderDefined}`, borderRadius: 12,
+                    background: warm.colors.bgAlt, padding: '14px 16px', marginBottom: 14,
+                }}>
+                    <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: warm.colors.textPrimary }}>
+                        That is 25 applications today. Serious effort.
+                    </p>
+                    <p style={{ margin: '4px 0 0', fontSize: 13, color: warm.colors.textSecondary }}>
+                        Come back tomorrow for a fresh batch. Your trial keeps running, and the more you apply, the sooner the callbacks start.
+                    </p>
+                </div>
+            )}
+
+            <JobStream onApply={handleStreamApply} applyingId={applyingId} appliedId={appliedFeedItemId} />
+
+            <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
+                <button
+                    onClick={() => setShowPaste(v => !v)}
+                    style={{
+                        flex: 1, padding: '12px 16px', borderRadius: 12,
+                        border: `1px solid ${warm.colors.borderDefined}`, background: 'transparent',
+                        color: warm.colors.textSecondary, fontSize: 13.5, fontWeight: 600, cursor: 'pointer',
+                    }}
+                >
+                    Paste your own job
+                </button>
+                <button
+                    onClick={() => { setShowPaste(true); }}
+                    style={{
+                        flex: 1, padding: '12px 16px', borderRadius: 12,
+                        border: `1px solid ${warm.colors.borderDefined}`, background: 'transparent',
+                        color: warm.colors.textSecondary, fontSize: 13.5, fontWeight: 600, cursor: 'pointer',
+                    }}
+                >
+                    Selection criteria
+                </button>
+            </div>
+
+            {showPaste && (
+            <>
             <p
                 style={{
-                    margin: '0 0 16px',
+                    margin: '16px 0 16px',
                     fontSize: 11,
                     fontWeight: 700,
                     letterSpacing: '0.14em',
@@ -599,54 +659,6 @@ function AnalysisHeroCard() {
                     flexWrap: 'wrap',
                 }}
             >
-                <label
-                    style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 10,
-                        fontSize: 13,
-                        color: warmT.textMuted,
-                        cursor: 'pointer',
-                        userSelect: 'none',
-                    }}
-                >
-                    <span
-                        role="switch"
-                        aria-checked={scToggle}
-                        onClick={handleScToggle}
-                        onKeyDown={(e) => {
-                            if (e.key === ' ' || e.key === 'Enter') {
-                                e.preventDefault();
-                                handleScToggle();
-                            }
-                        }}
-                        tabIndex={0}
-                        style={{
-                            width: 34,
-                            height: 20,
-                            borderRadius: 999,
-                            background: scToggle ? warmT.accentSecondary : warmT.cardBorder,
-                            position: 'relative',
-                            transition: 'background 200ms',
-                            cursor: 'pointer',
-                            flexShrink: 0,
-                        }}
-                    >
-                        <span
-                            style={{
-                                position: 'absolute',
-                                top: 2,
-                                left: scToggle ? 16 : 2,
-                                width: 16,
-                                height: 16,
-                                borderRadius: 999,
-                                background: scToggle ? warmT.btnText : warmT.textMuted,
-                                transition: 'left 200ms',
-                            }}
-                        />
-                    </span>
-                    Generate selection criteria responses
-                </label>
 
                 <button
                     data-process-step="analyse"
@@ -668,67 +680,23 @@ function AnalysisHeroCard() {
                         opacity: canSubmit ? 1 : 0.6,
                         boxShadow: canSubmit ? warmT.btnShadow : 'none',
                         transition: 'opacity 200ms, background 200ms',
+                        marginLeft: 'auto',
                     }}
                 >
                     {analysing ? (
                         <>
                             <Loader2 size={16} className="animate-spin" />
-                            Analysing…
+                            Applying…
                         </>
                     ) : (
                         <>
-                            Analyse
+                            Apply
                             <ChevronRight size={16} />
                         </>
                     )}
                 </button>
             </div>
-
-            {/* SC auto-flip notification */}
-            {scAutoFlipped && (
-                <div style={{
-                    marginTop: 14,
-                    padding: '10px 14px',
-                    background: 'rgba(125,166,125,0.08)',
-                    border: '1px solid rgba(125,166,125,0.25)',
-                    borderRadius: 10,
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    justifyContent: 'space-between',
-                    gap: 12,
-                }}>
-                    <p style={{ margin: 0, fontSize: 12, color: warmT.text, lineHeight: 1.55 }}>
-                        This role lists selection criteria. We'll generate responses as a separate document.
-                    </p>
-                    <button
-                        onClick={() => setScAutoFlipped(false)}
-                        style={{
-                            background: 'transparent',
-                            border: 'none',
-                            color: warmT.textFaint,
-                            fontSize: 14,
-                            cursor: 'pointer',
-                            padding: 0,
-                            lineHeight: 1,
-                        }}
-                        aria-label="Dismiss notification"
-                    >
-                        ×
-                    </button>
-                </div>
-            )}
-
-            {/* Inline result */}
-            {result && (
-                <div ref={resultRef}>
-                    <AnalysisResult
-                        result={result}
-                        jobDescription={trimmed}
-                        onContinue={handleContinue}
-                        onSkip={handleSkip}
-                        onBridgedGapsChange={setBridgedGaps}
-                    />
-                </div>
+            </>
             )}
         </div>
     );
@@ -863,20 +831,20 @@ export function StrategyHub() {
                 <DimTarget style={{ marginBottom: 40 }}>
                     <AnalysisHeroCard />
                 </DimTarget>
-                {profile?.coherence && profile.coherence.length > 0 && (
+                {/* CoherenceCard (story health) removed per user request 2026-06-08 */}
+                {SHOW_DASHBOARD_INSIGHTS && (
                     <DimPeer style={{ marginBottom: 32 }}>
-                        <CoherenceCard signals={profile.coherence} />
+                        <StrategicInsightsPanel />
                     </DimPeer>
                 )}
                 <DimPeer style={{ marginBottom: 32 }}>
-                    <StrategicInsightsPanel />
-                </DimPeer>
-                <DimPeer style={{ marginBottom: 32 }}>
                     <StaleApplicationsCard />
                 </DimPeer>
-                <DimPeer style={{ marginBottom: 32 }}>
-                    <StrategicIntelligenceCard />
-                </DimPeer>
+                {SHOW_DASHBOARD_INSIGHTS && (
+                    <DimPeer style={{ marginBottom: 32 }}>
+                        <StrategicIntelligenceCard />
+                    </DimPeer>
+                )}
                 <DimPeer>
                     <PipelineGlance jobs={jobs ?? []} />
                 </DimPeer>

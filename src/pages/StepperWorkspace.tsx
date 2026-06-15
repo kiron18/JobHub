@@ -41,12 +41,12 @@ import { DraftCritiquePanel, type CritiqueResult } from '../components/strategy/
 import { ApplyDeepLinkButton } from '../components/strategy/ApplyDeepLinkButton';
 import ReactMarkdown from 'react-markdown';
 import React from 'react';
-import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import api from '../lib/api';
 import { warm } from '../lib/theme/warmTokens';
 import { GenerationProgress } from '../components/shared/GenerationProgress';
-import { CoverLetterPersonalisationPanel } from '../components/CoverLetterPersonalisationPanel';
+import { applyWorkspaceCopy } from './applyWorkspaceCopy';
+import { extractReactText } from '../lib/extractReactText';
 
 // Perplexity company intel, pre-fetched on apply-flow entry and fed into the
 // structured cover-letter route. Shape mirrors the server's CompanyIntelResult.
@@ -57,17 +57,12 @@ interface CompanyIntel {
     fetchedAt?: string;
 }
 
-// ── Placeholder marker rendering ────────────────────────────────────────────
-//
-// The generator emits placeholder tokens (`[VERIFY: ...]`, `[ADD: ...]`,
-// `[TBD]`, etc.) wherever it lacks confidence. Showing the literal bracket
-// syntax inline is ugly; this helper rewrites them to a small gold chip with
-// a rich hover/click popover explaining what the chip means and how the
-// user prevents it next time (by adding the missing detail to their
-// candidate profile). Raw markers stay in the stored content; on .docx /
-// .pdf export they are stripped entirely by the shared sanitizer.
+interface ResumeTip {
+  bulletKey: string;
+  suggestion: string;
+}
 
-const VERIFY_MARKER_RE = /\[(?:VERIFY|Verify|verify|ADD|Add|INSERT|Insert|TBD|PLACEHOLDER)(?:[:\s]\s*([^\]]*))?\]/g;
+// VERIFY marker UI removed — prompts no longer emit placeholder tokens.
 
 // Same token set, but no capture group and no /g flag — safe for repeated
 // `.test()` calls (a global regex advances lastIndex and alternates results).
@@ -80,215 +75,101 @@ function sanitizeContent(raw: string): string {
         // before contact lines (e.g. "NFP?\n📞 +61...").
         .replace(/^NFP\?\s*/gm, '')
         .replace(/\bNFP\?\s*/g, '')
+        // Strip any stray bracketed placeholder the generator should no longer
+        // emit (belt-and-suspenders so nothing bracketed can ever render).
+        .replace(/\s*\[(?:VERIFY|ADD|INSERT|TBD|PLACEHOLDER)\b[^\]]*\]/gi, '')
+        .replace(/[ \t]{2,}/g, ' ')
         .trim();
-}
-
-function VerifyMarker({ note }: { note: string }) {
-    const [open, setOpen] = React.useState(false);
-    const wrapperRef = React.useRef<HTMLSpanElement>(null);
-    const [tipPos, setTipPos] = React.useState<{ top: number; left: number; arrowX: number } | null>(null);
-
-    // Recalculate tooltip position whenever it opens or the window resizes/scrolls.
-    React.useEffect(() => {
-        if (!open || !wrapperRef.current) { setTipPos(null); return; }
-
-        const TIP_WIDTH = 280;
-        const MARGIN = 12;
-
-        const recompute = () => {
-            const el = wrapperRef.current;
-            if (!el) return;
-            const r = el.getBoundingClientRect();
-            // Default: centred horizontally over the marker.
-            const idealLeft = r.left + r.width / 2 - TIP_WIDTH / 2;
-            // Clamp to viewport so we never get clipped by an overflow:hidden ancestor.
-            const left = Math.max(MARGIN, Math.min(idealLeft, window.innerWidth - TIP_WIDTH - MARGIN));
-            const top = r.top - 10; // tooltip sits above the marker; tooltip is anchored bottom-up via translateY(-100%)
-            // Arrow follows the marker no matter where the tooltip clamped to.
-            const arrowX = Math.max(12, Math.min(r.left + r.width / 2 - left, TIP_WIDTH - 12));
-            setTipPos({ top, left, arrowX });
-        };
-
-        recompute();
-        window.addEventListener('scroll', recompute, true);
-        window.addEventListener('resize', recompute);
-        return () => {
-            window.removeEventListener('scroll', recompute, true);
-            window.removeEventListener('resize', recompute);
-        };
-    }, [open]);
-
-    return (
-        <span
-            ref={wrapperRef}
-            style={{
-                position: 'relative',
-                display: 'inline-block',
-                verticalAlign: 'baseline',
-                marginInline: 2,
-                lineHeight: 0,
-            }}
-            onMouseEnter={() => setOpen(true)}
-            onMouseLeave={() => setOpen(false)}
-        >
-            <span
-                role="button"
-                tabIndex={0}
-                onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
-                onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        setOpen((v) => !v);
-                    } else if (e.key === 'Escape') {
-                        setOpen(false);
-                    }
-                }}
-                aria-label={note ? `Placeholder: ${note}` : 'Placeholder'}
-                aria-expanded={open}
-                style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: 18,
-                    height: 18,
-                    background: 'rgba(197,160,89,0.18)',
-                    color: '#C5A059',
-                    borderRadius: 4,
-                    fontSize: 11,
-                    fontWeight: 700,
-                    cursor: 'help',
-                    userSelect: 'none',
-                    border: '1px solid rgba(197,160,89,0.32)',
-                    lineHeight: 1,
-                    verticalAlign: 'baseline',
-                }}
-            >
-                !
-            </span>
-
-            {open && tipPos && createPortal(
-                <span
-                    role="tooltip"
-                    onMouseEnter={() => setOpen(true)}
-                    onMouseLeave={() => setOpen(false)}
-                    onClick={(e) => e.stopPropagation()}
-                    style={{
-                        position: 'fixed',
-                        top: tipPos.top,
-                        left: tipPos.left,
-                        transform: 'translateY(-100%)',
-                        width: 280,
-                        background: warm.colors.bgSurface,
-                        border: `1px solid ${warm.colors.borderWhisper}`,
-                        borderRadius: 12,
-                        padding: '12px 14px 14px',
-                        boxShadow: '0 8px 32px rgba(0,0,0,0.45)',
-                        zIndex: 1000,
-                        textAlign: 'left',
-                        cursor: 'auto',
-                        lineHeight: 1.55,
-                        whiteSpace: 'normal',
-                        display: 'block',
-                    }}
-                >
-                    <span style={{
-                        display: 'block',
-                        fontSize: 10,
-                        fontWeight: 800,
-                        letterSpacing: '0.14em',
-                        textTransform: 'uppercase',
-                        color: '#C5A059',
-                        marginBottom: 6,
-                    }}>
-                        Placeholder, needs filling in
-                    </span>
-                    {note && (
-                        <span style={{
-                            display: 'block',
-                            fontSize: 12,
-                            color: warm.colors.textPrimary,
-                            fontStyle: 'italic',
-                            marginBottom: 10,
-                            background: 'rgba(197,160,89,0.06)',
-                            padding: '6px 10px',
-                            borderRadius: 6,
-                            border: '1px solid rgba(197,160,89,0.18)',
-                        }}>
-                            "{note}"
-                        </span>
-                    )}
-                    <span style={{ display: 'block', fontSize: 12, color: warm.colors.textMuted, marginBottom: 10 }}>
-                        We added this because your profile didn't have the specific detail the role asked for. Adding it to your profile means future drafts use the real value instead of a placeholder.
-                    </span>
-                    <Link
-                        to="/workspace"
-                        style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 4,
-                            fontSize: 12,
-                            fontWeight: 700,
-                            color: '#7DA67D',
-                            textDecoration: 'underline',
-                            textUnderlineOffset: 3,
-                        }}
-                    >
-                        Open profile to add this →
-                    </Link>
-                    {/* Pointer arrow follows the marker even when the tooltip clamps to viewport edge */}
-                    <span style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: tipPos.arrowX,
-                        transform: 'translateX(-50%)',
-                        width: 0,
-                        height: 0,
-                        borderLeft: '6px solid transparent',
-                        borderRight: '6px solid transparent',
-                        borderTop: `6px solid ${warm.colors.bgSurface}`,
-                    }} />
-                </span>,
-                document.body,
-            )}
-        </span>
-    );
-}
-
-function replaceVerifyMarkersInString(text: string): React.ReactNode {
-    VERIFY_MARKER_RE.lastIndex = 0;
-    const out: React.ReactNode[] = [];
-    let lastIndex = 0;
-    let match: RegExpExecArray | null;
-    while ((match = VERIFY_MARKER_RE.exec(text)) !== null) {
-        if (match.index > lastIndex) out.push(text.slice(lastIndex, match.index));
-        out.push(<VerifyMarker key={`v-${match.index}`} note={(match[1] || '').trim()} />);
-        lastIndex = match.index + match[0].length;
-    }
-    if (lastIndex < text.length) out.push(text.slice(lastIndex));
-    return out.length > 0 ? <>{out}</> : text;
-}
-
-function processMarkers(children: React.ReactNode): React.ReactNode {
-    return React.Children.map(children, (child) => {
-        if (typeof child === 'string') return replaceVerifyMarkersInString(child);
-        return child;
-    });
 }
 
 const HEADING_COLOR: React.CSSProperties = { color: warm.colors.textPrimary };
 const STRONG_COLOR: React.CSSProperties = { color: warm.colors.textPrimary, fontWeight: 700 };
 
-const MARKDOWN_COMPONENTS = {
-    p: ({ children }: { children?: React.ReactNode }) => <p>{processMarkers(children)}</p>,
-    li: ({ children }: { children?: React.ReactNode }) => <li>{processMarkers(children)}</li>,
-    strong: ({ children }: { children?: React.ReactNode }) => <strong style={STRONG_COLOR}>{processMarkers(children)}</strong>,
-    em: ({ children }: { children?: React.ReactNode }) => <em>{processMarkers(children)}</em>,
-    td: ({ children }: { children?: React.ReactNode }) => <td>{processMarkers(children)}</td>,
-    h1: ({ children }: { children?: React.ReactNode }) => <h1 style={HEADING_COLOR}>{processMarkers(children)}</h1>,
-    h2: ({ children }: { children?: React.ReactNode }) => <h2 style={HEADING_COLOR}>{processMarkers(children)}</h2>,
-    h3: ({ children }: { children?: React.ReactNode }) => <h3 style={HEADING_COLOR}>{processMarkers(children)}</h3>,
-    h4: ({ children }: { children?: React.ReactNode }) => <h4 style={HEADING_COLOR}>{processMarkers(children)}</h4>,
-};
+/** Inline tip icon rendered next to bullets that need a metric. */
+function TipIcon({ suggestion }: { suggestion: string }) {
+    const [open, setOpen] = React.useState(false);
+    return (
+        <span style={{ position: 'relative', display: 'inline-block', marginLeft: 6, verticalAlign: 'middle' }}>
+            <span
+                role="button"
+                aria-label="Tip: strengthen this bullet"
+                onClick={() => setOpen(o => !o)}
+                style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 16,
+                    height: 16,
+                    borderRadius: '50%',
+                    background: '#d97706',
+                    color: '#fff',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    lineHeight: 1,
+                }}
+            >
+                i
+            </span>
+            {open && (
+                <span
+                    style={{
+                        position: 'absolute',
+                        bottom: 22,
+                        left: 0,
+                        zIndex: 50,
+                        background: '#1c1917',
+                        border: '1px solid #44403c',
+                        borderRadius: 6,
+                        padding: '8px 12px',
+                        width: 260,
+                        fontSize: 12,
+                        lineHeight: 1.5,
+                        color: '#e7e5e4',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                        whiteSpace: 'normal',
+                    }}
+                >
+                    {suggestion}
+                </span>
+            )}
+        </span>
+    );
+}
+
+function buildMarkdownComponents(tips: ResumeTip[], showTips: boolean) {
+    return {
+        strong: ({ children }: { children?: React.ReactNode }) => (
+            <strong style={STRONG_COLOR}>{children}</strong>
+        ),
+        h1: ({ children }: { children?: React.ReactNode }) => (
+            <h1 style={HEADING_COLOR}>{children}</h1>
+        ),
+        h2: ({ children }: { children?: React.ReactNode }) => (
+            <h2 style={HEADING_COLOR}>{children}</h2>
+        ),
+        h3: ({ children }: { children?: React.ReactNode }) => (
+            <h3 style={HEADING_COLOR}>{children}</h3>
+        ),
+        h4: ({ children }: { children?: React.ReactNode }) => (
+            <h4 style={HEADING_COLOR}>{children}</h4>
+        ),
+        li: ({ children }: { children?: React.ReactNode }) => {
+            if (showTips && tips.length > 0) {
+                const text = extractReactText(children).trim();
+                const tip = tips.find(t => text.startsWith(t.bulletKey.slice(0, 35)));
+                return (
+                    <li>
+                        {children}
+                        {tip && <TipIcon suggestion={tip.suggestion} />}
+                    </li>
+                );
+            }
+            return <li>{children}</li>;
+        },
+    };
+}
 
 type StepId = 'resume' | 'cover-letter' | 'selection-criteria' | 'track';
 type GenerateType = 'resume' | 'cover-letter' | 'selection-criteria';
@@ -298,12 +179,17 @@ interface StepDef {
     label: string;
     icon: React.ReactNode;
     optional?: boolean;
+    /** When true, the step does not appear as a chip; it's reachable only via
+     *  a discreet "Responding to selection criteria?" link. */
+    manualOnly?: boolean;
 }
 
 interface PersistedDraft {
     content: string;
     generatedAt: string;
     edited: boolean;
+    tips?: ResumeTip[];
+    estimatedPages?: number;
 }
 
 // ── Workspace key ───────────────────────────────────────────────────────────
@@ -352,10 +238,10 @@ export function StepperWorkspace() {
         sc?: boolean;
         company?: string;
         role?: string;
+        location?: string;
         feedItemId?: string;
         sourceUrl?: string;
         sourcePlatform?: string;
-        bridgedGaps?: import('../lib/bridgedGaps').BridgedGap[];
     };
     const APPLY_CTX_KEY = 'apply:context';
     const state = useMemo<ApplyState>(() => {
@@ -381,9 +267,15 @@ export function StepperWorkspace() {
             { id: 'resume',        label: 'Resume',          icon: <FileText size={14} /> },
             { id: 'cover-letter',  label: 'Cover Letter',    icon: <Mail size={14} /> },
         ];
-        if (wantsSC) {
-            base.push({ id: 'selection-criteria', label: 'Selection Criteria', icon: <ListChecks size={14} />, optional: true });
-        }
+        // SC step is always present but always opt-in: it never sits in the
+        // default forward flow (cover letter advances straight to Track/Apply).
+        // Most jobs have no selection criteria, so the user reaches it only via
+        // the discreet manual link near the step chips when they actually need it.
+        base.push({
+            id: 'selection-criteria', label: 'Selection Criteria',
+            icon: <ListChecks size={14} />, optional: true,
+            manualOnly: true,
+        });
         base.push({ id: 'track', label: 'Track', icon: <Briefcase size={14} /> });
         return base;
     }, [wantsSC]);
@@ -391,6 +283,16 @@ export function StepperWorkspace() {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [jdExpanded, setJdExpanded] = useState(false);
     const [companyIntel, setCompanyIntel] = useState<CompanyIntel | null>(null);
+
+    // ── De-frictioned generation orchestration ───────────────────────────────
+    // On entry we generate resume + cover letter in parallel. No gap-confirmation
+    // step: documents are written strictly from the candidate's real resume + the
+    // job, never from invented "bridgeable" capabilities.
+    const [intelSettled, setIntelSettled] = useState(false);
+    const [genStatus, setGenStatus] = useState<Record<'resume' | 'cover-letter', 'idle' | 'generating' | 'done' | 'error'>>({
+        resume: 'idle',
+        'cover-letter': 'idle',
+    });
 
     const currentStep = steps[currentIndex];
     const isFinalStep = currentStep?.id === 'track';
@@ -400,18 +302,54 @@ export function StepperWorkspace() {
         if (jdEmpty) navigate('/', { replace: true });
     }, [jdEmpty, navigate]);
 
-    // Pre-warm Perplexity company intel in the background on entry, so it's ready
-    // by the cover-letter step (runs while the user works on the resume). Fully
-    // non-fatal — the letter still generates without it.
+    // Pre-warm Perplexity company intel in the background on entry, so it's woven
+    // into the cover letter. `intelSettled` flips true once intel resolves, errors,
+    // or there's no company to fetch — cover-letter generation waits on it. Fully
+    // non-fatal — the letter still generates without intel.
     useEffect(() => {
         const company = state.company?.trim();
-        if (jdEmpty || !company || company === 'Unknown Company') return;
+        if (jdEmpty) return;
+        if (!company || company === 'Unknown Company') { setIntelSettled(true); return; }
         let cancelled = false;
         api.post('/research/company-intel', { company, title: state.role ?? '', jobDescription })
             .then(({ data }) => { if (!cancelled) setCompanyIntel(data); })
-            .catch((err) => { console.warn('[company-intel] prewarm failed (non-fatal):', err?.response?.status, err?.message); });
+            .catch((err) => { console.warn('[company-intel] prewarm failed (non-fatal):', err?.response?.status, err?.message); })
+            .finally(() => { if (!cancelled) setIntelSettled(true); });
         return () => { cancelled = true; };
     }, [state.company, state.role, jobDescription, jdEmpty]);
+
+    // On entry, generate resume + cover letter in parallel, writing each draft to
+    // localStorage as it lands. Never regenerates a step that already has a draft
+    // (Back-never-regenerates / revisit). Resume fires immediately; the cover letter
+    // waits for company intel so it can be woven in.
+    useEffect(() => {
+        if (jdEmpty) return;
+
+        const kickOff = (step: 'resume' | 'cover-letter') => {
+            if (loadDraft(workspaceKey, step) || genStatus[step] !== 'idle') return;
+            setGenStatus((s) => ({ ...s, [step]: 'generating' }));
+            const payload: Record<string, unknown> = { jobDescription };
+            let endpoint: string;
+            if (step === 'resume') {
+                endpoint = '/generate/resume-structured';
+            } else {
+                endpoint = '/generate/cover-letter-structured';
+                payload.analysisContext = { tone: 'Professional, polished, direct.', company: state.company ?? '', title: state.role ?? '' };
+                payload.companyIntel = companyIntel ?? null;
+            }
+            api.post<{ content: string }>(endpoint, payload)
+                .then(({ data }) => {
+                    const text = typeof data?.content === 'string' ? sanitizeContent(data.content) : '';
+                    saveDraft(workspaceKey, step, { content: text, generatedAt: new Date().toISOString(), edited: false });
+                    setGenStatus((s) => ({ ...s, [step]: 'done' }));
+                })
+                .catch(() => { setGenStatus((s) => ({ ...s, [step]: 'error' })); });
+        };
+
+        kickOff('resume');
+        if (intelSettled) kickOff('cover-letter');
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [intelSettled, jdEmpty, workspaceKey]);
 
     if (jdEmpty) return null;
 
@@ -437,6 +375,22 @@ export function StepperWorkspace() {
             >
                 {jdExpanded ? (
                     <>
+                        {/* Job header — mirrors the feed card so the role title, company
+                            and location stay visible while generating, not just the JD body. */}
+                        {(state.role || state.company) && (
+                            <div style={{ margin: '0 0 14px', paddingBottom: 12, borderBottom: `1px solid ${warm.colors.borderWhisper}` }}>
+                                {state.role && (
+                                    <p style={{ margin: '0 0 3px', fontSize: 15, fontWeight: 700, color: warm.colors.textPrimary, lineHeight: 1.3 }}>
+                                        {state.role}
+                                    </p>
+                                )}
+                                {(state.company || state.location) && (
+                                    <p style={{ margin: 0, fontSize: 12, color: warm.colors.textMuted, lineHeight: 1.4 }}>
+                                        {[state.company, state.location].filter(Boolean).join(' · ')}
+                                    </p>
+                                )}
+                            </div>
+                        )}
                         <p style={{
                             margin: '0 0 12px',
                             fontSize: 10,
@@ -490,11 +444,20 @@ export function StepperWorkspace() {
                     currentIndex={currentIndex}
                     onSelect={(i) => {
                         // Allow jumping to any step that has a draft, or the next un-drafted step.
+                        // But never land on a manualOnly step via chip click — if the user
+                        // targeted one, nudge forward past it.
                         if (i <= currentIndex) {
                             setCurrentIndex(i);
                         } else {
                             const drafted = loadDraft(workspaceKey, steps[currentIndex].id) != null;
-                            if (drafted) setCurrentIndex(i);
+                            if (drafted) {
+                                // If the target step is manualOnly, skip past it to the next
+                                // visible step — manual steps are only reachable via their
+                                // discreet link, not via the chip bar.
+                                let target = i;
+                                while (target < steps.length && steps[target].manualOnly) target++;
+                                setCurrentIndex(target);
+                            }
                         }
                     }}
                 />
@@ -521,9 +484,23 @@ export function StepperWorkspace() {
                         company={state.company}
                         role={state.role}
                         companyIntel={companyIntel}
-                        bridgedGaps={state.bridgedGaps ?? []}
+                        sourceUrl={state.sourceUrl}
+                        feedItemId={state.feedItemId}
+                        generationStatus={
+                            currentStep.id === 'resume' || currentStep.id === 'cover-letter'
+                                ? genStatus[currentStep.id]
+                                : 'idle'
+                        }
+                        jobHasSC={wantsSC}
                         onBack={currentIndex > 0 ? () => setCurrentIndex(currentIndex - 1) : null}
-                        onContinue={() => setCurrentIndex(currentIndex + 1)}
+                        onContinue={() => {
+                            // Skip any manualOnly steps (e.g. selection-criteria when
+                            // the JD never mentioned it) so the default forward flow
+                            // goes cover letter → track.
+                            let next = currentIndex + 1;
+                            while (next < steps.length && steps[next].manualOnly) next++;
+                            setCurrentIndex(next);
+                        }}
                         isLast={currentIndex === steps.length - 1}
                     />
                 )}
@@ -543,6 +520,10 @@ function Stepper({
     currentIndex: number;
     onSelect: (i: number) => void;
 }) {
+    const visibleSteps = steps.filter(s => !s.manualOnly);
+    const manualSCStepIndex = steps.findIndex(s => s.id === 'selection-criteria' && s.manualOnly);
+    const isOnManualSC = manualSCStepIndex >= 0 && currentIndex === manualSCStepIndex;
+
     return (
         <div style={{
             display: 'flex',
@@ -552,15 +533,18 @@ function Stepper({
             background: warm.colors.bgSurface,
             border: `1px solid ${warm.colors.borderWhisper}`,
             borderRadius: 12,
+            flexWrap: 'wrap',
         }}>
-            {steps.map((step, i) => {
-                const isActive = i === currentIndex;
-                const isDone = i < currentIndex;
+            {visibleSteps.map((step) => {
+                // Map the visible-step index back to the real index in the steps array
+                const realIndex = steps.indexOf(step);
+                const isActive = realIndex === currentIndex;
+                const isDone = realIndex < currentIndex;
                 const color = isActive ? warm.colors.accentGold : isDone ? warm.colors.accentPetrol : warm.colors.textMuted;
                 return (
                     <button
                         key={step.id}
-                        onClick={() => onSelect(i)}
+                        onClick={() => onSelect(realIndex)}
                         style={{
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -579,12 +563,33 @@ function Stepper({
                     >
                         {isDone ? <Check size={13} /> : step.icon}
                         {step.label}
-                        {i < steps.length - 1 && (
+                        {realIndex < steps.length - 1 && (
                             <ChevronRight size={12} style={{ color: warm.colors.textMuted, marginLeft: 4 }} />
                         )}
                     </button>
                 );
             })}
+
+            {/* Discreet manual SC link when the job doesn't mention SC */}
+            {manualSCStepIndex >= 0 && !isOnManualSC && (
+                <button
+                    onClick={() => onSelect(manualSCStepIndex)}
+                    style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: warm.colors.textMuted,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        textDecoration: 'underline',
+                        textUnderlineOffset: 3,
+                        cursor: 'pointer',
+                        padding: '4px 8px',
+                        opacity: 0.65,
+                    }}
+                >
+                    Responding to selection criteria?
+                </button>
+            )}
         </div>
     );
 }
@@ -598,7 +603,9 @@ function DocumentStep({
     company,
     role,
     companyIntel,
-    bridgedGaps,
+    feedItemId,
+    generationStatus,
+    jobHasSC,
     onBack,
     onContinue,
     isLast,
@@ -609,7 +616,10 @@ function DocumentStep({
     company?: string;
     role?: string;
     companyIntel?: CompanyIntel | null;
-    bridgedGaps?: import('../lib/bridgedGaps').BridgedGap[];
+    sourceUrl?: string;
+    feedItemId?: string;
+    generationStatus: 'idle' | 'generating' | 'done' | 'error';
+    jobHasSC?: boolean;
     onBack: (() => void) | null;
     onContinue: () => void;
     isLast: boolean;
@@ -618,6 +628,7 @@ function DocumentStep({
     const [generating, setGenerating] = useState(false);
     const [hasDraft, setHasDraft] = useState(false);
     const [editing, setEditing] = useState(false);
+    const [confirmRegen, setConfirmRegen] = useState(false);
     const [editBuffer, setEditBuffer] = useState('');
     const [downloadFormat, setDownloadFormat] = useState<'docx' | 'pdf'>(() => {
         try {
@@ -628,8 +639,25 @@ function DocumentStep({
         }
     });
     const [formatMenuOpen, setFormatMenuOpen] = useState(false);
+    const [resumeTips, setResumeTips] = useState<ResumeTip[]>([]);
+    const [estimatedPages, setEstimatedPages] = useState<number | null>(null);
+    const [showTips, setShowTips] = useState(false);
 
+    const navigate = useNavigate();
     const isCoverLetter = stepId === 'cover-letter';
+
+    // ── Finish application: marks applied on the backend and returns to workspace.
+    const handleFinishApplication = async () => {
+        commitEdit();
+        try {
+            if (feedItemId) {
+                await api.post(`/job-feed/${feedItemId}/mark-applied`);
+            }
+        } catch (err) {
+            console.warn('[apply] mark-applied failed (non-fatal):', err);
+        }
+        navigate('/', { state: { appliedFeedItemId: feedItemId ?? null } });
+    };
 
     // ── Selection-criteria-only state ────────────────────────────────────
     const criteriaStorageKey = `jobhub_stepper_${workspaceKey}_criteria_text`;
@@ -639,6 +667,17 @@ function DocumentStep({
     const [criteriaPanelOpen, setCriteriaPanelOpen] = useState<boolean>(false);
     const isSC = stepId === 'selection-criteria';
     const hasCriteria = isSC && criteriaText.trim().length >= 40;
+
+    // ── Word counter helper for SC ──────────────────────────────────────
+    const detectWordLimit = (t: string): number | null => {
+        const m = (t || '').match(/(\d{2,4})\s*words?\b/i) || (t || '').match(/\bwords?\s*[:-]?\s*(\d{2,4})/i);
+        return m ? parseInt(m[1], 10) : null;
+    };
+    const limit = useMemo(() => detectWordLimit(criteriaText), [criteriaText]);
+    const wordCount = useMemo(() => {
+        const words = (content || '').trim().split(/\s+/);
+        return words.length && words[0] !== '' ? words.length : 0;
+    }, [content]);
 
     // Draft critique — button-driven, never auto-run (LLM cost control).
     const [critiqueOpen, setCritiqueOpen] = useState(false);
@@ -680,6 +719,8 @@ function DocumentStep({
         if (draft) {
             setContent(draft.content);
             setHasDraft(true);
+            if (draft.tips) setResumeTips(draft.tips);
+            if (draft.estimatedPages) setEstimatedPages(draft.estimatedPages);
         } else {
             setContent('');
             setHasDraft(false);
@@ -693,33 +734,24 @@ function DocumentStep({
                 setCriteriaPanelOpen(stored.trim().length === 0 && !draft);
             } catch { /* noop */ }
         }
-    }, [workspaceKey, stepId, isSC, criteriaStorageKey]);
+    }, [workspaceKey, stepId, isSC, criteriaStorageKey, generationStatus]);
 
     const handleSaveCriteria = (next: string) => {
         setCriteriaText(next);
         try { localStorage.setItem(criteriaStorageKey, next); } catch { /* noop */ }
     };
 
-    const generate = async (regenerate = false) => {
-        if (generating) return;
-        if (isSC && !hasCriteria) {
-            toast.error('Paste the selection criteria first.');
-            setCriteriaPanelOpen(true);
-            return;
-        }
-        if (regenerate && hasDraft && !confirm('Regenerate this document? The current draft will be replaced.')) return;
-
+    const runGeneration = async () => {
         setGenerating(true);
         try {
             const payload: Record<string, unknown> = { jobDescription };
             if (isSC) payload.selectionCriteriaText = criteriaText.trim();
 
-            // Canonical structured routes: resume + cover letter render from
-            // Zod-validated JSON templates. SC stays on the legacy markdown route.
+            // Structured endpoints: resume, cover-letter, and SC use dedicated
+            // Zod-validated routes. Everything else falls through to the wildcard.
             let endpoint = `/generate/${stepId}`;
             if (stepId === 'resume') {
                 endpoint = '/generate/resume-structured';
-                payload.bridgedGaps = bridgedGaps ?? [];
             } else if (stepId === 'cover-letter') {
                 endpoint = '/generate/cover-letter-structured';
                 payload.analysisContext = {
@@ -728,16 +760,27 @@ function DocumentStep({
                     title: role ?? '',
                 };
                 payload.companyIntel = companyIntel ?? null;
-                payload.bridgedGaps = bridgedGaps ?? [];
+            } else if (stepId === 'selection-criteria') {
+                endpoint = '/generate/selection-criteria-structured';
             }
 
-            const { data } = await api.post<{ content: string }>(endpoint, payload);
+            const { data } = await api.post<{
+                content: string;
+                tips?: ResumeTip[];
+                estimatedPages?: number;
+            }>(endpoint, payload);
             const text = typeof data?.content === 'string' ? sanitizeContent(data.content) : '';
             setContent(text);
+            const tips = stepId === 'resume' ? (data?.tips ?? []) : [];
+            const pages = stepId === 'resume' ? (data?.estimatedPages ?? null) : null;
+            setResumeTips(tips);
+            setEstimatedPages(pages);
             saveDraft(workspaceKey, stepId, {
                 content: text,
                 generatedAt: new Date().toISOString(),
                 edited: false,
+                tips,
+                estimatedPages: pages ?? undefined,
             });
             setHasDraft(true);
         } catch (err: any) {
@@ -751,20 +794,24 @@ function DocumentStep({
         }
     };
 
+    const generate = async (regenerate = false) => {
+        if (generating) return;
+        if (isSC && !hasCriteria) {
+            toast.error('Paste the selection criteria first.');
+            setCriteriaPanelOpen(true);
+            return;
+        }
+        if (regenerate && hasDraft) { setConfirmRegen(true); return; }
+        await runGeneration();
+    };
+
+    const confirmRegenerate = async () => { setConfirmRegen(false); await runGeneration(); };
+
     const handleCopy = () => {
         if (!content) return;
         navigator.clipboard.writeText(content);
         toast.success('Copied');
     };
-
-    // Placeholder tokens — inserted by the generator wherever the AI lacks
-    // confidence (job title gaps, fabricated metrics, etc.) and needs human
-    // review. The regex catches the full set of variants the generator emits
-    // across resume / cover letter / SC: VERIFY/Verify/verify, ADD/Add,
-    // INSERT/Insert, TBD, PLACEHOLDER. Resume drafts use these interchangeably,
-    // which is why the previous narrow `[VERIFY:` check missed them.
-    // We warn on continue rather than block — calm-ally, not gatekeeper.
-    const hasVerifyTokens = useMemo(() => VERIFY_TOKEN_RE.test(content), [content]);
 
     // Commit any in-progress inline edit to content + localStorage. Idempotent:
     // a no-op when not editing or nothing changed, and it never toggles
@@ -788,17 +835,11 @@ function DocumentStep({
         return content;
     };
 
-    const handleContinueWithVerifyCheck = () => {
-        // Flush any pending inline edit FIRST — the big "Save & continue" button
-        // must honour its label even when the user never clicked "Done".
-        const effective = commitEdit();
+    const handleContinue = () => {
+        // Flush any pending inline edit FIRST — the "Save & continue" button must
+        // honour its label even when the user never clicked "Done".
+        commitEdit();
         setEditing(false);
-        if (VERIFY_TOKEN_RE.test(effective)) {
-            const ok = confirm(
-                'This draft still contains [VERIFY: ...] notes — spots where the AI flagged details for you to confirm or fill in before sending. Continue anyway?'
-            );
-            if (!ok) return;
-        }
         onContinue();
     };
 
@@ -841,6 +882,11 @@ function DocumentStep({
     const stepLabel = stepId === 'resume' ? 'Tailored Resume' : stepId === 'cover-letter' ? 'Cover Letter' : 'Selection Criteria';
     const coverLetterNote = 'Most candidates skip the cover letter. Australian recruiters use it to filter genuine interest from automated applications, a tailored cover letter measurably increases callback rates.';
 
+    const markdownComponents = React.useMemo(
+        () => buildMarkdownComponents(resumeTips, showTips),
+        [resumeTips, showTips],
+    );
+
     return (
         <div style={{
             background: warm.colors.bgSurface,
@@ -865,6 +911,7 @@ function DocumentStep({
                                 onClick={handleReviewDraft}
                             />
                             <ToolbarButton icon={<Copy size={13} />} label="Copy" onClick={handleCopy} />
+                            {/* Per-step download label (spec §8.7) */}
                             <DownloadSplit
                                 format={downloadFormat}
                                 open={formatMenuOpen}
@@ -872,11 +919,52 @@ function DocumentStep({
                                 onCloseMenu={() => setFormatMenuOpen(false)}
                                 onDownload={() => handleDownload()}
                                 onChoose={(f) => handleDownload(f)}
+                                label={isCoverLetter ? 'Download cover letter' : isSC ? 'Download Selection Criteria' : 'Download resume'}
                             />
+                            {/* Download both — cover-letter step only */}
+                            {isCoverLetter && (
+                                <ToolbarButton
+                                    icon={<Download size={13} />}
+                                    label="Download both"
+                                    onClick={async () => {
+                                        try {
+                                            const fmt = downloadFormat;
+                                            const resumeDraft = loadDraft(workspaceKey, 'resume');
+                                            if (resumeDraft?.content) {
+                                                if (fmt === 'pdf') {
+                                                    const { exportPdf } = await import('../lib/exportPdf');
+                                                    await exportPdf(resumeDraft.content, 'resume', '', '');
+                                                } else {
+                                                    const { exportDocx } = await import('../lib/exportDocx');
+                                                    await exportDocx(resumeDraft.content, 'resume', '');
+                                                }
+                                            }
+                                            await handleDownload();
+                                            toast.success('Downloaded both documents');
+                                        } catch {
+                                            toast.error('Download failed. Copy the content instead.');
+                                        }
+                                    }}
+                                />
+                            )}
                         </>
                     )}
                 </div>
             </header>
+
+            {/* Review framing — the documents are already done; read & trim. */}
+            {hasDraft && !generating && generationStatus !== 'generating' && (stepId === 'resume' || stepId === 'cover-letter') && (
+                <p style={{ margin: 0, fontSize: 12.5, color: warm.colors.textSecondary, lineHeight: 1.6 }}>
+                    {stepId === 'resume' ? applyWorkspaceCopy.reviewFraming.resume : applyWorkspaceCopy.reviewFraming.coverLetter}
+                </p>
+            )}
+
+            {/* Numbers tip — outside the editor, under the review framing (resume only). */}
+            {stepId === 'resume' && hasDraft && !generating && generationStatus !== 'generating' && (
+                <p style={{ margin: 0, fontSize: 12, color: warm.colors.textMuted, lineHeight: 1.6 }}>
+                    Tip: wherever you can, add a real number to a result, a %, a $, a count, or time saved. One genuine figure makes a bullet land far harder.
+                </p>
+            )}
 
             {/* Cover letter educational note */}
             {stepId === 'cover-letter' && (
@@ -901,7 +989,6 @@ function DocumentStep({
                         <span style={{ fontSize: 10, fontWeight: 800, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                             Company Insight
                         </span>
-                        <span style={{ fontSize: 9, color: warm.colors.textMuted, opacity: 0.7 }}>· via Perplexity</span>
                     </div>
 
                     {companyIntel.summary && (
@@ -914,7 +1001,7 @@ function DocumentStep({
                         <div style={{ fontSize: 11.5, lineHeight: 1.5, color: warm.colors.textMuted }}>
                             <span style={{ fontWeight: 700, color: warm.colors.textPrimary }}>Suggested contact: </span>
                             {companyIntel.suggestedContact.title}
-                            {companyIntel.suggestedContact.reason ? ` — ${companyIntel.suggestedContact.reason}` : ''}
+                            {companyIntel.suggestedContact.reason ? ` - ${companyIntel.suggestedContact.reason}` : ''}
                         </div>
                     )}
 
@@ -948,6 +1035,7 @@ function DocumentStep({
                     criteriaText={criteriaText}
                     onSave={handleSaveCriteria}
                     hasCriteria={hasCriteria}
+                    jobHasSC={jobHasSC}
                 />
             )}
 
@@ -988,7 +1076,31 @@ function DocumentStep({
                     </button>
                 )}
 
-                {generating ? (
+                {stepId === 'resume' && resumeTips.length > 0 && !editing && (
+                    <button
+                        onClick={() => setShowTips(t => !t)}
+                        style={{
+                            position: 'absolute',
+                            top: 38,
+                            right: 16,
+                            background: showTips ? 'rgba(217, 119, 6, 0.15)' : 'transparent',
+                            border: `1px solid ${showTips ? '#d97706' : 'rgba(255,255,255,0.15)'}`,
+                            borderRadius: 6,
+                            color: showTips ? '#d97706' : warm.colors.textMuted,
+                            fontSize: 11,
+                            fontWeight: 600,
+                            padding: '4px 10px',
+                            cursor: 'pointer',
+                            letterSpacing: '0.03em',
+                            zIndex: 1,
+                        }}
+                        title={showTips ? 'Hide metric tips' : 'Show metric tips'}
+                    >
+                        {showTips ? 'Tips on' : 'Tips'}
+                    </button>
+                )}
+
+                {generating || (generationStatus === 'generating' && !content) ? (
                     <GenerationProgress docType={stepId === 'cover-letter' ? 'cover-letter' : stepId === 'selection-criteria' ? 'selection-criteria' : 'resume'} />
                 ) : editing ? (
                     <textarea
@@ -1013,16 +1125,50 @@ function DocumentStep({
                         }}
                     />
                 ) : content ? (
-                    <div className="prose prose-invert max-w-none" style={{ color: warm.colors.textPrimary, fontSize: 13.5, lineHeight: 1.7 }}>
-                        <ReactMarkdown components={MARKDOWN_COMPONENTS as any}>{content}</ReactMarkdown>
-                    </div>
+                    <>
+                        {stepId === 'resume' && estimatedPages !== null && estimatedPages > 2 && (
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                padding: '8px 12px',
+                                marginBottom: 12,
+                                background: 'rgba(217, 119, 6, 0.12)',
+                                border: '1px solid rgba(217, 119, 6, 0.35)',
+                                borderRadius: 6,
+                                fontSize: 12,
+                                color: '#d97706',
+                                fontWeight: 500,
+                            }}>
+                                <span>Your resume is estimated at {estimatedPages} pages. Most roles shortlist resumes under 2 pages. Consider trimming less relevant roles or bullets before downloading.</span>
+                            </div>
+                        )}
+                        <div className="prose prose-invert max-w-none" style={{ color: warm.colors.textPrimary, fontSize: 13.5, lineHeight: 1.7 }}>
+                            <ReactMarkdown components={markdownComponents as any}>{content}</ReactMarkdown>
+                        </div>
+                        {/* Live word counter — SC only */}
+                        {isSC && (
+                            <div style={{
+                                marginTop: 14,
+                                fontSize: 11,
+                                fontWeight: 700,
+                                letterSpacing: '0.04em',
+                                color: limit !== null && wordCount > limit ? '#c0392b' : warm.colors.textMuted,
+                                textAlign: 'right',
+                            }}>
+                                {wordCount} words{limit !== null ? ` / ${limit} limit` : ''}
+                            </div>
+                        )}
+                    </>
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, padding: '40px 0', color: warm.colors.textMuted, textAlign: 'center' }}>
                         <PenLine size={28} />
                         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, maxWidth: 380 }}>
                             {isSC
                                 ? 'Paste the selection criteria above, then Generate. We will write a STAR response per criterion, drawing on your achievement bank.'
-                                : 'Click Generate to draft this from your profile and the job description.'}
+                                : generationStatus === 'error'
+                                    ? 'That draft didn\'t come through. Use Regenerate to try again.'
+                                    : 'Preparing this document…'}
                         </p>
                     </div>
                 )}
@@ -1039,17 +1185,6 @@ function DocumentStep({
                     />
                 )}
             </AnimatePresence>
-
-            {/* Cover-letter personalisation score — mounts once a draft exists */}
-            {isCoverLetter && content && !generating && !editing && (
-                <div style={{ border: `1px solid ${warm.colors.borderWhisper}`, borderRadius: 12, padding: '14px 16px' }}>
-                    <CoverLetterPersonalisationPanel
-                        document={content}
-                        jobDescription={jobDescription}
-                        company={company}
-                    />
-                </div>
-            )}
 
             {/* CTAs */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
@@ -1077,29 +1212,65 @@ function DocumentStep({
                             Regenerate
                         </button>
                     )}
-                    {!hasDraft && (
+                    {!hasDraft && isSC && (
                         <button
                             onClick={() => generate(false)}
-                            disabled={generating || (isSC && !hasCriteria)}
-                            style={primaryButtonStyle(generating || (isSC && !hasCriteria))}
-                            title={isSC && !hasCriteria ? 'Paste the selection criteria first' : undefined}
+                            disabled={generating || !hasCriteria}
+                            style={primaryButtonStyle(generating || !hasCriteria)}
+                            title={!hasCriteria ? 'Paste the selection criteria first' : undefined}
                         >
                             {generating ? (<><Loader2 size={14} className="animate-spin" /> Generating…</>) : (<>Generate<ArrowRight size={14} /></>)}
                         </button>
                     )}
-                    {hasDraft && (
+                    {!hasDraft && !isSC && generationStatus === 'error' && (
                         <button
-                            onClick={handleContinueWithVerifyCheck}
+                            onClick={() => generate(false)}
                             disabled={generating}
                             style={primaryButtonStyle(generating)}
-                            title={hasVerifyTokens ? 'This draft has unverified placeholders' : undefined}
+                            title="Regenerate this document"
                         >
-                            {isLast ? 'Finish' : 'Save & continue'}
+                            {generating ? (<><Loader2 size={14} className="animate-spin" /> Generating…</>) : (<><RefreshCw size={13} /> Regenerate</>)}
+                        </button>
+                    )}
+                    {hasDraft && (
+                        <button
+                            onClick={isLast && feedItemId ? handleFinishApplication : handleContinue}
+                            disabled={generating}
+                            style={primaryButtonStyle(generating)}
+                        >
+                            {isLast && feedItemId ? 'Back to my jobs' : isLast ? 'Finish' : 'Save & continue'}
                             <ArrowRight size={14} />
                         </button>
                     )}
                 </div>
             </div>
+
+            {confirmRegen && (
+                <div
+                    onClick={() => setConfirmRegen(false)}
+                    style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(26,24,20,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+                >
+                    <div
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ width: '100%', maxWidth: 420, background: warm.colors.bgCanvas, border: `1px solid ${warm.colors.borderWhisper}`, borderRadius: 16, padding: '24px 24px 20px', boxShadow: '0 20px 60px rgba(26,24,20,0.25)' }}
+                    >
+                        <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: warm.colors.textPrimary }}>
+                            Regenerate this {isSC ? 'response' : isCoverLetter ? 'cover letter' : 'resume'}?
+                        </h3>
+                        <p style={{ margin: '10px 0 20px', fontSize: 13.5, lineHeight: 1.55, color: warm.colors.textSecondary }}>
+                            Your current draft, including any edits you have made, will be replaced. This cannot be undone.
+                        </p>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                            <button onClick={() => setConfirmRegen(false)} style={{ padding: '9px 16px', fontSize: 13, fontWeight: 600, color: warm.colors.textSecondary, background: 'transparent', border: `1px solid ${warm.colors.borderWhisper}`, borderRadius: 9, cursor: 'pointer' }}>
+                                Keep current
+                            </button>
+                            <button onClick={confirmRegenerate} style={{ padding: '9px 16px', fontSize: 13, fontWeight: 700, color: warm.colors.textOnDeep, background: warm.colors.accentPetrol, border: 'none', borderRadius: 9, cursor: 'pointer' }}>
+                                Regenerate
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -1367,6 +1538,7 @@ function CriteriaPanel({
     criteriaText,
     onSave,
     hasCriteria,
+    jobHasSC,
 }: {
     open: boolean;
     onOpen: () => void;
@@ -1374,15 +1546,11 @@ function CriteriaPanel({
     criteriaText: string;
     onSave: (next: string) => void;
     hasCriteria: boolean;
+    jobHasSC?: boolean;
 }) {
     const [buffer, setBuffer] = useState(criteriaText);
 
     useEffect(() => { setBuffer(criteriaText); }, [criteriaText]);
-
-    const handleSave = () => {
-        onSave(buffer.trim());
-        onClose();
-    };
 
     return (
         <div>
@@ -1445,9 +1613,16 @@ function CriteriaPanel({
                                     Hide
                                 </button>
                             </div>
+
+                            {/* "Not found" note when the job didn't mention SC */}
+                            {jobHasSC === false && (
+                                <p style={{ margin: '0 0 10px', fontSize: 12.5, color: warm.colors.textMuted, lineHeight: 1.55, fontStyle: 'italic', padding: '8px 12px', border: `1px solid ${warm.colors.borderWhisper}`, borderRadius: 8, background: warm.colors.bgCanvas }}>
+                                    We didn't find a selection criteria requirement in this job. If the role asks for one, paste it below. Otherwise you're done — focus on getting your application in.
+                                </p>
+                            )}
                             <textarea
                                 value={buffer}
-                                onChange={(e) => setBuffer(e.target.value)}
+                                onChange={(e) => { setBuffer(e.target.value); onSave(e.target.value); }}
                                 placeholder={CRITERIA_PLACEHOLDER}
                                 rows={10}
                                 spellCheck
@@ -1468,25 +1643,13 @@ function CriteriaPanel({
                             />
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, gap: 12 }}>
                                 <p style={{ margin: 0, fontSize: 11, color: warm.colors.textMuted, lineHeight: 1.5 }}>
-                                    {buffer.trim().length} characters · we recommend pasting all numbered criteria together.
+                                    {buffer.trim().length} characters · paste all numbered criteria together, then hit Generate.
                                 </p>
-                                <button
-                                    onClick={handleSave}
-                                    disabled={buffer.trim().length < 40}
-                                    style={{
-                                        padding: '7px 14px',
-                                        fontSize: 12,
-                                        fontWeight: 700,
-                                        color: warm.colors.textOnDeep,
-                                        background: buffer.trim().length < 40 ? 'rgba(45,90,110,0.4)' : warm.colors.accentPetrol,
-                                        border: 'none',
-                                        borderRadius: 8,
-                                        cursor: buffer.trim().length < 40 ? 'not-allowed' : 'pointer',
-                                        opacity: buffer.trim().length < 40 ? 0.6 : 1,
-                                    }}
-                                >
-                                    Use these criteria
-                                </button>
+                                {hasCriteria && (
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: warm.colors.accentPetrol }}>
+                                        <Check size={12} /> Ready to generate
+                                    </span>
+                                )}
                             </div>
                         </div>
                     </motion.div>
@@ -1505,6 +1668,7 @@ function DownloadSplit({
     onCloseMenu,
     onDownload,
     onChoose,
+    label,
 }: {
     format: 'docx' | 'pdf';
     open: boolean;
@@ -1512,6 +1676,7 @@ function DownloadSplit({
     onCloseMenu: () => void;
     onDownload: () => void;
     onChoose: (next: 'docx' | 'pdf') => void;
+    label?: string;
 }) {
     return (
         <div style={{ position: 'relative', display: 'inline-flex' }} onMouseLeave={onCloseMenu}>
@@ -1535,7 +1700,7 @@ function DownloadSplit({
                 }}
             >
                 <Download size={13} />
-                {`.${format}`}
+                {label ?? `.${format}`}
             </button>
             <button
                 onClick={onToggleMenu}

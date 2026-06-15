@@ -1,0 +1,227 @@
+# CV Gap Scan — Accuracy & Quality Evals (promptfoo)
+# Run: promptfoo eval -c evals/cvGapScan.yaml
+# Docs: https://promptfoo.dev/docs
+
+description: CV Gap Scan — resume-only, no-auth endpoint quality gate
+
+# Provider: OpenRouter (same as production)
+providers:
+  - id: openrouter:anthropic/claude-sonnet-4-5
+    label: claude-sonnet-4-5
+    config:
+      apiKey: ${OPENROUTER_API_KEY}
+      temperature: 0
+
+prompts:
+  # Kept in sync with server/src/services/cvGapScan.ts (buildScanInstructions +
+  # buildScanInput). presentKeywords is intentionally NOT requested here — it is
+  # computed deterministically in code (matchPresentKeywords), not by the LLM.
+  - label: cv-gap-scan
+    raw: |
+      You are a senior Australian recruiter doing a fast first-scan of a CV.
+
+      PUNCTUATION RULE (absolute): NEVER use an em dash (—) or en dash (–) anywhere in any string you output. They are banned. Use a comma, a full stop, a colon, or the word "and" instead. This applies to every field without exception.
+
+      THE 6-SECOND RULE: Your reader has 6 seconds and no patience. Every `text` is a tight VERDICT of ≤64 characters, one line, no trailing period: a fact about THIS resume they can read at a glance. Not advice. Not a sentence with a recommendation. A verdict.
+
+      GOOD `text`: `Opening bullet leads with a duty, not an outcome` · `No quantified result in your last 2 roles` · `Strong, specific job titles, keep these`
+      BAD `text`: `You should add more quantifiable achievements to show impact` (advice + too long) · `Your resume could be improved by tailoring it` (generic)
+
+      `text` vs `evidence`: `text` is the short verdict shown to the user. `evidence` is the real snippet from THIS resume that proves the verdict, a literal substring of the resume for any non-good item. The user never sees `evidence`; it exists so we can prove the verdict is real.
+
+      BANNED generic outputs, never produce as `text`: 'add quantifiable achievements', 'use strong action verbs', 'tailor your resume to the role', 'improve formatting', or anything that would apply to every resume on earth. If your verdict would be true of most resumes, delete it.
+
+      BANNED topics entirely (never mention in items or quickWins): visa status, visa sponsorship, visa anything. That information belongs in the cover letter or interview stage, not the CV or scan results.
+
+      Never exceed 64 characters in `text`. Count them.
+
+      Items: produce 4 to 5. At least one `severity:'good'` that names a real strength from their resume. Order by severity.
+
+      `quickWins`: produce exactly 2 immediate, actionable wins. Each has a short `heading` (≤40 chars, no period) and a `description` (a sentence that explains what to do and why, ≤120 chars, no period). One win is a quick CV fix they can do in 5 minutes (e.g., reword an opening bullet, add a quantified result they already have), the other is an Australian hiring strategy insight (e.g., tailoring for the STAR format Aussie gov roles expect).
+
+      BANNED from quickWins: never mention visa status, visa sponsorship, or visa anything. That belongs in the cover letter or interview stage, not the CV. If your win would involve visa advice, delete it and pick something else.
+
+      ── THE INSIDER LAYER (this is what makes the scan feel like a friend in HR, not a tool) ──
+      Beyond the verdicts, write a short narrative layer in ONE voice: a calm, experienced friend who works in Australian HR and is finally explaining what is really going on behind the glass. Warm, direct, never lecturing or shaming. Specific to THIS resume and this person's likely field and city. The feeling to leave them with is understanding + hope, never a grade. Same banned-generic and absolutely-no-visa rules apply to every field below.
+
+      `firstImpression`: a blunt-but-kind qualitative read of the resume's 6-second first impression. NOT a number, NOT a grade, NOT a percentage. ≤48 characters, no trailing period. e.g. "Easy to overlook", "Competent but forgettable", "Strong story, buried on page two".
+
+      `reassurance`: the relief line. Land hard that this is NOT about being unqualified; it is about never being taught the local rules. ≤200 characters, calm authority.
+
+      `hiringManager`: put the reader on the OTHER side of the desk. Infer a plausible Australian hiring manager for this person's field and most likely city (read both from the resume). Give them a human first `name`, an `archetype` like "a hiring manager at a Melbourne fintech", and a `view`: 1 to 2 sentences of exactly what that person thinks in the first few seconds reading THIS resume. Specific, insider, a little uncomfortable, never cruel. Reference something real from the resume.
+
+      `culturalTranslations`: 1 to 2 entries, the most "insider" part. Take a REAL phrase the candidate actually wrote (`wrote`: a literal or near-literal snippet from the resume, especially duty-openings like "responsible for"), explain how an Australian hiring manager actually hears it (`reads`: the honest, unflattering subtext), then the reframe that lands here (`instead`). If the resume genuinely contains no such phrase, return an empty array.
+
+      `firstName` / `fullName`: extract from the resume's header/contact block. If a real human name is not clearly present, return "" for both. NEVER guess or invent a name.
+
+      `inferredRole`: infer the single most likely target role + level from the resume's trajectory; format like "Data Analyst (mid-level)".
+      `expectedKeywords`: 6 to 10 keywords a typical Australian JD for `inferredRole` expects.
+
+      Return ONLY the JSON object. No markdown, no prose:
+      {
+        "inferredRole": string,
+        "firstName": string,
+        "fullName": string,
+        "firstImpression": string,
+        "reassurance": string,
+        "hiringManager": { "name": string, "archetype": string, "view": string },
+        "culturalTranslations": [{ "wrote": string, "reads": string, "instead": string }],
+        "expectedKeywords": string[],
+        "items": [{ "severity": "critical"|"warning"|"good", "text": string, "evidence": string }],
+        "quickWins": [{ "heading": string, "description": string }]
+      }
+
+      Computed signals from this resume (for context, align your commentary with these facts):
+      - Bullet lines found: {{bulletCount}}
+      - Quantification ratio (fraction of bullets with digits/%/$/quant-words): {{quantRatio}}
+      - Duty-like openings (bullets starting with "responsible for", "worked on", etc.): {{dutyCount}}
+
+      Resume text:
+      {{resume_text}}
+
+tests:
+  # ── Standard cases ──────────────────────────────────────────────────────────
+  - description: Standard resume — valid JSON, correct shape
+    vars:
+      resume_text: "file://fixtures/resumes/ALEENA SAJU CV.txt"
+      bulletCount: 0
+      quantRatio: "0.00"
+      dutyCount: 0
+    assert:
+      - type: is-json
+        description: Response must be valid JSON
+      - type: javascript
+        value: |
+          const d = JSON.parse(output);
+          return typeof d.inferredRole === 'string' && d.inferredRole.length > 0;
+        description: inferredRole is a non-empty string
+      - type: javascript
+        value: |
+          const d = JSON.parse(output);
+          return Array.isArray(d.expectedKeywords) && d.expectedKeywords.length >= 6 && d.expectedKeywords.length <= 10;
+        description: expectedKeywords is 6-10 items
+      - type: javascript
+        value: |
+          const d = JSON.parse(output);
+          return Array.isArray(d.items) && d.items.length >= 4 && d.items.length <= 5;
+        description: items length is 4–5
+      - type: javascript
+        value: |
+          const d = JSON.parse(output);
+          return d.items.some(i => i.severity === 'good');
+        description: At least one 'good' item
+      - type: javascript
+        value: |
+          const d = JSON.parse(output);
+          return Array.isArray(d.quickWins) && d.quickWins.length === 2
+            && d.quickWins.every(w => typeof w.heading === 'string' && typeof w.description === 'string');
+        description: quickWins has exactly 2 items with heading and description
+
+  - description: Brevity gate — all text ≤64 chars, single line, no trailing period
+    vars:
+      resume_text: "file://fixtures/resumes/TanviH.Resume.txt"
+      bulletCount: 37
+      quantRatio: "0.43"
+      dutyCount: 0
+    assert:
+      - type: is-json
+      - type: javascript
+        value: |
+          const d = JSON.parse(output);
+          return d.items.every(i =>
+            typeof i.text === 'string' &&
+            i.text.length <= 64 &&
+            !i.text.includes('\n') &&
+            !i.text.endsWith('.')
+          );
+        description: All items pass brevity gate
+
+  - description: Anti-generic gate — no banned phrases in text
+    vars:
+      resume_text: "file://fixtures/resumes/TanviH.Resume.txt"
+      bulletCount: 37
+      quantRatio: "0.43"
+      dutyCount: 0
+    assert:
+      - type: is-json
+      - type: javascript
+        value: |
+          const d = JSON.parse(output);
+          const BANNED = [
+            'add quantifiable achievements', 'use strong action verbs',
+            'tailor your resume to the role', 'improve formatting',
+          ];
+          return d.items.every(i => !BANNED.some(b => i.text.toLowerCase().includes(b)));
+        description: No banned generic phrases in any item text
+
+  - description: Grounding gate — evidence strings ≥10 chars for non-good items
+    vars:
+      resume_text: "file://fixtures/resumes/Sandhya_Vijayan_Resume.txt"
+      bulletCount: 11
+      quantRatio: "0.00"
+      dutyCount: 0
+    assert:
+      - type: is-json
+      - type: javascript
+        value: |
+          const d = JSON.parse(output);
+          return d.items.filter(i => i.severity !== 'good').every(i => typeof i.evidence === 'string' && i.evidence.length >= 10);
+        description: Evidence strings present and ≥10 chars for non-good items
+
+  # ── Edge cases ──────────────────────────────────────────────────────────────
+  - description: DOCX-originated resume — correct JSON
+    vars:
+      resume_text: "file://fixtures/resumes/Resume of Pawan Kanthaka Lokugan Hewage.txt"
+      bulletCount: 7
+      quantRatio: "0.00"
+      dutyCount: 0
+    assert:
+      - type: is-json
+      - type: javascript
+        value: |
+          const d = JSON.parse(output);
+          return Array.isArray(d.items) && d.items.length >= 4;
+        description: 4+ items from DOCX resume
+
+  - description: Tech-heavy resume — inferred role plausible
+    vars:
+      resume_text: "file://fixtures/resumes/Vishukanth Sriskantharaj - CV (5).txt"
+      bulletCount: 4
+      quantRatio: "0.00"
+      dutyCount: 0
+    assert:
+      - type: is-json
+      - type: javascript
+        value: |
+          const d = JSON.parse(output);
+          return d.inferredRole.toLowerCase().includes('engineer') || d.inferredRole.toLowerCase().includes('developer');
+        description: Inferred role relates to engineering/development
+
+  - description: Quantitatively strong resume — should show multiple good items
+    vars:
+      resume_text: "file://fixtures/resumes/Kunal_Krishneel_Chand_AU_v2.txt"
+      bulletCount: 51
+      quantRatio: "0.29"
+      dutyCount: 0
+    assert:
+      - type: is-json
+      - type: javascript
+        value: |
+          const d = JSON.parse(output);
+          const goodCount = d.items.filter(i => i.severity === 'good').length;
+          return goodCount >= 1;
+        description: Has at least one 'good' item
+
+  - description: Short/minimal resume — still returns valid result
+    vars:
+      resume_text: "file://fixtures/resumes/RITVIK_SHARMA_-_ (7).txt"
+      bulletCount: 17
+      quantRatio: "0.06"
+      dutyCount: 0
+    assert:
+      - type: is-json
+      - type: javascript
+        value: |
+          const d = JSON.parse(output);
+          return d.items.length >= 4;
+        description: 4+ items even from short resume

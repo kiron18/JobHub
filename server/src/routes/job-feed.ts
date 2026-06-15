@@ -3,7 +3,8 @@ import axios from 'axios';
 import { prisma } from '../index';
 import { authenticate } from '../middleware/auth';
 import { analyzeRateLimit } from '../middleware/analyzeRateLimit';
-import { checkAccess } from '../middleware/accessControl';
+import { checkAccess, hasActiveAccess, isPaidOrExempt } from '../middleware/accessControl';
+import { DAILY_APPLICATION_CAP, countTodaysApplications } from '../services/applicationCap';
 import {
   buildDailyFeed,
   generateBullets,
@@ -12,11 +13,55 @@ import {
   type RawJob,
 } from '../services/jobFeed';
 import { scoreJobForFeed } from '../services/jobAnalysis';
+import { reconcileApplication } from '../lib/applicationReconcile';
 
 const router = Router();
 
 // Tracks which userIds have a feed build currently in flight
 const buildingNow = new Set<string>();
+
+// Tracks feed items whose bullets are currently being generated (by item id), so
+// repeated /feed polls while generation is in flight don't double-fire the LLM.
+const bulletGenInFlight = new Set<string>();
+
+// Fire-and-forget bullet generation. Returns immediately; writes bullets to the
+// DB as they land so the next /feed read (client polls while bulletsPending) picks
+// them up. The feed itself renders instantly instead of blocking ~26s on the LLM.
+interface BulletGenItem {
+  id: string; title: string; company: string; location: string | null;
+  salary: string | null; description: string; sourceUrl: string;
+  sourcePlatform: string; postedAt: Date | null;
+}
+
+function kickoffBulletGeneration(items: BulletGenItem[]): void {
+  const toGenerate = items.filter(i => !bulletGenInFlight.has(i.id));
+  if (toGenerate.length === 0) return;
+  toGenerate.forEach(i => bulletGenInFlight.add(i.id));
+
+  const rawJobs = toGenerate.map(i => ({
+    title: i.title,
+    company: i.company,
+    location: i.location ?? '',
+    salary: i.salary,
+    description: i.description,
+    sourceUrl: i.sourceUrl,
+    sourcePlatform: i.sourcePlatform,
+    postedAt: i.postedAt,
+  })) as RawJob[];
+
+  generateBullets(rawJobs)
+    .then((bulletArrays) =>
+      Promise.all(
+        toGenerate.map((item, idx) =>
+          bulletArrays[idx]
+            ? prisma.jobFeedItem.update({ where: { id: item.id }, data: { bullets: bulletArrays[idx] } })
+            : Promise.resolve()
+        )
+      )
+    )
+    .catch((err: any) => console.error('[job-feed] background bullet gen failed:', err?.message ?? err))
+    .finally(() => toGenerate.forEach(i => bulletGenInFlight.delete(i.id)));
+}
 
 // All routes require auth
 router.use(authenticate);
@@ -25,11 +70,9 @@ router.use(authenticate);
 async function requirePremium(userId: string, res: Response): Promise<boolean> {
   const profile = await prisma.candidateProfile.findUnique({
     where: { userId },
-    select: { plan: true, planStatus: true, accessExpiresAt: true, dashboardAccess: true },
+    select: { plan: true, planStatus: true, accessExpiresAt: true, dashboardAccess: true, trialEndDate: true },
   });
-  const isPaid = profile?.dashboardAccess === true
-    || (profile?.plan !== 'free' && (profile?.planStatus === 'active' || profile?.planStatus === 'trialing'));
-  if (!isPaid) {
+  if (!profile || !hasActiveAccess(profile)) {
     res.status(403).json({ error: 'Subscription required' });
     return false;
   }
@@ -90,9 +133,11 @@ router.get('/feed', async (req: any, res: any) => {
       return res.json({ jobs: [], total: 0, hasMore: false, feedDate: today.toISOString().slice(0, 10), profileIncomplete: true });
     }
 
-    const count = await prisma.jobFeedItem.count({ where: { userId, feedDate: today } });
+    // Has ANY feed been built for today? Gates the build trigger independently of
+    // exclusions, so a user who acted on everything does not loop-rebuild.
+    const builtToday = await prisma.jobFeedItem.count({ where: { userId, feedDate: today } });
 
-    if (count === 0) {
+    if (builtToday === 0) {
       // Gate the BUILD (not the read) — free tier gets 1 lifetime feed build
       const access = await checkAccess(userId, 'job_search', userEmail);
       if (!access.allowed) {
@@ -115,9 +160,22 @@ router.get('/feed', async (req: any, res: any) => {
       });
     }
 
-    const total = await prisma.jobFeedItem.count({ where: { userId, feedDate: today } });
+    // Never show jobs the user applied to or skipped.
+    const [appliedRows, skippedRows] = await Promise.all([
+      prisma.jobApplication.findMany({ where: { userId, sourceUrl: { not: null } }, select: { sourceUrl: true } }),
+      prisma.skippedJob.findMany({ where: { userId }, select: { sourceUrl: true } }),
+    ]);
+    const excludedUrls = Array.from(new Set<string>([
+      ...appliedRows.map(r => r.sourceUrl as string),
+      ...skippedRows.map(r => r.sourceUrl),
+    ]));
+
+    const where: any = { userId, feedDate: today, skipped: false };
+    if (excludedUrls.length > 0) where.sourceUrl = { notIn: excludedUrls };
+
+    const total = await prisma.jobFeedItem.count({ where });
     const items = await prisma.jobFeedItem.findMany({
-      where: { userId, feedDate: today },
+      where,
       orderBy: [{ matchScore: 'desc' }, { postedAt: 'desc' }, { createdAt: 'desc' }],
       skip: offset,
       take: 10,
@@ -130,40 +188,12 @@ router.get('/feed', async (req: any, res: any) => {
     });
     const appStatusMap = new Map(applications.map(a => [a.sourceUrl, a.status]));
 
-    // Generate bullets for any items that don't have them
+    // Kick off bullet generation for any items lacking them, but DON'T block the
+    // response on it. The feed renders immediately with skeleton rows; the client
+    // polls while bulletsPending and the bullets fill in as they land server-side.
     const nullBulletItems = items.filter(i => i.bullets === null);
     if (nullBulletItems.length > 0) {
-      const rawJobs = nullBulletItems.map(i => ({
-        title: i.title,
-        company: i.company,
-        location: i.location ?? '',
-        salary: i.salary,
-        description: i.description,
-        sourceUrl: i.sourceUrl,
-        sourcePlatform: i.sourcePlatform,
-        postedAt: i.postedAt,
-      })) as RawJob[];
-
-      const bulletArrays = await generateBullets(rawJobs);
-
-      await Promise.all(
-        nullBulletItems.map((item, idx) =>
-          bulletArrays[idx]
-            ? prisma.jobFeedItem.update({
-                where: { id: item.id },
-                data: { bullets: bulletArrays[idx] },
-              })
-            : Promise.resolve()
-        )
-      );
-
-      // Merge generated bullets into response
-      for (const item of items) {
-        const idx = nullBulletItems.findIndex(n => n.id === item.id);
-        if (idx !== -1 && bulletArrays[idx]) {
-          (item as any).bullets = bulletArrays[idx];
-        }
-      }
+      kickoffBulletGeneration(nullBulletItems);
     }
 
     // Mark as read (fire and forget)
@@ -182,6 +212,7 @@ router.get('/feed', async (req: any, res: any) => {
       total,
       hasMore: offset + items.length < total,
       feedDate: today.toISOString().slice(0, 10),
+      bulletsPending: nullBulletItems.length > 0,
     });
   } catch (err: any) {
     console.error('[job-feed/feed]', err);
@@ -316,13 +347,17 @@ router.post('/:id/save', async (req: any, res: any) => {
   }
 });
 
-// POST /api/job-feed/:id/mark-applied — save (if needed) + mark as APPLIED in one step
+// POST /api/job-feed/:id/mark-applied — reconcile the feed item against the tracker
+// and ensure it ends up APPLIED. Matches an existing application by sourceUrl first
+// (the key the feed read uses), then title+company. Reports whether we created a
+// fresh row (likely an external apply) so the client can offer Undo.
 router.post('/:id/mark-applied', async (req: any, res: any) => {
   const userId = req.user.id;
   const { id } = req.params;
 
   try {
     if (!(await requirePremium(userId, res))) return;
+
     const item = await prisma.jobFeedItem.findUnique({ where: { id } });
     if (!item || item.userId !== userId) return res.status(404).json({ error: 'Not found' });
 
@@ -332,18 +367,149 @@ router.post('/:id/mark-applied', async (req: any, res: any) => {
     });
     if (!profile) return res.status(404).json({ error: 'Profile not found' });
 
-    // Find existing application by title + company for this user
+    // Match by sourceUrl first (what the feed uses to tag applicationStatus), then
+    // fall back to title+company for older rows that never stored a sourceUrl.
+    let existing = item.sourceUrl
+      ? await prisma.jobApplication.findFirst({
+          where: { userId, sourceUrl: item.sourceUrl },
+          orderBy: { createdAt: 'desc' },
+        })
+      : null;
+    if (!existing) {
+      existing = await prisma.jobApplication.findFirst({
+        where: { userId, title: item.title, company: item.company },
+        orderBy: { createdAt: 'desc' },
+      });
+    }
+
+    const action = reconcileApplication(existing);
+
+    if (action.kind === 'already_applied') {
+      return res.json({
+        ok: true,
+        jobApplicationId: existing!.id,
+        created: false,
+        previousStatus: 'APPLIED',
+        alreadyApplied: true,
+      });
+    }
+
+    if (action.kind === 'promote') {
+      await prisma.jobApplication.update({
+        where: { id: existing!.id },
+        data: {
+          status: 'APPLIED',
+          dateApplied: new Date(),
+          // Backfill sourceUrl so future feed reads match this row by URL.
+          ...(existing!.sourceUrl ? {} : { sourceUrl: item.sourceUrl }),
+        },
+      });
+      return res.json({
+        ok: true,
+        jobApplicationId: existing!.id,
+        created: false,
+        previousStatus: action.previousStatus,
+        alreadyApplied: false,
+      });
+    }
+
+    // action.kind === 'create'
+    const jobApp = await prisma.jobApplication.create({
+      data: {
+        userId,
+        candidateProfileId: profile.id,
+        title: item.title,
+        company: item.company,
+        description: item.description,
+        sourceUrl: item.sourceUrl,
+        notes: `Source: ${item.sourceUrl}`,
+        status: 'APPLIED',
+        dateApplied: new Date(),
+      },
+    });
+    await prisma.jobFeedItem.update({ where: { id }, data: { isSaved: true } });
+
+    return res.json({
+      ok: true,
+      jobApplicationId: jobApp.id,
+      created: true,
+      previousStatus: null,
+      alreadyApplied: false,
+    });
+  } catch (err: any) {
+    console.error('[job-feed/mark-applied]', err?.message ?? err);
+    return res.status(500).json({ error: 'Failed to mark as applied' });
+  }
+});
+
+// POST /api/job-feed/application/:applicationId/revert — Undo for a just-applied
+// job. body.restore === 'DELETE' deletes the row we just created; any other value
+// is treated as a status to restore (and clears dateApplied).
+router.post('/application/:applicationId/revert', async (req: any, res: any) => {
+  const userId = req.user.id;
+  const { applicationId } = req.params;
+  const restore = String((req.body?.restore ?? '')).trim();
+
+  try {
+    if (!(await requirePremium(userId, res))) return;
+
+    const app = await prisma.jobApplication.findUnique({ where: { id: applicationId } });
+    if (!app || app.userId !== userId) return res.status(404).json({ error: 'Not found' });
+
+    if (restore === 'DELETE') {
+      await prisma.jobApplication.delete({ where: { id: applicationId } });
+      return res.json({ ok: true, deleted: true });
+    }
+
+    const allowed = new Set(['SAVED', 'APPLIED', 'INTERVIEW', 'OFFER', 'REJECTED']);
+    if (!allowed.has(restore)) return res.status(400).json({ error: 'Invalid restore status' });
+
+    await prisma.jobApplication.update({
+      where: { id: applicationId },
+      data: { status: restore as any, dateApplied: restore === 'APPLIED' ? new Date() : null },
+    });
+    return res.json({ ok: true, status: restore });
+  } catch (err: any) {
+    console.error('[job-feed/revert]', err?.message ?? err);
+    return res.status(500).json({ error: 'Failed to undo' });
+  }
+});
+
+// POST /api/job-feed/:id/start-apply — enforce the daily cap and seed the
+// application row before the user enters the generation flow.
+router.post('/:id/start-apply', async (req: any, res: any) => {
+  const userId = req.user.id;
+  const { id } = req.params;
+  try {
+    if (!(await requirePremium(userId, res))) return;
+
+    const userEmail = (req.user?.email ?? '').toLowerCase();
+    const profile = await prisma.candidateProfile.findUnique({
+      where: { userId },
+      select: { id: true, plan: true, planStatus: true, dashboardAccess: true, trialEndDate: true },
+    });
+    if (!profile) return res.status(404).json({ error: 'Profile not found' });
+
+    // The daily cap is a TRIAL cost-guard only. Paid/exempt customers are never
+    // throttled. Trial-by-default users (free plan + trialEndDate) still get it.
+    let used = 0;
+    if (!isPaidOrExempt(profile, userEmail)) {
+      used = await countTodaysApplications(userId);
+      if (used >= DAILY_APPLICATION_CAP) {
+        return res.status(429).json({ error: 'DAILY_CAP_REACHED', cap: DAILY_APPLICATION_CAP, used });
+      }
+    }
+
+    const item = await prisma.jobFeedItem.findUnique({ where: { id } });
+    if (!item || item.userId !== userId) return res.status(404).json({ error: 'Not found' });
+
+    // Reuse an existing row for this job if present (avoids duplicates on retry),
+    // else create one in SAVED status. mark-applied later flips it to APPLIED.
     let jobApp = await prisma.jobApplication.findFirst({
       where: { userId, title: item.title, company: item.company },
       orderBy: { createdAt: 'desc' },
     });
-
-    if (jobApp) {
-      await prisma.jobApplication.update({
-        where: { id: jobApp.id },
-        data: { status: 'APPLIED', dateApplied: new Date() },
-      });
-    } else {
+    if (!jobApp) {
       jobApp = await prisma.jobApplication.create({
         data: {
           userId,
@@ -352,18 +518,15 @@ router.post('/:id/mark-applied', async (req: any, res: any) => {
           company: item.company,
           description: item.description,
           sourceUrl: item.sourceUrl,
-          notes: `Source: ${item.sourceUrl}`,
-          status: 'APPLIED',
-          dateApplied: new Date(),
+          status: 'SAVED',
         },
       });
-      await prisma.jobFeedItem.update({ where: { id }, data: { isSaved: true } });
     }
 
-    return res.json({ ok: true, jobApplicationId: jobApp.id });
+    return res.json({ ok: true, jobApplicationId: jobApp.id, used: used + 1, cap: DAILY_APPLICATION_CAP });
   } catch (err: any) {
-    console.error('[job-feed/mark-applied]', err);
-    return res.status(500).json({ error: 'Failed to mark as applied' });
+    console.error('[job-feed/start-apply]', err?.message ?? err);
+    return res.status(500).json({ error: 'Could not start the application' });
   }
 });
 
@@ -374,7 +537,6 @@ const JOB_BOARD_HOSTS = [
   /^(www\.)?indeed\.com\.au$/,
   /^(www\.)?jora\.com$/,
   /^(www\.)?apsjobs\.gov\.au$/,
-  /^(www\.)?adzuna\.com\.au$/,
   /^[a-z0-9-]+\.lever\.co$/,
   /^[a-z0-9-]+\.greenhouse\.io$/,
   /^[a-z0-9-]+\.workday\.com$/,
@@ -436,6 +598,82 @@ router.post('/:id/fetch-description', analyzeRateLimit, async (req: any, res: an
   } catch (err: any) {
     console.error('[job-feed/fetch-description]', err.message);
     return res.status(500).json({ error: 'Could not load the full description — open the listing directly and paste the job description.' });
+  }
+});
+
+// PATCH /api/job-feed/:id/skip  body: { skipped: boolean }
+router.patch('/:id/skip', async (req: any, res: any) => {
+  const userId = req.user.id as string;
+  const { id } = req.params;
+  const { skipped } = req.body;
+  const item = await prisma.jobFeedItem.findFirst({ where: { id, userId } });
+  if (!item) return res.status(404).json({ error: 'Job not found' });
+
+  await prisma.jobFeedItem.update({
+    where: { id },
+    data: { skipped: !!skipped, skippedAt: skipped ? new Date() : null },
+  });
+
+  if (skipped) {
+    // Durable skip keyed by sourceUrl so it survives daily feed rebuilds.
+    await prisma.skippedJob.upsert({
+      where: { userId_sourceUrl: { userId, sourceUrl: item.sourceUrl } },
+      update: {
+        skippedAt: new Date(),
+        title: item.title,
+        company: item.company,
+        location: item.location,
+        postedAt: item.postedAt,
+      },
+      create: {
+        userId,
+        sourceUrl: item.sourceUrl,
+        title: item.title,
+        company: item.company,
+        location: item.location,
+        postedAt: item.postedAt,
+      },
+    });
+  } else {
+    // Undo — drop the durable record so the job can return to the feed.
+    await prisma.skippedJob.deleteMany({ where: { userId, sourceUrl: item.sourceUrl } });
+  }
+
+  res.json({ ok: true, skipped: !!skipped });
+});
+
+// GET /api/job-feed/skipped — durable list of jobs the user skipped
+router.get('/skipped', async (req: any, res: any) => {
+  const userId = req.user.id as string;
+  try {
+    const items = await prisma.skippedJob.findMany({
+      where: { userId },
+      orderBy: { skippedAt: 'desc' },
+      take: 100,
+    });
+    return res.json({ jobs: items });
+  } catch (err: any) {
+    console.error('[job-feed/skipped]', err.message);
+    return res.status(500).json({ error: 'Failed to load skipped jobs' });
+  }
+});
+
+// POST /api/job-feed/skipped/restore  body: { sourceUrl } — undo a skip
+router.post('/skipped/restore', async (req: any, res: any) => {
+  const userId = req.user.id as string;
+  const { sourceUrl } = req.body;
+  if (!sourceUrl) return res.status(400).json({ error: 'sourceUrl required' });
+  try {
+    await prisma.skippedJob.deleteMany({ where: { userId, sourceUrl } });
+    // If today's feed still has this row, un-skip it so it reappears immediately.
+    await prisma.jobFeedItem.updateMany({
+      where: { userId, sourceUrl },
+      data: { skipped: false, skippedAt: null },
+    });
+    return res.json({ ok: true });
+  } catch (err: any) {
+    console.error('[job-feed/skipped/restore]', err.message);
+    return res.status(500).json({ error: 'Failed to restore job' });
   }
 });
 

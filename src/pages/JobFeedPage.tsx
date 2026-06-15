@@ -40,6 +40,9 @@ export const JobFeedPage: React.FC = () => {
       return data;
     },
     staleTime: 5 * 60 * 1000,
+    // While the server is still generating bullets for the first page, poll every
+    // 4s so the skeleton rows fill in. Stops automatically once bullets land.
+    refetchInterval: (query) => ((query.state.data as any)?.bulletsPending ? 4000 : false),
   });
 
   // Sync query data into local state, runs on both fresh fetch AND cache hit on remount.
@@ -107,7 +110,13 @@ export const JobFeedPage: React.FC = () => {
   };
 
   const handleUpdate = useCallback((updated: Partial<JobFeedItem> & { id: string }) => {
-    setJobs(prev => prev.map(j => (j.id === updated.id ? { ...j, ...updated } : j)));
+    setJobs(prev => {
+      // If the item was skipped, remove it from the visible list
+      if (updated.skipped === true) {
+        return prev.filter(j => j.id !== updated.id);
+      }
+      return prev.map(j => (j.id === updated.id ? { ...j, ...updated } : j));
+    });
   }, []);
 
   if (isLoading) {
@@ -160,7 +169,7 @@ export const JobFeedPage: React.FC = () => {
             <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: warm.colors.textPrimary }}>Searching live listings for you…</p>
             <p style={{ margin: '4px 0 0', fontSize: 14, color: warm.colors.textSecondary }}>
               Finding <span style={{ color: warm.colors.textPrimary }}>{profile?.targetRole}</span> roles
-              in <span style={{ color: warm.colors.textPrimary }}>{profile?.targetCity}</span> across Seek, LinkedIn, and Adzuna.
+              in <span style={{ color: warm.colors.textPrimary }}>{profile?.targetCity}</span> on Seek.
             </p>
             <p style={{ margin: '8px 0 0', fontSize: 12, color: warm.colors.textMuted }}>
               {pollCount.current >= 8

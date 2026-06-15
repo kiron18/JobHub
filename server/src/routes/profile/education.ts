@@ -4,53 +4,20 @@ import { authenticate } from '../../middleware/auth';
 
 const router = Router();
 
-// PATCH /api/education/:id
-router.patch('/education/:id', authenticate, async (req, res) => {
-  const id = req.params['id'] as string;
+// GET /api/education — read-only access to education entries
+// NOTE: Creation and editing removed. Users update their profile by re-uploading their resume.
+router.get('/education', authenticate, async (req, res) => {
   const userId = (req as any).user.id;
-  const { institution, degree, field, year } = req.body as { institution?: string; degree?: string; field?: string; year?: string };
   try {
-    const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
-    if (!profile) return res.status(404).json({ error: 'Profile not found' });
-    const edu = await prisma.education.update({
-      where: { id, candidateProfileId: profile.id },
-      data: { institution, degree, field, year },
+    const profile = await prisma.candidateProfile.findUnique({
+      where: { userId },
+      include: { education: true },
     });
-    return res.json(edu);
+    if (!profile) return res.status(404).json({ error: 'Profile not found' });
+    return res.json(profile.education);
   } catch (error) {
-    return res.status(500).json({ error: 'Failed to update education' });
-  }
-});
-
-// POST /api/education
-router.post('/education', authenticate, async (req, res) => {
-  const userId = (req as any).user.id;
-  const { institution, degree, field, year } = req.body as { institution?: string; degree?: string; field?: string; year?: string };
-  if (!institution || !degree) return res.status(400).json({ error: 'institution and degree required' });
-  try {
-    const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
-    if (!profile) return res.status(404).json({ error: 'Profile not found' });
-    const edu = await prisma.education.create({
-      data: { institution, degree, field: field || null, year: year || null, candidateProfileId: profile.id },
-    });
-    return res.status(201).json(edu);
-  } catch {
-    return res.status(500).json({ error: 'Failed to create education' });
-  }
-});
-
-// DELETE /api/education/:id
-router.delete('/education/:id', authenticate, async (req, res) => {
-  const id = req.params['id'] as string;
-  const userId = (req as any).user.id;
-  try {
-    const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
-    if (!profile) return res.status(404).json({ error: 'Profile not found' });
-    await prisma.education.delete({ where: { id, candidateProfileId: profile.id } });
-    return res.json({ ok: true });
-  } catch (err: any) {
-    if (err?.code === 'P2025') return res.status(404).json({ error: 'Record not found' });
-    return res.status(500).json({ error: 'Failed to delete education' });
+    console.error('[education] fetch failed:', error);
+    return res.status(500).json({ error: 'Failed to fetch education' });
   }
 });
 

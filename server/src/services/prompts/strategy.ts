@@ -55,7 +55,11 @@ export const STRATEGY_BLUEPRINT_PROMPT = (
     profile: any,
     selectedAchievements: any[],
     docType: 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE',
-    identityCard?: { label: string; summary: string; tone: string; keyStrengths: string[] } | null
+    identityCard?: { label: string; summary: string; tone: string; keyStrengths: string[] } | null,
+    // True when the achievements were explicitly ticked by the candidate in the
+    // pre-write confirmation step. Confirmed achievements are guaranteed coverage:
+    // the strategist may not silently drop one by judging it JD-irrelevant.
+    achievementsUserSelected?: boolean,
 ): string => {
     // Lean candidate snapshot — avoids sending full experience/education JSON
     const candidateSnapshot = {
@@ -109,7 +113,9 @@ STEP 2 — OPENING HOOK TEST:
 Draft the openingHook. Apply this test: "Could this exact sentence appear in a cover letter for a different company's identical job title?" If yes, it fails. The hook must reference a specific detail from Step 1e. It must be one sentence. It must not begin with "I am writing", "I am a", or "As a".
 
 STEP 3 — PROOF POINT MAPPING:
-For each achievement in AVAILABLE ACHIEVEMENTS, decide whether it warrants a proofPoint entry. Only include achievements that have a genuine connection to a stated JD requirement. For each included achievement:
+${achievementsUserSelected
+    ? `The candidate has EXPLICITLY CONFIRMED every achievement in AVAILABLE ACHIEVEMENTS as relevant to this role. You MUST create a proofPoint entry for EVERY one — omit none, drop none, even if the JD connection is indirect. Your job is to find the strongest HONEST framing for each, not to filter them. For each achievement:`
+    : `For each achievement in AVAILABLE ACHIEVEMENTS, decide whether it warrants a proofPoint entry. Only include achievements that have a genuine connection to a stated JD requirement. For each included achievement:`}
 - framingAngle: the specific lens through which to present it for THIS role (e.g. "Frame as operational efficiency, not just cost saving — JD emphasises 'process improvement'")
 - jdConnection: quote the specific JD language this achievement proves (e.g. "proven ability to manage complex stakeholder relationships")
 - narrativeNote: how to expand the raw bullet into a story — what context to add, what secondary impact to surface

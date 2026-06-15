@@ -227,13 +227,13 @@ function Disclaimer() {
         <p>Do not submit AI-generated content that misrepresents your skills, experience, or achievements. Doing so may have serious consequences with employers and is a violation of our Terms of Service.</p>
       </Section>
       <Section title="Job listings">
-        <p>Job listings shown on the platform are sourced from third-party providers including Seek, LinkedIn, and Adzuna. We do not verify the accuracy, legitimacy, or current availability of any listing. Always confirm details directly with the employer before applying.</p>
+        <p>Job listings shown on the platform are sourced from third-party providers including Seek. We do not verify the accuracy, legitimacy, or current availability of any listing. Always confirm details directly with the employer before applying.</p>
       </Section>
       <Section title="Not professional career advice">
         <p>The content and tools on this platform are not a substitute for professional career coaching, legal advice, or migration advice. If you need advice on your visa status, work rights, or employment contracts, consult a registered professional.</p>
       </Section>
       <Section title="Third-party services">
-        <p>We are not responsible for the practices or content of third-party services linked to or integrated with our platform, including Stripe, Supabase, Seek, LinkedIn, and Adzuna.</p>
+        <p>We are not responsible for the practices or content of third-party services linked to or integrated with our platform, including Stripe, Supabase, and Seek.</p>
       </Section>
     </Policy>
   );

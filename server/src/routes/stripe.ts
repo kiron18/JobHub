@@ -54,15 +54,41 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
 
       case 'checkout.session.completed': {
         const session = event.data.object;
-        const userId: string | undefined = session.metadata?.userId;
-        if (!userId) {
-          console.warn('[stripe/webhook] No userId in session metadata — skipping');
-          break;
-        }
-
         const isOneTime = session.mode === 'payment';
         const subscriptionId = session.subscription as string | null;
         const customerId = typeof session.customer === 'string' ? session.customer : null;
+        const customerEmail: string | undefined =
+          session.customer_details?.email ?? session.customer_email ?? undefined;
+
+        let userId: string | undefined = session.metadata?.userId;
+
+        // Payment links created by hand in the Stripe dashboard carry no
+        // userId metadata — that's only injected by our /checkout route. Fall
+        // back to matching the buyer by their Stripe email so manually-created
+        // links still grant access. (Profiles store email lowercased+trimmed.)
+        if (!userId && customerEmail) {
+          const match = await prisma.candidateProfile.findFirst({
+            where: { email: customerEmail.toLowerCase().trim() },
+            select: { userId: true },
+          });
+          if (match) {
+            userId = match.userId;
+            console.log(`[stripe/webhook] No metadata.userId — matched buyer by email ${customerEmail} → userId=${userId}`);
+          }
+        }
+
+        if (!userId) {
+          // Money collected but no account to attach it to. Never silently
+          // skip — alert so it can be reconciled before the customer is capped.
+          console.warn(`[stripe/webhook] checkout.session.completed with no userId and no email match (email=${customerEmail ?? 'none'}) — alerting admin`);
+          sendAdminPaymentAlert({
+            event: 'payment_unmatched',
+            userEmail: customerEmail ?? 'unknown',
+            plan: isOneTime ? 'three_month (one-time)' : (session.metadata?.plan ?? 'subscription'),
+            subscriptionId: subscriptionId ?? customerId ?? session.id,
+          }).catch(() => {});
+          break;
+        }
 
         if (isOneTime) {
           // 3-month bundle: one-time payment

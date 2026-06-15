@@ -38,10 +38,10 @@ describe('buildClusterKey', () => {
     expect(k1.hash).toBe(k2.hash)
   })
 
-  it('strips seniority prefix so senior and junior roles share a cluster', () => {
+  it('preserves the original role (seniority stripping removed in HTML scraper)', () => {
     const k1 = buildClusterKey('Senior Software Engineer', 'Melbourne', 'Tech')
     const k2 = buildClusterKey('Software Engineer', 'Melbourne', 'Tech')
-    expect(k1.role).toBe('Software Engineer')
-    expect(k1.hash).toBe(k2.hash)
+    expect(k1.role).toBe('Senior Software Engineer')
+    expect(k1.hash).not.toBe(k2.hash)
   })
 })

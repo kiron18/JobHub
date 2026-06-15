@@ -2,7 +2,6 @@ import cron from 'node-cron';
 import { prisma } from '../index';
 import { buildDailyFeed } from '../services/jobFeed';
 import { prewarmSeekClusters } from '../services/seekScraper';
-import { prewarmLinkedInClusters } from '../services/linkedinScraper';
 
 let cronStarted = false;
 
@@ -14,7 +13,7 @@ export function startJobFeedCron(): void {
   cron.schedule('0 21 * * *', async () => {
     console.log('[jobFeedCron] Starting daily feed pre-fetch');
 
-    let users: { userId: string; targetRole: string; targetCity: string; industry: string | null }[] = [];
+    let users: { userId: string; targetRole: string; targetRoles: any; targetCity: string; industry: string | null }[] = [];
     try {
       const profiles = await prisma.candidateProfile.findMany({
         where: {
@@ -22,7 +21,7 @@ export function startJobFeedCron(): void {
           plan: { not: 'free' },
           planStatus: { in: ['active', 'trialing'] },
         },
-        select: { userId: true, targetRole: true, targetCity: true, industry: true },
+        select: { userId: true, targetRole: true, targetRoles: true, targetCity: true, industry: true },
       });
       users = profiles.filter(
         (p): p is typeof users[number] => !!p.targetRole && !!p.targetCity
@@ -32,17 +31,14 @@ export function startJobFeedCron(): void {
       return;
     }
 
-    // Prewarm Seek and LinkedIn caches in parallel across unique clusters
+    // Prewarm Seek caches across unique clusters
     try {
-      await Promise.all([
-        prewarmSeekClusters(users),
-        prewarmLinkedInClusters(users),
-      ]);
+      await prewarmSeekClusters(users);
     } catch (err) {
       console.error('[jobFeedCron] Prewarm failed (non-fatal):', err);
     }
 
-    // Build per-user feeds — scrapers use cache, Adzuna fetched per user
+    // Build per-user feeds — Seek scraper, cached per cluster per day
     for (const { userId } of users) {
       try {
         await buildDailyFeed(userId);

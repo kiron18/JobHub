@@ -1,0 +1,69 @@
+no form
+
+State the outcome
+
+"Whats yhour biggest problem"
+
+Land your dream job in 90 days
+
+
+Diagnostic ---> What is the outcome ---> Free CV/COver letter
+
+Who am i - proof
+
+
+THREE WINS
+
+DRIVE THE OUTCOME
+
+
+
+Page Shape
+
+AUssie grad Careers - Small top of page
+
+Get your first australian job in 90 days guaranteed
+
+Discover the gaps in your documents, send high quality applications and get highly personalised guidance whenever you need it.
+
+Image of analysis (new analysis) Image of document generator
+
+
+Button (Show me the gaps in my CV)
+
+Testimonial scroller
+
+
+
+(1) Feature 1 - Audit your documents - use this as reference text to anchor everything - Find the
+Biggest Opportunities
+We identify your bottlenecks, uncover high-value opportunities, and quantify exactly how much time and money you're leaving on the table. You get a clear roadmap with project value and ROI projections so you can make informed decisions.
+
+
+(2)Feature 2 Send high quality documents consistently - Use simple language to explain this concept. - you can send a high quality application in less than 5 minutes with our system this is AI trained on proprietary data gain from interviews with hiring managers and successful resume scans from thousands of applications. Matched keywords 80s friendly well formatted documents in clean and easy understandable Australian English that hiring managers love to read
+
+3) Feature 3 - build your LinkedIn profile and use templates outreach templates that have been proven to work everybody talks about the hidden job market we provide you the tools to execute and access it immediately LinkedIn profile picture generator LinkedIn cover banner image generator about us and outreach templates for every situation you would need in your professional career
+
+
+all these features will ahve a supoorting image that shows users whats inside and is a demo of the product ...maybe even an animation tell me solid formats that will not slow down load time
+
+
+
+About me: I landed in Australia as a student in 2022 and in two years. I got my first job straight out of uni and after one year of work I landed my second job that paid me 150k p.a. with a government adjacent firm. I've learned that landing a high paying job is the result of a finely tuned system that offers clarity speed measurable metrics but most of all the emotional support because finding a job in Australia is an emotionally draining task.
+
+(refine this obviouslY)
+
+Get an indepth cv analysis
+
+Form-all on page i.e. the form lives as a component on page and we dont need to refresh
+
+Slide 1 - Full name , Location
+
+Slide 2 - Email 
+
+Slide 3 - what are you getting back pills, upload resume
+
+leads to diagnosis
+
+
+

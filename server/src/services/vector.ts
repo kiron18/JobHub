@@ -100,4 +100,33 @@ export async function deleteAchievement(userId: string, achievementId: string) {
     }
 }
 
+// ── Sponsor directory semantic search ─────────────────────────────────────
+// Sponsors are a single shared corpus, so they live in one namespace (no
+// per-user split, no namespace-cap concern). Same embedding model as
+// achievements → same index, just a different namespace.
+export const SPONSOR_NAMESPACE = 'sponsors';
+
+/** Embed a sponsor's name + industry + hiring profile and upsert it. */
+export async function indexSponsor(sponsorId: string, text: string) {
+    const index = getPinecone().index(PINECONE_INDEX_NAME);
+    const vector = await embedText(text);
+    await index.namespace(SPONSOR_NAMESPACE).upsert({
+        records: [{ id: sponsorId, values: vector }],
+    });
+}
+
+/** Semantic match against the sponsor corpus. Returns ids + scores, best first.
+ *  Non-fatal: returns [] on any error so search falls back to literal-only. */
+export async function searchSponsorVectors(query: string, topK = 60): Promise<{ id: string; score: number }[]> {
+    try {
+        const index = getPinecone().index(PINECONE_INDEX_NAME);
+        const vector = await embedText(query);
+        const results = await index.namespace(SPONSOR_NAMESPACE).query({ vector, topK });
+        return (results.matches ?? []).map((m) => ({ id: m.id, score: m.score ?? 0 }));
+    } catch (error) {
+        console.error('Pinecone sponsor search error:', error);
+        return [];
+    }
+}
+
 

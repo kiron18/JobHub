@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
 import {
   Pencil, Check, X, AlertTriangle, CheckCircle2,
   User, Briefcase, GraduationCap,
@@ -10,10 +9,8 @@ import {
 import { toast } from 'sonner';
 import api from '../lib/api';
 import { warm } from '../lib/theme/warmTokens';
-import { ProfileAdvisorPanel } from './ProfileAdvisorPanel';
 import { SectionIntroBanner } from './processStrip';
 import { ProfileExplainerModal, hasSeenProfileExplainer } from './ProfileExplainerModal';
-import { ManageSubscriptionModal } from './ManageSubscriptionModal';
 import { AchievementVideoModal } from './AchievementVideoModal';
 import { trackAchievementAdded } from '../lib/analytics';
 
@@ -281,34 +278,24 @@ const SaveCancelButtons: React.FC<{
 const SourceDocumentsIsland: React.FC<{ profile: ProfileData }> = ({ profile }) => {
   const qc = useQueryClient();
   const resumeRef = useRef<HTMLInputElement>(null);
-  const cl1Ref    = useRef<HTMLInputElement>(null);
-  const cl2Ref    = useRef<HTMLInputElement>(null);
 
   const [pendingResume, setPendingResume] = useState<File | null>(null);
-  const [pendingCl1,    setPendingCl1]    = useState<File | null>(null);
-  const [pendingCl2,    setPendingCl2]    = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
 
-  const hasAny = !!(pendingResume || pendingCl1 || pendingCl2);
+  const hasAny = !!pendingResume;
 
   async function handleUpdate() {
     if (!hasAny) return;
     setUploading(true);
     try {
       const fd = new FormData();
-      if (pendingResume) fd.append('resume',       pendingResume);
-      if (pendingCl1)    fd.append('coverLetter1', pendingCl1);
-      if (pendingCl2)    fd.append('coverLetter2', pendingCl2);
+      if (pendingResume) fd.append('resume', pendingResume);
       await api.post('/profile/source-documents', fd);
-      if (pendingResume) {
-        toast.success('Resume uploaded, extracting your profile. Refresh in ~30 seconds.');
-        // Poll after extraction delay
-        setTimeout(() => qc.invalidateQueries({ queryKey: ['profile'] }), 30_000);
-      } else {
-        toast.success('Cover letters updated.');
-      }
+      toast.success('Resume uploaded, extracting your profile. Refresh in ~30 seconds.');
+      // Poll after extraction delay
+      setTimeout(() => qc.invalidateQueries({ queryKey: ['profile'] }), 30_000);
       qc.invalidateQueries({ queryKey: ['profile'] });
-      setPendingResume(null); setPendingCl1(null); setPendingCl2(null);
+      setPendingResume(null);
     } catch {
       toast.error('Upload failed. Please try again.');
     } finally {
@@ -330,22 +317,6 @@ const SourceDocumentsIsland: React.FC<{ profile: ProfileData }> = ({ profile }) 
       ref:      resumeRef,
       onPick:   (f: File) => setPendingResume(f),
     },
-    {
-      label:    'Cover Letter 1',
-      required: false,
-      stored:   profile.coverLetterFilename,
-      pending:  pendingCl1,
-      ref:      cl1Ref,
-      onPick:   (f: File) => setPendingCl1(f),
-    },
-    {
-      label:    'Cover Letter 2',
-      required: false,
-      stored:   profile.coverLetterFilename2,
-      pending:  pendingCl2,
-      ref:      cl2Ref,
-      onPick:   (f: File) => setPendingCl2(f),
-    },
   ];
 
   const updatedLabel = profile.documentsUpdatedAt
@@ -356,7 +327,7 @@ const SourceDocumentsIsland: React.FC<{ profile: ProfileData }> = ({ profile }) 
     <Island>
       <SectionHeader
         icon={<FileText size={13} />}
-        title="Source Documents"
+        title="Your Resume"
                 badge={
           updatedLabel
             ? <span style={{ fontSize: 10, color: mutedText }}>Updated {updatedLabel}</span>
@@ -365,7 +336,7 @@ const SourceDocumentsIsland: React.FC<{ profile: ProfileData }> = ({ profile }) 
       />
 
       <p style={{ fontSize: 12, color: mutedText, marginBottom: 16, lineHeight: 1.5 }}>
-        Your resume is the source of truth for profile extraction. Cover letters are diagnostic, they show how you've been positioning yourself and feed the initial analysis, but are not used as templates for generated documents.
+        Your resume is the source of truth. Everything on this page is extracted from it, and you can edit any of it below. Upload a new resume any time to replace what is stored.
       </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -439,7 +410,7 @@ const SourceDocumentsIsland: React.FC<{ profile: ProfileData }> = ({ profile }) 
                 {uploading ? 'Uploading…' : pendingResume ? 'Update & re-extract profile' : 'Update documents'}
               </button>
               <button
-                onClick={() => { setPendingResume(null); setPendingCl1(null); setPendingCl2(null); }}
+                onClick={() => { setPendingResume(null); }}
                 disabled={uploading}
                 style={{
                   background: 'none', border: 'none', cursor: 'pointer',
@@ -1416,156 +1387,6 @@ const VolunteeringIsland: React.FC<{ volunteering: Volunteering[] }> = ({ volunt
   );
 };
 
-// ── CompletionSidebar ─────────────────────────────────────────────────────────
-
-interface CompletionSidebarProps {
-  completion: ProfileData['completion'];
-  targetRole?: string;
-  plan?: string;
-  planStatus?: string;
-}
-
-const CompletionSidebar: React.FC<CompletionSidebarProps> = ({ completion, targetRole, plan, planStatus }) => {
-  const navigate = useNavigate();
-  const [showManage, setShowManage] = useState(false);
-  const { score, missingFields } = completion;
-
-  const hasActiveSubscription = !!plan && plan !== 'free' && !!planStatus && !['cancelled', 'expired', 'free'].includes(planStatus);
-
-  const radius = 42;
-  const stroke = 7;
-  const nr = radius - stroke * 2;
-  const circ = nr * 2 * Math.PI;
-  const offset = circ - (score / 100) * circ;
-
-  const scoreColor = score >= 80 ? '#16a34a' : score >= 50 ? '#d97706' : '#dc2626';
-
-  return (
-    <div style={{
-      position: 'sticky',
-      top: 24,
-      background: '#ffffff',
-      border: `1px solid ${'rgba(0,0,0,0.08)'}`,
-      borderRadius: 14,
-      padding: '24px 20px',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 20,
-    }}>
-      {/* Score ring, pulses when score < 50 to signal open loop */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-        <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg width={radius * 2} height={radius * 2} style={{ transform: 'rotate(-90deg)' }}>
-            <circle stroke={'rgba(0,0,0,0.07)'} fill="transparent" strokeWidth={stroke} r={nr} cx={radius} cy={radius} />
-            <motion.circle
-              stroke={scoreColor}
-              fill="transparent"
-              strokeWidth={stroke}
-              strokeDasharray={`${circ} ${circ}`}
-              style={{ strokeDashoffset: offset, transition: 'stroke-dashoffset 1s cubic-bezier(0.25,1,0.5,1)' }}
-              strokeLinecap="round"
-              r={nr} cx={radius} cy={radius}
-              animate={score < 50 ? { opacity: [1, 0.3, 1] } : { opacity: 1 }}
-              transition={score < 50 ? { duration: 2.4, repeat: Infinity, ease: 'easeInOut' } : {}}
-            />
-          </svg>
-          <span style={{ position: 'absolute', fontSize: 20, fontWeight: 800, color: scoreColor, fontVariantNumeric: 'tabular-nums' }}>
-            {score}
-          </span>
-        </div>
-        {/* Identity label at 90%+ */}
-        {score >= 90 ? (
-          <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#7c3aed', textAlign: 'center' }}>
-            Exceptional Profile
-          </p>
-        ) : score >= 70 ? (
-          <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#6366f1', textAlign: 'center' }}>
-            Prepared Candidate
-          </p>
-        ) : (
-          <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#9ca3af', textAlign: 'center' }}>
-            Profile Strength
-          </p>
-        )}
-      </div>
-
-      {/* Missing fields */}
-      {missingFields.length > 0 && (
-        <div>
-          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#9ca3af', marginBottom: 8 }}>
-            Still needed
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            {missingFields.map((f, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <AlertTriangle size={10} style={{ color: '#d97706', flexShrink: 0 }} />
-                <span style={{ fontSize: 12, color: '#6b7280', textTransform: 'capitalize' }}>{f}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Profile Advisor */}
-      <div style={{ borderTop: `1px solid ${'rgba(0,0,0,0.06)'}`, paddingTop: 16 }}>
-        <ProfileAdvisorPanel targetRole={targetRole} />
-      </div>
-
-      {/* Dynamic CTA, copy and colour shift with score tier */}
-      {(() => {
-        const tier = score >= 90 ? 'exceptional' : score >= 70 ? 'ready' : score >= 50 ? 'close' : 'building';
-        const pointsAway = Math.max(0, 70 - score);
-        const cfg = {
-          exceptional: { label: 'Your profile is exceptional. Go get hired.', bg: '#7c3aed', color: '#fff', active: true },
-          ready:       { label: "You're ready. Find your next role.", bg: '#6366f1', color: '#fff', active: true },
-          close:       { label: `${pointsAway} point${pointsAway !== 1 ? 's' : ''} to unlock the job board. Keep going.`, bg: 'rgba(217,119,6,0.1)', color: '#d97706', active: false },
-          building:    { label: "Complete your profile to unlock the platform.", bg: 'rgba(220,38,38,0.07)', color: '#dc2626', active: false },
-        }[tier];
-        return (
-          <button
-            onClick={() => cfg.active && navigate('/')}
-            style={{
-              width: '100%', padding: '12px 16px', borderRadius: 10, border: 'none',
-              background: cfg.bg, color: cfg.color,
-              fontSize: 13, fontWeight: 700,
-              cursor: cfg.active ? 'pointer' : 'default',
-              lineHeight: 1.4, textAlign: 'center',
-              transition: 'all 0.2s ease',
-            }}
-          >
-            {cfg.label}
-          </button>
-        );
-      })()}
-
-      {/* Subscription management — visible for all users */}
-      <div style={{ height: 1, background: 'rgba(0,0,0,0.06)' }} />
-      <button
-        onClick={() => setShowManage(true)}
-        style={{
-          width: '100%', padding: '9px 0',
-          background: 'transparent', border: 'none',
-          color: '#9ca3af',
-          fontSize: 12, cursor: 'pointer',
-          transition: 'color 0.14s ease',
-          textAlign: 'center',
-        }}
-        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#6b7280'; }}
-        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#9ca3af'; }}
-      >
-        {hasActiveSubscription ? 'Manage subscription' : 'Billing & plan'}
-      </button>
-
-      <ManageSubscriptionModal
-        isOpen={showManage}
-        onClose={() => setShowManage(false)}
-        plan={plan ?? 'monthly'}
-        planStatus={planStatus ?? 'active'}
-      />
-    </div>
-  );
-};
-
 // ── ProfileBank (main export) ─────────────────────────────────────────────────
 
 export const ProfileBank: React.FC = () => {
@@ -1646,16 +1467,6 @@ export const ProfileBank: React.FC = () => {
                 <HelpCircle size={16} />
               </button>
             </div>
-            <button
-              onClick={() => { window.location.href = '/?view=report'; }}
-              style={{
-                fontSize: 12, fontWeight: 600, color: '#9ca3af',
-                background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0',
-                textDecoration: 'underline', textUnderlineOffset: 3, flexShrink: 0,
-              }}
-            >
-              {(profile as any)?.hasCompletedOnboarding ? 'View Diagnostic' : 'Run Diagnostic'}
-            </button>
           </div>
           <p style={{ fontSize: 14, color: '#6b7280', marginTop: 4 }}>
             Your achievement bank, the source of truth for every resume and cover letter JobHub generates. Complete it once, use it forever.
@@ -1664,8 +1475,8 @@ export const ProfileBank: React.FC = () => {
 
         <ProfileExplainerModal open={explainerOpen} onClose={() => setExplainerOpen(false)} />
 
-        {/* Two-column layout */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 24, alignItems: 'start' }}>
+        {/* Single-column layout */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 24, alignItems: 'start' }}>
           {/* Main column */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Identity Cards */}
@@ -1779,13 +1590,6 @@ export const ProfileBank: React.FC = () => {
             <VolunteeringIsland volunteering={profile.volunteering} />
           </div>
 
-          {/* Sidebar */}
-          <CompletionSidebar
-            completion={profile.completion}
-                        targetRole={profile.targetRole ?? undefined}
-            plan={(profile as any).plan}
-            planStatus={(profile as any).planStatus}
-          />
         </div>
       </div>
     </div>

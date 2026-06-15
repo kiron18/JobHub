@@ -2,11 +2,15 @@ export const STAGE_1_PROMPT = (text: string) => `
 You are an expert Career Coach and Data Extraction Engine.
 Your goal is 100% data density — extract EVERY piece of information into the structured JSON format below.
 
+FIDELITY (most important rule): Extract only what is explicitly written in the resume. Never invent, infer, or guess a company name, employer, job title, date, qualification, institution, certification, or metric. If a field is not present in the resume, return null or omit it. In particular, if a role lists no employer, set "company" to null. Do not fill it with a plausible-sounding company name. Copy names, employers, and dates verbatim from the resume.
+
+STRUCTURE: Keep each role intact. Do not split one role's bullets into separate entries. A task, assignment, or sub-project performed inside a job stays as a bullet under that job. Only create a PROJECTS entry when the resume itself presents the item under a distinct projects or portfolio heading, or as a clearly standalone project with its own title. When in doubt, keep it as a bullet under the role it belongs to.
+
 Specific Instructions:
-1. EXPERIENCE: Paid or unpaid work roles only. Do NOT include academic projects here.
-2. PROJECTS: Extract ALL projects — academic, personal, freelance, open source, university capstone. These are first-class items. Use the institution or organisation name as "org". If no org, use "Personal Project" or "University Project".
+1. EXPERIENCE: Paid or unpaid work roles only. Do NOT include academic projects here. For each experience entry set "isCasual": true ONLY when the role is a casual or survival job unrelated to a professional career — retail or sales assistant, kitchen hand, cleaning, food handling, delivery, warehouse temp, hospitality floor or bar work, event patron staff, or similar. Set "isCasual": false for every skilled, technical, managerial, supervisory, research, academic, trade, or professional role, even a restaurant or shift MANAGER, and even when the role is in a different field from the candidate's target. When unsure, set false.
+2. PROJECTS: Extract a project only when the resume presents it as a distinct, separately headed project (academic, personal, freelance, open source, capstone). Do not promote a single bullet from a job into a project. Use the institution or organisation name as "org". If genuinely none is stated, use "Personal Project".
 3. VOLUNTEERING: Community work, student societies, extracurriculars.
-4. CERTIFICATIONS: Professional credentials and short courses only — not degrees.
+4. CERTIFICATIONS: Professional credentials and short courses only, not degrees.
 5. LANGUAGES: All languages and proficiency levels.
 6. COACHING ALERTS:
    - RED: Missing mandatory info (e.g., contact email, degree year).
@@ -33,6 +37,7 @@ Schema:
       "role": "Job Title",
       "startDate": "YYYY-MM",
       "endDate": "YYYY-MM or present",
+      "isCasual": false,
       "bullets": ["Point 1", "Point 2"],
       "coachingTips": ["Add a metric to bullet 1"]
     }
@@ -52,7 +57,7 @@ Schema:
     {
       "institution": "University Name",
       "degree": "Degree Name",
-      "field": "Field of Study",
+      "field": "Field of Study — copy only if a field of study is explicitly named. If none is stated, return null. Never infer a field from the qualification name (for example, do NOT label 'IGCSE & A Levels' as 'General Education').",
       "startDate": "YYYY",
       "endDate": "YYYY or present",
       "coachingTips": "Missing graduation year? Add it."

@@ -1,15 +1,37 @@
 import { z } from 'zod';
 
-// NOTE: PolishPayload in src/lib/applyPolish.ts mirrors this shape.
+// NOTE: PolishPayload in server/src/lib/buildTemplateResume.ts mirrors this shape.
 // Keep both in sync — this Zod schema is the single source of truth.
 
 export const PolishPayloadSchema = z.object({
   summary: z.string().optional(),
+  skills: z.string().optional(),
+  /** JD-derived role title to use as the candidate's header headline. */
+  targetRoleTitle: z.string().optional(),
+  /** true when Claude estimates content still exceeds 2 pages after curation. */
+  pageBudgetWarning: z.boolean().optional(),
+  /** All experience IDs sorted from most to least relevant to this JD. */
+  experienceOrder: z.array(z.string()).optional(),
   experience: z
     .array(
       z.object({
         id: z.string(),
         bullets: z.array(z.string()),
+        // Per-role curation: casual=true marks an odd/survival job to fold or drop.
+        // Optional so older callers/output still validate.
+        casual: z.boolean().optional(),
+        australianLocal: z.boolean().optional(),
+        /** Render decision: full bullets | one-line fold | excluded entirely. */
+        display: z.enum(['full', 'fold', 'omit']).optional(),
+        /** Per-bullet tips for missing metrics. Max 2 per role, 5 total. */
+        tips: z
+          .array(
+            z.object({
+              bulletIndex: z.number().int().nonnegative(),
+              suggestion: z.string(),
+            }),
+          )
+          .optional(),
       }),
     )
     .optional(),

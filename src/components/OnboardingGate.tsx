@@ -33,6 +33,10 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [claiming, setClaiming] = useState(false);
+  // Has the returning-user claim attempt finished (or been ruled out)? Until it has,
+  // a brand-new userId legitimately has no profile row yet (GET /profile returns
+  // null), so we must keep the spinner up — NOT flash the onboarding intake.
+  const [claimSettled, setClaimSettled] = useState(false);
   // Track whether an in-progress report exists. Checked here (during the loading
   // gate spinner) so OnboardingIntake never has to fire its own API call and risk
   // a mid-step state jump.
@@ -92,7 +96,7 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
     }
 
     if (isLoading || claiming) return;
-    if (!user?.email) return;
+    if (!user?.email) { setClaimSettled(true); return; }
     // Only claim when there is definitively no profile for this userId.
     // The server handles zombie detection; the client just needs the trigger.
     if (profile?.hasCompletedOnboarding) return;
@@ -124,18 +128,23 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
         console.warn('[OnboardingGate] claim failed:', err);
         // claim failed — fall through to onboarding
       } finally {
-        if (!cancelled) setClaiming(false);
+        if (!cancelled) { setClaiming(false); setClaimSettled(true); }
       }
     }
     tryClaim();
     return () => { cancelled = true; };
-  // Intentionally NOT including isLoading in deps — it toggles on every invalidate
-  // and would re-trigger the claim. We gate on claimFiredRef instead.
+  // isLoading IS included: the claim must re-evaluate when the profile query
+  // finishes (loading true -> false). The claimFiredRef guard above prevents the
+  // invalidate loop, so watching isLoading is safe and avoids the deadlock where a
+  // null-profile new user strands the spinner (deps never change after load).
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile?.hasCompletedOnboarding, user?.email]);
+  }, [profile?.hasCompletedOnboarding, user?.email, isLoading]);
 
-  // Show spinner while profile is loading OR while we're checking report status
-  if (isLoading || (isAuthenticated && !profile?.hasCompletedOnboarding && reportStatus === 'checking')) {
+  // Show spinner while profile is loading, while the returning-user claim is still
+  // resolving (stops the onboarding intake flashing on a fresh userId whose profile
+  // hasn't been claimed yet), OR while we're checking report status.
+  const claimPending = isAuthenticated && !isError && !profile?.hasCompletedOnboarding && !claimSettled;
+  if (isLoading || claimPending || (isAuthenticated && !profile?.hasCompletedOnboarding && reportStatus === 'checking')) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAF7F2' }}>
         <div className="w-12 h-12 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(45,90,110,0.2)', borderTopColor: '#2D5A6E' }} />
