@@ -42,8 +42,7 @@ export const RESUME_STRUCTURED_PROMPT = (
         ? (profile.experience as any[]).map((e, i) => {
             const dates = [e.startDate, e.isCurrent ? 'Present' : e.endDate].filter(Boolean).join(' to ');
             const header = `[${i + 1}] id: ${e.id} — ${e.role ?? ''}${e.company ? ` at ${e.company}` : ''}${dates ? ` (${dates})` : ''}`;
-            const src = (e.description ?? '').trim();
-            return src ? `${header}\n${src}` : header;
+            return header;
         }).join('\n\n')
         : '(no structured work history)';
 
