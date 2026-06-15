@@ -3,7 +3,7 @@
  * (Achievement Bank) + Translatable Skill Mapping.
  *
  * Returns structured JSON the route serialises into the new AnalysisResult
- * shape: { directMatch, bridgeableGap, hardGap, insights, extractedMetadata }.
+ * shape: { directMatch, hardGap, insights, extractedMetadata }.
  *
  * Design rule: the model is a coach, not a filter. Even a Hard Gap result
  * gives the user a continue-anyway path; the model never *blocks*.
@@ -72,7 +72,6 @@ POSITIONING STATEMENT: not available (candidate has limited work history). Use o
 For every requirement in the JD, decide which bucket it goes into:
 
   DIRECT MATCH    — An achievement explicitly demonstrates this skill.
-  BRIDGEABLE GAP  — No achievement names this skill, BUT the Positioning Statement strongly implies the candidate has the experience. The fix is to draft a new achievement that names the skill in their own words.
   HARD GAP        — A formal credential, licence, clearance, or visa status that cannot be inferred from experience. The candidate either has it or they don't.
 
 Hard Gaps must be drawn from this whitelist (and ONLY from this whitelist) when the candidate hasn't claimed them on their profile:
@@ -103,12 +102,6 @@ Return STRICT JSON only — no preamble, no explanation, no markdown fences. Mat
     "pct": <integer 0-100>,
     "evidence": ["<short statement>", "<short statement>", "<short statement>"]
   },
-  "bridgeableGap": {
-    "pct": <integer 0-100>,
-    "items": [
-      { "skill": "<JD requirement>", "suggestion": "<single-sentence draft achievement the candidate could write to claim this>" }
-    ]
-  },
   "hardGap": {
     "items": ["<hard-gap label from the whitelist>"]
   },
@@ -121,9 +114,8 @@ Return STRICT JSON only — no preamble, no explanation, no markdown fences. Mat
 
 ═══ OUTPUT RULES ═══
 
-- directMatch.pct + bridgeableGap.pct should approximately reflect the share of role requirements they cover; they need NOT sum to 100 because some Hard Gaps subtract from coverage.
+- directMatch.pct reflects the share of role requirements the candidate's achievements explicitly cover.
 - directMatch.evidence: 3 short statements referencing actual achievement content. Quote or paraphrase the candidate's own work. No vague claims.
-- bridgeableGap.items: 1-5 entries. Each suggestion is a single sentence in first person ("Led the rollout of...") that the candidate could turn into a real achievement after light editing. Do not invent metrics — leave numbers blank with a placeholder like "[X]" if needed, or omit the metric entirely.
 - hardGap.items: 0-3 entries from the whitelist labels above. Empty array if none apply.
 - insights: 3 calm, useful observations. Things like "This role weighs influence over technical depth — lead with leadership wins", "Government roles like this reward selection-criteria detail", or "Your APAC industry experience is uncommon for this employer". No fabricated statistics. No exclamation marks. No "you've got this!" tone.
 - Avoid em dashes (—) anywhere in your output. Use periods, commas, or colons instead.

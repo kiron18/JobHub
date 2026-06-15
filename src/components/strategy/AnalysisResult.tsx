@@ -36,10 +36,10 @@ export interface DualSignalResult {
     extractedMetadata: { company: string; role: string };
     fitBands: {
         directMatch:   { pct: number; evidence: string[] };
-        bridgeableGap: { pct: number; items: Array<{ skill: string; suggestion: string }> };
+        bridgeableGap: { pct: number; items: Array<{ skill: string; suggestion: string }> };  // Deprecated: always empty
         hardGap:       { items: string[] };
     };
-    dominantBand: 'directMatch' | 'bridgeableGap' | 'hardGap';
+    dominantBand: 'directMatch' | 'hardGap';  // bridgeableGap removed
     insights: string[];
     scDetected: boolean;
     duplicate?: DuplicateInfo | null;

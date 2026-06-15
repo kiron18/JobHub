@@ -496,16 +496,9 @@ router.post('/dual', async (req: any, res: any) => {
 
         // ── Normalise + safety-clamp ───────────────────────────────────────
         const directPct = Math.max(0, Math.min(100, Math.round(analysis?.directMatch?.pct ?? 0)));
-        const bridgeablePct = Math.max(0, Math.min(100, Math.round(analysis?.bridgeableGap?.pct ?? 0)));
 
         const evidence: string[] = Array.isArray(analysis?.directMatch?.evidence)
             ? analysis.directMatch.evidence.slice(0, 5).filter((s: any) => typeof s === 'string')
-            : [];
-
-        const bridgeableItems = Array.isArray(analysis?.bridgeableGap?.items)
-            ? analysis.bridgeableGap.items
-                  .filter((it: any) => it && typeof it.skill === 'string' && typeof it.suggestion === 'string')
-                  .slice(0, 6)
             : [];
 
         const hardGapItems = Array.isArray(analysis?.hardGap?.items)
@@ -544,21 +537,17 @@ router.post('/dual', async (req: any, res: any) => {
             console.warn('[analyze/dual] enrichment-candidates lookup failed:', err?.message);
         }
 
-        // Determine the dominant band for the result-state UI to pick which card to lead with.
-        // Hard Gap wins iff it has items (rare). Otherwise Direct vs Bridgeable by pct.
-        const dominantBand: 'directMatch' | 'bridgeableGap' | 'hardGap' =
-            hardGapItems.length > 0 && directPct < 60
-                ? 'hardGap'
-                : directPct >= bridgeablePct
-                  ? 'directMatch'
-                  : 'bridgeableGap';
+        // Determine the dominant band for the result-state UI.
+        // Note: bridgeableGap feature removed; only directMatch vs hardGap remain.
+        const dominantBand: 'directMatch' | 'hardGap' =
+            hardGapItems.length > 0 && directPct < 60 ? 'hardGap' : 'directMatch';
 
         return res.json({
             positioningStatement: positioningStatement?.raw ?? null,
             extractedMetadata: { company, role },
             fitBands: {
                 directMatch: { pct: directPct, evidence },
-                bridgeableGap: { pct: bridgeablePct, items: bridgeableItems },
+                bridgeableGap: { pct: 0, items: [] },  // Deprecated: always empty for backward compat
                 hardGap: { items: hardGapItems },
             },
             dominantBand,
