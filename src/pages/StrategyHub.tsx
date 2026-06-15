@@ -680,6 +680,7 @@ function AnalysisHeroCard() {
                         opacity: canSubmit ? 1 : 0.6,
                         boxShadow: canSubmit ? warmT.btnShadow : 'none',
                         transition: 'opacity 200ms, background 200ms',
+                        marginLeft: 'auto',
                     }}
                 >
                     {analysing ? (
