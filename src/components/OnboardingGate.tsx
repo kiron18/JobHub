@@ -156,10 +156,11 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
     );
   }
 
-  // NUCLEAR BYPASS: If profile exists with resume data, force allow through
+  // NUCLEAR BYPASS: If profile has actual data (experience, achievements), allow through
   // This fixes the stuck-onboarding bug where hasCompletedOnboarding is false
-  if (profile?.resumeRawText && profile.resumeRawText.length > 100) {
-    console.log('[OnboardingGate] BYPASS: Profile has resume data - allowing through');
+  const hasRealProfileData = profile?.experience?.length > 0 || profile?.achievements?.length > 0 || profile?.professionalSummary;
+  if (hasRealProfileData) {
+    console.log('[OnboardingGate] BYPASS: Profile has real data - allowing through');
     return <>{children}</>;
   }
 
