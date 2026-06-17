@@ -22,6 +22,7 @@ import { SortControls } from './tracker/SortControls';
 import type { SortBy } from './tracker/SortControls';
 import { SectionIntroBanner } from './processStrip';
 import { warm } from '../lib/theme/warmTokens';
+import { ActivityHeatmap } from './tracker/ActivityHeatmap';
 
 const PRIORITY_ORDER: Record<string, number> = { DREAM: 0, TARGET: 1, BACKUP: 2 };
 
@@ -232,6 +233,7 @@ export const ApplicationTracker: React.FC = () => {
 
             {!isLoading && <FollowUpNudge jobs={jobs} />}
             {!isLoading && <ThankYouNudge jobs={jobs} />}
+            {!isLoading && <ActivityHeatmap />}
 
             {/* Stats row */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }} className="lg:grid-cols-5">
