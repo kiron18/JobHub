@@ -22,6 +22,7 @@ import { JobStream } from '../components/strategy/JobStream';
 import { StaleApplicationsCard } from '../components/strategy/StaleApplicationsCard';
 import { FirstApplicationCelebration } from '../components/FirstApplicationCelebration';
 import type { JobFeedItem } from '../components/jobs/JobCard';
+import { FocusedApplyView } from '../components/jobs/FocusedApplyView';
 import { warm } from '../lib/theme/warmTokens';
 
 /** Detect whether a job description mentions selection criteria. */
@@ -822,6 +823,17 @@ export function StrategyHub() {
         staleTime: 5 * 60 * 1000,
     });
 
+    const { data: feedData } = useQuery({
+        queryKey: ['job-feed', 0],
+        queryFn: async () => {
+            const { data } = await api.get('/job-feed/feed?offset=0');
+            return data;
+        },
+        staleTime: 5 * 60 * 1000,
+    });
+
+    const feedJobs = (feedData?.jobs ?? []) as JobFeedItem[];
+
     return (
         <div style={{ maxWidth: 720, margin: '0 auto' }}>
             {/* Fires once when sent-count crosses 0 -> >=1. Self-managed via localStorage. */}
@@ -831,6 +843,17 @@ export function StrategyHub() {
                 <DimTarget style={{ marginBottom: 40 }}>
                     <AnalysisHeroCard />
                 </DimTarget>
+
+                {/* Focused Apply View - curated jobs feed */}
+                {feedJobs.length > 0 && (
+                    <DimPeer style={{ marginBottom: 32 }}>
+                        <p style={{ margin: '0 0 16px', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: warmT.textMuted }}>
+                            Curated roles for you
+                        </p>
+                        <FocusedApplyView jobs={feedJobs} />
+                    </DimPeer>
+                )}
+
                 {/* CoherenceCard (story health) removed per user request 2026-06-08 */}
                 {SHOW_DASHBOARD_INSIGHTS && (
                     <DimPeer style={{ marginBottom: 32 }}>
