@@ -194,6 +194,7 @@ router.post('/profile', authenticate, async (req, res) => {
 
             if (!existingProfile) {
                 // ── NEW PROFILE — insert everything wholesale ──────────────────
+                // CV scan IS onboarding — mark complete immediately
                 updatedProfile = await tx.candidateProfile.create({
                     data: {
                         userId,
@@ -204,6 +205,7 @@ router.post('/profile', authenticate, async (req, res) => {
                         location: profile.location,
                         phone: profile.phone,
                         linkedin: profile.linkedin,
+                        hasCompletedOnboarding: true,
                         coachingAlerts: coachingAlerts || undefined,
                         experience: {
                             create: experience?.map((exp: any) => ({
@@ -261,6 +263,8 @@ router.post('/profile', authenticate, async (req, res) => {
                 if (profile.linkedin)             scalarUpdate.linkedin            = profile.linkedin;
                 if (skills)                       scalarUpdate.skills              = typeof skills === 'string' ? skills : JSON.stringify(skills);
                 if (coachingAlerts)               scalarUpdate.coachingAlerts      = coachingAlerts;
+                // CV scan IS onboarding — ensure flag is set for existing profiles too
+                if (!existingProfile.hasCompletedOnboarding) scalarUpdate.hasCompletedOnboarding = true;
 
                 await tx.candidateProfile.update({ where: { userId }, data: scalarUpdate });
 

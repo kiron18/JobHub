@@ -144,6 +144,20 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.hasCompletedOnboarding, user?.email, isLoading]);
 
+  // NUCLEAR BYPASS: If profile has actual data from CV scan, allow through immediately.
+  // This must come BEFORE the spinner check to prevent CV-first users from being stuck.
+  // CV scan always sets resumeRawText; extraction may also populate experience/achievements.
+  // Also bypass if there was an API error but we have cached profile data — stale cache
+  // with real data is better than stranding the user on a broken onboarding screen.
+  const hasRealProfileData = profile?.experience?.length > 0
+    || profile?.achievements?.length > 0
+    || profile?.professionalSummary
+    || profile?.resumeRawText; // Fallback: CV was uploaded even if extraction incomplete
+  if (hasRealProfileData) {
+    console.log('[OnboardingGate] BYPASS: Profile has real data - allowing through');
+    return <>{children}</>;
+  }
+
   // Show spinner while profile is loading, while the returning-user claim is still
   // resolving (stops the onboarding intake flashing on a fresh userId whose profile
   // hasn't been claimed yet), OR while we're checking report status.
@@ -154,14 +168,6 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
         <div className="w-12 h-12 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(45,90,110,0.2)', borderTopColor: '#2D5A6E' }} />
       </div>
     );
-  }
-
-  // NUCLEAR BYPASS: If profile has actual data (experience, achievements), allow through
-  // This fixes the stuck-onboarding bug where hasCompletedOnboarding is false
-  const hasRealProfileData = profile?.experience?.length > 0 || profile?.achievements?.length > 0 || profile?.professionalSummary;
-  if (hasRealProfileData) {
-    console.log('[OnboardingGate] BYPASS: Profile has real data - allowing through');
-    return <>{children}</>;
   }
 
   // API error or no profile row yet — show onboarding.

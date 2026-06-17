@@ -201,6 +201,7 @@ model JobApplication {
   matchedIdentityCard String?
   overallGrade        String?
   followUpSentAt      DateTime?
+  followUpDismissedAt DateTime?
   companyIntel        Json?
   documents           Document[]
   candidateProfile    CandidateProfile  @relation(fields: [candidateProfileId], references: [id])

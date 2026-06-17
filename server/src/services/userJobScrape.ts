@@ -4,11 +4,17 @@ import type { MergedJob } from './ingestion/mergeSources';
 import type { SourceReport } from './ingestion/types';
 
 function toRawJob(m: MergedJob): RawJob {
+  const source = m.sources[0];
   return {
-    title: m.title, company: m.company, location: m.location ?? '', salary: m.salary,
-    description: m.description, sourceUrl: m.sources[0]?.sourceUrl ?? '',
-    sourcePlatform: m.sources[0]?.source ?? 'seek', postedAt: m.postedAt,
-  });
+    title: m.title,
+    company: m.company,
+    location: m.location ?? '',
+    salary: m.salary,
+    description: m.description,
+    sourceUrl: source?.sourceUrl ?? '',
+    sourcePlatform: source?.source ?? 'seek',
+    postedAt: m.postedAt,
+  };
 }
 
 export interface ScrapeResult {

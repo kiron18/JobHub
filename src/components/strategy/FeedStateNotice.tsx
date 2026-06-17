@@ -147,23 +147,22 @@ export const FeedStateNotice: React.FC<FeedStateNoticeProps> = ({
     );
   }
 
-  // Building: initial scrape in progress
-  if (state === 'building') {
+  // Building: initial scrape in progress — MINIMAL text-only, box sized to content
+  if (state === ‘building’) {
     return (
-      <div style={{ ...gc, padding: 40, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, textAlign: 'center' }}>
-        <div style={{ width: 40, height: 40, border: `2px solid ${warm.colors.accentPetrol}30`, borderTopColor: warm.colors.accentPetrol, borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-        <div>
-          <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: warm.colors.textPrimary }}>
-            Searching live listings for you…
-          </p>
-          <p style={{ margin: '4px 0 0', fontSize: 14, color: warm.colors.textSecondary }}>
-            Finding <span style={{ color: warm.colors.textPrimary }}>{targetRole}</span> roles in{' '}
-            <span style={{ color: warm.colors.textPrimary }}>{targetCity}</span>.
-          </p>
-          <p style={{ margin: '8px 0 0', fontSize: 12, color: warm.colors.textMuted }}>
-            This takes 1–2 minutes on first load. Grab a coffee, we&apos;ll check back automatically.
-          </p>
-        </div>
+      <div style={{ display: ‘inline-flex’, alignItems: ‘center’, gap: 8 }}>
+        <span style={{ fontSize: 13, color: warm.colors.textSecondary }}>
+          Your jobs are loading
+        </span>
+        <span style={{ fontSize: 13, color: warm.colors.textSecondary, animation: ‘pulse 1.5s ease-in-out infinite’ }}>
+          …
+        </span>
+        <style>{`
+          @keyframes pulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+          }
+        `}</style>
       </div>
     );
   }

@@ -12,6 +12,7 @@ import {
     ShieldCheck,
     Menu,
     X,
+    EyeOff,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
@@ -124,9 +125,10 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
         { to: '/tracker', icon: Briefcase, label: 'Applications' },
         { to: '/documents', icon: Library, label: 'Documents' },
         { to: '/workspace', icon: FileText, label: 'Profile' },
-            { to: '/linkedin', icon: Linkedin, label: 'LinkedIn' },
+        { to: '/linkedin', icon: Linkedin, label: 'LinkedIn' },
         { to: '/email-templates', icon: Mail, label: 'Email Templates' },
         { to: '/visa-sponsors', icon: ShieldCheck, label: 'Visa Sponsors' },
+        { to: '/skipped', icon: EyeOff, label: 'Skipped Jobs' },
     ];
 
     const sidebarContent = (showLabels: boolean) => (

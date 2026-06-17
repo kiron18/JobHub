@@ -1,6 +1,7 @@
 import { prisma } from '../../db';
 import type { MergedJob } from './mergeSources';
 import type { SourceReport, IngestionSource } from './types';
+import { locationKey } from './locationKey';
 
 function today(): string { return new Date().toISOString().slice(0, 10); }
 
@@ -16,6 +17,9 @@ export async function persistMergedJobs(args: {
   let newJobs = 0, dupJobs = 0;
   const perSourceNew: Record<string, number> = {};
 
+  // Use the search location key for cache consistency, not the job's extracted location
+  const searchLocationKey = locationKey(args.location);
+
   for (const m of args.merged) {
     const existing = await prisma.job.findUnique({ where: { dedupKey: m.dedupKey } });
     if (existing) dupJobs++; else newJobs++;
@@ -23,11 +27,11 @@ export async function persistMergedJobs(args: {
       where: { dedupKey: m.dedupKey },
       create: {
         dedupKey: m.dedupKey, title: m.title, company: m.company, normalizedCompany: m.normalizedCompany,
-        location: m.location, locationKey: m.locationKey, salary: m.salary, description: m.description,
+        location: m.location, locationKey: searchLocationKey, salary: m.salary, description: m.description,
         descriptionHydrated: m.descriptionHydrated, postedAt: m.postedAt, relevanceScore: m.relevanceScore,
         lowRelevance: m.lowRelevance, searchRole: m.searchRole, feedDate,
       },
-      update: { relevanceScore: m.relevanceScore, lowRelevance: m.lowRelevance, feedDate, locationKey: m.locationKey },
+      update: { relevanceScore: m.relevanceScore, lowRelevance: m.lowRelevance, feedDate, locationKey: searchLocationKey },
     });
     for (const s of m.sources) {
       if (!existing) perSourceNew[s.source] = (perSourceNew[s.source] ?? 0) + 1;

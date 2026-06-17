@@ -431,9 +431,12 @@ function StepRole({ answers, onChange, onNext, onBack }: {
     <div>
       <ProfileProgress step={1} answers={answers} />
       <h2 style={{ fontSize: 24, fontWeight: 600, color: warmT.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
-        What role are you targeting?
+        Complete your profile
       </h2>
-      <p style={{ color: warmT.textFaint, fontSize: 13, marginBottom: 24 }}>Be specific, this anchors your entire diagnosis to real Australian hiring conditions.</p>
+      <p style={{ color: warmT.textFaint, fontSize: 13, marginBottom: 24 }}>
+        This should not normally appear. If you are seeing this, your CV scan data was cached before the fix.
+        Refresh with Ctrl+Shift+R or clear site data.
+      </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <Field label="Role" hint="Vague targets produce vague diagnoses. The more specific you are, the more precisely we can flag what's off.">

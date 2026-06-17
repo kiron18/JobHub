@@ -56,6 +56,9 @@ const StepperWorkspace = React.lazy(() =>
 const VisaSponsorsPage = React.lazy(() =>
   import('./pages/VisaSponsorsPage').then(m => ({ default: m.VisaSponsorsPage }))
 );
+const SkippedJobsPage = React.lazy(() =>
+  import('./pages/SkippedJobsPage').then(m => ({ default: m.SkippedJobsPage }))
+);
 const MockLandingPage = React.lazy(() =>
   import('./pages/MockLandingPage').then(m => ({ default: m.MockLandingPage }))
 );
@@ -437,6 +440,7 @@ function ReportOrDashboard() {
                 <Route path="/documents" element={<DocumentLibrary />} />
                 <Route path="/email-templates" element={<EmailTemplatesLibrary />} />
                 <Route path="/linkedin" element={<LinkedInPage />} />
+                <Route path="/skipped" element={<SkippedJobsPage />} />
                 {/* Job feed removed — app runs on pasted jobs. Stray links to /jobs land on the dashboard. */}
                 <Route path="/jobs" element={<Navigate to="/" replace />} />
                 <Route path="/mindset" element={<MindsetPage />} />

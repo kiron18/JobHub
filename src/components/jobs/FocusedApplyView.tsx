@@ -17,19 +17,40 @@ function recency(iso: string | null): string | null {
 function formatDescription(text: string): React.ReactNode {
   if (!text) return null;
 
+  // Clean up common noise from SEEK/other sites
+  let cleaned = text
+    .replace(/Skip to content/gi, '')
+    .replace(/SEEK Open app/gi, '')
+    .replace(/Sign in/gi, '')
+    .replace(/Job search/gi, '')
+    .replace(/People search/gi, '')
+    .replace(/Career advice/gi, '')
+    .replace(/Companies/gi, '')
+    .replace(/Recruiters/gi, '')
+    .replace(/Community/gi, '')
+    .replace(/Australia Hong Kong Indonesia Malaysia New Zealand Philippines Singapore Thailand/g, '')
+    .replace(/Employer site/gi, '')
+    .replace(/Open app/gi, '')
+    .replace(/View all jobs/gi, '')
+    .replace(/Posted \d+d? ago/gi, '')
+    .replace(/Quick apply/gi, '')
+    .replace(/Save/gi, '')
+    .replace(/About the company/gi, '');
+
   // Split into lines and filter empty
-  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  const lines = cleaned.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
   const sections: React.ReactNode[] = [];
   let currentList: string[] = [];
   let currentSection: string | null = null;
+  let lastWasHeader = false;
 
   const flushList = () => {
     if (currentList.length > 0) {
       sections.push(
-        <ul key={`list-${sections.length}`} style={{ margin: '8px 0 16px', paddingLeft: 20, color: warm.colors.textSecondary }}>
+        <ul key={`list-${sections.length}`} style={{ margin: '4px 0 16px', paddingLeft: 20, color: warm.colors.textSecondary }}>
           {currentList.map((item, i) => (
-            <li key={i} style={{ margin: '4px 0', lineHeight: 1.5 }}>{item.replace(/^[\s•\-\*]+/, '')}</li>
+            <li key={i} style={{ margin: '4px 0', lineHeight: 1.55 }}>{item.replace(/^[\s•\-\*\d]+[.)]?\s*/, '')}</li>
           ))}
         </ul>
       );
@@ -37,46 +58,86 @@ function formatDescription(text: string): React.ReactNode {
     }
   };
 
+  // Common section headers to detect
+  const headerPatterns = [
+    /^about (the role|us|company|position)/i,
+    /^the role$/i,
+    /^what you'll do/i,
+    /^responsibilities/i,
+    /^what we need/i,
+    /^requirements/i,
+    /^(essential|desired|key) (skills|experience|criteria)/i,
+    /^(your )?(experience|skills|background)/i,
+    /^benefits/i,
+    /^perks/i,
+    /^what we offer/i,
+    /^the company$/i,
+    /^who we are/i,
+    /^(apply now|how to apply)/i,
+    /^contact( us)?$/i,
+  ];
+
   lines.forEach((line, idx) => {
-    // Detect section headers (short lines, often ending with colon, or ALL CAPS)
-    const isHeader = (
-      (line.length < 60 && /[:：]$/.test(line)) ||
-      (line.length < 50 && line === line.toUpperCase() && /[A-Z]/.test(line)) ||
-      /^(about|role|position|responsibilities|requirements|what you'll do|what we need|benefits|perks|skills|experience|qualifications)/i.test(line)
-    );
+    const lower = line.toLowerCase();
+
+    // Detect section headers
+    const isHeader = headerPatterns.some(p => p.test(line)) ||
+      (line.length < 50 && /^[A-Z][a-z]+( [A-Z][a-z]+){0,4}$/.test(line) && !line.includes('.'));
 
     // Detect bullet points
-    const isBullet = /^[\s•\-\*\d]+[.)]?\s/.test(line) || (line.startsWith('- ') || line.startsWith('• '));
+    const isBullet = /^[\s•\-\*•·]+\s/.test(line) || /^\d+[.)]\s/.test(line);
+
+    // Detect if line is just noise (repeated site nav)
+    const isNoise = line.length < 3 ||
+      /^(seek|indeed|linkedin|jora)$/i.test(line) ||
+      /^(home|jobs|search|careers?|apply)$/i.test(line);
+
+    if (isNoise) return;
 
     if (isHeader) {
       flushList();
       currentSection = line.replace(/[:：]$/, '');
       sections.push(
         <h4 key={`h-${idx}`} style={{
-          margin: '16px 0 8px',
-          fontSize: 12,
+          margin: lastWasHeader ? '8px 0 6px' : '20px 0 8px',
+          fontSize: 11,
           fontWeight: 800,
-          letterSpacing: '0.08em',
+          letterSpacing: '0.12em',
           textTransform: 'uppercase',
-          color: warm.colors.textPrimary,
+          color: warm.colors.accentPetrol,
         }}>
           {currentSection}
         </h4>
       );
+      lastWasHeader = true;
     } else if (isBullet) {
       currentList.push(line);
+      lastWasHeader = false;
     } else {
       flushList();
-      sections.push(
-        <p key={`p-${idx}`} style={{ margin: '8px 0', lineHeight: 1.6, color: warm.colors.textSecondary }}>
-          {line}
-        </p>
-      );
+      // Merge short lines that might be sentence fragments
+      const prev = sections[sections.length - 1];
+      if (prev && typeof prev === 'object' && 'key' in prev && prev.key?.toString().startsWith('p-') && line.length < 80 && !line.endsWith('.')) {
+        // Replace last paragraph with extended one
+        sections.pop();
+        sections.push(
+          <p key={`p-${idx}`} style={{ margin: '8px 0', lineHeight: 1.65, color: warm.colors.textSecondary }}>
+            {(prev as any).props.children} {line}
+          </p>
+        );
+      } else {
+        sections.push(
+          <p key={`p-${idx}`} style={{ margin: '8px 0', lineHeight: 1.65, color: warm.colors.textSecondary }}>
+            {line}
+          </p>
+        );
+      }
+      lastWasHeader = false;
     }
   });
 
   flushList();
-  return <>{sections}</>;
+  return <div style={{ paddingRight: 4 }}>{sections}</div>;
 }
 
 export function FocusedApplyView({ jobs: initial }: { jobs: JobFeedItem[] }) {
@@ -177,7 +238,7 @@ export function FocusedApplyView({ jobs: initial }: { jobs: JobFeedItem[] }) {
                   Loading full description...
                 </div>
               ) : (
-                <div style={{ fontSize: 13, maxHeight: 400, overflowY: 'auto', paddingRight: 8 }}>
+                <div style={{ fontSize: 13, maxHeight: '60vh', overflowY: 'auto', paddingRight: 8 }}>
                   {formatDescription(job.description)}
                 </div>
               )}

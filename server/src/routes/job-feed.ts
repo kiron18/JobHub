@@ -679,8 +679,9 @@ router.post('/:id/start-apply', async (req: any, res: any) => {
 // Job board hostname allowlist for fetch-description SSRF protection
 const JOB_BOARD_HOSTS = [
   /^(www\.)?seek\.com\.au$/,
+  /^au\.seek\.com$/,  // SEEK Australia uses au.seek.com
   /^(www\.)?linkedin\.com$/,
-  /^(www\.)?indeed\.com\.au$/,
+  /^(www\.)?indeed\.com(\.au)?$/,
   /^(www\.)?jora\.com$/,
   /^(www\.)?apsjobs\.gov\.au$/,
   /^[a-z0-9-]+\.lever\.co$/,
@@ -695,7 +696,6 @@ router.post('/:id/fetch-description', analyzeRateLimit, async (req: any, res: an
   const { id } = req.params;
 
   try {
-    if (!(await requirePremium(userId, res))) return;
     const item = await prisma.jobFeedItem.findUnique({ where: { id } });
     if (!item || item.userId !== userId) return res.status(404).json({ error: 'Not found' });
 
@@ -720,20 +720,27 @@ router.post('/:id/fetch-description', analyzeRateLimit, async (req: any, res: an
 
     let html = response.data as string;
 
-    // Remove script/style blocks, then strip all tags
+    // Convert block elements to newlines BEFORE stripping tags (preserves structure)
     html = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ');
     html = html.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ');
+    // Replace block-level tags with newlines to preserve paragraph breaks
+    html = html.replace(/<(\/p|br\s*\/?|div|h[1-6]|li)[^>]*>/gi, '\n');
+    // Strip remaining tags
     html = html.replace(/<[^>]+>/g, ' ');
+    // Decode entities and normalize whitespace
     html = html
       .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
       .replace(/&nbsp;/g, ' ').replace(/&#x27;/g, "'").replace(/&#39;/g, "'")
-      .replace(/\s{2,}/g, ' ').trim();
+      .replace(/\n{3,}/g, '\n\n') // Max 2 consecutive newlines
+      .replace(/[ \t]+/g, ' ') // Collapse horizontal whitespace
+      .trim();
 
     if (html.length < 200) {
       return res.status(422).json({ error: 'Could not extract description from this page. Please open the listing directly.' });
     }
 
-    const fullDescription = html.slice(0, 8000);
+    // No truncation — users need the full job description for tailoring
+    const fullDescription = html;
 
     await prisma.jobFeedItem.update({
       where: { id },
