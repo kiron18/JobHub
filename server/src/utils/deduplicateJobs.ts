@@ -1,6 +1,6 @@
 import type { RawJob } from '../services/jobFeed';
 
-function normalise(s: string): string {
+export function normalise(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
 }
 
@@ -19,7 +19,7 @@ function levenshtein(a: string, b: string): number {
   return dp[m][n];
 }
 
-function isSimilar(a: string, b: string): boolean {
+export function isSimilar(a: string, b: string): boolean {
   const na = normalise(a), nb = normalise(b);
   if (na === nb) return true;
   if (na.includes(nb) || nb.includes(na)) return true;
