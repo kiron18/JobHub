@@ -13,7 +13,7 @@ import {
 } from '../services/jobFeed';
 import { scoreJobForFeed } from '../services/jobAnalysis';
 import { reconcileApplication } from '../lib/applicationReconcile';
-import { scrapeJobsForTitles } from '../services/userJobScrape';
+import { scrapeJobsForTitles, type ScrapeResult } from '../services/userJobScrape';
 import { runIngestionForTitle } from '../services/ingestion/runIngestion';
 
 const router = Router();
@@ -84,7 +84,7 @@ async function buildDailyFeedMultiSource(userId: string): Promise<void> {
   console.log(`[job-feed] Building feed for ${userId} with roles:`, rolesArray);
 
   // Run ingestion for all roles (parallel) with cache enabled
-  const allJobs = await scrapeJobsForTitles(rolesArray, effectiveCity);
+  const { jobs: allJobs, reports } = await scrapeJobsForTitles(rolesArray, effectiveCity);
 
   console.log(`[job-feed] Found ${allJobs.length} jobs from ingestion`);
 
@@ -120,6 +120,7 @@ async function buildDailyFeedMultiSource(userId: string): Promise<void> {
   });
 
   console.log(`[job-feed] Inserted ${scoredJobs.length} jobs for ${userId}`);
+  console.log(`[job-feed] Reports by source:`, reports.map(r => `${r.source}=${r.rawCount}${r.source === 'cache' ? '(cached)' : `(${r.latencyMs}ms)`}`).join(', '));
 }
 
 // Quick scoring helper (moved from jobFeed.ts)
