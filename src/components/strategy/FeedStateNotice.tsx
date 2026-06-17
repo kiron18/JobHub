@@ -147,15 +147,15 @@ export const FeedStateNotice: React.FC<FeedStateNoticeProps> = ({
     );
   }
 
-  // Building: initial scrape in progress — MINIMAL text-only, box sized to content
-  if (state === ‘building’) {
+  // Building: initial scrape in progress - MINIMAL text-only, box sized to content
+  if (state === 'building') {
     return (
-      <div style={{ display: ‘inline-flex’, alignItems: ‘center’, gap: 8 }}>
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
         <span style={{ fontSize: 13, color: warm.colors.textSecondary }}>
           Your jobs are loading
         </span>
-        <span style={{ fontSize: 13, color: warm.colors.textSecondary, animation: ‘pulse 1.5s ease-in-out infinite’ }}>
-          …
+        <span style={{ fontSize: 13, color: warm.colors.textSecondary, animation: 'pulse 1.5s ease-in-out infinite' }}>
+          ...
         </span>
         <style>{`
           @keyframes pulse {
