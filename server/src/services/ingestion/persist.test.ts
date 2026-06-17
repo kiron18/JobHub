@@ -25,7 +25,7 @@ describe('persistMergedJobs', () => {
   it('upserts each merged job and writes a run record', async () => {
     await persistMergedJobs({
       merged: [{
-        dedupKey: 'k', title: 'T', company: 'C', normalizedCompany: 'c', location: '', salary: null,
+        dedupKey: 'k', title: 'T', company: 'C', normalizedCompany: 'c', location: '', locationKey: null, salary: null,
         description: 'd', descriptionHydrated: true, postedAt: null, relevanceScore: 1, lowRelevance: false,
         searchRole: 'T', sources: [{ source: 'adzuna' as const, sourceUrl: 'u', sourceJobId: null }],
       }],

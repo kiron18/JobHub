@@ -17,6 +17,7 @@ export interface MergedJob {
   company: string;
   normalizedCompany: string;
   location: string;
+  locationKey: string | null;
   salary: string | null;
   description: string;
   descriptionHydrated: boolean;
@@ -67,6 +68,7 @@ export function mergeSources(
         company: job.company,
         normalizedCompany: normalise(job.company),
         location: job.location,
+        locationKey: locationKey(job.location),
         salary: job.salary,
         description: job.description,
         descriptionHydrated: source !== 'seek',
