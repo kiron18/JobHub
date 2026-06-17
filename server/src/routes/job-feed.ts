@@ -6,7 +6,6 @@ import { analyzeRateLimit } from '../middleware/analyzeRateLimit';
 import { checkAccess, hasActiveAccess, isPaidOrExempt } from '../middleware/accessControl';
 import { DAILY_APPLICATION_CAP, countTodaysApplications } from '../services/applicationCap';
 import {
-  buildDailyFeed,
   generateBullets,
   findAddressee,
   todayAEST,
@@ -14,6 +13,8 @@ import {
 } from '../services/jobFeed';
 import { scoreJobForFeed } from '../services/jobAnalysis';
 import { reconcileApplication } from '../lib/applicationReconcile';
+import { scrapeJobsForTitles } from '../services/userJobScrape';
+import { runIngestionForTitle } from '../services/ingestion/runIngestion';
 
 const router = Router();
 
@@ -63,6 +64,86 @@ function kickoffBulletGeneration(items: BulletGenItem[]): void {
     .finally(() => toGenerate.forEach(i => bulletGenInFlight.delete(i.id)));
 }
 
+// NEW: Multi-source feed build using ingestion pipeline
+async function buildDailyFeedMultiSource(userId: string): Promise<void> {
+  const profile = await prisma.candidateProfile.findUnique({
+    where: { userId },
+    select: { targetRole: true, targetRoles: true, targetCity: true, location: true, skills: true },
+  });
+
+  const effectiveCity = profile?.targetCity || profile?.location;
+  if (!profile?.targetRole || !effectiveCity) {
+    throw new Error('Profile incomplete — set a target role and city first');
+  }
+
+  // Use targetRoles if available (3 roles from CV scan), fallback to single targetRole
+  const rolesArray: string[] = Array.isArray(profile.targetRoles) && profile.targetRoles.length > 0
+    ? (profile.targetRoles as string[])
+    : [profile.targetRole];
+
+  console.log(`[job-feed] Building feed for ${userId} with roles:`, rolesArray);
+
+  // Run ingestion for all roles (parallel) with cache enabled
+  const allJobs = await scrapeJobsForTitles(rolesArray, effectiveCity);
+
+  console.log(`[job-feed] Found ${allJobs.length} jobs from ingestion`);
+
+  if (allJobs.length === 0) return;
+
+  const today = todayAEST();
+
+  // Clear existing feed for today
+  await prisma.jobFeedItem.deleteMany({ where: { userId, feedDate: today } });
+
+  // Score and insert jobs
+  const skills = profile.skills;
+  const scoredJobs = allJobs.map(j => ({
+    ...j,
+    matchScore: quickScore(skills, j),
+  }));
+
+  await prisma.jobFeedItem.createMany({
+    data: scoredJobs.map(j => ({
+      userId,
+      feedDate: today,
+      title: j.title,
+      company: j.company,
+      location: j.location,
+      salary: j.salary,
+      description: j.description,
+      sourceUrl: j.sourceUrl,
+      sourcePlatform: j.sourcePlatform,
+      postedAt: j.postedAt,
+      matchScore: j.matchScore,
+      bullets: null,
+    })),
+  });
+
+  console.log(`[job-feed] Inserted ${scoredJobs.length} jobs for ${userId}`);
+}
+
+// Quick scoring helper (moved from jobFeed.ts)
+function quickScore(skillsJson: any, job: RawJob): number {
+  if (!skillsJson) return 50;
+  try {
+    const parsed = typeof skillsJson === 'string' ? JSON.parse(skillsJson) : skillsJson;
+    const allSkills: string[] = [
+      ...(parsed.technical || []),
+      ...(parsed.industryKnowledge || []),
+      ...(parsed.tools || []),
+      ...(parsed.soft || []),
+    ].map((s: string) => String(s).toLowerCase()).filter(s => s.length > 2);
+
+    if (allSkills.length === 0) return 50;
+
+    const haystack = `${job.title} ${job.description}`.toLowerCase();
+    const matches = allSkills.filter(s => haystack.includes(s));
+    return Math.min(99, Math.round((matches.length / allSkills.length) * 100));
+  } catch {
+    return 50;
+  }
+}
+
 // All routes require auth
 router.use(authenticate);
 
@@ -103,7 +184,7 @@ router.post('/refresh', async (req: any, res: any) => {
 
     if (!buildingNow.has(userId)) {
       buildingNow.add(userId);
-      buildDailyFeed(userId).finally(() => buildingNow.delete(userId));
+      buildDailyFeedMultiSource(userId).finally(() => buildingNow.delete(userId));
     }
 
     return res.json({ ok: true, building: true });
@@ -145,7 +226,7 @@ router.get('/feed', async (req: any, res: any) => {
       }
       if (!buildingNow.has(userId)) {
         buildingNow.add(userId);
-        buildDailyFeed(userId)
+        buildDailyFeedMultiSource(userId)
           .catch((err: any) => {
             console.error(`[job-feed] Background build failed for ${userId}:`, err.message);
           })
