@@ -602,6 +602,7 @@ model Job {
   company             String
   normalizedCompany   String
   location            String?
+  locationKey         String?
   salary              String?
   workMode            String?
   description         String
@@ -617,6 +618,7 @@ model Job {
   @@index([normalizedCompany])
   @@index([feedDate])
   @@index([lowRelevance])
+  @@index([searchRole, locationKey, feedDate])
 }
 
 model JobSource {
