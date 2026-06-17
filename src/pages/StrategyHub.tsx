@@ -86,29 +86,6 @@ function HubHeader({ profile, jobs }: { profile?: ProfileLite; jobs: JobLite[] }
                 </div>
                 <GoalChip jobs={jobs} />
             </div>
-            <h1
-                style={{
-                    margin: '0 0 10px',
-                    fontSize: 34,
-                    fontWeight: 700,
-                    letterSpacing: '-0.02em',
-                    color: warmT.text,
-                    lineHeight: 1.15,
-                }}
-            >
-                Land Your Next Australian Role Faster
-            </h1>
-            <p
-                style={{
-                    margin: 0,
-                    fontSize: 15,
-                    fontWeight: 500,
-                    color: warmT.accentSuccess,
-                    letterSpacing: '-0.01em',
-                }}
-            >
-                Real roles we found for you, ready to apply to in minutes. Pick one and we will tailor your resume and cover letter.
-            </p>
         </header>
     );
 }
@@ -870,10 +847,7 @@ export function StrategyHub() {
                 {/* JOBS FIRST: Show curated jobs above the paste section when available */}
                 {showJobsFirst && feedReadiness !== 'error' && (
                     <DimTarget style={{ marginBottom: 40 }}>
-                        <p style={{ margin: '0 0 16px', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: warmT.textMuted }}>
-                            Curated roles for you
-                        </p>
-                        <FocusedApplyView jobs={feedJobs} />
+                        <FocusedApplyView jobs={feedJobs.slice(0, 6)} />
                     </DimTarget>
                 )}
 

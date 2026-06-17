@@ -64,7 +64,8 @@ function kickoffBulletGeneration(items: BulletGenItem[]): void {
     .finally(() => toGenerate.forEach(i => bulletGenInFlight.delete(i.id)));
 }
 
-// NEW: Multi-source feed build using ingestion pipeline
+// NEW: Multi-source feed build using ingestion pipeline - FAST FIRST approach
+// Scrapes primary role immediately, inserts jobs, then scrapes remaining roles in background
 async function buildDailyFeedMultiSource(userId: string): Promise<void> {
   const profile = await prisma.candidateProfile.findUnique({
     where: { userId },
@@ -81,46 +82,89 @@ async function buildDailyFeedMultiSource(userId: string): Promise<void> {
     ? (profile.targetRoles as string[])
     : [profile.targetRole];
 
+  const today = todayAEST();
   console.log(`[job-feed] Building feed for ${userId} with roles:`, rolesArray);
 
-  // Run ingestion for all roles (parallel) with cache enabled
-  const { jobs: allJobs, reports } = await scrapeJobsForTitles(rolesArray, effectiveCity);
+  // PHASE 1: Fast first - scrape primary role only for immediate display
+  const primaryRole = rolesArray[0];
+  const remainingRoles = rolesArray.slice(1);
 
-  console.log(`[job-feed] Found ${allJobs.length} jobs from ingestion`);
+  console.log(`[job-feed] PHASE 1: Fast scrape for primary role: "${primaryRole}"`);
+  const startFast = Date.now();
+  const { jobs: fastJobs, reports: fastReports } = await scrapeJobsForTitles([primaryRole], effectiveCity);
+  console.log(`[job-feed] PHASE 1 complete: ${fastJobs.length} jobs in ${Date.now() - startFast}ms`);
 
-  if (allJobs.length === 0) return;
+  // Insert fast jobs immediately so user sees them
+  if (fastJobs.length > 0) {
+    const skills = profile.skills;
+    const scoredFastJobs = fastJobs.map(j => ({
+      ...j,
+      matchScore: quickScore(skills, j),
+    }));
 
-  const today = todayAEST();
+    await prisma.jobFeedItem.createMany({
+      data: scoredFastJobs.map(j => ({
+        userId,
+        feedDate: today,
+        title: j.title,
+        company: j.company,
+        location: j.location,
+        salary: j.salary,
+        description: j.description,
+        sourceUrl: j.sourceUrl,
+        sourcePlatform: j.sourcePlatform,
+        postedAt: j.postedAt,
+        matchScore: j.matchScore,
+        bullets: null,
+      })),
+    });
+    console.log(`[job-feed] Inserted ${scoredFastJobs.length} fast jobs for immediate display`);
+  }
 
-  // Clear existing feed for today
-  await prisma.jobFeedItem.deleteMany({ where: { userId, feedDate: today } });
+  // PHASE 2: Background scrape for remaining roles
+  if (remainingRoles.length > 0) {
+    console.log(`[job-feed] PHASE 2: Background scrape for remaining roles:`, remainingRoles);
 
-  // Score and insert jobs
-  const skills = profile.skills;
-  const scoredJobs = allJobs.map(j => ({
-    ...j,
-    matchScore: quickScore(skills, j),
-  }));
+    // Fire and forget - don't await, let it complete in background
+    scrapeJobsForTitles(remainingRoles, effectiveCity)
+      .then(async ({ jobs: bgJobs, reports: bgReports }) => {
+        if (bgJobs.length === 0) {
+          console.log(`[job-feed] PHASE 2: No additional jobs found`);
+          return;
+        }
 
-  await prisma.jobFeedItem.createMany({
-    data: scoredJobs.map(j => ({
-      userId,
-      feedDate: today,
-      title: j.title,
-      company: j.company,
-      location: j.location,
-      salary: j.salary,
-      description: j.description,
-      sourceUrl: j.sourceUrl,
-      sourcePlatform: j.sourcePlatform,
-      postedAt: j.postedAt,
-      matchScore: j.matchScore,
-      bullets: null,
-    })),
-  });
+        const skills = profile.skills;
+        const scoredBgJobs = bgJobs.map(j => ({
+          ...j,
+          matchScore: quickScore(skills, j),
+        }));
 
-  console.log(`[job-feed] Inserted ${scoredJobs.length} jobs for ${userId}`);
-  console.log(`[job-feed] Reports by source:`, reports.map(r => `${r.source}=${r.rawCount}${r.source === 'cache' ? '(cached)' : `(${r.latencyMs}ms)`}`).join(', '));
+        await prisma.jobFeedItem.createMany({
+          data: scoredBgJobs.map(j => ({
+            userId,
+            feedDate: today,
+            title: j.title,
+            company: j.company,
+            location: j.location,
+            salary: j.salary,
+            description: j.description,
+            sourceUrl: j.sourceUrl,
+            sourcePlatform: j.sourcePlatform,
+            postedAt: j.postedAt,
+            matchScore: j.matchScore,
+            bullets: null,
+          })),
+        });
+
+        console.log(`[job-feed] PHASE 2 complete: Inserted ${scoredBgJobs.length} additional jobs`);
+        console.log(`[job-feed] Reports:`, [...fastReports, ...bgReports].map(r =>
+          `${r.source}=${r.rawCount}${r.source === 'cache' ? '(cached)' : `(${r.latencyMs}ms)`}`
+        ).join(', '));
+      })
+      .catch((err: any) => {
+        console.error(`[job-feed] PHASE 2 background scrape failed:`, err.message);
+      });
+  }
 }
 
 // Quick scoring helper (moved from jobFeed.ts)
@@ -584,6 +628,26 @@ router.post('/:id/start-apply', async (req: any, res: any) => {
 
     const item = await prisma.jobFeedItem.findUnique({ where: { id } });
     if (!item || item.userId !== userId) return res.status(404).json({ error: 'Not found' });
+
+    // Hydrate SEEK job descriptions (which come as teasers from search results)
+    if (item.sourcePlatform === 'seek' && item.description.length < 500) {
+      console.log(`[start-apply] Hydrating SEEK job: ${item.id}`);
+      try {
+        const { firecrawlScrape } = await import('../services/ingestion/firecrawl');
+        const { markdown, blocked } = await firecrawlScrape(item.sourceUrl);
+        if (!blocked && markdown.length > 500) {
+          await prisma.jobFeedItem.update({
+            where: { id },
+            data: { description: markdown.slice(0, 8000) },
+          });
+          item.description = markdown.slice(0, 8000);
+          console.log(`[start-apply] Hydrated ${item.id}: ${markdown.length} chars`);
+        }
+      } catch (e: any) {
+        console.error(`[start-apply] Hydration failed for ${item.id}:`, e.message);
+        // Continue with original description - don't block the apply flow
+      }
+    }
 
     // Reuse an existing row for this job if present (avoids duplicates on retry),
     // else create one in SAVED status. mark-applied later flips it to APPLIED.
