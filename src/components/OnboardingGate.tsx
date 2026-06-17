@@ -156,6 +156,13 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
     );
   }
 
+  // NUCLEAR BYPASS: If profile exists with resume data, force allow through
+  // This fixes the stuck-onboarding bug where hasCompletedOnboarding is false
+  if (profile?.resumeRawText && profile.resumeRawText.length > 100) {
+    console.log('[OnboardingGate] BYPASS: Profile has resume data - allowing through');
+    return <>{children}</>;
+  }
+
   // API error or no profile row yet — show onboarding.
   // If the user is authenticated AND has pending onboarding data in localStorage
   // (placed there before a Google OAuth redirect), resume mode auto-submits.
