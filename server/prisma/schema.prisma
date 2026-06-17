@@ -594,3 +594,69 @@ model Broadcast {
   createdAt DateTime @default(now())
 }
 
+model Job {
+  id                  String      @id @default(uuid())
+  dedupKey            String      @unique
+  title               String
+  company             String
+  normalizedCompany   String
+  location            String?
+  salary              String?
+  workMode            String?
+  description         String
+  descriptionHydrated Boolean     @default(false)
+  postedAt            DateTime?
+  relevanceScore      Float       @default(0)
+  lowRelevance        Boolean     @default(false)
+  searchRole          String
+  firstSeenAt         DateTime    @default(now())
+  lastSeenAt          DateTime    @updatedAt
+  feedDate            String
+  sources             JobSource[]
+  @@index([normalizedCompany])
+  @@index([feedDate])
+  @@index([lowRelevance])
+}
+
+model JobSource {
+  id          String   @id @default(uuid())
+  jobId       String
+  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  source      String
+  sourceUrl   String
+  sourceJobId String?
+  seenAt      DateTime @default(now())
+  @@unique([source, sourceUrl])
+  @@index([jobId])
+}
+
+model IngestionRun {
+  id         String         @id @default(uuid())
+  startedAt  DateTime       @default(now())
+  finishedAt DateTime?
+  trigger    String
+  totalRaw   Int            @default(0)
+  totalNew   Int            @default(0)
+  totalDup   Int            @default(0)
+  results    SourceResult[]
+}
+
+model SourceResult {
+  id           String       @id @default(uuid())
+  runId        String
+  run          IngestionRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  source       String
+  query        String
+  status       String
+  rawCount     Int          @default(0)
+  newCount     Int          @default(0)
+  dupCount     Int          @default(0)
+  uniqueCount  Int          @default(0)
+  blocked      Boolean      @default(false)
+  errorMessage String?
+  latencyMs    Int          @default(0)
+  creditsUsed  Int          @default(0)
+  @@index([runId])
+  @@index([source])
+}
+
