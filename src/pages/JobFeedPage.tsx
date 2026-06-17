@@ -1,11 +1,11 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AnimatePresence } from 'framer-motion';
 import { Loader2, RefreshCw, AlertCircle, Briefcase } from 'lucide-react';
 import { toast } from 'sonner';
 import { NavLink } from 'react-router-dom';
 import api from '../lib/api';
-import { JobCard, type JobFeedItem } from '../components/jobs/JobCard';
+import type { JobFeedItem } from '../components/jobs/JobCard';
+import { FocusedApplyView } from '../components/jobs/FocusedApplyView';
 import { warm } from '../lib/theme/warmTokens';
 import { SectionIntroBanner } from '../components/processStrip';
 
@@ -245,40 +245,8 @@ export const JobFeedPage: React.FC = () => {
         </div>
       )}
 
-      {/* Job cards */}
-      {jobs.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <AnimatePresence>
-            {jobs.map(job => (
-              <JobCard key={job.id} item={job} onUpdate={handleUpdate} />
-            ))}
-          </AnimatePresence>
-
-          {hasMore && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8 }}>
-              <p style={{ margin: 0, fontSize: 12, color: warm.colors.textMuted }}>Showing {jobs.length} of {total} jobs</p>
-              <button
-                onClick={handleLoadMore}
-                disabled={loadingMore}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px',
-                  borderRadius: 12, fontSize: 11, fontWeight: 900, textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                  border: `1px solid ${warm.colors.borderWhisper}`,
-                  color: warm.colors.textSecondary, background: 'transparent',
-                  cursor: loadingMore ? 'default' : 'pointer',
-                  opacity: loadingMore ? 0.4 : 1,
-                }}
-                onMouseEnter={e => { if (!loadingMore) { e.currentTarget.style.borderColor = warm.colors.borderDefined; e.currentTarget.style.color = warm.colors.textPrimary; }}}
-                onMouseLeave={e => { if (!loadingMore) { e.currentTarget.style.borderColor = warm.colors.borderWhisper; e.currentTarget.style.color = warm.colors.textSecondary; }}}
-              >
-                {loadingMore ? <Loader2 size={12} style={{ animation: 'spin 0.8s linear infinite' }} /> : null}
-                {loadingMore ? 'Loading…' : 'Load 10 more'}
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Job cards - focused one-at-a-time view */}
+      {jobs.length > 0 && <FocusedApplyView jobs={jobs} />}
     </div>
   );
 };
