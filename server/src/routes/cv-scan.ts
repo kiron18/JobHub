@@ -336,6 +336,7 @@ router.post('/claim', authenticate, async (req: AuthRequest, res) => {
     const cleanTitles = normalizeTitles(titles);
     const loc = String(location || '').trim() || null;
     const targetRole = cleanTitles[0] || entry.result.inferredRole || null;
+    const targetRoles = cleanTitles.length > 0 ? cleanTitles : (targetRole ? [targetRole] : []);
 
     const trialEndDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     const profileData = {
@@ -346,6 +347,7 @@ router.post('/claim', authenticate, async (req: AuthRequest, res) => {
       resumeFilename: entry.filename,
       documentsUpdatedAt: new Date(),
       targetRole,
+      targetRoles,
       targetCity: loc,
       location: loc,
       hasCompletedOnboarding: true,
