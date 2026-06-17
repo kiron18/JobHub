@@ -29,11 +29,11 @@ export const jsearchAdapter: SourceAdapter = {
     try {
       const res = await fetch(url, { headers: { 'x-api-key': key } });
       if (!res.ok) throw new Error(`jsearch ${res.status}`);
-      const data = await res.json();
-      jobs = (data.data as JSearchResult[]).map(r => ({
+      const data = await res.json() as { data: JSearchResult[] };
+      jobs = (data.data || []).map(r => ({
         title: r.job_title,
         company: r.employer_name ?? 'Unknown',
-        location: [r.job_city, r.job_state].filter(Boolean).join(', ') || null,
+        location: [r.job_city, r.job_state].filter(Boolean).join(', ') || '',
         salary: salary(r),
         description: r.job_description ?? '',
         sourceUrl: r.job_apply_link,

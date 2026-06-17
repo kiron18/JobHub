@@ -29,7 +29,7 @@ export async function parseSeekMarkdown(markdown: string): Promise<RawJob[]> {
     .map(c => ({
       title: c.title,
       company: c.company,
-      location: c.location ?? null,
+      location: c.location ?? '',
       salary: c.salary ?? null,
       description: c.teaser ?? '',
       sourceUrl: canonicalUrl(c.sourceUrl),

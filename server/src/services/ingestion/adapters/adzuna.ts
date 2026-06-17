@@ -28,11 +28,11 @@ export const adzunaAdapter: SourceAdapter = {
     try {
       const res = await fetch(url);
       if (!res.ok) throw new Error(`adzuna ${res.status}`);
-      const data = await res.json();
-      jobs = (data.results as AdzunaResult[]).map(r => ({
+      const data = await res.json() as { results: AdzunaResult[] };
+      jobs = (data.results || []).map(r => ({
         title: r.title,
         company: r.company?.display_name ?? 'Unknown',
-        location: r.location?.display_name ?? null,
+        location: r.location?.display_name ?? '',
         salary: salary(r),
         description: r.description ?? '',
         sourceUrl: r.redirect_url,

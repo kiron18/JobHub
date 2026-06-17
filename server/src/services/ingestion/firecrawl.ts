@@ -9,7 +9,7 @@ export async function firecrawlScrape(url: string): Promise<{ markdown: string; 
     body: JSON.stringify({ url, formats: ['markdown'], onlyMainContent: true }),
   });
   if (!res.ok) return { markdown: '', blocked: true };
-  const data = await res.json();
+  const data = await res.json() as { data?: { markdown?: string } };
   const markdown: string = data?.data?.markdown ?? '';
   const blocked = !markdown || !/au\.seek\.com\/job\/\d+/.test(markdown);
   return { markdown, blocked };

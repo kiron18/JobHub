@@ -1,17 +1,18 @@
 import type { RawJob } from './jobFeed';
-import { buildSeekClusterKey, fetchSeekJobsForCluster } from './seekScraper';
+import { runIngestionForTitle } from './ingestion/runIngestion';
+import type { MergedJob } from './ingestion/mergeSources';
+
+function toRawJob(m: MergedJob): RawJob {
+  return {
+    title: m.title, company: m.company, location: m.location ?? '', salary: m.salary,
+    description: m.description, sourceUrl: m.sources[0]?.sourceUrl ?? '',
+    sourcePlatform: m.sources[0]?.source ?? 'seek', postedAt: m.postedAt,
+  };
+}
 
 export async function scrapeJobsForTitles(titles: string[], location: string): Promise<RawJob[]> {
-  // Scrape every title in parallel. Sequential awaits stacked the Seek actor
-  // cold-starts back-to-back and blew past the claim wait window, so jobs never
-  // landed in time. One slow title no longer blocks the others.
-  const results = await Promise.all(
-    titles.map(title =>
-      fetchSeekJobsForCluster(buildSeekClusterKey(title, location, null)).catch(() => [] as RawJob[]),
-    ),
-  );
-  const all = results.flat();
-  // Local dedupe by sourceUrl (deduplicateJobs requires two arrays, see Phase 0.3).
+  const runs = await Promise.all(titles.map(t => runIngestionForTitle(t, location, 'user_scan').catch(() => ({ jobs: [] as MergedJob[], reports: [] }))));
+  const all = runs.flatMap(r => r.jobs).filter(m => !m.lowRelevance);
   const seen = new Set<string>();
-  return all.filter(j => (j.sourceUrl && !seen.has(j.sourceUrl)) ? (seen.add(j.sourceUrl), true) : false);
+  return all.filter(m => (seen.has(m.dedupKey) ? false : (seen.add(m.dedupKey), true))).map(toRawJob);
 }

@@ -16,7 +16,7 @@ export interface MergedJob {
   title: string;
   company: string;
   normalizedCompany: string;
-  location: string | null;
+  location: string;
   salary: string | null;
   description: string;
   descriptionHydrated: boolean;
