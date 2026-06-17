@@ -66,6 +66,7 @@ model CandidateProfile {
   resumeFilename               String?
   coverLetterFilename          String?
   coverLetterFilename2         String?
+  dailyApplicationGoal         Int       @default(5)
   documentsUpdatedAt           DateTime?
   positioningStatement         Json?
   analysisCache                Json?
