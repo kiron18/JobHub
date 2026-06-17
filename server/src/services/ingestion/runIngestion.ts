@@ -17,13 +17,26 @@ function todayStr(): string { return new Date().toISOString().slice(0, 10); }
 export async function runIngestionForTitle(
   role: string, location: string, trigger: 'user_scan' | 'manual' | 'cron',
 ): Promise<{ jobs: MergedJob[]; reports: SourceReport[] }> {
+  const startMs = Date.now();
+  const logPrefix = `[Ingestion] "${role}" @ "${location}"`;
+
   // Cache read: check if we already have jobs for this (role, city, day)
+  const cacheStart = Date.now();
+  const locKey = locationKey(location);
+  const today = todayStr();
+
+  console.log(`${logPrefix} - Checking cache: searchRole="${role}" locationKey="${locKey}" feedDate="${today}"`);
+
   const cached = await prisma.job.findMany({
-    where: { searchRole: role, locationKey: locationKey(location), feedDate: todayStr() },
+    where: { searchRole: role, locationKey: locKey, feedDate: today },
     include: { sources: true },
   });
+
+  console.log(`${logPrefix} - Cache found ${cached.length} jobs (min hits: ${CACHE_MIN_HITS})`);
+
   if (cached.length >= CACHE_MIN_HITS) {
     const jobs = cached.map(jobRowToMergedJob);
+    console.log(`${logPrefix} - CACHE HIT - returned ${jobs.length} jobs in ${Date.now() - startMs}ms`);
     return {
       jobs,
       reports: [{
@@ -37,15 +50,29 @@ export async function runIngestionForTitle(
     };
   }
 
+  console.log(`${logPrefix} - CACHE MISS - scraping fresh...`);
+
   const adapters = ALL.filter(a => INGESTION_SOURCES[a.source as IngestionSource]);
+  console.log(`${logPrefix} - Enabled adapters: ${adapters.map(a => a.source).join(', ')}`);
+
+  const scrapeStart = Date.now();
   const results = await Promise.all(
     adapters.map(a => a.search({ role, location, maxPages: MAX_PAGES_PER_SOURCE })
       .catch((e): { jobs: []; report: SourceReport } => ({
         jobs: [], report: { source: a.source, rawCount: 0, blocked: false,
           errorMessage: e?.message ?? 'adapter error', latencyMs: 0, creditsUsed: 0 } }))),
   );
+  console.log(`${logPrefix} - Scraped in ${Date.now() - scrapeStart}ms`);
+
+  const mergeStart = Date.now();
   const merged = mergeSources(results.map(r => ({ source: (r as any).report.source, jobs: r.jobs })), role);
   const reports = results.map(r => r.report);
+  console.log(`${logPrefix} - Merged ${merged.length} jobs in ${Date.now() - mergeStart}ms`);
+
+  const persistStart = Date.now();
   await persistMergedJobs({ merged, reports, trigger, role, location });
+  console.log(`${logPrefix} - Persisted in ${Date.now() - persistStart}ms`);
+
+  console.log(`${logPrefix} - TOTAL: ${Date.now() - startMs}ms, returned ${merged.length} jobs`);
   return { jobs: merged, reports };
 }
