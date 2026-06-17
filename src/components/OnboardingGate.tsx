@@ -102,7 +102,11 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
     if (profile?.hasCompletedOnboarding) return;
     // Guard: only fire once per component mount to prevent the invalidateQueries
     // cycle from re-triggering this effect repeatedly.
-    if (claimFiredRef.current) return;
+    if (claimFiredRef.current) {
+      // If we already fired but got here again, claim is settled (no need to re-claim)
+      setClaimSettled(true);
+      return;
+    }
 
     claimFiredRef.current = true;
     let cancelled = false;

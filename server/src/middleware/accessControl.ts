@@ -56,10 +56,14 @@ export interface AccessResult {
 }
 
 export async function checkAccess(
-  userId: string,
-  featureType: FeatureType,
-  userEmail: string
+  _userId: string,
+  _featureType: FeatureType,
+  _userEmail: string
 ): Promise<AccessResult> {
+  // PAYMENTS PAUSED: unlimited access for all users during pricing rework
+  return { allowed: true };
+
+  /* ORIGINAL CODE - restore when payments resume
   if (EXEMPT_EMAILS.includes(userEmail.toLowerCase())) {
     return { allowed: true };
   }
@@ -104,6 +108,7 @@ export async function checkAccess(
 
   // Expired/cancelled paid plan → treat as free
   return checkFree(userId, featureType, profile);
+  */
 }
 
 async function checkFree(

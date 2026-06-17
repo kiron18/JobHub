@@ -36,17 +36,8 @@ Lets have apply now be a different co
 
 After review let the screen scroll down to the review notes...
 
-Add a copy instruction to use the edit feature to edit the document directly and copy/paste
+For the review feature Add a copy instruction to use the edit feature to edit the document directly and copy/paste
 
-Serper api is entered but i keep seeing this error in railway logs - serper] Search failed: Request failed with status code 400 - console log -Request: POST /analyze/cover-letter-personalisation Token injected
-index-CxgukWFI.js:88 API Request: POST /research/company Token injected
-index-CxgukWFI.js:88 API Request: GET /jobs Token injected
-4index-CxgukWFI.js:88 API Request: POST /research/company Token injected
+Company Insights as a collapsible section that can be opened to view the content...by default it is closed and has a slight glimmer to indicate content
 
-Can barely read this line -Top Fix
-
-To further improve personalisation, the candidate could provide a specific example of how they would apply their skills and experience to enhance Worrells' brand presence and contribute to the National Marketing Committee, rather than just stating their ability to do so. -- needs a darker colour.
-
-Lets remove the professional/warm/concise and tone bar for now
-
-Can we implement a paragraph system for the cover letter. and also can the verify text be rendered red when edit mode is clicked...be very careful to ensure [verfiy] tags are never output to the final result but changing the colour will help idenitfy it
+Can we reframe the paragraph texts to points that are easy to grasp and use a better visual display that is easy to skim and comprehend

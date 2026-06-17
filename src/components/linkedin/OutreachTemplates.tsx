@@ -126,7 +126,8 @@ export const OutreachTemplates: React.FC = () => {
       setGenId(g => g + 1);
     } catch (err: any) {
       if (err?.response?.status === 402) {
-        navigate('/pricing');
+        // PAYMENTS PAUSED: no longer redirecting to pricing - unlimited access active
+        toast.error('Service temporarily unavailable. Please try again later.');
       } else {
         toast.error('Generation failed — try again.');
       }

@@ -2,7 +2,8 @@ import { useNavigate } from 'react-router-dom';
 import { colors, type as typeTokens } from './tokens';
 
 const LEGAL_LINKS = [
-  { label: 'Pricing', path: '/pricing' },
+  // PAYMENTS PAUSED: pricing link hidden during pricing rework
+  // { label: 'Pricing', path: '/pricing' },
   { label: 'Terms', path: '/legal/terms' },
   { label: 'Privacy', path: '/legal/privacy' },
   { label: 'Refunds', path: '/legal/refunds' },

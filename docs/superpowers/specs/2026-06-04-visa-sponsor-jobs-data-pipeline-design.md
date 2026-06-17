@@ -1,4 +1,4 @@
-# Visa-Sponsor Jobs — Data Pipeline (Design Spec)
+is # Visa-Sponsor Jobs — Data Pipeline (Design Spec)
 
 **Date:** 2026-06-04
 **Status:** Approved-pending-review
@@ -52,14 +52,10 @@ Given jobs scraped from Seek (existing infra), classify each as a visa-sponsor o
    (reuse seekScraper)              (NEW — pure functions)        (NEW table + weekly cron)
 ```
 
-### Unit A — Job Ingestion (reuse existing, keyword-slug sweep)
-- **Measured 2026-06-04:** the entire national visa-sponsorship pool on Seek is only ~600–700 jobs deduped (`/sponsorship-jobs/in-All-Australia` = 614, `/visa-sponsorship-jobs` = 345, `/482-visa-sponsorship-jobs` = 126, `/visa-sponsorship-available-jobs` = 180). So we do **NOT** sweep by occupation. We fetch a small set of Seek **sponsorship keyword searches** defined in `SPONSOR_SCAN_QUERIES` (see §6), dedupe across them by `sourceUrl`, and pass the union to the classifier.
-- Each query maps to the Apify actor's existing `searchTerm` + `location` inputs (`seekScraper.ts:100`). e.g. `searchTerm: 'sponsorship', location: 'All Australia'` reproduces Seek's `/sponsorship-jobs/in-All-Australia` set.
-- The broad `sponsorship` query intentionally **over-captures** (includes non-visa noise like "sponsorship coordinator" / event sponsorship); the classifier (Unit B) filters that out. **Wide net in, clean signal out.**
-- **Build change required:** `fetchSeekJobsForCluster` currently hardcodes `maxResults: 30` and `dateRange: 7` (`seekScraper.ts:102-104`). Add an optional second arg `opts?: { maxResults?: number; dateRange?: number }` that **defaults to the current 30 / 7** (so the per-user feed is untouched) and is overridden by the sponsor sweep with `SPONSOR_SCAN_MAX_RESULTS` / `SPONSOR_SCAN_DATE_RANGE`.
-- Reuse `buildSeekClusterKey(query.searchTerm, 'All Australia', null)` to build the cache key per query — the existing `SeekJobCache` mechanism then caches each query/day for free.
-- Seek only. Do **NOT** touch LinkedIn/Indeed (anti-bot, legal).
-- **STOP-and-report guard B:** Run the **single broadest** query (`sponsorship`) end-to-end first and report the raw count + a 5-row sample before running the rest. Do not run all queries until that sample is confirmed.
+### Unit A — Job Ingestion (reuse existing)
+- Reuse `fetchSeekJobsForCluster` to pull `RawJob[]` for each cluster in a config list `SPONSOR_SCAN_CLUSTERS` (see §6).
+- This build does **not** touch LinkedIn/Indeed scraping (anti-bot, legal). Seek only.
+- **STOP-and-report guard B:** Run **one** cluster end-to-end first and report the raw count + a 3-row sample before looping all clusters. Do not run all clusters until that sample is confirmed.
 
 ### Unit B — Sponsor Classifier (NEW — the only real logic)
 New file `server/src/services/sponsorClassifier.ts`. **Pure, deterministic, no LLM, no network.** Exposes:
@@ -97,9 +93,9 @@ Rationale: a job that explicitly says it won't sponsor is excluded **even if the
 ### Unit C — Store + weekly cron (NEW)
 - New Prisma model `SponsorJob` (see §5). Migration via the project's existing migration approach.
 - New file `server/src/cron/sponsorJobScanCron.ts`, modeled on `jobFeedCron.ts`: `cron.schedule('0 20 * * 1', …)` (Mondays 20:00 UTC ≈ Tue 06:00–07:00 AEST), gated behind `process.env.SPONSOR_SCAN_ENABLED === 'true'`.
-- New runnable script `server/src/scripts/run_sponsor_scan.ts` for manual/test runs (`npx tsx src/scripts/run_sponsor_scan.ts --only-query broad`).
-- The scan: load registry index once → for each query in `SPONSOR_SCAN_QUERIES`: ingest (A) → dedupe the union by `sourceUrl` → classify (B) → upsert qualifying rows (C).
-- **Dedupe:** upsert on unique `sourceUrl`. On re-scan, update `lastSeenAt` + `confidence`; do not create duplicates. A `sourceUrl` first seen via the `broad` query keeps `scanQuery = 'sponsorship'` even if a narrower query also returns it.
+- New runnable script `server/src/scripts/run_sponsor_scan.ts` for manual/test runs (`npx tsx src/scripts/run_sponsor_scan.ts --limit-clusters 1`).
+- The scan: load registry index once → for each cluster: ingest (A) → classify (B) → upsert qualifying rows (C).
+- **Dedupe:** upsert on unique `sourceUrl`. On re-scan, update `lastSeenAt` + `confidence`; do not create duplicates.
 
 **STOP-and-report guard D:** Do NOT add `startSponsorJobScanCron()` to the server boot sequence in `server/src/index.ts`. Wire the cron file but leave it unregistered, and report that the user must register it + set `SPONSOR_SCAN_ENABLED=true` to activate. Default OFF.
 
@@ -126,7 +122,7 @@ model SponsorJob {
   positivePhraseHit Boolean
   negationPhraseHit Boolean          // always false for stored rows; kept for audit
   matchedPhrases    Json?            // string[] of phrases that fired
-  scanQuery         String           // searchTerm of the first SPONSOR_SCAN_QUERIES entry that surfaced it
+  scanCluster       String           // which SPONSOR_SCAN_CLUSTERS entry produced it
   firstSeenAt       DateTime         @default(now())
   lastSeenAt        DateTime         @updatedAt
   feedDate          String           // yyyy-mm-dd of the scan run
@@ -146,19 +142,22 @@ Only `confirmed | likely | keyword_only` rows are ever written. `excluded` / `no
 `server/src/config/sponsorScan.ts`:
 
 ```ts
-// Seek sponsorship keyword searches to sweep weekly, broad → narrow.
-// Each searchTerm reproduces a Seek /{slug}-jobs/in-All-Australia set.
-// The whole national pool is ~600–700 jobs deduped, so this is cheap.
-export const SPONSOR_SCAN_QUERIES = [
-  { searchTerm: 'sponsorship',          label: 'broad' }, // ~614 — widest net, noisy (classifier filters)
-  { searchTerm: 'visa sponsorship',     label: 'visa'  }, // ~345
-  { searchTerm: '482 visa sponsorship', label: '482'   }, // ~126
-  { searchTerm: '457 visa sponsorship', label: '457'   }, // legacy 457, low volume
+// Seek clusters to sweep weekly. city 'All Australia' = nationwide on Seek.
+// Seeded with high-sponsorship occupations (healthcare, IT, engineering, trades).
+export const SPONSOR_SCAN_CLUSTERS = [
+  { role: 'Registered Nurse', city: 'All Australia' },
+  { role: 'Aged Care Worker', city: 'All Australia' },
+  { role: 'Software Engineer', city: 'All Australia' },
+  { role: 'Software Developer', city: 'All Australia' },
+  { role: 'Civil Engineer', city: 'All Australia' },
+  { role: 'Mechanical Engineer', city: 'All Australia' },
+  { role: 'Electrician', city: 'All Australia' },
+  { role: 'Carpenter', city: 'All Australia' },
+  { role: 'Chef', city: 'All Australia' },
+  { role: 'Motor Mechanic', city: 'All Australia' },
+  { role: 'Accountant', city: 'All Australia' },
+  { role: 'Physiotherapist', city: 'All Australia' },
 ];
-
-export const SPONSOR_SCAN_LOCATION    = 'All Australia';
-export const SPONSOR_SCAN_MAX_RESULTS = 700; // full live pool per query; tiny cost
-export const SPONSOR_SCAN_DATE_RANGE  = 30;  // capture the full live set, not just last 7d
 ```
 
 `server/src/config/sponsorPhrases.ts` (normalized, lowercase — matched after JD normalization):
@@ -197,8 +196,8 @@ export const NEGATION_PHRASES = [
 
 1. `classifyJob` is unit-tested against fixtures covering every row of the §4 confidence table (incl. negation-wins-over-registry).
 2. Company normalization is unit-tested (e.g. `"Acme Pty Ltd"` matches registry `"Acme"`).
-3. A single-query manual run (`run_sponsor_scan.ts --only-query broad`) ingests Seek, classifies, and writes `SponsorJob` rows, printing a summary: `{ ingested, deduped, confirmed, likely, keyword_only, excluded, none }`.
-4. Re-running the same query updates `lastSeenAt` and creates **zero** duplicate rows.
+3. A single-cluster manual run (`run_sponsor_scan.ts --limit-clusters 1`) ingests Seek, classifies, and writes `SponsorJob` rows, printing a summary: `{ ingested, confirmed, likely, keyword_only, excluded, none }`.
+4. Re-running the same cluster updates `lastSeenAt` and creates **zero** duplicate rows.
 5. The cron file exists but is **not** registered in `index.ts`, and `SPONSOR_SCAN_ENABLED` defaults OFF.
 
 ---

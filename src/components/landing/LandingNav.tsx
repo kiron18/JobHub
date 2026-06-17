@@ -89,6 +89,7 @@ export function LandingNav({ onLogInClick }: LandingNavProps) {
 
       {/* Log in */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+        {/* PAYMENTS PAUSED: pricing button hidden during pricing rework
         <button
           onClick={() => navigate('/pricing')}
           style={{
@@ -113,6 +114,7 @@ export function LandingNav({ onLogInClick }: LandingNavProps) {
         >
           Pricing
         </button>
+        */}
         <button
           onClick={handleLogIn}
           style={{

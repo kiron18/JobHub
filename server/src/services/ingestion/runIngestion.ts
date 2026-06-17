@@ -5,13 +5,38 @@ import { seekAdapter } from './adapters/seek';
 import { adzunaAdapter } from './adapters/adzuna';
 import { jsearchAdapter } from './adapters/jsearch';
 import type { SourceAdapter, SourceReport, IngestionSource } from './types';
-import { INGESTION_SOURCES, MAX_PAGES_PER_SOURCE } from '../../config/ingestion';
+import { INGESTION_SOURCES, MAX_PAGES_PER_SOURCE, CACHE_MIN_HITS } from '../../config/ingestion';
+import { prisma } from '../../db';
+import { jobRowToMergedJob } from './cache';
+import { locationKey } from './locationKey';
 
 const ALL: SourceAdapter[] = [adzunaAdapter, jsearchAdapter, seekAdapter];
+
+function todayStr(): string { return new Date().toISOString().slice(0, 10); }
 
 export async function runIngestionForTitle(
   role: string, location: string, trigger: 'user_scan' | 'manual' | 'cron',
 ): Promise<{ jobs: MergedJob[]; reports: SourceReport[] }> {
+  // Cache read: check if we already have jobs for this (role, city, day)
+  const cached = await prisma.job.findMany({
+    where: { searchRole: role, locationKey: locationKey(location), feedDate: todayStr() },
+    include: { sources: true },
+  });
+  if (cached.length >= CACHE_MIN_HITS) {
+    const jobs = cached.map(jobRowToMergedJob);
+    return {
+      jobs,
+      reports: [{
+        source: 'cache' as IngestionSource,
+        rawCount: jobs.length,
+        blocked: false,
+        errorMessage: null,
+        latencyMs: 0,
+        creditsUsed: 0,
+      }],
+    };
+  }
+
   const adapters = ALL.filter(a => INGESTION_SOURCES[a.source as IngestionSource]);
   const results = await Promise.all(
     adapters.map(a => a.search({ role, location, maxPages: MAX_PAGES_PER_SOURCE })

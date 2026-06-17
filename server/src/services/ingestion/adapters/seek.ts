@@ -24,7 +24,10 @@ export const seekAdapter: SourceAdapter = {
     let errorMessage: string | null = null;
     try {
       for (let page = 1; page <= maxPages; page++) {
-        const { markdown, blocked: b } = await firecrawlScrape(buildUrl(role, location, page));
+        const url = buildUrl(role, location, page);
+        console.log(`[SEEK] Scraping: ${url}`);
+        const { markdown, blocked: b } = await firecrawlScrape(url);
+        console.log(`[SEEK] Result: blocked=${b}, markdownLength=${markdown?.length || 0}`);
         credits += 1;
         if (b) { blocked = page === 1; break; }
         const parsed = await parseSeekMarkdown(markdown);

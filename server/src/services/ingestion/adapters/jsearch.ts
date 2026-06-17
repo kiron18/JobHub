@@ -22,15 +22,15 @@ export const jsearchAdapter: SourceAdapter = {
         errorMessage: 'JSEARCH_API_KEY not set', latencyMs: Date.now() - started, creditsUsed: 0 } };
     }
     const q = encodeURIComponent(`${role} in ${location}`);
-    // OpenWeb Ninja DIRECT route (x-api-key). Identical params/response to the RapidAPI route, no transfer caps.
-    const url = `https://api.openwebninja.com/jsearch/search?query=${q}&page=1&num_pages=1&country=au`;
+    // OpenWeb Ninja search-v2 endpoint with AU country filter
+    const url = `https://api.openwebninja.com/jsearch/search-v2?query=${q}&page=1&num_pages=1&country=au`;
     let errorMessage: string | null = null;
     let jobs: RawJob[] = [];
     try {
       const res = await fetch(url, { headers: { 'x-api-key': key } });
       if (!res.ok) throw new Error(`jsearch ${res.status}`);
-      const data = await res.json() as { data: JSearchResult[] };
-      jobs = (data.data || []).map(r => ({
+      const data = await res.json() as { data?: { jobs?: JSearchResult[] } };
+      jobs = (data.data?.jobs || []).map(r => ({
         title: r.job_title,
         company: r.employer_name ?? 'Unknown',
         location: [r.job_city, r.job_state].filter(Boolean).join(', ') || '',

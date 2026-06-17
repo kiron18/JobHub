@@ -69,7 +69,8 @@ import { supabase } from './lib/supabase';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthPage } from './pages/AuthPage';
 import { AuthCallback } from './components/AuthCallback';
-import { PricingPage } from './pages/PricingPage';
+// PAYMENTS PAUSED: pricing page hidden during pricing rework
+// import { PricingPage } from './pages/PricingPage';
 import { LegalPage } from './pages/LegalPage';
 
 // Lib
@@ -153,14 +154,18 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 // --- Dashboard access gate ---
 
-import { UpgradeModal, type UpgradeTrigger } from './components/UpgradeModal';
+// PAYMENTS PAUSED: upgrade modal disabled during pricing rework
+// import { UpgradeModal, type UpgradeTrigger } from './components/UpgradeModal';
 
 // Global event bus for triggering the upgrade modal from anywhere in the app
-export function showUpgradeModal(trigger: UpgradeTrigger) {
-  window.dispatchEvent(new CustomEvent('show-upgrade', { detail: trigger }));
-}
+// export function showUpgradeModal(trigger: UpgradeTrigger) {
+//   window.dispatchEvent(new CustomEvent('show-upgrade', { detail: trigger }));
+// }
 
+// PAYMENTS PAUSED: PastDueBanner disabled during pricing rework
 function PastDueBanner() {
+  return null;
+  /* ORIGINAL CODE - restore when payments resume
   const [loading, setLoading] = React.useState(false);
   async function handlePortal() {
     setLoading(true);
@@ -191,9 +196,13 @@ function PastDueBanner() {
       </button>
     </div>
   );
+  */
 }
 
+// PAYMENTS PAUSED: LapsedBanner disabled during pricing rework
 function LapsedBanner() {
+  return null;
+  /* ORIGINAL CODE - restore when payments resume
   return (
     <div style={{
       background: 'linear-gradient(90deg, rgba(245,158,11,0.12), rgba(245,158,11,0.05))',
@@ -215,9 +224,14 @@ function LapsedBanner() {
       </button>
     </div>
   );
+  */
 }
 
-function TrialBanner({ trialEndDate }: { trialEndDate: string }) {
+// PAYMENTS PAUSED: TrialBanner disabled during pricing rework
+function TrialBanner() {
+  return null;
+  /* ORIGINAL CODE - restore when payments resume
+  ({ trialEndDate }: { trialEndDate: string }) {
   const end = new Date(trialEndDate);
   const daysLeft = Math.ceil((end.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
   return (
@@ -232,6 +246,7 @@ function TrialBanner({ trialEndDate }: { trialEndDate: string }) {
       </p>
     </div>
   );
+  */
 }
 
 function DashboardGate({ children }: { children: React.ReactNode }) {
@@ -242,14 +257,15 @@ function DashboardGate({ children }: { children: React.ReactNode }) {
     staleTime: 5 * 60 * 1000,
   });
 
-  const [upgradeTrigger, setUpgradeTrigger] = useState<UpgradeTrigger | null>(null);
+  // PAYMENTS PAUSED: upgrade trigger disabled during pricing rework
+  // const [upgradeTrigger, setUpgradeTrigger] = useState<UpgradeTrigger | null>(null);
 
-  // Listen for upgrade events from any component
-  useEffect(() => {
-    const handler = (e: Event) => setUpgradeTrigger((e as CustomEvent).detail as UpgradeTrigger);
-    window.addEventListener('show-upgrade', handler);
-    return () => window.removeEventListener('show-upgrade', handler);
-  }, []);
+  // Listen for upgrade events from any component - DISABLED
+  // useEffect(() => {
+  //   const handler = (e: Event) => setUpgradeTrigger((e as CustomEvent).detail as UpgradeTrigger);
+  //   window.addEventListener('show-upgrade', handler);
+  //   return () => window.removeEventListener('show-upgrade', handler);
+  // }, []);
 
   // Post-payment polling: Stripe webhook may arrive slightly after redirect
   useEffect(() => {
@@ -277,15 +293,19 @@ function DashboardGate({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      {/* PAYMENTS PAUSED: upgrade modal disabled during pricing rework
       {upgradeTrigger && (
         <UpgradeModal
           trigger={upgradeTrigger}
           onClose={() => setUpgradeTrigger(null)}
         />
       )}
+      */}
+      {/* PAYMENTS PAUSED: payment-related banners disabled during pricing rework
       {isPastDue && <PastDueBanner />}
       {isLapsed && <LapsedBanner />}
       {isTrialing && profile?.trialEndDate && <TrialBanner trialEndDate={profile.trialEndDate} />}
+      */}
       {children}
     </>
   );
@@ -451,7 +471,9 @@ function App() {
               {/* Public Routes */}
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
+              {/* PAYMENTS PAUSED: pricing route hidden during pricing rework
               <Route path="/pricing" element={<PricingPage />} />
+              */}
               <Route path="/legal/:policy" element={<LegalPage />} />
               <Route path="/legal" element={<LegalPage />} />
               <Route path="/visa-sponsors" element={

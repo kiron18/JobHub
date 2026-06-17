@@ -129,8 +129,9 @@ router.get('/profile', authenticate, async (req, res) => {
                 missingFields
             }
         });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to fetch profile' });
+    } catch (error: any) {
+        console.error('[Profile GET] Crash:', error?.message, error?.stack);
+        res.status(500).json({ error: 'Failed to fetch profile', details: error?.message });
     }
 });
 
@@ -367,24 +368,34 @@ router.post('/profile/claim', authenticate, async (req: any, res: any) => {
   const userId: string = req.user.id;
   const userEmail: string | undefined = req.user.email;
 
-  if (!userEmail) return res.json({ status: 'no_email' });
+  console.log(`[ProfileClaim] Starting claim for userId: ${userId}, email: ${userEmail}`);
+
+  if (!userEmail) {
+    console.log('[ProfileClaim] No email provided — returning no_email');
+    return res.json({ status: 'no_email' });
+  }
 
   try {
     const existing = await prisma.candidateProfile.findUnique({ where: { userId } });
+    console.log(`[ProfileClaim] Existing profile for userId ${userId}:`, existing ? `found (hasCompletedOnboarding=${existing.hasCompletedOnboarding}, resumeRawText=${existing.resumeRawText ? 'yes' : 'no'})` : 'none');
 
     if (existing) {
       // Never touch a profile that has an active or complete report — it's real data.
       const report = await prisma.diagnosticReport.findUnique({ where: { userId } });
+      console.log(`[ProfileClaim] Report for userId ${userId}:`, report ? `found (status=${report.status})` : 'none');
       if (report?.status === 'PROCESSING' || report?.status === 'COMPLETE') {
+        console.log(`[ProfileClaim] Profile has ${report.status} report — returning already_complete`);
         return res.json({ status: 'already_complete' });
       }
 
       // A zombie profile has hasCompletedOnboarding:true but no report AND no resume text.
       // If resumeRawText exists the profile is real but mid-extraction — don't touch it.
       if (existing.resumeRawText) {
+        console.log(`[ProfileClaim] Profile has resumeRawText — returning already_exists`);
         return res.json({ status: 'already_exists' });
       }
       // else: zombie (no resume, no report) — fall through to find a better profile
+      console.log(`[ProfileClaim] Profile is a zombie (no resume, no report) — will attempt to claim orphaned profile`);
     }
 
     // Find a richer profile for this email under a different userId
@@ -395,8 +406,12 @@ router.post('/profile/claim', authenticate, async (req: any, res: any) => {
       },
       orderBy: { updatedAt: 'desc' },
     });
+    console.log(`[ProfileClaim] Orphaned profile search for email ${userEmail}:`, orphaned ? `found (userId=${orphaned.userId}, hasCompletedOnboarding=${orphaned.hasCompletedOnboarding})` : 'none');
 
-    if (!orphaned) return res.json({ status: 'not_found' });
+    if (!orphaned) {
+      console.log(`[ProfileClaim] No orphaned profile found — returning not_found`);
+      return res.json({ status: 'not_found' });
+    }
 
     const oldUserId = orphaned.userId;
 
@@ -418,9 +433,9 @@ router.post('/profile/claim', authenticate, async (req: any, res: any) => {
 
     console.log(`[ProfileClaim] Migrated profile from ${oldUserId} → ${userId} (${userEmail})`);
     return res.json({ status: 'claimed' });
-  } catch (error) {
-    console.error('[ProfileClaim] Error:', error);
-    return res.status(500).json({ error: 'Failed to claim profile' });
+  } catch (error: any) {
+    console.error('[ProfileClaim] Error:', error?.message, error?.stack);
+    return res.status(500).json({ error: 'Failed to claim profile', details: error?.message });
   }
 });
 

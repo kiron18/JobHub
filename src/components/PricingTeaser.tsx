@@ -1,3 +1,10 @@
+// PAYMENTS PAUSED: component disabled during pricing rework
+// Component temporarily returns null to hide all pricing teasers
+export function PricingTeaser() {
+  return null;
+}
+
+/* ORIGINAL CODE - restore when payments resume
 import posthog from 'posthog-js';
 import { useNavigate } from 'react-router-dom';
 import { warm } from '../lib/theme/warmTokens';
@@ -90,3 +97,4 @@ export function PricingTeaser({ source, variant = 'full' }: Props) {
     </div>
   );
 }
+*/
