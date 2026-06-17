@@ -9,7 +9,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, NavLink, useLocation } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, Loader2, Target, X, Check } from 'lucide-react';
 import { toast } from 'sonner';
@@ -21,6 +21,7 @@ import { ApplyFeedStrip } from '../components/strategy/ApplyFeedStrip';
 import { JobStream } from '../components/strategy/JobStream';
 import { StaleApplicationsCard } from '../components/strategy/StaleApplicationsCard';
 import { FirstApplicationCelebration } from '../components/FirstApplicationCelebration';
+import { FeedStateNotice, type FeedReadiness } from '../components/strategy/FeedStateNotice';
 import type { JobFeedItem } from '../components/jobs/JobCard';
 import { FocusedApplyView } from '../components/jobs/FocusedApplyView';
 import { warm } from '../lib/theme/warmTokens';
@@ -833,6 +834,29 @@ export function StrategyHub() {
     });
 
     const feedJobs = (feedData?.jobs ?? []) as JobFeedItem[];
+    const feedTotal = feedData?.total ?? 0;
+    const feedBuilding = feedData?.building ?? false;
+    const feedProfileIncomplete = feedData?.profileIncomplete ?? false;
+    const feedError = feedData?.error ?? false;
+    const feedReports = feedData?.reports as Array<{ source: string }> | undefined;
+
+    // Determine feed readiness state for FeedStateNotice
+    const feedReadiness: FeedReadiness = useMemo(() => {
+        if (feedProfileIncomplete) return 'incomplete-profile';
+        if (feedBuilding) return 'building';
+        if (feedError) return 'error';
+        if (feedJobs.length === 0) return 'empty';
+        // If we have jobs and any report came from cache, it's partial
+        const hasCache = feedReports?.some((r) => r.source === 'cache');
+        if (hasCache) return 'partial';
+        return 'complete';
+    }, [feedJobs.length, feedBuilding, feedProfileIncomplete, feedError, feedReports]);
+
+    const queryClient = useQueryClient();
+    const navigate = useNavigate();
+    const handleRefresh = () => {
+        queryClient.invalidateQueries({ queryKey: ['job-feed'] });
+    };
 
     return (
         <div style={{ maxWidth: 720, margin: '0 auto' }}>
@@ -844,8 +868,22 @@ export function StrategyHub() {
                     <AnalysisHeroCard />
                 </DimTarget>
 
-                {/* Focused Apply View - curated jobs feed */}
-                {feedJobs.length > 0 && (
+                {/* Feed state notice - shows readiness of job feed */}
+                {(feedReadiness !== 'complete' || feedJobs.length === 0) && (
+                    <DimPeer style={{ marginBottom: 32 }}>
+                        <FeedStateNotice
+                            state={feedReadiness}
+                            total={feedTotal}
+                            targetRole={profile?.targetRole}
+                            targetCity={profile?.targetCity}
+                            onRefresh={handleRefresh}
+                            onGoToProfile={() => navigate('/workspace')}
+                        />
+                    </DimPeer>
+                )}
+
+                {/* Focused Apply View - curated jobs feed (shown when we have jobs) */}
+                {feedJobs.length > 0 && feedReadiness !== 'error' && (
                     <DimPeer style={{ marginBottom: 32 }}>
                         <p style={{ margin: '0 0 16px', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: warmT.textMuted }}>
                             Curated roles for you
