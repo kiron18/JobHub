@@ -858,18 +858,27 @@ export function StrategyHub() {
         queryClient.invalidateQueries({ queryKey: ['job-feed'] });
     };
 
+    const showJobsFirst = feedJobs.length > 0;
+
     return (
         <div style={{ maxWidth: 720, margin: '0 auto' }}>
             {/* Fires once when sent-count crosses 0 -> >=1. Self-managed via localStorage. */}
             <FirstApplicationCelebration />
             <DimRegion>
                 <HubHeader profile={profile} jobs={jobs ?? []} />
-                <DimTarget style={{ marginBottom: 40 }}>
-                    <AnalysisHeroCard />
-                </DimTarget>
 
-                {/* Feed state notice - shows readiness of job feed */}
-                {(feedReadiness !== 'complete' || feedJobs.length === 0) && (
+                {/* JOBS FIRST: Show curated jobs above the paste section when available */}
+                {showJobsFirst && feedReadiness !== 'error' && (
+                    <DimTarget style={{ marginBottom: 40 }}>
+                        <p style={{ margin: '0 0 16px', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: warmT.textMuted }}>
+                            Curated roles for you
+                        </p>
+                        <FocusedApplyView jobs={feedJobs} />
+                    </DimTarget>
+                )}
+
+                {/* Feed state notice - shows while building/searching */}
+                {(feedReadiness === 'building' || feedReadiness === 'partial') && (
                     <DimPeer style={{ marginBottom: 32 }}>
                         <FeedStateNotice
                             state={feedReadiness}
@@ -882,13 +891,22 @@ export function StrategyHub() {
                     </DimPeer>
                 )}
 
-                {/* Focused Apply View - curated jobs feed (shown when we have jobs) */}
-                {feedJobs.length > 0 && feedReadiness !== 'error' && (
+                {/* Paste/Apply section - always shown below jobs */}
+                <DimTarget style={{ marginBottom: 40 }}>
+                    <AnalysisHeroCard />
+                </DimTarget>
+
+                {/* Error or empty states shown below paste section */}
+                {(feedReadiness === 'error' || feedReadiness === 'empty' || feedReadiness === 'incomplete-profile') && (
                     <DimPeer style={{ marginBottom: 32 }}>
-                        <p style={{ margin: '0 0 16px', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: warmT.textMuted }}>
-                            Curated roles for you
-                        </p>
-                        <FocusedApplyView jobs={feedJobs} />
+                        <FeedStateNotice
+                            state={feedReadiness}
+                            total={feedTotal}
+                            targetRole={profile?.targetRole}
+                            targetCity={profile?.targetCity}
+                            onRefresh={handleRefresh}
+                            onGoToProfile={() => navigate('/workspace')}
+                        />
                     </DimPeer>
                 )}
 
