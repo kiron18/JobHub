@@ -1,0 +1,33 @@
+# Dependencies
+node_modules
+server/node_modules
+
+# Git
+.git
+.gitignore
+
+# Large data files
+Resumes/
+testsprite_tests/
+*.log
+logs/
+
+# Cache
+.cache/
+.claude/.cache/
+
+# Build outputs (Vercel builds these)
+dist/
+server/dist/
+
+# Env files
+.env*
+env.*
+
+# IDE
+.vscode/
+.idea/
+
+# Misc
+*.local
+.DS_Store

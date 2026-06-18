@@ -115,7 +115,6 @@ async function buildDailyFeedMultiSource(userId: string): Promise<void> {
         sourcePlatform: j.sourcePlatform,
         postedAt: j.postedAt,
         matchScore: j.matchScore,
-        bullets: null,
       })),
     });
     console.log(`[job-feed] Inserted ${scoredFastJobs.length} fast jobs for immediate display`);
@@ -152,7 +151,6 @@ async function buildDailyFeedMultiSource(userId: string): Promise<void> {
             sourcePlatform: j.sourcePlatform,
             postedAt: j.postedAt,
             matchScore: j.matchScore,
-            bullets: null,
           })),
         });
 

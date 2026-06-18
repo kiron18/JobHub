@@ -43,7 +43,7 @@ describe('scrapeJobsForTitles', () => {
       .mockResolvedValueOnce([job('https://seek/2'), job('https://seek/3')]); // 2 is a dup
 
     const out = await scrapeJobsForTitles(['A', 'B'], 'Sydney');
-    expect(out.map(j => j.sourceUrl).sort()).toEqual([
+    expect(out.jobs.map(j => j.sourceUrl).sort()).toEqual([
       'https://seek/1',
       'https://seek/2',
       'https://seek/3',

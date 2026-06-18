@@ -7,3 +7,6 @@ node_modules
 # SQLite dev databases (project uses PostgreSQL in all environments)
 *.db
 *.db-journal
+
+.vercel
+.env*
