@@ -100,7 +100,7 @@ function fireScrape(scanId: string, titles: string[], location: string) {
   jobScrapeStore.set(scanId, { requestId, status: 'pending', titles, location, jobs: [], error: null, at: Date.now() });
   trimJobScrapeStore();
   scrapeJobsForTitles(titles, location)
-    .then(jobs => { const e = jobScrapeStore.get(scanId); if (e && e.requestId === requestId) jobScrapeStore.set(scanId, { ...e, status: 'ready', jobs, at: Date.now() }); })
+    .then(result => { const e = jobScrapeStore.get(scanId); if (e && e.requestId === requestId) jobScrapeStore.set(scanId, { ...e, status: 'ready', jobs: result.jobs, at: Date.now() }); })
     .catch(err => { const e = jobScrapeStore.get(scanId); if (e && e.requestId === requestId) jobScrapeStore.set(scanId, { ...e, status: 'error', error: err?.message ?? 'scrape failed', at: Date.now() }); });
 }
 
