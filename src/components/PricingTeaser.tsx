@@ -1,6 +1,7 @@
 // PAYMENTS PAUSED: component disabled during pricing rework
 // Component temporarily returns null to hide all pricing teasers
-export function PricingTeaser() {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function PricingTeaser(_props: { source?: string; variant?: 'full' | 'compact' | 'inline' }) {
   return null;
 }
 

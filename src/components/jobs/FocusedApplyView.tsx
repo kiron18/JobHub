@@ -78,8 +78,6 @@ function formatDescription(text: string): React.ReactNode {
   ];
 
   lines.forEach((line, idx) => {
-    const lower = line.toLowerCase();
-
     // Detect section headers
     const isHeader = headerPatterns.some(p => p.test(line)) ||
       (line.length < 50 && /^[A-Z][a-z]+( [A-Z][a-z]+){0,4}$/.test(line) && !line.includes('.'));

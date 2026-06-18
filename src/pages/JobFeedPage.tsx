@@ -17,13 +17,17 @@ const gc: React.CSSProperties = {
 export const JobFeedPage: React.FC = () => {
   const queryClient = useQueryClient();
   const [jobs, setJobs] = useState<JobFeedItem[]>([]);
-  const [total, setTotal] = useState(0);
-  const [hasMore, setHasMore] = useState(false);
-  const [offset, setOffset] = useState(0);
-  const [loadingMore, setLoadingMore] = useState(false);
+  // TODO: Restore pagination when load-more UI is added
+  // const [total, setTotal] = useState(0);
+  // const [hasMore, setHasMore] = useState(false);
+  // const [offset, setOffset] = useState(0);
+  // const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [profileIncomplete, setProfileIncomplete] = useState(false);
   const [building, setBuilding] = useState(false);
+  // TODO: Restore pagination when load-more UI is added
+  const [_offset, setOffset] = useState(0);
+  // const [_loadingMore, setLoadingMore] = useState(false);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollCount = useRef(0);
 
@@ -49,14 +53,15 @@ export const JobFeedPage: React.FC = () => {
   // Guard with offset===0 so paginated results don't get wiped by a background refetch.
   useEffect(() => {
     if (!feedData) return;
-    if (offset === 0) {
+    if (_offset === 0) {
       setJobs(feedData.jobs ?? []);
-      setTotal(feedData.total ?? 0);
-      setHasMore(feedData.hasMore ?? false);
+      // TODO: Restore when pagination is added
+      // setTotal(feedData.total ?? 0);
+      // setHasMore(feedData.hasMore ?? false);
       setProfileIncomplete(feedData.profileIncomplete ?? false);
       setBuilding(feedData.building ?? false);
     }
-  }, [feedData]);
+  }, [feedData, _offset]);
 
   // Poll every 60s while building, up to 8 attempts (~8 minutes total)
   useEffect(() => {
@@ -75,13 +80,14 @@ export const JobFeedPage: React.FC = () => {
     };
   }, [building, isLoading]);
 
+  /* TODO: Restore when load-more UI is added
   const handleLoadMore = async () => {
     setLoadingMore(true);
     try {
-      const next = offset + 10;
+      const next = _offset + 10;
       const { data } = await api.get(`/job-feed/feed?offset=${next}`);
       setJobs(prev => [...prev, ...data.jobs]);
-      setHasMore(data.hasMore);
+      // setHasMore(data.hasMore);
       setOffset(next);
     } catch {
       toast.error('Failed to load more jobs');
@@ -89,6 +95,7 @@ export const JobFeedPage: React.FC = () => {
       setLoadingMore(false);
     }
   };
+  */
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -109,6 +116,7 @@ export const JobFeedPage: React.FC = () => {
     }
   };
 
+  /* TODO: Restore when job card updates are implemented
   const handleUpdate = useCallback((updated: Partial<JobFeedItem> & { id: string }) => {
     setJobs(prev => {
       // If the item was skipped, remove it from the visible list
@@ -118,6 +126,7 @@ export const JobFeedPage: React.FC = () => {
       return prev.map(j => (j.id === updated.id ? { ...j, ...updated } : j));
     });
   }, []);
+  */
 
   if (isLoading) {
     return (

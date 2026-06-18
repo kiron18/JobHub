@@ -2,7 +2,7 @@ import React from 'react';
 import { Loader2, AlertCircle, Briefcase } from 'lucide-react';
 import { warm } from '../../lib/theme/warmTokens';
 
-export type FeedReadiness = 'partial' | 'complete' | 'error' | 'building' | 'incomplete-profile';
+export type FeedReadiness = 'partial' | 'complete' | 'error' | 'building' | 'incomplete-profile' | 'empty';
 
 interface FeedStateNoticeProps {
   state: FeedReadiness;
@@ -81,13 +81,13 @@ export const FeedStateNotice: React.FC<FeedStateNoticeProps> = ({
             width: 32,
             height: 32,
             borderRadius: '50%',
-            background: `${warm.colors.accentGreen}15`,
+            background: `${warm.colors.success}15`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={warm.colors.accentGreen} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={warm.colors.success} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12" />
           </svg>
         </div>
@@ -203,35 +203,40 @@ export const FeedStateNotice: React.FC<FeedStateNoticeProps> = ({
   }
 
   // Empty: no jobs found after search
-  return (
-    <div style={{ ...gc, padding: 48, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, textAlign: 'center' }}>
-      <Briefcase size={36} style={{ color: warm.colors.textMuted }} />
-      <div>
-        <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: warm.colors.textSecondary }}>
-          No listings found today
-        </p>
-        <p style={{ margin: '4px 0 0', fontSize: 14, color: warm.colors.textMuted }}>
-          We searched for {targetRole} roles in {targetCity} but found nothing today. Try broadening your target role or check back tomorrow.
-        </p>
+  if (state === 'empty') {
+    return (
+      <div style={{ ...gc, padding: 48, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, textAlign: 'center' }}>
+        <Briefcase size={36} style={{ color: warm.colors.textMuted }} />
+        <div>
+          <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: warm.colors.textSecondary }}>
+            No listings found today
+          </p>
+          <p style={{ margin: '4px 0 0', fontSize: 14, color: warm.colors.textMuted }}>
+            We searched for {targetRole} roles in {targetCity} but found nothing today. Try broadening your target role or check back tomorrow.
+          </p>
+        </div>
+        <button
+          onClick={onRefresh}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '8px 16px',
+            borderRadius: 12,
+            fontSize: 12,
+            fontWeight: 700,
+            border: `1px solid ${warm.colors.borderWhisper}`,
+            color: warm.colors.textSecondary,
+            background: 'transparent',
+            cursor: 'pointer',
+          }}
+        >
+          Search again
+        </button>
       </div>
-      <button
-        onClick={onRefresh}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          padding: '8px 16px',
-          borderRadius: 12,
-          fontSize: 12,
-          fontWeight: 700,
-          border: `1px solid ${warm.colors.borderWhisper}`,
-          color: warm.colors.textSecondary,
-          background: 'transparent',
-          cursor: 'pointer',
-        }}
-      >
-        Search again
-      </button>
-    </div>
-  );
+    );
+  }
+
+  // Fallback (should not reach here)
+  return null;
 };

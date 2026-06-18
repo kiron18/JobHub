@@ -165,96 +165,12 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 //   window.dispatchEvent(new CustomEvent('show-upgrade', { detail: trigger }));
 // }
 
-// PAYMENTS PAUSED: PastDueBanner disabled during pricing rework
-function PastDueBanner() {
-  return null;
-  /* ORIGINAL CODE - restore when payments resume
-  const [loading, setLoading] = React.useState(false);
-  async function handlePortal() {
-    setLoading(true);
-    try {
-      const { data } = await api.post('/stripe/portal');
-      window.location.href = data.url;
-    } catch { setLoading(false); }
-  }
-  return (
-    <div style={{
-      background: 'linear-gradient(90deg, rgba(220,38,38,0.12), rgba(220,38,38,0.06))',
-      borderBottom: '1px solid rgba(220,38,38,0.2)',
-      padding: '9px 20px',
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-    }}>
-      <p style={{ margin: 0, fontSize: 12, color: '#fca5a5', fontWeight: 600 }}>
-        Your last payment failed — update your card to keep access.
-      </p>
-      <button
-        onClick={handlePortal}
-        disabled={loading}
-        style={{
-          background: '#dc2626', color: 'white', border: 'none',
-          borderRadius: 8, padding: '6px 14px', fontSize: 11, fontWeight: 700, cursor: 'pointer',
-        }}
-      >
-        {loading ? '...' : 'Update payment →'}
-      </button>
-    </div>
-  );
-  */
-}
-
-// PAYMENTS PAUSED: LapsedBanner disabled during pricing rework
-function LapsedBanner() {
-  return null;
-  /* ORIGINAL CODE - restore when payments resume
-  return (
-    <div style={{
-      background: 'linear-gradient(90deg, rgba(245,158,11,0.12), rgba(245,158,11,0.05))',
-      borderBottom: '1px solid rgba(245,158,11,0.22)',
-      padding: '9px 20px',
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-    }}>
-      <p style={{ margin: 0, fontSize: 12, color: '#fcd34d', fontWeight: 600 }}>
-        Your Premium subscription has ended — reactivate to keep your tools.
-      </p>
-      <button
-        onClick={() => { window.location.href = '/pricing'; }}
-        style={{
-          background: '#f59e0b', color: '#1c1917', border: 'none',
-          borderRadius: 8, padding: '6px 14px', fontSize: 11, fontWeight: 700, cursor: 'pointer',
-        }}
-      >
-        Reactivate Premium →
-      </button>
-    </div>
-  );
-  */
-}
-
-// PAYMENTS PAUSED: TrialBanner disabled during pricing rework
-function TrialBanner() {
-  return null;
-  /* ORIGINAL CODE - restore when payments resume
-  ({ trialEndDate }: { trialEndDate: string }) {
-  const end = new Date(trialEndDate);
-  const daysLeft = Math.ceil((end.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-  return (
-    <div style={{
-      background: 'linear-gradient(90deg, rgba(15,118,110,0.10), rgba(15,118,110,0.04))',
-      borderBottom: '1px solid rgba(15,118,110,0.15)',
-      padding: '9px 20px',
-      display: 'flex', alignItems: 'center', gap: 12,
-    }}>
-      <p style={{ margin: 0, fontSize: 12, color: '#6ee7b7', fontWeight: 600 }}>
-        Free trial — {daysLeft > 0 ? `${daysLeft} day${daysLeft === 1 ? '' : 's'} remaining` : 'ends today'}. Your card will be charged after the trial.
-      </p>
-    </div>
-  );
-  */
-}
+// PAYMENTS PAUSED: Banner components removed during pricing rework
+// Original code preserved in git history - restore when payments resume
 
 function DashboardGate({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
-  const { data: profile, isLoading } = useQuery({
+  const { data: _profile, isLoading } = useQuery({
     queryKey: ['profile'],
     queryFn: async () => { const { data } = await api.get('/profile'); return data; },
     staleTime: 5 * 60 * 1000,
@@ -289,10 +205,11 @@ function DashboardGate({ children }: { children: React.ReactNode }) {
 
   if (isLoading) return null;
 
-  const planStatus: string = profile?.planStatus ?? 'active';
-  const isPastDue = planStatus === 'past_due';
-  const isTrialing = planStatus === 'trialing';
-  const isLapsed = planStatus === 'cancelled' || planStatus === 'expired';
+  // PAYMENTS PAUSED: plan status checks removed during pricing rework
+  // const planStatus: string = profile?.planStatus ?? 'active';
+  // const isPastDue = planStatus === 'past_due';
+  // const isTrialing = planStatus === 'trialing';
+  // const isLapsed = planStatus === 'cancelled' || planStatus === 'expired';
 
   return (
     <>

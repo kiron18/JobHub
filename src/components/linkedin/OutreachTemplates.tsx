@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Loader2, Copy, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
-import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import { warm } from '../../lib/theme/warmTokens';
 import type { OutreachData } from './types';
@@ -104,7 +103,6 @@ function TemplateCard({ label, content, tip, charLimit, editableNote }: {
 }
 
 export const OutreachTemplates: React.FC = () => {
-  const navigate = useNavigate();
   const [targetFirstName, setTargetFirstName] = useState('');
   const [targetCompany, setTargetCompany] = useState('');
   const [targetTopicOrPost, setTargetTopicOrPost] = useState('');
