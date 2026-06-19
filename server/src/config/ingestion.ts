@@ -10,4 +10,4 @@ export const INGESTION_SOURCES: Record<IngestionSource, boolean> = {
 export const MAX_PAGES_PER_SOURCE = 1; // Single page for faster initial load
 export const RELEVANCE_THRESHOLD = 0.34;
 export const SEEK_SEARCH_MODE: 'keyword' | 'classification' = 'keyword';
-export const CACHE_MIN_HITS = 3;
+export const CACHE_MIN_HITS = 1;
