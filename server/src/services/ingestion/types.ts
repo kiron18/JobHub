@@ -1,6 +1,6 @@
 import type { RawJob } from '../jobFeed';
 
-export type IngestionSource = 'adzuna' | 'jsearch' | 'seek' | 'indeed' | 'jora' | 'cache';
+export type IngestionSource = 'adzuna' | 'jsearch' | 'seek' | 'indeed' | 'jora' | 'linkedin' | 'cache';
 
 export interface SearchQuery {
   role: string;

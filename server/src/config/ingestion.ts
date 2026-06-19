@@ -6,6 +6,7 @@ export const INGESTION_SOURCES: Record<IngestionSource, boolean> = {
   seek: true,
   indeed: true,
   jora: true,
+  linkedin: true,
   cache: true,
 };
 

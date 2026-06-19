@@ -1,66 +1,53 @@
 import type { RawJob } from '../../jobFeed';
 import type { SourceAdapter, SearchQuery, AdapterResult } from '../types';
 import { firecrawlScrape } from '../firecrawl';
-import { parseIndeedMarkdown } from '../parseIndeedMarkdown';
+import { parseLinkedInMarkdown } from '../parseLinkedInMarkdown';
 import { normalizeLocation } from '../locationNormalize';
 
 function buildUrl(role: string, location: string, page: number): string {
-  // Indeed AU uses q= and l= params
-  const loc = normalizeLocation(location);
+  // LinkedIn's public guest jobs API returns HTML job cards with no login.
+  // It is the only reliably-parseable no-auth surface; expect frequent blocking.
   const kw = encodeURIComponent(role);
-  const where = encodeURIComponent(loc);
-  // Page starts at 0 for Indeed (0, 10, 20... for pagination)
-  const start = (page - 1) * 10;
-  return `https://au.indeed.com/jobs?q=${kw}&l=${where}&start=${start}`;
+  const loc = encodeURIComponent(normalizeLocation(location));
+  const start = (page - 1) * 25; // LinkedIn paginates in steps of 25
+  return `https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=${kw}&location=${loc}&start=${start}`;
 }
 
-export const indeedAdapter: SourceAdapter = {
-  source: 'indeed',
+export const linkedinAdapter: SourceAdapter = {
+  source: 'linkedin',
   async search({ role, location, maxPages }: SearchQuery): Promise<AdapterResult> {
     const started = Date.now();
     let blocked = false;
     let errorMessage: string | null = null;
 
     try {
-      // Build all page URLs upfront
       const urls = Array.from({ length: maxPages }, (_, i) => buildUrl(role, location, i + 1));
-      console.log(`[Indeed] Scraping ${urls.length} pages for "${role}" in "${location}"`);
+      console.log(`[LinkedIn] Scraping ${urls.length} pages for "${role}" in "${location}"`);
 
-      // Scrape all pages with staggered delays
       const scrapeResults = await Promise.all(
         urls.map((url, idx) =>
           new Promise<{ markdown: string; blocked: boolean }>((resolve) => {
-            setTimeout(() => {
-              firecrawlScrape(url).then(resolve);
-            }, idx * 150);
+            setTimeout(() => { firecrawlScrape(url).then(resolve); }, idx * 150);
           })
         )
       );
 
-      // Process results
       const allJobs: RawJob[] = [];
-      let blockedPages = 0;
-
       for (let i = 0; i < scrapeResults.length; i++) {
         const { markdown, blocked: b } = scrapeResults[i];
-        console.log(`[Indeed] Page ${i + 1}: blocked=${b}, length=${markdown?.length || 0}`);
+        console.log(`[LinkedIn] Page ${i + 1}: blocked=${b}, length=${markdown?.length || 0}`);
 
         if (b) {
-          blockedPages++;
           if (i === 0) {
             blocked = true;
-            errorMessage = 'Indeed is blocking scraping attempts';
+            errorMessage = 'LinkedIn is blocking scraping attempts';
           }
           break;
         }
 
-        const parsed = await parseIndeedMarkdown(markdown);
-        console.log(`[Indeed] Page ${i + 1}: parsed ${parsed.length} jobs`);
-
-        if (parsed.length === 0) {
-          break;
-        }
-
+        const parsed = await parseLinkedInMarkdown(markdown);
+        console.log(`[LinkedIn] Page ${i + 1}: parsed ${parsed.length} jobs`);
+        if (parsed.length === 0) break;
         allJobs.push(...parsed);
       }
 
@@ -72,12 +59,12 @@ export const indeedAdapter: SourceAdapter = {
         return true;
       });
 
-      console.log(`[Indeed] Total: ${deduped.length} unique jobs`);
+      console.log(`[LinkedIn] Total: ${deduped.length} unique jobs`);
 
       return {
         jobs: deduped,
         report: {
-          source: 'indeed',
+          source: 'linkedin',
           rawCount: deduped.length,
           blocked,
           errorMessage,
@@ -86,12 +73,12 @@ export const indeedAdapter: SourceAdapter = {
         },
       };
     } catch (e: any) {
-      errorMessage = e?.message ?? 'indeed adapter error';
-      console.error(`[Indeed] Adapter error:`, e);
+      errorMessage = e?.message ?? 'linkedin adapter error';
+      console.error(`[LinkedIn] Adapter error:`, e);
       return {
         jobs: [],
         report: {
-          source: 'indeed',
+          source: 'linkedin',
           rawCount: 0,
           blocked: true,
           errorMessage,

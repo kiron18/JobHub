@@ -6,13 +6,14 @@ import { adzunaAdapter } from './adapters/adzuna';
 import { jsearchAdapter } from './adapters/jsearch';
 import { indeedAdapter } from './adapters/indeed';
 import { joraAdapter } from './adapters/jora';
+import { linkedinAdapter } from './adapters/linkedin';
 import type { SourceAdapter, SourceReport, IngestionSource } from './types';
 import { INGESTION_SOURCES, MAX_PAGES_PER_SOURCE, CACHE_MIN_HITS } from '../../config/ingestion';
 import { prisma } from '../../db';
 import { jobRowToMergedJob } from './cache';
 import { locationKey } from './locationKey';
 
-const ALL: SourceAdapter[] = [adzunaAdapter, jsearchAdapter, seekAdapter, indeedAdapter, joraAdapter];
+const ALL: SourceAdapter[] = [adzunaAdapter, jsearchAdapter, seekAdapter, indeedAdapter, joraAdapter, linkedinAdapter];
 
 function todayStr(): string { return new Date().toISOString().slice(0, 10); }
 
