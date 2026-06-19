@@ -22,6 +22,12 @@ const router = Router();
 // Tracks which userIds have a feed build currently in flight
 const buildingNow = new Set<string>();
 
+// Records the feedDate (YYYY-MM-DD) of the most recent COMPLETED build per user.
+// When a build finishes with zero results, builtToday stays 0; without this marker
+// GET /feed would keep returning building:true forever. With it, we return an
+// "empty" state ("No listings found") once the build has actually completed.
+const lastBuildCompleted = new Map<string, string>();
+
 
 
 // FAST: Scrape all 3 roles in parallel, keep top 10 jobs
@@ -168,7 +174,12 @@ router.post('/refresh', async (req: any, res: any) => {
 
     if (!buildingNow.has(userId)) {
       buildingNow.add(userId);
-      buildDailyFeedMultiSource(userId).finally(() => buildingNow.delete(userId));
+      // Clear any prior "completed empty" marker so this forced rebuild scrapes fresh.
+      lastBuildCompleted.delete(userId);
+      buildDailyFeedMultiSource(userId).finally(() => {
+        buildingNow.delete(userId);
+        lastBuildCompleted.set(userId, today.toISOString().slice(0, 10));
+      });
     }
 
     return res.json({ ok: true, building: true });
@@ -204,24 +215,35 @@ router.get('/feed', async (req: any, res: any) => {
     const builtToday = await prisma.jobFeedItem.count({ where: { userId, feedDate: today } });
 
     if (builtToday === 0) {
-      // Gate the BUILD (not the read) — free tier gets 1 lifetime feed build
-      const access = await checkAccess(userId, 'job_search', userEmail);
-      if (!access.allowed) {
-        return res.status(402).json({ error: 'Job search limit reached', upgradeRequired: true, remaining: 0 });
+      const feedDateStr = today.toISOString().slice(0, 10);
+      // A build already finished today and produced nothing — surface the empty
+      // state ("No listings found") instead of spinning on building:true forever.
+      if (lastBuildCompleted.get(userId) === feedDateStr && !buildingNow.has(userId)) {
+        return res.json({ jobs: [], total: 0, hasMore: false, feedDate: feedDateStr, building: false });
       }
+      // Only evaluate access + trigger a build when one isn't already running for
+      // this user, so the frontend's poll loop doesn't re-check access every tick.
       if (!buildingNow.has(userId)) {
+        // Gate the BUILD (not the read) — free tier gets 1 lifetime feed build
+        const access = await checkAccess(userId, 'job_search', userEmail);
+        if (!access.allowed) {
+          return res.status(402).json({ error: 'Job search limit reached', upgradeRequired: true, remaining: 0 });
+        }
         buildingNow.add(userId);
         buildDailyFeedMultiSource(userId)
           .catch((err: any) => {
             console.error(`[job-feed] Background build failed for ${userId}:`, err.message);
           })
-          .finally(() => buildingNow.delete(userId));
+          .finally(() => {
+            buildingNow.delete(userId);
+            lastBuildCompleted.set(userId, feedDateStr);
+          });
       }
       return res.json({
         jobs: [],
         total: 0,
         hasMore: false,
-        feedDate: today.toISOString().slice(0, 10),
+        feedDate: feedDateStr,
         building: true,
       });
     }

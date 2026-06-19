@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2, RefreshCw, AlertCircle, Briefcase } from 'lucide-react';
 import { toast } from 'sonner';
@@ -28,8 +28,6 @@ export const JobFeedPage: React.FC = () => {
   // TODO: Restore pagination when load-more UI is added
   const [_offset, setOffset] = useState(0);
   // const [_loadingMore, setLoadingMore] = useState(false);
-  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pollCount = useRef(0);
 
   const { data: profile } = useQuery({
     queryKey: ['profile'],
@@ -44,6 +42,10 @@ export const JobFeedPage: React.FC = () => {
       return data;
     },
     staleTime: 5 * 60 * 1000,
+    // Auto-poll while the feed is building or the profile is still settling, and
+    // stop automatically once it resolves. Replaces the old hand-rolled timeout
+    // loop that stalled and left the page stuck on "loading" until manual refresh.
+    refetchInterval: building || profileIncomplete ? 4000 : false,
   });
 
   // Sync query data into local state, runs on both fresh fetch AND cache hit on remount.
@@ -60,41 +62,15 @@ export const JobFeedPage: React.FC = () => {
     }
   }, [feedData, _offset]);
 
-  // Poll every 60s while building, up to 8 attempts (~8 minutes total)
+  // Track how long the build has been running so we can nudge the user to refresh
+  // manually if a cold build runs unusually long. (Polling itself is handled by the
+  // query's refetchInterval above.)
+  const [buildElapsed, setBuildElapsed] = useState(0);
   useEffect(() => {
-    if (building && !isLoading) {
-      if (pollCount.current < 8) {
-        pollRef.current = setTimeout(() => {
-          pollCount.current += 1;
-          queryClient.invalidateQueries({ queryKey: ['job-feed'] });
-        }, 60_000);
-      }
-    } else {
-      pollCount.current = 0;
-    }
-    return () => {
-      if (pollRef.current) clearTimeout(pollRef.current);
-    };
-  }, [building, isLoading]);
-
-  // Poll every 3s while profile is incomplete (claim may be in progress), up to 20 attempts (~1 minute)
-  const profilePollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const profilePollCount = useRef(0);
-  useEffect(() => {
-    if (profileIncomplete && !isLoading) {
-      if (profilePollCount.current < 20) {
-        profilePollRef.current = setTimeout(() => {
-          profilePollCount.current += 1;
-          queryClient.invalidateQueries({ queryKey: ['job-feed'] });
-        }, 3_000);
-      }
-    } else {
-      profilePollCount.current = 0;
-    }
-    return () => {
-      if (profilePollRef.current) clearTimeout(profilePollRef.current);
-    };
-  }, [profileIncomplete, isLoading]);
+    if (!building) { setBuildElapsed(0); return; }
+    const t = setInterval(() => setBuildElapsed(e => e + 1), 1000);
+    return () => clearInterval(t);
+  }, [building]);
 
   /* TODO: Restore when load-more UI is added
   const handleLoadMore = async () => {
@@ -197,9 +173,9 @@ export const JobFeedPage: React.FC = () => {
               in <span style={{ color: warm.colors.textPrimary }}>{profile?.targetCity}</span> on Seek.
             </p>
             <p style={{ margin: '8px 0 0', fontSize: 12, color: warm.colors.textMuted }}>
-              {pollCount.current >= 8
+              {buildElapsed >= 120
                 ? "Taking longer than usual, try refreshing manually."
-                : "This takes 1–2 minutes on first load. Grab a coffee, we'll check back automatically."}
+                : "This takes up to a minute on first load. We'll update automatically."}
             </p>
           </div>
         </div>

@@ -22,6 +22,17 @@ export interface ScrapeResult {
   reports: SourceReport[];
 }
 
+const AU_STATES = ['NSW', 'VIC', 'QLD', 'WA', 'SA', 'TAS', 'ACT', 'NT'];
+
+/** Detect an AU state code in a free-text location string (whole-word match). */
+function detectState(s: string | null | undefined): string {
+  const up = (s ?? '').toUpperCase();
+  for (const st of AU_STATES) {
+    if (new RegExp(`\\b${st}\\b`).test(up)) return st;
+  }
+  return '';
+}
+
 export async function scrapeJobsForTitles(titles: string[], location: string): Promise<ScrapeResult> {
   const allReports: SourceReport[] = [];
   const runs = await Promise.all(
@@ -39,8 +50,21 @@ export async function scrapeJobsForTitles(titles: string[], location: string): P
     allReports.push(...run.reports);
   }
 
-  // Filter out low relevance and dedupe
-  const filtered = allJobs.filter(m => !m.lowRelevance);
+  // Filter out low relevance, wrong-state jobs, and dedupe.
+  // Location sanity: never surface a job in a clearly DIFFERENT state than the
+  // search. We keep same-state jobs (so nearby regional towns are preserved),
+  // plus remote / unknown-location jobs. This protects regional users (Griffith,
+  // Armidale, Cannington, ...) from stray cross-state listings without starving
+  // their already-sparse feed.
+  const searchState = detectState(location);
+  const filtered = allJobs.filter(m => {
+    if (m.lowRelevance) return false;
+    if (searchState) {
+      const jobState = detectState(m.location);
+      if (jobState && jobState !== searchState) return false;
+    }
+    return true;
+  });
   const seen = new Set<string>();
   const deduped = filtered.filter(m => (seen.has(m.dedupKey) ? false : (seen.add(m.dedupKey), true)));
 
