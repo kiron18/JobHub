@@ -246,9 +246,6 @@ export const JobFeedPage: React.FC = () => {
           </div>
         </div>
       )}
-          </div>
-        </div>
-      )}
 
       {/* Error */}
       {isError && !profileIncomplete && (
