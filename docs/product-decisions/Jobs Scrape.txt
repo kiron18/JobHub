@@ -21,19 +21,24 @@
   ┌─────────┬────────────┬───────────────┬───────────────────────────────┐
   │ Adapter │    File    │  Source URL   │            Status             │
   ├─────────┼────────────┼───────────────┼───────────────────────────────┤
-  │ SEEK    │ seek.ts    │ au.seek.com   │ ✅  Active                     │
+  │ SEEK    │ seek.ts    │ au.seek.com   │ ✅  Active (Firecrawl + LLM)   │
+  ├─────────┼────────────┼───────────────┼───────────────────────────────┤
+  │ Indeed  │ indeed.ts  │ au.indeed.com │ ✅  Active (Firecrawl)         │
+  ├─────────┼────────────┼───────────────┼───────────────────────────────┤
+  │ Jora    │ jora.ts    │ au.jora.com   │ ✅  Active (Firecrawl)         │
   ├─────────┼────────────┼───────────────┼───────────────────────────────┤
   │ Adzuna  │ adzuna.ts  │ Adzuna API    │ ✅  Active (API, not scraping) │
   ├─────────┼────────────┼───────────────┼───────────────────────────────┤
   │ JSearch │ jsearch.ts │ JSearch API   │ ❌  Disabled (US-only data)    │
   └─────────┴────────────┴───────────────┴───────────────────────────────┘
-  Note: Indeed and Jora adapters are not implemented.
 
   Config (server/src/config/ingestion.ts):
   INGESTION_SOURCES = {
     adzuna: true,
-    jsearch: false,  // Disabled (note in config: US-only data)
+    jsearch: false,      // Disabled (US-only data)
     seek: true,
+    indeed: true,        // Firecrawl-based
+    jora: true,          // Firecrawl-based
     cache: true,
   }
   MAX_PAGES_PER_SOURCE = 1
@@ -117,7 +122,17 @@
   - GET /api/admin/ingestion/summary - Stats on ingestion runs by source
 
   ---
-  10. Environment Variables Required
+  10. Migration Hygiene (Critical)
+
+  Always write idempotent migrations for staging/production:
+  - CREATE TABLE IF NOT EXISTS (not CREATE TABLE)
+  - CREATE INDEX IF NOT EXISTS (not CREATE INDEX)
+  - ALTER TABLE ... ADD COLUMN IF NOT EXISTS
+  Never use `db push` on staging/production; always use `prisma migrate deploy`.
+  This prevents P3009/P3018 crash-loops when tables already exist from prior `db push`.
+
+  ---
+  11. Environment Variables Required
 
   FIRECRAWL_API_KEY      # Firecrawl scraping
   ADZUNA_APP_ID          # Adzuna API

@@ -20,7 +20,11 @@ if (result.signal === 'SIGTERM' || result.error?.code === 'ETIMEDOUT') {
 
 if (result.status !== 0) {
   if (out.includes('P3009')) {
-    console.log('\n[migrate-safe] P3009 detected — schema already in sync, skipping.');
+    console.log('\n[migrate-safe] P3009 detected — failed migration already in DB; starting app anyway.');
+    process.exit(0);
+  }
+  if (out.includes('P3018')) {
+    console.error('\n[migrate-safe] P3018 — a migration failed to apply. Starting app anyway so the service stays up; this migration MUST be resolved (see prisma migrate resolve).');
     process.exit(0);
   }
   if (out.includes('EMAXCONNSESSION') || out.includes('P1001') || out.includes('P1013')) {

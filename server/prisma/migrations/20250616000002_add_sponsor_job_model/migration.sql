@@ -1,7 +1,7 @@
 -- Add SponsorJob model
 
 -- CreateTable SponsorJob
-CREATE TABLE "SponsorJob" (
+CREATE TABLE IF NOT EXISTS "SponsorJob" (
     "id" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "company" TEXT NOT NULL,
@@ -22,7 +22,7 @@ CREATE TABLE "SponsorJob" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "SponsorJob_externalId_key" ON "SponsorJob"("externalId");
-CREATE INDEX "SponsorJob_active_idx" ON "SponsorJob"("active");
-CREATE INDEX "SponsorJob_visaSponsorship_idx" ON "SponsorJob"("visaSponsorship");
-CREATE INDEX "SponsorJob_publishedAt_idx" ON "SponsorJob"("publishedAt");
+CREATE UNIQUE INDEX IF NOT EXISTS "SponsorJob_externalId_key" ON "SponsorJob"("externalId");
+CREATE INDEX IF NOT EXISTS "SponsorJob_active_idx" ON "SponsorJob"("active");
+CREATE INDEX IF NOT EXISTS "SponsorJob_visaSponsorship_idx" ON "SponsorJob"("visaSponsorship");
+CREATE INDEX IF NOT EXISTS "SponsorJob_publishedAt_idx" ON "SponsorJob"("publishedAt");

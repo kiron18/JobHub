@@ -53,8 +53,8 @@ export function normalizeLocation(location: string | null | undefined): string {
     }
   }
 
-  // Ensure comma separator before state if missing
-  normalized = normalized.replace(/\s+([A-Z]{2,3})$/, ', $1');
+  // Normalize whatever separator precedes the state (space, comma, or both) to exactly ", ".
+  normalized = normalized.replace(/[,\s]+([A-Z]{2,3})$/, ', $1');
 
   return normalized;
 }

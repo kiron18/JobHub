@@ -2,7 +2,8 @@ import type { RawJob } from '../jobFeed';
 import { callClaude } from '../llm';
 import { PARSE_SEEK_PROMPT } from './prompts/parseSeekPrompt';
 
-const HAIKU_MODEL = 'meta-llama/llama-3.3-70b-instruct';
+// Fast structured-extraction model for SEEK card parsing. Env-overridable.
+const PARSE_MODEL = process.env.SEEK_PARSE_MODEL || 'anthropic/claude-haiku-4-5';
 
 interface ParsedCard {
   title: string; company: string; location: string | null; salary: string | null;
@@ -18,7 +19,7 @@ export async function parseSeekMarkdown(markdown: string): Promise<RawJob[]> {
   try {
     // Truncate to ~15k chars to stay within token limits
     const truncated = markdown.slice(0, 15000);
-    const { content } = await callClaude(PARSE_SEEK_PROMPT(truncated), true, undefined, HAIKU_MODEL);
+    const { content } = await callClaude(PARSE_SEEK_PROMPT(truncated), true, undefined, PARSE_MODEL);
     console.log(`[SEEK Parse] Response length: ${content?.length || 0}`);
     let cards: ParsedCard[];
     try {
