@@ -354,16 +354,20 @@ router.post('/claim', authenticate, async (req: AuthRequest, res) => {
       marketingConsent: true,
       marketingEmail: email,
     };
+    console.log(`[cv-scan/claim] userId=${userId}, loc=${loc}, targetRole=${targetRole}`);
     // When we re-bind an existing-by-email profile, its structured bank belongs to
     // a previous resume. The freshly claimed resume is authoritative, so we force a
     // full bank replace below instead of letting the persist guards keep stale rows.
     let rebondExistingProfile = false;
     try {
-      await prisma.candidateProfile.upsert({
+      const existingProfile = await prisma.candidateProfile.findUnique({ where: { userId } });
+      console.log(`[cv-scan/claim] existingProfile:`, existingProfile ? { targetCity: existingProfile.targetCity, location: existingProfile.location } : 'none');
+      const result = await prisma.candidateProfile.upsert({
         where: { userId },
         create: { userId, ...profileData },
         update: profileData,
       });
+      console.log(`[cv-scan/claim] upsert result: targetCity=${result.targetCity}, location=${result.location}`);
     } catch (e) {
       // email is @unique: a returning user already has a profile under this email
       // (different userId). Migrate that profile onto the current account rather

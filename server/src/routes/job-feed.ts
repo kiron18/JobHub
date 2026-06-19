@@ -193,6 +193,7 @@ router.get('/feed', async (req: any, res: any) => {
       select: { targetRole: true, targetCity: true, location: true },
     });
     const effectiveCity = profile?.targetCity || profile?.location;
+    console.log(`[job-feed/feed] userId=${userId}, targetRole=${profile?.targetRole}, targetCity=${profile?.targetCity}, location=${profile?.location}, effectiveCity=${effectiveCity}`);
     if (!profile?.targetRole || !effectiveCity) {
       return res.json({ jobs: [], total: 0, hasMore: false, feedDate: today.toISOString().slice(0, 10), profileIncomplete: true });
     }
