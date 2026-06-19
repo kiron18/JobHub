@@ -28,7 +28,7 @@ export const JobPreviewModal: React.FC<Props> = ({
   item,
   isOpen,
   onClose,
-  _onUpdate,
+  onUpdate: _onUpdate,
   onApply,
   onSave,
   onSkip,
