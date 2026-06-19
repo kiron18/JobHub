@@ -214,18 +214,38 @@ export const JobFeedPage: React.FC = () => {
             <p style={{ margin: '0 0 16px', fontSize: 14, color: warm.colors.textSecondary }}>
               Add your city to the Location field in Profile &amp; Achievements to enable your job feed.
             </p>
-            <NavLink
-              to="/workspace"
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 16px',
-                borderRadius: 12, background: `${warm.colors.accentPetrol}20`,
-                border: `1px solid ${warm.colors.accentPetrol}30`,
-                color: warm.colors.accentPetrol, fontSize: 14, fontWeight: 700,
-                textDecoration: 'none',
-              }}
-            >
-              Go to Profile &amp; Achievements →
-            </NavLink>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+              <button
+                onClick={() => queryClient.invalidateQueries({ queryKey: ['job-feed'] })}
+                disabled={isLoading}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 16px',
+                  borderRadius: 12, background: 'transparent',
+                  border: `1px solid ${warm.colors.borderWhisper}`,
+                  color: warm.colors.textSecondary, fontSize: 14, fontWeight: 700,
+                  cursor: isLoading ? 'default' : 'pointer',
+                  opacity: isLoading ? 0.5 : 1,
+                }}
+              >
+                {isLoading ? <Loader2 size={14} style={{ animation: 'spin 0.8s linear infinite' }} /> : <RefreshCw size={14} />}
+                Retry
+              </button>
+              <NavLink
+                to="/workspace"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 16px',
+                  borderRadius: 12, background: `${warm.colors.accentPetrol}20`,
+                  border: `1px solid ${warm.colors.accentPetrol}30`,
+                  color: warm.colors.accentPetrol, fontSize: 14, fontWeight: 700,
+                  textDecoration: 'none',
+                }}
+              >
+                Go to Profile &amp; Achievements →
+              </NavLink>
+            </div>
+          </div>
+        </div>
+      )}
           </div>
         </div>
       )}
