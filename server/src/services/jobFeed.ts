@@ -1,7 +1,5 @@
 import axios from 'axios';
 import { prisma } from '../index';
-import { callLLMWithRetry } from '../utils/callLLMWithRetry';
-import { parseLLMJson } from '../utils/parseLLMResponse';
 import { buildSeekClusterKey, buildEntryLevelSearchTerm, fetchSeekJobsForCluster } from './seekScraper';
 import { deduplicateJobs } from '../utils/deduplicateJobs';
 
@@ -60,40 +58,6 @@ export function todayAEST(): Date {
   // en-AU locale returns "DD/MM/YYYY"
   const [day, month, year] = s.split('/');
   return new Date(`${year}-${month}-${day}T00:00:00.000Z`);
-}
-
-// ─── Bullet generation ────────────────────────────────────────────────────────
-
-export async function generateBullets(jobs: RawJob[]): Promise<(string[] | null)[]> {
-  if (jobs.length === 0) return [];
-
-  const batch = jobs.slice(0, 10);
-
-  const input = batch.map(j => ({
-    title: j.title,
-    company: j.company,
-    description: j.description.slice(0, 800),
-  }));
-
-  const prompt = `For each job below, write exactly 3-5 bullet points that help a job seeker quickly assess fit.
-Cover: role type, team/company context, key requirements, work arrangement/location, and anything
-notable (salary, government role, selection criteria likely required, etc.).
-Each bullet is one short plain-text sentence. No markdown, no dashes, no asterisks.
-
-Return a JSON array of arrays: [[bullet, bullet, ...], ...]  — same order as input.
-
-Jobs:
-${JSON.stringify(input)}`;
-
-  try {
-    const raw = await callLLMWithRetry(prompt, true);
-    const parsed = parseLLMJson(raw);
-    if (!Array.isArray(parsed)) return batch.map(() => null);
-    return parsed.map((b: any) => (Array.isArray(b) ? b : null));
-  } catch (err) {
-    console.error('[generateBullets] LLM call failed:', err);
-    return batch.map(() => null);
-  }
 }
 
 // ─── Quick keyword pre-scorer ─────────────────────────────────────────────────

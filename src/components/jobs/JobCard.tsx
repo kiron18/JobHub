@@ -250,23 +250,13 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
           {item.salary && ` · ${item.salary}`}
         </p>
 
-        {/* Bullets */}
-        {item.bullets ? (
-          <ul className="space-y-1">
-            {(item.bullets as string[]).map((b, i) => (
-              <li key={i} className="text-xs text-[#5C5750] flex items-start gap-2">
-                <span className="text-brand-500 mt-0.5 flex-shrink-0">·</span>
-                {b}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <div className="space-y-1.5">
-            {[70, 55, 85].map(w => (
-              <div key={w} className="h-2.5 rounded bg-[#F4EFE8] animate-pulse" style={{ width: `${w}%` }} />
-            ))}
-          </div>
-        )}
+        {/* Description preview */}
+          <p
+            className="text-xs text-[#5C5750] leading-relaxed"
+            style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+          >
+            {item.description}
+          </p>
 
       </div>
 

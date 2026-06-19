@@ -1,12 +1,10 @@
 import { Router, Response } from 'express';
-import axios from 'axios';
 import { prisma } from '../index';
 import { authenticate } from '../middleware/auth';
 import { analyzeRateLimit } from '../middleware/analyzeRateLimit';
 import { checkAccess, hasActiveAccess, isPaidOrExempt } from '../middleware/accessControl';
 import { DAILY_APPLICATION_CAP, countTodaysApplications } from '../services/applicationCap';
 import {
-  generateBullets,
   findAddressee,
   todayAEST,
   type RawJob,
@@ -15,57 +13,17 @@ import { scoreJobForFeed } from '../services/jobAnalysis';
 import { reconcileApplication } from '../lib/applicationReconcile';
 import { scrapeJobsForTitles, type ScrapeResult } from '../services/userJobScrape';
 import { runIngestionForTitle } from '../services/ingestion/runIngestion';
+import { fetchJobDescription } from '../services/ingestion/firecrawl';
+import type { SourceReport } from '../services/ingestion/types';
 
 const router = Router();
 
 // Tracks which userIds have a feed build currently in flight
 const buildingNow = new Set<string>();
 
-// Tracks feed items whose bullets are currently being generated (by item id), so
-// repeated /feed polls while generation is in flight don't double-fire the LLM.
-const bulletGenInFlight = new Set<string>();
 
-// Fire-and-forget bullet generation. Returns immediately; writes bullets to the
-// DB as they land so the next /feed read (client polls while bulletsPending) picks
-// them up. The feed itself renders instantly instead of blocking ~26s on the LLM.
-interface BulletGenItem {
-  id: string; title: string; company: string; location: string | null;
-  salary: string | null; description: string; sourceUrl: string;
-  sourcePlatform: string; postedAt: Date | null;
-}
 
-function kickoffBulletGeneration(items: BulletGenItem[]): void {
-  const toGenerate = items.filter(i => !bulletGenInFlight.has(i.id));
-  if (toGenerate.length === 0) return;
-  toGenerate.forEach(i => bulletGenInFlight.add(i.id));
-
-  const rawJobs = toGenerate.map(i => ({
-    title: i.title,
-    company: i.company,
-    location: i.location ?? '',
-    salary: i.salary,
-    description: i.description,
-    sourceUrl: i.sourceUrl,
-    sourcePlatform: i.sourcePlatform,
-    postedAt: i.postedAt,
-  })) as RawJob[];
-
-  generateBullets(rawJobs)
-    .then((bulletArrays) =>
-      Promise.all(
-        toGenerate.map((item, idx) =>
-          bulletArrays[idx]
-            ? prisma.jobFeedItem.update({ where: { id: item.id }, data: { bullets: bulletArrays[idx] } })
-            : Promise.resolve()
-        )
-      )
-    )
-    .catch((err: any) => console.error('[job-feed] background bullet gen failed:', err?.message ?? err))
-    .finally(() => toGenerate.forEach(i => bulletGenInFlight.delete(i.id)));
-}
-
-// NEW: Multi-source feed build using ingestion pipeline - FAST FIRST approach
-// Scrapes primary role immediately, inserts jobs, then scrapes remaining roles in background
+// FAST: Scrape all 3 roles in parallel, keep top 10 jobs
 async function buildDailyFeedMultiSource(userId: string): Promise<void> {
   const profile = await prisma.candidateProfile.findUnique({
     where: { userId },
@@ -77,92 +35,74 @@ async function buildDailyFeedMultiSource(userId: string): Promise<void> {
     throw new Error('Profile incomplete — set a target role and city first');
   }
 
-  // Use targetRoles if available (3 roles from CV scan), fallback to single targetRole
+  // Use targetRoles (3 roles from CV scan), fallback to single targetRole
   const rolesArray: string[] = Array.isArray(profile.targetRoles) && profile.targetRoles.length > 0
     ? (profile.targetRoles as string[])
     : [profile.targetRole];
 
   const today = todayAEST();
-  console.log(`[job-feed] Building feed for ${userId} with roles:`, rolesArray);
+  console.log(`[job-feed] FAST build for ${userId}, roles:`, rolesArray);
 
-  // PHASE 1: Fast first - scrape primary role only for immediate display
-  const primaryRole = rolesArray[0];
-  const remainingRoles = rolesArray.slice(1);
+  // Scrape ALL roles in parallel
+  const start = Date.now();
+  const allScrapes = await Promise.all(
+    rolesArray.map(role =>
+      scrapeJobsForTitles([role], effectiveCity)
+        .catch(e => {
+          console.error(`[job-feed] Scrape failed for "${role}":`, e.message);
+          return { jobs: [] as RawJob[], reports: [] as SourceReport[] };
+        })
+    )
+  );
 
-  console.log(`[job-feed] PHASE 1: Fast scrape for primary role: "${primaryRole}"`);
-  const startFast = Date.now();
-  const { jobs: fastJobs, reports: fastReports } = await scrapeJobsForTitles([primaryRole], effectiveCity);
-  console.log(`[job-feed] PHASE 1 complete: ${fastJobs.length} jobs in ${Date.now() - startFast}ms`);
+  // Merge all jobs, dedupe by URL
+  const seenUrls = new Set<string>();
+  let allJobs: RawJob[] = [];
 
-  // Insert fast jobs immediately so user sees them
-  if (fastJobs.length > 0) {
-    const skills = profile.skills;
-    const scoredFastJobs = fastJobs.map(j => ({
-      ...j,
-      matchScore: quickScore(skills, j),
-    }));
-
-    await prisma.jobFeedItem.createMany({
-      data: scoredFastJobs.map(j => ({
-        userId,
-        feedDate: today,
-        title: j.title,
-        company: j.company,
-        location: j.location,
-        salary: j.salary,
-        description: j.description,
-        sourceUrl: j.sourceUrl,
-        sourcePlatform: j.sourcePlatform,
-        postedAt: j.postedAt,
-        matchScore: j.matchScore,
-      })),
-    });
-    console.log(`[job-feed] Inserted ${scoredFastJobs.length} fast jobs for immediate display`);
+  for (const scrape of allScrapes) {
+    for (const job of scrape.jobs) {
+      if (!seenUrls.has(job.sourceUrl)) {
+        seenUrls.add(job.sourceUrl);
+        allJobs.push(job);
+      }
+      // Stop collecting once we have 15
+      if (allJobs.length >= 15) break;
+    }
+    if (allJobs.length >= 15) break;
   }
 
-  // PHASE 2: Background scrape for remaining roles
-  if (remainingRoles.length > 0) {
-    console.log(`[job-feed] PHASE 2: Background scrape for remaining roles:`, remainingRoles);
+  console.log(`[job-feed] Scraped ${allJobs.length} unique jobs in ${Date.now() - start}ms`);
 
-    // Fire and forget - don't await, let it complete in background
-    scrapeJobsForTitles(remainingRoles, effectiveCity)
-      .then(async ({ jobs: bgJobs, reports: bgReports }) => {
-        if (bgJobs.length === 0) {
-          console.log(`[job-feed] PHASE 2: No additional jobs found`);
-          return;
-        }
-
-        const skills = profile.skills;
-        const scoredBgJobs = bgJobs.map(j => ({
-          ...j,
-          matchScore: quickScore(skills, j),
-        }));
-
-        await prisma.jobFeedItem.createMany({
-          data: scoredBgJobs.map(j => ({
-            userId,
-            feedDate: today,
-            title: j.title,
-            company: j.company,
-            location: j.location,
-            salary: j.salary,
-            description: j.description,
-            sourceUrl: j.sourceUrl,
-            sourcePlatform: j.sourcePlatform,
-            postedAt: j.postedAt,
-            matchScore: j.matchScore,
-          })),
-        });
-
-        console.log(`[job-feed] PHASE 2 complete: Inserted ${scoredBgJobs.length} additional jobs`);
-        console.log(`[job-feed] Reports:`, [...fastReports, ...bgReports].map(r =>
-          `${r.source}=${r.rawCount}${r.source === 'cache' ? '(cached)' : `(${r.latencyMs}ms)`}`
-        ).join(', '));
-      })
-      .catch((err: any) => {
-        console.error(`[job-feed] PHASE 2 background scrape failed:`, err.message);
-      });
+  if (allJobs.length === 0) {
+    console.log('[job-feed] No jobs found');
+    return;
   }
+
+  // Score and take top 10
+  const skills = profile.skills;
+  const scoredJobs = allJobs
+    .map(j => ({ ...j, matchScore: quickScore(skills, j) }))
+    .sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0))
+    .slice(0, 10);
+
+  // Insert to DB
+  await prisma.jobFeedItem.createMany({
+    data: scoredJobs.map(j => ({
+      userId,
+      feedDate: today,
+      title: j.title,
+      company: j.company,
+      location: j.location,
+      salary: j.salary,
+      description: j.description,
+      sourceUrl: j.sourceUrl,
+      sourcePlatform: j.sourcePlatform,
+      postedAt: j.postedAt,
+      matchScore: j.matchScore,
+    })),
+  });
+
+  console.log(`[job-feed] Inserted ${scoredJobs.length} jobs for user`);
 }
 
 // Quick scoring helper (moved from jobFeed.ts)
@@ -312,14 +252,6 @@ router.get('/feed', async (req: any, res: any) => {
     });
     const appStatusMap = new Map(applications.map(a => [a.sourceUrl, a.status]));
 
-    // Kick off bullet generation for any items lacking them, but DON'T block the
-    // response on it. The feed renders immediately with skeleton rows; the client
-    // polls while bulletsPending and the bullets fill in as they land server-side.
-    const nullBulletItems = items.filter(i => i.bullets === null);
-    if (nullBulletItems.length > 0) {
-      kickoffBulletGeneration(nullBulletItems);
-    }
-
     // Mark as read (fire and forget)
     prisma.jobFeedItem
       .updateMany({
@@ -336,7 +268,6 @@ router.get('/feed', async (req: any, res: any) => {
       total,
       hasMore: offset + items.length < total,
       feedDate: today.toISOString().slice(0, 10),
-      bulletsPending: nullBulletItems.length > 0,
     });
   } catch (err: any) {
     console.error('[job-feed/feed]', err);
@@ -689,6 +620,7 @@ const JOB_BOARD_HOSTS = [
 ];
 
 // POST /api/job-feed/:id/fetch-description — fetch full description from source URL
+// Uses Firecrawl for reliable extraction with JS rendering support
 router.post('/:id/fetch-description', analyzeRateLimit, async (req: any, res: any) => {
   const userId = req.user.id;
   const { id } = req.params;
@@ -706,46 +638,19 @@ router.post('/:id/fetch-description', analyzeRateLimit, async (req: any, res: an
       return res.status(422).json({ error: 'Cannot fetch description from this source.' });
     }
 
-    const response = await axios.get(item.sourceUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-AU,en;q=0.9',
-      },
-      timeout: 12000,
-      maxRedirects: 5,
-    });
+    // Use Firecrawl for reliable extraction with JS rendering
+    const { description, blocked } = await fetchJobDescription(item.sourceUrl);
 
-    let html = response.data as string;
-
-    // Convert block elements to newlines BEFORE stripping tags (preserves structure)
-    html = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ');
-    html = html.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ');
-    // Replace block-level tags with newlines to preserve paragraph breaks
-    html = html.replace(/<(\/p|br\s*\/?|div|h[1-6]|li)[^>]*>/gi, '\n');
-    // Strip remaining tags
-    html = html.replace(/<[^>]+>/g, ' ');
-    // Decode entities and normalize whitespace
-    html = html
-      .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-      .replace(/&nbsp;/g, ' ').replace(/&#x27;/g, "'").replace(/&#39;/g, "'")
-      .replace(/\n{3,}/g, '\n\n') // Max 2 consecutive newlines
-      .replace(/[ \t]+/g, ' ') // Collapse horizontal whitespace
-      .trim();
-
-    if (html.length < 200) {
+    if (blocked || !description) {
       return res.status(422).json({ error: 'Could not extract description from this page. Please open the listing directly.' });
     }
 
-    // No truncation — users need the full job description for tailoring
-    const fullDescription = html;
-
     await prisma.jobFeedItem.update({
       where: { id },
-      data: { description: fullDescription },
+      data: { description },
     });
 
-    return res.json({ description: fullDescription });
+    return res.json({ description });
   } catch (err: any) {
     console.error('[job-feed/fetch-description]', err.message);
     return res.status(500).json({ error: 'Could not load the full description — open the listing directly and paste the job description.' });
