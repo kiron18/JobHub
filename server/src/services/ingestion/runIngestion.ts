@@ -14,6 +14,14 @@ const ALL: SourceAdapter[] = [adzunaAdapter, jsearchAdapter, seekAdapter];
 
 function todayStr(): string { return new Date().toISOString().slice(0, 10); }
 
+// Request coalescing: track in-flight scrapes so concurrent requests for the same
+// (role, location, day) share the same promise instead of duplicating work.
+const inFlightScrapes = new Map<string, Promise<{ jobs: MergedJob[]; reports: SourceReport[] }>>();
+
+function makeScrapeKey(role: string, location: string, date: string): string {
+  return `${role}|${location}|${date}`;
+}
+
 export async function runIngestionForTitle(
   role: string, location: string, trigger: 'user_scan' | 'manual' | 'cron',
 ): Promise<{ jobs: MergedJob[]; reports: SourceReport[] }> {
@@ -52,6 +60,35 @@ export async function runIngestionForTitle(
 
   console.log(`${logPrefix} - CACHE MISS - scraping fresh...`);
 
+  const scrapeKey = makeScrapeKey(role, locKey, today);
+  const existing = inFlightScrapes.get(scrapeKey);
+  if (existing) {
+    console.log(`${logPrefix} - JOINING in-flight scrape for same key`);
+    return existing;
+  }
+
+  // Create the scrape promise and register it for coalescing
+  const scrapePromise = doScrape(role, location, locKey, today, trigger, logPrefix, startMs);
+  inFlightScrapes.set(scrapeKey, scrapePromise);
+
+  // Clean up the in-flight entry when done (success or failure)
+  scrapePromise
+    .then(() => console.log(`${logPrefix} - In-flight scrape completed, key cleared`))
+    .catch(() => console.log(`${logPrefix} - In-flight scrape failed, key cleared`))
+    .finally(() => inFlightScrapes.delete(scrapeKey));
+
+  return scrapePromise;
+}
+
+async function doScrape(
+  role: string,
+  location: string,
+  locKey: string,
+  today: string,
+  trigger: 'user_scan' | 'manual' | 'cron',
+  logPrefix: string,
+  startMs: number,
+): Promise<{ jobs: MergedJob[]; reports: SourceReport[] }> {
   const adapters = ALL.filter(a => INGESTION_SOURCES[a.source as IngestionSource]);
   console.log(`${logPrefix} - Enabled adapters: ${adapters.map(a => a.source).join(', ')}`);
 
