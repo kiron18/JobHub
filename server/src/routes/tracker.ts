@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../index';
+import { authenticate } from '../middleware/auth';
 import { todayAEST } from '../services/jobFeed';
 import { countDistinctJobs, bucketByDay } from '../services/tracker/metricHelpers';
 
@@ -23,7 +24,9 @@ export async function getActivity(userId: string, days = 365): Promise<Array<{ d
 }
 
 const router = Router();
-// Apply the SAME auth middleware job-feed.ts uses (req.user.id must be populated):
+// Populate req.user on every tracker route — without this, req.user is undefined
+// and req.user.id throws (500 on /progress and /activity).
+router.use(authenticate);
 router.get('/progress', async (req: any, res: any) => {
   try { res.json(await getDailyProgress(req.user.id)); }
   catch (e) { console.error('[tracker/progress]', e); res.status(500).json({ error: 'failed' }); }
