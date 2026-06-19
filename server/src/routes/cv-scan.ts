@@ -330,11 +330,13 @@ router.post('/claim', authenticate, async (req: AuthRequest, res) => {
     const userId = req.user!.id;
     const email = req.user!.email ?? null;
     const { scanId, titles, location } = req.body || {};
+    console.log(`[cv-scan/claim] RECEIVED body:`, { scanId, titles, location: location ?? '(null/undefined)' });
     const entry = scanStore.get(scanId);
     if (!entry || Date.now() - entry.at >= SCAN_STORE_TTL) { res.status(410).json({ error: 'Your scan expired, please scan again.' }); return; }
 
     const cleanTitles = normalizeTitles(titles);
     const loc = String(location || '').trim() || null;
+    console.log(`[cv-scan/claim] PARSED loc=${loc ?? '(null)'}`);
     const targetRole = cleanTitles[0] || entry.result.inferredRole || null;
     const targetRoles = cleanTitles.length > 0 ? cleanTitles : (targetRole ? [targetRole] : []);
 
