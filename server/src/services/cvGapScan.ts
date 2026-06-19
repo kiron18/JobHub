@@ -358,7 +358,7 @@ function assembleResult(
     fullName,
     items,
     quickWins: safeWins,
-    firstImpression: (narrative.firstImpression || '').trim().slice(0, 48) || 'Easy to overlook',
+    firstImpression: (narrative.firstImpression || '').trim().slice(0, 56) || 'Easy to overlook',
     reassurance: (narrative.reassurance || '').trim()
       || "This isn't your fault. Your experience is real, it's just written in a dialect Australian employers don't read yet. That's a fixable problem, not a talent one.",
     hiringManager: hm && hm.view && hm.view.trim()

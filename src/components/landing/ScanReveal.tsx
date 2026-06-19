@@ -57,10 +57,11 @@ const display = (size: string): React.CSSProperties => ({
   fontFamily: typeTokens.display,
   fontWeight: 600,
   letterSpacing: '-0.02em',
-  lineHeight: 1.08,
+  lineHeight: 1.15,
   color: colors.textPrimary,
   fontSize: size,
   margin: 0,
+  paddingBottom: '0.1em',
 });
 
 const eyebrowStyle: React.CSSProperties = {
