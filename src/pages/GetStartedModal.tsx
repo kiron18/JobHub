@@ -4,7 +4,7 @@
  * Builds on MockLandingPage's design tokens (colors / typeTokens).
  * Renders as a full-screen portal overlay matching ScanReveal's surface.
  */
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -86,30 +86,17 @@ export function GetStartedModal({ scanId, firstName, email, onClose }: GetStarte
     return () => { cancelled = true; };
   }, [scanId]);
 
-  // ── Debounced scrape re-fire on role/location edit ────────────────────────
-
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-
-  const fireScrape = useCallback((currentTitles: string[], currentLocation: string) => {
-    if (!currentTitles.length) return;
-    api.post('/cv-scan/scrape-jobs', { scanId, titles: currentTitles, location: currentLocation })
-      .catch(() => {}); // fire-and-forget
-  }, [scanId]);
+  // Role/location edits update local state only. The actual job scrape is owned by
+  // the dashboard feed build (GET /api/job-feed/feed), fired once after claim with
+  // the final location — so editing here must NOT trigger any scrape.
 
   const onEditTitles = useCallback((newTitles: string[]) => {
     setTitles(newTitles);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => fireScrape(newTitles, location), 600);
-  }, [location, fireScrape]);
+  }, []);
 
   const onEditLocation = useCallback((newLocation: string) => {
     setLocation(newLocation);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => fireScrape(titles, newLocation), 600);
-  }, [titles, fireScrape]);
-
-  // Cleanup debounce on unmount
-  useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current); }, []);
+  }, []);
 
   // Cycle the reassurance copy while the workspace is being built (~20s scrape).
   useEffect(() => {
@@ -153,13 +140,9 @@ export function GetStartedModal({ scanId, firstName, email, onClose }: GetStarte
 
     // Step 2: Claim the workspace
     try {
-      const resp = await api.post('/cv-scan/claim', { scanId, titles, location });
+      await api.post('/cv-scan/claim', { scanId, titles, location });
       localStorage.setItem('jobhub_auth_email', email);
       localStorage.setItem('jobhub_report_seen', 'true');
-      // Stash the first scraped job so the dashboard can preload it into the apply box.
-      if (resp.data?.firstJob?.description) {
-        localStorage.setItem('jobhub_preload_jd', JSON.stringify(resp.data.firstJob));
-      }
       // Optimistically seed the profile cache as onboarding-complete so the
       // dashboard gate never flashes the onboarding form while the fresh profile
       // loads. The invalidate then refetches the full profile in the background

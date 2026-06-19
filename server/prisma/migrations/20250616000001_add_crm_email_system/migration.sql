@@ -1,7 +1,7 @@
--- Add CRM/Email system models
+-- Add CRM/Email system models (idempotent version)
 
 -- CreateTable Contact
-CREATE TABLE "Contact" (
+CREATE TABLE IF NOT EXISTS "Contact" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "firstName" TEXT,
@@ -18,10 +18,10 @@ CREATE TABLE "Contact" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Contact_email_key" ON "Contact"("email");
+CREATE UNIQUE INDEX IF NOT EXISTS "Contact_email_key" ON "Contact"("email");
 
 -- CreateTable ContactNote
-CREATE TABLE "ContactNote" (
+CREATE TABLE IF NOT EXISTS "ContactNote" (
     "id" TEXT NOT NULL,
     "contactId" TEXT NOT NULL,
     "content" TEXT NOT NULL,
@@ -31,10 +31,10 @@ CREATE TABLE "ContactNote" (
 );
 
 -- CreateIndex
-CREATE INDEX "ContactNote_contactId_idx" ON "ContactNote"("contactId");
+CREATE INDEX IF NOT EXISTS "ContactNote_contactId_idx" ON "ContactNote"("contactId");
 
 -- CreateTable Tag
-CREATE TABLE "Tag" (
+CREATE TABLE IF NOT EXISTS "Tag" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "label" TEXT,
@@ -44,10 +44,10 @@ CREATE TABLE "Tag" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Tag_name_key" ON "Tag"("name");
+CREATE UNIQUE INDEX IF NOT EXISTS "Tag_name_key" ON "Tag"("name");
 
 -- CreateTable ContactTag
-CREATE TABLE "ContactTag" (
+CREATE TABLE IF NOT EXISTS "ContactTag" (
     "contactId" TEXT NOT NULL,
     "tagId" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -56,10 +56,10 @@ CREATE TABLE "ContactTag" (
 );
 
 -- CreateIndex
-CREATE INDEX "ContactTag_tagId_idx" ON "ContactTag"("tagId");
+CREATE INDEX IF NOT EXISTS "ContactTag_tagId_idx" ON "ContactTag"("tagId");
 
 -- CreateTable EmailTemplate
-CREATE TABLE "EmailTemplate" (
+CREATE TABLE IF NOT EXISTS "EmailTemplate" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "subject" TEXT NOT NULL,
@@ -72,10 +72,10 @@ CREATE TABLE "EmailTemplate" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "EmailTemplate_name_key" ON "EmailTemplate"("name");
+CREATE UNIQUE INDEX IF NOT EXISTS "EmailTemplate_name_key" ON "EmailTemplate"("name");
 
 -- CreateTable EmailSequence
-CREATE TABLE "EmailSequence" (
+CREATE TABLE IF NOT EXISTS "EmailSequence" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "description" TEXT,
@@ -87,10 +87,10 @@ CREATE TABLE "EmailSequence" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "EmailSequence_name_key" ON "EmailSequence"("name");
+CREATE UNIQUE INDEX IF NOT EXISTS "EmailSequence_name_key" ON "EmailSequence"("name");
 
 -- CreateTable SequenceStep
-CREATE TABLE "SequenceStep" (
+CREATE TABLE IF NOT EXISTS "SequenceStep" (
     "id" TEXT NOT NULL,
     "sequenceId" TEXT NOT NULL,
     "stepOrder" INTEGER NOT NULL,
@@ -102,12 +102,12 @@ CREATE TABLE "SequenceStep" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "SequenceStep_sequenceId_stepOrder_key" ON "SequenceStep"("sequenceId", "stepOrder");
-CREATE INDEX "SequenceStep_sequenceId_idx" ON "SequenceStep"("sequenceId");
-CREATE INDEX "SequenceStep_templateId_idx" ON "SequenceStep"("templateId");
+CREATE UNIQUE INDEX IF NOT EXISTS "SequenceStep_sequenceId_stepOrder_key" ON "SequenceStep"("sequenceId", "stepOrder");
+CREATE INDEX IF NOT EXISTS "SequenceStep_sequenceId_idx" ON "SequenceStep"("sequenceId");
+CREATE INDEX IF NOT EXISTS "SequenceStep_templateId_idx" ON "SequenceStep"("templateId");
 
 -- CreateTable ContactSequence
-CREATE TABLE "ContactSequence" (
+CREATE TABLE IF NOT EXISTS "ContactSequence" (
     "id" TEXT NOT NULL,
     "contactId" TEXT NOT NULL,
     "sequenceId" TEXT NOT NULL,
@@ -123,11 +123,11 @@ CREATE TABLE "ContactSequence" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "ContactSequence_contactId_sequenceId_key" ON "ContactSequence"("contactId", "sequenceId");
-CREATE INDEX "ContactSequence_contactId_currentStep_completed_idx" ON "ContactSequence"("contactId", "currentStep", "completed");
+CREATE UNIQUE INDEX IF NOT EXISTS "ContactSequence_contactId_sequenceId_key" ON "ContactSequence"("contactId", "sequenceId");
+CREATE INDEX IF NOT EXISTS "ContactSequence_contactId_currentStep_completed_idx" ON "ContactSequence"("contactId", "currentStep", "completed");
 
 -- CreateTable EmailSend
-CREATE TABLE "EmailSend" (
+CREATE TABLE IF NOT EXISTS "EmailSend" (
     "id" TEXT NOT NULL,
     "contactId" TEXT NOT NULL,
     "sequenceId" TEXT,
@@ -144,11 +144,11 @@ CREATE TABLE "EmailSend" (
 );
 
 -- CreateIndex
-CREATE INDEX "EmailSend_contactId_sentAt_idx" ON "EmailSend"("contactId", "sentAt");
-CREATE INDEX "EmailSend_sentAt_idx" ON "EmailSend"("sentAt");
+CREATE INDEX IF NOT EXISTS "EmailSend_contactId_sentAt_idx" ON "EmailSend"("contactId", "sentAt");
+CREATE INDEX IF NOT EXISTS "EmailSend_sentAt_idx" ON "EmailSend"("sentAt");
 
 -- CreateTable EmailOpen
-CREATE TABLE "EmailOpen" (
+CREATE TABLE IF NOT EXISTS "EmailOpen" (
     "id" TEXT NOT NULL,
     "emailSendId" TEXT NOT NULL,
     "openedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -159,10 +159,10 @@ CREATE TABLE "EmailOpen" (
 );
 
 -- CreateIndex
-CREATE INDEX "EmailOpen_emailSendId_idx" ON "EmailOpen"("emailSendId");
+CREATE INDEX IF NOT EXISTS "EmailOpen_emailSendId_idx" ON "EmailOpen"("emailSendId");
 
 -- CreateTable EmailClick
-CREATE TABLE "EmailClick" (
+CREATE TABLE IF NOT EXISTS "EmailClick" (
     "id" TEXT NOT NULL,
     "emailSendId" TEXT NOT NULL,
     "url" TEXT NOT NULL,
@@ -174,10 +174,10 @@ CREATE TABLE "EmailClick" (
 );
 
 -- CreateIndex
-CREATE INDEX "EmailClick_emailSendId_idx" ON "EmailClick"("emailSendId");
+CREATE INDEX IF NOT EXISTS "EmailClick_emailSendId_idx" ON "EmailClick"("emailSendId");
 
 -- CreateTable Broadcast
-CREATE TABLE "Broadcast" (
+CREATE TABLE IF NOT EXISTS "Broadcast" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "subject" TEXT NOT NULL,
@@ -191,38 +191,111 @@ CREATE TABLE "Broadcast" (
     CONSTRAINT "Broadcast_pkey" PRIMARY KEY ("id")
 );
 
--- AddForeignKey
-ALTER TABLE "ContactNote" ADD CONSTRAINT "ContactNote_contactId_fkey" FOREIGN KEY ("contactId") REFERENCES "Contact"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+-- AddForeignKey (wrapped in DO block for idempotency)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'ContactNote_contactId_fkey'
+    ) THEN
+        ALTER TABLE "ContactNote" ADD CONSTRAINT "ContactNote_contactId_fkey" FOREIGN KEY ("contactId") REFERENCES "Contact"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "ContactTag" ADD CONSTRAINT "ContactTag_contactId_fkey" FOREIGN KEY ("contactId") REFERENCES "Contact"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'ContactTag_contactId_fkey'
+    ) THEN
+        ALTER TABLE "ContactTag" ADD CONSTRAINT "ContactTag_contactId_fkey" FOREIGN KEY ("contactId") REFERENCES "Contact"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "ContactTag" ADD CONSTRAINT "ContactTag_tagId_fkey" FOREIGN KEY ("tagId") REFERENCES "Tag"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'ContactTag_tagId_fkey'
+    ) THEN
+        ALTER TABLE "ContactTag" ADD CONSTRAINT "ContactTag_tagId_fkey" FOREIGN KEY ("tagId") REFERENCES "Tag"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+    END IF;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "SequenceStep" ADD CONSTRAINT "SequenceStep_sequenceId_fkey" FOREIGN KEY ("sequenceId") REFERENCES "EmailSequence"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'SequenceStep_sequenceId_fkey'
+    ) THEN
+        ALTER TABLE "SequenceStep" ADD CONSTRAINT "SequenceStep_sequenceId_fkey" FOREIGN KEY ("sequenceId") REFERENCES "EmailSequence"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "SequenceStep" ADD CONSTRAINT "SequenceStep_templateId_fkey" FOREIGN KEY ("templateId") REFERENCES "EmailTemplate"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'SequenceStep_templateId_fkey'
+    ) THEN
+        ALTER TABLE "SequenceStep" ADD CONSTRAINT "SequenceStep_templateId_fkey" FOREIGN KEY ("templateId") REFERENCES "EmailTemplate"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+    END IF;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "ContactSequence" ADD CONSTRAINT "ContactSequence_contactId_fkey" FOREIGN KEY ("contactId") REFERENCES "Contact"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'ContactSequence_contactId_fkey'
+    ) THEN
+        ALTER TABLE "ContactSequence" ADD CONSTRAINT "ContactSequence_contactId_fkey" FOREIGN KEY ("contactId") REFERENCES "Contact"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "ContactSequence" ADD CONSTRAINT "ContactSequence_sequenceId_fkey" FOREIGN KEY ("sequenceId") REFERENCES "EmailSequence"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'ContactSequence_sequenceId_fkey'
+    ) THEN
+        ALTER TABLE "ContactSequence" ADD CONSTRAINT "ContactSequence_sequenceId_fkey" FOREIGN KEY ("sequenceId") REFERENCES "EmailSequence"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "EmailSend" ADD CONSTRAINT "EmailSend_contactId_fkey" FOREIGN KEY ("contactId") REFERENCES "Contact"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'EmailSend_contactId_fkey'
+    ) THEN
+        ALTER TABLE "EmailSend" ADD CONSTRAINT "EmailSend_contactId_fkey" FOREIGN KEY ("contactId") REFERENCES "Contact"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "EmailSend" ADD CONSTRAINT "EmailSend_sequenceId_fkey" FOREIGN KEY ("sequenceId") REFERENCES "EmailSequence"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'EmailSend_sequenceId_fkey'
+    ) THEN
+        ALTER TABLE "EmailSend" ADD CONSTRAINT "EmailSend_sequenceId_fkey" FOREIGN KEY ("sequenceId") REFERENCES "EmailSequence"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "EmailSend" ADD CONSTRAINT "EmailSend_templateId_fkey" FOREIGN KEY ("templateId") REFERENCES "EmailTemplate"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'EmailSend_templateId_fkey'
+    ) THEN
+        ALTER TABLE "EmailSend" ADD CONSTRAINT "EmailSend_templateId_fkey" FOREIGN KEY ("templateId") REFERENCES "EmailTemplate"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "EmailOpen" ADD CONSTRAINT "EmailOpen_emailSendId_fkey" FOREIGN KEY ("emailSendId") REFERENCES "EmailSend"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'EmailOpen_emailSendId_fkey'
+    ) THEN
+        ALTER TABLE "EmailOpen" ADD CONSTRAINT "EmailOpen_emailSendId_fkey" FOREIGN KEY ("emailSendId") REFERENCES "EmailSend"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "EmailClick" ADD CONSTRAINT "EmailClick_emailSendId_fkey" FOREIGN KEY ("emailSendId") REFERENCES "EmailSend"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'EmailClick_emailSendId_fkey'
+    ) THEN
+        ALTER TABLE "EmailClick" ADD CONSTRAINT "EmailClick_emailSendId_fkey" FOREIGN KEY ("emailSendId") REFERENCES "EmailSend"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;

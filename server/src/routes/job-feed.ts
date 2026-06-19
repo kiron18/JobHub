@@ -14,6 +14,7 @@ import { reconcileApplication } from '../lib/applicationReconcile';
 import { scrapeJobsForTitles, type ScrapeResult } from '../services/userJobScrape';
 import { runIngestionForTitle } from '../services/ingestion/runIngestion';
 import { fetchJobDescription } from '../services/ingestion/firecrawl';
+import { normalizeLocation } from '../services/ingestion/locationNormalize';
 import type { SourceReport } from '../services/ingestion/types';
 
 const router = Router();
@@ -30,7 +31,7 @@ async function buildDailyFeedMultiSource(userId: string): Promise<void> {
     select: { targetRole: true, targetRoles: true, targetCity: true, location: true, skills: true },
   });
 
-  const effectiveCity = profile?.targetCity || profile?.location;
+  const effectiveCity = normalizeLocation(profile?.targetCity || profile?.location);
   if (!profile?.targetRole || !effectiveCity) {
     throw new Error('Profile incomplete — set a target role and city first');
   }
@@ -192,7 +193,7 @@ router.get('/feed', async (req: any, res: any) => {
       where: { userId },
       select: { targetRole: true, targetCity: true, location: true },
     });
-    const effectiveCity = profile?.targetCity || profile?.location;
+    const effectiveCity = normalizeLocation(profile?.targetCity || profile?.location);
     console.log(`[job-feed/feed] userId=${userId}, targetRole=${profile?.targetRole}, targetCity=${profile?.targetCity}, location=${profile?.location}, effectiveCity=${effectiveCity}`);
     if (!profile?.targetRole || !effectiveCity) {
       return res.json({ jobs: [], total: 0, hasMore: false, feedDate: today.toISOString().slice(0, 10), profileIncomplete: true });

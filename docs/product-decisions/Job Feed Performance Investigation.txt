@@ -1,0 +1,188 @@
+ Job Feed Performance Investigation
+
+  Engineering Summary for Senior Developer Review
+
+  Date: June 19, 2026
+
+  ---
+  1. The Problem
+
+  The job feed has a ~26 second latency bottleneck when generating bullets (job summary points) for feed     
+  items. This was blocking the entire feed response, causing users to stare at a loading spinner.
+
+  Key metrics from logs:
+  - Scraping 3 roles in parallel: ~fast (hundreds of ms)
+  - Bullet generation: ~26 seconds (synchronous, blocking)
+  - Total feed build: variable, but bullets dominate
+
+  ---
+  2. Architecture Overview (Current)
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │                         FEED BUILD FLOW                                 │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │                                                                         │
+  │  1. CACHE CHECK (Prisma)                                               │
+  │     └── Role + locationKey + today → cached jobs?                       │
+  │                                                                         │
+  │  2. SCRAPE (if cache miss)                                             │
+  │     ├── Parallel adapters: Adzuna API, JSearch API, Firecrawl/SEEK     │
+  │     ├── Each role scraped in parallel (3 roles max)                    │
+  │     └── Returns: RawJob[] with description (seek=teaser, others=full)  │
+  │                                                                         │
+  │  3. MERGE + DEDUPE                                                     │
+  │     └── Cross-source dedup by URL + fuzzy title/company/location       │
+  │                                                                         │
+  │  4. SCORE + INSERT (Prisma jobFeedItem)                                │
+  │     └── Quick keyword match vs user's skills                           │
+  │                                                                         │
+  │  5. BULLET GENERATION ← THE BOTTLENECK                                 │
+  │     └── LLM call: 3-5 bullets per job (10 jobs) in ONE batch call      │
+  │     └── Was: blocking the HTTP response                                │
+  │                                                                         │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ---
+  3. What We Did (Current Work)
+
+  A. Async Bullet Generation (In Progress)
+
+  Moved bullet generation from blocking to fire-and-forget:
+
+  Before (blocking):
+  // OLD: Server waited ~26s for LLM before responding
+  const bullets = await generateBullets(jobs);
+  await prisma.jobFeedItem.createMany({ data: jobs.map((j, i) => ({ ...j, bullets: bullets[i] })) });        
+  return res.json({ jobs });
+
+  After (async):
+  // NEW: Return feed immediately, kickoff bullets in background
+  const items = await prisma.jobFeedItem.findMany({ ... });
+  const nullBulletItems = items.filter(i => i.bullets === null);
+  if (nullBulletItems.length > 0) {
+    kickoffBulletGeneration(nullBulletItems); // Fire-and-forget
+  }
+  return res.json({ jobs: items, bulletsPending: nullBulletItems.length > 0 });
+
+  Key mechanisms:
+  - bulletGenInFlight Set prevents duplicate generation on repeated polls
+  - Client polls /feed while bulletsPending === true
+  - Bullets write to DB as they land; next poll picks them up
+
+  B. Multi-Source Ingestion (Recently Shipped)
+
+  Replaced legacy Apify scraper with Firecrawl-based system:
+
+  ┌─────────┬──────────────────┬────────────────────┬──────────────────────┐
+  │ Source  │      Method      │        Cost        │ Description Quality  │
+  ├─────────┼──────────────────┼────────────────────┼──────────────────────┤
+  │ Adzuna  │ API call         │ Free (API key)     │ Full                 │
+  ├─────────┼──────────────────┼────────────────────┼──────────────────────┤
+  │ JSearch │ API call         │ Free tier          │ Full                 │
+  ├─────────┼──────────────────┼────────────────────┼──────────────────────┤
+  │ SEEK    │ Firecrawl scrape │ ~$0.03/1k listings │ Teaser (search page) │
+  └─────────┴──────────────────┴────────────────────┴──────────────────────┘
+
+  Lazy hydration: SEEK jobs get full description fetched on-demand when user clicks "Apply" (see start-apply 
+  route).
+
+  C. Parallel Scraping
+
+  // Scrape all 3 target roles in parallel
+  const allScrapes = await Promise.all(
+    rolesArray.map(role => scrapeJobsForTitles([role], effectiveCity))
+  );
+
+  D. Caching Layer
+
+  // Cache hit: same role + locationKey + day
+  const cached = await prisma.job.findMany({
+    where: { searchRole: role, locationKey: locKey, feedDate: today }
+  });
+  if (cached.length >= CACHE_MIN_HITS) return cached; // ~instant
+
+  ---
+  4. Current Code State (Files Modified)
+
+  ┌────────────────────────────────────────────────┬──────────────────────────────────────────────────────┐  
+  │                      File                      │                       Changes                        │  
+  ├────────────────────────────────────────────────┼──────────────────────────────────────────────────────┤  
+  │                                                │ Async bullet generation, kickoffBulletGeneration(),  │  
+  │ server/src/routes/job-feed.ts                  │ bulletGenInFlight tracking, background build         │  
+  │                                                │ coordination                                         │  
+  ├────────────────────────────────────────────────┼──────────────────────────────────────────────────────┤  
+  │ server/src/services/ingestion/adapters/seek.ts │ Parallel page scraping, proper blocked detection     │  
+  ├────────────────────────────────────────────────┼──────────────────────────────────────────────────────┤  
+  │ server/src/services/ingestion/firecrawl.ts     │ 25s timeout, blocked detection via regex             │  
+  ├────────────────────────────────────────────────┼──────────────────────────────────────────────────────┤  
+  │ src/components/DiagnosticPage.tsx              │ Minor (likely unrelated)                             │  
+  └────────────────────────────────────────────────┴──────────────────────────────────────────────────────┘  
+
+  ---
+  5. The Remaining Bottleneck
+
+  Bullet generation is still ~26 seconds — we've just moved it off the critical path. The root cause:        
+
+  // server/src/services/jobFeed.ts:67-97
+  export async function generateBullets(jobs: RawJob[]): Promise<(string[] | null)[]> {
+    const batch = jobs.slice(0, 10);
+    const prompt = `For each job below, write exactly 3-5 bullet points...
+   
+    Return a JSON array of arrays: [[bullet, bullet, ...], ...]`;
+
+    const raw = await callLLMWithRetry(prompt, true); // ← 26s here
+    // ...
+  }
+
+  Why it's slow:
+  - Single LLM call processing 10 jobs × 3-5 bullets each
+  - Unknown model (likely callLLMWithRetry default)
+  - No streaming, must complete before any bullets available
+
+  ---
+  6. Next Steps / Recommendations
+
+  Immediate (Performance)
+
+  1. Parallel bullet generation — One LLM call per job instead of batch
+    - Trade-off: More API calls, but 10× parallel = ~3s instead of ~26s
+    - Or: Streaming JSON parser to emit bullets as they arrive
+  2. Model selection — Verify callLLMWithRetry uses Haiku for this (fast), not Opus (slow)
+  3. Caching bullets — Cache bullet arrays by (job title + company + first 100 chars of description) hash so 
+  identical jobs don't re-generate
+
+  Medium-term
+
+  4. Pre-generation — Generate bullets at ingestion time (cron), not user-request time
+  5. Seek full description — Currently hydrating on-demand; consider fetching full description at scrape time  (cost trade-off: $1/1k jobs)
+
+  ---
+  7. Key Files for Review
+
+  server/src/routes/job-feed.ts          # Feed API routes, async bullet logic
+  server/src/services/jobFeed.ts         # generateBullets() - the slow function
+  server/src/services/ingestion/         # Multi-source scraping pipeline
+    ├── runIngestion.ts                  # Orchestrator with caching
+    ├── mergeSources.ts                  # Deduplication logic
+    ├── adapters/seek.ts                 # Firecrawl-based SEEK scraper
+    └── firecrawl.ts                     # Firecrawl client + fetchJobDescription
+
+  ---
+  8. Log Format (for Debugging)
+
+  Current logs output timing at each stage:
+  [Ingestion] "role" @ "location" - Checking cache: ...
+  [Ingestion] "role" @ "location" - CACHE MISS - scraping fresh...
+  [Ingestion] "role" @ "location" - Scraped in 1234ms
+  [Ingestion] "role" @ "location" - Merged 12 jobs in 5ms
+  [Ingestion] "role" @ "location" - Persisted in 89ms
+  [Ingestion] "role" @ "location" - TOTAL: 1500ms, returned 12 jobs
+  [job-feed] Scraped 10 unique jobs in 1456ms
+
+  ---
+  Questions for Senior Dev:
+  1. Should we parallelize bullet generation (10 LLM calls) or optimize the single batch call?
+  2. Is Haiku sufficient quality for bullets, or do we need Opus?
+  3. Should bullets be pre-generated at ingestion time (cron job) vs. on-demand?
+
+✻ Baked for 1m 8s

@@ -1,0 +1,125 @@
+--
+  Scraping Infrastructure Overview
+
+  1. Firecrawl Service (server/src/services/ingestion/firecrawl.ts)
+
+  - Purpose: Primary scraping engine using Firecrawl API
+  - Endpoint: https://api.firecrawl.dev/v1/scrape
+  - Features:
+    - Bot challenge detection (Cloudflare, captcha, etc.)
+    - Job listing validation
+    - 30s timeout, 2 retries
+    - Mobile user agent for better success
+    - 2s wait for JavaScript rendering
+    - fetchJobDescription() - dedicated function for fetching full job descriptions
+
+  ---
+  2. Source Adapters (Firecrawl-based)
+
+  All located in server/src/services/ingestion/adapters/:
+
+  ┌─────────┬────────────┬───────────────┬───────────────────────────────┐
+  │ Adapter │    File    │  Source URL   │            Status             │
+  ├─────────┼────────────┼───────────────┼───────────────────────────────┤
+  │ SEEK    │ seek.ts    │ au.seek.com   │ ✅  Active                     │
+  ├─────────┼────────────┼───────────────┼───────────────────────────────┤
+  │ Adzuna  │ adzuna.ts  │ Adzuna API    │ ✅  Active (API, not scraping) │
+  ├─────────┼────────────┼───────────────┼───────────────────────────────┤
+  │ JSearch │ jsearch.ts │ JSearch API   │ ❌  Disabled (US-only data)    │
+  └─────────┴────────────┴───────────────┴───────────────────────────────┘
+  Note: Indeed and Jora adapters are not implemented.
+
+  Config (server/src/config/ingestion.ts):
+  INGESTION_SOURCES = {
+    adzuna: true,
+    jsearch: false,  // Disabled (note in config: US-only data)
+    seek: true,
+    cache: true,
+  }
+  MAX_PAGES_PER_SOURCE = 1
+
+  ---
+  3. Legacy HTML Scraper (server/src/services/seekHtmlScraper.ts)
+
+  - Purpose: Direct axios + cheerio scraping for SEEK (fallback)
+  - Still Active: Yes - used by jobFeedCron.ts
+  - Exports: fetchSeekJobsForCluster(), prewarmSeekClusters()
+  - Cache: Uses prisma.seekJobCache for daily caching
+
+  ---
+  4. Routes/Triggers That Trigger Scraping
+
+  ┌──────────────────────────────────────────┬─────────────────┬────────────────────────────────────────┐
+  │                  Route                   │      File       │                Trigger                 │
+  ├──────────────────────────────────────────┼─────────────────┼────────────────────────────────────────┤
+  │ POST /api/job-feed/refresh               │ job-feed.ts     │ User manually refreshes feed           │
+  ├──────────────────────────────────────────┼─────────────────┼────────────────────────────────────────┤
+  │ GET /api/job-feed/feed                   │ job-feed.ts     │ Single builder; first daily load       │
+  ├──────────────────────────────────────────┼─────────────────┼────────────────────────────────────────┤
+  │ POST /api/job-feed/:id/start-apply       │ job-feed.ts     │ Hydrates one SEEK job description      │
+  ├──────────────────────────────────────────┼─────────────────┼────────────────────────────────────────┤
+  │ POST /api/job-feed/:id/fetch-desc.       │ job-feed.ts     │ Fetches one full description           │
+  └──────────────────────────────────────────┴─────────────────┴────────────────────────────────────────┘
+  Note: cv-scan.ts no longer triggers scraping (head-start removed 2026-06-19;
+  the feed builder is the single source).    
+
+  ---
+  5. Cron Jobs (server/src/cron/jobFeedCron.ts)
+
+  - Schedule: 0 21 * * * (7:00 AM AEST daily)
+  - Status: ❌  DISABLED (line 340 in index.ts: // startJobFeedCron())
+  - When Enabled: Builds daily feeds for paid/trialing users
+
+  ---
+  6. Serper API (server/src/services/serper.ts)
+
+  - Purpose: Google search + URL scraping
+  - Endpoints:
+    - https://google.serper.dev/search - Web search
+    - https://scraper.serper.dev - URL scraping
+  - Used for: Company research, addressee finding (not job ingestion)
+
+  ---
+  7. Scripts (server/src/scripts/)
+
+  ┌─────────────────────┬─────────────────────────┐
+  │       Script        │         Purpose         │
+  ├─────────────────────┼─────────────────────────┤
+  │ run_ingestion.ts    │ Manual ingestion runner │
+  ├─────────────────────┼─────────────────────────┤
+  │ run_sponsor_scan.ts │ Sponsor job scanning    │
+  ├─────────────────────┼─────────────────────────┤
+  │ test_jsearch.ts     │ JSearch API testing     │
+  └─────────────────────┴─────────────────────────┘
+
+  ---
+  8. Data Flow
+
+  User requests feed
+      ↓
+  job-feed.ts (route)
+      ↓
+  scrapeJobsForTitles() → runIngestionForTitle()
+      ↓
+      ├─→ Cache check (prisma.job)
+      ├─→ Firecrawl adapters (SEEK, Indeed, Jora)
+      └─→ Adzuna API
+      ↓
+  mergeSources() → persistMergedJobs()
+      ↓
+  prisma.job (persistent cache)
+      ↓
+  prisma.jobFeedItem (user's daily feed)
+
+  ---
+  9. Admin Route (server/src/routes/admin-ingestion.ts)
+
+  - GET /api/admin/ingestion/summary - Stats on ingestion runs by source
+
+  ---
+  10. Environment Variables Required
+
+  FIRECRAWL_API_KEY      # Firecrawl scraping
+  ADZUNA_APP_ID          # Adzuna API
+  ADZUNA_APP_KEY         # Adzuna API
+  SERPER_API_KEY         # Serper search/scrape

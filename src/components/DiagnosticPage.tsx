@@ -298,6 +298,9 @@ export function DiagnosticPage({ profile, onDone }: DiagnosticPageProps) {
                     textAlign: 'center',
                     letterSpacing: '-0.02em',
                     lineHeight: 1.3,
+                    wordWrap: 'break-word',
+                    overflowWrap: 'break-word',
+                    hyphens: 'auto',
                   }}>
                     {firstName ? `Hey ${firstName}, ` : ''}{renderInline(headlineInsight)}
                   </h2>
