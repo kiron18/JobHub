@@ -77,6 +77,25 @@ export const JobFeedPage: React.FC = () => {
     };
   }, [building, isLoading]);
 
+  // Poll every 3s while profile is incomplete (claim may be in progress), up to 20 attempts (~1 minute)
+  const profilePollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const profilePollCount = useRef(0);
+  useEffect(() => {
+    if (profileIncomplete && !isLoading) {
+      if (profilePollCount.current < 20) {
+        profilePollRef.current = setTimeout(() => {
+          profilePollCount.current += 1;
+          queryClient.invalidateQueries({ queryKey: ['job-feed'] });
+        }, 3_000);
+      }
+    } else {
+      profilePollCount.current = 0;
+    }
+    return () => {
+      if (profilePollRef.current) clearTimeout(profilePollRef.current);
+    };
+  }, [profileIncomplete, isLoading]);
+
   /* TODO: Restore when load-more UI is added
   const handleLoadMore = async () => {
     setLoadingMore(true);

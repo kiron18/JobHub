@@ -112,9 +112,20 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
     let cancelled = false;
     async function tryClaim() {
       setClaiming(true);
-      console.log('[OnboardingGate] firing claim POST /profile/claim for email:', user?.email);
+      // Pass location/targetRole from profile if available (user may have updated them in modal)
+      const claimBody: any = {};
+      if (profile?.targetCity || profile?.location) {
+        claimBody.location = profile.targetCity || profile.location;
+      }
+      if (profile?.targetRole) {
+        claimBody.targetRole = profile.targetRole;
+      }
+      if (profile?.targetRoles && Array.isArray(profile.targetRoles)) {
+        claimBody.targetRoles = profile.targetRoles;
+      }
+      console.log('[OnboardingGate] firing claim POST /profile/claim for email:', user?.email, 'body:', claimBody);
       try {
-        const { data } = await api.post('/profile/claim');
+        const { data } = await api.post('/profile/claim', claimBody);
         console.log('[OnboardingGate] claim response:', data);
         // 'claimed' = migrated from old userId; 'already_exists' = profile already on
         // this userId but cache may be stale null from the anonymous session — invalidate either way

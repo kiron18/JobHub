@@ -173,6 +173,44 @@ router.delete('/profile/resumes/:id', authenticate, async (req, res) => {
     }
 });
 
+// PATCH /api/profile — partial updates (from-scratch onboarding flow)
+router.patch('/profile', authenticate, async (req, res) => {
+    const userId = (req as any).user.id;
+    const updates = req.body;
+
+    try {
+        const existing = await prisma.candidateProfile.findUnique({ where: { userId } });
+        if (!existing) {
+            // Create minimal profile if none exists
+            const created = await prisma.candidateProfile.create({
+                data: {
+                    userId,
+                    ...updates,
+                },
+            });
+            return res.json(created);
+        }
+
+        // Merge updates and auto-complete onboarding if key fields are present
+        const data: any = { ...updates };
+        if (!existing.hasCompletedOnboarding) {
+            // From-scratch flow: completing target step marks onboarding done
+            if (updates.targetRole && updates.targetCity) {
+                data.hasCompletedOnboarding = true;
+            }
+        }
+
+        const updated = await prisma.candidateProfile.update({
+            where: { userId },
+            data,
+        });
+        res.json(updated);
+    } catch (error: any) {
+        console.error('Profile PATCH Error:', error);
+        res.status(500).json({ error: 'Failed to update profile' });
+    }
+});
+
 // POST /api/profile
 router.post('/profile', authenticate, async (req, res) => {
     try {
@@ -371,8 +409,10 @@ router.post('/profile', authenticate, async (req, res) => {
 router.post('/profile/claim', authenticate, async (req: any, res: any) => {
   const userId: string = req.user.id;
   const userEmail: string | undefined = req.user.email;
+  // Accept location/targetRole updates even for existing profiles (user may have changed them in modal)
+  const { location, targetRole, targetRoles } = req.body || {};
 
-  console.log(`[ProfileClaim] Starting claim for userId: ${userId}, email: ${userEmail}`);
+  console.log(`[ProfileClaim] Starting claim for userId: ${userId}, email: ${userEmail}, location=${location}, targetRole=${targetRole}`);
 
   if (!userEmail) {
     console.log('[ProfileClaim] No email provided — returning no_email');
@@ -382,6 +422,26 @@ router.post('/profile/claim', authenticate, async (req: any, res: any) => {
   try {
     const existing = await prisma.candidateProfile.findUnique({ where: { userId } });
     console.log(`[ProfileClaim] Existing profile for userId ${userId}:`, existing ? `found (hasCompletedOnboarding=${existing.hasCompletedOnboarding}, resumeRawText=${existing.resumeRawText ? 'yes' : 'no'})` : 'none');
+
+    // If location/targetRole provided, update the existing profile even if it already exists
+    if (existing && (location || targetRole)) {
+      const updateData: any = {};
+      if (location) {
+        updateData.targetCity = location;
+        updateData.location = location;
+      }
+      if (targetRole) {
+        updateData.targetRole = targetRole;
+      }
+      if (targetRoles && Array.isArray(targetRoles)) {
+        updateData.targetRoles = targetRoles;
+      }
+
+      if (Object.keys(updateData).length > 0) {
+        await prisma.candidateProfile.update({ where: { userId }, data: updateData });
+        console.log(`[ProfileClaim] Updated existing profile with:`, updateData);
+      }
+    }
 
     if (existing) {
       // Never touch a profile that has an active or complete report — it's real data.
