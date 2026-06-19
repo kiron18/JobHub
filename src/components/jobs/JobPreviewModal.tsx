@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ExternalLink, BookmarkPlus, BookmarkCheck, Loader2, EyeOff, User, AlertTriangle } from 'lucide-react';
-import { toast } from 'sonner';
+import { X, ExternalLink, Loader2, User, AlertTriangle } from 'lucide-react';
 import { getPlatformConfig } from '../../lib/platforms';
 import type { JobFeedItem } from './JobCard';
 
@@ -29,7 +28,7 @@ export const JobPreviewModal: React.FC<Props> = ({
   item,
   isOpen,
   onClose,
-  onUpdate,
+  _onUpdate,
   onApply,
   onSave,
   onSkip,

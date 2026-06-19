@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ExternalLink, Loader2, BookmarkPlus, BookmarkCheck, EyeOff } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
