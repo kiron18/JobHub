@@ -8,7 +8,10 @@ import { indeedAdapter } from './adapters/indeed';
 import { joraAdapter } from './adapters/jora';
 import { linkedinAdapter } from './adapters/linkedin';
 import type { SourceAdapter, SourceReport, IngestionSource } from './types';
-import { INGESTION_SOURCES, MAX_PAGES_PER_SOURCE, CACHE_MIN_HITS } from '../../config/ingestion';
+import {
+  INGESTION_SOURCES, MAX_PAGES_PER_SOURCE, CACHE_MIN_HITS,
+  HEALTHY_CACHE_MIN_PLATFORMS, HEALTHY_CACHE_MIN_JOBS, THIN_CACHE_RESCRAPE_COOLDOWN_MS,
+} from '../../config/ingestion';
 import { prisma } from '../../db';
 import { jobRowToMergedJob } from './cache';
 import { locationKey } from './locationKey';
@@ -24,6 +27,10 @@ const inFlightScrapes = new Map<string, Promise<{ jobs: MergedJob[]; reports: So
 function makeScrapeKey(role: string, location: string, date: string): string {
   return `${role}|${location}|${date}`;
 }
+
+// Tracks the last time we forced a fresh scrape for a key whose cache was thin
+// (single-source / too few jobs). Bounds re-scrape cost on genuinely sparse roles.
+const lastThinRescrape = new Map<string, number>();
 
 export async function runIngestionForTitle(
   role: string, location: string, trigger: 'user_scan' | 'manual' | 'cron',
@@ -43,9 +50,22 @@ export async function runIngestionForTitle(
     include: { sources: true },
   });
 
-  console.log(`${logPrefix} - Cache found ${cached.length} jobs (min hits: ${CACHE_MIN_HITS})`);
+  const scrapeKey = makeScrapeKey(role, locKey, today);
 
-  if (cached.length >= CACHE_MIN_HITS) {
+  // A cached day-result is only a real HIT if it looks like a genuine multi-source
+  // scrape. A thin result (e.g. Adzuna-only because the Firecrawl sources failed
+  // for a moment) must not be pinned all day — re-scrape so the feed self-heals.
+  const platforms = new Set<string>();
+  for (const c of cached) for (const s of c.sources) platforms.add(s.source);
+  const healthyCache =
+    platforms.size >= HEALTHY_CACHE_MIN_PLATFORMS || cached.length >= HEALTHY_CACHE_MIN_JOBS;
+
+  console.log(
+    `${logPrefix} - Cache: ${cached.length} jobs across ${platforms.size} platforms ` +
+    `[${[...platforms].join(',') || 'none'}] healthy=${healthyCache} (min hits: ${CACHE_MIN_HITS})`,
+  );
+
+  const returnCache = () => {
     const jobs = cached.map(jobRowToMergedJob);
     console.log(`${logPrefix} - CACHE HIT - returned ${jobs.length} jobs in ${Date.now() - startMs}ms`);
     return {
@@ -59,11 +79,25 @@ export async function runIngestionForTitle(
         creditsUsed: 0,
       }],
     };
+  };
+
+  if (cached.length >= CACHE_MIN_HITS) {
+    if (healthyCache) {
+      return returnCache();
+    }
+    // Thin cache: re-scrape, but at most once per cooldown so genuinely sparse
+    // roles don't trigger a fresh scrape (and Firecrawl spend) on every request.
+    const sinceLast = Date.now() - (lastThinRescrape.get(scrapeKey) ?? 0);
+    if (sinceLast < THIN_CACHE_RESCRAPE_COOLDOWN_MS) {
+      console.log(`${logPrefix} - THIN cache but re-scrape on cooldown (${Math.round(sinceLast / 1000)}s ago) - serving thin cache`);
+      return returnCache();
+    }
+    lastThinRescrape.set(scrapeKey, Date.now());
+    console.log(`${logPrefix} - THIN cache (${platforms.size} platform) - forcing fresh scrape to self-heal`);
+  } else {
+    console.log(`${logPrefix} - CACHE MISS - scraping fresh...`);
   }
 
-  console.log(`${logPrefix} - CACHE MISS - scraping fresh...`);
-
-  const scrapeKey = makeScrapeKey(role, locKey, today);
   const existing = inFlightScrapes.get(scrapeKey);
   if (existing) {
     console.log(`${logPrefix} - JOINING in-flight scrape for same key`);

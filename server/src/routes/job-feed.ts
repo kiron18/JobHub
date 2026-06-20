@@ -582,23 +582,29 @@ router.post('/:id/start-apply', async (req: any, res: any) => {
     const item = await prisma.jobFeedItem.findUnique({ where: { id } });
     if (!item || item.userId !== userId) return res.status(404).json({ error: 'Not found' });
 
-    // Hydrate SEEK job descriptions (which come as teasers from search results)
-    if (item.sourcePlatform === 'seek' && item.description.length < 500) {
-      console.log(`[start-apply] Hydrating SEEK job: ${item.id}`);
-      try {
-        const { firecrawlScrape } = await import('../services/ingestion/firecrawl');
-        const { markdown, blocked } = await firecrawlScrape(item.sourceUrl);
-        if (!blocked && markdown.length > 500) {
-          await prisma.jobFeedItem.update({
-            where: { id },
-            data: { description: markdown.slice(0, 8000) },
-          });
-          item.description = markdown.slice(0, 8000);
-          console.log(`[start-apply] Hydrated ${item.id}: ${markdown.length} chars`);
+    // Hydrate thin descriptions so the resume + cover letter generator always gets
+    // the FULL posting, for ANY source — not just SEEK. Search results give teasers,
+    // and Adzuna's API caps its description at 500 chars; the full text only lives on
+    // the listing page. Validate the host against the same allowlist the view path
+    // uses, then scrape + clean once and persist.
+    const HYDRATE_BELOW_CHARS = 1500;
+    if (item.description.length < HYDRATE_BELOW_CHARS) {
+      let host: string | null = null;
+      try { host = new URL(item.sourceUrl).hostname; } catch { host = null; }
+      if (host && JOB_BOARD_HOSTS.some(p => p.test(host as string))) {
+        console.log(`[start-apply] Hydrating ${item.sourcePlatform} job ${item.id} (had ${item.description.length} chars)`);
+        try {
+          const { description: full, blocked } = await fetchJobDescription(item.sourceUrl);
+          if (!blocked && full.length > item.description.length) {
+            const trimmed = full.slice(0, 8000);
+            await prisma.jobFeedItem.update({ where: { id }, data: { description: trimmed } });
+            item.description = trimmed;
+            console.log(`[start-apply] Hydrated ${item.id}: ${full.length} chars`);
+          }
+        } catch (e: any) {
+          console.error(`[start-apply] Hydration failed for ${item.id}:`, e.message);
+          // Continue with original description - don't block the apply flow
         }
-      } catch (e: any) {
-        console.error(`[start-apply] Hydration failed for ${item.id}:`, e.message);
-        // Continue with original description - don't block the apply flow
       }
     }
 
@@ -620,9 +626,24 @@ router.post('/:id/start-apply', async (req: any, res: any) => {
           status: 'SAVED',
         },
       });
+    } else if (item.description.length > (jobApp.description?.length ?? 0)) {
+      // Reused row from an earlier apply — keep its stored JD in sync with the
+      // freshly hydrated full description so the tracker/record isn't left thin.
+      jobApp = await prisma.jobApplication.update({
+        where: { id: jobApp.id },
+        data: { description: item.description },
+      });
     }
 
-    return res.json({ ok: true, jobApplicationId: jobApp.id, used: used + 1, cap: DAILY_APPLICATION_CAP });
+    // Return the (possibly hydrated) description so the generator's JD panel is
+    // filled with the full posting, not the truncated card teaser.
+    return res.json({
+      ok: true,
+      jobApplicationId: jobApp.id,
+      description: item.description,
+      used: used + 1,
+      cap: DAILY_APPLICATION_CAP,
+    });
   } catch (err: any) {
     console.error('[job-feed/start-apply]', err?.message ?? err);
     return res.status(500).json({ error: 'Could not start the application' });
@@ -634,9 +655,13 @@ const JOB_BOARD_HOSTS = [
   /^(www\.)?seek\.com\.au$/,
   /^au\.seek\.com$/,  // SEEK Australia uses au.seek.com
   /^(www\.)?linkedin\.com$/,
+  /^au\.linkedin\.com$/,  // LinkedIn AU
   /^(www\.)?indeed\.com(\.au)?$/,
+  /^au\.indeed\.com$/,  // Indeed AU uses au.indeed.com
   /^(www\.)?jora\.com$/,
+  /^au\.jora\.com$/,  // Jora AU uses au.jora.com
   /^(www\.)?apsjobs\.gov\.au$/,
+  /^(www\.)?adzuna\.com\.au$/,
   /^[a-z0-9-]+\.lever\.co$/,
   /^[a-z0-9-]+\.greenhouse\.io$/,
   /^[a-z0-9-]+\.workday\.com$/,

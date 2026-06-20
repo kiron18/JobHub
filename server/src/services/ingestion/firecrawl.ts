@@ -3,6 +3,34 @@ const FIRECRAWL_TIMEOUT_MS = 30_000; // 30s timeout
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 1000;
 
+// Global concurrency limiter. The free Firecrawl plan throttles parallel scrapes,
+// and the feed fans out (up to 3 roles x 4 sources = 12 simultaneous calls) which
+// causes the throttled ones to abort at the 30s timeout and silently return zero
+// jobs — leaving only Adzuna (which never touches Firecrawl). Capping concurrency
+// keeps every source within its time budget. Override with FIRECRAWL_MAX_CONCURRENCY.
+const FIRECRAWL_MAX_CONCURRENT = Math.max(1, Number(process.env.FIRECRAWL_MAX_CONCURRENCY ?? 4));
+let activeScrapes = 0;
+const scrapeWaiters: Array<() => void> = [];
+
+function acquireScrapeSlot(): Promise<void> {
+  if (activeScrapes < FIRECRAWL_MAX_CONCURRENT) {
+    activeScrapes++;
+    return Promise.resolve();
+  }
+  // At capacity: queue and wait for a slot to be handed over on release.
+  return new Promise<void>(resolve => scrapeWaiters.push(resolve));
+}
+
+function releaseScrapeSlot(): void {
+  const next = scrapeWaiters.shift();
+  if (next) {
+    // Hand the held slot directly to the next waiter (count stays at the cap).
+    next();
+  } else {
+    activeScrapes--;
+  }
+}
+
 interface FirecrawlResult {
   markdown: string;
   blocked: boolean;
@@ -128,8 +156,13 @@ async function scrapeWithRetry(url: string, retries = 0): Promise<FirecrawlResul
 }
 
 export async function firecrawlScrape(url: string): Promise<{ markdown: string; blocked: boolean }> {
-  const result = await scrapeWithRetry(url);
-  return { markdown: result.markdown, blocked: result.blocked };
+  await acquireScrapeSlot();
+  try {
+    const result = await scrapeWithRetry(url);
+    return { markdown: result.markdown, blocked: result.blocked };
+  } finally {
+    releaseScrapeSlot();
+  }
 }
 
 /**

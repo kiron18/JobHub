@@ -401,8 +401,15 @@ function AnalysisHeroCard() {
     const handleStreamApply = async (job: import('../components/jobs/JobCard').JobFeedItem) => {
         if (applyingId) return;
         setApplyingId(job.id);
+        // start-apply hydrates the full posting server-side and returns it. Prefer
+        // that over the card teaser so the generator's JD panel gets the full text.
+        let jobDescription = job.description ?? '';
         try {
-            await api.post(`/job-feed/${job.id}/start-apply`);
+            const resp = await api.post(`/job-feed/${job.id}/start-apply`);
+            const hydrated = resp?.data?.description;
+            if (typeof hydrated === 'string' && hydrated.length > jobDescription.length) {
+                jobDescription = hydrated;
+            }
         } catch (err: any) {
             setApplyingId(null);
             if (err?.response?.status === 429) { setCapMessage(true); return; }
@@ -411,7 +418,7 @@ function AnalysisHeroCard() {
         }
         navigate('/apply', {
             state: {
-                jobDescription: job.description ?? '',
+                jobDescription,
                 company: job.company,
                 role: job.title,
                 location: job.location,
