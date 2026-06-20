@@ -134,12 +134,11 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
     const sidebarContent = (showLabels: boolean) => (
         <>
             <div className="flex items-center gap-3 mb-10 px-2">
-                <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xl flex-shrink-0"
-                    style={{ background: warm.colors.accentPetrol, color: warmT.text }}
-                >
-                    J
-                </div>
+                <img
+                    src="/Logo.svg"
+                    alt="JobReady"
+                    className="w-10 h-10 rounded-xl flex-shrink-0 object-contain"
+                />
                 <AnimatePresence>
                     {showLabels && (
                         <motion.h1
