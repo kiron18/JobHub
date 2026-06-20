@@ -4,14 +4,6 @@ import { X, ExternalLink, Loader2, User, AlertTriangle, EyeOff, BookmarkCheck, B
 import { getPlatformConfig } from '../../lib/platforms';
 import type { JobFeedItem } from './JobCard';
 
-// User-facing copy locked by spec 2026-06-21-apply-full-jd-guard. Do not paraphrase.
-const APPLY_LABEL = 'Apply →';
-const APPLY_PREPARING = 'Preparing full description…';
-const RECOVERY_HEADING = "Couldn't load the full description automatically.";
-const OPEN_ORIGINAL = 'Open original ↗';
-const PASTE_PLACEHOLDER = 'Paste the job description here';
-const USE_PREVIEW = 'Use the preview anyway';
-
 interface Props {
   item: JobFeedItem | null;
   isOpen: boolean;
@@ -28,12 +20,8 @@ interface Props {
   editingAddressee: boolean;
   setEditingAddressee: (val: boolean) => void;
   saving: boolean;
-  applyBusy: boolean;
-  applyDisabled: boolean;
-  showRecovery: boolean;
-  pastedDescription: string;
-  setPastedDescription: (val: string) => void;
-  onUsePreviewAnyway: () => void;
+  isTruncated: boolean;
+  fullDescFailed: boolean;
 }
 
 export const JobPreviewModal: React.FC<Props> = ({
@@ -52,12 +40,8 @@ export const JobPreviewModal: React.FC<Props> = ({
   editingAddressee,
   setEditingAddressee,
   saving,
-  applyBusy,
-  applyDisabled,
-  showRecovery,
-  pastedDescription,
-  setPastedDescription,
-  onUsePreviewAnyway,
+  isTruncated,
+  fullDescFailed,
 }) => {
   const platform = item ? getPlatformConfig(item.sourcePlatform) : null;
 
@@ -162,6 +146,20 @@ export const JobPreviewModal: React.FC<Props> = ({
                 </div>
               )}
 
+              {isTruncated && fullDescFailed && (
+                <p className="text-xs text-[#8B847B]">
+                  Full description unavailable —{' '}
+                  <a
+                    href={item.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#5C5750] hover:text-[#1A1814] underline underline-offset-2 transition-colors"
+                  >
+                    open the listing for complete details →
+                  </a>
+                </p>
+              )}
+
               {/* Full Description */}
               <div className="prose prose-sm max-w-none">
                 <h3 className="text-xs font-black uppercase tracking-wider text-[#8B847B] mb-3">Job Description</h3>
@@ -231,74 +229,42 @@ export const JobPreviewModal: React.FC<Props> = ({
             </div>
 
             {/* Footer Actions */}
-            <div className="p-5 border-t border-[rgba(26,24,20,0.08)] bg-[#FDFBF8] space-y-3">
-              {showRecovery && (
-                <div className="space-y-2">
-                  <p className="text-xs font-bold text-[#1A1814]">{RECOVERY_HEADING}</p>
-                  <a
-                    href={item.sourceUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-[#5C5750] hover:text-[#1A1814] transition-colors"
-                  >
-                    <ExternalLink size={12} />
-                    {OPEN_ORIGINAL}
-                  </a>
-                  <textarea
-                    value={pastedDescription}
-                    onChange={(e) => setPastedDescription(e.target.value)}
-                    placeholder={PASTE_PLACEHOLDER}
-                    rows={4}
-                    className="w-full bg-white border border-[rgba(26,24,20,0.16)] rounded-lg px-3 py-2 text-sm text-[#1A1814] focus:outline-none focus:border-brand-500 resize-y"
-                  />
-                  <button
-                    onClick={onUsePreviewAnyway}
-                    className="text-xs font-bold text-[#8B847B] hover:text-[#1A1814] underline underline-offset-2 transition-colors"
-                  >
-                    {USE_PREVIEW}
-                  </button>
-                </div>
-              )}
+            <div className="p-5 border-t border-[rgba(26,24,20,0.08)] bg-[#FDFBF8] flex items-center justify-between gap-4">
+              <a
+                href={item.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-xs font-bold text-[#8B847B] hover:text-[#1A1814] transition-colors"
+              >
+                <ExternalLink size={12} />
+                View Original
+              </a>
 
-              <div className="flex items-center justify-between gap-4">
-                <a
-                  href={item.sourceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-xs font-bold text-[#8B847B] hover:text-[#1A1814] transition-colors"
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={onSkip}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider border border-[rgba(26,24,20,0.16)] text-[#8B847B] hover:border-[rgba(26,24,20,0.24)] hover:text-[#1A1814] transition-colors"
                 >
-                  <ExternalLink size={12} />
-                  View Original
-                </a>
+                  <EyeOff size={12} />
+                  Skip
+                </button>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={onSkip}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider border border-[rgba(26,24,20,0.16)] text-[#8B847B] hover:border-[rgba(26,24,20,0.24)] hover:text-[#1A1814] transition-colors"
-                  >
-                    <EyeOff size={12} />
-                    Skip
-                  </button>
+                <button
+                  onClick={onSave}
+                  disabled={saving || item.isSaved}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider border border-[rgba(26,24,20,0.16)] text-[#5C5750] hover:border-[rgba(26,24,20,0.24)] hover:text-[#1A1814] transition-colors disabled:opacity-40"
+                >
+                  {saving ? <Loader2 size={12} className="animate-spin" /> : item.isSaved ? <BookmarkCheck size={12} className="text-emerald-400" /> : <BookmarkPlus size={12} />}
+                  {item.isSaved ? 'Saved' : 'Save'}
+                </button>
 
-                  <button
-                    onClick={onSave}
-                    disabled={saving || item.isSaved}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider border border-[rgba(26,24,20,0.16)] text-[#5C5750] hover:border-[rgba(26,24,20,0.24)] hover:text-[#1A1814] transition-colors disabled:opacity-40"
-                  >
-                    {saving ? <Loader2 size={12} className="animate-spin" /> : item.isSaved ? <BookmarkCheck size={12} className="text-emerald-400" /> : <BookmarkPlus size={12} />}
-                    {item.isSaved ? 'Saved' : 'Save'}
-                  </button>
-
-                  <button
-                    onClick={onApply}
-                    disabled={applyDisabled}
-                    className="flex items-center gap-1.5 px-5 py-2 rounded-lg text-xs font-black uppercase tracking-wider text-white transition-opacity hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
-                    style={{ background: platform.color }}
-                  >
-                    {applyBusy && <Loader2 size={12} className="animate-spin" />}
-                    {applyBusy ? APPLY_PREPARING : APPLY_LABEL}
-                  </button>
-                </div>
+                <button
+                  onClick={onApply}
+                  className="flex items-center gap-1.5 px-5 py-2 rounded-lg text-xs font-black uppercase tracking-wider text-white transition-opacity hover:opacity-80"
+                  style={{ background: platform.color }}
+                >
+                  Apply →
+                </button>
               </div>
             </div>
           </motion.div>

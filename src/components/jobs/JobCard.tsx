@@ -6,10 +6,6 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import { getPlatformConfig } from '../../lib/platforms';
 import { JobPreviewModal } from './JobPreviewModal';
-import { needsHydration } from './jobDescription';
-
-// User-facing copy locked by spec 2026-06-21-apply-full-jd-guard. Do not paraphrase.
-const WARN_PARTIAL = 'Applying with a partial description. Your documents may be weaker.';
 
 export interface JobFeedItem {
   id: string;
@@ -59,35 +55,19 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
   const [loadingFullDesc, setLoadingFullDesc] = useState(false);
   const [fullDescFailed, setFullDescFailed] = useState(false);
   const [fullDescLoaded, setFullDescLoaded] = useState(false);
-  const [pastedDescription, setPastedDescription] = useState('');
-  const [previewOverride, setPreviewOverride] = useState(false);
 
   const platform = getPlatformConfig(item.sourcePlatform);
   const addresseeFetched = item.addresseeSource !== null;
-
-  const mustHydrate = needsHydration(item.sourcePlatform, item.description, fullDescLoaded);
-
-  // The confirmed-full JD, or null if we do not yet hold one.
-  const resolvedFullJd: string | null =
-    pastedDescription.trim() ? pastedDescription.trim()
-    : !mustHydrate ? item.description
-    : null;
-
-  // Recovery UI shows only after an automatic hydration attempt has failed, we
-  // still have no confirmed-full JD, and the user has not chosen to override.
-  const showRecovery = fullDescFailed && resolvedFullJd === null && !previewOverride;
-
-  const applyBusy = loadingFullDesc;
-  // Disable Apply while fetching, or while recovery is showing and the user has
-  // neither pasted a JD nor (handled separately) chosen the preview override.
-  const applyDisabled = applyBusy || (showRecovery && !pastedDescription.trim());
+  const isTruncated = !fullDescLoaded && (
+    item.description.endsWith('...') || item.description.endsWith('…') ||
+    ((item.sourcePlatform === 'other' || item.sourcePlatform === 'seek') && item.description.length < 600)
+  );
 
   const openModal = async () => {
     setModalOpen(true);
 
-    // Hydrate the full description up front for teaser-shipping boards so it is
-    // ready by the time the user reaches Apply.
-    if (mustHydrate && !loadingFullDesc && !fullDescFailed) {
+    // Fetch full description if truncated
+    if (isTruncated && !loadingFullDesc && !fullDescFailed) {
       setLoadingFullDesc(true);
       try {
         const { data } = await api.post(`/job-feed/${item.id}/fetch-description`);
@@ -155,8 +135,8 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
     }
   };
 
-  const handlePrepareAndApply = (jd: string) => {
-    localStorage.setItem('jobhub_current_jd', jd);
+  const handlePrepareAndApply = () => {
+    localStorage.setItem('jobhub_current_jd', item.description);
     localStorage.setItem('jobhub_current_job_context', JSON.stringify({
       company: item.company,
       title: item.title,
@@ -167,14 +147,14 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
       jobId: item.id,
       title: item.title,
       company: item.company,
-      description: jd,
+      description: item.description,
       sourceUrl: item.sourceUrl,
       sourcePlatform: item.sourcePlatform,
     }));
     setModalOpen(false);
     navigate('/apply', {
       state: {
-        jobDescription: jd,
+        jobDescription: item.description,
         company: item.company,
         role: item.title,
         feedItemId: item.id,
@@ -183,38 +163,6 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
       },
     });
     toast.success('Job loaded, generate your documents, then apply');
-  };
-
-  // Single guard: never navigate to /apply without a confirmed-full JD.
-  const handleApplyClick = async () => {
-    if (resolvedFullJd) {
-      handlePrepareAndApply(resolvedFullJd);
-      return;
-    }
-    // No full JD yet. If we have not already failed, hydrate now. This covers the
-    // race where the user clicks Apply before the on-open fetch finished.
-    if (!fullDescFailed) {
-      setLoadingFullDesc(true);
-      try {
-        const { data } = await api.post(`/job-feed/${item.id}/fetch-description`);
-        onUpdate({ id: item.id, description: data.description });
-        setFullDescLoaded(true);
-        handlePrepareAndApply(data.description);
-      } catch {
-        setFullDescFailed(true);
-      } finally {
-        setLoadingFullDesc(false);
-      }
-      return;
-    }
-    // Already failed: the recovery UI is showing. Do nothing here; the user must
-    // paste a JD (which flips resolvedFullJd) or click Use the preview anyway.
-  };
-
-  const handleUsePreviewAnyway = () => {
-    setPreviewOverride(true);
-    toast(WARN_PARTIAL);
-    handlePrepareAndApply(item.description);
   };
 
   return (
@@ -310,7 +258,7 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         onUpdate={onUpdate}
-        onApply={handleApplyClick}
+        onApply={handlePrepareAndApply}
         onSave={handleSave}
         onSkip={handleSkip}
         addresseeLoading={addresseeLoading}
@@ -321,12 +269,8 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
         editingAddressee={editingAddressee}
         setEditingAddressee={setEditingAddressee}
         saving={saving}
-        applyBusy={applyBusy}
-        applyDisabled={applyDisabled}
-        showRecovery={showRecovery}
-        pastedDescription={pastedDescription}
-        setPastedDescription={setPastedDescription}
-        onUsePreviewAnyway={handleUsePreviewAnyway}
+        isTruncated={isTruncated}
+        fullDescFailed={fullDescFailed}
       />
     </>
   );
