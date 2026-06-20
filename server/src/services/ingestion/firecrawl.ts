@@ -1,5 +1,10 @@
+import { callClaude } from '../llm';
+import { CONCISE_JD_PROMPT } from './prompts/conciseJobDescriptionPrompt';
+
 const FIRECRAWL_ENDPOINT = 'https://api.firecrawl.dev/v1/scrape';
 const FIRECRAWL_TIMEOUT_MS = 30_000; // 30s timeout
+// Cheap, fast model for distilling a scraped page into the essential posting.
+const CONCISE_JD_MODEL = process.env.JD_EXTRACT_MODEL || 'anthropic/claude-haiku-4-5';
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 1000;
 
@@ -208,5 +213,26 @@ export async function fetchJobDescription(url: string): Promise<{ description: s
     return { description: '', blocked: true };
   }
 
-  return { description: cleaned, blocked: false };
+  // Distil the cleaned page into the essential posting: role summary, key
+  // responsibilities, key requirements, plus salary/type/location when present.
+  // This is what a job seeker reads AND what the generator tailors against, so we
+  // keep the signal and drop the page chrome. Fall back to the cleaned text if the
+  // LLM step fails, so a description always comes back.
+  try {
+    const { content } = await callClaude(
+      CONCISE_JD_PROMPT(cleaned.slice(0, 12000)),
+      false, // plain text, not JSON
+      undefined,
+      CONCISE_JD_MODEL,
+    );
+    const concise = (content ?? '').trim();
+    if (concise.length >= 120) {
+      return { description: concise, blocked: false };
+    }
+  } catch (e: any) {
+    console.error('[fetchJobDescription] Concise extraction failed, using cleaned text:', e?.message ?? e);
+  }
+
+  // Fallback: the cleaned page, capped so it is never an overwhelming wall.
+  return { description: cleaned.slice(0, 4000), blocked: false };
 }

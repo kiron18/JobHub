@@ -143,6 +143,7 @@ export function FocusedApplyView({ jobs: initial }: { jobs: JobFeedItem[] }) {
   const [queue, setQueue] = useState<JobFeedItem[]>(initial);
   const [expanded, setExpanded] = useState(false);
   const [hydrating, setHydrating] = useState(false);
+  const [applying, setApplying] = useState(false);
   const job = queue[0];
 
   if (!job) {
@@ -169,13 +170,26 @@ export function FocusedApplyView({ jobs: initial }: { jobs: JobFeedItem[] }) {
     }
   };
 
-  const onApply = () => {
+  const onApply = async () => {
+    if (applying) return;
+    // Make sure the generator gets the full, clean posting, not the card teaser.
+    // If the card was already expanded we hydrated it; otherwise fetch it now.
+    // This also covers restored (skipped then undone) jobs, which carry a teaser.
+    let description = job.description ?? '';
+    if (description.length < 600) {
+      setApplying(true);
+      try {
+        const { data } = await api.post(`/job-feed/${job.id}/fetch-description`);
+        if (data?.description) description = data.description;
+      } catch { /* fall back to whatever we have, never block the apply */ }
+      setApplying(false);
+    }
     localStorage.setItem('jobhub_apply_context', JSON.stringify({
-      jobId: job.id, title: job.title, company: job.company, description: job.description,
+      jobId: job.id, title: job.title, company: job.company, description,
       sourceUrl: job.sourceUrl, sourcePlatform: job.sourcePlatform,
     }));
     navigate('/apply', { state: {
-      jobDescription: job.description, company: job.company, role: job.title,
+      jobDescription: description, company: job.company, role: job.title,
       feedItemId: job.id, sourceUrl: job.sourceUrl, sourcePlatform: job.sourcePlatform,
     }});
   };
@@ -265,25 +279,27 @@ export function FocusedApplyView({ jobs: initial }: { jobs: JobFeedItem[] }) {
             }}>
               Skip
             </button>
-            <button onClick={onApply} style={{
+            <button onClick={onApply} disabled={applying} style={{
               flex: 1,
               padding: '12px 18px',
               borderRadius: 12,
               border: `1px solid ${warm.colors.borderDefined}`,
-              cursor: 'pointer',
+              cursor: applying ? 'wait' : 'pointer',
               fontWeight: 700,
               fontSize: 14,
               background: warm.colors.bgSurface,
               color: warm.colors.textSecondary,
+              opacity: applying ? 0.7 : 1,
               transition: 'all 150ms',
             }} onMouseEnter={(e) => {
+              if (applying) return;
               e.currentTarget.style.borderColor = warm.colors.accentPetrol;
               e.currentTarget.style.color = warm.colors.accentPetrol;
             }} onMouseLeave={(e) => {
               e.currentTarget.style.borderColor = warm.colors.borderDefined;
               e.currentTarget.style.color = warm.colors.textSecondary;
             }}>
-              Apply
+              {applying ? 'Preparing…' : 'Apply'}
             </button>
           </div>
         </motion.div>
