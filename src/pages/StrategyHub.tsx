@@ -808,7 +808,7 @@ export function StrategyHub() {
         staleTime: 5 * 60 * 1000,
     });
 
-    const { data: feedData } = useQuery({
+    const { data: feedData, isPending: feedPending } = useQuery({
         queryKey: ['job-feed', 0],
         queryFn: async () => {
             const { data } = await api.get('/job-feed/feed?offset=0');
@@ -834,6 +834,10 @@ export function StrategyHub() {
 
     // Determine feed readiness state for FeedStateNotice
     const feedReadiness: FeedReadiness = useMemo(() => {
+        // First fetch still in flight (no data yet) — the /feed call takes a few
+        // seconds, so treat it as "searching" rather than falling through to the
+        // empty state, which caused a multi-second "no listings" flash on load.
+        if (feedPending) return 'building';
         if (feedProfileIncomplete) return 'incomplete-profile';
         if (feedBuilding) return 'building';
         if (feedError) return 'error';
@@ -842,7 +846,7 @@ export function StrategyHub() {
         const hasCache = feedReports?.some((r) => r.source === 'cache');
         if (hasCache) return 'partial';
         return 'complete';
-    }, [feedJobs.length, feedBuilding, feedProfileIncomplete, feedError, feedReports]);
+    }, [feedPending, feedJobs.length, feedBuilding, feedProfileIncomplete, feedError, feedReports]);
 
     const queryClient = useQueryClient();
     const navigate = useNavigate();

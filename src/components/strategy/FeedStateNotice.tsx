@@ -28,6 +28,14 @@ export const FeedStateNotice: React.FC<FeedStateNoticeProps> = ({
   onRefresh,
   onGoToProfile,
 }) => {
+  // Track how long the build has been running so the copy can set expectations
+  // (it can take a couple of minutes) and nudge a manual refresh if it overruns.
+  const [elapsed, setElapsed] = React.useState(0);
+  React.useEffect(() => {
+    if (state !== 'building') { setElapsed(0); return; }
+    const t = setInterval(() => setElapsed((e) => e + 1), 1000);
+    return () => clearInterval(t);
+  }, [state]);
   // Partial: some jobs cached but fewer than 3 roles worth
   if (state === 'partial') {
     return (
@@ -147,22 +155,55 @@ export const FeedStateNotice: React.FC<FeedStateNoticeProps> = ({
     );
   }
 
-  // Building: initial scrape in progress - MINIMAL text-only, box sized to content
+  // Building: initial scrape in progress. Set expectations on duration and, if it
+  // overruns, point to a refresh. Copy adapts to how long it has been running.
   if (state === 'building') {
+    const longRun = elapsed >= 90;
+    const where = targetRole && targetCity ? `${targetRole} roles in ${targetCity}` : 'live listings for you';
     return (
-      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontSize: 13, color: warm.colors.textSecondary }}>
-          Your jobs are loading
-        </span>
-        <span style={{ fontSize: 13, color: warm.colors.textSecondary, animation: 'pulse 1.5s ease-in-out infinite' }}>
-          ...
-        </span>
-        <style>{`
-          @keyframes pulse {
-            0%, 100% { opacity: 0.3; }
-            50% { opacity: 1; }
-          }
-        `}</style>
+      <div style={{ ...gc, padding: 24, display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: '50%',
+            background: `${warm.colors.accentPetrol}15`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          <Loader2 size={20} style={{ color: warm.colors.accentPetrol, animation: 'spin 1s linear infinite' }} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: warm.colors.textPrimary }}>
+            Searching {where}
+          </p>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: warm.colors.textSecondary }}>
+            {longRun
+              ? 'This is taking longer than usual. You can refresh the page, your matches are saved as soon as they are found.'
+              : 'This usually takes one to three minutes. Keep browsing, the feed fills in on its own.'}
+          </p>
+        </div>
+        {longRun && onRefresh && (
+          <button
+            onClick={onRefresh}
+            style={{
+              padding: '8px 14px',
+              borderRadius: 10,
+              fontSize: 12,
+              fontWeight: 700,
+              border: `1px solid ${warm.colors.borderWhisper}`,
+              color: warm.colors.textSecondary,
+              background: 'transparent',
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          >
+            Refresh
+          </button>
+        )}
       </div>
     );
   }
