@@ -144,6 +144,10 @@ export function FocusedApplyView({ jobs: initial }: { jobs: JobFeedItem[] }) {
   const [expanded, setExpanded] = useState(false);
   const [hydrating, setHydrating] = useState(false);
   const [applying, setApplying] = useState(false);
+  // The primary action is two-stage: View first (opens the card and loads the
+  // full JD), then it becomes Apply. This guarantees the generator never gets a
+  // teaser because Apply is unreachable until the JD has actually hydrated.
+  const [viewed, setViewed] = useState(false);
   const job = queue[0];
 
   if (!job) {
@@ -155,12 +159,14 @@ export function FocusedApplyView({ jobs: initial }: { jobs: JobFeedItem[] }) {
     );
   }
 
-  const advance = () => { setExpanded(false); setQueue(q => q.slice(1)); };
+  const advance = () => { setExpanded(false); setViewed(false); setQueue(q => q.slice(1)); };
 
-  const onExpand = async () => {
-    const next = !expanded;
-    setExpanded(next);
-    if (next && (job.description?.length ?? 0) < 600 && !hydrating) {
+  // View: open the card and load the full JD. Only flips `viewed` true once the
+  // description has actually hydrated, so the button never becomes Apply over a
+  // teaser. Below 600 chars means we only have the search-result snippet.
+  const onView = async () => {
+    setExpanded(true);
+    if ((job.description?.length ?? 0) < 600 && !hydrating) {
       setHydrating(true);
       try {
         const { data } = await api.post(`/job-feed/${job.id}/fetch-description`);
@@ -168,6 +174,14 @@ export function FocusedApplyView({ jobs: initial }: { jobs: JobFeedItem[] }) {
       } catch { /* keep teaser */ }
       setHydrating(false);
     }
+    setViewed(true);
+  };
+
+  // Card body click mirrors the View button: first click opens + views, a second
+  // click collapses (without un-viewing, so the action stays Apply).
+  const onCardClick = () => {
+    if (expanded) { setExpanded(false); return; }
+    onView();
   };
 
   const onApply = async () => {
@@ -213,7 +227,7 @@ export function FocusedApplyView({ jobs: initial }: { jobs: JobFeedItem[] }) {
         <motion.div key={job.id}
           initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}
           transition={{ duration: 0.22 }}
-          onClick={onExpand}
+          onClick={onCardClick}
           style={{
             border: `1px solid ${warm.colors.borderWhisper}`,
             borderRadius: 16,
@@ -279,28 +293,51 @@ export function FocusedApplyView({ jobs: initial }: { jobs: JobFeedItem[] }) {
             }}>
               Skip
             </button>
-            <button onClick={onApply} disabled={applying} style={{
-              flex: 1,
-              padding: '12px 18px',
-              borderRadius: 12,
-              border: `1px solid ${warm.colors.borderDefined}`,
-              cursor: applying ? 'wait' : 'pointer',
-              fontWeight: 700,
-              fontSize: 14,
-              background: warm.colors.bgSurface,
-              color: warm.colors.textSecondary,
-              opacity: applying ? 0.7 : 1,
-              transition: 'all 150ms',
-            }} onMouseEnter={(e) => {
-              if (applying) return;
-              e.currentTarget.style.borderColor = warm.colors.accentPetrol;
-              e.currentTarget.style.color = warm.colors.accentPetrol;
-            }} onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = warm.colors.borderDefined;
-              e.currentTarget.style.color = warm.colors.textSecondary;
-            }}>
-              {applying ? 'Preparing…' : 'Apply'}
-            </button>
+            {!viewed ? (
+              <button onClick={onView} disabled={hydrating} style={{
+                flex: 1,
+                padding: '12px 18px',
+                borderRadius: 12,
+                border: `1px solid ${warm.colors.borderDefined}`,
+                cursor: hydrating ? 'wait' : 'pointer',
+                fontWeight: 700,
+                fontSize: 14,
+                background: warm.colors.bgSurface,
+                color: warm.colors.textSecondary,
+                opacity: hydrating ? 0.7 : 1,
+                transition: 'all 150ms',
+              }} onMouseEnter={(e) => {
+                if (hydrating) return;
+                e.currentTarget.style.borderColor = warm.colors.accentPetrol;
+                e.currentTarget.style.color = warm.colors.accentPetrol;
+              }} onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = warm.colors.borderDefined;
+                e.currentTarget.style.color = warm.colors.textSecondary;
+              }}>
+                {hydrating ? 'Loading…' : 'View'}
+              </button>
+            ) : (
+              <button onClick={onApply} disabled={applying} style={{
+                flex: 1,
+                padding: '12px 18px',
+                borderRadius: 12,
+                border: `1px solid ${warm.colors.accentPetrol}`,
+                cursor: applying ? 'wait' : 'pointer',
+                fontWeight: 700,
+                fontSize: 14,
+                background: warm.colors.accentPetrol,
+                color: '#fff',
+                opacity: applying ? 0.7 : 1,
+                transition: 'all 150ms',
+              }} onMouseEnter={(e) => {
+                if (applying) return;
+                e.currentTarget.style.filter = 'brightness(1.06)';
+              }} onMouseLeave={(e) => {
+                e.currentTarget.style.filter = 'none';
+              }}>
+                {applying ? 'Preparing…' : 'Apply'}
+              </button>
+            )}
           </div>
         </motion.div>
       </AnimatePresence>
