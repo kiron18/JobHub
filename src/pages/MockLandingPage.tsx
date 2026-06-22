@@ -14,12 +14,11 @@
    - Brand wordmark = "Aussie Grad Careers" per the latest doc.
    - Product previews are built UI mockups, not real screenshots.
    ──────────────────────────────────────────────────────────────────────────── */
-import { useState, useRef, useEffect, Component } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ScanReveal } from '../components/landing/ScanReveal';
+import { ScanDiagnosis } from '../components/landing/ScanDiagnosis';
 import { ScanChamber } from '../components/landing/ScanChamber';
 import { GetStartedModal } from './GetStartedModal';
-import type { ReactNode } from 'react';
 import { motion, useInView, animate, AnimatePresence } from 'framer-motion';
 import {
   FileSearch, FileText, Sparkles, Linkedin, Check, ArrowRight, Upload,
@@ -69,12 +68,13 @@ interface CvGapResult {
   items: CvGapItem[];
   quickWins: QuickWin[];
   lockedGapCount: number;
-}
-
-interface RoadmapStep {
-  rank: number;
-  title: string;
-  why: string;
+  atsRisk?: boolean;
+  atsReasons?: string[];
+  dutyBullets?: number;
+  totalBullets?: number;
+  keywordsExpected?: number;
+  keywordsPresent?: number;
+  keywordsMissing?: string[];
 }
 
 // ── tiny helpers ──────────────────────────────────────────────────────────────
@@ -139,43 +139,6 @@ const display = (extra?: React.CSSProperties): React.CSSProperties => ({
   fontFamily: typeTokens.display, fontWeight: 500, color: colors.textPrimary,
   fontVariationSettings: "'SOFT' 50, 'WONK' 1", letterSpacing: '-0.015em', ...extra,
 });
-
-// Reusable animated reveal wrapper. MUST live at module scope — defining it inside
-// a component gives it a new identity on every render, which remounts its subtree
-// and steals focus from any input inside it on each keystroke.
-function SlideIn({ show, children, delay = 0 }: { show: boolean; children: React.ReactNode; delay?: number }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={show ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.45, delay, ease: EASE }}
-    >{children}</motion.div>
-  );
-}
-
-// ── Error boundary — prevents one crash from blanking the whole scan panel ──
-
-class PanelErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
-  constructor(props: { children: ReactNode }) {
-    super(props);
-    this.state = { hasError: false };
-  }
-  static getDerivedStateFromError() { return { hasError: true }; }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div style={{ padding: 24, textAlign: 'center' }}>
-          <p style={{ fontFamily: typeTokens.body, fontSize: 13, color: '#C2603F', margin: '0 0 12px' }}>Something went wrong rendering the results.</p>
-          <button onClick={() => this.setState({ hasError: false })} style={{
-            fontFamily: typeTokens.body, fontSize: 11, fontWeight: 600, cursor: 'pointer',
-            background: 'none', border: 'none', color: colors.accentPetrol, textDecoration: 'underline', padding: 0,
-          }}>Try again</button>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
 
 // ── Live "AI reading your CV" scanning state ─────────────────────────────────
 // Skeleton of the report with a sweeping scan-line + cycling status — sells that
@@ -297,46 +260,16 @@ function ScanPanel({ onResult, onInteract }: { onResult?: (result: CvGapResult, 
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<'idle' | 'scanning' | 'done' | 'error'>('idle');
   const [result, setResult] = useState<CvGapResult | null>(null);
-  const [revealStep, setRevealStep] = useState<'gaps' | 'wins' | 'big_reveal' | 'email'>('gaps');
   const [email, setEmail] = useState('');
-  const [emailLoading, setEmailLoading] = useState(false);
-  const [roadmap, setRoadmap] = useState<RoadmapStep[] | null>(null);
-  const [roadmapError, setRoadmapError] = useState<string | null>(null);
   const [showGetStarted, setShowGetStarted] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // End-of-roadmap funnel: open the GetStartedModal so the user creates an
-  // account and lands on /jobs with matches ready.
-  const handleEnterDashboard = () => {
+  // Capture the lead (fire-and-forget, never block the modal) then open the
+  // confirmation modal. Mirrors the old funnel handoff minus the roadmap.
+  const handleDiagnosisSubmit = () => {
+    if (!result?.scanId || !email) return;
+    api.post('/cv-scan/lead', { scanId: result.scanId, email }).catch(() => {});
     setShowGetStarted(true);
-  };
-
-  // Auto-advance through reveal steps on a timer
-  useEffect(() => {
-    if (status !== 'done' || !result) return;
-    if (revealStep === 'gaps') {
-      const t = setTimeout(() => setRevealStep('wins'), 1200);
-      return () => clearTimeout(t);
-    }
-    if (revealStep === 'wins') {
-      const t = setTimeout(() => setRevealStep('big_reveal'), 2000);
-      return () => clearTimeout(t);
-    }
-    if (revealStep === 'big_reveal') {
-      const t = setTimeout(() => setRevealStep('email'), 1800);
-      return () => clearTimeout(t);
-    }
-  }, [status, result, revealStep]);
-
-  // Reset reveal step when we get a new result
-  useEffect(() => {
-    if (status === 'done') setRevealStep('gaps');
-  }, [status]);
-
-  const severityColor = (sev: string): string => {
-    if (sev === 'critical') return '#C2603F';
-    if (sev === 'warning') return '#C5A059';
-    return colors.success;
   };
 
   const handleScan = async () => {
@@ -369,32 +302,8 @@ function ScanPanel({ onResult, onInteract }: { onResult?: (result: CvGapResult, 
     setResult(null);
     setFile(null);
     setPill(null);
-    setRevealStep('gaps');
     setEmail('');
-    setRoadmap(null);
-    setRoadmapError(null);
   };
-
-  const handleEmailSubmit = async () => {
-    if (!result?.scanId || !email) return;
-    setEmailLoading(true);
-    setRoadmapError(null);
-    try {
-      const res = await api.post('/cv-scan/lead', { scanId: result.scanId, email }, { timeout: 120000 });
-      setRoadmap(res.data.roadmap);
-      toast.success('Roadmap also sent to your inbox');
-    } catch (err: any) {
-      const msg = err?.response?.data?.error || 'Could not build your roadmap, please try again.';
-      setRoadmapError(msg);
-      toast.error(msg);
-    } finally {
-      setEmailLoading(false);
-    }
-  };
-
-  // Legacy inline reveal — superseded by <ScanReveal/>. Typed-false flag keeps it
-  // compiling (preserves null-narrowing) until the dead block is removed post-verify.
-  const SHOW_LEGACY_REVEAL = false as boolean;
 
   return (
     <div
@@ -407,17 +316,12 @@ function ScanPanel({ onResult, onInteract }: { onResult?: (result: CvGapResult, 
       {status === 'scanning' && <ScanChamber />}
 
       {status === 'done' && result && (
-        <ScanReveal
+        <ScanDiagnosis
           result={result}
           email={email}
           setEmail={setEmail}
-          emailLoading={emailLoading}
-          onEmailSubmit={handleEmailSubmit}
-          roadmap={roadmap}
-          roadmapError={roadmapError}
-          onRetry={handleRetry}
+          onSubmitEmail={handleDiagnosisSubmit}
           onClose={handleRetry}
-          onEnterDashboard={handleEnterDashboard}
         />
       )}
       {showGetStarted && result && (
@@ -427,197 +331,6 @@ function ScanPanel({ onResult, onInteract }: { onResult?: (result: CvGapResult, 
           email={email}
           onClose={() => setShowGetStarted(false)}
         />
-      )}
-      {SHOW_LEGACY_REVEAL && status === 'done' && result && (
-        <PanelErrorBoundary>
-        <>
-          {/* ── Score card (always visible) ── */}
-          <div style={{
-            background: colors.bgSurface, border: `1px solid ${colors.borderWhisper}`,
-            borderRadius: 16, padding: 18,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <span style={{ fontFamily: typeTokens.body, fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: colors.textMuted }}>{result.firstName ? `${result.firstName}, here's where your resume is letting you down` : "Here's where your resume is letting you down"}</span>
-              <ScoreRing score={result.score} />
-            </div>
-            {result.inferredRole && (
-              <div style={{ fontFamily: typeTokens.body, fontSize: 11, color: colors.textMuted, marginBottom: 14, fontStyle: 'italic' }}>
-                Scanned as: {result.inferredRole}
-              </div>
-            )}
-            {result.firstName && (
-              <p style={{ fontFamily: typeTokens.body, fontSize: 12, color: colors.textMuted, margin: '0 0 12px', lineHeight: 1.4 }}>
-                {result.firstName}, these are the fixes that'll get you seen.
-              </p>
-            )}
-
-            {/* ── 1. Pain points (gaps) — stagger in like the AI is writing them live ── */}
-            <motion.div
-              style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
-              variants={{ hidden: {}, show: { transition: { staggerChildren: 0.12, delayChildren: 0.08 } } }}
-              initial="hidden"
-              animate="show"
-            >
-              {result.items.map((g, i) => (
-                <motion.div
-                  key={i}
-                  variants={{ hidden: { opacity: 0, x: -8 }, show: { opacity: 1, x: 0 } }}
-                  transition={{ duration: 0.4, ease: EASE }}
-                  style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}
-                >
-                  <motion.span
-                    variants={{ hidden: { scale: 0 }, show: { scale: 1 } }}
-                    transition={{ duration: 0.3, ease: EASE }}
-                    style={{ width: 7, height: 7, borderRadius: '50%', background: severityColor(g.severity), marginTop: 5, flexShrink: 0 }}
-                  />
-                  <span style={{ fontFamily: typeTokens.body, fontSize: 13, lineHeight: 1.45, color: colors.textSecondary }}>{g.text}</span>
-                </motion.div>
-              ))}
-            </motion.div>
-
-            {pill && (
-              <SlideIn show={true} delay={0.1}>
-                <div style={{ marginTop: 14, padding: '10px 12px', background: 'rgba(197,160,89,0.08)', borderRadius: 10, border: '1px solid rgba(197,160,89,0.2)' }}>
-                  <span style={{ fontFamily: typeTokens.body, fontSize: 12, fontWeight: 600, color: '#C5A059' }}>You reported: {PILLS.find(p => p.v === pill)?.label}</span>
-                  <p style={{ fontFamily: typeTokens.body, fontSize: 12, color: colors.textMuted, margin: '4px 0 0', lineHeight: 1.4 }}>
-                    {pill === 'silence' && 'Your scan reflects that no response at all means your application likely isnt getting past the ATS filter.'}
-                    {pill === 'rejections' && 'Rejections suggest the recruiter spot gaps before they reach the interview stage.'}
-                    {pill === 'stall' && 'Interviews that stall often means strong recent experience but gaps in how you frame your earlier roles.'}
-                    {pill === 'no_offers' && 'If interviews are not converting, the issue might be how your resume positions you against the job requirements.'}
-                    {pill === 'mix' && 'A mixed response pattern means targeted fixes across multiple areas could move the needle.'}
-                  </p>
-                </div>
-              </SlideIn>
-            )}
-          </div>
-
-          {/* ── 2. Quick wins ── */}
-          <SlideIn show={revealStep === 'wins' || revealStep === 'big_reveal' || revealStep === 'email'}>
-            {revealStep !== 'gaps' && (
-              <div style={{ marginTop: 18, padding: 16, background: 'rgba(42,157,111,0.06)', borderRadius: 14, border: '1px solid rgba(42,157,111,0.18)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                  <Sparkles size={16} color={colors.success} strokeWidth={2} />
-                  <span style={{ fontFamily: typeTokens.body, fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: colors.success }}>2 quick wins you can do right now</span>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {(result.quickWins || []).map((w, i) => (
-                    <div key={i} style={{
-                      background: colors.bgSurface, borderRadius: 10, padding: '12px 14px',
-                      border: '1px solid rgba(42,157,111,0.12)',
-                    }}>
-                      <span style={{ fontFamily: typeTokens.body, fontSize: 12, fontWeight: 700, color: colors.textPrimary }}>{w.heading}</span>
-                      <p style={{ fontFamily: typeTokens.body, fontSize: 12, color: colors.textSecondary, margin: '4px 0 0', lineHeight: 1.45 }}>{w.description}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </SlideIn>
-
-          {/* ── 3. Big reveal ── */}
-          <SlideIn show={revealStep === 'big_reveal' || revealStep === 'email'}>
-            {revealStep !== 'gaps' && revealStep !== 'wins' && (
-              <motion.div
-                initial={{ scale: 0.96 }}
-                animate={{ scale: 1 }}
-                transition={{ duration: 0.5, ease: EASE }}
-                style={{
-                  marginTop: 18, padding: 14, background: 'rgba(197,160,89,0.06)',
-                  borderRadius: 12, border: '1px solid rgba(197,160,89,0.2)',
-                }}>
-                <p style={{ fontFamily: typeTokens.body, fontSize: 13, lineHeight: 1.55, color: colors.textPrimary, margin: 0 }}>
-                  <strong>These 2 fixes will help, but there are 7 other gaps</strong> that take most internationals 6+ months to figure out on their own.
-                </p>
-              </motion.div>
-            )}
-          </SlideIn>
-
-          {/* ── 4. Email capture + roadmap ── */}
-          <SlideIn show={revealStep === 'email'}>
-            {revealStep === 'email' && !roadmap && (
-              <div style={{ marginTop: 18, padding: '14px 0 0', borderTop: `1px solid ${colors.borderWhisper}`, textAlign: 'center' }}>
-                <p style={{ fontFamily: typeTokens.body, fontSize: 13, color: colors.textSecondary, margin: '0 0 8px' }}>
-                  Get the <strong style={{ color: colors.accentPetrol }}>complete roadmap to fix all 9 issues</strong> (plus the Australian hiring secrets recruiters do not tell you)
-                </p>
-                <div style={{ display: 'flex', gap: 8, maxWidth: 400, margin: '0 auto' }}>
-                  <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Enter your email"
-                    style={{
-                      flex: 1, fontFamily: typeTokens.body, fontSize: 13, padding: '11px 14px', borderRadius: 10,
-                      border: `1px solid ${colors.borderDefined}`, background: colors.bgAlt, color: colors.textPrimary,
-                      outline: 'none',
-                    }} />
-                  <motion.button onClick={handleEmailSubmit} disabled={emailLoading || !email}
-                    initial={{ boxShadow: '0 0 0 0 rgba(45,90,110,0)' }}
-                    animate={emailLoading || !email ? {} : { boxShadow: ['0 0 0 0 rgba(45,90,110,0)', '0 0 0 6px rgba(45,90,110,0.12)', '0 0 0 0 rgba(45,90,110,0)'] }}
-                    transition={{ duration: 1.6, ease: EASE, repeat: Infinity, repeatDelay: 1.2 }}
-                    style={{
-                      fontFamily: typeTokens.body, fontSize: 12, fontWeight: 700, cursor: emailLoading || !email ? 'not-allowed' : 'pointer',
-                      padding: '11px 18px', borderRadius: 10, border: 'none', whiteSpace: 'nowrap',
-                      background: emailLoading || !email ? colors.borderDefined : colors.accentPetrol,
-                      color: emailLoading || !email ? colors.textMuted : colors.textOnDeep,
-                      display: 'inline-flex', alignItems: 'center', gap: 6,
-                    }}>
-                    {emailLoading ? 'Building...' : 'Unlock my roadmap →'}
-                  </motion.button>
-                </div>
-                {roadmapError && (
-                  <p style={{ fontFamily: typeTokens.body, fontSize: 11, color: '#C2603F', margin: '8px 0 0' }}>{roadmapError}</p>
-                )}
-                <p style={{ fontFamily: typeTokens.body, fontSize: 10.5, color: colors.textMuted, margin: '8px 0 0' }}>
-                  We will email your roadmap and job-search tips. No spam, unsubscribe anytime.{' '}
-                  <a href="/legal/privacy" target="_blank" style={{ color: colors.accentPetrol }}>Privacy</a>
-                </p>
-                <div style={{ marginTop: 12 }}>
-                  <button onClick={handleRetry}
-                    style={{
-                      fontFamily: typeTokens.body, fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                      background: 'none', border: 'none', color: colors.accentPetrol, textDecoration: 'underline', padding: 0,
-                    }}>
-                    Scan a different CV
-                  </button>
-                </div>
-              </div>
-            )}
-            {roadmap && (
-              <div style={{ marginTop: 18, padding: 16, background: 'rgba(45,90,110,0.05)', borderRadius: 14, border: '1px solid rgba(45,90,110,0.14)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                  <FileSearch size={16} color={colors.accentPetrol} strokeWidth={2} />
-                  <span style={{ fontFamily: typeTokens.body, fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: colors.accentPetrol }}>Your 7-step roadmap</span>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {roadmap.map((s) => (
-                    <div key={s.rank} style={{
-                      display: 'flex', gap: 12, alignItems: 'flex-start',
-                      background: colors.bgSurface, borderRadius: 10, padding: '12px 14px',
-                      border: `1px solid ${colors.borderWhisper}`,
-                    }}>
-                      <span style={{
-                        width: 22, height: 22, borderRadius: '50%', background: colors.accentPetrol,
-                        color: colors.textOnDeep, fontFamily: typeTokens.body, fontSize: 11, fontWeight: 700,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                        marginTop: 1,
-                      }}>{s.rank}</span>
-                      <div>
-                        <span style={{ fontFamily: typeTokens.body, fontSize: 12, fontWeight: 700, color: colors.textPrimary }}>{s.title}</span>
-                        <p style={{ fontFamily: typeTokens.body, fontSize: 11.5, color: colors.textSecondary, margin: '3px 0 0', lineHeight: 1.4 }}>{s.why}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div style={{ marginTop: 14 }}>
-                  <button onClick={handleRetry}
-                    style={{
-                      fontFamily: typeTokens.body, fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                      background: 'none', border: 'none', color: colors.accentPetrol, textDecoration: 'underline', padding: 0,
-                    }}>
-                    Scan a different CV
-                  </button>
-                </div>
-              </div>
-            )}
-          </SlideIn>
-        </>
-        </PanelErrorBoundary>
       )}
 
       {status === 'error' && (
