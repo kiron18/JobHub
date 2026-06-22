@@ -14,16 +14,26 @@ export async function persistMergedJobs(args: {
 }): Promise<{ runId: string; newJobs: number; dupJobs: number }> {
   const run = await prisma.ingestionRun.create({ data: { trigger: args.trigger } });
   const feedDate = today();
-  let newJobs = 0, dupJobs = 0;
   const perSourceNew: Record<string, number> = {};
 
   // Use the search location key for cache consistency, not the job's extracted location
   const searchLocationKey = locationKey(args.location);
 
-  for (const m of args.merged) {
-    const existing = await prisma.job.findUnique({ where: { dedupKey: m.dedupKey } });
-    if (existing) dupJobs++; else newJobs++;
-    const job = await prisma.job.upsert({
+  // New-vs-dup counting in a single query instead of one findUnique per job.
+  const existingRows = await prisma.job.findMany({
+    where: { dedupKey: { in: args.merged.map(m => m.dedupKey) } },
+    select: { dedupKey: true },
+  });
+  const existingKeys = new Set(existingRows.map(r => r.dedupKey));
+  const newJobs = args.merged.filter(m => !existingKeys.has(m.dedupKey)).length;
+  const dupJobs = args.merged.length - newJobs;
+
+  // Upsert every job in parallel rather than serially. The old per-row await loop
+  // meant ~60-120 sequential round-trips to Supabase and was the dominant cost of
+  // the whole feed build (seen as 78-153s "Persisted" times in prod). merged is
+  // already deduped by dedupKey, so parallel upserts never collide.
+  const jobs = await Promise.all(args.merged.map(m =>
+    prisma.job.upsert({
       where: { dedupKey: m.dedupKey },
       create: {
         dedupKey: m.dedupKey, title: m.title, company: m.company, normalizedCompany: m.normalizedCompany,
@@ -32,20 +42,27 @@ export async function persistMergedJobs(args: {
         lowRelevance: m.lowRelevance, searchRole: m.searchRole, feedDate,
       },
       update: { relevanceScore: m.relevanceScore, lowRelevance: m.lowRelevance, feedDate, locationKey: searchLocationKey },
-    });
-    for (const s of m.sources) {
-      if (!existing) perSourceNew[s.source] = (perSourceNew[s.source] ?? 0) + 1;
-      await prisma.jobSource.upsert({
-        where: { source_sourceUrl: { source: s.source, sourceUrl: s.sourceUrl } },
-        create: { jobId: job.id, source: s.source, sourceUrl: s.sourceUrl, sourceJobId: s.sourceJobId },
-        update: { jobId: job.id },
-      });
-    }
-  }
+    })
+  ));
 
-  for (const r of args.reports) {
+  // Build the source upserts (and tally per-source new counts) off the resolved
+  // job ids, then run them in parallel too.
+  const sourceUpserts = args.merged.flatMap((m, i) => {
+    const isNew = !existingKeys.has(m.dedupKey);
+    return m.sources.map(s => {
+      if (isNew) perSourceNew[s.source] = (perSourceNew[s.source] ?? 0) + 1;
+      return prisma.jobSource.upsert({
+        where: { source_sourceUrl: { source: s.source, sourceUrl: s.sourceUrl } },
+        create: { jobId: jobs[i].id, source: s.source, sourceUrl: s.sourceUrl, sourceJobId: s.sourceJobId },
+        update: { jobId: jobs[i].id },
+      });
+    });
+  });
+  await Promise.all(sourceUpserts);
+
+  await Promise.all(args.reports.map(r => {
     const unique = uniqueContribution(args.merged, r.source);
-    await prisma.sourceResult.create({
+    return prisma.sourceResult.create({
       data: {
         runId: run.id, source: r.source, query: `${args.role} @ ${args.location}`,
         status: r.errorMessage ? 'error' : r.blocked ? 'blocked' : 'ok',
@@ -54,7 +71,7 @@ export async function persistMergedJobs(args: {
         latencyMs: r.latencyMs, creditsUsed: r.creditsUsed,
       },
     });
-  }
+  }));
 
   await prisma.ingestionRun.update({
     where: { id: run.id },

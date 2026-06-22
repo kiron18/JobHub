@@ -9,7 +9,7 @@ vi.mock('../../db', () => {
 
   return {
     prisma: {
-      job: { upsert: mockUpsert, findUnique: vi.fn(async () => null) },
+      job: { upsert: mockUpsert, findUnique: vi.fn(async () => null), findMany: vi.fn(async () => []) },
       jobSource: { upsert: mockJobSourceUpsert },
       ingestionRun: { create: mockCreateRun, update: mockUpdateRun },
       sourceResult: { create: mockCreateSourceResult },
