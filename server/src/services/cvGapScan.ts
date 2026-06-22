@@ -42,6 +42,15 @@ export interface CvGapResult {
   culturalTranslations?: CulturalTranslation[];  // 1–2, grounded in real resume phrases
   items: CvGapItem[];     // 4–5 items, at least 1 'good', ordered most→least severe
   quickWins: QuickWin[];  // 2 immediate, actionable wins
+
+  // ── Passthrough metrics for the four-gauge diagnosis (additive, optional) ──
+  atsRisk?: boolean;
+  atsReasons?: string[];
+  dutyBullets?: number;
+  totalBullets?: number;
+  keywordsExpected?: number;
+  keywordsPresent?: number;
+  keywordsMissing?: string[];
 }
 
 // ── LLM response shape ───────────────────────────────────────────────────────
@@ -113,6 +122,34 @@ export interface DeterministicSignals {
   bulletCount: number;
   quantificationRatio: number;
   dutyOpeningCount: number;
+}
+
+export interface ScanMetrics {
+  atsRisk: boolean;
+  atsReasons: string[];
+  dutyBullets: number;
+  totalBullets: number;
+  keywordsExpected: number;
+  keywordsPresent: number;
+  keywordsMissing: string[];
+}
+
+// Pure passthrough: shapes already-computed values for the client. No analysis.
+export function deriveScanMetrics(
+  signals: DeterministicSignals,
+  ats: AtsStructure | undefined,
+  expectedKeywords: string[],
+  presentKeywords: string[],
+): ScanMetrics {
+  return {
+    atsRisk: ats?.risk ?? false,
+    atsReasons: ats?.reasons ?? [],
+    dutyBullets: signals.dutyOpeningCount,
+    totalBullets: signals.bulletCount,
+    keywordsExpected: expectedKeywords.length,
+    keywordsPresent: presentKeywords.length,
+    keywordsMissing: expectedKeywords.filter(k => !presentKeywords.includes(k)),
+  };
 }
 
 function computeSignals(resumeText: string): DeterministicSignals {
@@ -442,7 +479,7 @@ export async function runCvGapScan(resumeText: string, ats?: AtsStructure): Prom
   const llm = await callLlmForScan(resumeText, signals, ats);
   const presentKeywords = matchPresentKeywords(resumeText, llm.expectedKeywords ?? []);
   const score = computeScore(signals, llm.expectedKeywords.length, presentKeywords.length);
-  return assembleResult(
+  const result = assembleResult(
     score, llm.inferredRole, llm.firstName ?? '', llm.fullName ?? '', llm.items,
     llm.expectedKeywords, presentKeywords, llm.quickWins,
     {
@@ -452,4 +489,5 @@ export async function runCvGapScan(resumeText: string, ats?: AtsStructure): Prom
       culturalTranslations: llm.culturalTranslations,
     },
   );
+  return { ...result, ...deriveScanMetrics(signals, ats, llm.expectedKeywords ?? [], presentKeywords) };
 }
