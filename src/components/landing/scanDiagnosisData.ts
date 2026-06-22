@@ -13,6 +13,7 @@ export interface ScanInput {
   keywordsExpected?: number;
   keywordsPresent?: number;
   keywordsMissing?: string[];
+  keywordsMatched?: string[];
 }
 
 export interface GaugeModel {
@@ -25,6 +26,7 @@ export interface GaugeModel {
   relevanceBucket: RelevanceBucket;
   relevanceFill: number;      // 0..1
   keywordsMissing: string[];
+  keywordsMatched: string[];
   presentationItems: string[];
   presentationCount: number;
   flipPairs: { wrote: string; instead: string }[];
@@ -62,6 +64,7 @@ export function buildGaugeModel(r: ScanInput): GaugeModel {
     relevanceBucket,
     relevanceFill: Math.max(0, Math.min(1, relevanceFill)),
     keywordsMissing: r.keywordsMissing ?? [],
+    keywordsMatched: r.keywordsMatched ?? [],
     presentationItems,
     presentationCount: presentationItems.length,
     flipPairs,

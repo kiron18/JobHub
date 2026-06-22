@@ -9,37 +9,48 @@ export const scanDiagnosisCopy = {
   subline: `Four things decide whether your resume gets read. Here's how yours scores.`,
 
   labels: {
-    ats: `Machine readability`,
+    ats: `ATS readiness`,
     impact: `Impact vs duties`,
     relevance: `Australian market fit`,
     presentation: `Recruiter readability`,
   },
 
+  // Shared affordance shown on every card so it reads as openable, not a flat square.
+  expandCue: `See the breakdown`,
+
   ats: {
-    pass: `A machine can read your resume.`,
-    fail: `A machine can't read this, so a human never sees it.`,
+    passHeadline: `ATS ready`,
+    failHeadline: `At risk`,
+    passSub: `No tables, columns or text boxes. Your resume clears the gate.`,
+    failSub: `Tables or columns can scramble the scan before a human ever sees it.`,
     education: `Most Australian employers auto-scan every resume before a person looks at it. Text boxes, tables and columns scramble that scan, so a strong resume can score near zero and get filtered out before anyone reads a word.`,
   },
 
   impact: {
-    verdict: (duty: number, total: number) =>
-      `${duty} of ${total} bullets describe duties, not results.`,
-    allGood: `Your bullets lead with results. Keep doing this.`,
+    headline: (outcomes: number, total: number) => `${outcomes} of ${total} bullets show outcomes`,
+    sub: (duties: number) => `${duties} describe tasks. Recruiters hire for results, not effort.`,
+    allGoodHeadline: `Every bullet shows outcomes`,
+    allGoodSub: `Your bullets lead with results. Keep doing this.`,
     flipFront: `What you wrote`,
     flipBack: `What gets read`,
     caption: (duty: number) => `We found ${duty} bullets like this. Here's one.`,
   },
 
   relevance: {
+    headline: (present: number, expected: number) => `${present} of ${expected} keywords matched`,
     strong: `Speaks to most of what local employers scan for.`,
-    partial: `Speaks to some of what local employers scan for, but misses several expected terms for your role.`,
-    weak: `Misses most of the terms Australian employers scan for in your field.`,
-    expandLine: `These are the terms local job ads for your role expect to see.`,
+    partial: `Hits some terms local employers scan for, but misses several.`,
+    weak: `Misses most of the terms local employers scan for in your field.`,
+    matchedLabel: `In your resume`,
+    missingLabel: `Missing and expected`,
+    expandLine: `Green is already in your resume. Red is missing and expected by local employers.`,
   },
 
   presentation: {
-    verdict: (n: number) => `${n} things slow a recruiter down on a 6-second skim.`,
-    allGood: `Clean and easy to skim. Nothing slowing a recruiter down.`,
+    headline: (n: number) => `${n} ${n === 1 ? 'issue' : 'issues'} found`,
+    sub: `Things that slow a recruiter down on a 6-second skim.`,
+    allGoodHeadline: `Clean and skimmable`,
+    allGoodSub: `Nothing slowing a recruiter down on a 6-second skim.`,
   },
 
   authorityBridge: `We have seen this a thousand times, so let's be straight with you. Right now you are about to spend another month tweaking this resume, sending it into the void, and hearing nothing back. That silence is not about your talent. It is about everything a resume on its own can never do.`,

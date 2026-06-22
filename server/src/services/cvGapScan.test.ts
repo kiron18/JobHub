@@ -18,6 +18,7 @@ describe('deriveScanMetrics', () => {
     expect(m.keywordsExpected).toBe(4);
     expect(m.keywordsPresent).toBe(2);
     expect(m.keywordsMissing).toEqual(['stakeholder', 'python']);
+    expect(m.keywordsMatched).toEqual(['agile', 'sql']);
   });
 
   it('defaults ats to no-risk when undefined', () => {

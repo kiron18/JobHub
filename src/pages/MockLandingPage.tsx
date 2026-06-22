@@ -75,6 +75,7 @@ interface CvGapResult {
   keywordsExpected?: number;
   keywordsPresent?: number;
   keywordsMissing?: string[];
+  keywordsMatched?: string[];
 }
 
 // ── tiny helpers ──────────────────────────────────────────────────────────────

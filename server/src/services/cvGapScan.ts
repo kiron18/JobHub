@@ -51,6 +51,7 @@ export interface CvGapResult {
   keywordsExpected?: number;
   keywordsPresent?: number;
   keywordsMissing?: string[];
+  keywordsMatched?: string[];
 }
 
 // ── LLM response shape ───────────────────────────────────────────────────────
@@ -132,6 +133,7 @@ export interface ScanMetrics {
   keywordsExpected: number;
   keywordsPresent: number;
   keywordsMissing: string[];
+  keywordsMatched: string[];
 }
 
 // Pure passthrough: shapes already-computed values for the client. No analysis.
@@ -149,6 +151,7 @@ export function deriveScanMetrics(
     keywordsExpected: expectedKeywords.length,
     keywordsPresent: presentKeywords.length,
     keywordsMissing: expectedKeywords.filter(k => !presentKeywords.includes(k)),
+    keywordsMatched: presentKeywords,
   };
 }
 
