@@ -815,6 +815,14 @@ export function StrategyHub() {
             return data;
         },
         staleTime: 5 * 60 * 1000,
+        // The first fetch returns building:true while the background scrape runs
+        // (~1 min). Poll until jobs land, then stop. Without this the dashboard sits
+        // on the "Searching…" notice until a manual hard refresh. refetchInterval
+        // reads the query's own data so it doesn't depend on the derived consts below.
+        refetchInterval: (query) => {
+            const d = query.state.data as { building?: boolean; profileIncomplete?: boolean } | undefined;
+            return d?.building || d?.profileIncomplete ? 4000 : false;
+        },
     });
 
     const feedJobs = (feedData?.jobs ?? []) as JobFeedItem[];
