@@ -337,7 +337,10 @@ export function ScanDiagnosis({ result, email, setEmail, onSubmitEmail, onClose 
           </div>
 
           {/* authority bridge */}
-          <p style={{ fontFamily: typeTokens.body, fontSize: 16, lineHeight: 1.65, color: colors.textPrimary, margin: '40px 0 0' }}>
+          <h3 style={{ fontFamily: typeTokens.display, fontWeight: 600, letterSpacing: '-0.02em', lineHeight: 1.2, color: colors.textPrimary, fontSize: 'clamp(20px, 3vw, 28px)', margin: '40px 0 12px' }}>
+            Next Step
+          </h3>
+          <p style={{ fontFamily: typeTokens.body, fontSize: 16, lineHeight: 1.65, color: colors.textPrimary, margin: 0 }}>
             {C.authorityBridge}
           </p>
 
