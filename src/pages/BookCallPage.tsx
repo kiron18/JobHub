@@ -132,7 +132,7 @@ export function BookCallPage() {
   const navigate = useNavigate();
 
   return (
-    <div style={{ minHeight: '100vh', background: colors.bgCanvas, color: colors.textPrimary }}>
+    <div style={{ height: '100vh', overflowY: 'auto', background: colors.bgCanvas, color: colors.textPrimary }}>
       {/* Nav */}
       <nav style={{
         position: 'sticky', top: 0, zIndex: 50, display: 'flex', alignItems: 'center',
