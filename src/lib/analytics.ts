@@ -146,6 +146,12 @@ export function trackLandingLogInClicked(variant: string) {
   posthog.capture('landing_login_clicked', { hero_variant: variant });
 }
 
+// ── Book-a-call funnel ────────────────────────────────────────────────────────
+
+export function trackBookCallCtaClicked(position: 'hero' | 'mid' | 'final') {
+  posthog.capture('book_call_cta_clicked', { position });
+}
+
 // ── Sponsor directory funnel ──────────────────────────────────────
 
 export function trackSponsorDirectoryViewed() {
