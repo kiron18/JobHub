@@ -1,19 +1,22 @@
 #!/usr/bin/env node
 /**
  * obsidian-sync.js — polls JobHub API for completed battle cards and writes
- * them as markdown files to your local Obsidian vault.
+ * them into per-client folders inside your Obsidian vault.
+ *
+ * Output structure:
+ *   <OBSIDIAN_VAULT>/Clients/<Name>/Battle Card — YYYY-MM-DD.md
+ *   <OBSIDIAN_VAULT>/Clients/<Name>/Resume.md   (if resume was uploaded)
  *
  * Usage:
  *   node scripts/obsidian-sync.js
  *
- * Required env vars (set in a .env.local or pass inline):
+ * Required env vars (set in .env.local or pass inline):
  *   OBSIDIAN_SYNC_KEY   — shared secret, must match the server env var
- *   API_URL             — defaults to http://localhost:3002/api (local dev)
- *                         set to https://your-railway-url.up.railway.app/api for prod
  *
  * Optional:
+ *   API_URL             — defaults to http://localhost:3002/api
  *   OBSIDIAN_VAULT      — absolute path to vault (default: C:/Users/Kiron/Obsidian)
- *   OBSIDIAN_FOLDER     — subfolder inside vault for call cards (default: Calls)
+ *   CLIENTS_FOLDER      — subfolder inside vault (default: Clients)
  *   POLL_INTERVAL_MS    — how often to check in ms (default: 60000)
  */
 
@@ -21,23 +24,25 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-// Load .env.local if present
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Load .env.local if present
 const envPath = path.join(__dirname, '..', '.env.local');
 if (fs.existsSync(envPath)) {
   const lines = fs.readFileSync(envPath, 'utf8').split('\n');
   for (const line of lines) {
-    const [k, ...rest] = line.split('=');
-    if (k && rest.length && !process.env[k.trim()]) {
-      process.env[k.trim()] = rest.join('=').trim().replace(/^["']|["']$/g, '');
-    }
+    const eq = line.indexOf('=');
+    if (eq === -1) continue;
+    const k = line.slice(0, eq).trim();
+    const v = line.slice(eq + 1).trim().replace(/^["']|["']$/g, '');
+    if (k && !process.env[k]) process.env[k] = v;
   }
 }
 
 const API_URL       = process.env.API_URL        || 'http://localhost:3002/api';
 const SYNC_KEY      = process.env.OBSIDIAN_SYNC_KEY;
 const VAULT_PATH    = process.env.OBSIDIAN_VAULT  || 'C:/Users/Kiron/Obsidian';
-const FOLDER        = process.env.OBSIDIAN_FOLDER || 'Calls';
+const CLIENTS_DIR   = process.env.CLIENTS_FOLDER  || 'Clients';
 const POLL_INTERVAL = parseInt(process.env.POLL_INTERVAL_MS || '60000', 10);
 
 if (!SYNC_KEY) {
@@ -45,16 +50,18 @@ if (!SYNC_KEY) {
   process.exit(1);
 }
 
-const OUTPUT_DIR = path.join(VAULT_PATH, FOLDER);
-
-// Ensure output directory exists
-if (!fs.existsSync(OUTPUT_DIR)) {
-  fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-  console.log(`[obsidian-sync] Created folder: ${OUTPUT_DIR}`);
+const CLIENTS_PATH = path.join(VAULT_PATH, CLIENTS_DIR);
+if (!fs.existsSync(CLIENTS_PATH)) {
+  fs.mkdirSync(CLIENTS_PATH, { recursive: true });
+  console.log(`[obsidian-sync] Created: ${CLIENTS_PATH}`);
 }
 
 console.log(`[obsidian-sync] Started — polling ${API_URL} every ${POLL_INTERVAL / 1000}s`);
-console.log(`[obsidian-sync] Writing cards to: ${OUTPUT_DIR}`);
+console.log(`[obsidian-sync] Writing to: ${CLIENTS_PATH}`);
+
+function safeName(name) {
+  return name.replace(/[<>:"/\\|?*]/g, '').trim() || 'Unknown';
+}
 
 async function sync() {
   let cards;
@@ -77,22 +84,38 @@ async function sync() {
   console.log(`[obsidian-sync] ${cards.length} card(s) ready`);
 
   for (const card of cards) {
-    const filePath = path.join(OUTPUT_DIR, card.filename);
-    try {
-      fs.writeFileSync(filePath, card.content, 'utf8');
-      console.log(`[obsidian-sync] Written: ${card.filename}`);
+    const clientFolder = path.join(CLIENTS_PATH, safeName(card.clientName));
 
-      // Acknowledge so the server marks it synced
+    try {
+      // Create client folder if needed
+      if (!fs.existsSync(clientFolder)) {
+        fs.mkdirSync(clientFolder, { recursive: true });
+        console.log(`[obsidian-sync] Created folder: ${safeName(card.clientName)}/`);
+      }
+
+      // Write battle card
+      const cardFile = path.join(clientFolder, `Battle Card — ${card.folderDate}.md`);
+      fs.writeFileSync(cardFile, card.battleCard, 'utf8');
+      console.log(`[obsidian-sync] Written: ${safeName(card.clientName)}/Battle Card — ${card.folderDate}.md`);
+
+      // Write resume if available
+      if (card.resumeText) {
+        const resumeFile = path.join(clientFolder, 'Resume.md');
+        const resumeContent = `# Resume — ${card.clientName}\n\n\`\`\`\n${card.resumeText}\n\`\`\`\n`;
+        fs.writeFileSync(resumeFile, resumeContent, 'utf8');
+        console.log(`[obsidian-sync] Written: ${safeName(card.clientName)}/Resume.md`);
+      }
+
+      // Acknowledge so server marks it synced
       await fetch(`${API_URL}/bookings/ready-cards/${card.id}/ack`, {
         method: 'PATCH',
         headers: { 'x-obsidian-sync-key': SYNC_KEY },
       });
     } catch (err) {
-      console.error(`[obsidian-sync] Failed to write ${card.filename}:`, err.message);
+      console.error(`[obsidian-sync] Failed for ${card.clientName}:`, err.message);
     }
   }
 }
 
-// Run immediately, then on interval
 sync();
 setInterval(sync, POLL_INTERVAL);

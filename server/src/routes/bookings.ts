@@ -99,6 +99,7 @@ router.get('/ready-cards', async (req, res) => {
         email: true,
         callScheduledAt: true,
         battleCard: true,
+        resumeText: true,
         createdAt: true,
       },
       orderBy: { createdAt: 'asc' },
@@ -106,8 +107,10 @@ router.get('/ready-cards', async (req, res) => {
 
     const result = cards.map(c => ({
       id: c.id,
-      filename: buildFilename(c.name, c.callScheduledAt ?? c.createdAt),
-      content: c.battleCard!,
+      clientName: c.name,
+      folderDate: buildDatePrefix(c.callScheduledAt ?? c.createdAt),
+      battleCard: c.battleCard!,
+      resumeText: c.resumeText ?? null,
     }));
 
     return res.json(result);
@@ -137,13 +140,12 @@ router.patch('/ready-cards/:id/ack', async (req, res) => {
   }
 });
 
-function buildFilename(name: string, date: Date): string {
+function buildDatePrefix(date: Date): string {
   const d = new Date(date);
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
-  const safe = name.replace(/[^a-zA-Z0-9 -]/g, '').trim();
-  return `${yyyy}-${mm}-${dd} — ${safe}.md`;
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 export default router;
