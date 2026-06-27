@@ -224,7 +224,7 @@ function IntakeModal({ onClose }: { onClose: () => void }) {
                 <label style={labelStyle}>Biggest challenge right now <span style={{ color: colors.textMuted, fontWeight: 400 }}>(optional)</span></label>
                 <textarea
                   rows={3}
-                  placeholder="e.g. "I've sent 80 applications and heard nothing back…""
+                  placeholder="e.g. I've sent 80 applications and heard nothing back..."
                   style={{ ...inputStyle, resize: 'vertical' }}
                   {...field('biggestChallenge')}
                 />
