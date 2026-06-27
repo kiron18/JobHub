@@ -183,11 +183,11 @@ function IntakeModal({ onClose }: { onClose: () => void }) {
               {/* Name + Email */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
-                  <label style={labelStyle}>Name <span style={{ color: colors.error }}>*</span></label>
+                  <label style={labelStyle}>Name <span style={{ color: "#c0392b" }}>*</span></label>
                   <input required placeholder="Jane Smith" style={inputStyle} {...field('name')} />
                 </div>
                 <div>
-                  <label style={labelStyle}>Email <span style={{ color: colors.error }}>*</span></label>
+                  <label style={labelStyle}>Email <span style={{ color: "#c0392b" }}>*</span></label>
                   <input required type="email" placeholder="jane@example.com" style={inputStyle} {...field('email')} />
                 </div>
               </div>
@@ -248,7 +248,7 @@ function IntakeModal({ onClose }: { onClose: () => void }) {
               </div>
 
               {status === 'error' && (
-                <p style={{ fontFamily: typeTokens.body, fontSize: '0.875rem', color: colors.error, margin: 0 }}>
+                <p style={{ fontFamily: typeTokens.body, fontSize: '0.875rem', color: "#c0392b", margin: 0 }}>
                   Something went wrong — but you can still book your call below.
                 </p>
               )}
