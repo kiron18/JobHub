@@ -9,12 +9,14 @@
    Booking link: the CTA opens BOOKING_URL in a new tab. Set BOOKING_URL below
    to the real scheduling link (Calendly / Cal.com / etc) before going live.
    ──────────────────────────────────────────────────────────────────────────── */
-import { useRef } from 'react';
+import { useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, useInView } from 'framer-motion';
-import { Check, ArrowRight, Clock, Compass, MessageSquare } from 'lucide-react';
+import { motion, useInView, AnimatePresence } from 'framer-motion';
+import { Check, ArrowRight, Clock, Compass, MessageSquare, X, Upload, Loader2 } from 'lucide-react';
 import { colors, type as typeTokens } from '../components/landing/tokens';
 import { trackBookCallCtaClicked } from '../lib/analytics';
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
 
 // ── Booking destination ───────────────────────────────────────────────────────
 // Live Calendly for Aussie Grad Careers (30 min strategy call, weekdays 3-5pm).
@@ -50,10 +52,11 @@ function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
   );
 }
 
-function BookButton({ position, label, small }: { position: 'hero' | 'mid' | 'final'; label: string; small?: boolean }) {
+function BookButton({ position, label, small, onClick }: { position: 'hero' | 'mid' | 'final'; label: string; small?: boolean; onClick?: () => void }) {
   const handle = () => {
     trackBookCallCtaClicked(position);
-    window.open(BOOKING_URL, '_blank', 'noopener,noreferrer');
+    if (onClick) onClick();
+    else window.open(BOOKING_URL, '_blank', 'noopener,noreferrer');
   };
   return (
     <button
@@ -78,6 +81,213 @@ function BookButton({ position, label, small }: { position: 'hero' | 'mid' | 'fi
     >
       {label} <ArrowRight size={small ? 16 : 18} strokeWidth={2.2} />
     </button>
+  );
+}
+
+// ── intake modal ──────────────────────────────────────────────────────────────
+
+const VISA_OPTIONS = ['Student visa (500)', '482 TSS', '485 Graduate', 'TR/Bridging', 'PR', 'Citizen', 'Other'];
+
+const inputStyle: React.CSSProperties = {
+  fontFamily: typeTokens.body, fontSize: '0.9375rem', color: colors.textPrimary,
+  background: colors.bgCanvas, border: `1px solid ${colors.borderWhisper}`,
+  borderRadius: 8, padding: '10px 14px', width: '100%', outline: 'none',
+  boxSizing: 'border-box', lineHeight: 1.5,
+};
+
+const labelStyle: React.CSSProperties = {
+  fontFamily: typeTokens.body, fontSize: '0.8125rem', fontWeight: 600,
+  color: colors.textSecondary, display: 'block', marginBottom: 6,
+};
+
+function IntakeModal({ onClose }: { onClose: () => void }) {
+  const [form, setForm] = useState({
+    name: '', email: '', linkedinUrl: '', currentRole: '',
+    targetRole: '', visaStatus: '', biggestChallenge: '',
+  });
+  const [file, setFile] = useState<File | null>(null);
+  const [status, setStatus] = useState<'idle' | 'submitting' | 'error'>('idle');
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const proceed = useCallback(() => {
+    window.open(BOOKING_URL, '_blank', 'noopener,noreferrer');
+    onClose();
+  }, [onClose]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim() || !form.email.trim()) return;
+
+    setStatus('submitting');
+    const fd = new FormData();
+    Object.entries(form).forEach(([k, v]) => { if (v) fd.append(k, v); });
+    if (file) fd.append('resume', file);
+
+    try {
+      await fetch(`${API_BASE}/bookings/intake`, { method: 'POST', body: fd });
+    } catch {
+      // Non-fatal — still send them to Calendly
+    }
+
+    proceed();
+  };
+
+  const field = (key: keyof typeof form) => ({
+    value: form[key],
+    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+      setForm(f => ({ ...f, [key]: e.target.value })),
+  });
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        onClick={onClose}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 200,
+          background: 'rgba(26,24,20,0.72)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+        }}
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 24, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 16, scale: 0.97 }}
+          transition={{ duration: 0.28, ease: [0.25, 1, 0.5, 1] }}
+          onClick={e => e.stopPropagation()}
+          style={{
+            background: colors.bgCanvas, borderRadius: 16, padding: '32px 28px',
+            width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto',
+            boxShadow: '0 8px 40px rgba(26,24,20,0.22)',
+            border: `1px solid ${colors.borderWhisper}`,
+          }}
+        >
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+            <div>
+              <span style={labelStyle}>One quick step</span>
+              <h2 style={{ fontFamily: typeTokens.display, fontSize: '1.4rem', fontWeight: 500, margin: 0, color: colors.textPrimary, letterSpacing: '-0.015em' }}>
+                Help me prep for your call
+              </h2>
+              <p style={{ fontFamily: typeTokens.body, fontSize: '0.875rem', color: colors.textMuted, margin: '6px 0 0', lineHeight: 1.5 }}>
+                Takes 60 seconds. The more you share, the more useful the call.
+              </p>
+            </div>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: colors.textMuted, lineHeight: 0 }}>
+              <X size={20} strokeWidth={2} />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Name + Email */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={labelStyle}>Name <span style={{ color: colors.error }}>*</span></label>
+                  <input required placeholder="Jane Smith" style={inputStyle} {...field('name')} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Email <span style={{ color: colors.error }}>*</span></label>
+                  <input required type="email" placeholder="jane@example.com" style={inputStyle} {...field('email')} />
+                </div>
+              </div>
+
+              {/* LinkedIn */}
+              <div>
+                <label style={labelStyle}>LinkedIn URL <span style={{ color: colors.textMuted, fontWeight: 400 }}>(optional)</span></label>
+                <input placeholder="https://linkedin.com/in/..." style={inputStyle} {...field('linkedinUrl')} />
+              </div>
+
+              {/* Current + Target */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={labelStyle}>Current / last role <span style={{ color: colors.textMuted, fontWeight: 400 }}>(optional)</span></label>
+                  <input placeholder="e.g. Software Engineer" style={inputStyle} {...field('currentRole')} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Target role / industry <span style={{ color: colors.textMuted, fontWeight: 400 }}>(optional)</span></label>
+                  <input placeholder="e.g. Product Manager" style={inputStyle} {...field('targetRole')} />
+                </div>
+              </div>
+
+              {/* Visa */}
+              <div>
+                <label style={labelStyle}>Visa status <span style={{ color: colors.textMuted, fontWeight: 400 }}>(optional)</span></label>
+                <select style={{ ...inputStyle, appearance: 'none' }} {...field('visaStatus')}>
+                  <option value="">Select…</option>
+                  {VISA_OPTIONS.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+              </div>
+
+              {/* Biggest challenge */}
+              <div>
+                <label style={labelStyle}>Biggest challenge right now <span style={{ color: colors.textMuted, fontWeight: 400 }}>(optional)</span></label>
+                <textarea
+                  rows={3}
+                  placeholder="e.g. "I've sent 80 applications and heard nothing back…""
+                  style={{ ...inputStyle, resize: 'vertical' }}
+                  {...field('biggestChallenge')}
+                />
+              </div>
+
+              {/* Resume upload */}
+              <div>
+                <label style={labelStyle}>Resume <span style={{ color: colors.textMuted, fontWeight: 400 }}>(optional — PDF or DOCX)</span></label>
+                <input ref={fileRef} type="file" accept=".pdf,.docx" style={{ display: 'none' }}
+                  onChange={e => setFile(e.target.files?.[0] || null)} />
+                <button type="button"
+                  onClick={() => fileRef.current?.click()}
+                  style={{
+                    ...inputStyle, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+                    color: file ? colors.textPrimary : colors.textMuted, textAlign: 'left',
+                  }}
+                >
+                  <Upload size={15} strokeWidth={2} />
+                  {file ? file.name : 'Click to upload resume'}
+                </button>
+              </div>
+
+              {status === 'error' && (
+                <p style={{ fontFamily: typeTokens.body, fontSize: '0.875rem', color: colors.error, margin: 0 }}>
+                  Something went wrong — but you can still book your call below.
+                </p>
+              )}
+
+              {/* Actions */}
+              <div style={{ display: 'flex', gap: 12, paddingTop: 4 }}>
+                <button
+                  type="submit"
+                  disabled={status === 'submitting'}
+                  style={{
+                    flex: 1, background: colors.accentPetrol, color: colors.textOnDeep,
+                    padding: '13px 20px', borderRadius: 10, border: 'none', fontWeight: 600,
+                    fontSize: '1rem', fontFamily: typeTokens.body, cursor: status === 'submitting' ? 'wait' : 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    opacity: status === 'submitting' ? 0.7 : 1,
+                  }}
+                >
+                  {status === 'submitting'
+                    ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Saving…</>
+                    : <>Book my call <ArrowRight size={16} strokeWidth={2.2} /></>}
+                </button>
+                <button type="button" onClick={proceed}
+                  style={{
+                    padding: '13px 16px', borderRadius: 10, border: `1px solid ${colors.borderWhisper}`,
+                    background: 'none', fontFamily: typeTokens.body, fontSize: '0.875rem',
+                    color: colors.textMuted, cursor: 'pointer', whiteSpace: 'nowrap',
+                  }}
+                >
+                  Skip
+                </button>
+              </div>
+              <p style={{ fontFamily: typeTokens.body, fontSize: '0.75rem', color: colors.textMuted, margin: 0, textAlign: 'center' }}>
+                Your info is only ever seen by Kiron. Never shared, never sold.
+              </p>
+            </div>
+          </form>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 }
 
@@ -130,9 +340,12 @@ const FAQS = [
 
 export function BookCallPage() {
   const navigate = useNavigate();
+  const [showIntake, setShowIntake] = useState(false);
+  const openIntake = useCallback(() => setShowIntake(true), []);
 
   return (
     <div style={{ height: '100vh', overflowY: 'auto', background: colors.bgCanvas, color: colors.textPrimary }}>
+      {showIntake && <IntakeModal onClose={() => setShowIntake(false)} />}
       {/* Nav */}
       <nav style={{
         position: 'sticky', top: 0, zIndex: 50, display: 'flex', alignItems: 'center',
@@ -178,7 +391,7 @@ export function BookCallPage() {
               ever work together.
             </p>
             <div style={{ display: 'flex', justifyContent: 'center', marginTop: 32 }}>
-              <BookButton position="hero" label="Book my strategy call" />
+              <BookButton position="hero" label="Book my strategy call" onClick={openIntake} />
             </div>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 18 }}>
               <Clock size={14} color={colors.textMuted} strokeWidth={1.8} />
@@ -320,7 +533,7 @@ export function BookCallPage() {
               what to fix and in what order. No card, no commitment.
             </p>
             <div style={{ display: 'flex', justifyContent: 'center', marginTop: 32 }}>
-              <BookButton position="final" label="Book my strategy call" />
+              <BookButton position="final" label="Book my strategy call" onClick={openIntake} />
             </div>
             <p style={{ fontFamily: typeTokens.body, fontSize: '0.8125rem', color: colors.textMuted, marginTop: 16 }}>
               Free · 30 minutes · Built for grads job-hunting in Australia
@@ -368,6 +581,7 @@ export function BookCallPage() {
         @media (max-width: 640px) {
           nav { padding: 16px 20px; }
         }
+        @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
     </div>
   );

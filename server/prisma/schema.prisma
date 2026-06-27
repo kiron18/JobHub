@@ -645,6 +645,24 @@ model IngestionRun {
   results    SourceResult[]
 }
 
+model BookingIntake {
+  id               String    @id @default(cuid())
+  name             String
+  email            String    @unique
+  linkedinUrl      String?
+  currentRole      String?
+  targetRole       String?
+  visaStatus       String?
+  biggestChallenge String?
+  resumeText       String?
+  calendlyEventId  String?
+  callScheduledAt  DateTime?
+  battleCard       String?
+  battleCardAt     DateTime?
+  obsidianSynced   Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+}
+
 model SourceResult {
   id           String       @id @default(uuid())
   runId        String
