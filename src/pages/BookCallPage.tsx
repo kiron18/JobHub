@@ -12,7 +12,7 @@
 import { useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, useInView, AnimatePresence } from 'framer-motion';
-import { Check, ArrowRight, Clock, Compass, MessageSquare, X, Upload, Loader2 } from 'lucide-react';
+import { Check, ArrowRight, Clock, Compass, MessageSquare, X, Upload } from 'lucide-react';
 import { colors, type as typeTokens } from '../components/landing/tokens';
 import { trackBookCallCtaClicked } from '../lib/analytics';
 
@@ -105,30 +105,22 @@ function IntakeModal({ onClose }: { onClose: () => void }) {
     name: '', email: '', visaStatus: '', biggestChallenge: '',
   });
   const [file, setFile] = useState<File | null>(null);
-  const [status, setStatus] = useState<'idle' | 'submitting' | 'error'>('idle');
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const proceed = useCallback(() => {
-    window.open(BOOKING_URL, '_blank', 'noopener,noreferrer');
-    onClose();
-  }, [onClose]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim() || !form.email.trim()) return;
 
-    setStatus('submitting');
+    // Must open the window synchronously inside the click handler —
+    // calling window.open after an await causes browsers to block it as a popup.
+    window.open(BOOKING_URL, '_blank', 'noopener,noreferrer');
+    onClose();
+
+    // Fire-and-forget: store intake data in the background
     const fd = new FormData();
     Object.entries(form).forEach(([k, v]) => { if (v) fd.append(k, v); });
     if (file) fd.append('resume', file);
-
-    try {
-      await fetch(`${API_BASE}/bookings/intake`, { method: 'POST', body: fd });
-    } catch {
-      // Non-fatal — still send them to Calendly
-    }
-
-    proceed();
+    fetch(`${API_BASE}/bookings/intake`, { method: 'POST', body: fd }).catch(() => {});
   };
 
   const field = (key: keyof typeof form) => ({
@@ -228,30 +220,20 @@ function IntakeModal({ onClose }: { onClose: () => void }) {
                 </button>
               </div>
 
-              {status === 'error' && (
-                <p style={{ fontFamily: typeTokens.body, fontSize: '0.875rem', color: "#c0392b", margin: 0 }}>
-                  Something went wrong — but you can still book your call below.
-                </p>
-              )}
-
               {/* Actions */}
               <div style={{ display: 'flex', gap: 12, paddingTop: 4 }}>
                 <button
                   type="submit"
-                  disabled={status === 'submitting'}
                   style={{
                     flex: 1, background: colors.accentPetrol, color: colors.textOnDeep,
                     padding: '13px 20px', borderRadius: 10, border: 'none', fontWeight: 600,
-                    fontSize: '1rem', fontFamily: typeTokens.body, cursor: status === 'submitting' ? 'wait' : 'pointer',
+                    fontSize: '1rem', fontFamily: typeTokens.body, cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                    opacity: status === 'submitting' ? 0.7 : 1,
                   }}
                 >
-                  {status === 'submitting'
-                    ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Saving…</>
-                    : <>Book my call <ArrowRight size={16} strokeWidth={2.2} /></>}
+                  Book my call <ArrowRight size={16} strokeWidth={2.2} />
                 </button>
-                <button type="button" onClick={proceed}
+                <button type="button" onClick={() => { window.open(BOOKING_URL, '_blank', 'noopener,noreferrer'); onClose(); }}
                   style={{
                     padding: '13px 16px', borderRadius: 10, border: `1px solid ${colors.borderWhisper}`,
                     background: 'none', fontFamily: typeTokens.body, fontSize: '0.875rem',
