@@ -102,8 +102,7 @@ const labelStyle: React.CSSProperties = {
 
 function IntakeModal({ onClose }: { onClose: () => void }) {
   const [form, setForm] = useState({
-    name: '', email: '', linkedinUrl: '', currentRole: '',
-    targetRole: '', visaStatus: '', biggestChallenge: '',
+    name: '', email: '', visaStatus: '', biggestChallenge: '',
   });
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<'idle' | 'submitting' | 'error'>('idle');
@@ -189,24 +188,6 @@ function IntakeModal({ onClose }: { onClose: () => void }) {
                 <div>
                   <label style={labelStyle}>Email <span style={{ color: "#c0392b" }}>*</span></label>
                   <input required type="email" placeholder="jane@example.com" style={inputStyle} {...field('email')} />
-                </div>
-              </div>
-
-              {/* LinkedIn */}
-              <div>
-                <label style={labelStyle}>LinkedIn URL <span style={{ color: colors.textMuted, fontWeight: 400 }}>(optional)</span></label>
-                <input placeholder="https://linkedin.com/in/..." style={inputStyle} {...field('linkedinUrl')} />
-              </div>
-
-              {/* Current + Target */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div>
-                  <label style={labelStyle}>Current / last role <span style={{ color: colors.textMuted, fontWeight: 400 }}>(optional)</span></label>
-                  <input placeholder="e.g. Software Engineer" style={inputStyle} {...field('currentRole')} />
-                </div>
-                <div>
-                  <label style={labelStyle}>Target role / industry <span style={{ color: colors.textMuted, fontWeight: 400 }}>(optional)</span></label>
-                  <input placeholder="e.g. Product Manager" style={inputStyle} {...field('targetRole')} />
                 </div>
               </div>
 
@@ -296,43 +277,44 @@ function IntakeModal({ onClose }: { onClose: () => void }) {
 const STEPS = [
   {
     icon: Compass,
-    title: 'We find what is actually blocking you',
-    body: 'We look at your CV, your applications and the response you are getting, then name the real bottleneck. Usually it is not the one you think.',
+    title: 'We diagnose the real blocker',
+    body: 'In the first ten minutes, we name it. Not your resume. Not your cover letter. The actual reason your search has stalled — and why it is almost never what candidates think it is.',
   },
   {
     icon: MessageSquare,
-    title: 'We map the fix',
-    body: 'A clear, ordered plan for the next few weeks. The Australian specific moves most internationals never get told about, in the order that moves the needle.',
+    title: 'We build your exact playbook',
+    body: 'Australian-specific moves, sequenced for your visa, your background, and your target market. Not a generic list — a plan built in the room, for your situation.',
   },
   {
     icon: Check,
-    title: 'You decide what is next',
-    body: 'If we can help you further, we will tell you how, once. If you are better off running the plan on your own, we will tell you that too. No pressure either way.',
+    title: 'You decide what comes next',
+    body: 'Some graduates choose to go further with us. Others run the plan themselves and get results. Either way, you leave the call knowing exactly what to do.',
   },
 ];
 
 const WALKAWAY = [
-  'A straight answer on why your applications are going quiet',
-  'The two or three highest-leverage fixes, in priority order',
-  'A realistic timeline for someone in your exact situation',
+  'The exact reason your applications are going quiet — named, not guessed',
+  'Your 3 highest-leverage moves, prioritised in the order that actually shifts things',
+  'A realistic timeline built around your visa, your background, and your market',
+  'The Australian-specific moves most international graduates never find out about',
 ];
 
 const FAQS = [
   {
     q: 'Is it really free?',
-    a: 'Yes. No card, no catch. Thirty minutes of our time because the call is genuinely useful and it is how we meet the people we end up working with.',
+    a: 'Yes. The call is free because it is genuinely useful, and it is how we meet the people we end up working with closely. You will get real value from it regardless of what happens after.',
   },
   {
     q: 'Will you try to sell me something?',
-    a: 'If we think we can help beyond the call, we will say so once, near the end. If we cannot, we will say that instead. You leave with the plan regardless.',
+    a: 'If there is a clear fit for our program, we will say so once, at the end. Most people find it immediately obvious whether it is right for them or not. We do not need to push — the results speak for themselves.',
   },
   {
-    q: 'I am early in my search. Is it too soon?',
-    a: 'Earlier is better. Fixing your positioning before you have burned through a hundred applications saves you months. The best time to call is before the silence sets in.',
+    q: 'I have only just started. Is it too soon?',
+    a: 'It is never too soon. The earlier you understand the rules, the less damage you do in those first months. The graduates who call us early build momentum fast. The ones who wait spend the first part of the conversation undoing months of the wrong approach.',
   },
   {
     q: 'Does my visa situation matter?',
-    a: 'Bring it. We factor your visa and work rights into the plan so the roles we point you at are ones you can actually take. We are not migration agents, so for legal advice we will refer you on.',
+    a: 'Yes, and we account for it. Every move we recommend is built around what you can actually do on your visa in Australia. We are not migration agents — for legal questions we refer you to the right people — but we know how to work within your situation.',
   },
 ];
 
@@ -375,28 +357,28 @@ export function BookCallPage() {
       </nav>
 
       {/* Hero */}
-      <section style={{ padding: '72px 24px 64px' }}>
+      <section style={{ padding: '80px 24px 72px' }}>
         <div style={{ maxWidth: 720, margin: '0 auto', textAlign: 'center' }}>
           <Reveal>
-            <Eyebrow>Free 30-minute strategy call</Eyebrow>
-            <h1 style={display({ fontSize: 'clamp(2.3rem, 5vw, 3.4rem)', lineHeight: 1.05, margin: '18px auto 0', maxWidth: 640 })}>
-              Let us map your path to an Australian job. In one call.
+            <Eyebrow>Free strategy call — limited spots each week</Eyebrow>
+            <h1 style={display({ fontSize: 'clamp(2.3rem, 5vw, 3.5rem)', lineHeight: 1.05, margin: '18px auto 0', maxWidth: 660 })}>
+              You have been applying. The silence is not random. One call changes that.
             </h1>
             <p style={{
-              fontFamily: typeTokens.body, fontSize: '1.1875rem', lineHeight: 1.6,
-              color: colors.textSecondary, margin: '20px auto 0', maxWidth: 540,
+              fontFamily: typeTokens.body, fontSize: '1.1875rem', lineHeight: 1.65,
+              color: colors.textSecondary, margin: '22px auto 0', maxWidth: 560,
             }}>
-              Thirty minutes, one on one. We work out where your search is really stuck
-              and exactly what to do next. You walk away with a plan whether or not we
-              ever work together.
+              Most international graduates spend months applying to the wrong roles in the wrong way —
+              and are never told the real reason nothing is moving. Thirty minutes with someone
+              who has been through it, and helped hundreds do the same, changes the equation.
             </p>
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 32 }}>
-              <BookButton position="hero" label="Book my strategy call" onClick={openIntake} />
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 36 }}>
+              <BookButton position="hero" label="Claim my strategy call" onClick={openIntake} />
             </div>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 18 }}>
               <Clock size={14} color={colors.textMuted} strokeWidth={1.8} />
               <span style={{ fontFamily: typeTokens.body, fontSize: '0.8125rem', color: colors.textMuted }}>
-                Free · 30 minutes · No pitch fest
+                Free · 30 minutes · Built for international graduates in Australia
               </span>
             </div>
           </Reveal>
@@ -409,7 +391,7 @@ export function BookCallPage() {
           <Reveal>
             <Eyebrow>What happens on the call</Eyebrow>
             <h2 style={display({ fontSize: 'clamp(1.7rem, 3.2vw, 2.3rem)', lineHeight: 1.1, margin: '14px 0 0', maxWidth: 560 })}>
-              A working session, not a sales pitch.
+              In 30 minutes, we do the work most job seekers spend six months guessing at.
             </h2>
           </Reveal>
 
@@ -446,7 +428,7 @@ export function BookCallPage() {
           <Reveal>
             <Eyebrow>What you walk away with</Eyebrow>
             <h2 style={display({ fontSize: 'clamp(1.7rem, 3.2vw, 2.3rem)', lineHeight: 1.1, margin: '14px 0 28px', maxWidth: 560 })}>
-              Even if we never speak again.
+              Clarity you have not had since you started.
             </h2>
             <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
               {WALKAWAY.map(item => (
@@ -486,10 +468,12 @@ export function BookCallPage() {
               </div>
             </div>
             <p style={{ fontFamily: typeTokens.body, fontSize: '1.0625rem', lineHeight: 1.65, color: colors.textSecondary, margin: 0 }}>
-              I came to Australia as a student and learned the hard way that the job hunt
-              here is not won on talent, it is won on knowing the local rules. The moment I
-              learned them, the silence turned into callbacks and an offer I did not think
-              was possible. This call is the shortcut I wish someone had handed me.
+              I came to Australia as an international student. I know what it feels like
+              to send application after application and hear nothing back — and to have no
+              idea why. The moment I understood the actual rules of the Australian job
+              market, everything changed. Callbacks, interviews, an offer I did not think
+              was possible. I built Aussie Grad Careers to shortcut that learning curve for
+              every international graduate who comes after me. This call is that shortcut.
             </p>
           </Reveal>
         </div>
@@ -521,22 +505,48 @@ export function BookCallPage() {
         </div>
       </section>
 
+      {/* What happens for graduates who go further — presell */}
+      <section style={{ background: colors.bgDeep, padding: '80px 24px' }}>
+        <div style={{ maxWidth: 680, margin: '0 auto' }}>
+          <Reveal>
+            <span style={{
+              fontFamily: typeTokens.body, fontSize: '0.75rem', fontWeight: 600,
+              letterSpacing: '0.18em', textTransform: 'uppercase', color: colors.accentGold,
+            }}>For graduates who want to go further</span>
+            <h2 style={display({ fontSize: 'clamp(1.7rem, 3.2vw, 2.2rem)', lineHeight: 1.15, margin: '14px 0 20px', color: colors.bgCanvas })}>
+              The call is the beginning, not the end.
+            </h2>
+            <p style={{ fontFamily: typeTokens.body, fontSize: '1.0625rem', lineHeight: 1.7, color: 'rgba(250,247,242,0.72)', margin: 0 }}>
+              Most graduates who do this call walk away with more clarity than they have had
+              in months. Some of them — the ones who want to move faster, with structure and
+              support — choose to work with us more closely. Our program takes you through
+              every stage of the Australian job search in a coached environment alongside
+              other internationals doing exactly the same thing. If that is the right fit
+              for you, we will say so at the end of the call. If it is not, we will tell
+              you that too.
+            </p>
+          </Reveal>
+        </div>
+      </section>
+
       {/* Final CTA */}
       <section style={{ background: colors.bgSurface, borderTop: `1px solid ${colors.borderWhisper}`, padding: '96px 24px' }}>
         <div style={{ maxWidth: 600, margin: '0 auto', textAlign: 'center' }}>
           <Reveal>
-            <h2 style={display({ fontSize: 'clamp(2rem, 4vw, 2.8rem)', lineHeight: 1.1, margin: 0 })}>
-              Stop guessing. Get a plan.
+            <Eyebrow>There are only a few spots available each week</Eyebrow>
+            <h2 style={display({ fontSize: 'clamp(2rem, 4vw, 2.8rem)', lineHeight: 1.1, margin: '14px auto 0', maxWidth: 520 })}>
+              Your search does not have to stay stuck.
             </h2>
-            <p style={{ fontFamily: typeTokens.body, fontSize: '1.125rem', lineHeight: 1.6, color: colors.textSecondary, margin: '16px auto 0', maxWidth: 480 }}>
-              Pick a time that suits you. Thirty minutes from now you could know exactly
-              what to fix and in what order. No card, no commitment.
+            <p style={{ fontFamily: typeTokens.body, fontSize: '1.125rem', lineHeight: 1.65, color: colors.textSecondary, margin: '18px auto 0', maxWidth: 480 }}>
+              Every week you spend applying without a plan is a week you will not get back.
+              Thirty minutes from now, you could know exactly what is in the way —
+              and exactly how to move it.
             </p>
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 32 }}>
-              <BookButton position="final" label="Book my strategy call" onClick={openIntake} />
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 36 }}>
+              <BookButton position="final" label="Claim my strategy call" onClick={openIntake} />
             </div>
             <p style={{ fontFamily: typeTokens.body, fontSize: '0.8125rem', color: colors.textMuted, marginTop: 16 }}>
-              Free · 30 minutes · Built for grads job-hunting in Australia
+              Free · 30 minutes · Built for international graduates in Australia
             </p>
           </Reveal>
         </div>
