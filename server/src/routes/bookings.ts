@@ -55,8 +55,9 @@ router.post('/intake', upload.single('resume'), async (req, res) => {
         targetRole: targetRole?.trim() || null,
         visaStatus: visaStatus?.trim() || null,
         biggestChallenge: biggestChallenge?.trim() || null,
-        resumeText: resumeText || null,
-        // Reset synced flag if they resubmit so a fresh card is generated
+        // Only overwrite resumeText if a new file was actually uploaded
+        ...(resumeText ? { resumeText } : {}),
+        // Reset battle card so it regenerates with the latest data
         obsidianSynced: false,
         battleCard: null,
         battleCardAt: null,
