@@ -1,16 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
-import { useNavigate } from 'react-router-dom';
 import { warm } from '../lib/theme/warmTokens';
 import api from '../lib/api';
 import { ProfileIntroCard } from '../components/linkedin/ProfileIntroCard';
 import { ProfileSectionBlock } from '../components/linkedin/ProfileSectionBlock';
 import { ReadinessBar } from '../components/linkedin/ReadinessBar';
 import { OutreachTemplates } from '../components/linkedin/OutreachTemplates';
+import { LinkedInOnboardingModal } from '../components/linkedin/LinkedInOnboardingModal';
 import type { LinkedInProfileData, BannerConfig } from '../components/linkedin/types';
 import { useProfile } from '../hooks/useProfile';
 import { SectionIntroBanner } from '../components/processStrip';
-import { Sparkles, ChevronDown, ChevronUp, Star } from 'lucide-react';
+import { Sparkles, ChevronDown, ChevronUp, Star, Loader2 } from 'lucide-react';
 
 type Tab = 'profile' | 'outreach';
 
@@ -24,7 +24,6 @@ const DEFAULT_BANNER: BannerConfig = {
 export const LinkedInPage: React.FC = () => {
   const { profile } = useProfile();
 
-  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('profile');
   const [targetRole, setTargetRole] = useState('');
   const [showTargetRole, setShowTargetRole] = useState(false);
@@ -34,11 +33,53 @@ export const LinkedInPage: React.FC = () => {
   const [bannerConfig, setBannerConfig] = useState<BannerConfig>(DEFAULT_BANNER);
   const [bannerEditorOpen, setBannerEditorOpen] = useState(false);
   const [headshotUrl, setHeadshotUrl] = useState<string | null>(profile?.headshotUrl ?? null);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [hydrating, setHydrating] = useState(true);
+
+  // Refs used to guard the bannerConfig persistence effect from firing during hydration.
+  const hasHydrated = useRef(false);
+  const hydratedBannerRef = useRef<BannerConfig | null>(null);
 
   useEffect(() => {
     if (profile?.headshotUrl) setHeadshotUrl(profile.headshotUrl);
   }, [profile?.headshotUrl]);
 
+  // ── Mount: hydrate from server state ──────────────────────────────────────
+  useEffect(() => {
+    async function init() {
+      try {
+        const { data } = await api.get<{
+          profile: LinkedInProfileData | null;
+          banner: BannerConfig | null;
+          onboardedAt: string | null;
+        }>('/linkedin/state');
+        if (data.profile) setProfileData(data.profile);
+        if (data.banner) {
+          setBannerConfig(data.banner);
+          hydratedBannerRef.current = data.banner;
+        }
+        if (data.onboardedAt === null) setOnboardingOpen(true);
+      } catch {
+        // Don't crash the page on a failed hydration fetch.
+      } finally {
+        // Set the ref synchronously before triggering a re-render so the
+        // bannerConfig useEffect (defined below) can safely check it.
+        hasHydrated.current = true;
+        setHydrating(false);
+      }
+    }
+    init();
+  }, []);
+
+  // ── Persist banner changes (skips the value hydrated from the server) ──────
+  useEffect(() => {
+    if (!hasHydrated.current) return;
+    // Same reference means this is exactly what we received from the GET — skip.
+    if (bannerConfig === hydratedBannerRef.current) return;
+    api.patch('/linkedin/state', { banner: bannerConfig }).catch(() => {});
+  }, [bannerConfig]);
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
   async function handleGenerateAll() {
     if (generating) return;
     setGenerating(true);
@@ -56,11 +97,8 @@ export const LinkedInPage: React.FC = () => {
       }
       toast.success('Profile generated — copy sections to LinkedIn');
     } catch (err: any) {
-      if (err?.response?.status === 402) {
-        navigate('/pricing');
-      } else {
-        toast.error('Generation failed — try again.');
-      }
+      toast.error('Generation failed — try again.');
+      throw err; // allow callers (e.g. the onboarding modal wrapper) to detect failure
     } finally {
       setGenerating(false);
     }
@@ -76,12 +114,8 @@ export const LinkedInPage: React.FC = () => {
       const key = section as keyof LinkedInProfileData;
       setProfileData(prev => prev ? { ...prev, [key]: data[key] } : data);
       toast.success(`${section} regenerated`);
-    } catch (err: any) {
-      if (err?.response?.status === 402) {
-        navigate('/pricing');
-      } else {
-        toast.error('Regeneration failed — try again.');
-      }
+    } catch {
+      toast.error('Regeneration failed — try again.');
     } finally {
       setRegeneratingSection(null);
     }
@@ -91,10 +125,24 @@ export const LinkedInPage: React.FC = () => {
     section: keyof Omit<LinkedInProfileData, 'bannerCopies'>,
     value: string | string[]
   ) {
-    setProfileData(prev => prev ? { ...prev, [section]: value } : prev);
+    if (profileData) {
+      const updated: LinkedInProfileData = { ...profileData, [section]: value };
+      // Fire-and-forget persist; don't block the UI.
+      api.patch('/linkedin/state', { profile: updated }).catch(() => {});
+      setProfileData(updated);
+    } else {
+      setProfileData(prev => prev ? { ...prev, [section]: value } : prev);
+    }
   }
 
-  // Readiness checks
+  // Wrapper called by the onboarding modal — patches onboarded flag then closes.
+  const handleModalGenerate = async () => {
+    await handleGenerateAll(); // throws on error so we don't mark as onboarded
+    await api.patch('/linkedin/state', { onboarded: true }).catch(() => {});
+    setOnboardingOpen(false);
+  };
+
+  // ── Readiness checks ──────────────────────────────────────────────────────
   const readiness = {
     photo: !!headshotUrl,
     banner: !!bannerConfig.mainMessage,
@@ -156,8 +204,44 @@ export const LinkedInPage: React.FC = () => {
     </div>
   );
 
+  // ── Hydration loading guard ───────────────────────────────────────────────
+  if (hydrating) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: 240,
+        }}
+      >
+        <Loader2
+          size={24}
+          color={warm.colors.textMuted}
+          style={{ animation: 'spin 1s linear infinite' }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div style={{ maxWidth: 740, margin: '0 auto' }}>
+      {/* ── Onboarding modal — unskippable, first visit only ────────────── */}
+      {onboardingOpen && (
+        <LinkedInOnboardingModal
+          name={profile?.name ?? ''}
+          location={profile?.location ?? ''}
+          headshotUrl={headshotUrl}
+          targetRole={targetRole}
+          onTargetRoleChange={setTargetRole}
+          bannerConfig={bannerConfig}
+          onBannerConfigChange={setBannerConfig}
+          onHeadshotSaved={setHeadshotUrl}
+          generating={generating}
+          onGenerate={handleModalGenerate}
+        />
+      )}
+
       <SectionIntroBanner sectionId="linkedin">
         Around 70% of Aussie roles are filled via networking. This is your LinkedIn toolkit: profile rewrite, outreach templates, and headline drafts.
       </SectionIntroBanner>

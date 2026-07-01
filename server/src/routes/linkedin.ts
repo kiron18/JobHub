@@ -6,6 +6,8 @@ import { parseLLMJson } from '../utils/parseLLMResponse';
 import { EXEMPT_EMAILS } from './stripe';
 
 async function requirePaid(req: AuthRequest, res: any): Promise<boolean> {
+  // paywall disabled for now — remove this line to re-enable
+  return true;
   const email = (req.user?.email ?? '').toLowerCase();
   if (EXEMPT_EMAILS.includes(email)) return true;
   const profile = await prisma.candidateProfile.findUnique({
@@ -15,7 +17,7 @@ async function requirePaid(req: AuthRequest, res: any): Promise<boolean> {
   const plan = profile?.plan ?? 'free';
   const planStatus = profile?.planStatus ?? 'active';
   const isPaid = plan !== 'free' && (planStatus === 'active' || planStatus === 'trialing' || planStatus === 'past_due');
-  const isThreeMonth = plan === 'three_month' && profile?.accessExpiresAt && profile.accessExpiresAt > new Date();
+  const isThreeMonth = plan === 'three_month' && !!profile?.accessExpiresAt && profile!.accessExpiresAt! > new Date();
   if (!isPaid && !isThreeMonth) {
     res.status(402).json({
       error: 'upgrade_required',
@@ -149,6 +151,10 @@ Return ONLY valid JSON matching the schema in the rules above.`;
     // Hard-enforce character limits the LLM sometimes ignores
     if (parsed?.openToWork?.length > 150) parsed.openToWork = parsed.openToWork.slice(0, 147) + '...';
     if (parsed?.headline?.length > 220) parsed.headline = parsed.headline.slice(0, 220);
+    await prisma.candidateProfile.update({
+      where: { userId },
+      data: { linkedinProfile: parsed },
+    });
     return res.json(parsed);
   } catch (err: any) {
     console.error('[LinkedIn /generate]', err.message);
@@ -303,6 +309,52 @@ router.post('/headshot', authenticate, upload.single('image'), async (req: AuthR
     console.error('[headshot] unhandled error:', err.message);
     return res.status(500).json({ error: err.message ?? 'Headshot generation failed' });
   }
+});
+
+router.get('/state', authenticate, async (req: AuthRequest, res) => {
+  const userId = req.user!.id;
+  try {
+    const profile = await prisma.candidateProfile.findUnique({
+      where: { userId },
+      select: { linkedinProfile: true, linkedinBanner: true, linkedinOnboardedAt: true },
+    });
+    if (!profile) {
+      return res.json({ profile: null, banner: null, onboardedAt: null });
+    }
+    return res.json({
+      profile: profile.linkedinProfile,
+      banner: profile.linkedinBanner,
+      onboardedAt: profile.linkedinOnboardedAt,
+    });
+  } catch (err: any) {
+    console.error('[LinkedIn GET /state]', err.message);
+    return res.status(500).json({ error: 'Failed to load LinkedIn state' });
+  }
+});
+
+router.patch('/state', authenticate, async (req: AuthRequest, res) => {
+  const userId = req.user!.id;
+  const { profile, banner, onboarded } = req.body as {
+    profile?: unknown;
+    banner?: unknown;
+    onboarded?: boolean;
+  };
+
+  const data: Record<string, unknown> = {};
+  if (profile !== undefined) data.linkedinProfile = profile;
+  if (banner !== undefined) data.linkedinBanner = banner;
+  if (onboarded === true) data.linkedinOnboardedAt = new Date();
+
+  if (Object.keys(data).length > 0) {
+    try {
+      await prisma.candidateProfile.update({ where: { userId }, data });
+    } catch (err: any) {
+      console.error('[LinkedIn PATCH /state]', err.message);
+      return res.status(500).json({ error: 'Failed to save LinkedIn state' });
+    }
+  }
+
+  return res.json({ ok: true });
 });
 
 router.post('/headshot/save', authenticate, async (req: AuthRequest, res) => {
