@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import { Upload, Loader2, Save, RefreshCw, Camera, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../../lib/api';
@@ -7,9 +7,20 @@ import { warm } from '../../lib/theme/warmTokens';
 interface Props {
   initialHeadshotUrl?: string | null;
   onSaved: (url: string) => void;
+  /** Embedded in the onboarding modal: hide the Generate/Save/Download buttons.
+   *  The parent drives generation via the imperative handle below. */
+  embedded?: boolean;
 }
 
-export const HeadshotGenerator: React.FC<Props> = ({ initialHeadshotUrl, onSaved }) => {
+/** Imperative handle so a parent (the onboarding modal) can turn the uploaded
+ *  photo into a saved headshot as part of a single "generate everything" click. */
+export interface HeadshotGeneratorHandle {
+  /** Generate (if needed) + save the headshot. Returns the saved URL or null. */
+  generateAndSave: () => Promise<string | null>;
+}
+
+export const HeadshotGenerator = forwardRef<HeadshotGeneratorHandle, Props>(
+  ({ initialHeadshotUrl, onSaved, embedded }, ref) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -37,8 +48,9 @@ export const HeadshotGenerator: React.FC<Props> = ({ initialHeadshotUrl, onSaved
     reader.readAsDataURL(f);
   }
 
-  async function handleGenerate() {
-    if (!file || generating) return;
+  /** Core generate — returns the generated image URL (or null on failure). */
+  async function runGenerate(): Promise<string | null> {
+    if (!file || generating) return null;
     setGenerating(true);
     try {
       const formData = new FormData();
@@ -47,16 +59,48 @@ export const HeadshotGenerator: React.FC<Props> = ({ initialHeadshotUrl, onSaved
       setResult(data.imageUrl);
       setUsage({ usedToday: data.usedToday, limit: data.limit });
       toast.success('Headshot generated');
+      return data.imageUrl as string;
     } catch (err: any) {
       if (err.response?.status === 429) {
         toast.error(`Daily limit reached (${err.response.data.limit}/day). Try again tomorrow.`);
       } else {
         toast.error('Generation failed — try again.');
       }
+      return null;
     } finally {
       setGenerating(false);
     }
   }
+
+  async function handleGenerate() {
+    await runGenerate();
+  }
+
+  /** Core save — persists a URL to the profile and notifies the parent. */
+  async function runSave(url: string): Promise<void> {
+    await api.post('/linkedin/headshot/save', { imageUrl: url });
+    onSaved(url);
+  }
+
+  // Let the onboarding modal generate + save in one shot from its main CTA.
+  useImperativeHandle(ref, () => ({
+    async generateAndSave() {
+      if (generating || saving) return result ?? initialHeadshotUrl ?? null;
+      let url = result;
+      if (!url) {
+        if (!file) return initialHeadshotUrl ?? null; // nothing uploaded — skip
+        url = await runGenerate();
+      }
+      if (url) {
+        try {
+          await runSave(url);
+        } catch {
+          toast.error('Could not save headshot — you can add it later.');
+        }
+      }
+      return url;
+    },
+  }));
 
   async function handleDownload() {
     if (!result) return;
@@ -74,8 +118,7 @@ export const HeadshotGenerator: React.FC<Props> = ({ initialHeadshotUrl, onSaved
     if (!result || saving) return;
     setSaving(true);
     try {
-      await api.post('/linkedin/headshot/save', { imageUrl: result });
-      onSaved(result);
+      await runSave(result);
       toast.success('Headshot saved to profile');
     } catch {
       toast.error('Failed to save — try again.');
@@ -154,51 +197,59 @@ export const HeadshotGenerator: React.FC<Props> = ({ initialHeadshotUrl, onSaved
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button
-              onClick={handleGenerate}
-              disabled={!file || generating}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                padding: '9px 16px', borderRadius: 8, border: 'none',
-                background: !file || generating ? 'rgba(10,102,194,0.3)' : '#0A66C2',
-                color: 'white', fontWeight: 700, fontSize: 13,
-                cursor: !file || generating ? 'default' : 'pointer',
-              }}
-            >
-              {generating ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={13} />}
-              {generating ? 'Generating...' : result ? 'Try Again' : 'Generate'}
-            </button>
-            {result && (
-              <>
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 6,
-                    padding: '9px 16px', borderRadius: 8, border: `1px solid ${warm.colors.borderWhisper}`,
-                    background: 'transparent', color: '#34d399', fontWeight: 700, fontSize: 13,
-                    cursor: saving ? 'default' : 'pointer',
-                  }}
-                >
-                  <Save size={13} />
-                  {saving ? 'Saving...' : 'Save to Profile'}
-                </button>
-                <button
-                  onClick={handleDownload}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 6,
-                    padding: '9px 16px', borderRadius: 8, border: `1px solid ${warm.colors.borderWhisper}`,
-                    background: 'transparent', color: warm.colors.textSecondary, fontWeight: 700, fontSize: 13,
-                    cursor: 'pointer',
-                  }}
-                >
-                  <Download size={13} />
-                  Download
-                </button>
-              </>
-            )}
-          </div>
+          {embedded ? (
+            <p style={{ fontSize: 12, color: warm.colors.textMuted, margin: 0, lineHeight: 1.5 }}>
+              {file
+                ? 'Looks good — we’ll turn this into a professional headshot when you generate your profile.'
+                : 'Upload a clear photo of your face. We turn it into a professional studio headshot.'}
+            </p>
+          ) : (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                onClick={handleGenerate}
+                disabled={!file || generating}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '9px 16px', borderRadius: 8, border: 'none',
+                  background: !file || generating ? 'rgba(10,102,194,0.3)' : '#0A66C2',
+                  color: 'white', fontWeight: 700, fontSize: 13,
+                  cursor: !file || generating ? 'default' : 'pointer',
+                }}
+              >
+                {generating ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={13} />}
+                {generating ? 'Generating...' : result ? 'Try Again' : 'Generate'}
+              </button>
+              {result && (
+                <>
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      padding: '9px 16px', borderRadius: 8, border: `1px solid ${warm.colors.borderWhisper}`,
+                      background: 'transparent', color: '#34d399', fontWeight: 700, fontSize: 13,
+                      cursor: saving ? 'default' : 'pointer',
+                    }}
+                  >
+                    <Save size={13} />
+                    {saving ? 'Saving...' : 'Save to Profile'}
+                  </button>
+                  <button
+                    onClick={handleDownload}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      padding: '9px 16px', borderRadius: 8, border: `1px solid ${warm.colors.borderWhisper}`,
+                      background: 'transparent', color: warm.colors.textSecondary, fontWeight: 700, fontSize: 13,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <Download size={13} />
+                    Download
+                  </button>
+                </>
+              )}
+            </div>
+          )}
           <p style={{ fontSize: 11, color: warm.colors.textMuted, marginTop: 10, lineHeight: 1.5 }}>
             Studio background · professional lighting · DSLR realism
           </p>
@@ -206,4 +257,6 @@ export const HeadshotGenerator: React.FC<Props> = ({ initialHeadshotUrl, onSaved
       </div>
     </div>
   );
-};
+});
+
+HeadshotGenerator.displayName = 'HeadshotGenerator';

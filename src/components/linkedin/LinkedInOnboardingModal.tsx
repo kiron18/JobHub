@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { warm } from '../../lib/theme/warmTokens';
-import { HeadshotGenerator } from './HeadshotGenerator';
+import { HeadshotGenerator, type HeadshotGeneratorHandle } from './HeadshotGenerator';
 import { BannerCanvas } from './BannerCanvas';
 import type { BannerConfig } from './types';
 
@@ -29,6 +29,10 @@ export const LinkedInOnboardingModal: React.FC<Props> = ({
   generating,
   onGenerate,
 }) => {
+  const headshotRef = useRef<HeadshotGeneratorHandle>(null);
+  const [finishing, setFinishing] = useState(false);
+  const busy = finishing || generating;
+
   // Prevent ESC from triggering any browser/dialog close behaviour.
   useEffect(() => {
     const block = (e: KeyboardEvent) => {
@@ -40,6 +44,25 @@ export const LinkedInOnboardingModal: React.FC<Props> = ({
     document.addEventListener('keydown', block, true);
     return () => document.removeEventListener('keydown', block, true);
   }, []);
+
+  // One-shot: turn the uploaded photo into a saved headshot (best-effort),
+  // then generate the profile. Photo failures never block the profile.
+  async function handleFinish() {
+    if (busy) return;
+    setFinishing(true);
+    try {
+      try {
+        await headshotRef.current?.generateAndSave();
+      } catch {
+        /* headshot is optional — ignore and continue */
+      }
+      await onGenerate(); // throws on failure → modal stays open
+    } catch {
+      /* profile error already surfaced via toast inside onGenerate */
+    } finally {
+      setFinishing(false);
+    }
+  }
 
   return (
     <div
@@ -224,6 +247,8 @@ export const LinkedInOnboardingModal: React.FC<Props> = ({
               </span>
             </p>
             <HeadshotGenerator
+              ref={headshotRef}
+              embedded
               initialHeadshotUrl={headshotUrl}
               onSaved={onHeadshotSaved}
             />
@@ -254,6 +279,7 @@ export const LinkedInOnboardingModal: React.FC<Props> = ({
               </span>
             </p>
             <BannerCanvas
+              embedded
               config={bannerConfig}
               onConfigChange={onBannerConfigChange}
               onClose={() => {}}
@@ -265,28 +291,22 @@ export const LinkedInOnboardingModal: React.FC<Props> = ({
         <div style={{ padding: '24px 32px 32px' }}>
           <button
             aria-label={
-              generating
+              busy
                 ? 'Generating your profile, please wait'
                 : 'Generate my LinkedIn profile'
             }
-            disabled={generating}
-            onClick={async () => {
-              try {
-                await onGenerate();
-              } catch {
-                // Error already surfaced via toast inside onGenerate.
-              }
-            }}
+            disabled={busy}
+            onClick={handleFinish}
             style={{
               width: '100%',
               padding: '16px 0',
               borderRadius: warm.radius.button,
               border: 'none',
-              background: generating ? 'rgba(10,102,194,0.5)' : '#0A66C2',
+              background: busy ? 'rgba(10,102,194,0.5)' : '#0A66C2',
               color: 'white',
               fontSize: 15,
               fontWeight: 700,
-              cursor: generating ? 'default' : 'pointer',
+              cursor: busy ? 'default' : 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -294,13 +314,13 @@ export const LinkedInOnboardingModal: React.FC<Props> = ({
               transition: 'background 0.15s',
             }}
           >
-            {generating && (
+            {busy && (
               <Loader2
                 size={16}
                 style={{ animation: 'spin 1s linear infinite' }}
               />
             )}
-            {generating
+            {busy
               ? 'Generating your profile…'
               : 'Generate my LinkedIn profile'}
           </button>

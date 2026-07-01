@@ -44,6 +44,12 @@ export const LinkedInPage: React.FC = () => {
     if (profile?.headshotUrl) setHeadshotUrl(profile.headshotUrl);
   }, [profile?.headshotUrl]);
 
+  // Pre-fill the target role from the profile, but leave it editable
+  // (only fill while the field is still empty).
+  useEffect(() => {
+    if (profile?.targetRole) setTargetRole(prev => prev || profile.targetRole || '');
+  }, [profile?.targetRole]);
+
   // ── Mount: hydrate from server state ──────────────────────────────────────
   useEffect(() => {
     async function init() {
