@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Real Results — Aussie Grad Careers</title>
 <meta name="description" content="47 people were exactly where you are. See what happened next — real applications, real visas, real outcomes.">
-<!-- Open Graph tags control how this looks when shared in WhatsApp/LinkedIn DMs. Add your own og:image once you have a branded one. -->
 <meta property="og:title" content="47 people were exactly where you are. Here's what happened next.">
 <meta property="og:description" content="Real applications, real visas, real outcomes — no stock testimonials.">
 <meta property="og:type" content="website">
@@ -78,6 +77,13 @@
 
   @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
 
+  /* ---------- Payment CTA under hero ---------- */
+  .stat-cta { margin: 30px auto 0; max-width: 520px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; opacity: 0; animation: rise 0.6s ease-out 0.45s forwards; }
+  .stat-cta a { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; font-family: var(--font-body); font-weight: 600; font-size: 1.0625rem; color: #fff; text-decoration: none; padding: 16px 30px; border-radius: 9999px; background: var(--petrol); box-shadow: 0 1px 2px rgba(26,24,20,.08), 0 8px 24px rgba(45,90,110,.22); transition: transform .18s cubic-bezier(.25,1,.5,1), background .18s, box-shadow .18s; }
+  .stat-cta a:hover { background: #244555; transform: translateY(-2px); box-shadow: 0 2px 4px rgba(26,24,20,.1), 0 14px 34px rgba(45,90,110,.28); }
+  .stat-cta a b { color: var(--gold); font-weight: 700; }
+  .stat-cta .note { font-size: .8125rem; color: #8a8a8a; }
+
   /* ---------- Filter ---------- */
   .filter-section { padding: 8px 0 32px; text-align: center; }
   .filter-label { font-size: 14px; color: #627276; margin-bottom: 14px; }
@@ -98,7 +104,7 @@
   @media (min-width: 640px) { .case-grid { grid-template-columns: 1fr 1fr; } }
   @media (min-width: 1040px) { .case-grid { grid-template-columns: repeat(4, 1fr); } }
 
-  .case-card { perspective: 1400px; height: 350px; cursor: pointer; }
+  .case-card { perspective: 1600px; height: 430px; cursor: pointer; }
   .case-card.is-hidden { display: none; }
   .card-inner {
     position: relative; width: 100%; height: 100%;
@@ -109,8 +115,9 @@
   .card-face {
     position: absolute; inset: 0;
     backface-visibility: hidden; -webkit-backface-visibility: hidden;
-    border-radius: 14px; padding: 22px;
+    border-radius: 14px; padding: 20px;
     display: flex; flex-direction: column;
+    overflow: hidden;
   }
   .card-front { background: var(--white); border: 1px solid #ECE3D2; }
   .card-back { background: var(--petrol-deep); color: var(--canvas); transform: rotateY(180deg); }
@@ -119,15 +126,40 @@
     font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
     color: #A38F63; border: 1px dashed #C9B98E; border-radius: 6px; padding: 2px 7px;
   }
-  .card-tag { font-size: 12px; font-weight: 600; color: var(--sage); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 10px; }
+  .card-tag { font-size: 12px; font-weight: 600; color: var(--sage); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px; }
   .card-front .card-tag { color: var(--petrol); }
   .card-name { font-family: var(--font-display); font-size: 20px; font-weight: 600; margin-bottom: 12px; color: var(--petrol-deep); }
   .card-problem { font-size: 15px; line-height: 1.4; color: var(--ink); flex-grow: 1; }
   .card-hint { font-size: 13px; color: var(--gold); font-weight: 600; margin-top: auto; }
-  .card-result { font-family: var(--font-display); font-size: 19px; font-weight: 600; margin-bottom: 8px; color: var(--white); }
-  .card-detail { font-size: 13.5px; color: #C9D6DA; margin-bottom: 12px; }
-  .card-quote { font-size: 13px; font-style: italic; color: var(--gold); border-left: 2px solid var(--gold); padding-left: 10px; margin-bottom: 12px; }
-  .card-shot { border: 1px dashed rgba(255,255,255,0.3); border-radius: 8px; font-size: 11px; color: rgba(255,255,255,0.55); padding: 8px; text-align: center; margin-top: auto; }
+  .card-result { font-family: var(--font-display); font-size: 17px; font-weight: 600; margin-bottom: 6px; line-height: 1.2; color: var(--white); }
+  .card-detail { font-size: 12.5px; line-height: 1.4; color: #C9D6DA; margin-bottom: 12px; }
+
+  /* ---------- LinkedIn-style message mockups ---------- */
+  .li { font-family: -apple-system, 'Segoe UI', system-ui, Roboto, sans-serif; margin-top: auto; border-radius: 10px; padding: 12px 13px 11px; line-height: 1.4; box-shadow: 0 1px 2px rgba(0,0,0,.14), 0 6px 18px rgba(0,0,0,.20); background: #fff; color: #1a1a1a; position: relative; overflow: hidden; }
+  .li * { box-sizing: border-box; }
+  .li__head { display: flex; align-items: flex-start; gap: 9px; }
+  .li__avatar { width: 34px; height: 34px; border-radius: 50%; flex: 0 0 34px; filter: blur(4px); display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,.85); font-weight: 700; font-size: .85rem; }
+  .li__meta { flex: 1; min-width: 0; padding-right: 20px; }
+  .li__namewrap { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+  .li__name { font-weight: 600; font-size: .8rem; filter: blur(4px); user-select: none; white-space: nowrap; }
+  .li__badge { font-size: .66rem; color: #6b6b6b; font-weight: 400; }
+  .li__sub { font-size: .68rem; color: #6b6b6b; filter: blur(3px); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .li__time { font-size: .66rem; color: #8a8a8a; white-space: nowrap; position: absolute; top: 12px; right: 34px; }
+  .li__body { font-size: .78rem; margin-top: 9px; color: #2b2b2b; }
+  .li__foot { display: flex; align-items: center; gap: 5px; font-size: .68rem; color: #6b6b6b; margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,.08); }
+  .li__foot .a { font-weight: 600; color: #0a66c2; cursor: default; }
+  .li__in { position: absolute; top: 11px; right: 12px; width: 17px; height: 17px; border-radius: 3px; background: #0a66c2; color: #fff; font-weight: 700; font-size: .62rem; display: flex; align-items: center; justify-content: center; font-style: normal; }
+  .li--dark { background: #1b2733; color: #e9edf1; }
+  .li--dark .li__body { color: #cdd6df; }
+  .li--dark .li__badge, .li--dark .li__sub, .li--dark .li__time { color: #93a1b0; }
+  .li--dark .li__foot { color: #93a1b0; border-top-color: rgba(255,255,255,.12); }
+  .li--green .li__foot .a { color: #2A9D6F; }
+  .li--purple .li__foot .a { color: #7a5cff; }
+  .li--inmail { border: 1px solid #E8D7B0; background: linear-gradient(180deg, #fffdf7 0, #fff 60%); }
+  .li__tag { display: inline-block; font-size: .6rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; margin-bottom: 8px; }
+  .li__tag--inmail { background: #E8D7B0; color: #8B6E32; }
+  .li__react { display: inline-flex; align-items: center; gap: 3px; background: #eef3f8; color: #0a66c2; font-size: .62rem; font-weight: 600; padding: 2px 6px; border-radius: 10px; }
+  .li--dark .li__react { background: rgba(10,102,194,.18); color: #7fb2e8; }
 
   /* ---------- What's included ---------- */
   .included-section { padding: 8px 0 56px; }
@@ -174,39 +206,6 @@
   .sticky-bar a { background: var(--petrol); color: var(--white); font-weight: 600; font-size: 14px; padding: 10px 20px; border-radius: 100px; text-decoration: none; white-space: nowrap; }
   @media (min-width: 900px) { .sticky-bar { display: none; } }
 
-  /* ---------- Payment CTA + LinkedIn mockups ---------- */
-  .stat-cta { margin: 28px auto 0; max-width: 520px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
-  .stat-cta a { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; font-family: var(--font-body); font-weight: 600; font-size: 1.0625rem; color: #fff; text-decoration: none; padding: 16px 30px; border-radius: 9999px; background: var(--petrol); box-shadow: 0 1px 2px rgba(26,24,20,.08), 0 8px 24px rgba(45,90,110,.22); transition: transform .18s cubic-bezier(.25,1,.5,1), background .18s, box-shadow .18s; }
-  .stat-cta a:hover { background: #244555; transform: translateY(-2px); box-shadow: 0 2px 4px rgba(26,24,20,.1), 0 14px 34px rgba(45,90,110,.28); }
-  .stat-cta a b { color: var(--gold); font-weight: 700; }
-  .stat-cta .note { font-size: .8125rem; color: #8a8a8a; }
-
-  .li { font-family: -apple-system, 'Segoe UI', system-ui, Roboto, sans-serif; max-width: 420px; border-radius: 12px; padding: 16px 18px 14px; line-height: 1.45; box-shadow: 0 1px 2px rgba(26,24,20,.06), 0 10px 30px rgba(26,24,20,.10); border: 1px solid rgba(26,24,20,.08); background: #fff; color: #1a1a1a; position: relative; overflow: hidden; }
-  .li * { box-sizing: border-box; }
-  .li__head { display: flex; align-items: flex-start; gap: 12px; }
-  .li__avatar { width: 48px; height: 48px; border-radius: 50%; flex: 0 0 48px; filter: blur(5px); display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,.85); font-weight: 700; font-size: 1.1rem; }
-  .li__meta { flex: 1; min-width: 0; }
-  .li__namewrap { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-  .li__name { font-weight: 600; font-size: .95rem; filter: blur(4.5px); user-select: none; }
-  .li__badge { font-size: .72rem; color: #6b6b6b; font-weight: 400; }
-  .li__sub { font-size: .78rem; color: #6b6b6b; filter: blur(3px); margin-top: 1px; }
-  .li__time { font-size: .72rem; color: #8a8a8a; white-space: nowrap; margin-left: auto; padding-left: 8px; }
-  .li__body { font-size: .9rem; margin-top: 12px; color: #2b2b2b; }
-  .li__foot { display: flex; align-items: center; gap: 6px; font-size: .78rem; color: #6b6b6b; margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(0,0,0,.07); }
-  .li__foot .a { font-weight: 600; color: #0a66c2; cursor: default; }
-  .li__in { position: absolute; top: 12px; right: 14px; width: 20px; height: 20px; border-radius: 4px; background: #0a66c2; color: #fff; font-weight: 700; font-size: .72rem; display: flex; align-items: center; justify-content: center; font-style: normal; }
-  .li--dark { background: #1b2733; border-color: rgba(255,255,255,.08); color: #e9edf1; box-shadow: 0 1px 2px rgba(0,0,0,.3), 0 14px 40px rgba(0,0,0,.35); }
-  .li--dark .li__body { color: #cdd6df; }
-  .li--dark .li__badge, .li--dark .li__sub, .li--dark .li__time { color: #93a1b0; }
-  .li--dark .li__foot { color: #93a1b0; border-top-color: rgba(255,255,255,.1); }
-  .li--green .li__foot .a { color: #2A9D6F; }
-  .li--purple .li__foot .a { color: #7a5cff; }
-  .li--inmail { border: 1px solid #E8D7B0; background: linear-gradient(180deg, #fffdf7 0, #fff 60%); }
-  .li__tag { display: inline-block; font-size: .66rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 3px 8px; border-radius: 5px; margin-bottom: 10px; }
-  .li__tag--inmail { background: #E8D7B0; color: #8B6E32; }
-  .li__tag--react { background: #eef3f8; color: #0a66c2; }
-  .li--dark .li__tag--react { background: rgba(10,102,194,.18); color: #7fb2e8; }
-
   @media (prefers-reduced-motion: reduce) {
     * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
     .card-inner { transition: none; }
@@ -226,7 +225,7 @@
       <div class="stat"><div class="num">8</div><div class="label">documented cases below</div></div>
     </div>
     <div class="stat-cta">
-      <a href="https://buy.stripe.com/9B6bJ37d49YJ2o23psfMA04">Ready to go further? Get started for <b>$750</b> →</a>
+      <a href="https://buy.stripe.com/9B6bJ37d49YJ2o23psfMA04" target="_top">Ready to go further? Get started for <b>$750</b> →</a>
       <span class="note">One-time payment · secure checkout via Stripe</span>
     </div>
   </div>
@@ -261,8 +260,7 @@
             <div class="card-tag">The result</div>
             <div class="card-result">3 interviews in 3 weeks</div>
             <div class="card-detail">New resume + LinkedIn rebuild, targeted at marketing coordinator roles.</div>
-            <div class="card-quote">"I didn't think the problem was my resume. It was."</div>
-            <div class="li li--blue"><i class="li__in">in</i>
+            <div class="li"><i class="li__in">in</i>
               <div class="li__head">
                 <div class="li__avatar" style="background:linear-gradient(135deg,#e05a7d,#f2a154)">PS</div>
                 <div class="li__meta">
@@ -271,8 +269,8 @@
                 </div>
                 <div class="li__time">2 mo</div>
               </div>
-              <div class="li__body">Hi! I just wanted to say thank you, honestly. 8 months and 60+ applications and i never heard back from a single one. I was convinced it was the visa or the market. Turns out my resume was the problem the whole time 😅 3 interviews in the last 3 weeks since we rebuilt it. Still can't believe it.</div>
-              <div class="li__foot"><span class="li__tag li__tag--react">👍 ❤️ 14</span> · <span class="a">Reply</span></div>
+              <div class="li__body">3 interviews in 3 weeks since we rebuilt my resume 😅 after 8 months of silence i genuinely can't believe it. Thank you!!</div>
+              <div class="li__foot"><span class="li__react">👍 ❤️ 14</span> · <span class="a">Reply</span></div>
             </div>
           </div>
         </div>
@@ -291,7 +289,6 @@
             <div class="card-tag">The result</div>
             <div class="card-result">First panel interview in 10 days</div>
             <div class="card-detail">Resume rebuilt to actually pass ATS screening — it never had been before.</div>
-            <div class="card-quote">"Nobody told me my resume wasn't even being read by a human."</div>
             <div class="li li--dark"><i class="li__in">in</i>
               <div class="li__head">
                 <div class="li__avatar" style="background:linear-gradient(135deg,#3a7bd5,#3a6073)">AM</div>
@@ -299,9 +296,9 @@
                   <div class="li__namewrap"><span class="li__name">Arjun Mehta</span><span class="li__badge">· 1st</span></div>
                   <div class="li__sub">Supply Chain Analyst · Skilled Visa</div>
                 </div>
-                <div class="li__time">MON 8:12 PM</div>
+                <div class="li__time">8:12 PM</div>
               </div>
-              <div class="li__body">Mate, I owe you one. 100+ applications and complete silence — not even a rejection. Nobody told me my resume wasnt even being read by an actual human, it was getting filtered out before that. We fixed the ATS stuff and I got my first panel interview within 10 days. Wild.</div>
+              <div class="li__body">Mate I owe you one. Nobody told me my resume wasnt even being read by a human. Fixed the ATS stuff and got my first panel interview in 10 days.</div>
               <div class="li__foot"><span class="a">Reply</span> · <span>Seen 8:15 PM</span></div>
             </div>
           </div>
@@ -319,9 +316,8 @@
           </div>
           <div class="card-face card-back">
             <div class="card-tag">The result</div>
-            <div class="card-result">Landed an adjacent data role in 5 weeks</div>
+            <div class="card-result">Adjacent data role in 5 weeks</div>
             <div class="card-detail">Reframed transferable experience instead of hiding the career change.</div>
-            <div class="card-quote">"I stopped apologising for my career change in interviews."</div>
             <div class="li li--green"><i class="li__in">in</i>
               <div class="li__head">
                 <div class="li__avatar" style="background:linear-gradient(135deg,#2A9D6F,#57c99a)">SR</div>
@@ -331,8 +327,8 @@
                 </div>
                 <div class="li__time">6 weeks ago</div>
               </div>
-              <div class="li__body">The biggest shift honestly was mindset. I used to walk into every interview basically apologising for switching careers. You helped me reframe it as a strength instead. Landed an adjacent data role in 5 weeks — a role I didnt even look qualified for on paper 🙏</div>
-              <div class="li__foot"><span class="li__tag li__tag--react">❤️ 9</span> · <span class="a">Reply</span></div>
+              <div class="li__body">Landed the data role — 5 weeks!! I stopped apologising for the career switch like you said and it changed everything 🙏</div>
+              <div class="li__foot"><span class="li__react">❤️ 9</span> · <span class="a">Reply</span></div>
             </div>
           </div>
         </div>
@@ -349,21 +345,20 @@
           </div>
           <div class="card-face card-back">
             <div class="card-tag">The result</div>
-            <div class="card-result">Recruiters started reaching out within 2 weeks</div>
+            <div class="card-result">Recruiters reaching out in 2 weeks</div>
             <div class="card-detail">Full LinkedIn rebuild plus a simple content and visibility strategy.</div>
-            <div class="card-quote">"I went from invisible to getting messaged first."</div>
             <div class="li li--inmail">
               <span class="li__tag li__tag--inmail">InMail</span>
               <div class="li__head">
                 <div class="li__avatar" style="background:linear-gradient(135deg,#6b4fc9,#b06ab3)">KD</div>
                 <div class="li__meta">
-                  <div class="li__namewrap"><span class="li__name">Karan Deshmukh</span><span class="li__badge">· shared a note</span></div>
+                  <div class="li__namewrap"><span class="li__name">Karan Deshmukh</span></div>
                   <div class="li__sub">Software Graduate · 485 Visa</div>
                 </div>
                 <div class="li__time">Apr 14</div>
               </div>
-              <div class="li__body">Never happened to me before this. My LinkedIn had like 40 connections and total crickets. Two weeks after we redid the profile I had recruiters actually messaging ME first. Went from invisible to getting messaged first — complete 180.</div>
-              <div class="li__foot"><span class="a">Reply</span> · <span>3 recruiter InMails this week</span></div>
+              <div class="li__body">Two weeks after the rebuild and recruiters are messaging ME first now. Went from invisible to a complete 180.</div>
+              <div class="li__foot"><span class="a">Reply</span> · <span>3 InMails this week</span></div>
             </div>
           </div>
         </div>
@@ -380,20 +375,19 @@
           </div>
           <div class="card-face card-back">
             <div class="card-tag">The result</div>
-            <div class="card-result">3 offers, negotiated above the initial package</div>
+            <div class="card-result">3 offers, above the initial package</div>
             <div class="card-detail">Resume rebuilt around measurable impact, not just listed duties.</div>
-            <div class="card-quote">"I didn't know how to say what I'd actually done. Now I do."</div>
-            <div class="li li--blue"><i class="li__in">in</i>
+            <div class="li"><i class="li__in">in</i>
               <div class="li__head">
                 <div class="li__avatar" style="background:linear-gradient(135deg,#c98a3b,#e0b055)">MV</div>
                 <div class="li__meta">
                   <div class="li__namewrap"><span class="li__name">Meera Venkat</span><span class="li__badge">· 1st</span></div>
-                  <div class="li__sub">Senior Project Manager · Employer-Sponsored</div>
+                  <div class="li__sub">Senior PM · Employer-Sponsored</div>
                 </div>
                 <div class="li__time">Mar 2</div>
               </div>
-              <div class="li__body">I've been meaning to write this for a while. After 8 years of experience overseas I still had no idea how to actually say what I'd done in a way that landed here. I was massively underselling myself and didnt even realise it. Working through my positioning changed everything — I ended up with 3 offers and managed to negotiate above the initial package they put on the table. I genuinely didn't think that was possible for someone in my situation. Thank you for pushing me to ask for more.</div>
-              <div class="li__foot"><span class="li__tag li__tag--react">👏 ❤️ 27</span> · <span class="a">Reply</span></div>
+              <div class="li__body">3 offers and i negotiated above their first package. I was massively underselling myself and didnt even realise it. Thank you 👏</div>
+              <div class="li__foot"><span class="li__react">👏 ❤️ 27</span> · <span class="a">Reply</span></div>
             </div>
           </div>
         </div>
@@ -412,7 +406,6 @@
             <div class="card-tag">The result</div>
             <div class="card-result">Interview requests in the first week</div>
             <div class="card-detail">Resume rebuilt specifically around the roles he was actually targeting.</div>
-            <div class="card-quote">"Same experience, completely different resume. Wild difference."</div>
             <div class="li li--blue"><i class="li__in">in</i>
               <div class="li__head">
                 <div class="li__avatar" style="background:linear-gradient(135deg,#0a66c2,#3a9bd5)">RK</div>
@@ -422,7 +415,7 @@
                 </div>
                 <div class="li__time">1w</div>
               </div>
-              <div class="li__body">Same experience. Completely different resume. The difference was wild 🤯 started getting interview requests in the FIRST week. Wish i'd done this months ago.</div>
+              <div class="li__body">Same experience, totally different resume. Interview requests in the FIRST week 🤯 wish i'd done this months ago.</div>
               <div class="li__foot"><span class="a">Reply</span></div>
             </div>
           </div>
@@ -442,7 +435,6 @@
             <div class="card-tag">The result</div>
             <div class="card-result">First corporate offer in 7 weeks</div>
             <div class="card-detail">Reframed leadership and customer-experience skills for corporate roles.</div>
-            <div class="card-quote">"I didn't think my experience 'counted'. It did."</div>
             <div class="li li--purple"><i class="li__in">in</i>
               <div class="li__head">
                 <div class="li__avatar" style="background:linear-gradient(135deg,#7a5cff,#c86dd7)">AT</div>
@@ -450,10 +442,10 @@
                   <div class="li__namewrap"><span class="li__name">Ananya Thomas</span><span class="li__badge">· 1st</span></div>
                   <div class="li__sub">Operations Coordinator · PR Pathway</div>
                 </div>
-                <div class="li__time">May 20 · 9:41 AM</div>
+                <div class="li__time">May 20</div>
               </div>
-              <div class="li__body">I honestly didnt think any of my hospitality experience "counted" for a corporate role. I had no clue how to even translate it. You showed me it absolutely did count — it just needed to be framed the right way. Got my first ever corporate offer 7 weeks later. Still processing it tbh 🥹</div>
-              <div class="li__foot"><span class="li__tag li__tag--react">❤️ 18</span> · <span class="a">Reply</span></div>
+              <div class="li__body">First corporate offer!! 7 weeks. I didnt think my hospitality experience "counted" — turns out it did, it just needed framing 🥹</div>
+              <div class="li__foot"><span class="li__react">❤️ 18</span> · <span class="a">Reply</span></div>
             </div>
           </div>
         </div>
@@ -470,9 +462,8 @@
           </div>
           <div class="card-face card-back">
             <div class="card-tag">The result</div>
-            <div class="card-result">Offer above his original target salary</div>
+            <div class="card-result">Offer above his target salary</div>
             <div class="card-detail">Repositioned for senior roles matching his real level of experience.</div>
-            <div class="card-quote">"I was applying too low the whole time and didn't realise it."</div>
             <div class="li li--dark"><i class="li__in">in</i>
               <div class="li__head">
                 <div class="li__avatar" style="background:linear-gradient(135deg,#2a9d8f,#264653)">VP</div>
@@ -482,7 +473,7 @@
                 </div>
                 <div class="li__time">7 weeks ago</div>
               </div>
-              <div class="li__body">Something I didnt expect to learn: I was aiming too low the entire time. I'd talked myself into applying for roles a level or two below where I should've been, thinking it would be "easier" to get in. It wasnt — it was actually hurting me. Once we corrected the targeting I ended up with an offer above my original target salary. Bit annoyed I didn't figure this out sooner but better late than never haha.</div>
+              <div class="li__body">Offer above my target salary. I was aiming too low the whole time and didnt realise it. Bit annoyed i didnt figure it out sooner haha.</div>
               <div class="li__foot"><span class="a">Reply</span> · <span>Seen</span></div>
             </div>
           </div>
@@ -518,10 +509,9 @@
   <div class="wrap">
     <h2>Yours could be case #48.</h2>
     <p>3 months, weekly sessions, direct feedback on real applications — not generic advice.</p>
-    <a href="https://buy.stripe.com/9B6bJ37d49YJ2o23psfMA04" class="cta-button">Secure your spot — $750 →</a>
+    <a href="https://buy.stripe.com/9B6bJ37d49YJ2o23psfMA04" class="cta-button" target="_top">Secure your spot — $750 →</a>
     <div class="cta-note">Secure checkout via Stripe.</div>
-    <!-- Replace href below with your real booking link, for people who want to talk first -->
-    <a href="#" class="cta-secondary">Prefer to talk it through first? Book a call instead</a>
+    <a href="/book-a-call" class="cta-secondary" target="_top">Prefer to talk it through first? Book a call instead</a>
   </div>
 </section>
 
@@ -529,7 +519,7 @@
 
 <div class="sticky-bar" id="stickyBar">
   <span>Ready to start? $750</span>
-  <a href="https://buy.stripe.com/9B6bJ37d49YJ2o23psfMA04">Pay now</a>
+  <a href="https://buy.stripe.com/9B6bJ37d49YJ2o23psfMA04" target="_top">Pay now</a>
 </div>
 
 <script>
