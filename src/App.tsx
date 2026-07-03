@@ -65,6 +65,9 @@ const MockLandingPage = React.lazy(() =>
 const BookCallPage = React.lazy(() =>
   import('./pages/BookCallPage').then(m => ({ default: m.BookCallPage }))
 );
+const ReceiptsPage = React.lazy(() =>
+  import('./pages/ReceiptsPage').then(m => ({ default: m.ReceiptsPage }))
+);
 const AnimationTest = React.lazy(() =>
   import('./pages/AnimationTest').then(m => ({ default: m.AnimationTest }))
 );
@@ -418,6 +421,11 @@ function App() {
               <Route path="/book-a-call" element={
                 <React.Suspense fallback={null}>
                   <BookCallPage />
+                </React.Suspense>
+              } />
+              <Route path="/the-receipts" element={
+                <React.Suspense fallback={null}>
+                  <ReceiptsPage />
                 </React.Suspense>
               } />
 
