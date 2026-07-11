@@ -1,11 +1,92 @@
-import React, { useRef, useState } from 'react';
-import html2canvas from 'html2canvas';
+import React, { useState } from 'react';
 import { Download, X } from 'lucide-react';
 import type { BannerConfig } from './types';
 
 const BANNER_W = 1584;
 const BANNER_H = 396;
 const SCALE = 0.5;
+// LinkedIn downsamples uploads; exporting at 2x keeps text edges crisp after their resize.
+const EXPORT_SCALE = 2;
+
+const BANNER_FONT = `'Geist Sans', -apple-system, 'Segoe UI', system-ui, sans-serif`;
+const PADDING_RIGHT = 80;
+const MAX_TEXT_W = BANNER_W * 0.6;
+const MAIN_SIZE = 56;
+const MAIN_LINE_H = MAIN_SIZE * 1.1;
+const SUB_SIZE = 28;
+const SUB_LINE_H = SUB_SIZE * 1.6;
+const SUB_GAP = 16;
+
+function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let current = '';
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word;
+    if (ctx.measureText(candidate).width > maxWidth && current) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = candidate;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
+function drawBanner(ctx: CanvasRenderingContext2D, config: BannerConfig) {
+  // Background
+  ctx.fillStyle = config.bgColor;
+  ctx.fillRect(0, 0, BANNER_W, BANNER_H);
+
+  // Texture
+  if (config.texture === 'gradient') {
+    const grad = ctx.createLinearGradient(0, 0, BANNER_W, 0);
+    grad.addColorStop(0, 'rgba(0,0,0,0.3)');
+    grad.addColorStop(0.6, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, BANNER_W, BANNER_H);
+  } else if (config.texture === 'grid') {
+    ctx.fillStyle = 'rgba(255,255,255,0.04)';
+    for (let x = 30; x < BANNER_W; x += 31) ctx.fillRect(x, 0, 1, BANNER_H);
+    for (let y = 30; y < BANNER_H; y += 31) ctx.fillRect(0, y, BANNER_W, 1);
+  }
+
+  const rightEdge = BANNER_W - PADDING_RIGHT;
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+
+  // Measure main message lines
+  ctx.font = `900 ${MAIN_SIZE}px ${BANNER_FONT}`;
+  if ('letterSpacing' in ctx) ctx.letterSpacing = `${MAIN_SIZE * -0.02}px`;
+  const mainLines = wrapText(ctx, config.mainMessage || 'Your Message Here', MAX_TEXT_W);
+
+  const sub = config.subLine?.trim();
+  const blockH = mainLines.length * MAIN_LINE_H + (sub ? SUB_GAP + SUB_LINE_H : 0);
+  let y = (BANNER_H - blockH) / 2;
+
+  // Main message
+  ctx.fillStyle = 'white';
+  ctx.shadowColor = 'rgba(0,0,0,0.4)';
+  ctx.shadowBlur = 12;
+  ctx.shadowOffsetY = 2;
+  for (const line of mainLines) {
+    ctx.fillText(line, rightEdge, y + MAIN_LINE_H / 2);
+    y += MAIN_LINE_H;
+  }
+
+  // Sub line
+  if (sub) {
+    y += SUB_GAP;
+    ctx.font = `600 ${SUB_SIZE}px ${BANNER_FONT}`;
+    if ('letterSpacing' in ctx) ctx.letterSpacing = `${SUB_SIZE * 0.02}px`;
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.fillText(sub, rightEdge, y + SUB_LINE_H / 2);
+  }
+}
 
 const TEXTURES: Record<BannerConfig['texture'], string> = {
   clean: '',
@@ -21,20 +102,19 @@ interface Props {
 }
 
 export const BannerCanvas: React.FC<Props> = ({ config, onConfigChange, onClose }) => {
-  const bannerRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
 
   async function handleExport() {
-    if (!bannerRef.current) return;
     setExporting(true);
     try {
-      const canvas = await html2canvas(bannerRef.current, {
-        width: BANNER_W,
-        height: BANNER_H,
-        scale: 1,
-        useCORS: true,
-        backgroundColor: config.bgColor,
-      });
+      await document.fonts.ready;
+      const canvas = document.createElement('canvas');
+      canvas.width = BANNER_W * EXPORT_SCALE;
+      canvas.height = BANNER_H * EXPORT_SCALE;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.scale(EXPORT_SCALE, EXPORT_SCALE);
+      drawBanner(ctx, config);
       const link = document.createElement('a');
       link.download = 'linkedin-banner.png';
       link.href = canvas.toDataURL('image/png');
@@ -118,7 +198,6 @@ export const BannerCanvas: React.FC<Props> = ({ config, onConfigChange, onClose 
         border: '1px solid rgba(255,255,255,0.1)',
       }}>
         <div
-          ref={bannerRef}
           style={{
             width: BANNER_W,
             height: BANNER_H,
