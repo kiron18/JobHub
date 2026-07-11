@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AussieGradCareers Workspace Quickstart</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #FAF7F2;
+    --paper: #FFFFFF;
+    --sand: #F4EFE8;
+    --gold: #C5A059;
+    --gold-dark: #8B6E32;
+    --teal: #1F4253;
+    --teal-mid: #2D5A6E;
+    --green: #2A9D6F;
+    --ink: #2A2520;
+    --muted: #5C5750;
+    --display: 'Fraunces', Georgia, 'Times New Roman', serif;
+    --body: 'Geist', -apple-system, 'Segoe UI', system-ui, sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: var(--cream); }
+  body {
+    font-family: var(--body);
+    color: var(--ink);
+    font-size: 10.5pt;
+    line-height: 1.45;
+  }
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    background: var(--paper);
+    padding: 13mm 15mm 11mm;
+    display: flex;
+    flex-direction: column;
+  }
+  @page { size: A4; margin: 0; }
+  @media print {
+    body { background: var(--paper); }
+    .page { margin: 0; width: auto; min-height: auto; }
+  }
+
+  .masthead {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 2.5px solid var(--teal);
+    padding-bottom: 4mm;
+    margin-bottom: 5mm;
+  }
+  .brand {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 12pt;
+    color: var(--teal);
+    letter-spacing: 0.01em;
+  }
+  .brand span { color: var(--gold-dark); }
+  .tagline { font-size: 8.5pt; color: var(--muted); font-weight: 500; }
+
+  h1 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 21pt;
+    line-height: 1.15;
+    color: var(--teal);
+    margin-bottom: 2mm;
+  }
+  .lede {
+    font-size: 10.5pt;
+    color: var(--muted);
+    margin-bottom: 5mm;
+    max-width: 165mm;
+  }
+  .lede strong { color: var(--gold-dark); }
+
+  .steps { list-style: none; counter-reset: step; }
+  .steps li {
+    counter-increment: step;
+    display: flex;
+    gap: 4mm;
+    padding: 2.6mm 0;
+    border-bottom: 1px solid var(--sand);
+  }
+  .steps li:last-child { border-bottom: none; }
+  .steps li::before {
+    content: counter(step);
+    flex: 0 0 auto;
+    width: 7mm; height: 7mm;
+    border-radius: 50%;
+    background: var(--teal);
+    color: var(--paper);
+    font-weight: 700;
+    font-size: 10pt;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 0.5mm;
+  }
+  .steps h3 {
+    font-size: 10.5pt;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 0.5mm;
+  }
+  .steps p { font-size: 9.5pt; color: var(--muted); }
+  .steps p strong { color: var(--ink); }
+
+  .callout {
+    background: var(--sand);
+    border-left: 3.5px solid var(--gold);
+    border-radius: 2mm;
+    padding: 3.5mm 5mm;
+    margin: 4.5mm 0;
+  }
+  .callout h3 {
+    font-family: var(--display);
+    font-size: 11pt;
+    color: var(--gold-dark);
+    margin-bottom: 1.5mm;
+  }
+  .callout ul { list-style: none; }
+  .callout li {
+    font-size: 9.5pt;
+    padding-left: 5mm;
+    position: relative;
+    margin-bottom: 0.8mm;
+  }
+  .callout li::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 1.6mm;
+    width: 2.4mm; height: 2.4mm;
+    border-radius: 50%;
+    border: 1.4px solid var(--gold-dark);
+  }
+
+  .rhythm {
+    margin-top: auto;
+    background: var(--teal);
+    color: var(--paper);
+    border-radius: 2.5mm;
+    padding: 4mm 5.5mm;
+    display: flex;
+    gap: 6mm;
+    align-items: center;
+  }
+  .rhythm .label {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 11.5pt;
+    flex: 0 0 34mm;
+    line-height: 1.2;
+  }
+  .rhythm ol { list-style: none; display: flex; gap: 6mm; flex: 1; }
+  .rhythm ol li { font-size: 9pt; line-height: 1.35; flex: 1; }
+  .rhythm ol li b { display: block; color: var(--gold); font-size: 9.5pt; }
+
+  .foot {
+    margin-top: 4mm;
+    display: flex;
+    justify-content: space-between;
+    font-size: 8pt;
+    color: var(--muted);
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="masthead">
+    <div class="brand">Aussie<span>Grad</span>Careers</div>
+    <div class="tagline">Program Quickstart &middot; Module 1</div>
+  </div>
+
+  <h1>Your first application, live in 24 hours.</h1>
+  <p class="lede">The workspace does the heavy lifting: it reads your resume once, then writes a tailored resume and cover letter for every job you go for. <strong>Your job is to feed it the truth and quality-check what comes out.</strong> Here is the whole loop.</p>
+
+  <ol class="steps">
+    <li>
+      <div><h3>Upload your resume once</h3>
+      <p>The workspace builds your diagnostic and your <strong>Profile Bank</strong>: every role, project, qualification and achievement, structured.</p></div>
+    </li>
+    <li>
+      <div><h3>Fix your Profile Bank before anything else</h3>
+      <p>The bank is the source of truth for every document generated. Check each role, date and achievement. <strong>Add what your resume never mentioned</strong>: the uni project, the freelance work. That is often your strongest evidence.</p></div>
+    </li>
+    <li>
+      <div><h3>Set your target role and city</h3>
+      <p>Pick the role where what you <strong>want</strong>, what interests you, and what you have <strong>tangible evidence</strong> for overlap (your Venn worksheet from Lesson 1.2). This drives your job feed.</p></div>
+    </li>
+    <li>
+      <div><h3>Pick a job</h3>
+      <p>Use the matched jobs in your feed, ranked for early-career fit, or paste in any job you found yourself on SEEK or LinkedIn.</p></div>
+    </li>
+    <li>
+      <div><h3>Generate your documents</h3>
+      <p>Tailored resume and cover letter in about a minute. Applying for a government or university role? Generate the selection criteria responses too.</p></div>
+    </li>
+    <li>
+      <div><h3>Run the 60-second quality check</h3>
+      <p>You are the final gate. <strong>Never send anything unreviewed.</strong></p></div>
+    </li>
+    <li>
+      <div><h3>Apply, and let the tracker take over</h3>
+      <p>Every application is logged automatically. The tracker tells you when to follow up, so nothing falls through the cracks.</p></div>
+    </li>
+    <li>
+      <div><h3>Post your first application in Gate Submissions</h3>
+      <p>Attach the resume you sent. Your coach spot-checks it on the next live call. That post completes Module 1.</p></div>
+    </li>
+  </ol>
+
+  <div class="callout">
+    <h3>The 60-second quality check</h3>
+    <ul>
+      <li>Every fact, date and employer is true, nothing invented, nothing inflated</li>
+      <li>The summary sounds like you and names the role you are applying for</li>
+      <li>Every bullet is an <b>outcome achieved</b>, not a task performed</li>
+      <li>Skills listed are skills you genuinely have and can speak to in an interview</li>
+    </ul>
+  </div>
+
+  <div class="rhythm">
+    <div class="label">Your daily rhythm<br>(45 to 90 min)</div>
+    <ol>
+      <li><b>Apply</b> Hit today's application number through the workspace</li>
+      <li><b>Follow up</b> Clear every tracker reminder, same day</li>
+      <li><b>Reach out</b> One outreach touch (from Module 2)</li>
+      <li><b>Log it</b> If it is not tracked, it did not happen</li>
+    </ol>
+  </div>
+
+  <div class="foot">
+    <span>AussieGradCareers &middot; 90-Day Placement Program</span>
+    <span>Questions go in the community, answered on every live call</span>
+  </div>
+
+</div>
+</body>
+</html>
