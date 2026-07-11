@@ -38,6 +38,9 @@ const AdminBroadcasts = React.lazy(() =>
 const EmailAnalytics = React.lazy(() =>
   import('./pages/EmailAnalytics').then(m => ({ default: m.default }))
 );
+const AdminQuality = React.lazy(() =>
+  import('./pages/AdminQuality').then(m => ({ default: m.AdminQuality }))
+);
 const MindsetPage = React.lazy(() =>
   import('./pages/MindsetPage').then(m => ({ default: m.MindsetPage }))
 );
@@ -369,6 +372,7 @@ function ReportOrDashboard() {
                 <Route path="/mindset" element={<MindsetPage />} />
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/admin/funnel" element={<AdminFunnel />} />
+                <Route path="/admin/quality" element={<AdminQuality />} />
                 <Route path="/admin/users" element={<AdminUserUsage />} />
                 <Route path="/admin/friday-brief" element={<FridayBriefPage />} />
                 <Route path="/admin/contacts" element={<AdminContacts />} />

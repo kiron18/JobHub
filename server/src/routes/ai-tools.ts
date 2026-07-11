@@ -11,7 +11,7 @@ import { Router } from 'express';
 import { prisma } from '../index';
 import { authenticate } from '../middleware/auth';
 import { analyzeRateLimit } from '../middleware/analyzeRateLimit';
-import { callLLM } from '../services/llm';
+import { callLLM, callClaude } from '../services/llm';
 import { parseLLMJson } from '../utils/parseLLMResponse';
 
 const router = Router();
@@ -85,19 +85,23 @@ router.post('/interview-questions', async (req: any, res: any) => {
 
         const profile = await prisma.candidateProfile.findUnique({
             where: { userId },
-            include: { achievements: { select: { title: true, metric: true } } }
+            include: { achievements: { select: { title: true, description: true, metric: true } } }
         });
-        const achievementTitles = profile?.achievements.slice(0, 12).map((a: any) => a.title).join('; ') || 'none';
+        const achievementBank = profile?.achievements.slice(0, 12)
+            .map((a: any) => `- ${a.title}${a.metric ? ` [${a.metric}]` : ''}: ${(a.description || '').slice(0, 200)}`)
+            .join('\n') || 'none';
 
         const prompt = `You are an expert career coach preparing an Australian job seeker for an interview.
 
 JOB DESCRIPTION (first 2000 chars):
 ${jobDescription.slice(0, 2000)}
 
-CANDIDATE'S ACHIEVEMENT BANK (titles):
-${achievementTitles}
+CANDIDATE'S ACHIEVEMENT BANK:
+${achievementBank}
 
-Generate exactly 8 interview questions the hiring manager is most likely to ask. Mix types: behavioral, situational, role-specific, motivation. For each question, provide 2-3 STAR-structured talking points.
+Generate exactly 8 interview questions the hiring manager is most likely to ask. Mix types: behavioral, situational, role-specific, motivation.
+
+For each question, provide 2-3 CAR-structured talking points (Context, Action, Result): one short line of context, what the candidate did, and the outcome it produced. Draw each talking point from the candidate's real achievement bank above wherever possible — name the actual project, role, or metric so the candidate recognises their own story. Never invent an achievement or a metric that is not in the bank. If the bank has nothing relevant, give a talking point that coaches them on how to structure an honest answer instead.
 
 Return JSON:
 {
@@ -113,7 +117,7 @@ Return JSON:
 
 Return ONLY valid JSON. Exactly 8 questions. Order: 2 behavioral, 2 situational, 2 role-specific, 1 motivation, 1 wildcard.`;
 
-        const raw = await callLLM(prompt, true);
+        const { content: raw } = await callClaude(prompt, true);
         const result = parseLLMJson(raw);
 
         return res.json({

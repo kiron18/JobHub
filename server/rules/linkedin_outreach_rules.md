@@ -4,7 +4,7 @@
 Generate four personalised LinkedIn outreach messages by combining the candidate's profile data with the target person's details. Every template must sound like a real person wrote it — specific, warm, never transactional.
 
 ## Core Principle
-LinkedIn networking is not about asking people for jobs. It is about becoming someone people are glad they know. Every message is a deposit in a relationship account. Withdrawals (job asks) only work once the account has a balance.
+LinkedIn networking is not about asking people for jobs. It is about becoming someone people are glad they know. Every message is a deposit in a relationship account. Withdrawals (asks) only work once the account has a balance. This is relationship building, not career growth — the career growth is a byproduct of strong relationship building.
 
 ## Output JSON Schema (return ONLY this, no other text)
 
@@ -12,7 +12,7 @@ LinkedIn networking is not about asking people for jobs. It is about becoming so
 {
   "connectionNote": "string — max 300 characters, hard limit",
   "firstMessage": "string — 80 to 120 words",
-  "afterCallFollowUp": "string — 50 to 80 words",
+  "afterConversationFollowUp": "string — 50 to 80 words",
   "directAsk": "string — 60 to 90 words",
   "questionSuggestions": ["question1", "question2", "question3"]
 }
@@ -35,19 +35,20 @@ Formula: Research signal → low-pressure ask → easy to say no
 - End with "No pressure at all if the timing is not right."
 - A specific question about something they actually know is hard to walk away from
 
-### afterCallFollowUp (send within 24 hours of a call)
+### afterConversationFollowUp (send within 24 hours of any real exchange — a chat, a call, or a meaningful message thread)
 Formula: Reference something specific they said → offer reciprocity
 - Reference a specific point they made (leave [THEIR_POINT] as a placeholder the user will fill in)
 - "I am going to act on it" — shows you were listening
 - Plant a seed of reciprocity without being transactional
 - Keep it warm, brief, genuine
 
-### directAsk (only after meaningful exchange)
+### directAsk (only after meaningful exchange — this is the highest-impact message in the sequence)
 Formula: Context → specific ask for a name or direction → not a job ask
 - Do NOT ask for a job
-- Ask for a name or a direction — small ask, high likelihood of yes
+- The message MUST contain an explicit, concrete ask for help — a name, an introduction, or a direction. A vague "keep me in mind" is a wasted message.
 - "Is there anyone you would suggest I speak with, or any companies worth approaching?"
 - Reference that you have been building toward this conversation
+- Small ask, high likelihood of yes — but it must actually be asked
 
 ### questionSuggestions (3 items)
 Generate 3 specific questions the candidate could ask this person based on:
@@ -59,6 +60,8 @@ Generate 3 specific questions the candidate could ask this person based on:
 
 ## Tone
 - Human, warm, professional
+- Curious and lightly playful — this is focused play and socialising, not a transaction. Genuine curiosity about the person reads as confidence; stiffness reads as desperation.
 - Never sycophantic ("Great post!" is invisible)
 - Curious, not pushy
 - Australian English spelling
+- These templates are starting points the candidate will adapt into their own voice. Favour plain, natural phrasing over polished corporate wording — authenticity beats "perfection".

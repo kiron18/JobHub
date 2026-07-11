@@ -21,6 +21,29 @@ const TYPE_CONFIG: Record<string, { label: string; color: string; bg: string; bo
   motivation:     { label: 'Motivation',   color: '#f9a8d4', bg: 'rgba(236,72,153,0.1)', border: 'rgba(236,72,153,0.25)' },
 };
 
+// Static prep content from the AGC Interview Prep Kit — no generation cost.
+const RESEARCH_CHECKLIST = [
+  "Read the company's About and Mission pages — know what they say they stand for",
+  "Check their LinkedIn page and Google '[Company] news' — past 3 months",
+  'Know the CEO or founder’s name and one thing they’ve said publicly recently',
+  'Understand where this role sits — who would you report to?',
+  'Re-read the job ad and identify the 3 most important requirements',
+  'Have your 3 closing questions written and ready — at least one from company research',
+];
+
+const CLOSING_QUESTIONS = [
+  'What does success look like in this role in the first 90 days?',
+  "What's the biggest challenge the team is working through right now?",
+  'How long have you been with the company, and what’s kept you here?',
+];
+
+const INTRO_FORMULA = [
+  'Professional identity + field',
+  'Strongest capability',
+  'Most relevant recent result',
+  "What you're looking for now",
+];
+
 export function InterviewQuestionsPanel({ jobDescription }: InterviewQuestionsPanelProps) {
   const [questions, setQuestions] = useState<InterviewQuestion[]>([]);
   const [loading, setLoading] = useState(false);
@@ -30,6 +53,7 @@ export function InterviewQuestionsPanel({ jobDescription }: InterviewQuestionsPa
   const [practiceMode, setPracticeMode] = useState(false);
   const [practiceIdx, setPracticeIdx] = useState(0);
   const [revealed, setRevealed] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
 
   const load = async () => {
     if (loading || !jobDescription) return;
@@ -108,6 +132,70 @@ export function InterviewQuestionsPanel({ jobDescription }: InterviewQuestionsPa
         )}
       </div>
 
+      {/* How to prepare — static guide from the AGC Interview Prep Kit */}
+      <div style={{
+        borderRadius: 10,
+        border: '1px solid rgba(255,255,255,0.07)',
+        background: 'rgba(255,255,255,0.02)',
+        overflow: 'hidden',
+      }}>
+        <button
+          onClick={() => setGuideOpen(v => !v)}
+          style={{
+            width: '100%', padding: '9px 14px', background: 'none', border: 'none',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            cursor: 'pointer', textAlign: 'left',
+          }}
+        >
+          <span style={{ fontSize: 10, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            How to prepare (30 minutes)
+          </span>
+          <ChevronDown size={12} color="#4b5563" style={{ transform: guideOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+        </button>
+        {guideOpen && (
+          <div style={{ padding: '0 14px 12px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <p style={{ fontSize: 9, fontWeight: 800, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 5px' }}>
+                Answer with CAR
+              </p>
+              <p style={{ fontSize: 11, color: '#94a3b8', margin: 0, lineHeight: 1.55 }}>
+                Context (one line of setup), Action (what you did), Result (what it produced). Tighter and more natural than STAR — no padding. Save STAR for written selection criteria.
+              </p>
+            </div>
+            <div>
+              <p style={{ fontSize: 9, fontWeight: 800, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 5px' }}>
+                "Tell me about yourself" — 60 to 90 seconds, 4 beats
+              </p>
+              <p style={{ fontSize: 11, color: '#94a3b8', margin: 0, lineHeight: 1.55 }}>
+                {INTRO_FORMULA.join(' → ')}
+              </p>
+            </div>
+            <div>
+              <p style={{ fontSize: 9, fontWeight: 800, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 5px' }}>
+                Research checklist
+              </p>
+              <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {RESEARCH_CHECKLIST.map((item, i) => (
+                  <li key={i} style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5, display: 'flex', gap: 7 }}>
+                    <span style={{ color: '#4b5563' }}>□</span>{item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <p style={{ fontSize: 9, fontWeight: 800, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 5px' }}>
+                Your closing questions (always have 3 ready)
+              </p>
+              <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {CLOSING_QUESTIONS.map((q, i) => (
+                  <li key={i} style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5 }}>{i + 1}. {q}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Practice Mode — flashcard-style */}
       <AnimatePresence>
         {practiceMode && questions.length > 0 && (
@@ -146,7 +234,7 @@ export function InterviewQuestionsPanel({ jobDescription }: InterviewQuestionsPa
                     transition={{ duration: 0.2 }}
                     style={{ overflow: 'hidden', marginTop: 12 }}
                   >
-                    <p style={{ fontSize: 9, fontWeight: 800, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 6px' }}>Talking Points</p>
+                    <p style={{ fontSize: 9, fontWeight: 800, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 6px' }}>CAR Talking Points</p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                       {questions[practiceIdx].talkingPoints.map((pt, i) => (
                         <div key={i} style={{ display: 'flex', gap: 7, alignItems: 'flex-start' }}>

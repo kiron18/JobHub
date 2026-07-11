@@ -698,4 +698,67 @@ router.get('/expenses', authenticate, requireAdmin, async (req, res) => {
   }
 });
 
+// ── GET /api/admin/quality ────────────────────────────────────────────────────
+// Team-facing quality dashboard: every generated document carries qualitySignals
+// (quality gate outcome, ATS coverage, achievement match, voice scrubber). This
+// aggregates them so the team can spot bad output before a student sends it.
+router.get('/quality', authenticate, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const days = Math.min(Math.max(parseInt(String(req.query.days ?? '7'), 10) || 7, 1), 90);
+    const since = new Date(Date.now() - days * 86400000);
+
+    const docs = await prisma.document.findMany({
+      where: { createdAt: { gte: since } },
+      select: {
+        id: true, type: true, createdAt: true, userId: true, qualitySignals: true,
+        jobApplication: { select: { title: true, company: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 500,
+    });
+
+    const userIds = [...new Set(docs.map(d => d.userId))];
+    const profiles = await prisma.candidateProfile.findMany({
+      where: { userId: { in: userIds } },
+      select: { userId: true, name: true, email: true },
+    });
+    const profileByUser = new Map(profiles.map(p => [p.userId, p]));
+
+    type Signal = { severity: string; category: string; message: string; evidence?: string[] };
+    const severityOf = (signals: Signal[] | null): 'clean' | 'info' | 'warning' | 'critical' => {
+      if (!signals || signals.length === 0) return 'clean';
+      if (signals.some(s => s.severity === 'critical')) return 'critical';
+      if (signals.some(s => s.severity === 'warning')) return 'warning';
+      return 'info';
+    };
+
+    const summary = { total: docs.length, clean: 0, info: 0, warning: 0, critical: 0 };
+    const byCategory: Record<string, number> = {};
+    const flagged: any[] = [];
+
+    for (const doc of docs) {
+      const signals = (doc.qualitySignals as unknown as Signal[] | null) ?? null;
+      const level = severityOf(signals);
+      summary[level] += 1;
+      if (level === 'clean') continue;
+      for (const s of signals!) byCategory[s.category] = (byCategory[s.category] ?? 0) + 1;
+      const p = profileByUser.get(doc.userId);
+      flagged.push({
+        id: doc.id,
+        type: doc.type,
+        createdAt: doc.createdAt,
+        level,
+        student: { name: p?.name ?? null, email: p?.email ?? null },
+        job: doc.jobApplication ? { title: doc.jobApplication.title, company: doc.jobApplication.company } : null,
+        signals,
+      });
+    }
+
+    return res.json({ days, summary, byCategory, flagged: flagged.slice(0, 100) });
+  } catch (err) {
+    console.error('[admin/quality] error:', err);
+    return res.status(500).json({ error: 'Failed to load quality data' });
+  }
+});
+
 export default router;

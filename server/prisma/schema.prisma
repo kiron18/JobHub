@@ -67,6 +67,7 @@ model CandidateProfile {
   coverLetterFilename          String?
   coverLetterFilename2         String?
   dailyApplicationGoal         Int       @default(5)
+  applicationGoalType          String    @default("daily")
   documentsUpdatedAt           DateTime?
   positioningStatement         Json?
   analysisCache                Json?
@@ -208,6 +209,17 @@ model JobApplication {
 
   @@index([userId])
   @@index([candidateProfileId])
+}
+
+model OutreachLog {
+  id         String   @id @default(uuid())
+  userId     String
+  personName String
+  company    String
+  topic      String
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
 }
 
 model JobFeedItem {

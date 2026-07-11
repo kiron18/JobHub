@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Loader2, Copy, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Loader2, Copy, Check, ChevronDown, ChevronUp, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../../lib/api';
 import { warm } from '../../lib/theme/warmTokens';
@@ -8,16 +8,24 @@ import type { OutreachData } from './types';
 const COACHING_TIPS: Record<keyof Omit<OutreachData, 'questionSuggestions'>, string> = {
   connectionNote: 'The specificity of the reference is what makes it work. Generic openers get ignored.',
   firstMessage: 'A precise question about something they actually know is hard to walk away from.',
-  afterCallFollowUp: 'Shows you were paying attention. Plants a seed of reciprocity without being transactional.',
-  directAsk: 'Ask for a name or a direction — not a job. Small ask, high likelihood of yes.',
+  afterConversationFollowUp: 'Shows you were paying attention. Plants a seed of reciprocity without being transactional.',
+  directAsk: 'This is the highest-impact message in the sequence. Ask for a name or a direction — not a job — but make sure you actually ask. A conversation that ends without an ask is a lottery ticket you never scratched.',
 };
 
 const TEMPLATE_LABELS: Record<keyof Omit<OutreachData, 'questionSuggestions'>, string> = {
   connectionNote: 'Connection Request Note',
   firstMessage: 'First Message After Connecting',
-  afterCallFollowUp: 'After-Call Follow-Up',
+  afterConversationFollowUp: 'After-Conversation Follow-Up',
   directAsk: 'Direct Ask for Help',
 };
+
+interface OutreachLogEntry {
+  id: string;
+  personName: string;
+  company: string;
+  topic: string;
+  createdAt: string;
+}
 
 function TemplateCard({ label, content, tip, charLimit, editableNote }: {
   label: string; content: string; tip: string; charLimit?: number; editableNote?: string;
@@ -111,6 +119,34 @@ export const OutreachTemplates: React.FC = () => {
   const [outreach, setOutreach] = useState<OutreachData | null>(null);
   const [genId, setGenId] = useState(0);
   const [showPlaybook, setShowPlaybook] = useState(false);
+  const [logEntries, setLogEntries] = useState<OutreachLogEntry[]>([]);
+  const [logging, setLogging] = useState(false);
+  const [loggedThisGen, setLoggedThisGen] = useState(false);
+
+  useEffect(() => {
+    api.get('/linkedin/outreach/log')
+      .then(({ data }) => setLogEntries(data.entries || []))
+      .catch(() => {});
+  }, []);
+
+  async function handleLogConnected() {
+    if (logging || loggedThisGen) return;
+    setLogging(true);
+    try {
+      const { data } = await api.post('/linkedin/outreach/log', {
+        personName: targetFirstName,
+        company: targetCompany,
+        topic: targetTopicOrPost,
+      });
+      setLogEntries(prev => [data.entry, ...prev]);
+      setLoggedThisGen(true);
+      toast.success(`Logged — ${targetFirstName} at ${targetCompany}`);
+    } catch {
+      toast.error('Could not log this outreach — try again.');
+    } finally {
+      setLogging(false);
+    }
+  }
 
   async function handleGenerate() {
     if (!targetFirstName || !targetCompany || !targetTopicOrPost || generating) return;
@@ -122,6 +158,7 @@ export const OutreachTemplates: React.FC = () => {
       });
       setOutreach(data);
       setGenId(g => g + 1);
+      setLoggedThisGen(false);
     } catch (err: any) {
       if (err?.response?.status === 402) {
         // PAYMENTS PAUSED: no longer redirecting to pricing - unlimited access active
@@ -169,8 +206,11 @@ export const OutreachTemplates: React.FC = () => {
         <p style={{ margin: '0 0 6px', fontSize: 13, lineHeight: 1.6, color: warm.colors.textPrimary, fontWeight: 600 }}>
           Don't ask for a job. Become someone people are glad they know — then ask for a name or a direction.
         </p>
+        <p style={{ margin: '0 0 6px', fontSize: 12.5, lineHeight: 1.6, color: warm.colors.textSecondary }}>
+          Fill in the person you want to reach below. We'll generate four templates in sequence: a connection note, a first message after they accept, an after-conversation follow-up, and a small direct ask. Use them in that order — each one earns the right to send the next.
+        </p>
         <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6, color: warm.colors.textSecondary }}>
-          Fill in the person you want to reach below. We'll generate four templates in sequence: a connection note, a first message after they accept, an after-call follow-up, and a small direct ask. Use them in that order — each one earns the right to send the next.
+          Stay curious and playful in these conversations — this is focused play and socialising, not a transaction. Think of it as relationship building, not career growth. The career growth is a byproduct of strong relationships.
         </p>
       </div>
 
@@ -283,6 +323,18 @@ export const OutreachTemplates: React.FC = () => {
 
       {outreach && (
         <>
+          {/* Authenticity note */}
+          <div style={{
+            background: 'rgba(42,157,111,0.07)',
+            border: '1px solid rgba(42,157,111,0.25)',
+            borderRadius: 12, padding: '10px 14px', marginBottom: 14,
+          }}>
+            <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6, color: warm.colors.textSecondary }}>
+              <strong style={{ color: warm.colors.textPrimary }}>These are starting points, not scripts.</strong>{' '}
+              Edit them until they sound like something you would actually say — a message in your own voice lands better than a polished one that isn't. Authenticity beats "perfection".
+            </p>
+          </div>
+
           <TemplateCard
             key={`${genId}-connectionNote`}
             label={TEMPLATE_LABELS.connectionNote}
@@ -296,21 +348,85 @@ export const OutreachTemplates: React.FC = () => {
             content={outreach.firstMessage}
             tip={COACHING_TIPS.firstMessage}
           />
+
+          {/* Connected — one-tap outreach log */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+            background: warm.colors.bgAlt, border: `1px solid ${warm.colors.borderWhisper}`,
+            borderRadius: 12, padding: '12px 16px', marginBottom: 14,
+          }}>
+            <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5, color: warm.colors.textSecondary }}>
+              Sent the first message? Log it — one tap, and it lands in your outreach tracker.
+            </p>
+            <button
+              onClick={handleLogConnected}
+              disabled={logging || loggedThisGen}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
+                padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                border: `1px solid ${loggedThisGen ? '#34d399' : 'rgba(10,102,194,0.4)'}`,
+                background: loggedThisGen ? 'rgba(52,211,153,0.1)' : '#0A66C2',
+                color: loggedThisGen ? '#34d399' : 'white',
+                cursor: logging || loggedThisGen ? 'default' : 'pointer',
+              }}
+            >
+              {logging ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} />
+                : loggedThisGen ? <Check size={13} /> : <UserCheck size={13} />}
+              {loggedThisGen ? 'Connected' : 'Mark as Connected'}
+            </button>
+          </div>
+
           <TemplateCard
-            key={`${genId}-afterCallFollowUp`}
-            label={TEMPLATE_LABELS.afterCallFollowUp}
-            content={outreach.afterCallFollowUp}
-            tip={COACHING_TIPS.afterCallFollowUp}
-            editableNote="Fill in [THEIR_POINT] with something specific they actually said."
+            key={`${genId}-afterConversationFollowUp`}
+            label={TEMPLATE_LABELS.afterConversationFollowUp}
+            content={outreach.afterConversationFollowUp}
+            tip={COACHING_TIPS.afterConversationFollowUp}
+            editableNote="Send within 24 hours of any real exchange — a chat, a call, or a message thread. Fill in [THEIR_POINT] with something specific they actually said."
           />
           <TemplateCard
             key={`${genId}-directAsk`}
             label={TEMPLATE_LABELS.directAsk}
             content={outreach.directAsk}
             tip={COACHING_TIPS.directAsk}
-            editableNote="Only use this after at least one meaningful exchange. Do not skip to this."
+            editableNote="Only use this after at least one meaningful exchange. Do not skip to this — but do not skip it either. Make the ask."
           />
         </>
+      )}
+
+      {/* Outreach log */}
+      {logEntries.length > 0 && (
+        <div style={{ marginTop: 24 }}>
+          <p style={{
+            fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em',
+            color: warm.colors.textSecondary, marginBottom: 10,
+          }}>
+            Your outreach log · {logEntries.length} logged
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {logEntries.slice(0, 10).map(entry => (
+              <div key={entry.id} style={{
+                display: 'flex', alignItems: 'baseline', gap: 10,
+                background: warm.colors.bgSurface, border: `1px solid ${warm.colors.borderWhisper}`,
+                borderRadius: 10, padding: '8px 14px',
+              }}>
+                <span style={{ fontSize: 11, color: warm.colors.textMuted, flexShrink: 0, minWidth: 58 }}>
+                  {new Date(entry.createdAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
+                </span>
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: warm.colors.textPrimary, flexShrink: 0 }}>
+                  {entry.personName}
+                </span>
+                <span style={{ fontSize: 12, color: warm.colors.textSecondary, flexShrink: 0 }}>
+                  {entry.company}
+                </span>
+                {entry.topic && (
+                  <span style={{ fontSize: 11.5, color: warm.colors.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {entry.topic}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );

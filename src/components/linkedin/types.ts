@@ -16,7 +16,7 @@ export interface LinkedInProfileData {
 export interface OutreachData {
   connectionNote: string;
   firstMessage: string;
-  afterCallFollowUp: string;
+  afterConversationFollowUp: string;
   directAsk: string;
   questionSuggestions: string[];
 }

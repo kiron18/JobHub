@@ -203,6 +203,20 @@ async function ensureColumns() {
         ADD COLUMN IF NOT EXISTS "qualitySignals" JSONB;
     `);
     await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "OutreachLog" (
+        "id" TEXT NOT NULL,
+        "userId" TEXT NOT NULL,
+        "personName" TEXT NOT NULL,
+        "company" TEXT NOT NULL,
+        "topic" TEXT NOT NULL,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "OutreachLog_pkey" PRIMARY KEY ("id")
+      );
+    `);
+    await prisma.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "OutreachLog_userId_idx" ON "OutreachLog"("userId");
+    `);
+    await prisma.$executeRawUnsafe(`
       ALTER TABLE "CandidateProfile"
         ADD COLUMN IF NOT EXISTS "achievementCountAtDerivation" INTEGER,
         ADD COLUMN IF NOT EXISTS "identityCards" JSONB,
@@ -237,7 +251,8 @@ async function ensureColumns() {
         ADD COLUMN IF NOT EXISTS "coverLetterFilename" TEXT,
         ADD COLUMN IF NOT EXISTS "coverLetterFilename2" TEXT,
         ADD COLUMN IF NOT EXISTS "documentsUpdatedAt" TIMESTAMP(3),
-        ADD COLUMN IF NOT EXISTS "analysisCache" JSONB;
+        ADD COLUMN IF NOT EXISTS "analysisCache" JSONB,
+        ADD COLUMN IF NOT EXISTS "applicationGoalType" TEXT NOT NULL DEFAULT 'daily';
     `);
     await prisma.$executeRawUnsafe(`
       ALTER TABLE "DiagnosticReport"

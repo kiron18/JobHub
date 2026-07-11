@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import {
   Users, FileText, BarChart2, Activity,
   TrendingUp, Star, ClipboardList,
-  RefreshCcw, Mail, Copy, Check, Zap, ExternalLink,
+  RefreshCcw, Mail, Copy, Check, Zap, ExternalLink, ShieldCheck,
 } from 'lucide-react';
 import api from '../lib/api';
 import { warm } from '../lib/theme/warmTokens';
@@ -819,6 +819,18 @@ export function AdminDashboard() {
               }}>
               <TrendingUp size={12} />
               Trial conversion
+              <ExternalLink size={10} />
+            </a>
+            <a
+              href="/admin/quality"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                background: `${S.petrol}14`, border: `1px solid ${S.petrol}30`,
+                borderRadius: 10, padding: '8px 16px', fontSize: 12, fontWeight: 700,
+                color: S.petrol, textDecoration: 'none',
+              }}>
+              <ShieldCheck size={12} />
+              Output quality
               <ExternalLink size={10} />
             </a>
             <button

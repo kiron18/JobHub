@@ -15,7 +15,9 @@ import {
     Sparkles,
     HelpCircle,
     ExternalLink,
+    MessageSquare,
 } from 'lucide-react';
+import { InterviewQuestionsPanel } from '../InterviewQuestionsPanel';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
@@ -630,6 +632,7 @@ export const JobCard: React.FC<JobCardProps> = ({ job, isFirst, onStatusChange, 
     const [expanded, setExpanded] = useState(false);
     const [selectedDoc, setSelectedDoc] = useState<TrackerDocument | null>(null);
     const [thankYouOpen, setThankYouOpen] = useState(false);
+    const [interviewPrepOpen, setInterviewPrepOpen] = useState(false);
     const [notesValue, setNotesValue] = useState(job.notes || '');
     const [notesSaving, setNotesSaving] = useState(false);
     const [negotiationGuide, setNegotiationGuide] = useState<string | null>(null);
@@ -1053,6 +1056,46 @@ export const JobCard: React.FC<JobCardProps> = ({ job, isFirst, onStatusChange, 
                                 )}
 
                                 {/* Post-interview thank-you email */}
+                                {/* Interview prep — likely questions with CAR talking points */}
+                                {job.description && job.description.length >= 50 && (
+                                    <div style={{
+                                        border: '1px solid rgba(99,102,241,0.30)',
+                                        borderRadius: 12, overflow: 'hidden',
+                                        background: 'rgba(99,102,241,0.05)',
+                                    }}>
+                                        <button
+                                            onClick={() => setInterviewPrepOpen(o => !o)}
+                                            style={{
+                                                width: '100%', padding: '12px 16px',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                                background: 'transparent', border: 'none', cursor: 'pointer',
+                                                color: 'inherit', fontFamily: 'inherit',
+                                            }}
+                                        >
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                <MessageSquare size={13} style={{ color: '#818cf8' }} />
+                                                <span style={{ fontSize: 12, fontWeight: 700, color: '#818cf8' }}>Interview prep</span>
+                                            </div>
+                                            {interviewPrepOpen ? <ChevronUp size={12} style={{ color: 'rgba(99,102,241,0.6)' }} /> : <ChevronDown size={12} style={{ color: 'rgba(99,102,241,0.6)' }} />}
+                                        </button>
+                                        <AnimatePresence>
+                                            {interviewPrepOpen && (
+                                                <motion.div
+                                                    initial={{ height: 0, opacity: 0 }}
+                                                    animate={{ height: 'auto', opacity: 1 }}
+                                                    exit={{ height: 0, opacity: 0 }}
+                                                    transition={{ duration: 0.2 }}
+                                                    style={{ overflow: 'hidden', borderTop: '1px solid rgba(99,102,241,0.15)' }}
+                                                >
+                                                    <div style={{ padding: 16 }}>
+                                                        <InterviewQuestionsPanel jobDescription={job.description} />
+                                                    </div>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
+                                )}
+
                                 {job.status === 'INTERVIEW' && (
                                     <div style={{
                                         border: '1px solid rgba(197,160,89,0.30)',

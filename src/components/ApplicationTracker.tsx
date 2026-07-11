@@ -23,6 +23,7 @@ import type { SortBy } from './tracker/SortControls';
 import { SectionIntroBanner } from './processStrip';
 import { warm } from '../lib/theme/warmTokens';
 import { ActivityHeatmap } from './tracker/ActivityHeatmap';
+import { GoalCard } from './tracker/GoalCard';
 
 const PRIORITY_ORDER: Record<string, number> = { DREAM: 0, TARGET: 1, BACKUP: 2 };
 
@@ -230,6 +231,8 @@ export const ApplicationTracker: React.FC = () => {
                 <h2 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.5rem)', fontWeight: 800, letterSpacing: '-0.02em', color: warm.colors.textPrimary, margin: 0 }}>Application Tracker</h2>
                 <p style={{ margin: 0, fontSize: 16, color: warm.colors.textSecondary, fontWeight: 500 }}>Track your pipeline from saved to signed.</p>
             </header>
+
+            <GoalCard />
 
             {!isLoading && <FollowUpNudge jobs={jobs} />}
             {!isLoading && <ThankYouNudge jobs={jobs} />}

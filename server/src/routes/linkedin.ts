@@ -324,4 +324,49 @@ router.post('/headshot/save', authenticate, async (req: AuthRequest, res) => {
   }
 });
 
+// ── Outreach log ("Connected") ──────────────────────────────────────────────
+// One tap after the first message goes out. Free for all users — logging
+// outreach must never be behind a paywall or students will stop tracking.
+
+router.post('/outreach/log', authenticate, async (req: AuthRequest, res) => {
+  const userId = req.user!.id;
+  const { personName, company, topic } = req.body as {
+    personName?: string; company?: string; topic?: string;
+  };
+
+  if (!personName?.trim() || !company?.trim()) {
+    return res.status(400).json({ error: 'personName and company are required' });
+  }
+
+  try {
+    const entry = await prisma.outreachLog.create({
+      data: {
+        userId,
+        personName: personName.trim(),
+        company: company.trim(),
+        topic: (topic ?? '').trim(),
+      },
+    });
+    return res.json({ ok: true, entry });
+  } catch (err) {
+    console.error('[outreach/log] create error:', err);
+    return res.status(500).json({ error: 'Failed to log outreach' });
+  }
+});
+
+router.get('/outreach/log', authenticate, async (req: AuthRequest, res) => {
+  const userId = req.user!.id;
+  try {
+    const entries = await prisma.outreachLog.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+    return res.json({ entries });
+  } catch (err) {
+    console.error('[outreach/log] list error:', err);
+    return res.status(500).json({ error: 'Failed to load outreach log' });
+  }
+});
+
 export default router;
