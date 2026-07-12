@@ -212,12 +212,14 @@ model JobApplication {
 }
 
 model OutreachLog {
-  id         String   @id @default(uuid())
-  userId     String
-  personName String
-  company    String
-  topic      String
-  createdAt  DateTime @default(now())
+  id               String   @id @default(uuid())
+  userId           String
+  personName       String
+  company          String
+  topic            String
+  specificQuestion String   @default("")
+  firstMessage     String   @default("")
+  createdAt        DateTime @default(now())
 
   @@index([userId])
 }

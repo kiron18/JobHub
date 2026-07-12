@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Loader2, Copy, Check, ChevronDown, ChevronUp, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../../lib/api';
@@ -18,14 +18,6 @@ const TEMPLATE_LABELS: Record<keyof Omit<OutreachData, 'questionSuggestions'>, s
   afterConversationFollowUp: 'After-Conversation Follow-Up',
   directAsk: 'Direct Ask for Help',
 };
-
-interface OutreachLogEntry {
-  id: string;
-  personName: string;
-  company: string;
-  topic: string;
-  createdAt: string;
-}
 
 function TemplateCard({ label, content, tip, charLimit, editableNote }: {
   label: string; content: string; tip: string; charLimit?: number; editableNote?: string;
@@ -119,26 +111,20 @@ export const OutreachTemplates: React.FC = () => {
   const [outreach, setOutreach] = useState<OutreachData | null>(null);
   const [genId, setGenId] = useState(0);
   const [showPlaybook, setShowPlaybook] = useState(false);
-  const [logEntries, setLogEntries] = useState<OutreachLogEntry[]>([]);
   const [logging, setLogging] = useState(false);
   const [loggedThisGen, setLoggedThisGen] = useState(false);
 
-  useEffect(() => {
-    api.get('/linkedin/outreach/log')
-      .then(({ data }) => setLogEntries(data.entries || []))
-      .catch(() => {});
-  }, []);
-
   async function handleLogConnected() {
-    if (logging || loggedThisGen) return;
+    if (logging || loggedThisGen || !outreach) return;
     setLogging(true);
     try {
-      const { data } = await api.post('/linkedin/outreach/log', {
+      await api.post('/linkedin/outreach/log', {
         personName: targetFirstName,
         company: targetCompany,
         topic: targetTopicOrPost,
+        specificQuestion,
+        firstMessage: outreach.firstMessage,
       });
-      setLogEntries(prev => [data.entry, ...prev]);
       setLoggedThisGen(true);
       toast.success(`Logged — ${targetFirstName} at ${targetCompany}`);
     } catch {
@@ -241,7 +227,7 @@ export const OutreachTemplates: React.FC = () => {
             <ol style={{ paddingLeft: 20, margin: 0 }}>
               <li><strong>Find the right people</strong> — target professionals with 400–500 connections who post regularly. Avoid mega-accounts.</li>
               <li><strong>Comment before you connect</strong> — a genuine, specific comment makes you familiar before your request arrives.</li>
-              <li><strong>Send a connection note</strong> — reference something real, keep it under 300 characters.</li>
+              <li><strong>Send a connection note</strong> — reference something real, keep it under 200 characters.</li>
               <li><strong>First message after connecting</strong> — research their company, ask one specific question.</li>
               <li><strong>Have the conversation</strong> — prepare 3 specific questions, listen more than you talk, do not ask for a job.</li>
               <li><strong>Stay on their radar</strong> — thoughtful comments 1–2x/month, share relevant articles.</li>
@@ -340,7 +326,7 @@ export const OutreachTemplates: React.FC = () => {
             label={TEMPLATE_LABELS.connectionNote}
             content={outreach.connectionNote}
             tip={COACHING_TIPS.connectionNote}
-            charLimit={300}
+            charLimit={200}
           />
           <TemplateCard
             key={`${genId}-firstMessage`}
@@ -356,7 +342,7 @@ export const OutreachTemplates: React.FC = () => {
             borderRadius: 12, padding: '12px 16px', marginBottom: 14,
           }}>
             <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5, color: warm.colors.textSecondary }}>
-              Sent the first message? Log it — one tap, and it lands in your outreach tracker.
+              Sent the first message? Log it — one tap, and it lands in the Tracker tab above.
             </p>
             <button
               onClick={handleLogConnected}
@@ -391,42 +377,6 @@ export const OutreachTemplates: React.FC = () => {
             editableNote="Only use this after at least one meaningful exchange. Do not skip to this — but do not skip it either. Make the ask."
           />
         </>
-      )}
-
-      {/* Outreach log */}
-      {logEntries.length > 0 && (
-        <div style={{ marginTop: 24 }}>
-          <p style={{
-            fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em',
-            color: warm.colors.textSecondary, marginBottom: 10,
-          }}>
-            Your outreach log · {logEntries.length} logged
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {logEntries.slice(0, 10).map(entry => (
-              <div key={entry.id} style={{
-                display: 'flex', alignItems: 'baseline', gap: 10,
-                background: warm.colors.bgSurface, border: `1px solid ${warm.colors.borderWhisper}`,
-                borderRadius: 10, padding: '8px 14px',
-              }}>
-                <span style={{ fontSize: 11, color: warm.colors.textMuted, flexShrink: 0, minWidth: 58 }}>
-                  {new Date(entry.createdAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
-                </span>
-                <span style={{ fontSize: 12.5, fontWeight: 700, color: warm.colors.textPrimary, flexShrink: 0 }}>
-                  {entry.personName}
-                </span>
-                <span style={{ fontSize: 12, color: warm.colors.textSecondary, flexShrink: 0 }}>
-                  {entry.company}
-                </span>
-                {entry.topic && (
-                  <span style={{ fontSize: 11.5, color: warm.colors.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {entry.topic}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
       )}
     </div>
   );

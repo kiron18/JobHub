@@ -330,8 +330,9 @@ router.post('/headshot/save', authenticate, async (req: AuthRequest, res) => {
 
 router.post('/outreach/log', authenticate, async (req: AuthRequest, res) => {
   const userId = req.user!.id;
-  const { personName, company, topic } = req.body as {
+  const { personName, company, topic, specificQuestion, firstMessage } = req.body as {
     personName?: string; company?: string; topic?: string;
+    specificQuestion?: string; firstMessage?: string;
   };
 
   if (!personName?.trim() || !company?.trim()) {
@@ -345,6 +346,8 @@ router.post('/outreach/log', authenticate, async (req: AuthRequest, res) => {
         personName: personName.trim(),
         company: company.trim(),
         topic: (topic ?? '').trim(),
+        specificQuestion: (specificQuestion ?? '').trim(),
+        firstMessage: (firstMessage ?? '').trim(),
       },
     });
     return res.json({ ok: true, entry });
@@ -366,6 +369,33 @@ router.get('/outreach/log', authenticate, async (req: AuthRequest, res) => {
   } catch (err) {
     console.error('[outreach/log] list error:', err);
     return res.status(500).json({ error: 'Failed to load outreach log' });
+  }
+});
+
+// Lets the sender correct the first message on record after the fact —
+// what they typed in the generator isn't always exactly what they pasted.
+router.patch('/outreach/log/:id', authenticate, async (req: AuthRequest, res) => {
+  const userId = req.user!.id;
+  const id = req.params.id as string;
+  const { firstMessage } = req.body as { firstMessage?: string };
+
+  if (typeof firstMessage !== 'string') {
+    return res.status(400).json({ error: 'firstMessage is required' });
+  }
+
+  try {
+    const existing = await prisma.outreachLog.findFirst({ where: { id, userId } });
+    if (!existing) {
+      return res.status(404).json({ error: 'Entry not found' });
+    }
+    const entry = await prisma.outreachLog.update({
+      where: { id },
+      data: { firstMessage: firstMessage.trim() },
+    });
+    return res.json({ ok: true, entry });
+  } catch (err) {
+    console.error('[outreach/log] update error:', err);
+    return res.status(500).json({ error: 'Failed to update outreach log entry' });
   }
 });
 

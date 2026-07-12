@@ -21,6 +21,16 @@ export interface OutreachData {
   questionSuggestions: string[];
 }
 
+export interface OutreachLogEntry {
+  id: string;
+  personName: string;
+  company: string;
+  topic: string;
+  specificQuestion: string;
+  firstMessage: string;
+  createdAt: string;
+}
+
 export interface BannerConfig {
   mainMessage: string;
   subLine: string;
