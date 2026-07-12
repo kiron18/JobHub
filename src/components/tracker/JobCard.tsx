@@ -316,7 +316,29 @@ const EmailFinderTutorial: React.FC<{ onClose: () => void }> = ({ onClose }) => 
     );
 };
 
+type UrgencyCounts = { red: number; amber: number; green: number };
+
+const TrafficLightCounter: React.FC<{ counts: UrgencyCounts }> = ({ counts }) => {
+    const items = [
+        { key: 'red', value: counts.red, color: warm.colors.danger },
+        { key: 'amber', value: counts.amber, color: warm.colors.accentGold },
+        { key: 'green', value: counts.green, color: warm.colors.success },
+    ].filter(i => i.value > 0);
+    if (items.length === 0) return null;
+    return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            {items.map(i => (
+                <span key={i.key} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 800, color: i.color, fontVariantNumeric: 'tabular-nums' }}>
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: i.color, display: 'inline-block' }} />
+                    {i.value}
+                </span>
+            ))}
+        </div>
+    );
+};
+
 export const FollowUpNudge: React.FC<{ jobs: JobApplication[] }> = ({ jobs }) => {
+    const [isOpen, setIsOpen] = useState(false);
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [showTutorial, setShowTutorial] = useState(false);
     const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
@@ -333,6 +355,14 @@ export const FollowUpNudge: React.FC<{ jobs: JobApplication[] }> = ({ jobs }) =>
     });
 
     if (dueJobs.length === 0) return null;
+
+    const urgencyCounts = dueJobs.reduce<UrgencyCounts>((acc, job) => {
+        const days = daysSinceApplied(job.dateApplied) ?? 0;
+        if (days >= 18) acc.red++;
+        else if (days >= 11) acc.amber++;
+        else acc.green++;
+        return acc;
+    }, { red: 0, amber: 0, green: 0 });
 
     const handleCopy = (_job: JobApplication, template: string, e: React.MouseEvent) => {
         e.stopPropagation();
@@ -352,123 +382,152 @@ export const FollowUpNudge: React.FC<{ jobs: JobApplication[] }> = ({ jobs }) =>
                 border: '1px solid rgba(197,160,89,0.30)',
                 borderRadius: 16, overflow: 'hidden',
             }}>
-                <div style={{
-                    display: 'flex', alignItems: 'flex-start', gap: 12,
-                    padding: '16px 20px', borderBottom: '1px solid rgba(197,160,89,0.20)',
-                }}>
-                    <Bell size={16} style={{ color: warm.colors.accentGold, marginTop: 2, flexShrink: 0 }} />
-                    <div style={{ flex: 1 }}>
-                        <p style={{ margin: 0, fontSize: 12, fontWeight: 800, color: warm.colors.accentGold, textTransform: 'uppercase', letterSpacing: '0.06em', lineHeight: 1.3 }}>
-                            Follow-up Reminder
-                        </p>
-                        <p style={{ margin: '2px 0 0', fontSize: 11, color: warm.colors.accentGold, opacity: 0.7, fontWeight: 500 }}>
-                            These applications are 7+ days old. Time to reach out — click to view your template.
-                        </p>
-                    </div>
-                    <button
-                        onClick={() => setShowTutorial(true)}
-                        title="How to find the right email address"
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: 3,
-                            fontSize: 10, color: 'rgba(197,160,89,0.6)', background: 'transparent',
-                            border: 'none', cursor: 'pointer', flexShrink: 0, marginTop: 2,
-                        }}
-                    >
-                        <HelpCircle size={13} />
-                        <span>Find email</span>
-                    </button>
-                </div>
+                <button
+                    onClick={() => setIsOpen(o => !o)}
+                    aria-expanded={isOpen}
+                    aria-label="Toggle follow-up reminders"
+                    style={{
+                        width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+                        padding: '14px 20px', background: 'transparent', border: 'none',
+                        cursor: 'pointer', textAlign: 'left', color: 'inherit', fontFamily: 'inherit',
+                    }}
+                >
+                    <Bell size={16} style={{ color: warm.colors.accentGold, flexShrink: 0 }} />
+                    <span style={{ flex: 1, fontSize: 12, fontWeight: 800, color: warm.colors.accentGold, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        Follow-up Reminder
+                    </span>
+                    <TrafficLightCounter counts={urgencyCounts} />
+                    {isOpen ? (
+                        <ChevronUp size={16} style={{ color: 'rgba(197,160,89,0.6)', flexShrink: 0 }} />
+                    ) : (
+                        <ChevronDown size={16} style={{ color: 'rgba(197,160,89,0.6)', flexShrink: 0 }} />
+                    )}
+                </button>
 
-                <div style={{ borderTop: 'none' }}>
-                    {dueJobs.map(job => {
-                        const days = daysSinceApplied(job.dateApplied) as number;
-                        const isOpen = expandedId === job.id;
-                        const rendered = renderTemplate('application-followup', job, profile);
-
-                        return (
-                            <div key={job.id} style={{
-                                borderTop: '1px solid rgba(197,160,89,0.10)',
+                <AnimatePresence initial={false}>
+                    {isOpen && (
+                        <motion.div
+                            key="followup-body"
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2, ease: 'easeInOut' }}
+                            style={{ overflow: 'hidden', borderTop: '1px solid rgba(197,160,89,0.20)' }}
+                        >
+                            <div style={{
+                                display: 'flex', alignItems: 'flex-start', gap: 12,
+                                padding: '12px 20px',
                             }}>
+                                <p style={{ margin: 0, fontSize: 11, color: warm.colors.accentGold, opacity: 0.7, fontWeight: 500, flex: 1 }}>
+                                    These applications are 7+ days old. Time to reach out, click to view your template.
+                                </p>
                                 <button
-                                    onClick={() => toggleExpand(job.id)}
-                                    aria-expanded={isOpen}
-                                    aria-label={`Toggle follow-up template for ${job.title} at ${job.company}`}
-                                    onMouseEnter={() => setHoveredRowId(job.id)}
-                                    onMouseLeave={() => setHoveredRowId(null)}
+                                    onClick={() => setShowTutorial(true)}
+                                    title="How to find the right email address"
                                     style={{
-                                        width: '100%', padding: '12px 20px',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                        gap: 16, textAlign: 'left', background: hoveredRowId === job.id ? 'rgba(197,160,89,0.10)' : 'transparent',
-                                        border: 'none', cursor: 'pointer', color: 'inherit', fontFamily: 'inherit',
-                                        transition: 'background 0.15s',
+                                        display: 'flex', alignItems: 'center', gap: 3,
+                                        fontSize: 10, color: 'rgba(197,160,89,0.6)', background: 'transparent',
+                                        border: 'none', cursor: 'pointer', flexShrink: 0, marginTop: 2,
                                     }}
                                 >
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-                                        <div style={{ minWidth: 0 }}>
-                                            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: warm.colors.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                {job.title} at {job.company}
-                                            </p>
-                                        </div>
-                                        <span style={{
-                                            fontSize: 10, fontWeight: 800, color: 'rgba(197,160,89,0.8)',
-                                            background: 'rgba(197,160,89,0.10)', border: '1px solid rgba(197,160,89,0.20)',
-                                            padding: '1px 6px', borderRadius: 4, flexShrink: 0,
-                                        }}>
-                                            {days}d ago
-                                        </span>
-                                    </div>
-
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                                        <button
-                                            onClick={(e) => handleCopy(job, rendered.full, e)}
-                                            aria-label={`Copy follow-up email for ${job.title}`}
-                                            style={{
-                                                display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px',
-                                                borderRadius: 8, fontSize: 10, fontWeight: 800, textTransform: 'uppercase',
-                                                letterSpacing: '0.04em', color: warm.colors.accentGold,
-                                                border: '1px solid rgba(197,160,89,0.30)',
-                                                background: 'transparent', cursor: 'pointer',
-                                            }}
-                                        >
-                                            <Copy size={10} />
-                                            Copy
-                                        </button>
-                                        {isOpen ? (
-                                            <ChevronUp size={14} style={{ color: 'rgba(197,160,89,0.6)' }} />
-                                        ) : (
-                                            <ChevronDown size={14} style={{ color: 'rgba(197,160,89,0.6)' }} />
-                                        )}
-                                    </div>
+                                    <HelpCircle size={13} />
+                                    <span>Find email</span>
                                 </button>
-
-                                <AnimatePresence initial={false}>
-                                    {isOpen && (
-                                        <motion.div
-                                            key="template"
-                                            initial={{ height: 0, opacity: 0 }}
-                                            animate={{ height: 'auto', opacity: 1 }}
-                                            exit={{ height: 0, opacity: 0 }}
-                                            transition={{ duration: 0.2, ease: 'easeInOut' }}
-                                            style={{ overflow: 'hidden' }}
-                                        >
-                                            <div style={{ padding: '0 20px 16px' }}>
-                                                <pre style={{
-                                                    margin: 0, fontSize: 12, color: warm.colors.textSecondary,
-                                                    whiteSpace: 'pre-wrap', fontFamily: "'Geist', -apple-system, 'Segoe UI', system-ui, sans-serif",
-                                                    lineHeight: 1.65,
-                                                    padding: 16, background: warm.colors.bgAlt,
-                                                    borderRadius: 12, border: `1px solid ${warm.colors.borderWhisper}`,
-                                                }}>
-                                                    {rendered.full}
-                                                </pre>
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
                             </div>
-                        );
-                    })}
-                </div>
+
+                            <div style={{ borderTop: 'none' }}>
+                                {dueJobs.map(job => {
+                                    const days = daysSinceApplied(job.dateApplied) as number;
+                                    const isRowOpen = expandedId === job.id;
+                                    const rendered = renderTemplate('application-followup', job, profile);
+
+                                    return (
+                                        <div key={job.id} style={{
+                                            borderTop: '1px solid rgba(197,160,89,0.10)',
+                                        }}>
+                                            <button
+                                                onClick={() => toggleExpand(job.id)}
+                                                aria-expanded={isRowOpen}
+                                                aria-label={`Toggle follow-up template for ${job.title} at ${job.company}`}
+                                                onMouseEnter={() => setHoveredRowId(job.id)}
+                                                onMouseLeave={() => setHoveredRowId(null)}
+                                                style={{
+                                                    width: '100%', padding: '12px 20px',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                                    gap: 16, textAlign: 'left', background: hoveredRowId === job.id ? 'rgba(197,160,89,0.10)' : 'transparent',
+                                                    border: 'none', cursor: 'pointer', color: 'inherit', fontFamily: 'inherit',
+                                                    transition: 'background 0.15s',
+                                                }}
+                                            >
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                                                    <div style={{ minWidth: 0 }}>
+                                                        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: warm.colors.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                            {job.title} at {job.company}
+                                                        </p>
+                                                    </div>
+                                                    <span style={{
+                                                        fontSize: 10, fontWeight: 800, color: 'rgba(197,160,89,0.8)',
+                                                        background: 'rgba(197,160,89,0.10)', border: '1px solid rgba(197,160,89,0.20)',
+                                                        padding: '1px 6px', borderRadius: 4, flexShrink: 0,
+                                                    }}>
+                                                        {days}d ago
+                                                    </span>
+                                                </div>
+
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                                                    <button
+                                                        onClick={(e) => handleCopy(job, rendered.full, e)}
+                                                        aria-label={`Copy follow-up email for ${job.title}`}
+                                                        style={{
+                                                            display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px',
+                                                            borderRadius: 8, fontSize: 10, fontWeight: 800, textTransform: 'uppercase',
+                                                            letterSpacing: '0.04em', color: warm.colors.accentGold,
+                                                            border: '1px solid rgba(197,160,89,0.30)',
+                                                            background: 'transparent', cursor: 'pointer',
+                                                        }}
+                                                    >
+                                                        <Copy size={10} />
+                                                        Copy
+                                                    </button>
+                                                    {isRowOpen ? (
+                                                        <ChevronUp size={14} style={{ color: 'rgba(197,160,89,0.6)' }} />
+                                                    ) : (
+                                                        <ChevronDown size={14} style={{ color: 'rgba(197,160,89,0.6)' }} />
+                                                    )}
+                                                </div>
+                                            </button>
+
+                                            <AnimatePresence initial={false}>
+                                                {isRowOpen && (
+                                                    <motion.div
+                                                        key="template"
+                                                        initial={{ height: 0, opacity: 0 }}
+                                                        animate={{ height: 'auto', opacity: 1 }}
+                                                        exit={{ height: 0, opacity: 0 }}
+                                                        transition={{ duration: 0.2, ease: 'easeInOut' }}
+                                                        style={{ overflow: 'hidden' }}
+                                                    >
+                                                        <div style={{ padding: '0 20px 16px' }}>
+                                                            <pre style={{
+                                                                margin: 0, fontSize: 12, color: warm.colors.textSecondary,
+                                                                whiteSpace: 'pre-wrap', fontFamily: "'Geist', -apple-system, 'Segoe UI', system-ui, sans-serif",
+                                                                lineHeight: 1.65,
+                                                                padding: 16, background: warm.colors.bgAlt,
+                                                                borderRadius: 12, border: `1px solid ${warm.colors.borderWhisper}`,
+                                                            }}>
+                                                                {rendered.full}
+                                                            </pre>
+                                                        </div>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         </>
     );
@@ -477,6 +536,7 @@ export const FollowUpNudge: React.FC<{ jobs: JobApplication[] }> = ({ jobs }) =>
 // ─── ThankYouNudge ──────────────────────────────────────────────────────────
 
 export const ThankYouNudge: React.FC<{ jobs: JobApplication[] }> = ({ jobs }) => {
+    const [isOpen, setIsOpen] = useState(false);
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
 
@@ -490,6 +550,14 @@ export const ThankYouNudge: React.FC<{ jobs: JobApplication[] }> = ({ jobs }) =>
 
     if (interviewJobs.length === 0) return null;
 
+    const urgencyCounts = interviewJobs.reduce<UrgencyCounts>((acc, job) => {
+        const days = daysSinceApplied(job.dateApplied) ?? 0;
+        if (days >= 14) acc.red++;
+        else if (days >= 7) acc.amber++;
+        else acc.green++;
+        return acc;
+    }, { red: 0, amber: 0, green: 0 });
+
     const toggleExpand = (id: string) => {
         setExpandedId(prev => (prev === id ? null : id));
     };
@@ -500,119 +568,143 @@ export const ThankYouNudge: React.FC<{ jobs: JobApplication[] }> = ({ jobs }) =>
             border: '1px solid rgba(197,160,89,0.30)',
             borderRadius: 16, overflow: 'hidden',
         }}>
-            <div style={{
-                display: 'flex', alignItems: 'flex-start', gap: 12,
-                padding: '16px 20px', borderBottom: '1px solid rgba(197,160,89,0.20)',
-            }}>
-                <Bell size={16} style={{ color: warm.colors.accentGold, marginTop: 2, flexShrink: 0 }} />
-                <div style={{ flex: 1 }}>
-                    <p style={{ margin: 0, fontSize: 12, fontWeight: 800, color: warm.colors.accentGold, textTransform: 'uppercase', letterSpacing: '0.06em', lineHeight: 1.3 }}>
-                        Thank-You Due
-                    </p>
-                    <p style={{ margin: '2px 0 0', fontSize: 11, color: warm.colors.accentGold, opacity: 0.7, fontWeight: 500 }}>
-                        Interview scheduled or just had one? Australian recruiters expect a thank-you note within 24 hours. Click any job to copy your template.
-                    </p>
-                </div>
-            </div>
+            <button
+                onClick={() => setIsOpen(o => !o)}
+                aria-expanded={isOpen}
+                aria-label="Toggle thank-you reminders"
+                style={{
+                    width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '14px 20px', background: 'transparent', border: 'none',
+                    cursor: 'pointer', textAlign: 'left', color: 'inherit', fontFamily: 'inherit',
+                }}
+            >
+                <Bell size={16} style={{ color: warm.colors.accentGold, flexShrink: 0 }} />
+                <span style={{ flex: 1, fontSize: 12, fontWeight: 800, color: warm.colors.accentGold, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    Thank-You Due
+                </span>
+                <TrafficLightCounter counts={urgencyCounts} />
+                {isOpen ? (
+                    <ChevronUp size={16} style={{ color: 'rgba(197,160,89,0.6)', flexShrink: 0 }} />
+                ) : (
+                    <ChevronDown size={16} style={{ color: 'rgba(197,160,89,0.6)', flexShrink: 0 }} />
+                )}
+            </button>
 
-            <div style={{ borderTop: 'none' }}>
-                {interviewJobs.map(job => {
-                    const isOpen = expandedId === job.id;
-                    const rendered = renderTemplate('interview-thankyou', job, profile);
+            <AnimatePresence initial={false}>
+                {isOpen && (
+                    <motion.div
+                        key="thankyou-body"
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2, ease: 'easeInOut' }}
+                        style={{ overflow: 'hidden', borderTop: '1px solid rgba(197,160,89,0.20)' }}
+                    >
+                        <p style={{ margin: 0, fontSize: 11, color: warm.colors.accentGold, opacity: 0.7, fontWeight: 500, padding: '12px 20px' }}>
+                            Interview scheduled or just had one? Australian recruiters expect a thank-you note within 24 hours. Click any job to copy your template.
+                        </p>
 
-                    return (
-                        <div key={job.id} style={{
-                            borderTop: '1px solid rgba(197,160,89,0.10)',
-                        }}>
-                            <button
-                                onClick={() => toggleExpand(job.id)}
-                                aria-expanded={isOpen}
-                                aria-label={`Toggle thank-you template for ${job.title} at ${job.company}`}
-                                onMouseEnter={() => setHoveredRowId(job.id)}
-                                onMouseLeave={() => setHoveredRowId(null)}
-                                style={{
-                                    width: '100%', padding: '12px 20px',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                    gap: 16, textAlign: 'left', background: hoveredRowId === job.id ? 'rgba(197,160,89,0.10)' : 'transparent',
-                                    border: 'none', cursor: 'pointer', color: 'inherit', fontFamily: 'inherit',
-                                    transition: 'background 0.15s',
-                                }}
-                            >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-                                    <div style={{ minWidth: 0 }}>
-                                        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: warm.colors.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                            {job.title} at {job.company}
-                                        </p>
+                        <div style={{ borderTop: 'none' }}>
+                            {interviewJobs.map(job => {
+                                const isRowOpen = expandedId === job.id;
+                                const rendered = renderTemplate('interview-thankyou', job, profile);
+
+                                return (
+                                    <div key={job.id} style={{
+                                        borderTop: '1px solid rgba(197,160,89,0.10)',
+                                    }}>
+                                        <button
+                                            onClick={() => toggleExpand(job.id)}
+                                            aria-expanded={isRowOpen}
+                                            aria-label={`Toggle thank-you template for ${job.title} at ${job.company}`}
+                                            onMouseEnter={() => setHoveredRowId(job.id)}
+                                            onMouseLeave={() => setHoveredRowId(null)}
+                                            style={{
+                                                width: '100%', padding: '12px 20px',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                                gap: 16, textAlign: 'left', background: hoveredRowId === job.id ? 'rgba(197,160,89,0.10)' : 'transparent',
+                                                border: 'none', cursor: 'pointer', color: 'inherit', fontFamily: 'inherit',
+                                                transition: 'background 0.15s',
+                                            }}
+                                        >
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                                                <div style={{ minWidth: 0 }}>
+                                                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: warm.colors.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                        {job.title} at {job.company}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        navigator.clipboard.writeText(rendered.full);
+                                                        toast.success('Copied to clipboard');
+                                                    }}
+                                                    aria-label={`Copy thank-you email for ${job.title}`}
+                                                    style={{
+                                                        display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px',
+                                                        borderRadius: 8, fontSize: 10, fontWeight: 800, textTransform: 'uppercase',
+                                                        letterSpacing: '0.04em', color: warm.colors.accentGold,
+                                                        border: '1px solid rgba(197,160,89,0.30)',
+                                                        background: 'transparent', cursor: 'pointer',
+                                                    }}
+                                                >
+                                                    <Copy size={10} />
+                                                    Copy
+                                                </button>
+                                                {isRowOpen ? (
+                                                    <ChevronUp size={14} style={{ color: 'rgba(197,160,89,0.6)' }} />
+                                                ) : (
+                                                    <ChevronDown size={14} style={{ color: 'rgba(197,160,89,0.6)' }} />
+                                                )}
+                                            </div>
+                                        </button>
+
+                                        <AnimatePresence initial={false}>
+                                            {isRowOpen && (
+                                                <motion.div
+                                                    key="template"
+                                                    initial={{ height: 0, opacity: 0 }}
+                                                    animate={{ height: 'auto', opacity: 1 }}
+                                                    exit={{ height: 0, opacity: 0 }}
+                                                    transition={{ duration: 0.2, ease: 'easeInOut' }}
+                                                    style={{ overflow: 'hidden' }}
+                                                >
+                                                    <div style={{ padding: '0 20px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                                        {/* Cultural context note */}
+                                                        <p style={{
+                                                            margin: 0, fontSize: 12, fontStyle: 'italic',
+                                                            color: warm.colors.textMuted, lineHeight: 1.5,
+                                                        }}>
+                                                            <strong>Why this matters:</strong> In Australia, sending a thank-you email within 24 hours of an interview is the standard. Recruiters notice when it's missing, it's one of the lowest-effort moves with the highest signal. Most people from outside Australia don't know it's expected.
+                                                        </p>
+
+                                                        <pre style={{
+                                                            margin: 0, fontSize: 12, color: warm.colors.textSecondary,
+                                                            whiteSpace: 'pre-wrap', fontFamily: "'Geist', -apple-system, 'Segoe UI', system-ui, sans-serif",
+                                                            lineHeight: 1.65,
+                                                            padding: 16, background: warm.colors.bgAlt,
+                                                            borderRadius: 12, border: `1px solid ${warm.colors.borderWhisper}`,
+                                                        }}>
+                                                            {rendered.full}
+                                                        </pre>
+
+                                                        <p style={{ margin: 0, fontSize: 9, color: 'rgba(197,160,89,0.5)', fontStyle: 'italic' }}>
+                                                            Replace all [bracketed placeholders] before sending.
+                                                        </p>
+                                                    </div>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
                                     </div>
-                                </div>
-
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            navigator.clipboard.writeText(rendered.full);
-                                            toast.success('Copied to clipboard');
-                                        }}
-                                        aria-label={`Copy thank-you email for ${job.title}`}
-                                        style={{
-                                            display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px',
-                                            borderRadius: 8, fontSize: 10, fontWeight: 800, textTransform: 'uppercase',
-                                            letterSpacing: '0.04em', color: warm.colors.accentGold,
-                                            border: '1px solid rgba(197,160,89,0.30)',
-                                            background: 'transparent', cursor: 'pointer',
-                                        }}
-                                    >
-                                        <Copy size={10} />
-                                        Copy
-                                    </button>
-                                    {isOpen ? (
-                                        <ChevronUp size={14} style={{ color: 'rgba(197,160,89,0.6)' }} />
-                                    ) : (
-                                        <ChevronDown size={14} style={{ color: 'rgba(197,160,89,0.6)' }} />
-                                    )}
-                                </div>
-                            </button>
-
-                            <AnimatePresence initial={false}>
-                                {isOpen && (
-                                    <motion.div
-                                        key="template"
-                                        initial={{ height: 0, opacity: 0 }}
-                                        animate={{ height: 'auto', opacity: 1 }}
-                                        exit={{ height: 0, opacity: 0 }}
-                                        transition={{ duration: 0.2, ease: 'easeInOut' }}
-                                        style={{ overflow: 'hidden' }}
-                                    >
-                                        <div style={{ padding: '0 20px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                            {/* Cultural context note */}
-                                            <p style={{
-                                                margin: 0, fontSize: 12, fontStyle: 'italic',
-                                                color: warm.colors.textMuted, lineHeight: 1.5,
-                                            }}>
-                                                <strong>Why this matters:</strong> In Australia, sending a thank-you email within 24 hours of an interview is the standard. Recruiters notice when it's missing — it's one of the lowest-effort moves with the highest signal. Most people from outside Australia don't know it's expected.
-                                            </p>
-
-                                            <pre style={{
-                                                margin: 0, fontSize: 12, color: warm.colors.textSecondary,
-                                                whiteSpace: 'pre-wrap', fontFamily: "'Geist', -apple-system, 'Segoe UI', system-ui, sans-serif",
-                                                lineHeight: 1.65,
-                                                padding: 16, background: warm.colors.bgAlt,
-                                                borderRadius: 12, border: `1px solid ${warm.colors.borderWhisper}`,
-                                            }}>
-                                                {rendered.full}
-                                            </pre>
-
-                                            <p style={{ margin: 0, fontSize: 9, color: 'rgba(197,160,89,0.5)', fontStyle: 'italic' }}>
-                                                Replace all [bracketed placeholders] before sending.
-                                            </p>
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
+                                );
+                            })}
                         </div>
-                    );
-                })}
-            </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

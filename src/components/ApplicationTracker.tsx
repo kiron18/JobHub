@@ -228,8 +228,8 @@ export const ApplicationTracker: React.FC = () => {
                 Every job you've started or applied to lives here. Track status, set follow-up reminders, and surface interview notes in one place.
             </SectionIntroBanner>
             <header style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <h2 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.5rem)', fontWeight: 800, letterSpacing: '-0.02em', color: warm.colors.textPrimary, margin: 0 }}>Application Tracker</h2>
-                <p style={{ margin: 0, fontSize: 16, color: warm.colors.textSecondary, fontWeight: 500 }}>Track your pipeline from saved to signed.</p>
+                <h1 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.5rem)', fontWeight: 800, letterSpacing: '-0.02em', color: warm.colors.textPrimary, margin: 0 }}>Application Tracker</h1>
+                <p style={{ margin: 0, fontSize: 16, color: warm.colors.textSecondary, fontWeight: 500 }}>What we measure, we improve. Stay ahead of the game by knowing what volume you're putting out, when to follow up, and how to keep connections strong.</p>
             </header>
 
             <GoalCard />
@@ -238,32 +238,43 @@ export const ApplicationTracker: React.FC = () => {
             {!isLoading && <ThankYouNudge jobs={jobs} />}
             {!isLoading && <ActivityHeatmap />}
 
-            {/* Stats row */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }} className="lg:grid-cols-5">
+            {/* Stats bar — compact horizontal strip, fits screen width */}
+            <div style={{
+                display: 'flex', alignItems: 'stretch',
+                background: warm.colors.bgSurface,
+                border: `1px solid ${warm.colors.borderWhisper}`,
+                borderRadius: 14, overflow: 'hidden',
+            }}>
                 {[
                     { label: 'Total', value: counts.ALL, color: warm.colors.textPrimary },
                     { label: 'Applied', value: counts.APPLIED, color: warm.colors.accentPetrol },
-                    { label: 'Interviews', value: counts.INTERVIEW, color: warm.colors.accentGold, rate: counts.APPLIED > 0 ? `${Math.round((counts.INTERVIEW / Math.max(counts.APPLIED + counts.INTERVIEW, 1)) * 100)}% rate` : null },
-                    { label: 'Offers', value: counts.OFFER, color: counts.OFFER > 0 ? warm.colors.success : warm.colors.textMuted, icon: Trophy, rate: counts.INTERVIEW > 0 && counts.OFFER > 0 ? `${Math.round((counts.OFFER / counts.INTERVIEW) * 100)}% close rate` : null },
-                    { label: 'Follow-up Due', value: followUpDue, color: followUpDue > 0 ? warm.colors.accentGold : warm.colors.textMuted, icon: Clock, highlight: followUpDue > 0, borderColor: followUpDue > 0 ? 'rgba(197,160,89,0.30)' : undefined },
+                    { label: 'Interviews', value: counts.INTERVIEW, color: warm.colors.accentGold, rate: counts.APPLIED > 0 ? `${Math.round((counts.INTERVIEW / Math.max(counts.APPLIED + counts.INTERVIEW, 1)) * 100)}%` : null },
+                    { label: 'Offers', value: counts.OFFER, color: counts.OFFER > 0 ? warm.colors.success : warm.colors.textMuted, icon: Trophy, rate: counts.INTERVIEW > 0 && counts.OFFER > 0 ? `${Math.round((counts.OFFER / counts.INTERVIEW) * 100)}%` : null },
+                    { label: 'Follow-up Due', value: followUpDue, color: followUpDue > 0 ? warm.colors.accentGold : warm.colors.textMuted, icon: Clock, highlight: followUpDue > 0 },
                 ].map((stat, i) => (
                     <div key={i} style={{
-                        background: warm.colors.bgSurface,
-                        border: `1px solid ${stat.highlight ? 'rgba(197,160,89,0.30)' : warm.colors.borderWhisper}`,
-                        borderRadius: 18, padding: 20,
-                        display: 'flex', flexDirection: 'column', gap: 8,
-                    }}>
+                        flex: 1, minWidth: 0, padding: '8px 6px',
+                        borderLeft: i > 0 ? `1px solid ${warm.colors.borderWhisper}` : 'none',
+                        background: stat.highlight ? 'rgba(197,160,89,0.06)' : 'transparent',
+                        display: 'flex', flexDirection: 'column', gap: 2,
+                    }}
+                    className="sm:px-3.5 sm:py-2.5"
+                    >
                         <p style={{
-                            margin: 0, fontSize: 10, fontWeight: 800, textTransform: 'uppercase',
-                            letterSpacing: '0.06em',
+                            margin: 0, fontSize: 8, fontWeight: 800, textTransform: 'uppercase',
+                            letterSpacing: '0.02em', lineHeight: 1.3,
                             color: i === 1 ? warm.colors.accentPetrol : i === 2 ? warm.colors.accentGold : i === 3 ? warm.colors.success : stat.highlight ? warm.colors.accentGold : warm.colors.textMuted,
-                            display: 'flex', alignItems: 'center', gap: 4,
-                        }}>
-                            {stat.icon && <stat.icon size={10} />}
-                            {stat.label}
+                            display: 'flex', alignItems: 'center', gap: 3,
+                        }}
+                        className="sm:text-[10px] sm:tracking-[0.06em]"
+                        >
+                            {stat.icon && <stat.icon size={9} className="hidden sm:inline-block flex-shrink-0" />}
+                            <span style={{ minWidth: 0 }}>{stat.label}</span>
                         </p>
-                        <p style={{ margin: 0, fontSize: 'clamp(1.8rem, 3vw, 2.5rem)', fontWeight: 800, color: stat.color as string, fontVariantNumeric: 'tabular-nums' }}>{stat.value}</p>
-                        {stat.rate && <p style={{ margin: 0, fontSize: 9, color: warm.colors.textMuted, fontWeight: 700 }}>{stat.rate}</p>}
+                        <p style={{ margin: 0, display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                            <span style={{ fontSize: 'clamp(1.1rem, 2vw, 1.5rem)', fontWeight: 800, color: stat.color as string, fontVariantNumeric: 'tabular-nums' }}>{stat.value}</span>
+                            {stat.rate && <span style={{ fontSize: 10, color: warm.colors.textMuted, fontWeight: 700 }}>{stat.rate}</span>}
+                        </p>
                     </div>
                 ))}
             </div>
