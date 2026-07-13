@@ -810,6 +810,18 @@ export function AdminDashboard() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <a
+              href="/admin/coach"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                background: `${S.petrol}14`, border: `1px solid ${S.petrol}30`,
+                borderRadius: 10, padding: '8px 16px', fontSize: 12, fontWeight: 700,
+                color: S.petrol, textDecoration: 'none',
+              }}>
+              <Users size={12} />
+              Coach view
+              <ExternalLink size={10} />
+            </a>
+            <a
               href="/admin/funnel"
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,

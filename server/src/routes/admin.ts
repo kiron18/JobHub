@@ -28,7 +28,7 @@ const ANALYTICS_START_DATE = new Date('2026-04-27T00:00:00Z');
  * Cross-referencing with Supabase ensures deleted accounts are never counted —
  * even if their candidateProfile row was not cleaned up in Postgres.
  */
-async function getRealUserIds(): Promise<string[]> {
+export async function getRealUserIds(): Promise<string[]> {
   const { data, error } = await supabase.auth.admin.listUsers({ perPage: 1000 });
   if (error || !data?.users) {
     // Fall back to profile-level exclusion if Supabase admin call fails

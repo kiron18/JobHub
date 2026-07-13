@@ -4,6 +4,8 @@ vi.mock('../index', () => ({
   prisma: {
     jobApplication: { findMany: vi.fn() },
     candidateProfile: { findUnique: vi.fn() },
+    // promoteAndGetSettings checks for a due pending goal change on every read
+    goalChange: { findFirst: vi.fn().mockResolvedValue(null) },
   }
 }));
 

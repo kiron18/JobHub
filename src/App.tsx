@@ -44,6 +44,12 @@ const AdminQuality = React.lazy(() =>
 const MindsetPage = React.lazy(() =>
   import('./pages/MindsetPage').then(m => ({ default: m.MindsetPage }))
 );
+const LeaderboardPage = React.lazy(() =>
+  import('./pages/LeaderboardPage').then(m => ({ default: m.LeaderboardPage }))
+);
+const CoachDashboard = React.lazy(() =>
+  import('./pages/CoachDashboard').then(m => ({ default: m.CoachDashboard }))
+);
 const DiagnosticPage = React.lazy(() =>
   import('./components/DiagnosticPage').then(m => ({ default: m.DiagnosticPage }))
 );
@@ -361,6 +367,7 @@ function ReportOrDashboard() {
               <Routes>
                 <Route path="/" element={<StrategyHub />} />
                 <Route path="/tracker" element={<ApplicationTracker />} />
+                <Route path="/leaderboard" element={<LeaderboardPage />} />
                 <Route path="/apply" element={<StepperWorkspace />} />
                 <Route path="/workspace" element={<Workspace />} />
                 <Route path="/documents" element={<DocumentLibrary />} />
@@ -371,6 +378,7 @@ function ReportOrDashboard() {
                 <Route path="/jobs" element={<Navigate to="/" replace />} />
                 <Route path="/mindset" element={<MindsetPage />} />
                 <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/coach" element={<CoachDashboard />} />
                 <Route path="/admin/funnel" element={<AdminFunnel />} />
                 <Route path="/admin/quality" element={<AdminQuality />} />
                 <Route path="/admin/users" element={<AdminUserUsage />} />

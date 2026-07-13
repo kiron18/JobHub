@@ -61,6 +61,9 @@ router.post('/jobs', authenticate, async (req, res) => {
                 company: company.trim(),
                 description: description || `${title} at ${company}`,
                 status: status || 'SAVED',
+                // Jobs created already at INTERVIEW/OFFER still get milestone stamps.
+                ...(status === 'INTERVIEW' || status === 'OFFER' ? { interviewReachedAt: new Date() } : {}),
+                ...(status === 'OFFER' ? { offerReachedAt: new Date() } : {}),
                 dateApplied: dateApplied ? new Date(dateApplied) : null,
                 notes: notes || null,
                 closingDate: closingDate ? new Date(closingDate) : null,
@@ -120,8 +123,14 @@ router.patch('/jobs/:id', authenticate, async (req, res) => {
         // Fetch current status before update so we can detect a genuine transition.
         const existing = await prisma.jobApplication.findFirst({
             where: { id, candidateProfile: { userId } },
-            select: { status: true, title: true, company: true },
+            select: { status: true, title: true, company: true, interviewReachedAt: true, offerReachedAt: true },
         });
+
+        // Milestone timestamps power the leaderboard: stamp the first time a job
+        // reaches INTERVIEW/OFFER, never overwrite on later status flips.
+        const reachedInterview =
+            (status === 'INTERVIEW' || status === 'OFFER') && existing && !existing.interviewReachedAt;
+        const reachedOffer = status === 'OFFER' && existing && !existing.offerReachedAt;
 
         const job = await prisma.jobApplication.update({
             where: {
@@ -130,6 +139,8 @@ router.patch('/jobs/:id', authenticate, async (req, res) => {
             },
             data: {
                 ...(status && { status }),
+                ...(reachedInterview && { interviewReachedAt: new Date() }),
+                ...(reachedOffer && { offerReachedAt: new Date() }),
                 ...(dateApplied !== undefined && { dateApplied: dateApplied ? new Date(dateApplied) : null }),
                 ...(notes !== undefined && { notes }),
                 ...(priority !== undefined && { priority: priority || null }),

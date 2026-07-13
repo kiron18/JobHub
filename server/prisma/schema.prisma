@@ -68,6 +68,8 @@ model CandidateProfile {
   coverLetterFilename2         String?
   dailyApplicationGoal         Int       @default(5)
   applicationGoalType          String    @default("daily")
+  dailyOutreachGoal            Int       @default(4)
+  outreachGoalType             String    @default("daily")
   documentsUpdatedAt           DateTime?
   positioningStatement         Json?
   analysisCache                Json?
@@ -203,6 +205,8 @@ model JobApplication {
   overallGrade        String?
   followUpSentAt      DateTime?
   followUpDismissedAt DateTime?
+  interviewReachedAt  DateTime?
+  offerReachedAt      DateTime?
   companyIntel        Json?
   documents           Document[]
   candidateProfile    CandidateProfile  @relation(fields: [candidateProfileId], references: [id])
@@ -696,3 +700,40 @@ model SourceResult {
   @@index([source])
 }
 
+
+model GoalChange {
+  id               String    @id @default(uuid())
+  userId           String
+  appGoal          Int
+  appGoalType      String
+  outreachGoal     Int
+  outreachGoalType String
+  effectiveAt      DateTime
+  appliedAt        DateTime?
+  byCoach          Boolean   @default(false)
+  note             String?
+  createdAt        DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, effectiveAt])
+}
+
+model PauseWeek {
+  id        String   @id @default(uuid())
+  userId    String
+  weekStart DateTime
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@unique([userId, weekStart])
+}
+
+model NudgeLog {
+  id        String   @id @default(uuid())
+  userId    String
+  kind      String
+  periodKey String
+  sentAt    DateTime @default(now())
+
+  @@unique([userId, kind, periodKey])
+}

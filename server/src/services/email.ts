@@ -316,3 +316,137 @@ export async function sendRoadmapEmail(
     ].join(''),
   });
 }
+
+// ─── Accountability nudges (AGC program) ────────────────────────────────────
+
+export async function sendPaceNudgeEmail(params: {
+  to: string;
+  name: string;
+  applications: number;
+  applicationsPace: number;
+  outreach: number;
+  outreachPace: number;
+  weeklyAppTarget: number;
+  weeklyOutreachTarget: number;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[email] RESEND_API_KEY not set — skipping pace nudge');
+    return;
+  }
+  const { to, name, applications, applicationsPace, outreach, outreachPace, weeklyAppTarget, weeklyOutreachTarget } = params;
+  const displayName = name || 'there';
+  const lines: string[] = [`Hi ${displayName},`, '', 'Quick pace check for this week:', ''];
+  if (applications < applicationsPace) {
+    lines.push(`- Applications: ${applications} sent, pace says ${applicationsPace} by tonight (target ${weeklyAppTarget} this week)`);
+  }
+  if (outreach < outreachPace) {
+    lines.push(`- Outreach: ${outreach} logged, pace says ${outreachPace} by tonight (target ${weeklyOutreachTarget} this week)`);
+  }
+  lines.push(
+    '',
+    'There is still time today. Even two applications or a couple of outreach messages keeps the week alive.',
+    '',
+    `${APP_URL}/tracker`,
+    '',
+    'Keep going,',
+    'Kiron — Aussie Grad Careers',
+  );
+  await resend.emails.send({
+    from: FROM_ADDRESS,
+    to,
+    subject: "You're behind pace this week — still fixable today",
+    text: lines.join('\n'),
+  });
+}
+
+export async function sendWeeklyWrapEmail(params: {
+  to: string;
+  name: string;
+  hit: boolean;
+  applications: number;
+  outreach: number;
+  appsTarget: number;
+  outreachTarget: number;
+  streak: number;
+  consecutiveMisses: number;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[email] RESEND_API_KEY not set — skipping weekly wrap');
+    return;
+  }
+  const { to, name, hit, applications, outreach, appsTarget, outreachTarget, streak, consecutiveMisses } = params;
+  const displayName = name || 'there';
+
+  const lines: string[] = [`Hi ${displayName},`, ''];
+  if (hit) {
+    lines.push(
+      `Last week: ${applications} applications and ${outreach} outreach. Both minimums hit — that's how it's done.`,
+      streak > 1 ? `Your streak is now ${streak} weeks. Protect it.` : 'That starts a streak. Protect it.',
+    );
+  } else {
+    lines.push(
+      `Last week: ${applications} of ${appsTarget} applications, ${outreach} of ${outreachTarget} outreach. That's a missed week.`,
+      '',
+      consecutiveMisses >= 2
+        ? `That's ${consecutiveMisses} weeks in a row under the minimum. This is coming up on our next call — come ready to talk about what's blocking you.`
+        : 'One missed week is a signal, not a verdict. This week decides which way it goes.',
+    );
+  }
+  lines.push(
+    '',
+    'This week the counter is back to zero for everyone. Leaderboard:',
+    `${APP_URL}/leaderboard`,
+    '',
+    'Kiron — Aussie Grad Careers',
+  );
+  await resend.emails.send({
+    from: FROM_ADDRESS,
+    to,
+    subject: hit
+      ? `Week hit: ${applications} applications, ${outreach} outreach ✔`
+      : 'Last week came up short — reset starts now',
+    text: lines.join('\n'),
+  });
+}
+
+export async function sendCoachDigestEmail(params: {
+  to: string;
+  weekLabel: string;
+  missed: Array<{ name: string; email: string; applications: number; outreach: number; consecutiveMisses: number }>;
+  hit: Array<{ name: string; applications: number; outreach: number; streak: number }>;
+  backdated: Array<{ name: string; count: number }>;
+  goalChanges: Array<{ name: string; summary: string }>;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[email] RESEND_API_KEY not set — skipping coach digest');
+    return;
+  }
+  const { to, weekLabel, missed, hit, backdated, goalChanges } = params;
+  const lines: string[] = [`Accountability digest — week of ${weekLabel}`, ''];
+
+  lines.push(`MISSED THE MINIMUM (${missed.length})`);
+  if (missed.length === 0) lines.push('  Nobody. Great week.');
+  for (const m of missed) {
+    lines.push(`  ${m.name} <${m.email}> — ${m.applications} apps, ${m.outreach} outreach${m.consecutiveMisses >= 2 ? ` — ${m.consecutiveMisses} weeks in a row, TALK TO THEM` : ''}`);
+  }
+  lines.push('', `HIT THE MINIMUM (${hit.length})`);
+  for (const h of hit) {
+    lines.push(`  ${h.name} — ${h.applications} apps, ${h.outreach} outreach${h.streak > 1 ? ` (streak ${h.streak}w)` : ''}`);
+  }
+  if (backdated.length > 0) {
+    lines.push('', 'BACKDATED ENTRIES (last 14 days)');
+    for (const b of backdated) lines.push(`  ${b.name} — ${b.count} entr${b.count === 1 ? 'y' : 'ies'}`);
+  }
+  if (goalChanges.length > 0) {
+    lines.push('', 'GOAL CHANGES (last 7 days)');
+    for (const g of goalChanges) lines.push(`  ${g.name} — ${g.summary}`);
+  }
+  lines.push('', `Coach view: ${APP_URL}/admin/coach`);
+
+  await resend.emails.send({
+    from: FROM_ADDRESS,
+    to,
+    subject: `AGC accountability digest — ${missed.length} missed, ${hit.length} hit`,
+    text: lines.join('\n'),
+  });
+}

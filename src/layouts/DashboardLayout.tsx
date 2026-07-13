@@ -13,6 +13,7 @@ import {
     Menu,
     X,
     EyeOff,
+    Trophy,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
@@ -123,6 +124,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
     }> = [
         { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/tracker', icon: Briefcase, label: 'Applications' },
+        { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
         { to: '/documents', icon: Library, label: 'Documents' },
         { to: '/workspace', icon: FileText, label: 'Profile' },
         { to: '/linkedin', icon: Linkedin, label: 'LinkedIn' },
