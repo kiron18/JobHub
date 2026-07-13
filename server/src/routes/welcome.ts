@@ -14,6 +14,7 @@ import { callLLM } from '../services/llm';
 import { prisma } from '../index';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { autoExtractAchievements } from '../services/autoExtract';
+import { reconcileProfileEmail } from '../services/onboarding';
 
 const router = Router();
 
@@ -132,6 +133,10 @@ router.post('/finish', authenticate, async (req: AuthRequest, res: Response) => 
       location: loc,
       hasCompletedOnboarding: true,
     };
+
+    // email is unique on CandidateProfile — a previous free-scan row under an
+    // old userId can already hold it, which would make the upsert throw.
+    await reconcileProfileEmail(userId, email);
 
     await prisma.candidateProfile.upsert({
       where: { userId },

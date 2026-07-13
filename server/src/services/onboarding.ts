@@ -23,6 +23,29 @@ const APP_URL = (process.env.ALLOWED_ORIGIN ?? 'https://aussiegradcareers.com.au
   .split(',')[0]
   .trim();
 
+/**
+ * CandidateProfile.email is unique. When `userId`'s login is about to take
+ * ownership of `email` but a different row (a previous scan or an old login's
+ * zombie profile) already holds it, reattach or release that row first so the
+ * caller's upsert cannot trip the unique constraint.
+ */
+export async function reconcileProfileEmail(userId: string, email: string | null): Promise<void> {
+  if (!email) return;
+  const byEmail = await prisma.candidateProfile.findUnique({ where: { email } });
+  if (!byEmail || byEmail.userId === userId) return;
+  const byUser = await prisma.candidateProfile.findUnique({ where: { userId } });
+  if (byUser) {
+    // Two rows for the same person: keep this login's row, free the email
+    // from the old one so it can move over.
+    await prisma.candidateProfile.update({ where: { id: byEmail.id }, data: { email: null } });
+    console.log(`[onboarding] Released email ${email} from old profile row ${byEmail.id} (kept row for userId=${userId})`);
+  } else {
+    // No row for this login yet: claim the old row outright, history and all.
+    await prisma.candidateProfile.update({ where: { id: byEmail.id }, data: { userId } });
+    console.log(`[onboarding] Claimed old profile row ${byEmail.id} (email ${email}) for userId=${userId}`);
+  }
+}
+
 export interface OnboardResult {
   userId: string;
   /** true when we created a brand-new Supabase auth user this call */
@@ -83,6 +106,7 @@ export async function onboardPaidCustomer(params: {
   // 2. Ensure a CandidateProfile exists AND grant 3 months of full access.
   //    Paying is the entitlement — the moment they pay we open the whole site
   //    for 90 days, regardless of whether they've finished onboarding yet.
+  await reconcileProfileEmail(authUserId, email);
   const accessExpiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
   const grant = {
     plan: 'three_month',
