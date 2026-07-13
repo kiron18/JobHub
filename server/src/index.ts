@@ -36,6 +36,7 @@ import enrichmentRouter from './routes/enrichment';
 import insightsRouter from './routes/insights';
 import sponsorsRouter, { loadFilterCache as loadSponsorFilterCache } from './routes/sponsors';
 import { cvScanRouter } from './routes/cv-scan';
+import { welcomeRouter } from './routes/welcome';
 import bookingsRouter from './routes/bookings';
 import { startJobFeedCron } from './cron/jobFeedCron';
 import { startSponsorJobScanCron } from './cron/sponsorJobScanCron';
@@ -90,8 +91,8 @@ const corsOptions = {
       if (/^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(origin)) return cb(null, true);
       // Allow production custom domains (.com and .com.au)
       if (/^https?:\/\/(www\.)?aussiegradcareers\.com(\.au)?$/.test(origin)) return cb(null, true);
-      // Allow localhost in any form
-      if (/^https?:\/\/localhost(:\d+)?$/.test(origin)) return cb(null, true);
+      // Allow localhost / loopback in any form (localhost and 127.0.0.1)
+      if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return cb(null, true);
       // Reject with null (not an Error) so Express does NOT call the 500 error handler.
       // The cors package will simply omit the Access-Control-Allow-Origin header,
       // causing the browser to block the request with a CORS error — not a 500.
@@ -171,6 +172,7 @@ app.use('/api/enrichment', enrichmentRouter);
 app.use('/api/insights', insightsRouter);
 app.use('/api/sponsors', sponsorsRouter);
 app.use('/api/cv-scan', cvScanRouter);
+app.use('/api/welcome', welcomeRouter);
 app.use('/api/bookings', bookingsRouter);
 app.use('/api', emailOpenRouter);
 app.use('/api', emailClickRouter);

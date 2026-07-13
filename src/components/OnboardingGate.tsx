@@ -3,7 +3,19 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { hasPendingOnboarding } from '../lib/pendingOnboarding';
-import { OnboardingIntake } from './OnboardingIntake';
+import { OnboardingIntake, type IntakeVariant } from './OnboardingIntake';
+
+// Paid-client onboarding uses different (non-diagnostic) messaging. The flag is
+// set by the set-password page the coaching email link lands on, and mirrored
+// into the ?flow=client query param. Either source flips the variant.
+function resolveIntakeVariant(): IntakeVariant {
+  try {
+    const fromUrl = new URLSearchParams(window.location.search).get('flow');
+    if (fromUrl === 'client') return 'client';
+    if (localStorage.getItem('jobhub_onboarding_variant') === 'client') return 'client';
+  } catch { /* non-browser / storage blocked */ }
+  return 'diagnostic';
+}
 
 interface OnboardingGateProps {
   children: React.ReactNode;
@@ -189,7 +201,7 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
     // Pass the pre-checked report status so OnboardingIntake doesn't need to re-check.
     // If there's already a processing/failed report, start at step 5 immediately.
     const initialStep = (reportStatus === 'processing' || reportStatus === 'failed') ? 5 : undefined;
-    return <OnboardingIntake resumeMode={resumeMode} initialStep={initialStep} />;
+    return <OnboardingIntake resumeMode={resumeMode} initialStep={initialStep} variant={resolveIntakeVariant()} />;
   }
 
   return <>{children}</>;

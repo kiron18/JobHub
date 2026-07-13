@@ -3,6 +3,7 @@ import StripeLib from 'stripe';
 import { prisma } from '../index';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { sendAdminPaymentAlert } from '../services/email';
+import { onboardPaidCustomer } from '../services/onboarding';
 
 export const EXEMPT_EMAILS = [
   'kamiproject2021@gmail.com',
@@ -77,8 +78,22 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
           }
         }
 
+        if (!userId && customerEmail) {
+          // Cold buyer: paid through a hand-made payment link before ever
+          // creating an account. Auto-onboard — create their login + profile
+          // and email them a set-password link — then fall through to the
+          // normal grant logic below so plan/access are set identically.
+          try {
+            const onboard = await onboardPaidCustomer({ email: customerEmail, stripeCustomerId: customerId });
+            userId = onboard.userId;
+            console.log(`[stripe/webhook] Auto-onboarded cold buyer ${customerEmail} → userId=${userId} (newLogin=${onboard.createdAuthUser}, emailSent=${onboard.emailSent})`);
+          } catch (err: any) {
+            console.error(`[stripe/webhook] Auto-onboarding failed for ${customerEmail}:`, err.message ?? err);
+          }
+        }
+
         if (!userId) {
-          // Money collected but no account to attach it to. Never silently
+          // Auto-onboarding was impossible (no email) or failed. Never silently
           // skip — alert so it can be reconciled before the customer is capped.
           console.warn(`[stripe/webhook] checkout.session.completed with no userId and no email match (email=${customerEmail ?? 'none'}) — alerting admin`);
           sendAdminPaymentAlert({

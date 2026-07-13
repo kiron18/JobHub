@@ -265,10 +265,12 @@ function BackButton({ onBack, disabled }: { onBack: () => void; disabled?: boole
 
 // ── Step: Auth (step 0, before questions) ──────────────────────────────────────
 
-function StepAuth({ onAuthSuccess, onBack }: {
+function StepAuth({ onAuthSuccess, onBack, variant = 'diagnostic' }: {
   onAuthSuccess: () => void;
   onBack: () => void;
+  variant?: IntakeVariant;
 }) {
+  const isClient = variant === 'client';
   const { user } = useAuth();
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
@@ -355,12 +357,16 @@ function StepAuth({ onAuthSuccess, onBack }: {
   return (
     <div>
       <h2 style={{ fontSize: 24, fontWeight: 600, color: warmT.text, marginBottom: 8, letterSpacing: '-0.02em' }}>
-        {isSignup ? 'Get your personalized job readiness diagnostic' : 'Welcome back'}
+        {isSignup
+          ? (isClient ? "Welcome aboard — let's set you up" : 'Get your personalized job readiness diagnostic')
+          : 'Welcome back'}
       </h2>
       <p style={{ color: warmT.textMuted, fontSize: 13, lineHeight: 1.6, marginBottom: 24 }}>
         {isSignup
-          ? 'Enter your email to receive your full results, and access them anytime.'
-          : 'Sign in to continue your diagnosis.'}
+          ? (isClient
+              ? 'Create your login to start your program. This is the first step to getting yourself set up.'
+              : 'Enter your email to receive your full results, and access them anytime.')
+          : 'Sign in to continue.'}
       </p>
 
       {awaitingConfirmation ? (
@@ -421,21 +427,24 @@ function StepAuth({ onAuthSuccess, onBack }: {
 
 // ── Step: Role ────────────────────────────────────────────────────────────────
 
-function StepRole({ answers, onChange, onNext, onBack }: {
+function StepRole({ answers, onChange, onNext, onBack, variant = 'diagnostic' }: {
   answers: IntakeAnswers;
   onChange: (k: keyof IntakeAnswers, v: string) => void;
   onNext: () => void; onBack: () => void;
+  variant?: IntakeVariant;
 }) {
+  const isClient = variant === 'client';
   const valid = answers.targetRole.trim() && answers.targetCity.trim() && answers.seniority && answers.industry && answers.visaStatus;
   return (
     <div>
       <ProfileProgress step={1} answers={answers} />
       <h2 style={{ fontSize: 24, fontWeight: 600, color: warmT.text, marginBottom: 6, letterSpacing: '-0.02em' }}>
-        Complete your profile
+        {isClient ? "Let's build your profile" : 'Complete your profile'}
       </h2>
       <p style={{ color: warmT.textFaint, fontSize: 13, marginBottom: 24 }}>
-        This should not normally appear. If you are seeing this, your CV scan data was cached before the fix.
-        Refresh with Ctrl+Shift+R or clear site data.
+        {isClient
+          ? 'A few quick details so your coach and the platform are tailored to the roles you actually want.'
+          : 'A few quick details so your diagnosis is tailored to your target, not generic advice.'}
       </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -511,7 +520,7 @@ function StepResponses({ answers, onChange, onNext, onBack }: {
 
 // ── Step: Files ───────────────────────────────────────────────────────────────
 
-function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, onBack, marketingConsent, onMarketingConsentChange, answers, submitting }: {
+function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, onBack, marketingConsent, onMarketingConsentChange, answers, submitting, variant = 'diagnostic' }: {
   resume: File | null; setResume: (f: File | null) => void;
   cl1: File | null; setCl1: (f: File | null) => void;
   cl2: File | null; setCl2: (f: File | null) => void;
@@ -519,7 +528,9 @@ function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, onBa
   marketingConsent: boolean; onMarketingConsentChange: (v: boolean) => void;
   answers: IntakeAnswers;
   submitting: boolean;
+  variant?: IntakeVariant;
 }) {
+  const isClient = variant === 'client';
   return (
     <div>
       <ProfileProgress step={3} answers={answers} />
@@ -527,13 +538,17 @@ function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, onBa
         Now upload your documents.
       </h2>
       <p style={{ color: warmT.textMuted, fontSize: 13, lineHeight: 1.6, marginBottom: 6 }}>
-        We're reading them to find the specific moves that will sharpen your applications.
+        {isClient
+          ? "So your coach and the platform are working from your real materials from day one."
+          : "We're reading them to find the specific moves that will sharpen your applications."}
       </p>
       <p style={{ color: warmT.textFaint, fontSize: 12, marginBottom: 16 }}>PDF or Word accepted.</p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <FileDropZone label="Your resume (required)" required file={resume} onFile={setResume}
-          subtext="We extract how you position yourself, structure, tone, and targeting all feed into the diagnosis." />
+          subtext={isClient
+            ? "We extract how you position yourself so we can tailor your plan, structure, tone, and targeting."
+            : "We extract how you position yourself, structure, tone, and targeting all feed into the diagnosis."} />
         <FileDropZone label="A recent cover letter" file={cl1} onFile={setCl1}
           subtext="Shows how you personalise applications. If you don't have one, that itself tells us something." />
         <FileDropZone label="A second cover letter (optional)" file={cl2} onFile={setCl2}
@@ -544,13 +559,17 @@ function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, onBa
         <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
           <input type="checkbox" checked={marketingConsent} onChange={e => onMarketingConsentChange(e.target.checked)}
             style={{ width: 16, height: 16, accentColor: warmT.btnBg, cursor: 'pointer' }} />
-          <span style={{ fontSize: 13, color: warmT.textMuted }}>Email my diagnostic report + job search tips to my account email</span>
+          <span style={{ fontSize: 13, color: warmT.textMuted }}>
+            {isClient
+              ? 'Email my results + job search tips to my account email'
+              : 'Email my diagnostic report + job search tips to my account email'}
+          </span>
         </label>
       </div>
 
       <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
         <BackButton onBack={onBack} />
-        <PrimaryButton onClick={onSubmit} disabled={!resume} loading={submitting} label="Build my diagnosis →" />
+        <PrimaryButton onClick={onSubmit} disabled={!resume} loading={submitting} label={isClient ? 'Start my program →' : 'Build my diagnosis →'} />
       </div>
     </div>
   );
@@ -560,7 +579,9 @@ function StepFiles({ resume, setResume, cl1, setCl1, cl2, setCl2, onSubmit, onBa
 
 const STEP_STORAGE_KEY = 'jobhub_onboarding_step';
 
-export function OnboardingIntake({ resumeMode: _resumeMode = false, initialStep }: { resumeMode?: boolean; initialStep?: number }) {
+export type IntakeVariant = 'diagnostic' | 'client';
+
+export function OnboardingIntake({ resumeMode: _resumeMode = false, initialStep, variant = 'diagnostic' }: { resumeMode?: boolean; initialStep?: number; variant?: IntakeVariant }) {
   const [step, setStep] = useState(() => {
     if (initialStep !== undefined) return initialStep;
     const saved = sessionStorage.getItem(STEP_STORAGE_KEY);
@@ -669,11 +690,12 @@ export function OnboardingIntake({ resumeMode: _resumeMode = false, initialStep 
 
   // Step order: Auth(0) → Role(1) → Responses(2) → Files(3) → ProcessingScreen(4)
   const STEPS = [
-    <StepAuth key="auth" onAuthSuccess={goNext} onBack={goBack} />,
-    <StepRole key="role" answers={answers} onChange={(k, v) => onChange(k, v as string)} onNext={goNext} onBack={goBack} />,
+    <StepAuth key="auth" onAuthSuccess={goNext} onBack={goBack} variant={variant} />,
+    <StepRole key="role" answers={answers} onChange={(k, v) => onChange(k, v as string)} onNext={goNext} onBack={goBack} variant={variant} />,
     <StepResponses key="responses" answers={answers} onChange={(k, v) => onChange(k, v as string)} onNext={goNext} onBack={goBack} />,
     <StepFiles
       key="files"
+      variant={variant}
       answers={answers}
       resume={resume} setResume={setResume}
       cl1={cl1} setCl1={setCl1}

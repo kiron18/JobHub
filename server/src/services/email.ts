@@ -94,6 +94,40 @@ export async function sendWelcomeEmail(to: string): Promise<void> {
   });
 }
 
+export async function sendClientOnboardingEmail(params: {
+  to: string;
+  actionLink: string;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[email] RESEND_API_KEY not set — skipping client onboarding email');
+    return;
+  }
+  const { to, actionLink } = params;
+
+  await resend.emails.send({
+    from: FROM_ADDRESS,
+    to,
+    subject: "You're in — set your password and get started",
+    html: [
+      `<table cellpadding="0" cellspacing="0" style="width: 100%; max-width: 560px; margin: 0 auto; font-family: Arial, sans-serif;">`,
+      `<tr><td style="padding: 32px 24px; background: #f5f3ef; border-radius: 12px;">`,
+      `<h1 style="font-size: 20px; font-weight: 600; color: #1a1814; margin: 0 0 12px;">Welcome to Aussie Grad Careers</h1>`,
+      `<p style="font-size: 14px; color: #6b6559; margin: 0 0 16px; line-height: 1.6;">Your payment is confirmed and your account is ready. Your login is this email address (<strong>${to}</strong>) — use the same email that's on your resume so everything stays in sync.</p>`,
+      `<p style="font-size: 14px; color: #6b6559; margin: 0 0 20px; line-height: 1.6;">First, set your password:</p>`,
+      `<p style="margin: 0 0 24px;"><a href="${actionLink}" style="display: inline-block; background: #2d5a6e; color: #faf7f2; text-decoration: none; font-size: 14px; font-weight: 700; padding: 12px 24px; border-radius: 8px;">Set your password</a></p>`,
+      `<p style="font-size: 13px; color: #6b6559; margin: 0 0 8px; line-height: 1.6;"><strong>How to get started once you're in:</strong></p>`,
+      `<ol style="font-size: 13px; color: #6b6559; margin: 0 0 20px; padding-left: 18px; line-height: 1.7;">`,
+      `<li>Upload your resume so we can tailor everything to you.</li>`,
+      `<li>Tell us your target roles — every application gets positioned for them automatically.</li>`,
+      `<li>Work your daily application goal from the dashboard — every application is a rep.</li>`,
+      `</ol>`,
+      `<p style="font-size: 12px; color: #9b9488; margin: 0 0 0; border-top: 1px solid #dddad2; padding-top: 16px; line-height: 1.6;">The set-password link expires for security — if it's lapsed, just use "forgot password" on the sign-in page. Any trouble, reply to this email.<br/><br/>The Aussie Grad Careers team &middot; <a href="${APP_URL}" style="color: #2d5a6e;">aussiegradcareers.com.au</a></p>`,
+      `</td></tr>`,
+      `</table>`,
+    ].join(''),
+  });
+}
+
 export async function sendStatusEmail(params: {
   to: string;
   status: 'APPLIED' | 'REJECTED';

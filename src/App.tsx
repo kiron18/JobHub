@@ -86,6 +86,8 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { supabase } from './lib/supabase';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthPage } from './pages/AuthPage';
+import { SetPasswordPage } from './pages/SetPasswordPage';
+import { WelcomePage } from './pages/WelcomePage';
 import { AuthCallback } from './components/AuthCallback';
 // PAYMENTS PAUSED: pricing page hidden during pricing rework
 // import { PricingPage } from './pages/PricingPage';
@@ -409,6 +411,8 @@ function App() {
             <Routes>
               {/* Public Routes */}
               <Route path="/auth" element={<AuthPage />} />
+              <Route path="/set-password" element={<SetPasswordPage />} />
+              <Route path="/welcome" element={<WelcomePage />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
               {/* PAYMENTS PAUSED: pricing route hidden during pricing rework
               <Route path="/pricing" element={<PricingPage />} />
