@@ -75,10 +75,10 @@ export const WelcomePage: React.FC = () => {
   // ── Step: brief (the grained solid) ──────────────────────────────────────────
   if (step === 'brief') {
     return (
-      <div style={{ minHeight: '100vh', background: colors.bgDeep, backgroundImage: GRAIN, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 24px' }}>
+      <div style={{ height: '100dvh', overflowY: 'auto', background: colors.bgDeep, backgroundImage: GRAIN, display: 'flex', padding: '48px 24px', boxSizing: 'border-box' }}>
         <motion.div
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: EASE }}
-          style={{ width: '100%', maxWidth: 640, textAlign: 'left' }}
+          style={{ width: '100%', maxWidth: 640, textAlign: 'left', margin: 'auto' }}
         >
           <span style={{ fontFamily: T.body, fontSize: 12, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: colors.accentGold }}>
             {firstName ? `${firstName}, here is where we start` : 'Here is where we start'}
@@ -203,9 +203,9 @@ const labelStyle: React.CSSProperties = { display: 'block', fontFamily: T.body, 
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ minHeight: '100vh', background: colors.bgCanvas, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 24px' }}>
+    <div style={{ height: '100dvh', overflowY: 'auto', background: colors.bgCanvas, display: 'flex', padding: '48px 24px', boxSizing: 'border-box' }}>
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}
-        style={{ width: '100%', maxWidth: 520 }}>
+        style={{ width: '100%', maxWidth: 520, margin: 'auto' }}>
         {children}
       </motion.div>
     </div>

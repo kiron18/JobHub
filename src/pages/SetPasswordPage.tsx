@@ -111,14 +111,14 @@ export const SetPasswordPage: React.FC = () => {
 
   return (
     <div style={{
-      minHeight: '100vh', display: 'flex', alignItems: 'center',
-      justifyContent: 'center', padding: 24, background: warm.colors.bgCanvas,
+      height: '100dvh', overflowY: 'auto', display: 'flex',
+      padding: 24, background: warm.colors.bgCanvas, boxSizing: 'border-box',
     }}>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        style={{ width: '100%', maxWidth: 420 }}
+        style={{ width: '100%', maxWidth: 420, margin: 'auto' }}
       >
         <div style={{ textAlign: 'center', marginBottom: 36 }}>
           <div style={{
