@@ -106,9 +106,9 @@ describe('applyPolish experience matching', () => {
         { id: 'b', bullets: ['Used tool Z for Beta work'] },
       ],
     } as any);
-    expect(out.experience.find((e: any) => e.id === 'a').description).toBe('Used tool Y for Acme work');
-    expect(out.experience.find((e: any) => e.id === 'b').description).toBe('Used tool Z for Beta work');
-    expect(out.experience.find((e: any) => e.id === 'c').description).toBe('Used tool X for Gamma work');
+    expect(out.experience.find((e: any) => e.id === 'a')?.description).toBe('Used tool Y for Acme work');
+    expect(out.experience.find((e: any) => e.id === 'b')?.description).toBe('Used tool Z for Beta work');
+    expect(out.experience.find((e: any) => e.id === 'c')?.description).toBe('Used tool X for Gamma work');
   });
 
   it('leaves a job unpolished rather than misattributing bullets when the LLM drops its id', () => {
@@ -121,7 +121,7 @@ describe('applyPolish experience matching', () => {
         { id: 'b', bullets: ['Used tool Z for Beta work'] },
       ],
     } as any);
-    expect(out.experience.find((e: any) => e.id === 'c').description).toBe('orig C');
+    expect(out.experience.find((e: any) => e.id === 'c')?.description).toBe('orig C');
   });
 
   it('ignores an id in the polish payload that does not match any real job', () => {
@@ -131,8 +131,8 @@ describe('applyPolish experience matching', () => {
         { id: 'a', bullets: ['Used tool Y for Acme work'] },
       ],
     } as any);
-    expect(out.experience.find((e: any) => e.id === 'b').description).toBe('orig B');
-    expect(out.experience.find((e: any) => e.id === 'c').description).toBe('orig C');
-    expect(out.experience.find((e: any) => e.id === 'a').description).toBe('Used tool Y for Acme work');
+    expect(out.experience.find((e: any) => e.id === 'b')?.description).toBe('orig B');
+    expect(out.experience.find((e: any) => e.id === 'c')?.description).toBe('orig C');
+    expect(out.experience.find((e: any) => e.id === 'a')?.description).toBe('Used tool Y for Acme work');
   });
 });
