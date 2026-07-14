@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { prisma } from '../../index';
 import { authenticate } from '../../middleware/auth';
 import { sendStatusEmail } from '../../services/email';
-import { fetchCompanyIntel, buildSkillsPreview } from '../../services/companyIntel';
 
 const router = Router();
 
@@ -42,7 +41,7 @@ router.get('/jobs/sent-count', authenticate, async (req, res) => {
 // POST /api/jobs
 router.post('/jobs', authenticate, async (req, res) => {
     const userId = (req as any).user.id;
-    const { title, company, description, status, dateApplied, notes, closingDate, companyIntel } = req.body;
+    const { title, company, description, status, dateApplied, notes, closingDate } = req.body;
 
     if (!title || !company) {
         return res.status(400).json({ error: 'Title and company are required.' });
@@ -51,7 +50,7 @@ router.post('/jobs', authenticate, async (req, res) => {
     try {
         const profile = await prisma.candidateProfile.findUnique({
             where: { userId },
-            select: { id: true, skills: true },
+            select: { id: true },
         });
         if (!profile) return res.status(404).json({ error: 'Profile not found.' });
 
@@ -69,44 +68,10 @@ router.post('/jobs', authenticate, async (req, res) => {
                 closingDate: closingDate ? new Date(closingDate) : null,
                 userId,
                 candidateProfileId: profile.id,
-                companyIntel: companyIntel ?? undefined,
             },
             include: { documents: true }
         });
         res.status(201).json(job);
-
-        // ── Background: fetch company intel ────────────────────────────────────
-        // Fire-and-forget — never blocks the response. Uses skills from the
-        // profile already loaded above.
-        // Skip the fetch if the apply flow already pre-fetched intel (dedupe).
-        if (!companyIntel && company && company.trim() !== 'Unknown Company') {
-            const skillsPreview = buildSkillsPreview(profile.skills, 7);
-
-            // Use short excerpts from the job description for context
-            const jobExcerpts = (description || '')
-                .split('\n')
-                .filter((l: string) => l.trim().length > 20)
-                .slice(0, 3);
-
-            if (jobExcerpts.length > 0 || skillsPreview.length > 0) {
-                fetchCompanyIntel({
-                    companyName: company.trim(),
-                    jobTitle: title.trim(),
-                    jobExcerpts,
-                    candidateSkills: skillsPreview,
-                })
-                    .then(intel =>
-                        prisma.jobApplication.update({
-                            where: { id: job.id },
-                            data: { companyIntel: intel as any },
-                        })
-                    )
-                    .then(() => console.log(`[companyIntel] saved for job ${job.id}`))
-                    .catch((err: Error) =>
-                        console.warn('[companyIntel] background fetch failed:', err.message)
-                    );
-            }
-        }
     } catch (error) {
         console.error('Create Job Error:', error);
         res.status(500).json({ error: 'Failed to create job application' });

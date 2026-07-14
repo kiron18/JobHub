@@ -34,7 +34,6 @@ import {
     RefreshCw,
     ListChecks,
     Briefcase,
-    Building2,
     ShieldCheck,
 } from 'lucide-react';
 import { DraftCritiquePanel, type CritiqueResult } from '../components/strategy/DraftCritiquePanel';
@@ -47,15 +46,6 @@ import { warm } from '../lib/theme/warmTokens';
 import { GenerationProgress } from '../components/shared/GenerationProgress';
 import { applyWorkspaceCopy } from './applyWorkspaceCopy';
 import { extractReactText } from '../lib/extractReactText';
-
-// Perplexity company intel, pre-fetched on apply-flow entry and fed into the
-// structured cover-letter route. Shape mirrors the server's CompanyIntelResult.
-interface CompanyIntel {
-    summary: string;
-    suggestedContact: { title: string; reason: string };
-    citations?: string[];
-    fetchedAt?: string;
-}
 
 interface ResumeTip {
   bulletKey: string;
@@ -276,13 +266,11 @@ export function StepperWorkspace() {
 
     const [currentIndex, setCurrentIndex] = useState(0);
     const [jdExpanded, setJdExpanded] = useState(false);
-    const [companyIntel, setCompanyIntel] = useState<CompanyIntel | null>(null);
 
     // ── De-frictioned generation orchestration ───────────────────────────────
     // On entry we generate resume + cover letter in parallel. No gap-confirmation
     // step: documents are written strictly from the candidate's real resume + the
     // job, never from invented "bridgeable" capabilities.
-    const [intelSettled, setIntelSettled] = useState(false);
     const [genStatus, setGenStatus] = useState<Record<'resume' | 'cover-letter', 'idle' | 'generating' | 'done' | 'error'>>({
         resume: 'idle',
         'cover-letter': 'idle',
@@ -296,26 +284,9 @@ export function StepperWorkspace() {
         if (jdEmpty) navigate('/', { replace: true });
     }, [jdEmpty, navigate]);
 
-    // Pre-warm Perplexity company intel in the background on entry, so it's woven
-    // into the cover letter. `intelSettled` flips true once intel resolves, errors,
-    // or there's no company to fetch — cover-letter generation waits on it. Fully
-    // non-fatal — the letter still generates without intel.
-    useEffect(() => {
-        const company = state.company?.trim();
-        if (jdEmpty) return;
-        if (!company || company === 'Unknown Company') { setIntelSettled(true); return; }
-        let cancelled = false;
-        api.post('/research/company-intel', { company, title: state.role ?? '', jobDescription })
-            .then(({ data }) => { if (!cancelled) setCompanyIntel(data); })
-            .catch((err) => { console.warn('[company-intel] prewarm failed (non-fatal):', err?.response?.status, err?.message); })
-            .finally(() => { if (!cancelled) setIntelSettled(true); });
-        return () => { cancelled = true; };
-    }, [state.company, state.role, jobDescription, jdEmpty]);
-
     // On entry, generate resume + cover letter in parallel, writing each draft to
     // localStorage as it lands. Never regenerates a step that already has a draft
-    // (Back-never-regenerates / revisit). Resume fires immediately; the cover letter
-    // waits for company intel so it can be woven in.
+    // (Back-never-regenerates / revisit).
     useEffect(() => {
         if (jdEmpty) return;
 
@@ -329,7 +300,6 @@ export function StepperWorkspace() {
             } else {
                 endpoint = '/generate/cover-letter-structured';
                 payload.analysisContext = { tone: 'Professional, polished, direct.', company: state.company ?? '', title: state.role ?? '' };
-                payload.companyIntel = companyIntel ?? null;
             }
             api.post<{ content: string }>(endpoint, payload)
                 .then(({ data }) => {
@@ -341,9 +311,9 @@ export function StepperWorkspace() {
         };
 
         kickOff('resume');
-        if (intelSettled) kickOff('cover-letter');
+        kickOff('cover-letter');
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [intelSettled, jdEmpty, workspaceKey]);
+    }, [jdEmpty, workspaceKey]);
 
     if (jdEmpty) return null;
 
@@ -462,7 +432,6 @@ export function StepperWorkspace() {
                         wantsSC={wantsSC}
                         company={state.company}
                         role={state.role}
-                        companyIntel={companyIntel}
                         workspaceKey={workspaceKey}
                         onBack={() => setCurrentIndex(currentIndex - 1)}
                         feedItemId={state.feedItemId}
@@ -477,7 +446,6 @@ export function StepperWorkspace() {
                         jobDescription={jobDescription}
                         company={state.company}
                         role={state.role}
-                        companyIntel={companyIntel}
                         sourceUrl={state.sourceUrl}
                         feedItemId={state.feedItemId}
                         generationStatus={
@@ -596,7 +564,6 @@ function DocumentStep({
     jobDescription,
     company,
     role,
-    companyIntel,
     feedItemId,
     generationStatus,
     jobHasSC,
@@ -609,7 +576,6 @@ function DocumentStep({
     jobDescription: string;
     company?: string;
     role?: string;
-    companyIntel?: CompanyIntel | null;
     sourceUrl?: string;
     feedItemId?: string;
     generationStatus: 'idle' | 'generating' | 'done' | 'error';
@@ -753,7 +719,6 @@ function DocumentStep({
                     company: company ?? '',
                     title: role ?? '',
                 };
-                payload.companyIntel = companyIntel ?? null;
             } else if (stepId === 'selection-criteria') {
                 endpoint = '/generate/selection-criteria-structured';
             }
@@ -972,59 +937,6 @@ function DocumentStep({
                 <p style={{ margin: 0, fontSize: 12, color: warm.colors.textMuted, lineHeight: 1.6, fontStyle: 'italic' }}>
                     {coverLetterNote}
                 </p>
-            )}
-
-            {/* Company insight — read-only view of the Perplexity intel woven into the letter */}
-            {isCoverLetter && companyIntel && (
-                <div style={{
-                    border: `1px solid ${warm.colors.borderWhisper}`,
-                    borderRadius: 12,
-                    padding: '14px 16px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 10,
-                    background: warm.colors.bgAlt,
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                        <Building2 size={13} style={{ color: warm.colors.accentGold }} />
-                        <span style={{ fontSize: 10, fontWeight: 800, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                            Company Insight
-                        </span>
-                    </div>
-
-                    {companyIntel.summary && (
-                        <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6, color: warm.colors.textPrimary }}>
-                            {companyIntel.summary}
-                        </p>
-                    )}
-
-                    {companyIntel.suggestedContact?.title && (
-                        <div style={{ fontSize: 11.5, lineHeight: 1.5, color: warm.colors.textMuted }}>
-                            <span style={{ fontWeight: 700, color: warm.colors.textPrimary }}>Suggested contact: </span>
-                            {companyIntel.suggestedContact.title}
-                            {companyIntel.suggestedContact.reason ? ` - ${companyIntel.suggestedContact.reason}` : ''}
-                        </div>
-                    )}
-
-                    {companyIntel.citations && companyIntel.citations.length > 0 && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                            <span style={{ fontSize: 9, fontWeight: 700, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                                Sources
-                            </span>
-                            {companyIntel.citations.map((url, i) => (
-                                <a
-                                    key={i}
-                                    href={url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    style={{ fontSize: 11, color: warm.colors.accentGold, textDecoration: 'underline', textUnderlineOffset: 3 }}
-                                >
-                                    {i + 1}
-                                </a>
-                            ))}
-                        </div>
-                    )}
-                </div>
             )}
 
             {/* Selection-criteria paste panel — only on SC step */}
@@ -1283,7 +1195,6 @@ function TrackStep({
     wantsSC,
     company,
     role,
-    companyIntel,
     workspaceKey,
     onBack,
     feedItemId,
@@ -1294,7 +1205,6 @@ function TrackStep({
     wantsSC: boolean;
     company?: string;
     role?: string;
-    companyIntel?: CompanyIntel | null;
     workspaceKey: string;
     onBack: () => void;
     feedItemId?: string;
@@ -1335,7 +1245,6 @@ function TrackStep({
                     description: jobDescription,
                     status: 'APPLIED',
                     dateApplied: new Date().toISOString(),
-                    companyIntel: companyIntel ?? undefined,
                 });
                 if (!cancelled) {
                     localStorage.setItem(flag, '1');

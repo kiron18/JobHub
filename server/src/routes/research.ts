@@ -3,8 +3,6 @@ import { authenticate } from '../middleware/auth';
 import { searchSerper, scrapeUrl, snippetsToText, type SerperResult } from '../services/serper';
 import { callLLMWithRetry } from '../utils/callLLMWithRetry';
 import { parseLLMJson } from '../utils/parseLLMResponse';
-import { prisma } from '../index';
-import { fetchCompanyIntel, buildSkillsPreview } from '../services/companyIntel';
 
 const router = Router();
 
@@ -573,52 +571,6 @@ Return ONLY valid JSON.`;
     } catch (err: any) {
         console.error('[research] salary error:', err.message);
         return res.status(500).json({ error: 'Salary lookup failed' });
-    }
-});
-
-// ── Company intel (Perplexity sonar-pro) ─────────────────────────────────────
-// Pre-warmed by the apply flow: the Stepper calls this in the background on
-// entry so intel is ready by the cover-letter step. Loads candidate skills
-// server-side and wraps the existing fetchCompanyIntel service.
-router.post('/company-intel', authenticate, async (req, res) => {
-    const userId = (req as any).user.id as string;
-    const { company, title, jobDescription } = req.body as {
-        company?: string;
-        title?: string;
-        jobDescription?: string;
-    };
-
-    const companyName = (company || '').trim();
-    if (!companyName || companyName === 'Unknown Company') {
-        return res.status(400).json({ error: 'Company is required' });
-    }
-
-    try {
-        const profile = await prisma.candidateProfile.findUnique({
-            where: { userId },
-            select: { skills: true },
-        });
-        const candidateSkills = buildSkillsPreview(profile?.skills, 7);
-        const jobExcerpts = (jobDescription || '')
-            .split('\n')
-            .filter((l: string) => l.trim().length > 20)
-            .slice(0, 3);
-
-        const intel = await fetchCompanyIntel({
-            companyName,
-            jobTitle: (title || '').trim(),
-            jobExcerpts,
-            candidateSkills,
-        });
-        res.json(intel);
-    } catch (err: any) {
-        console.warn('[research/company-intel] fetch failed:', err?.message);
-        // Return { available: false } when research is disabled or fails;
-        // the frontend tolerates this as "no insight available".
-        if (err?.message === 'COMPANY_RESEARCH_DISABLED') {
-            return res.json({ available: false });
-        }
-        res.status(502).json({ available: false, error: 'Company intel fetch failed' });
     }
 });
 

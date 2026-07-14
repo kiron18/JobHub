@@ -72,11 +72,6 @@ vi.mock('../services/generation', () => ({
   rankAchievements: vi.fn().mockResolvedValue([]),
 }));
 
-// Mock the prompts that depend on companyIntel
-vi.mock('../services/companyIntel', () => ({
-  salutationTitle: vi.fn().mockReturnValue('Hiring Manager'),
-}));
-
 // Mock scrubInjection — just returns the input unchanged
 vi.mock('../services/scrubInjection', () => ({
   scrubInjection: vi.fn().mockReturnValue({ scrubbed: 'the job description text', flaggedPatterns: [] }),
@@ -186,7 +181,6 @@ const VALID_BODY = {
   },
   jobApplicationId: 'temp-id',
   companyResearch: null,
-  companyIntel: null,
   bridgedGaps: [
     { skill: 'Adobe Creative Suite', statement: 'Used Adobe Creative Suite to build marketing collateral and brand assets for a product launch reaching 50,000 users.' },
   ],
