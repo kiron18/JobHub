@@ -290,11 +290,18 @@ const SourceDocumentsIsland: React.FC<{ profile: ProfileData }> = ({ profile }) 
     try {
       const fd = new FormData();
       if (pendingResume) fd.append('resume', pendingResume);
-      await api.post('/profile/source-documents', fd);
-      toast.success('Resume uploaded, extracting your profile. Refresh in ~30 seconds.');
-      // Poll after extraction delay
-      setTimeout(() => qc.invalidateQueries({ queryKey: ['profile'] }), 30_000);
-      qc.invalidateQueries({ queryKey: ['profile'] });
+      const { data } = await api.post('/profile/source-documents', fd, { timeout: 180_000 });
+
+      if (data.status === 'extracted') {
+        toast.success('Profile re-extracted from your new resume.');
+        qc.invalidateQueries({ queryKey: ['profile'] });
+      } else if (data.status === 'raw_saved_extract_failed') {
+        toast.warning('Your resume was saved and will be used for generation, but the profile view failed to refresh. Try re-uploading.');
+        qc.invalidateQueries({ queryKey: ['profile'] });
+      } else {
+        toast.success('Updated.');
+        qc.invalidateQueries({ queryKey: ['profile'] });
+      }
       setPendingResume(null);
     } catch {
       toast.error('Upload failed. Please try again.');

@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Land Your First Aussie Job · Cohort Coaching for Internationals</title>
+<meta name="description" content="Peer-supported cohort coaching for international job-seekers in Australia. In three months or less, go from uncertainty to turning down offers that aren't the right fit." />
+
+<!-- ============================================================
+     ▸ CONFIG — REPLACE THIS ONE LINE WITH YOUR STRIPE LINK
+     Find/replace  STRIPE_LINK_HERE  everywhere in this file,
+     or just edit the constant in the <script> at the bottom.
+     ============================================================ -->
+
+<link rel="icon" href="favicon.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+<style>
+  :root {
+    --bg-canvas: #FAF7F2;
+    --bg-surface: #FFFFFF;
+    --bg-alt: #F4EFE8;
+    --bg-deep: #2A2520;
+
+    --text-primary: #1A1814;
+    --text-secondary: #5C5750;
+    --text-muted: #8B847B;
+    --text-on-deep: #FAF7F2;
+
+    --border-whisper: rgba(26, 24, 20, 0.08);
+    --border-defined: rgba(26, 24, 20, 0.16);
+
+    --petrol: #2D5A6E;
+    --petrol-hover: #1F4253;
+    --petrol-pressed: #15323F;
+    --gold: #C5A059;
+    --gold-soft: #E8D7B0;
+    --success: #2A9D6F;
+
+    --display: 'Fraunces', Georgia, 'Times New Roman', serif;
+    --body: 'Geist', -apple-system, 'Segoe UI', system-ui, sans-serif;
+
+    --ease: cubic-bezier(0.25, 1, 0.5, 1);
+    --max: 1100px;
+    --readable: 720px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg-canvas);
+    color: var(--text-primary);
+    font-family: var(--body);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+    overflow-x: hidden;
+  }
+
+  /* ── Paper grain ─────────────────────────────────── */
+  .grain {
+    position: fixed; inset: 0; z-index: 200;
+    pointer-events: none; mix-blend-mode: multiply;
+    filter: url(#noise-texture);
+  }
+
+  .wrap { max-width: var(--max); margin: 0 auto; padding: 0 24px; }
+  section { position: relative; }
+
+  .display {
+    font-family: var(--display);
+    font-weight: 500;
+    font-variation-settings: 'SOFT' 50, 'WONK' 1;
+    letter-spacing: -0.015em;
+    line-height: 1.1;
+  }
+
+  .eyebrow {
+    font-family: var(--body);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--petrol);
+  }
+
+  /* ── Buttons ─────────────────────────────────────── */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 8px;
+    font-family: var(--body); font-weight: 600; font-size: 1.0625rem;
+    padding: 16px 30px; border-radius: 9999px;
+    border: none; cursor: pointer; text-decoration: none;
+    background: var(--petrol); color: #fff;
+    box-shadow: 0 1px 2px rgba(26,24,20,0.08), 0 8px 24px rgba(45,90,110,0.22);
+    transition: transform 180ms var(--ease), background 180ms var(--ease), box-shadow 180ms var(--ease);
+    white-space: nowrap;
+  }
+  .btn:hover { background: var(--petrol-hover); transform: translateY(-2px); box-shadow: 0 2px 4px rgba(26,24,20,0.1), 0 14px 34px rgba(45,90,110,0.28); }
+  .btn:active { background: var(--petrol-pressed); transform: translateY(0); }
+  .btn.small { font-size: 0.9375rem; padding: 12px 22px; }
+  .btn.ghost {
+    background: transparent; color: var(--petrol);
+    box-shadow: inset 0 0 0 1.5px var(--border-defined);
+  }
+  .btn.ghost:hover { background: rgba(45,90,110,0.06); box-shadow: inset 0 0 0 1.5px var(--petrol); }
+
+  .microcopy { font-family: var(--body); font-size: 0.8125rem; color: var(--text-muted); }
+
+  /* ── Nav ─────────────────────────────────────────── */
+  nav.top {
+    position: sticky; top: 0; z-index: 150;
+    background: rgba(250,247,242,0.82);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border-whisper);
+  }
+  nav.top .row { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+  nav.top img.logo { height: 26px; width: auto; }
+  nav.top .brand { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 600; font-size: 1.05rem; color: var(--text-primary); text-decoration: none; }
+
+  /* ── Hero ────────────────────────────────────────── */
+  .hero { min-height: calc(100vh - 64px); display: flex; flex-direction: column; justify-content: center; padding: 32px 0 28px; text-align: center; }
+  .hero h1 { font-size: clamp(2.4rem, 5.4vw, 3.75rem); line-height: 1.02; max-width: 820px; margin: 16px auto 0; }
+  .hero h1 .accent { color: var(--gold); }
+  .hero .sub { font-size: clamp(1.0625rem, 2vw, 1.25rem); color: var(--text-secondary); max-width: 600px; margin: 20px auto 0; line-height: 1.55; }
+  .hero .cta-row { margin-top: 28px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .hero .proof-strip { margin-top: 40px; }
+
+  /* ── Static testimonial proof strip (portrait phone screenshots) ── */
+  .proof-strip { display: flex; justify-content: center; align-items: flex-start; gap: 18px; flex-wrap: wrap; width: 100%; }
+  .proof-strip .tcard { flex: 0 0 auto; width: 208px; }
+  .hero .pricepill {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--bg-alt); border: 1px solid var(--border-whisper);
+    border-radius: 9999px; padding: 6px 16px;
+    font-family: var(--body); font-size: 0.875rem; font-weight: 600; color: var(--text-primary);
+    margin-top: 4px;
+  }
+  .hero .pricepill b { color: var(--petrol); }
+
+  /* ── Trust strip ─────────────────────────────────── */
+  .trust { padding: 8px 0 48px; }
+  .trust img { display: block; width: 100%; height: auto; max-width: 860px; margin: 0 auto;
+    -webkit-mask-image: radial-gradient(ellipse at center, black 62%, transparent 100%);
+    mask-image: radial-gradient(ellipse at center, black 62%, transparent 100%); }
+
+  /* ── Generic section heading ─────────────────────── */
+  .sec { padding: 104px 0; }
+  .sec.alt { background: var(--bg-alt); }
+  .sec.deep { background: var(--bg-deep); color: var(--text-on-deep); }
+  .sec h2 { font-size: clamp(2rem, 4vw, 3rem); margin: 14px 0 0; }
+  .sec .lead { font-size: 1.125rem; color: var(--text-secondary); max-width: 640px; margin: 18px 0 0; line-height: 1.6; }
+  .sec.deep h2, .sec.deep .lead { color: var(--text-on-deep); }
+  .sec.deep .eyebrow { color: var(--gold); }
+  .center { text-align: center; }
+  .center .lead { margin-left: auto; margin-right: auto; }
+
+  /* ── Problem cards ───────────────────────────────── */
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 52px; }
+  .card {
+    background: var(--bg-surface); border: 1px solid var(--border-whisper);
+    border-radius: 16px; padding: 32px;
+    box-shadow: 0 1px 2px rgba(26,24,20,0.04), 0 4px 16px rgba(26,24,20,0.04);
+  }
+  .card .num { font-family: var(--display); font-size: 2.2rem; font-weight: 500; color: var(--gold); font-variation-settings: 'SOFT' 50, 'WONK' 1; }
+  .card h3 { font-family: var(--display); font-size: 1.3rem; font-weight: 500; margin: 10px 0 0; font-variation-settings: 'SOFT' 50, 'WONK' 1; letter-spacing: -0.01em; }
+  .card p { font-size: 0.9375rem; color: var(--text-secondary); margin-top: 12px; line-height: 1.6; }
+
+  /* ── What you get (offer) ────────────────────────── */
+  .offer { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 56px; align-items: center; margin-top: 52px; }
+  .offer .list { list-style: none; display: flex; flex-direction: column; gap: 20px; }
+  .offer .list li { display: flex; gap: 14px; align-items: flex-start; }
+  .offer .list .tick { flex: 0 0 24px; width: 24px; height: 24px; border-radius: 50%; background: rgba(42,157,111,0.12); color: var(--success); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.8rem; margin-top: 2px; }
+  .offer .list h4 { font-family: var(--body); font-size: 1.0625rem; font-weight: 600; }
+  .offer .list p { font-size: 0.9375rem; color: var(--text-secondary); margin-top: 3px; line-height: 1.55; }
+
+  .pricecard {
+    background: var(--bg-surface); border: 1px solid var(--gold-soft);
+    border-radius: 20px; padding: 40px 36px; text-align: center;
+    box-shadow: 0 1px 3px rgba(26,24,20,0.04), 0 6px 20px rgba(26,24,20,0.06), 0 18px 48px rgba(26,24,20,0.04);
+  }
+  .pricecard .tag { display: inline-block; background: var(--gold-soft); color: #8B6E32; font-family: var(--body); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; padding: 5px 14px; border-radius: 9999px; }
+  .pricecard .amount { font-family: var(--display); font-weight: 500; font-variation-settings: 'SOFT' 50, 'WONK' 1; font-size: 3.4rem; line-height: 1; margin: 22px 0 4px; letter-spacing: -0.02em; }
+  .pricecard .amount span { font-size: 1.1rem; color: var(--text-muted); font-family: var(--body); font-weight: 500; letter-spacing: 0; }
+  .pricecard .terms { font-size: 0.9375rem; color: var(--text-secondary); }
+  .pricecard .divider { height: 1px; background: var(--border-whisper); margin: 26px 0; }
+  .pricecard .fineprint { font-size: 0.8125rem; color: var(--text-muted); margin-top: 16px; line-height: 1.5; }
+
+  /* ── Steps ───────────────────────────────────────── */
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px; margin-top: 56px; }
+  .step .n { font-family: var(--display); font-size: 1rem; font-weight: 600; color: var(--petrol); border: 1.5px solid var(--petrol); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .sec.deep .step .n { color: var(--gold); border-color: var(--gold); }
+  .step h3 { font-family: var(--display); font-size: 1.3rem; font-weight: 500; margin: 18px 0 0; font-variation-settings: 'SOFT' 50, 'WONK' 1; }
+  .step p { font-size: 0.9375rem; color: var(--text-secondary); margin-top: 10px; line-height: 1.6; }
+  .sec.deep .step p { color: rgba(250,247,242,0.72); }
+
+  /* ── Testimonials marquee ────────────────────────── */
+  .marquee-wrap { overflow: hidden; margin-top: 56px;
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%); }
+  .marquee { display: flex; align-items: center; gap: 20px; width: max-content; animation: scroll 80s linear infinite; }
+  .marquee:hover { animation-play-state: paused; }
+  @keyframes scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  .quote { flex: 0 0 440px; background: var(--bg-alt); border-radius: 16px; padding: 32px; display: flex; flex-direction: column; justify-content: space-between; }
+  .quote .mark { font-family: var(--display); font-size: 3rem; font-weight: 500; color: var(--gold); line-height: 0.4; display: block; margin-bottom: 14px; font-variation-settings: 'SOFT' 50, 'WONK' 1; }
+  .quote p { font-family: var(--display); font-size: 1.0625rem; font-style: italic; font-weight: 500; line-height: 1.45; font-variation-settings: 'SOFT' 50, 'WONK' 1; }
+  .quote .who { font-family: var(--body); font-size: 0.8125rem; font-weight: 600; margin-top: 22px; }
+  .tcard { flex: 0 0 360px; border-radius: 16px; overflow: hidden; background: var(--bg-surface); border: 1px solid var(--border-whisper); box-shadow: 0 1px 2px rgba(26,24,20,0.04), 0 8px 26px rgba(26,24,20,0.06); }
+  .tcard img { display: block; width: 100%; height: auto; }
+
+  /* ── The math / objections ───────────────────────── */
+  .mathgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 52px; }
+  .mathcard { background: var(--bg-surface); border: 1px solid var(--border-whisper); border-radius: 16px; padding: 34px; }
+  .mathcard h3 { font-family: var(--display); font-size: 1.35rem; font-weight: 500; font-variation-settings: 'SOFT' 50, 'WONK' 1; }
+  .mathcard p { font-size: 0.9688rem; color: var(--text-secondary); margin-top: 12px; line-height: 1.65; }
+  .mathcard .big { font-family: var(--display); color: var(--petrol); font-weight: 600; }
+
+  /* ── Coach / who ─────────────────────────────────── */
+  .coach { display: grid; grid-template-columns: 200px 1fr; gap: 40px; align-items: center; margin-top: 48px; }
+  .coach img { width: 200px; height: 200px; border-radius: 20px; object-fit: cover; border: 1px solid var(--border-whisper); }
+  .coach p { font-size: 1.0625rem; color: var(--text-secondary); line-height: 1.7; }
+  .coach p + p { margin-top: 14px; }
+  .coach .name { font-family: var(--display); font-size: 1.4rem; color: var(--text-primary); font-weight: 500; font-variation-settings: 'SOFT' 50, 'WONK' 1; }
+
+  /* ── Final CTA ───────────────────────────────────── */
+  .final { text-align: center; }
+  .final h2 { font-size: clamp(2.2rem, 4.5vw, 3.4rem); max-width: 760px; margin: 14px auto 0; }
+  .final .lead { margin: 22px auto 0; }
+  .final .cta-row { margin-top: 34px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .final .guarantee { font-size: 0.875rem; color: rgba(250,247,242,0.6); max-width: 460px; margin: 0 auto; line-height: 1.5; }
+
+  /* ── Footer ──────────────────────────────────────── */
+  footer { background: var(--bg-canvas); border-top: 1px solid var(--border-whisper); padding: 40px 0; }
+  footer .row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  footer .microcopy a { color: var(--petrol); text-decoration: none; }
+
+  /* ── Sticky mobile CTA ───────────────────────────── */
+  .stickybar { display: none; }
+
+  /* ── Reveal animation ────────────────────────────── */
+  .reveal { opacity: 0; transform: translateY(16px); transition: opacity 0.6s var(--ease), transform 0.6s var(--ease); }
+  .reveal.in { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { opacity: 1; transform: none; transition: none; }
+    .marquee { animation: none; }
+    html { scroll-behavior: auto; }
+  }
+
+  /* ── Responsive ──────────────────────────────────── */
+  @media (max-width: 900px) {
+    .grid3, .steps { grid-template-columns: 1fr; gap: 20px; }
+    .offer { grid-template-columns: 1fr; gap: 36px; }
+    .mathgrid { grid-template-columns: 1fr; }
+    .coach { grid-template-columns: 1fr; text-align: center; justify-items: center; }
+    .coach img { width: 160px; height: 160px; }
+    .sec { padding: 76px 0; }
+    .hero { padding: 56px 0 44px; }
+  }
+  @media (max-width: 640px) {
+    .quote { flex: 0 0 320px; padding: 26px; }
+    .proof-strip { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; padding-bottom: 6px; -webkit-overflow-scrolling: touch; }
+    .proof-strip .tcard { width: 150px; }
+    nav.top .brand span { display: none; }
+    .stickybar {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 160;
+      background: var(--bg-surface); border-top: 1px solid var(--border-whisper);
+      padding: 12px 16px; box-shadow: 0 -4px 20px rgba(26,24,20,0.08);
+    }
+    .stickybar .p { font-family: var(--body); font-size: 0.8125rem; font-weight: 600; }
+    .stickybar .p b { color: var(--petrol); }
+    body { padding-bottom: 72px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Grain filter -->
+<svg width="0" height="0" style="position:absolute">
+  <filter id="noise-texture">
+    <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="4" seed="0" stitchTiles="stitch" />
+    <feColorMatrix type="saturate" values="0" />
+    <feComponentTransfer><feFuncA type="discrete" tableValues="0 0.11" /></feComponentTransfer>
+  </filter>
+</svg>
+<div class="grain"></div>
+
+<!-- ── Nav ─────────────────────────────────────────── -->
+<nav class="top">
+  <div class="wrap row">
+    <a class="brand" href="#top"><img class="logo" src="Logo.svg" alt="JobHub" onerror="this.style.display='none'" /><span>JobHub Coaching</span></a>
+  </div>
+</nav>
+
+<!-- ── Hero ────────────────────────────────────────── -->
+<section class="hero" id="top">
+  <div class="wrap">
+    <div class="reveal">
+      <span class="eyebrow">COHORT COACHING · INTERNATIONALS IN AUSTRALIA</span>
+      <h1 class="display">Land your <span class="accent">first Aussie job.</span></h1>
+      <p class="sub">You came here with a vision — not to be ignored by every job you apply for. In three months, we change that. Together.</p>
+      <div class="cta-row">
+        <a class="btn enrol" href="STRIPE_LINK_HERE">Enrol now →</a>
+        <span class="pricepill"><b>$250/mo</b> · 3 months · group coaching + community</span>
+      </div>
+    </div>
+  </div>
+  <!-- Testimonial images — static proof, visible on landing (rotates per visit) -->
+  <div class="proof-strip reveal" id="proof-strip"></div>
+</section>
+
+<!-- ── The problem ─────────────────────────────────── -->
+<section class="sec alt">
+  <div class="wrap center">
+    <div class="reveal">
+      <span class="eyebrow">WHY YOU'RE STUCK</span>
+      <h2 class="display">It's almost never your CV.</h2>
+      <p class="lead">Talented people get passed over in the Australian market for reasons that have nothing to do with ability — and everything to do with strategy. Sound familiar?</p>
+    </div>
+    <div class="grid3">
+      <div class="card reveal">
+        <div class="num">01</div>
+        <h3>You're applying to the wrong companies</h3>
+        <p>Firing applications at roles that were never going to say yes — wrong stage, wrong fit, or companies that will never sponsor. Effort with no return, and a clock you can't afford to waste.</p>
+      </div>
+      <div class="card reveal">
+        <div class="num">02</div>
+        <h3>You lead with the liability</h3>
+        <p>Raising sponsorship, or apologising for your background, before they've had a reason to want you. It triggers a reflex "no" — long before anyone has actually weighed what you bring.</p>
+      </div>
+      <div class="card reveal">
+        <div class="num">03</div>
+        <h3>You're doing it alone</h3>
+        <p>Guessing, tweaking, and hoping — learning the Australian market by trial and error. That's the slowest, most expensive way to do it when you're on a deadline.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── What you get ────────────────────────────────── -->
+<section class="sec">
+  <div class="wrap">
+    <div class="center reveal">
+      <span class="eyebrow">WHAT YOU GET</span>
+      <h2 class="display">Not a course you watch alone.<br />A coach — and a community — in your corner.</h2>
+      <p class="lead">This isn't a video library you'll never finish. It's live coaching alongside a small group of people in exactly your situation, so you learn faster, stay accountable, and never job-hunt in isolation again.</p>
+    </div>
+    <div class="offer">
+      <ul class="list reveal">
+        <li><span class="tick">✓</span><div><h4>Weekly live group coaching calls</h4><p>Real coaching on real applications and real conversations — where you also learn from the wins and mistakes of others going through the same thing.</p></div></li>
+        <li><span class="tick">✓</span><div><h4>A targeting system that stops the wasted effort</h4><p>We build the shortlist of companies actually worth your time — the ones that fit and can say yes — so none of your runway is burned on dead ends.</p></div></li>
+        <li><span class="tick">✓</span><div><h4>Positioning &amp; messaging that lands</h4><p>Exactly how and when to raise the hard stuff, and how to frame your experience so you're wanted first and questioned second.</p></div></li>
+        <li><span class="tick">✓</span><div><h4>A community that keeps you moving</h4><p>The reason people who commit get results: peer accountability, shared momentum, and people who celebrate your offers with you — because they get it.</p></div></li>
+      </ul>
+      <div class="pricecard reveal">
+        <span class="tag">COHORT · 3 MONTHS</span>
+        <div class="amount">$250<span>/month</span></div>
+        <div class="terms">for 3 months · group coaching + community</div>
+        <div class="divider"></div>
+        <a class="btn enrol" href="STRIPE_LINK_HERE" style="width:100%">Enrol now →</a>
+        <p class="fineprint">Three months is enough to fix the strategy and start landing interviews — while you still have runway left to close the offer.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── How it works ────────────────────────────────── -->
+<section class="sec deep">
+  <div class="wrap">
+    <div class="center reveal">
+      <span class="eyebrow">HOW IT WORKS</span>
+      <h2 class="display">Simple. Personal. Fast.</h2>
+    </div>
+    <div class="steps">
+      <div class="step reveal">
+        <div class="n">1</div>
+        <h3>Enrol &amp; join the group</h3>
+        <p>Secure your spot and you're in — introduced to the community and booked into this week's coaching call. No long waitlist; the clock's already running.</p>
+      </div>
+      <div class="step reveal">
+        <div class="n">2</div>
+        <h3>We build your strategy together</h3>
+        <p>Your target list, your positioning, your outreach — mapped to your industry and your timeline, not a one-size template.</p>
+      </div>
+      <div class="step reveal">
+        <div class="n">3</div>
+        <h3>You execute, we refine weekly</h3>
+        <p>Every week we sharpen what's working, fix what isn't, and keep you moving — until you're in front of the right people.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Social proof ────────────────────────────────── -->
+<section class="sec">
+  <div class="wrap center reveal">
+    <span class="eyebrow">REAL PEOPLE · REAL OFFERS</span>
+    <h2 class="display">This is what it's building toward.</h2>
+    <p class="lead">Actual offers landed by people who did the work. This is the other side of the vision you came here with.</p>
+    <img src="job-offers.webp" alt="Real job offers landed by people we've worked with in Australia" style="display:block; width:100%; height:auto; max-width:840px; margin:48px auto 0; -webkit-mask-image:radial-gradient(ellipse at center, black 62%, transparent 100%); mask-image:radial-gradient(ellipse at center, black 62%, transparent 100%);" />
+  </div>
+</section>
+
+<!-- ── The math (objection handling) ───────────────── -->
+<section class="sec alt">
+  <div class="wrap">
+    <div class="center reveal">
+      <span class="eyebrow">THE REAL MATH</span>
+      <h2 class="display">$750 is the cheapest part of this.</h2>
+      <p class="lead">If money is on your mind, do the honest maths — including the cost of <em>not</em> doing it.</p>
+    </div>
+    <div class="mathgrid">
+      <div class="mathcard reveal">
+        <h3>You earn it back in month one</h3>
+        <p>$250 a month for three months is <span class="big">$750</span>. That's an amount you make back inside your <span class="big">first month</span> of an Australian salary. This isn't a cost — it's the fastest thing standing between you and that paycheck.</p>
+      </div>
+      <div class="mathcard reveal">
+        <h3>The real cost is the one you already paid</h3>
+        <p>Smart decisions weigh what you lose by <em>not</em> acting. For you that's the tuition, the flights, the visa — <span class="big">years of investment</span> to build this career. Letting it stall is the true cost you're paying, every month it doesn't come together.</p>
+      </div>
+      <div class="mathcard reveal">
+        <h3>Skin in the game is the point</h3>
+        <p>Free advice gets nodded at and forgotten. When you've invested, you <span class="big">show up and implement</span> — and that's exactly what turns "good ideas" into an offer. The commitment is the mechanism.</p>
+      </div>
+      <div class="mathcard reveal">
+        <h3>Your runway is the thing you can't buy back</h3>
+        <p>Time is the one resource you can't top up. Every week spent guessing alone is a week off the clock. Three months of this leaves you the <span class="big">room to actually land it</span> — instead of running out.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Coach / who ─────────────────────────────────── -->
+<section class="sec">
+  <div class="wrap">
+    <div class="center reveal">
+      <span class="eyebrow">WHO YOU'LL WORK WITH</span>
+    </div>
+    <div class="coach reveal">
+      <img src="headshot.png" alt="Your coach" onerror="this.style.display='none'" />
+      <div>
+        <p class="name">Kiron</p>
+        <p>I've spent years helping international job-seekers crack the Australian market — the part uni and generic career advice never teach: who to target, how to position yourself, and how to be wanted before the hard questions come up.</p>
+        <p>This isn't a program I hand you and disappear. For three months, you're in a room with me and a group of people fighting the exact same fight — working real situations every week. That mix of coaching and community is what actually moves people from "applying and hoping" to "signing an offer."</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Final CTA ───────────────────────────────────── -->
+<section class="sec deep final">
+  <div class="wrap">
+    <div class="reveal">
+      <span class="eyebrow">BET ON YOURSELF</span>
+      <h2 class="display">You've come too far to leave it to chance.</h2>
+      <p class="lead">You don't need more time learning it alone. You need the right targeting and the right positioning — done with you, alongside a community in the same fight, before the runway runs out. That's exactly what this is.</p>
+      <div class="cta-row">
+        <a class="btn enrol" href="STRIPE_LINK_HERE">Enrol now · $250/mo for 3 months →</a>
+        <p class="guarantee">Secure your spot and we'll book your first session this week. If the timing genuinely isn't right, the door stays open — but the clock doesn't wait.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Footer ──────────────────────────────────────── -->
+<footer>
+  <div class="wrap row">
+    <span class="microcopy">© <span id="year"></span> JobHub · Coaching for international job-seekers in Australia.</span>
+    <span class="microcopy"><a href="STRIPE_LINK_HERE">Enrol →</a></span>
+  </div>
+</footer>
+
+<!-- ── Sticky mobile CTA ───────────────────────────── -->
+<div class="stickybar">
+  <span class="p"><b>$250/mo</b> · 3 months · cohort</span>
+  <a class="btn small enrol" href="STRIPE_LINK_HERE">Enrol →</a>
+</div>
+
+<script>
+  // ============================================================
+  //  ▸ SET YOUR STRIPE PAYMENT LINK HERE
+  // ============================================================
+  const STRIPE_LINK = "STRIPE_LINK_HERE"; // <-- paste your Stripe link, e.g. https://buy.stripe.com/xxxx
+  document.querySelectorAll('a.enrol, footer a').forEach(a => {
+    if (STRIPE_LINK && STRIPE_LINK !== "STRIPE_LINK_HERE") a.setAttribute('href', STRIPE_LINK);
+  });
+
+  // Year
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  // Testimonial images live in /Assets/testimonials/card_1..8.jpg
+  // We show a random subset that rotates on every page view (different each time).
+  const ALL_TESTIMONIALS = Array.from({ length: 8 }, (_, i) => 'Assets/testimonials/card_' + (i + 1) + '.jpg');
+  const SHOW_COUNT = 3; // how many portrait cards to display per visit (rotates)
+  const shuffle = arr => {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
+  const selected = shuffle(ALL_TESTIMONIALS).slice(0, SHOW_COUNT);
+  const strip = document.getElementById('proof-strip');
+  if (SHOW_COUNT === 1) strip.classList.add('single');
+  selected.forEach(src => {
+    const d = document.createElement('div');
+    d.className = 'tcard';
+    d.innerHTML = '<img src="' + src + '" alt="Testimonial from someone we\'ve worked with" loading="lazy" />';
+    strip.appendChild(d);
+  });
+
+  // Scroll reveal
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+  }, { threshold: 0.15 });
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+</script>
+</body>
+</html>

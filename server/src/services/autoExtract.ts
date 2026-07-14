@@ -437,5 +437,6 @@ export async function forceAutoExtract(userId: string, resumeText: string): Prom
     console.log(`[ForceExtract] Replaced bank for userId: ${userId}`);
   } catch (err) {
     console.error('[ForceExtract] Re-extraction failed, existing bank left intact:', err);
+    throw err; // Re-throw so caller can handle
   }
 }

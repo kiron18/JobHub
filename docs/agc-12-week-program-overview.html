@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aussie Grad Careers — 12-Week Program Overview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    @page { size: A4; margin: 0; }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:        #0A2342;
+      --navy-soft:   #14365c;
+      --orange:      #F4A261;
+      --orange-dark: #E08040;
+      --light-bg:    #FFF9F4;
+      --alt:         #F6F1EB;
+      --border:      #E8D5C4;
+      --text:        #1A1A2E;
+      --muted:       #6B7280;
+      --green:       #2D6A4F;
+      --green-light: #F0FDF4;
+      --green-border:#BBE5C9;
+    }
+
+    html, body {
+      background: #e8e4de;
+      font-family: 'Inter', -apple-system, 'Segoe UI', system-ui, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .page {
+      width: 210mm;
+      height: 297mm;
+      margin: 0 auto;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 0 40px rgba(0,0,0,0.15);
+      overflow: hidden;
+    }
+    @media print {
+      html, body { background: #fff; }
+      .page { box-shadow: none; }
+    }
+
+    /* ── Header ── */
+    .header {
+      background: var(--navy);
+      color: #fff;
+      padding: 22px 40px 20px;
+      flex-shrink: 0;
+    }
+    .brand-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .brand-name {
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+      color: var(--orange);
+    }
+    .brand-tagline {
+      font-size: 9px;
+      color: rgba(255,255,255,0.55);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+    .header-right { text-align: right; }
+    .prepared-for {
+      font-size: 9px;
+      color: rgba(255,255,255,0.5);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+    .prepared-for strong {
+      display: block;
+      color: #fff;
+      font-weight: 600;
+      font-size: 12px;
+      margin-top: 2px;
+      letter-spacing: 0;
+    }
+    .header h1 {
+      font-size: 24px;
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -0.4px;
+      margin-bottom: 5px;
+    }
+    .header-sub {
+      font-size: 12.5px;
+      color: rgba(255,255,255,0.72);
+      max-width: 620px;
+    }
+
+    /* ── Body ── */
+    .body {
+      padding: 20px 40px 16px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .section-label {
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--orange-dark);
+      margin-bottom: 8px;
+    }
+
+    /* Delivery pillars */
+    .pillars {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+    }
+    .pillar {
+      background: var(--light-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+    .pillar h3 {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--navy);
+      margin-bottom: 5px;
+    }
+    .pillar p {
+      font-size: 11px;
+      line-height: 1.5;
+      color: #3a3a4a;
+    }
+
+    /* Modules */
+    .modules { display: flex; flex-direction: column; gap: 6px; }
+    .module {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      padding: 8px 14px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+    }
+    .module-num {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--orange-dark);
+      min-width: 20px;
+    }
+    .module-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--navy);
+      min-width: 200px;
+    }
+    .module-desc {
+      font-size: 11px;
+      color: #3a3a4a;
+      line-height: 1.45;
+    }
+    .modules-note {
+      font-size: 10.5px;
+      color: var(--muted);
+      margin-top: 6px;
+      font-style: italic;
+    }
+
+    /* Week arc */
+    .arc {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+    }
+    .arc-block {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .arc-block-head {
+      background: var(--navy);
+      color: #fff;
+      font-size: 10.5px;
+      font-weight: 700;
+      padding: 6px 12px;
+      letter-spacing: 0.3px;
+    }
+    .arc-block-body {
+      padding: 10px 12px;
+      font-size: 11px;
+      color: #3a3a4a;
+      line-height: 1.5;
+      background: #fff;
+    }
+    .arc-block-body strong { color: var(--navy); }
+
+    .accountability {
+      background: var(--green-light);
+      border: 1px solid var(--green-border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 11px;
+      color: var(--green);
+      line-height: 1.5;
+    }
+    .accountability strong { font-weight: 700; }
+
+    /* Why */
+    .why {
+      background: var(--alt);
+      border-left: 3px solid var(--orange);
+      border-radius: 0 8px 8px 0;
+      padding: 12px 16px;
+      font-size: 11.5px;
+      line-height: 1.6;
+      color: #2c2c3e;
+    }
+    .why strong { color: var(--navy); }
+
+    /* Footer */
+    .footer {
+      border-top: 1px solid var(--border);
+      padding: 12px 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+      background: var(--light-bg);
+    }
+    .footer-name { font-size: 12px; font-weight: 700; color: var(--navy); }
+    .footer-role { font-size: 10px; color: var(--muted); }
+    .footer-right { font-size: 9.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <div class="header">
+      <div class="brand-row">
+        <div>
+          <div class="brand-name">Aussie Grad Careers</div>
+          <div class="brand-tagline">Your career. Your strategy. Your Australia.</div>
+        </div>
+        <div class="header-right">
+          <div class="prepared-for">Prepared for<strong>Emergi Mentors</strong></div>
+        </div>
+      </div>
+      <h1>The 12-Week Job Landing Program</h1>
+      <div class="header-sub">A structured system that takes a job-ready candidate to a placed one: fully geared in the first two weeks, applying at volume from week two, and interview-ready when the calls come.</div>
+    </div>
+
+    <div class="body">
+
+      <div>
+        <div class="section-label">How It Is Delivered</div>
+        <div class="pillars">
+          <div class="pillar">
+            <h3>On-Demand Module Library</h3>
+            <p>Video lessons paired with one-page cheat sheets. Progression is gated: the next module unlocks when the actions are done, not when the videos are watched. Candidates build up step by step instead of drowning in everything at once.</p>
+          </div>
+          <div class="pillar">
+            <h3>Two Live Group Sessions Weekly</h3>
+            <p>Working sessions, not lectures. Live resume and application teardowns, real recruiter messages reviewed on screen, interview scenarios and group feedback. Teaching lives on video so live time goes to real problems.</p>
+          </div>
+          <div class="pillar">
+            <h3>Tracked Application System</h3>
+            <p>Every candidate's activity is visible on my backend: applications sent, goals met, where they are falling short. The minimum standard is 5 applications per day, checked every week. Nobody drifts.</p>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-label">The Five Modules</div>
+        <div class="modules">
+          <div class="module">
+            <div class="module-num">01</div>
+            <div class="module-title">Resume &amp; Positioning</div>
+            <div class="module-desc">Communicating outcomes as achievements. ATS-ready structure, refined against the resume they arrive with.</div>
+          </div>
+          <div class="module">
+            <div class="module-num">02</div>
+            <div class="module-title">LinkedIn Profile</div>
+            <div class="module-desc">A profile built for recruiter search: headline, about, experience and keywords that get found.</div>
+          </div>
+          <div class="module">
+            <div class="module-num">03</div>
+            <div class="module-title">Outreach System</div>
+            <div class="module-desc">Recruiter and hiring manager outreach that gets replies, with follow-up routines that keep it running.</div>
+          </div>
+          <div class="module">
+            <div class="module-num">04</div>
+            <div class="module-title">Content &amp; Visibility</div>
+            <div class="module-desc">A sustainable visibility habit on LinkedIn. A long-term asset that keeps compounding well after the first role.</div>
+          </div>
+          <div class="module">
+            <div class="module-num">05</div>
+            <div class="module-title">Professional Mindset</div>
+            <div class="module-desc">Australian workplace standards and the professional behaviours that make candidates stand out in person, in a market where everyone uses AI.</div>
+          </div>
+        </div>
+        <div class="modules-note">Each module ships with a video lesson and a one-page cheat sheet. Candidates move at their own pace, but the gates keep the pace honest.</div>
+      </div>
+
+      <div>
+        <div class="section-label">The 12-Week Arc</div>
+        <div class="arc">
+          <div class="arc-block">
+            <div class="arc-block-head">Weeks 1&ndash;2 &middot; Fully Geared</div>
+            <div class="arc-block-body">Resume, LinkedIn and Seek profiles live, recruiter registrations done, outreach running. <strong>First applications go out in week one.</strong></div>
+          </div>
+          <div class="arc-block">
+            <div class="arc-block-head">Weeks 1&ndash;6 &middot; Structured Sessions</div>
+            <div class="arc-block-body">The first six weeks of live sessions follow a set sequence: positioning, resume teardowns, outreach, <strong>government selection criteria</strong>, and interview foundations.</div>
+          </div>
+          <div class="arc-block">
+            <div class="arc-block-head">Weeks 3&ndash;12 &middot; Apply &amp; Land</div>
+            <div class="arc-block-body">Volume applications at 5 per day. Live sessions turn responsive: mock interviews, real scenarios as they happen, offers and negotiation.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="accountability">
+        <strong>Every week, on top of the sessions:</strong> an accountability check against each candidate's numbers, straight from the tracking backend. Applications sent, responses received, interviews booked, and an honest conversation about anything falling short.
+      </div>
+
+      <div class="why">
+        <strong>Why it is built this way.</strong> Teaching is one-way, so it belongs on video where candidates can move at their own pace. Live time is reserved for what a video can never do: real problems, real messages, real interviews, in front of a group facing the same challenges. The group setting is deliberate. Candidates see others pushing through the same struggles, get proof that placement is possible, and stay accountable to more than just me.
+      </div>
+
+    </div>
+
+    <div class="footer">
+      <div>
+        <div class="footer-name">Kiron Kurian</div>
+        <div class="footer-role">Founder, Aussie Grad Careers</div>
+      </div>
+      <div class="footer-right">Program Overview &middot; Confidential</div>
+    </div>
+
+  </div>
+</body>
+</html>

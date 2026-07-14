@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aussie Grad Careers — Partnership Overview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&display=swap" rel="stylesheet">
+  <style>
+    @page {
+      size: A4;
+      margin: 0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg:           #FAF7F2;
+      --surface:      #FFFFFF;
+      --alt:          #F4EFE8;
+      --fg:           #1A1814;
+      --fg-muted:     #5C5750;
+      --fg-faint:     #8B847B;
+      --accent:       #2D5A6E;
+      --accent-soft:  rgba(45,90,110,0.08);
+      --signal:       #C5A059;
+      --signal-soft:  rgba(197,160,89,0.12);
+      --border:       rgba(26,24,20,0.08);
+      --border-mid:   rgba(26,24,20,0.13);
+    }
+
+    html, body {
+      background: #e8e4de;
+      font-family: -apple-system, 'Segoe UI', system-ui, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      font-size: 14px;
+    }
+
+    /* ── Page shell ── */
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0 auto;
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 0 40px rgba(0,0,0,0.15);
+    }
+
+    /* ── Header ── */
+    .header {
+      background: var(--bg);
+      padding: 28px 44px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-mid);
+    }
+
+    .logo-wrap {
+      display: flex;
+      align-items: center;
+    }
+
+    .logo-wrap img {
+      height: 52px;
+      width: auto;
+      display: block;
+    }
+
+    .header-right {
+      text-align: right;
+    }
+
+    .doc-title {
+      font-family: 'Fraunces', Georgia, 'Times New Roman', serif;
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--accent);
+      line-height: 1.15;
+      letter-spacing: -0.01em;
+    }
+
+    .prepared-for {
+      font-size: 12px;
+      color: var(--fg-muted);
+      margin-top: 4px;
+      letter-spacing: 0.01em;
+    }
+
+    .prepared-for strong {
+      color: var(--fg);
+      font-weight: 600;
+    }
+
+    /* ── Gold accent bar ── */
+    .accent-bar {
+      height: 3px;
+      background: linear-gradient(90deg, var(--signal) 0%, rgba(197,160,89,0.2) 100%);
+    }
+
+    /* ── Body ── */
+    .body {
+      flex: 1;
+      padding: 32px 44px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 26px;
+    }
+
+    /* ── Section ── */
+    .section {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .section-label {
+      font-family: 'Fraunces', Georgia, 'Times New Roman', serif;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-mid);
+    }
+
+    p {
+      font-size: 13.5px;
+      line-height: 1.65;
+      color: var(--fg);
+    }
+
+    /* ── Stats card ── */
+    .stats-card {
+      background: var(--signal-soft);
+      border-left: 3px solid var(--signal);
+      border-radius: 0 6px 6px 0;
+      padding: 16px 20px;
+    }
+
+    .stats-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .stats-list li {
+      font-size: 13.5px;
+      line-height: 1.55;
+      color: var(--fg);
+      padding-left: 18px;
+      position: relative;
+    }
+
+    .stats-list li::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 8px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--signal);
+    }
+
+    /* ── Guarantee callout ── */
+    .callout {
+      background: var(--accent-soft);
+      border: 1px solid rgba(45,90,110,0.18);
+      border-radius: 6px;
+      padding: 14px 18px;
+    }
+
+    .callout p {
+      font-style: italic;
+      color: var(--accent);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    /* ── Two-column layout ── */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .info-block {
+      background: var(--alt);
+      border-radius: 6px;
+      padding: 16px 18px;
+    }
+
+    .info-block-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--fg-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 8px;
+    }
+
+    /* ── Engagement models ── */
+    .models-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .models-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 9px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13.5px;
+      line-height: 1.5;
+      color: var(--fg);
+    }
+
+    .models-list li:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .model-num {
+      width: 22px;
+      height: 22px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .structure-note {
+      font-size: 12.5px;
+      color: var(--fg-muted);
+      font-style: italic;
+      padding-top: 4px;
+    }
+
+    /* ── Next step ── */
+    .next-step-box {
+      background: var(--accent);
+      border-radius: 6px;
+      padding: 16px 20px;
+    }
+
+    .next-step-box p {
+      color: rgba(255,255,255,0.95);
+      font-size: 13.5px;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      background: var(--alt);
+      border-top: 1px solid var(--border-mid);
+      padding: 18px 44px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .footer-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .footer-logo img {
+      height: 36px;
+      width: auto;
+      display: block;
+    }
+
+    .footer-divider {
+      width: 1px;
+      height: 36px;
+      background: var(--border-mid);
+    }
+
+    .footer-identity {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .footer-name {
+      font-family: 'Fraunces', Georgia, serif;
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--fg);
+    }
+
+    .footer-role {
+      font-size: 11px;
+      color: var(--fg-muted);
+    }
+
+    .footer-contacts {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 3px;
+    }
+
+    .footer-contact {
+      font-size: 11.5px;
+      color: var(--fg-muted);
+      text-decoration: none;
+    }
+
+    .footer-contact:hover {
+      color: var(--accent);
+    }
+
+    /* ── Print overrides ── */
+    @media print {
+      html, body { background: white; }
+      .page { box-shadow: none; width: 100%; min-height: 100vh; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <!-- Header -->
+    <div class="header">
+      <div class="logo-wrap">
+        <img src="../public/Logo.svg" alt="Aussie Grad Careers logo">
+      </div>
+      <div class="header-right">
+        <div class="doc-title">Partnership Overview</div>
+        <div class="prepared-for">Prepared for <strong>Emerging Mentors</strong></div>
+      </div>
+    </div>
+
+    <!-- Gold accent bar -->
+    <div class="accent-bar"></div>
+
+    <!-- Body -->
+    <div class="body">
+
+      <!-- Section 1: The gap -->
+      <div class="section">
+        <div class="section-label">The gap we close</div>
+        <p>Technical training makes someone hire-ready. It doesn't make them hired. That last step — turning a qualified candidate into a person who actually lands the role — is its own discipline, and it's the one most programs can't deliver. That's the gap I fill.</p>
+        <p>I work with international migrants and career switchers to convert "job-ready" into "employed." The bottleneck is almost never the technical skill. It's positioning, communication and the application process itself. Fix those and the candidate you've already trained starts getting interviews.</p>
+      </div>
+
+      <!-- Section 2: Outcomes -->
+      <div class="section">
+        <div class="section-label">What the outcome actually looks like</div>
+        <div class="stats-card">
+          <ul class="stats-list">
+            <li>60–70% of people I work with land a role inside the coaching window</li>
+            <li>Almost everyone reaches the interview stage — the offer depends on factors no one can honestly guarantee, and I'm upfront about that</li>
+            <li>The deeper outcome is a permanent shift in how someone presents and communicates their value, which serves them well beyond this one job</li>
+          </ul>
+        </div>
+        <div class="callout">
+          <p>I don't sell job guarantees. The market is full of people who do, and most of them are selling false hope. I sell a system and a transformation, and I get results because of it.</p>
+        </div>
+      </div>
+
+      <!-- Section 3 + 4: Two-column -->
+      <div class="two-col">
+        <div class="section">
+          <div class="section-label">How it works (at a glance)</div>
+          <div class="info-block">
+            <p>A structured three-month coaching cohort: weekly sessions, ongoing access between calls, and proprietary tools my clients use to run a data-driven application process — tracking, follow-up systems, outreach and LinkedIn support.</p>
+            <br>
+            <p>Candidates set their own activity targets and we hold them to the work. Built on direct input from 100+ recruiters and hiring managers and tested on real outcomes.</p>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-label">Why this fits Emerging Mentors</div>
+          <div class="info-block">
+            <p>Your program already produces skilled, confident graduates. Pairing that with a dedicated outcome layer closes your funnel end to end — training plus genuine job results — and lets you market a tangible outcome without overpromising.</p>
+            <br>
+            <p>I'd position this as an integrated premium outcome track, not a bolt-on, so it strengthens your offer rather than diluting it.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 5: Engagement models -->
+      <div class="section">
+        <div class="section-label">Engagement models</div>
+        <ul class="models-list">
+          <li>
+            <div class="model-num">1</div>
+            <div>Per-student coaching fee for graduates entering an outcome track</div>
+          </li>
+          <li>
+            <div class="model-num">2</div>
+            <div>Revenue share on a premium "training + outcomes" tier</div>
+          </li>
+          <li>
+            <div class="model-num">3</div>
+            <div>White-label coaching delivered inside your existing cohort structure</div>
+          </li>
+        </ul>
+        <p class="structure-note">I'm open on structure. To put real numbers to it, it'd help to know how many students you run per cohort and how many cohorts you run a year.</p>
+      </div>
+
+      <!-- Section 6: Next step -->
+      <div class="section">
+        <div class="section-label">Next step</div>
+        <div class="next-step-box">
+          <p>Have a read, and let's find a model that's fair for both sides and keeps quality high for the students. Happy to jump on another call once you've had a look.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="footer-left">
+        <div class="footer-logo">
+          <img src="../public/Logo.svg" alt="Aussie Grad Careers">
+        </div>
+        <div class="footer-divider"></div>
+        <div class="footer-identity">
+          <div class="footer-name">Kiron</div>
+          <div class="footer-role">Founder, Aussie Grad Careers</div>
+        </div>
+      </div>
+      <div class="footer-contacts">
+        <a href="mailto:kiron@aussiegradcareers.com.au" class="footer-contact">kiron@aussiegradcareers.com.au</a>
+        <span class="footer-contact">0451 423 412</span>
+        <a href="https://www.linkedin.com/in/kironkurianjohn/" class="footer-contact">linkedin.com/in/kironkurianjohn</a>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

@@ -73,14 +73,18 @@ router.post('/profile/source-documents', authenticate, handleUpload, async (req:
 
     await prisma.candidateProfile.update({ where: { userId }, data: update });
 
-    // Re-extract profile structure from new resume — fire and forget
+    // Re-extract profile structure from new resume — await and report success/failure
     if (resumeText) {
-      forceAutoExtract(userId, resumeText).catch(err =>
-        console.error('[SourceDocs] Force re-extract failed:', err)
-      );
+      try {
+        await forceAutoExtract(userId, resumeText);
+        return res.json({ status: 'extracted' });
+      } catch (extractErr: any) {
+        console.error('[SourceDocs] Force re-extract failed:', extractErr);
+        return res.json({ status: 'raw_saved_extract_failed' });
+      }
     }
 
-    res.json({ status: resumeText ? 'processing' : 'updated' });
+    res.json({ status: 'updated' });
   } catch (err: any) {
     console.error('[SourceDocs] Update failed:', err);
     res.status(500).json({ error: 'Failed to update source documents' });
