@@ -567,19 +567,14 @@ router.post('/:type', authenticate, async (req, res, next) => {
     }
 });
 
-// ── Structured resume generation ────────────────────────────────────────────
-// This route generates a resume as structured JSON (summary + experience bullets)
-// which is then validated with Zod and rendered to deterministic markdown server-side.
-// Benefits: higher bullet quality (LLM focuses on content), machine-validated output,
-// no LLM formatting drift.
+// ── Structured resume generation (V2) ─────────────────────────────────────────
+// Single-pass generation from raw resume text. No blueprint, no strategist stage,
+// no structured JSON. Claude writes markdown directly; grounding gate enforces honesty.
 router.post('/resume-structured', authenticate, async (req: any, res: any) => {
     const userId = (req as any).user.id as string;
     const {
         jobDescription,
-        selectedAchievementIds,
-        analysisContext,
         jobApplicationId,
-        companyResearch,  // { salutation, highlights, companySize, hiringManager }
     } = req.body;
 
     if (!jobDescription) {
@@ -597,160 +592,136 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
             });
         }
 
+        // Load profile: scalars only, no includes
         const profile = await prisma.candidateProfile.findUnique({
             where: { userId },
-            include: {
-                achievements: true,
-                experience: true,
-                education: true,
-                volunteering: true,
-                certifications: true,
-                languages: true,
-            },
+            select: { id: true, name: true, resumeRawText: true },
         });
 
         if (!profile) {
             return res.status(404).json({ error: 'Profile not found' });
         }
 
-        const { buildAchievementContext } = await import('../services/generation');
-        const selectedAchievements = await buildAchievementContext(
-            userId,
-            jobDescription,
-            selectedAchievementIds
-        );
+        // Enforce resumeRawText guard
+        if (!profile.resumeRawText || profile.resumeRawText.length < 200) {
+            return res.status(400).json({ error: 'No resume on file. Upload your resume in the Profile section first.' });
+        }
 
         const sanitizedJobAppId = jobApplicationId === 'temp-id' ? null : (jobApplicationId || null);
-        // ── Single-pass generation (one capable model; no separate strategist) ──
-        const { RESUME_STRUCTURED_PROMPT } = await import('../services/prompts/resumeStructuredPrompt');
-        const { parseJD } = await import('../lib/jdParser');
-        const parsedJD = parseJD(jobDescription);
 
-        // Minimal blueprint stub — generation no longer depends on a separate
-        // strategist stage. Only employerInsight is carried through from research.
-        const blueprint = {
-            positioningStatement: '',
-            proofPoints: [],
-            messagingAngles: [],
-            pitfallFlags: [],
-            toneBlueprint: '',
-            structureNotes: '',
-            employerInsight: companyResearch?.highlights?.length
-                ? companyResearch.highlights.join(' - ')
-                : '',
-            sector: 'GENERAL' as const,
-            openingHook: '',
-        };
+        // Build prompt and generate
+        const { RESUME_V2_PROMPT } = await import('../services/prompts/generationV2');
+        const { checkGrounding } = await import('../lib/groundingGate');
 
-        const prompt = RESUME_STRUCTURED_PROMPT(
-            jobDescription,
-            profile,
-            selectedAchievements,
-            blueprint,
-            analysisContext,
-            companyResearch,
-            parsedJD.employerQuestions.length > 0 ? parsedJD.employerQuestions : undefined,
-            undefined, // bridged gaps removed — never inject invented capabilities
-            undefined, // years are not injected — enforced post-curation below
-        );
+        const prompt = RESUME_V2_PROMPT(profile.resumeRawText, jobDescription);
 
-        console.log('[ResumeStructured] Generating resume (single Claude pass)...');
-        const { content: stage2Raw, usage } = await callClaude(prompt, true, undefined, PREMIUM_MODEL);
-        console.log(`[ResumeStructured] Generation complete. ${stage2Raw.length} characters.`);
+        console.log('[ResumeStructured] Generating resume (V2 single pass)...');
+        const { content: rawOutput, usage } = await callClaude(prompt, false, undefined, PREMIUM_MODEL);
+        console.log(`[ResumeStructured] Generation complete. ${rawOutput.length} characters.`);
 
         const stage2Cost =
             (usage.promptTokens / 1_000_000) * CLAUDE_INPUT_COST_PER_M +
             (usage.completionTokens / 1_000_000) * CLAUDE_OUTPUT_COST_PER_M;
 
-        // ── Validate + build template resume (renderer unchanged) ──────────
-        const { parsePolishJson } = await import('../lib/validatePolish');
-        const { buildTemplateResume } = await import('../lib/buildTemplateResume');
-
-        const polish = parsePolishJson(stage2Raw);
-        if (!polish) {
-            console.warn('[ResumeStructured] LLM output failed Zod validation — falling back to unpolished resume');
+        // Strip accidental code fences
+        let finalContent = rawOutput.trim();
+        if (finalContent.startsWith('```')) {
+            const lines = finalContent.split('\n');
+            if (lines[0].startsWith('```')) lines.shift();
+            if (lines[lines.length - 1].startsWith('```')) lines.pop();
+            finalContent = lines.join('\n').trim();
         }
 
-        const resumeYears = profile.yearsOfExperience ?? undefined;
+        // Shape check: must contain required sections in order
+        function passesShapeCheck(text: string): boolean {
+            const checks = [
+                text.includes('# '),
+                text.includes('## Professional Summary'),
+                text.includes('## Work Experience'),
+                text.includes('### '),
+                text.includes('## Education'),
+                text.includes('## Skills'),
+            ];
+            return checks.every(Boolean);
+        }
 
-        let finalContent = buildTemplateResume(profile, polish, {
-            candidateName: profile?.name,
-            yearsOfExperience: resumeYears,
-            contactEmail: extractContactEmail(profile?.resumeRawText),
-            achievementSources: selectedAchievements
-                .map((a: any) => a?.description ?? '')
-                .filter((s: string) => s && s.length > 0),
-        });
+        let shapePassed = passesShapeCheck(finalContent);
 
-        // ── Years claim detection + regeneration (Stage 5 specification) ──
-        const yearsDetection = detectYearsClaim(finalContent, profile.yearsOfExperience ?? null);
-        if (yearsDetection.violates && !analysisContext?.regenerateFeedback) {
-            // First violation: regenerate with corrective feedback (max one regeneration)
-            const feedback = getYearsFeedbackInstruction(profile.yearsOfExperience ?? null);
-            console.log(`[Resume] Years claim violation detected (${yearsDetection.value} years), regenerating with feedback...`);
+        // Retry once if shape check fails
+        if (!shapePassed) {
+            console.log('[ResumeStructured] Shape check failed, retrying once...');
+            const retryPrompt = prompt + '\n\nYour previous attempt did not follow the required output structure. Return ONLY the markdown document in exactly the specified structure.';
+            const { content: retryOutput, usage: retryUsage } = await callClaude(retryPrompt, false, undefined, PREMIUM_MODEL);
 
-            const regeneratePrompt = RESUME_STRUCTURED_PROMPT(
-                sanitizedJobAppId ? (await prisma.jobApplication.findUnique({ where: { id: sanitizedJobAppId } }))?.description || jobDescription : jobDescription,
-                profile,
-                selectedAchievements,
-                blueprint,
-                { ...analysisContext, regenerateFeedback: feedback },
-                companyResearch,
-                parsedJD.employerQuestions.length > 0 ? parsedJD.employerQuestions : undefined,
-            );
+            stage2Cost +
+                (retryUsage.promptTokens / 1_000_000) * CLAUDE_INPUT_COST_PER_M +
+                (retryUsage.completionTokens / 1_000_000) * CLAUDE_OUTPUT_COST_PER_M;
 
-            const { content: regeneratedRaw, usage: regenUsage } = await callClaude(regeneratePrompt, true, undefined, PREMIUM_MODEL);
-
-            // Parse regenerated output
-            const regeneratedPolish = parsePolishJson(regeneratedRaw);
-            const regeneratedContent = buildTemplateResume(profile, regeneratedPolish, {
-                candidateName: profile?.name,
-                yearsOfExperience: resumeYears,
-                contactEmail: extractContactEmail(profile?.resumeRawText),
-                achievementSources: selectedAchievements
-                    .map((a: any) => a?.description ?? '')
-                    .filter((s: string) => s && s.length > 0),
-            });
-
-            // Re-check for violation
-            const recheck = detectYearsClaim(regeneratedContent, profile.yearsOfExperience ?? null);
-            if (recheck.violates) {
-                // Still violates after regeneration: remove complete sentences (last resort)
-                console.log(`[Resume] Years claim still violates after regeneration, removing sentences...`);
-                finalContent = removeSentencesWithYears(regeneratedContent);
-            } else {
-                finalContent = regeneratedContent;
+            finalContent = retryOutput.trim();
+            if (finalContent.startsWith('```')) {
+                const lines = finalContent.split('\n');
+                if (lines[0].startsWith('```')) lines.shift();
+                if (lines[lines.length - 1].startsWith('```')) lines.pop();
+                finalContent = lines.join('\n').trim();
             }
-        } else if (yearsDetection.violates && analysisContext?.regenerateFeedback) {
-            // Already regenerated once, still violates: remove complete sentences
-            console.log(`[Resume] Years claim violates after regeneration, removing sentences...`);
-            finalContent = removeSentencesWithYears(finalContent);
+
+            shapePassed = passesShapeCheck(finalContent);
+            if (!shapePassed) {
+                console.error('[ResumeStructured] Shape check failed after retry');
+                return res.status(502).json({ error: 'Generation failed format validation, please try again.' });
+            }
+        }
+
+        // Grounding gate check
+        let groundingWarnings: string[] = [];
+        const groundingResult = checkGrounding(finalContent, profile.resumeRawText, jobDescription);
+
+        if (groundingResult.violations.length > 0) {
+            console.log(`[ResumeStructured] Grounding violations found: ${groundingResult.violations.length}`);
+
+            // Retry once with violations appended
+            const retryPrompt = prompt + '\n\n== YOUR PREVIOUS ATTEMPT VIOLATED THESE HONESTY RULES, FIX THEM ==\n' +
+                groundingResult.violations.map(v => `- ${v}`).join('\n');
+
+            const { content: retryOutput, usage: retryUsage } = await callClaude(retryPrompt, false, undefined, PREMIUM_MODEL);
+
+            // Recalculate cost
+            const retryCost =
+                (retryUsage.promptTokens / 1_000_000) * CLAUDE_INPUT_COST_PER_M +
+                (retryUsage.completionTokens / 1_000_000) * CLAUDE_OUTPUT_COST_PER_M;
+
+            let retryContent = retryOutput.trim();
+            if (retryContent.startsWith('```')) {
+                const lines = retryContent.split('\n');
+                if (lines[0].startsWith('```')) lines.shift();
+                if (lines[lines.length - 1].startsWith('```')) lines.pop();
+                retryContent = lines.join('\n').trim();
+            }
+
+            // Recheck grounding
+            const retryGrounding = checkGrounding(retryContent, profile.resumeRawText, jobDescription);
+
+            if (retryGrounding.violations.length === 0) {
+                // Retry succeeded
+                finalContent = retryContent;
+            } else {
+                // Still has violations, keep the content but warn
+                groundingWarnings = retryGrounding.violations;
+                finalContent = retryContent;
+                for (const v of retryGrounding.violations) {
+                    console.warn(`[ResumeStructured] Grounding warning: ${v}`);
+                }
+            }
         }
 
         // Estimate pages: ~45 non-empty lines per A4 page at standard margins.
         const nonEmptyLines = finalContent.split('\n').filter(l => l.trim().length > 0).length;
         const estimatedPages = Math.ceil(nonEmptyLines / 45);
 
-        // Flatten per-bullet tips from polish into { bulletKey, suggestion } pairs.
-        const resumeTips: Array<{ bulletKey: string; suggestion: string }> = [];
-        if (polish?.experience) {
-            for (const exp of polish.experience) {
-                for (const tip of (exp.tips ?? [])) {
-                    const bullet = exp.bullets?.[tip.bulletIndex];
-                    if (bullet && bullet.trim().length > 0) {
-                        resumeTips.push({
-                            bulletKey: bullet.trim().slice(0, 40),
-                            suggestion: tip.suggestion,
-                        });
-                    }
-                }
-            }
-        }
-
         // ── Persist document ────────────────────────────────────────────────
         const doc = await prisma.document.create({
             data: {
-                title: `STRUCTURED RESUME - ${profile.name || 'Draft'}`,
+                title: `RESUME - ${profile.name || 'Draft'}`,
                 content: finalContent,
                 type: 'RESUME',
                 userId,
@@ -770,10 +741,11 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
             id: doc.id,
             costBreakdown,
             blueprint: null,
-            polishAccepted: polish !== null,
+            polishAccepted: true,
             estimatedPages,
-            tips: resumeTips,
-            pageBudgetWarning: polish?.pageBudgetWarning ?? false,
+            tips: [],
+            pageBudgetWarning: false,
+            groundingWarnings: groundingWarnings.length > 0 ? groundingWarnings : undefined,
         });
     } catch (error) {
         console.error('[ResumeStructured] Generation Error:', error);
@@ -781,19 +753,14 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
     }
 });
 
-// ── Structured cover letter generation ─────────────────────────────────────────
-// This route generates a cover letter as structured JSON (salutation + 4 paragraphs
-// + signoff) which is then validated with Zod and rendered to deterministic markdown
-// server-side. LLM writes prose for fixed slots; code owns paragraph structure.
+// ── Structured cover letter generation (V2) ───────────────────────────────────
+// Single-pass generation from raw resume text. No blueprint, no structured JSON.
+// Claude writes the letter directly; grounding gate enforces honesty.
 router.post('/cover-letter-structured', authenticate, async (req: any, res: any) => {
     const userId = (req as any).user?.id;
     const {
         jobDescription,
-        selectedAchievementIds,
-        analysisContext,
         jobApplicationId,
-        companyResearch,
-        companyIntel: companyIntelFromBody,
     } = req.body;
 
     if (!jobDescription) {
@@ -815,171 +782,124 @@ router.post('/cover-letter-structured', authenticate, async (req: any, res: any)
             });
         }
 
+        // Load profile: scalars only, no includes
         const profile = await prisma.candidateProfile.findUnique({
             where: { userId },
-            include: {
-                achievements: true,
-                experience: true,
-                education: true,
-                volunteering: true,
-                certifications: true,
-                languages: true,
-            },
+            select: { id: true, name: true, resumeRawText: true },
         });
 
         if (!profile) {
             return res.status(404).json({ error: 'Profile not found' });
         }
 
-        const { buildAchievementContext } = await import('../services/generation');
-        const selectedAchievements = await buildAchievementContext(
-            userId,
-            jobDescription,
-            selectedAchievementIds
-        );
+        // Enforce resumeRawText guard
+        if (!profile.resumeRawText || profile.resumeRawText.length < 200) {
+            return res.status(400).json({ error: 'No resume on file. Upload your resume in the Profile section first.' });
+        }
 
         const sanitizedJobAppId = jobApplicationId === 'temp-id' ? null : (jobApplicationId || null);
 
-        // Company intel: prefer the value the apply flow pre-fetched (Perplexity,
-        // background-warmed on entry); else fall back to the JobApplication row.
-        let companyIntel: any = companyIntelFromBody ?? null;
-        if (!companyIntel && sanitizedJobAppId) {
-            try {
-                const jobApp = await prisma.jobApplication.findUnique({
-                    where: { id: sanitizedJobAppId },
-                    select: { companyIntel: true },
-                });
-                companyIntel = jobApp?.companyIntel ?? null;
-            } catch {
-                // Non-fatal — generation proceeds without intel
-            }
+        // Get most recent resume content if available (for consistency)
+        let generatedResume: string | undefined;
+        if (sanitizedJobAppId) {
+            const mostRecentResume = await prisma.document.findFirst({
+                where: { userId, jobApplicationId: sanitizedJobAppId, type: 'RESUME' },
+                orderBy: { createdAt: 'desc' },
+                select: { content: true },
+            });
+            generatedResume = mostRecentResume?.content ?? undefined;
         }
 
-        // ── Single-pass generation (one capable model; no separate strategist) ──
-        const { COVER_LETTER_SLOTS_PROMPT } = await import('../services/prompts/coverLetterSlotsPrompt');
-        const { scrubInjection } = await import('../services/scrubInjection');
-        const { scrubbed: cleanJd } = scrubInjection(jobDescription);
+        // Build prompt and generate
+        const { COVER_LETTER_V2_PROMPT } = await import('../services/prompts/generationV2');
+        const { checkGrounding } = await import('../lib/groundingGate');
 
-        // Minimal blueprint stub — generation no longer depends on a separate
-        // strategist stage. Only employerInsight is carried through from research.
-        const blueprint = {
-            positioningStatement: '',
-            proofPoints: [],
-            messagingAngles: [],
-            pitfallFlags: [],
-            toneBlueprint: '',
-            structureNotes: '',
-            employerInsight: companyResearch?.highlights?.length
-                ? companyResearch.highlights.join(' - ')
-                : '',
-            sector: 'GENERAL' as const,
-            openingHook: '',
-        };
+        const prompt = COVER_LETTER_V2_PROMPT(profile.resumeRawText, jobDescription, generatedResume);
 
-        const prompt = COVER_LETTER_SLOTS_PROMPT(
-            cleanJd,
-            profile,
-            selectedAchievements,
-            blueprint,
-            analysisContext,
-            companyResearch,
-            companyIntel,
-            undefined, // bridged gaps removed — never inject invented capabilities
-            profile.yearsOfExperience,
-        );
-
-        console.log('[CoverLetterStructured] Generating cover letter (single Claude pass)...');
-        const { content: stage2Raw, usage } = await callClaude(prompt, true, undefined, PREMIUM_MODEL);
-        console.log(`[CoverLetterStructured] Generation complete. ${stage2Raw.length} characters.`);
+        console.log('[CoverLetterStructured] Generating cover letter (V2 single pass)...');
+        const { content: rawOutput, usage } = await callClaude(prompt, false, undefined, PREMIUM_MODEL);
+        console.log(`[CoverLetterStructured] Generation complete. ${rawOutput.length} characters.`);
 
         const stage2Cost =
             (usage.promptTokens / 1_000_000) * CLAUDE_INPUT_COST_PER_M +
             (usage.completionTokens / 1_000_000) * CLAUDE_OUTPUT_COST_PER_M;
 
-        // ── STAGE 3: Validate + build template cover letter ────────────────
-        const { parseCoverLetterPolishJson } = await import('../lib/validateCoverLetterPolish');
-        const { applyCoverLetterPolish } = await import('../lib/applyCoverLetterPolish');
-        const { coverLetterToMarkdown } = await import('../lib/coverLetterToMarkdown');
-        const { enforceCoverLetterQuality } = await import('../lib/coverLetterQualityEnforcers');
-
-        const polish = parseCoverLetterPolishJson(stage2Raw);
-        if (!polish) {
-            console.warn('[CoverLetterStructured] LLM output failed Zod validation — falling back to baseline template');
+        // Strip accidental code fences
+        let finalContent = rawOutput.trim();
+        if (finalContent.startsWith('```')) {
+            const lines = finalContent.split('\n');
+            if (lines[0].startsWith('```')) lines.shift();
+            if (lines[lines.length - 1].startsWith('```')) lines.pop();
+            finalContent = lines.join('\n').trim();
         }
 
-        // Build baseline CoverLetterData from profile + job data
-        const { profileToCoverLetterData } = await import('../lib/profileToCoverLetterData');
-        let coverData = profileToCoverLetterData(profile, {
-            title: analysisContext?.title || '',
-            company: companyResearch?.name || analysisContext?.company || '',
-            companyIntel,
-        });
-
-        // Apply polish if valid
-        if (polish) {
-            coverData = applyCoverLetterPolish(coverData, polish);
+        // Shape check: must contain salutation and sign-off
+        function passesShapeCheck(text: string): boolean {
+            const hasSalutation = /^Dear\s+\w+/im.test(text) || text.includes('Dear Hiring Manager,');
+            const hasSignoff = text.includes('Yours sincerely,');
+            return hasSalutation && hasSignoff;
         }
 
-        // Run quality enforcers
-        coverData = enforceCoverLetterQuality(coverData, {
-            candidateName: profile?.name,
-        });
+        let shapePassed = passesShapeCheck(finalContent);
 
-        // Render to deterministic markdown
-        let finalContent = coverLetterToMarkdown(coverData);
+        // Retry once if shape check fails
+        if (!shapePassed) {
+            console.log('[CoverLetterStructured] Shape check failed, retrying once...');
+            const retryPrompt = prompt + '\n\nYour previous attempt did not follow the required letter format. Return ONLY the letter text with "Dear Hiring Manager," and "Yours sincerely," sign-off.';
+            const { content: retryOutput, usage: retryUsage } = await callClaude(retryPrompt, false, undefined, PREMIUM_MODEL);
 
-        // ── Years claim detection + regeneration (Stage 5 specification) ──
-        const yearsDetection = detectYearsClaim(finalContent, profile.yearsOfExperience ?? null);
-        if (yearsDetection.violates && !analysisContext?.regenerateFeedback) {
-            // First violation: regenerate with corrective feedback (max one regeneration)
-            const feedback = getYearsFeedbackInstruction(profile.yearsOfExperience ?? null);
-            console.log(`[CoverLetter] Years claim violation detected (${yearsDetection.value} years), regenerating with feedback...`);
-
-            const regeneratePrompt = COVER_LETTER_SLOTS_PROMPT(
-                cleanJd,
-                profile,
-                selectedAchievements,
-                blueprint,
-                { ...analysisContext, regenerateFeedback: feedback },
-                companyResearch,
-                companyIntel,
-                undefined,
-                profile.yearsOfExperience,
-            );
-
-            const { content: regeneratedRaw, usage: regenUsage } = await callClaude(regeneratePrompt, true, undefined, PREMIUM_MODEL);
-
-            // Parse regenerated output
-            const regeneratedPolish = parseCoverLetterPolishJson(regeneratedRaw);
-            let regeneratedCoverData = profileToCoverLetterData(profile, {
-                title: analysisContext?.title || '',
-                company: companyResearch?.name || analysisContext?.company || '',
-                companyIntel,
-            });
-
-            if (regeneratedPolish) {
-                regeneratedCoverData = applyCoverLetterPolish(regeneratedCoverData, regeneratedPolish);
+            let retryContent = retryOutput.trim();
+            if (retryContent.startsWith('```')) {
+                const lines = retryContent.split('\n');
+                if (lines[0].startsWith('```')) lines.shift();
+                if (lines[lines.length - 1].startsWith('```')) lines.pop();
+                retryContent = lines.join('\n').trim();
             }
-            regeneratedCoverData = enforceCoverLetterQuality(regeneratedCoverData, { candidateName: profile?.name });
-            const regeneratedContent = coverLetterToMarkdown(regeneratedCoverData);
 
-            // Re-check for violation
-            const recheck = detectYearsClaim(regeneratedContent, profile.yearsOfExperience ?? null);
-            if (recheck.violates) {
-                // Still violates after regeneration: remove complete sentences (last resort)
-                console.log(`[CoverLetter] Years claim still violates after regeneration, removing sentences...`);
-                finalContent = removeSentencesWithYears(regeneratedContent);
+            shapePassed = passesShapeCheck(retryContent);
+            if (!shapePassed) {
+                console.error('[CoverLetterStructured] Shape check failed after retry');
+                return res.status(502).json({ error: 'Generation failed format validation, please try again.' });
+            }
+            finalContent = retryContent;
+        }
+
+        // Grounding gate check (numbers and contact only for letters)
+        let groundingWarnings: string[] = [];
+        const groundingResult = checkGrounding(finalContent, profile.resumeRawText, jobDescription);
+
+        if (groundingResult.violations.length > 0) {
+            console.log(`[CoverLetterStructured] Grounding violations found: ${groundingResult.violations.length}`);
+
+            // Retry once with violations appended
+            const retryPrompt = prompt + '\n\n== YOUR PREVIOUS ATTEMPT VIOLATED THESE HONESTY RULES, FIX THEM ==\n' +
+                groundingResult.violations.map(v => `- ${v}`).join('\n');
+
+            const { content: retryOutput } = await callClaude(retryPrompt, false, undefined, PREMIUM_MODEL);
+
+            let retryContent = retryOutput.trim();
+            if (retryContent.startsWith('```')) {
+                const lines = retryContent.split('\n');
+                if (lines[0].startsWith('```')) lines.shift();
+                if (lines[lines.length - 1].startsWith('```')) lines.pop();
+                retryContent = lines.join('\n').trim();
+            }
+
+            // Recheck grounding
+            const retryGrounding = checkGrounding(retryContent, profile.resumeRawText, jobDescription);
+
+            if (retryGrounding.violations.length === 0) {
+                // Retry succeeded
+                finalContent = retryContent;
             } else {
-                finalContent = regeneratedContent;
+                // Still has violations, keep the content but warn
+                groundingWarnings = retryGrounding.violations;
+                finalContent = retryContent;
+                for (const v of retryGrounding.violations) {
+                    console.warn(`[CoverLetterStructured] Grounding warning: ${v}`);
+                }
             }
-        } else if (yearsDetection.violates && analysisContext?.regenerateFeedback) {
-            // Already regenerated once, still violates: remove complete sentences
-            console.log(`[CoverLetter] Years claim violates after regeneration, removing sentences...`);
-            finalContent = removeSentencesWithYears(finalContent);
         }
-
-        // Report-only employer grounding check (STOP and review before any auto-removal)
-        logEmployerGroundingCheck(finalContent, profile, 'CoverLetter');
 
         // ── Persist document ────────────────────────────────────────────────
         const doc = await prisma.document.create({
@@ -1004,7 +924,8 @@ router.post('/cover-letter-structured', authenticate, async (req: any, res: any)
             id: doc.id,
             costBreakdown,
             blueprint: null,
-            polishAccepted: polish !== null,
+            polishAccepted: true,
+            groundingWarnings: groundingWarnings.length > 0 ? groundingWarnings : undefined,
         });
     } catch (error) {
         console.error('[CoverLetterStructured] Generation Error:', error);

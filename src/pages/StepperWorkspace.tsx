@@ -762,6 +762,7 @@ function DocumentStep({
                 content: string;
                 tips?: ResumeTip[];
                 estimatedPages?: number;
+                groundingWarnings?: string[];
             }>(endpoint, payload);
             const text = typeof data?.content === 'string' ? sanitizeContent(data.content) : '';
             setContent(text);
@@ -769,6 +770,12 @@ function DocumentStep({
             const pages = stepId === 'resume' ? (data?.estimatedPages ?? null) : null;
             setResumeTips(tips);
             setEstimatedPages(pages);
+
+            // Show warning if grounding check found unverified claims
+            if (data?.groundingWarnings && data.groundingWarnings.length > 0) {
+                toast.warning(`Heads up: ${data.groundingWarnings.length} claim(s) could not be verified against your resume. Review before sending.`);
+            }
+
             saveDraft(workspaceKey, stepId, {
                 content: text,
                 generatedAt: new Date().toISOString(),

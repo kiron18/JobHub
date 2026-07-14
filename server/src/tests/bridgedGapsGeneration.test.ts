@@ -128,11 +128,26 @@ const MOCK_BLUEPRINT_RESULT = {
 
 // ── Profile ─────────────────────────────────────────────────────────────────
 
+const SAMPLE_RESUME_TEXT = `
+Jane Smith
+jane.smith@example.com | +61 412 345 678
+
+EXPERIENCE
+Software Engineer at TechCo (Jan 2020 - Present)
+- Building full-stack applications with TypeScript, React, and Node.js
+- Led the redesign of the customer-facing platform, improving engagement by 40%
+
+EDUCATION
+Bachelor of Computer Science · 2018
+University of Technology
+`;
+
 const MOCK_PROFILE = {
   id: 'profile-1',
   userId: 'test-user-id',
   name: 'Jane Smith',
   fullName: 'Jane Smith',
+  resumeRawText: SAMPLE_RESUME_TEXT,
   professionalSummary: 'Experienced software engineer with 5+ years in full-stack development.',
   targetRole: 'Senior Software Engineer',
   location: 'Sydney, Australia',
@@ -177,15 +192,20 @@ const VALID_BODY = {
   ],
 };
 
-// The mock JSON response from the LLM (Stage 2)
-const MOCK_COVER_LETTER_JSON = JSON.stringify({
-  salutation: 'Dear Hiring Manager,',
-  p1: 'I am excited to apply for the Senior Software Engineer role at Acme Corp. With over five years of full-stack development experience, I bring a proven track record of delivering high-quality software products.',
-  p2: 'At TechCo, I led the development of a customer-facing platform that improved user engagement by 40 percent. My leadership directly contributed to a 25 percent reduction in bug reports.',
-  p3: 'Beyond my technical expertise, I have used Adobe Creative Suite to build marketing collateral and brand assets for a product launch reaching 50,000 users, demonstrating my ability to bridge engineering and design.',
-  p4: 'I would welcome the opportunity to discuss how my experience aligns with the needs of Acme Corp. Thank you for your consideration.',
-  signoff: 'Yours faithfully,\nJane Smith',
-});
+// The mock response from the LLM (V2 returns markdown, not JSON)
+const MOCK_COVER_LETTER_MARKDOWN = `Dear Hiring Manager,
+
+I am excited to apply for the Senior Software Engineer role at Acme Corp. With over five years of full-stack development experience, I bring a proven track record of delivering high-quality software products.
+
+At TechCo, I led the development of a customer-facing platform that improved user engagement by 40 percent. My leadership directly contributed to a 25 percent reduction in bug reports.
+
+Beyond my technical expertise, I have demonstrated my ability to bridge engineering and design, collaborating closely with product and marketing teams.
+
+I would welcome the opportunity to discuss how my experience aligns with the needs of Acme Corp. Thank you for your consideration.
+
+Yours sincerely,
+Jane Smith
+`;
 
 // ── Tests ───────────────────────────────────────────────────────────────────
 
@@ -211,12 +231,12 @@ describe('POST /generate/cover-letter-structured — no invented capabilities', 
     // Stage 1: generateBlueprint returns a mock blueprint
     (generateBlueprint as any).mockResolvedValue(MOCK_BLUEPRINT_RESULT);
 
-    // Generation: callClaude returns the mock cover letter JSON (single pass)
-    (callClaude as any).mockResolvedValue(claudeReply(MOCK_COVER_LETTER_JSON));
+    // Generation: callClaude returns the mock cover letter markdown (V2 single pass)
+    (callClaude as any).mockResolvedValue(claudeReply(MOCK_COVER_LETTER_MARKDOWN));
 
     // Legacy paths (not used by the structured route any more) kept harmlessly mocked
-    (callLLMWithRetry as any).mockResolvedValue(MOCK_COVER_LETTER_JSON);
-    (callLLM as any).mockResolvedValue(MOCK_COVER_LETTER_JSON);
+    (callLLMWithRetry as any).mockResolvedValue(MOCK_COVER_LETTER_MARKDOWN);
+    (callLLM as any).mockResolvedValue(MOCK_COVER_LETTER_MARKDOWN);
   });
 
   it('never injects an invented-capability block, even when a client still sends bridgedGaps', async () => {
@@ -224,7 +244,7 @@ describe('POST /generate/cover-letter-structured — no invented capabilities', 
 
     (callClaude as any).mockImplementation((prompt: string) => {
       capturedPrompt = prompt;
-      return Promise.resolve(claudeReply(MOCK_COVER_LETTER_JSON));
+      return Promise.resolve(claudeReply(MOCK_COVER_LETTER_MARKDOWN));
     });
 
     // VALID_BODY still carries a legacy bridgedGaps array; the route must ignore it.
@@ -244,7 +264,7 @@ describe('POST /generate/cover-letter-structured — no invented capabilities', 
   });
 
   it('generates a cover letter from the candidate profile and JD', async () => {
-    (callClaude as any).mockResolvedValue(claudeReply(MOCK_COVER_LETTER_JSON));
+    (callClaude as any).mockResolvedValue(claudeReply(MOCK_COVER_LETTER_MARKDOWN));
 
     const res = await request(app)
       .post('/generate/cover-letter-structured')
