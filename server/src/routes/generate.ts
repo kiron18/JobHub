@@ -619,7 +619,7 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
         const { content: rawOutput, usage } = await callClaude(prompt, false, undefined, PREMIUM_MODEL);
         console.log(`[ResumeStructured] Generation complete. ${rawOutput.length} characters.`);
 
-        const stage2Cost =
+        let stage2Cost =
             (usage.promptTokens / 1_000_000) * CLAUDE_INPUT_COST_PER_M +
             (usage.completionTokens / 1_000_000) * CLAUDE_OUTPUT_COST_PER_M;
 
@@ -653,7 +653,7 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
             const retryPrompt = prompt + '\n\nYour previous attempt did not follow the required output structure. Return ONLY the markdown document in exactly the specified structure.';
             const { content: retryOutput, usage: retryUsage } = await callClaude(retryPrompt, false, undefined, PREMIUM_MODEL);
 
-            stage2Cost +
+            stage2Cost +=
                 (retryUsage.promptTokens / 1_000_000) * CLAUDE_INPUT_COST_PER_M +
                 (retryUsage.completionTokens / 1_000_000) * CLAUDE_OUTPUT_COST_PER_M;
 
@@ -685,8 +685,7 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
 
             const { content: retryOutput, usage: retryUsage } = await callClaude(retryPrompt, false, undefined, PREMIUM_MODEL);
 
-            // Recalculate cost
-            const retryCost =
+            stage2Cost +=
                 (retryUsage.promptTokens / 1_000_000) * CLAUDE_INPUT_COST_PER_M +
                 (retryUsage.completionTokens / 1_000_000) * CLAUDE_OUTPUT_COST_PER_M;
 
@@ -698,18 +697,28 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
                 retryContent = lines.join('\n').trim();
             }
 
-            // Recheck grounding
-            const retryGrounding = checkGrounding(retryContent, profile.resumeRawText, jobDescription);
-
-            if (retryGrounding.violations.length === 0) {
-                // Retry succeeded
-                finalContent = retryContent;
-            } else {
-                // Still has violations, keep the content but warn
-                groundingWarnings = retryGrounding.violations;
-                finalContent = retryContent;
-                for (const v of retryGrounding.violations) {
+            // The retry must still hold the required structure; if it broke the
+            // shape, keep the original shape-valid content and warn on it instead.
+            if (!passesShapeCheck(retryContent)) {
+                console.warn('[ResumeStructured] Grounding retry broke document shape, keeping original content');
+                groundingWarnings = groundingResult.violations;
+                for (const v of groundingResult.violations) {
                     console.warn(`[ResumeStructured] Grounding warning: ${v}`);
+                }
+            } else {
+                // Recheck grounding
+                const retryGrounding = checkGrounding(retryContent, profile.resumeRawText, jobDescription);
+
+                if (retryGrounding.violations.length === 0) {
+                    // Retry succeeded
+                    finalContent = retryContent;
+                } else {
+                    // Still has violations, keep the content but warn
+                    groundingWarnings = retryGrounding.violations;
+                    finalContent = retryContent;
+                    for (const v of retryGrounding.violations) {
+                        console.warn(`[ResumeStructured] Grounding warning: ${v}`);
+                    }
                 }
             }
         }
@@ -820,7 +829,7 @@ router.post('/cover-letter-structured', authenticate, async (req: any, res: any)
         const { content: rawOutput, usage } = await callClaude(prompt, false, undefined, PREMIUM_MODEL);
         console.log(`[CoverLetterStructured] Generation complete. ${rawOutput.length} characters.`);
 
-        const stage2Cost =
+        let stage2Cost =
             (usage.promptTokens / 1_000_000) * CLAUDE_INPUT_COST_PER_M +
             (usage.completionTokens / 1_000_000) * CLAUDE_OUTPUT_COST_PER_M;
 
@@ -847,6 +856,10 @@ router.post('/cover-letter-structured', authenticate, async (req: any, res: any)
             console.log('[CoverLetterStructured] Shape check failed, retrying once...');
             const retryPrompt = prompt + '\n\nYour previous attempt did not follow the required letter format. Return ONLY the letter text with "Dear Hiring Manager," and "Yours sincerely," sign-off.';
             const { content: retryOutput, usage: retryUsage } = await callClaude(retryPrompt, false, undefined, PREMIUM_MODEL);
+
+            stage2Cost +=
+                (retryUsage.promptTokens / 1_000_000) * CLAUDE_INPUT_COST_PER_M +
+                (retryUsage.completionTokens / 1_000_000) * CLAUDE_OUTPUT_COST_PER_M;
 
             let retryContent = retryOutput.trim();
             if (retryContent.startsWith('```')) {
@@ -875,7 +888,11 @@ router.post('/cover-letter-structured', authenticate, async (req: any, res: any)
             const retryPrompt = prompt + '\n\n== YOUR PREVIOUS ATTEMPT VIOLATED THESE HONESTY RULES, FIX THEM ==\n' +
                 groundingResult.violations.map(v => `- ${v}`).join('\n');
 
-            const { content: retryOutput } = await callClaude(retryPrompt, false, undefined, PREMIUM_MODEL);
+            const { content: retryOutput, usage: retryUsage } = await callClaude(retryPrompt, false, undefined, PREMIUM_MODEL);
+
+            stage2Cost +=
+                (retryUsage.promptTokens / 1_000_000) * CLAUDE_INPUT_COST_PER_M +
+                (retryUsage.completionTokens / 1_000_000) * CLAUDE_OUTPUT_COST_PER_M;
 
             let retryContent = retryOutput.trim();
             if (retryContent.startsWith('```')) {
@@ -885,18 +902,28 @@ router.post('/cover-letter-structured', authenticate, async (req: any, res: any)
                 retryContent = lines.join('\n').trim();
             }
 
-            // Recheck grounding
-            const retryGrounding = checkGrounding(retryContent, profile.resumeRawText, jobDescription);
-
-            if (retryGrounding.violations.length === 0) {
-                // Retry succeeded
-                finalContent = retryContent;
-            } else {
-                // Still has violations, keep the content but warn
-                groundingWarnings = retryGrounding.violations;
-                finalContent = retryContent;
-                for (const v of retryGrounding.violations) {
+            // The retry must still hold the letter shape; if it broke it, keep the
+            // original shape-valid letter and warn on it instead.
+            if (!passesShapeCheck(retryContent)) {
+                console.warn('[CoverLetterStructured] Grounding retry broke letter shape, keeping original content');
+                groundingWarnings = groundingResult.violations;
+                for (const v of groundingResult.violations) {
                     console.warn(`[CoverLetterStructured] Grounding warning: ${v}`);
+                }
+            } else {
+                // Recheck grounding
+                const retryGrounding = checkGrounding(retryContent, profile.resumeRawText, jobDescription);
+
+                if (retryGrounding.violations.length === 0) {
+                    // Retry succeeded
+                    finalContent = retryContent;
+                } else {
+                    // Still has violations, keep the content but warn
+                    groundingWarnings = retryGrounding.violations;
+                    finalContent = retryContent;
+                    for (const v of retryGrounding.violations) {
+                        console.warn(`[CoverLetterStructured] Grounding warning: ${v}`);
+                    }
                 }
             }
         }
