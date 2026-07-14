@@ -38,7 +38,7 @@ export async function callLLM(prompt: string, jsonMode: boolean = true, temperat
         const response = await axios.post(
             OPENROUTER_URL,
             {
-                model: 'meta-llama/llama-3.3-70b-instruct',
+                model: process.env.FAST_MODEL || 'anthropic/claude-sonnet-4-5',
                 temperature,
                 max_tokens: 8192,
                 messages: [
