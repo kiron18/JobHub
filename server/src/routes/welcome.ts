@@ -15,6 +15,7 @@ import { prisma } from '../index';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { autoExtractAchievements } from '../services/autoExtract';
 import { reconcileProfileEmail } from '../services/onboarding';
+import { parseLLMJson } from '../utils/parseLLMResponse';
 
 const router = Router();
 
@@ -80,15 +81,9 @@ router.post('/brief', authenticate, handleUpload, async (req: Request, res: Resp
     }
 
     const raw = await callLLM(WELCOME_BRIEF_PROMPT(text), true, 0.4);
-    let firstName = '';
-    let brief = '';
-    try {
-      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-      firstName = String(parsed.firstName ?? '').trim();
-      brief = String(parsed.brief ?? '').trim();
-    } catch {
-      brief = String(raw ?? '').trim();
-    }
+    const parsed = typeof raw === 'string' ? parseLLMJson(raw) : raw;
+    const firstName = String(parsed.firstName ?? '').trim();
+    const brief = String(parsed.brief ?? '').trim();
     if (!brief) { res.status(502).json({ error: 'Could not read your resume, please try again.' }); return; }
 
     const token = randomUUID();
