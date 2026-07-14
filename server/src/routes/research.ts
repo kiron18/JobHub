@@ -613,7 +613,12 @@ router.post('/company-intel', authenticate, async (req, res) => {
         res.json(intel);
     } catch (err: any) {
         console.warn('[research/company-intel] fetch failed:', err?.message);
-        res.status(502).json({ error: 'Company intel fetch failed' });
+        // Return { available: false } when research is disabled or fails;
+        // the frontend tolerates this as "no insight available".
+        if (err?.message === 'COMPANY_RESEARCH_DISABLED') {
+            return res.json({ available: false });
+        }
+        res.status(502).json({ available: false, error: 'Company intel fetch failed' });
     }
 });
 

@@ -26,6 +26,10 @@ export interface CompanyIntelResult {
 export async function fetchCompanyIntel(
   params: CompanyIntelParams
 ): Promise<CompanyIntelResult> {
+  if (process.env.COMPANY_RESEARCH_ENABLED === 'false') {
+    throw new Error('COMPANY_RESEARCH_DISABLED');
+  }
+
   const { companyName, jobTitle, jobExcerpts, candidateSkills } = params;
 
   const prompt = [
