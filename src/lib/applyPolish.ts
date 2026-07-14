@@ -17,24 +17,20 @@ export interface PolishPayload {
  * Replace semantics: each field returned by the LLM fully replaces
  * the corresponding field in the profile data.
  *
- * Matching strategy: Since ResumeData.experience items don't have an `id`
- * field, the polish payload's `experience` array is matched by INDEX
- * with the ResumeData's `experience` array. An experience item with `bullets`
- * fully replaces the original item's `description` field.
- *
- * - If the polish payload has fewer experience entries than ResumeData,
- *   the remaining entries are kept unpolished.
- * - Extra entries in the payload are ignored.
- * - The `id` field in the polish payload is available for traceability
- *   (e.g. matching back to a DB record) but is NOT used for lookup.
+ * Matching strategy: matched by experience `id`, never by array position.
+ * The LLM's response can omit, duplicate, or reorder entries relative to the
+ * profile — matching by index let one job's bullets silently land on a
+ * different, unrelated job whenever that happened. An id that doesn't
+ * resolve to a real experience entry is dropped rather than misapplied.
  */
 export function applyPolish(data: ResumeData, polish: PolishPayload): ResumeData {
+  const polishById = new Map((polish.experience ?? []).map(e => [e.id, e]));
   return {
     ...data,
     professionalSummary: polish.summary ?? data.professionalSummary,
     skills: polish.skills ?? data.skills,
-    experience: data.experience.map((exp, i) => {
-      const match = (polish.experience ?? [])[i];
+    experience: data.experience.map(exp => {
+      const match = polishById.get(exp.id);
       if (!match) return exp;
       return {
         ...exp,

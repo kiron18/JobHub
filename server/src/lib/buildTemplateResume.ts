@@ -216,6 +216,7 @@ export function profileToResumeData(profile: ProfileWithRelations): ResumeData {
     professionalSummary: profile.professionalSummary || undefined,
     skills: normalizeSkillsString(profile.skills) || undefined,
     experience: profile.experience.map(exp => ({
+      id: exp.id,
       role: exp.role,
       company: exp.company,
       location: exp.location || undefined,
@@ -253,14 +254,22 @@ export function profileToResumeData(profile: ProfileWithRelations): ResumeData {
 
 // =============================================================================
 // applyPolish — merges validated LLM polish JSON into ResumeData
+//
+// Matched by experience `id`, never by array position. The LLM's response can
+// omit, duplicate, or reorder entries relative to the profile — matching by
+// index let one job's bullets (including tools) silently land on a different,
+// unrelated job whenever that happened. Matching by id means a bullet can only
+// ever attach to the job it was actually generated for; anything that doesn't
+// resolve to a real id is dropped instead of misapplied.
 // =============================================================================
 export function applyPolish(data: ResumeData, polish: PolishPayload): ResumeData {
+  const polishById = new Map((polish.experience ?? []).map(e => [e.id, e]));
   return {
     ...data,
     professionalSummary: polish.summary ?? data.professionalSummary,
     skills: polish.skills ?? data.skills,
-    experience: data.experience.map((exp, i) => {
-      const match = (polish.experience ?? [])[i];
+    experience: data.experience.map(exp => {
+      const match = polishById.get(exp.id);
       if (!match) return exp;
       return {
         ...exp,
@@ -445,22 +454,16 @@ export function buildTemplateResume(
   polish: PolishPayload | null,
   options?: BuildTemplateOptions
 ): string {
-  // ── Step 0: Reorder profile.experience + align polish.experience ────────────
-  // Both arrays must be in the same order before index-based applyPolish runs.
+  // ── Step 0: Reorder profile.experience for display order ────────────────────
+  // Content merging (applyPolish) and display flags below are matched by id,
+  // so polish.experience never needs reordering — only the profile's own
+  // display order depends on experienceOrder.
   let orderedProfile = profile;
-  let orderedPolish = polish;
+  const orderedPolish = polish;
 
   if (polish?.experienceOrder && polish.experienceOrder.length > 0) {
     const reorderedProfileExps = reorderExperience(profile.experience, polish.experienceOrder);
     orderedProfile = { ...profile, experience: reorderedProfileExps };
-
-    if (polish.experience && polish.experience.length > 0) {
-      const reorderedPolishExps = reorderExperience(
-        polish.experience as Array<{ id: string } & (typeof polish.experience)[number]>,
-        polish.experienceOrder,
-      );
-      orderedPolish = { ...polish, experience: reorderedPolishExps };
-    }
   }
 
   // ── Step 1: Profile → ResumeData ────────────────────────────────────────────
@@ -494,14 +497,18 @@ export function buildTemplateResume(
 
   // ── Step 2.5: Feature/fold/omit curation ────────────────────────────────────
   // Prefer display flags from polish (new path) over options.experienceFlags
-  // (old wildcard path). Build flags from display when any entry has one set.
+  // (old wildcard path). Matched by id — same reasoning as applyPolish above:
+  // a flag can only ever apply to the job it was actually generated for.
   const polishExps = orderedPolish?.experience ?? [];
+  const polishExpsById = new Map(polishExps.map(e => [e.id, e]));
   const hasDisplayFlags = polishExps.some(e => e.display !== undefined);
 
   let experienceFlagsToUse = options?.experienceFlags ?? null;
 
-  if (hasDisplayFlags && polishExps.length === orderedProfile.experience.length) {
-    const rawFlags = polishExps.map((e, i) => {
+  if (hasDisplayFlags) {
+    const rawFlags = data.experience.map((exp, i) => {
+      const e = polishExpsById.get(exp.id);
+      if (!e) return { index: i, relevant: true, australianLocal: false };
       if (e.display === 'omit') return { index: i, relevant: false, australianLocal: false };
       if (e.display === 'fold') return { index: i, relevant: false, australianLocal: true };
       // 'full' or undefined — treat as relevant; fall back to casual flag if present

@@ -13,6 +13,7 @@ export type ResumeData = {
     skills?: string;
     additionalExperienceLine?: string;
     experience: Array<{
+        id: string;
         role: string;
         company: string;
         location?: string;

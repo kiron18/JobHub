@@ -57,6 +57,7 @@ export function profileToResumeData(profile: ProfileWithRelations): ResumeData {
     professionalSummary: profile.professionalSummary || undefined,
     skills: profile.skills || undefined,
     experience: profile.experience.map(exp => ({
+      id: exp.id,
       role: exp.role,
       company: exp.company,
       location: exp.location || undefined,

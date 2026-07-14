@@ -219,6 +219,7 @@ describe('profileToResumeData → profileToMarkdown formatting invariants', () =
 
     expect(data.experience).toHaveLength(1);
     expect(data.experience[0]).toEqual({
+      id: 'exp-1',
       role: 'Engineer',
       company: 'Co',
       location: 'Melbourne',
@@ -227,8 +228,6 @@ describe('profileToResumeData → profileToMarkdown formatting invariants', () =
       isCurrent: true,
       description: 'Did things',
     });
-    // id must NOT be in the output (ResumeData doesn't have it)
-    expect((data.experience[0] as any).id).toBeUndefined();
 
     expect(data.education).toHaveLength(1);
     expect(data.education[0]).toEqual({

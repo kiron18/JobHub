@@ -85,3 +85,54 @@ describe('applyPolish skills override', () => {
     expect(out.skills).toBe('Technical: Chemistry');
   });
 });
+
+describe('applyPolish experience matching', () => {
+  const dataWithJobs: any = {
+    name: 'X',
+    education: [],
+    experience: [
+      { id: 'a', role: 'Engineer', company: 'Acme', startDate: '2021', description: 'orig A' },
+      { id: 'b', role: 'Analyst', company: 'Beta', startDate: '2019', description: 'orig B' },
+      { id: 'c', role: 'Intern', company: 'Gamma', startDate: '2017', description: 'orig C' },
+    ],
+  };
+
+  it('matches bullets to the correct job by id even when the polish array is reordered', () => {
+    // LLM returned job C's bullets first, then A, then B — the opposite of profile order.
+    const out = applyPolish(dataWithJobs, {
+      experience: [
+        { id: 'c', bullets: ['Used tool X for Gamma work'] },
+        { id: 'a', bullets: ['Used tool Y for Acme work'] },
+        { id: 'b', bullets: ['Used tool Z for Beta work'] },
+      ],
+    } as any);
+    expect(out.experience.find((e: any) => e.id === 'a').description).toBe('Used tool Y for Acme work');
+    expect(out.experience.find((e: any) => e.id === 'b').description).toBe('Used tool Z for Beta work');
+    expect(out.experience.find((e: any) => e.id === 'c').description).toBe('Used tool X for Gamma work');
+  });
+
+  it('leaves a job unpolished rather than misattributing bullets when the LLM drops its id', () => {
+    // LLM only returned 2 of 3 jobs — with index-based matching this used to shift
+    // job C's slot to receive job B's bullets. With id-based matching, B and C are
+    // each handled independently: B gets its bullets, C is left unpolished.
+    const out = applyPolish(dataWithJobs, {
+      experience: [
+        { id: 'a', bullets: ['Used tool Y for Acme work'] },
+        { id: 'b', bullets: ['Used tool Z for Beta work'] },
+      ],
+    } as any);
+    expect(out.experience.find((e: any) => e.id === 'c').description).toBe('orig C');
+  });
+
+  it('ignores an id in the polish payload that does not match any real job', () => {
+    const out = applyPolish(dataWithJobs, {
+      experience: [
+        { id: 'hallucinated-id', bullets: ['Used tool from nowhere'] },
+        { id: 'a', bullets: ['Used tool Y for Acme work'] },
+      ],
+    } as any);
+    expect(out.experience.find((e: any) => e.id === 'b').description).toBe('orig B');
+    expect(out.experience.find((e: any) => e.id === 'c').description).toBe('orig C');
+    expect(out.experience.find((e: any) => e.id === 'a').description).toBe('Used tool Y for Acme work');
+  });
+});

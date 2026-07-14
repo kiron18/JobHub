@@ -11,6 +11,7 @@ export type ResumeData = {
     professionalSummary?: string;
     skills?: string;
     experience: Array<{
+        id: string;
         role: string;
         company: string;
         location?: string;
