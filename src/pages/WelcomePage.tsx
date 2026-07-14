@@ -15,6 +15,8 @@ type Step = 'upload' | 'loading' | 'brief' | 'roles' | 'finishing';
 
 const EASE = [0.25, 1, 0.5, 1] as const;
 
+const ROLE_PLACEHOLDERS = ['e.g. Marketing Coordinator', 'e.g. Business Analyst', 'e.g. Registered Nurse', 'e.g. Software Engineer', 'e.g. Project Manager', 'e.g. Graphic Designer'];
+
 export const WelcomePage: React.FC = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
@@ -40,6 +42,7 @@ export const WelcomePage: React.FC = () => {
       setToken(data.token);
       setFirstName(data.firstName || '');
       setBrief(data.brief || '');
+      if (data.currentRole) setRoles([data.currentRole]);
       setStep('brief');
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'Could not read your resume, please try again.');
@@ -116,7 +119,7 @@ export const WelcomePage: React.FC = () => {
               <input
                 value={r}
                 onChange={e => setRoles(prev => prev.map((x, j) => (j === i ? e.target.value : x)))}
-                placeholder="e.g. Marketing Coordinator"
+                placeholder={ROLE_PLACEHOLDERS[i % ROLE_PLACEHOLDERS.length]}
                 style={inputStyle}
                 autoFocus={i === 0}
               />

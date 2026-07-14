@@ -63,7 +63,7 @@ Read the resume and write a short, human read in flowing prose. Rules:
 - Australian English. No em dashes or en dashes. About 90 to 140 words total.
 
 Return ONLY this JSON object, nothing else:
-{ "firstName": "their first name, or an empty string if unclear", "brief": "the prose read, as one string with \\n\\n between paragraphs" }
+{ "firstName": "their first name, or an empty string if unclear", "currentRole": "their current or most recent job title, in plain title case, or an empty string if unclear", "brief": "the prose read, as one string with \\n\\n between paragraphs" }
 
 RESUME:
 ${resumeText}`;
@@ -83,6 +83,7 @@ router.post('/brief', authenticate, handleUpload, async (req: Request, res: Resp
     const raw = await callLLM(WELCOME_BRIEF_PROMPT(text), true, 0.4);
     const parsed = typeof raw === 'string' ? parseLLMJson(raw) : raw;
     const firstName = String(parsed.firstName ?? '').trim();
+    const currentRole = String(parsed.currentRole ?? '').trim();
     const brief = String(parsed.brief ?? '').trim();
     if (!brief) { res.status(502).json({ error: 'Could not read your resume, please try again.' }); return; }
 
@@ -90,7 +91,7 @@ router.post('/brief', authenticate, handleUpload, async (req: Request, res: Resp
     welcomeStore.set(token, { resumeText: text, filename: file.originalname ?? null, at: Date.now() });
     trimStore();
 
-    res.json({ token, firstName, brief });
+    res.json({ token, firstName, currentRole, brief });
   } catch (err) {
     console.error('[welcome/brief]', err instanceof Error ? `${err.name}: ${err.message}` : String(err));
     res.status(502).json({ error: 'Could not read your resume, please try again.' });
