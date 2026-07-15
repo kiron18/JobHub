@@ -13,6 +13,7 @@
  */
 import React from 'react';
 import { pdf, Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
+import type { DocumentProps } from '@react-pdf/renderer';
 import { saveAs } from 'file-saver';
 
 export type DocType =
@@ -62,7 +63,6 @@ try {
 // Font families to use (with fallbacks)
 const SERIF_FONT = 'SourceSerif';
 const SANS_FONT = 'SourceSans';
-const FALLBACK_FONT = 'Helvetica';
 
 // -------------------------------------------------------------------
 // Design System — Master Resume Standard
@@ -818,7 +818,7 @@ export async function exportPdf(
 ): Promise<void> {
     content = sanitizeForExport(content);
 
-    let doc: React.ReactElement;
+    let doc: React.ReactElement<DocumentProps>;
 
     if (docType === 'resume') {
         const sections = parseResume(content);
