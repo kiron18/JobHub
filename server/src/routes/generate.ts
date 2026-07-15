@@ -612,6 +612,7 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
         // Build prompt and generate
         const { RESUME_V2_PROMPT } = await import('../services/prompts/generationV2');
         const { checkGrounding } = await import('../lib/groundingGate');
+        const { checkStyle, formatStyleViolationsForRetry } = await import('../lib/styleLint');
 
         const prompt = RESUME_V2_PROMPT(profile.resumeRawText, jobDescription);
 
@@ -672,16 +673,23 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
             }
         }
 
-        // Grounding gate check
+        // Grounding gate check + Style lint check (Phase 2)
         let groundingWarnings: string[] = [];
         const groundingResult = checkGrounding(finalContent, profile.resumeRawText, jobDescription);
+        const styleResult = checkStyle(finalContent, false); // isCoverLetter = false
 
-        if (groundingResult.violations.length > 0) {
-            console.log(`[ResumeStructured] Grounding violations found: ${groundingResult.violations.length}`);
+        const originalViolationCount = groundingResult.violations.length + styleResult.violations.length;
+
+        if (originalViolationCount > 0) {
+            console.log(`[ResumeStructured] Violations found: ${groundingResult.violations.length} grounding, ${styleResult.violations.length} style (total: ${originalViolationCount})`);
 
             // Retry once with violations appended
-            const retryPrompt = prompt + '\n\n== YOUR PREVIOUS ATTEMPT VIOLATED THESE HONESTY RULES, FIX THEM ==\n' +
-                groundingResult.violations.map(v => `- ${v}`).join('\n');
+            const allViolations = [
+                ...groundingResult.violations,
+                ...formatStyleViolationsForRetry(styleResult.violations),
+            ];
+            const retryPrompt = prompt + '\n\n== YOUR PREVIOUS ATTEMPT VIOLATED THESE RULES, FIX THEM ==\n' +
+                allViolations.map(v => `- ${v}`).join('\n');
 
             const { content: retryOutput, usage: retryUsage } = await callClaude(retryPrompt, false, undefined, PREMIUM_MODEL);
 
@@ -700,25 +708,34 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
             // The retry must still hold the required structure; if it broke the
             // shape, keep the original shape-valid content and warn on it instead.
             if (!passesShapeCheck(retryContent)) {
-                console.warn('[ResumeStructured] Grounding retry broke document shape, keeping original content');
-                groundingWarnings = groundingResult.violations;
-                for (const v of groundingResult.violations) {
-                    console.warn(`[ResumeStructured] Grounding warning: ${v}`);
+                console.warn('[ResumeStructured] Retry broke document shape, keeping original content');
+                groundingWarnings = allViolations;
+                for (const v of allViolations) {
+                    console.warn(`[ResumeStructured] Warning: ${v}`);
                 }
             } else {
-                // Recheck grounding
+                // Recheck grounding and style
                 const retryGrounding = checkGrounding(retryContent, profile.resumeRawText, jobDescription);
+                const retryStyle = checkStyle(retryContent, false);
+                const retryViolationCount = retryGrounding.violations.length + retryStyle.violations.length;
 
-                if (retryGrounding.violations.length === 0) {
-                    // Retry succeeded
+                // Phase 2: Keep the draft with fewer violations (tie: keep retry)
+                if (retryViolationCount <= originalViolationCount) {
+                    // Retry is better or equal — adopt it
+                    console.log(`[ResumeStructured] Retry has ${retryViolationCount} violations vs original ${originalViolationCount} — keeping retry`);
                     finalContent = retryContent;
+                    groundingWarnings = [
+                        ...retryGrounding.violations,
+                        ...formatStyleViolationsForRetry(retryStyle.violations),
+                    ];
                 } else {
-                    // Still has violations, keep the content but warn
-                    groundingWarnings = retryGrounding.violations;
-                    finalContent = retryContent;
-                    for (const v of retryGrounding.violations) {
-                        console.warn(`[ResumeStructured] Grounding warning: ${v}`);
-                    }
+                    // Original is better — keep it
+                    console.log(`[ResumeStructured] Original has ${originalViolationCount} violations vs retry ${retryViolationCount} — keeping original`);
+                    groundingWarnings = allViolations;
+                }
+
+                for (const v of groundingWarnings) {
+                    console.warn(`[ResumeStructured] Warning: ${v}`);
                 }
             }
         }
@@ -822,6 +839,7 @@ router.post('/cover-letter-structured', authenticate, async (req: any, res: any)
         // Build prompt and generate
         const { COVER_LETTER_V2_PROMPT } = await import('../services/prompts/generationV2');
         const { checkGrounding } = await import('../lib/groundingGate');
+        const { checkStyle, formatStyleViolationsForRetry } = await import('../lib/styleLint');
 
         const prompt = COVER_LETTER_V2_PROMPT(profile.resumeRawText, jobDescription, generatedResume);
 
@@ -877,16 +895,23 @@ router.post('/cover-letter-structured', authenticate, async (req: any, res: any)
             finalContent = retryContent;
         }
 
-        // Grounding gate check (numbers and contact only for letters)
+        // Grounding gate check + Style lint check (Phase 2)
         let groundingWarnings: string[] = [];
         const groundingResult = checkGrounding(finalContent, profile.resumeRawText, jobDescription);
+        const styleResult = checkStyle(finalContent, true); // isCoverLetter = true (checks word count 400-500)
 
-        if (groundingResult.violations.length > 0) {
-            console.log(`[CoverLetterStructured] Grounding violations found: ${groundingResult.violations.length}`);
+        const originalViolationCount = groundingResult.violations.length + styleResult.violations.length;
+
+        if (originalViolationCount > 0) {
+            console.log(`[CoverLetterStructured] Violations found: ${groundingResult.violations.length} grounding, ${styleResult.violations.length} style (total: ${originalViolationCount})`);
 
             // Retry once with violations appended
-            const retryPrompt = prompt + '\n\n== YOUR PREVIOUS ATTEMPT VIOLATED THESE HONESTY RULES, FIX THEM ==\n' +
-                groundingResult.violations.map(v => `- ${v}`).join('\n');
+            const allViolations = [
+                ...groundingResult.violations,
+                ...formatStyleViolationsForRetry(styleResult.violations),
+            ];
+            const retryPrompt = prompt + '\n\n== YOUR PREVIOUS ATTEMPT VIOLATED THESE RULES, FIX THEM ==\n' +
+                allViolations.map(v => `- ${v}`).join('\n');
 
             const { content: retryOutput, usage: retryUsage } = await callClaude(retryPrompt, false, undefined, PREMIUM_MODEL);
 
@@ -905,25 +930,34 @@ router.post('/cover-letter-structured', authenticate, async (req: any, res: any)
             // The retry must still hold the letter shape; if it broke it, keep the
             // original shape-valid letter and warn on it instead.
             if (!passesShapeCheck(retryContent)) {
-                console.warn('[CoverLetterStructured] Grounding retry broke letter shape, keeping original content');
-                groundingWarnings = groundingResult.violations;
-                for (const v of groundingResult.violations) {
-                    console.warn(`[CoverLetterStructured] Grounding warning: ${v}`);
+                console.warn('[CoverLetterStructured] Retry broke letter shape, keeping original content');
+                groundingWarnings = allViolations;
+                for (const v of allViolations) {
+                    console.warn(`[CoverLetterStructured] Warning: ${v}`);
                 }
             } else {
-                // Recheck grounding
+                // Recheck grounding and style
                 const retryGrounding = checkGrounding(retryContent, profile.resumeRawText, jobDescription);
+                const retryStyle = checkStyle(retryContent, true);
+                const retryViolationCount = retryGrounding.violations.length + retryStyle.violations.length;
 
-                if (retryGrounding.violations.length === 0) {
-                    // Retry succeeded
+                // Phase 2: Keep the draft with fewer violations (tie: keep retry)
+                if (retryViolationCount <= originalViolationCount) {
+                    // Retry is better or equal — adopt it
+                    console.log(`[CoverLetterStructured] Retry has ${retryViolationCount} violations vs original ${originalViolationCount} — keeping retry`);
                     finalContent = retryContent;
+                    groundingWarnings = [
+                        ...retryGrounding.violations,
+                        ...formatStyleViolationsForRetry(retryStyle.violations),
+                    ];
                 } else {
-                    // Still has violations, keep the content but warn
-                    groundingWarnings = retryGrounding.violations;
-                    finalContent = retryContent;
-                    for (const v of retryGrounding.violations) {
-                        console.warn(`[CoverLetterStructured] Grounding warning: ${v}`);
-                    }
+                    // Original is better — keep it
+                    console.log(`[CoverLetterStructured] Original has ${originalViolationCount} violations vs retry ${retryViolationCount} — keeping original`);
+                    groundingWarnings = allViolations;
+                }
+
+                for (const v of groundingWarnings) {
+                    console.warn(`[CoverLetterStructured] Warning: ${v}`);
                 }
             }
         }
