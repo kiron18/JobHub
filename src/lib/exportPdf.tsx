@@ -834,6 +834,16 @@ export async function exportPdf(
 ): Promise<void> {
     content = sanitizeForExport(content);
 
+    // Callers often can't supply name/title; the generated markdown itself
+    // carries both ("# Name" line, then "*Job Title*" line), so derive
+    // missing values from it rather than falling back to a generic filename.
+    if (!candidateName) {
+        candidateName = content.match(/^#\s+(.+)$/m)?.[1]?.trim() ?? '';
+    }
+    if (!jobTitle) {
+        jobTitle = content.match(/^\*([^*\n]+)\*$/m)?.[1]?.trim() ?? '';
+    }
+
     let doc: React.ReactElement<DocumentProps>;
 
     if (docType === 'resume') {

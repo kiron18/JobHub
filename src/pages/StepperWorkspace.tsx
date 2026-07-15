@@ -834,7 +834,7 @@ function DocumentStep({
         try {
             if (fmt === 'pdf') {
                 const { exportPdf } = await import('../lib/exportPdf');
-                await exportPdf(content, exportType as any, '', '');
+                await exportPdf(content, exportType as any, '', undefined, company);
             } else {
                 const { exportDocx } = await import('../lib/exportDocx');
                 await exportDocx(content, exportType as any, '');
@@ -899,7 +899,7 @@ function DocumentStep({
                                             if (resumeDraft?.content) {
                                                 if (fmt === 'pdf') {
                                                     const { exportPdf } = await import('../lib/exportPdf');
-                                                    await exportPdf(resumeDraft.content, 'resume', '', '');
+                                                    await exportPdf(resumeDraft.content, 'resume', '', undefined, company);
                                                 } else {
                                                     const { exportDocx } = await import('../lib/exportDocx');
                                                     await exportDocx(resumeDraft.content, 'resume', '');
