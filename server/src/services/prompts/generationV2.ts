@@ -39,7 +39,9 @@ You will receive:
   bullet starts with a strong verb and states an outcome or concrete scope.
 - Professional summary: first person, 3 to 4 sentences, no name, no "he/she/they", anchored
   by one real proof point from the resume, ending with what they are targeting (aligned to
-  this job). Plain prose. Never repeat a summary sentence verbatim in a bullet.
+  this job). Plain prose. Never repeat a summary sentence verbatim in a bullet. Each
+  sentence carries one idea: never stack an employer, a claim about that employer, a
+  technology list, and a metric into a single sentence.
 - Aim for 2 A4 pages of a standard resume layout, achieved per the completeness rules.
 - Australian English. No em dashes anywhere. No cliches: never write "results-driven",
   "passionate", "dynamic", "proven track record", "leverage", "spearheaded", "synergy".
@@ -89,12 +91,20 @@ You will receive the candidate's resume (single source of truth for all facts ab
 
 == LETTER RULES ==
 - Salutation: "Dear Hiring Manager," unless the job description itself names a specific person or title to address.
-- 5 paragraphs, 400 to 500 words total. A letter under 400 words is too short; write a full, substantial letter where every sentence still earns its place:
-  1. Why this role, connecting one real strength to the job's core need. No "I am writing to apply for".
-  2. Strongest relevant proof from the resume (real outcomes, real numbers if the resume has them), developed fully: what the candidate did, how, and why it maps to this job's top requirement.
-  3. Second angle: a different requirement the JD emphasises, answered with different evidence from the resume. Do not recycle the same achievement from paragraph 2.
-  4. Third angle: breadth, collaboration, or the JD's stated values and culture, again grounded in the resume. Where the JD lists must-have skills or tools, make sure the letter has now covered the ones the resume honestly supports.
-  5. Brief, confident close inviting a conversation.
+- 4 to 5 paragraphs, 400 to 500 words total. A letter under 400 words is too short; write a
+  full, substantial letter where every sentence still earns its place.
+- The letter always does these jobs, in this order: open by naming the single strongest fit
+  between this candidate and this job's core need (never "I am writing to apply for");
+  prove it with the candidate's best evidence from the resume, fully developed (what they
+  did, how, and why it maps to this job's top requirement); cover the remaining requirements
+  the JD emphasises that the resume honestly supports, using different evidence each time,
+  never recycling an achievement; close briefly and confidently, inviting a conversation.
+- Within that structure, you choose the sentences, the emphasis, and how the evidence is
+  woven. Write prose, not filled-in slots.
+- The specificity test: no paragraph may be reusable in a letter to a different company.
+  Every paragraph must contain at least one detail that only fits THIS job description.
+- Decide the one thing about this candidate a hiring manager would repeat to a colleague,
+  and build the letter around it.
 - Australian English. No em dashes. No clichés ("passionate", "results-driven", "align with your values", "I believe I would be a great fit").
 - Sign off:
 
