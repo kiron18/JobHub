@@ -14,7 +14,11 @@
 import React from 'react';
 import { pdf, Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
 import type { DocumentProps } from '@react-pdf/renderer';
-import { saveAs } from 'file-saver';
+// Interop-safe import: file-saver is CJS/UMD, so named imports break under
+// node ESM (used by scripts/render-test.tsx); default + fallback works in both.
+import fileSaverModule from 'file-saver';
+const saveAs: (blob: Blob, filename?: string) => void =
+    (fileSaverModule as any).saveAs ?? (fileSaverModule as any);
 
 export type DocType =
     | 'resume'
@@ -77,8 +81,8 @@ const styles = StyleSheet.create({
     page: {
         fontFamily: SANS_FONT,
         fontSize: 10.5,
-        paddingTop: MARGIN_PT,
-        paddingBottom: MARGIN_PT,
+        paddingTop: 48,
+        paddingBottom: 48,
         paddingHorizontal: MARGIN_PT,
         lineHeight: 1.35,
         color: TEXT_COLOR,
@@ -89,6 +93,7 @@ const styles = StyleSheet.create({
         fontSize: 22,
         fontWeight: 'bold',
         color: TEXT_COLOR,
+        lineHeight: 1.1,
         marginBottom: 2,
     },
     // Headline (job title): bold, ~11pt, accent colour
@@ -104,7 +109,7 @@ const styles = StyleSheet.create({
         fontFamily: SANS_FONT,
         fontSize: 9,
         color: MUTED_COLOR,
-        marginBottom: 16,
+        marginBottom: 10,
     },
     contactLink: {
         color: ACCENT_COLOR,
@@ -116,15 +121,13 @@ const styles = StyleSheet.create({
         fontSize: 9.5,
         fontWeight: 'bold',
         textTransform: 'uppercase',
-        letterSpacing: '0.12em',
+        letterSpacing: 1.1,
         color: ACCENT_COLOR,
-        marginTop: 16,
-        marginBottom: 6,
+        marginTop: 9,
+        marginBottom: 4,
         paddingBottom: 3,
         borderBottomWidth: 0.5,
         borderBottomColor: ACCENT_COLOR,
-        // Prevent orphaned headers
-        orphanControl: 2,
     },
     // First section has less top margin
     firstSectionHeader: {
@@ -132,18 +135,17 @@ const styles = StyleSheet.create({
         fontSize: 9.5,
         fontWeight: 'bold',
         textTransform: 'uppercase',
-        letterSpacing: '0.12em',
+        letterSpacing: 1.1,
         color: ACCENT_COLOR,
         marginTop: 8,
-        marginBottom: 6,
+        marginBottom: 4,
         paddingBottom: 3,
         borderBottomWidth: 0.5,
         borderBottomColor: ACCENT_COLOR,
-        orphanControl: 2,
     },
     // Role/project entry container
     roleEntry: {
-        marginBottom: 8,
+        marginBottom: 5,
     },
     // Role header: title left, dates right on same line
     roleHeader: {
@@ -178,8 +180,8 @@ const styles = StyleSheet.create({
     // Bullets: 10.5pt, 1.35 line height, hanging indent
     bullet: {
         fontFamily: SANS_FONT,
-        fontSize: 10.5,
-        lineHeight: 1.35,
+        fontSize: 10,
+        lineHeight: 1.3,
         marginBottom: 2,
         paddingLeft: 12,
         textIndent: -6,
@@ -187,9 +189,9 @@ const styles = StyleSheet.create({
     // Professional summary paragraph
     summary: {
         fontFamily: SANS_FONT,
-        fontSize: 10.5,
-        lineHeight: 1.4,
-        marginBottom: 8,
+        fontSize: 10,
+        lineHeight: 1.3,
+        marginBottom: 6,
     },
     // Skills section: label/value rows
     skillsContainer: {
@@ -205,7 +207,7 @@ const styles = StyleSheet.create({
         fontSize: 9.5,
         fontWeight: 'bold',
         fontVariant: 'small-caps',
-        width: 85,
+        width: 118,
         color: TEXT_COLOR,
     },
     skillValues: {
@@ -217,8 +219,8 @@ const styles = StyleSheet.create({
     // Plain paragraph (for publications, etc)
     paragraph: {
         fontFamily: SANS_FONT,
-        fontSize: 10.5,
-        lineHeight: 1.35,
+        fontSize: 10,
+        lineHeight: 1.3,
         marginBottom: 4,
     },
     // Referees
@@ -245,6 +247,7 @@ interface ResumeItem {
     type: 'role' | 'degree' | 'project' | 'publication' | 'cert' | 'language' | 'skill' | 'text';
     title?: string;
     organization?: string;
+    descriptor?: string;
     dates?: string;
     bullets?: string[];
     text?: string;
@@ -254,8 +257,9 @@ interface ResumeItem {
 
 /**
  * Parse resume markdown into structured sections
+ * (exported for render tests)
  */
-function parseResume(markdown: string): ResumeSection[] {
+export function parseResume(markdown: string): ResumeSection[] {
     const lines = markdown.split('\n');
     const sections: ResumeSection[] = [];
     let currentSection: ResumeSection | null = null;
@@ -266,27 +270,25 @@ function parseResume(markdown: string): ResumeSection[] {
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
 
-        // Parse header (name, headline, contact)
+        // Parse header (name, headline, contact) — the header spans everything
+        // up to the first "## " section, with blank lines in between.
         if (inHeader) {
-            if (line.startsWith('# ')) {
-                headerLines.push(line);
-                continue;
-            }
-            if (line.startsWith('*') && line.endsWith('*') && !line.startsWith('**')) {
-                headerLines.push(line);
-                continue;
-            }
-            if (line.includes('|') && !line.startsWith('#')) {
-                headerLines.push(line);
-                continue;
-            }
-            if (!line && headerLines.length > 0) {
+            if (line.startsWith('## ')) {
                 inHeader = false;
                 sections.push({
                     type: 'header',
                     title: '',
                     content: [{ type: 'text', text: headerLines.join('\n') }],
                 });
+                // fall through to the section-header handling below
+            } else {
+                if (line.startsWith('# ')) {
+                    headerLines.push(line);
+                } else if (line.startsWith('*') && line.endsWith('*') && !line.startsWith('**')) {
+                    headerLines.push(line);
+                } else if (line.includes('|')) {
+                    headerLines.push(line);
+                }
                 continue;
             }
         }
@@ -332,13 +334,14 @@ function parseResume(markdown: string): ResumeSection[] {
             continue;
         }
 
-        // Date lines (*Mmm YYYY - Mmm YYYY*)
-        if (line.startsWith('*') && line.endsWith('*') && currentItem) {
-            const dateText = line.slice(1, -1).trim();
-            if (dateText.match(/[A-Za-z]{3}\s+\d{4}/)) {
-                currentItem.dates = dateText;
-            } else if (currentItem.type === 'degree') {
-                // This is the institution line for education
+        // Date lines (*Mmm YYYY - Mmm YYYY*, *2023*, *2024 - 2025*) and italic
+        // descriptor lines under an entry (tech stack, company blurb)
+        if (line.startsWith('*') && line.endsWith('*') && !line.startsWith('**') && currentItem) {
+            const inner = line.replace(/^\*+|\*+$/g, '').trim();
+            if (/\d{4}/.test(inner) && !currentItem.dates) {
+                currentItem.dates = inner;
+            } else if (inner) {
+                currentItem.descriptor = currentItem.descriptor ? `${currentItem.descriptor} ${inner}` : inner;
             }
             continue;
         }
@@ -390,15 +393,13 @@ function parseResume(markdown: string): ResumeSection[] {
             continue;
         }
 
-        // Certification lines
-        if (currentSection?.type === 'certifications' && line.startsWith('- **')) {
+        // Certification lines (bold or plain bullets)
+        if (currentSection?.type === 'certifications' && line.startsWith('- ')) {
             const certMatch = line.match(/- \*\*(.+?)\*\*/);
-            if (certMatch) {
-                currentSection.content.push({
-                    type: 'cert',
-                    title: certMatch[1].trim(),
-                });
-            }
+            currentSection.content.push({
+                type: 'cert',
+                title: certMatch ? certMatch[1].trim() : line.slice(2).trim(),
+            });
             continue;
         }
 
@@ -411,6 +412,12 @@ function parseResume(markdown: string): ResumeSection[] {
         // Referees
         if (currentSection?.type === 'referees' && line) {
             currentSection.content.push({ type: 'text', text: line });
+            continue;
+        }
+
+        // Plain descriptor lines under a role/project (company blurb, tech stack)
+        if (line && currentItem && (currentItem.type === 'role' || currentItem.type === 'project')) {
+            currentItem.descriptor = currentItem.descriptor ? `${currentItem.descriptor} ${line}` : line;
             continue;
         }
 
@@ -500,15 +507,18 @@ function SummarySection({ content }: { content: ResumeItem[] }) {
 function ExperienceSection({ content, isFirst }: { content: ResumeItem[]; isFirst: boolean }) {
     return (
         <View>
-            <Text style={isFirst ? styles.firstSectionHeader : styles.sectionHeader}>Professional Experience</Text>
+            <Text minPresenceAhead={40} style={isFirst ? styles.firstSectionHeader : styles.sectionHeader}>Professional Experience</Text>
             {content.map((item, i) => (
                 <View key={i} style={styles.roleEntry}>
-                    <View style={styles.roleHeader}>
+                    <View minPresenceAhead={50} style={styles.roleHeader}>
                         <Text style={styles.roleTitle}>{item.title}</Text>
                         {item.dates && <Text style={styles.roleDates}>{item.dates}</Text>}
                     </View>
                     {item.organization && (
                         <Text style={styles.companyLine}>{item.organization}</Text>
+                    )}
+                    {item.descriptor && (
+                        <Text style={styles.companyLine}>{item.descriptor}</Text>
                     )}
                     {item.bullets?.map((bullet, j) => (
                         <Text key={j} style={styles.bullet}>•  {bullet}</Text>
@@ -522,10 +532,10 @@ function ExperienceSection({ content, isFirst }: { content: ResumeItem[]; isFirs
 function EducationSection({ content }: { content: ResumeItem[] }) {
     return (
         <View>
-            <Text style={styles.sectionHeader}>Education</Text>
+            <Text minPresenceAhead={40} style={styles.sectionHeader}>Education</Text>
             {content.map((item, i) => (
                 <View key={i} style={{ marginBottom: 6 }}>
-                    <View style={styles.roleHeader}>
+                    <View minPresenceAhead={50} style={styles.roleHeader}>
                         <Text style={styles.roleTitle}>{item.title}</Text>
                         {item.dates && <Text style={styles.roleDates}>{item.dates}</Text>}
                     </View>
@@ -541,7 +551,7 @@ function EducationSection({ content }: { content: ResumeItem[] }) {
 function SkillsSection({ content }: { content: ResumeItem[] }) {
     return (
         <View style={styles.skillsContainer}>
-            <Text style={styles.sectionHeader}>Skills & Competencies</Text>
+            <Text minPresenceAhead={40} style={styles.sectionHeader}>Skills & Competencies</Text>
             {content.map((item, i) => (
                 item.type === 'skill' && (
                     <View key={i} style={styles.skillRow}>
@@ -557,13 +567,19 @@ function SkillsSection({ content }: { content: ResumeItem[] }) {
 function ProjectsSection({ content }: { content: ResumeItem[] }) {
     return (
         <View>
-            <Text style={styles.sectionHeader}>Projects</Text>
+            <Text minPresenceAhead={40} style={styles.sectionHeader}>Projects</Text>
             {content.map((item, i) => (
                 <View key={i} style={styles.roleEntry}>
-                    <View style={styles.roleHeader}>
+                    <View minPresenceAhead={50} style={styles.roleHeader}>
                         <Text style={styles.roleTitle}>{item.title}</Text>
                         {item.dates && <Text style={styles.roleDates}>{item.dates}</Text>}
                     </View>
+                    {item.organization && (
+                        <Text style={styles.companyLine}>{item.organization}</Text>
+                    )}
+                    {item.descriptor && (
+                        <Text style={styles.companyLine}>{item.descriptor}</Text>
+                    )}
                     {item.bullets?.map((bullet, j) => (
                         <Text key={j} style={styles.bullet}>•  {bullet}</Text>
                     ))}
@@ -576,7 +592,7 @@ function ProjectsSection({ content }: { content: ResumeItem[] }) {
 function PublicationsSection({ content }: { content: ResumeItem[] }) {
     return (
         <View>
-            <Text style={styles.sectionHeader}>Publications</Text>
+            <Text minPresenceAhead={40} style={styles.sectionHeader}>Publications</Text>
             {content.map((item, i) => (
                 <Text key={i} style={styles.paragraph}>{item.text}</Text>
             ))}
@@ -587,7 +603,7 @@ function PublicationsSection({ content }: { content: ResumeItem[] }) {
 function CertificationsSection({ content }: { content: ResumeItem[] }) {
     return (
         <View>
-            <Text style={styles.sectionHeader}>Certifications</Text>
+            <Text minPresenceAhead={40} style={styles.sectionHeader}>Certifications</Text>
             {content.map((item, i) => (
                 <Text key={i} style={styles.bullet}>•  {item.title}</Text>
             ))}
@@ -598,7 +614,7 @@ function CertificationsSection({ content }: { content: ResumeItem[] }) {
 function LanguagesSection({ content }: { content: ResumeItem[] }) {
     return (
         <View>
-            <Text style={styles.sectionHeader}>Languages</Text>
+            <Text minPresenceAhead={40} style={styles.sectionHeader}>Languages</Text>
             {content.map((item, i) => (
                 <Text key={i} style={styles.paragraph}>{item.text}</Text>
             ))}
@@ -610,7 +626,7 @@ function RefereesSection({ content }: { content: ResumeItem[] }) {
     const text = content.map(c => c.text).filter(Boolean).join(' ');
     return (
         <View>
-            <Text style={styles.sectionHeader}>Referees</Text>
+            <Text minPresenceAhead={40} style={styles.sectionHeader}>Referees</Text>
             <Text style={styles.referees}>{text || 'Available upon request.'}</Text>
         </View>
     );
@@ -619,7 +635,7 @@ function RefereesSection({ content }: { content: ResumeItem[] }) {
 function GenericSection({ title, content }: { title: string; content: ResumeItem[] }) {
     return (
         <View>
-            <Text style={styles.sectionHeader}>{title}</Text>
+            <Text minPresenceAhead={40} style={styles.sectionHeader}>{title}</Text>
             {content.map((item, i) => (
                 <Text key={i} style={styles.paragraph}>{item.text || item.title}</Text>
             ))}
@@ -631,7 +647,7 @@ function GenericSection({ title, content }: { title: string; content: ResumeItem
 // Main Resume Document
 // -------------------------------------------------------------------
 
-function ResumeDocument({ sections }: { sections: ResumeSection[] }) {
+export function ResumeDocument({ sections }: { sections: ResumeSection[] }) {
     let experienceSeen = false;
 
     return (
