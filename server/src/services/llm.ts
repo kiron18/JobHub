@@ -113,12 +113,17 @@ export async function callClaude(
         }
         : { role: 'system', content: baseSystem };
 
+    const modelSlug = model || CLAUDE_MODEL;
+    // Opus 4.7+/Sonnet 5/Fable reject non-default sampling params on the
+    // Anthropic API; omit temperature for those so OpenRouter can't forward it.
+    const supportsTemperature = !/opus-4-[78]|sonnet-5|fable/.test(modelSlug);
+
     return await retryWithBackoff(async () => {
         const response = await axios.post(
             OPENROUTER_URL,
             {
-                model: model || CLAUDE_MODEL,
-                temperature: 0,
+                model: modelSlug,
+                ...(supportsTemperature ? { temperature: 0 } : {}),
                 max_tokens: 8192,
                 messages: [
                     systemMessage,
@@ -143,6 +148,7 @@ export async function callClaude(
         if (!choices?.length) {
             throw new Error(`OpenRouter returned no choices. Body: ${JSON.stringify(response.data).substring(0, 300)}`);
         }
+        console.log(`[LLM] callClaude requested=${modelSlug} served=${response.data.model ?? 'unknown'}`);
         const content = choices[0].message.content as string;
         const usage = response.data.usage || {};
         return {
