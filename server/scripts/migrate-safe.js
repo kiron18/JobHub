@@ -31,6 +31,14 @@ if (result.status !== 0) {
     console.log('\n[migrate-safe] DB unreachable — skipping migration, starting app.');
     process.exit(0);
   }
+  if (out.includes('Environment variable not found')) {
+    console.log('\n[migrate-safe] DATABASE_URL/DIRECT_URL not set — skipping migration, starting app.');
+    process.exit(0);
+  }
+  if (out.includes('prepared statement') || out.includes('42P05')) {
+    console.log('\n[migrate-safe] Pooled (pgbouncer) connection cannot run migrations — set DIRECT_URL to the session-mode URL (port 5432). Skipping migration, starting app.');
+    process.exit(0);
+  }
   process.exit(result.status ?? 1);
 }
 process.exit(0);
