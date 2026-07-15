@@ -1052,4 +1052,49 @@ router.post('/selection-criteria-structured', authenticate, async (req: any, res
     }
 });
 
+// ── Grammar check endpoint (Phase 3) ─────────────────────────────────────────
+router.post('/grammar-check', authenticate, async (req: any, res: any) => {
+    const { text } = req.body;
+    if (!text || typeof text !== 'string') {
+        return res.status(400).json({ error: 'Text is required' });
+    }
+
+    try {
+        // Use a fast, cheap model for grammar check
+        const prompt = `You are a grammar checker. Review the following text and list any sentences that are not grammatical English.
+
+Text:
+"""
+${text.slice(0, 4000)}
+"""
+
+Return ONLY a JSON array of strings, where each string is a problematic sentence.
+If there are no issues, return an empty array [].
+
+Example output: ["This sentence have errors.", "Another bad sentence here."]
+Or: []`;
+
+        const { content: raw } = await callClaude(prompt, true, undefined, 'anthropic/claude-haiku-4-5');
+
+        // Parse JSON response
+        let issues: string[] = [];
+        try {
+            const cleaned = raw.trim().replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+            issues = JSON.parse(cleaned);
+            if (!Array.isArray(issues)) {
+                issues = [];
+            }
+        } catch (e) {
+            console.error('[GrammarCheck] Failed to parse response:', raw);
+            issues = [];
+        }
+
+        res.json({ issues });
+    } catch (error) {
+        console.error('[GrammarCheck] Error:', error);
+        // Return empty array on error so download isn't blocked
+        res.json({ issues: [] });
+    }
+});
+
 export default router;

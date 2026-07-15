@@ -215,17 +215,40 @@ model JobApplication {
   @@index([candidateProfileId])
 }
 
+enum OutreachStatus {
+  ACTIVE
+  REPLIED
+  CALL_BOOKED
+  REFERRAL
+  CLOSED_NO_REPLY
+  CLOSED_MANUAL
+}
+
 model OutreachLog {
-  id               String   @id @default(uuid())
+  id               String            @id @default(uuid())
   userId           String
   personName       String
   company          String
   topic            String
-  specificQuestion String   @default("")
-  firstMessage     String   @default("")
-  createdAt        DateTime @default(now())
+  specificQuestion String            @default("")
+  firstMessage     String            @default("")
+  status           OutreachStatus    @default(ACTIVE)
+  createdAt        DateTime          @default(now())
+  messages         OutreachMessage[]
 
   @@index([userId])
+}
+
+model OutreachMessage {
+  id            String      @id @default(uuid())
+  outreachLogId String
+  touchNumber   Int
+  body          String
+  copiedAt      DateTime    @default(now())
+  outreachLog   OutreachLog @relation(fields: [outreachLogId], references: [id], onDelete: Cascade)
+
+  @@unique([outreachLogId, touchNumber])
+  @@index([outreachLogId])
 }
 
 model JobFeedItem {
@@ -292,6 +315,7 @@ model Document {
   jobApplicationId String?
   type             DocumentType
   content          String
+  edited           Boolean            @default(false)
   templateConfig   Json?
   qualitySignals   Json?
   createdAt        DateTime           @default(now())
@@ -726,6 +750,32 @@ model PauseWeek {
   createdAt DateTime @default(now())
 
   @@unique([userId, weekStart])
+}
+
+enum LocalExperienceType {
+  VOLUNTEERING
+  TEMP_WORK
+  INTERNSHIP
+  PART_TIME
+  PROJECT
+  COMMUNITY
+  OTHER
+}
+
+model LocalExperienceEntry {
+  id           String              @id @default(uuid())
+  userId       String
+  type         LocalExperienceType
+  organisation String
+  role         String
+  description  String              @default("")
+  hoursPerWeek Int?
+  startedAt    DateTime
+  endedAt      DateTime?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@index([userId])
 }
 
 model NudgeLog {

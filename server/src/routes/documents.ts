@@ -156,12 +156,16 @@ router.delete('/documents/:id', authenticate, async (req, res) => {
 
 router.patch('/documents/:id', authenticate, async (req, res) => {
     const { id } = req.params as any;
-    const { content } = req.body as any;
+    const { content, edited } = req.body as any;
     const userId = (req as any).user.id;
     try {
+        const updateData: any = {};
+        if (content !== undefined) updateData.content = content as string;
+        if (edited !== undefined) updateData.edited = edited as boolean;
+
         const doc = await prisma.document.update({
             where: { id: id as string, userId: userId as string },
-            data: { content: content as string }
+            data: updateData
         });
         res.json(doc);
     } catch (error) {

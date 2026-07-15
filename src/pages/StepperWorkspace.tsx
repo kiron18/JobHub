@@ -66,6 +66,31 @@ function sanitizeContent(raw: string): string {
         .trim();
 }
 
+/** Convert markdown to plain readable text for clipboard (Phase 3) */
+function markdownToPlainText(markdown: string): string {
+    return markdown
+        // Remove heading markers but keep text
+        .replace(/^#+\s+/gm, '')
+        // Convert bold/italic markers
+        .replace(/\*\*(.+?)\*\*/g, '$1')
+        .replace(/\*(.+?)\*/g, '$1')
+        // Convert bullet markers to proper bullets
+        .replace(/^-\s+/gm, '• ')
+        // Remove extra whitespace
+        .replace(/[ \t]{2,}/g, ' ')
+        .trim();
+}
+
+/** Grammar check via API (Phase 3) */
+async function checkGrammar(text: string): Promise<string[]> {
+    try {
+        const { data } = await api.post<{ issues: string[] }>('/grammar-check', { text });
+        return data.issues || [];
+    } catch {
+        return [];
+    }
+}
+
 const HEADING_COLOR: React.CSSProperties = { color: warm.colors.textPrimary };
 const STRONG_COLOR: React.CSSProperties = { color: warm.colors.textPrimary, fontWeight: 700 };
 
@@ -172,6 +197,7 @@ interface PersistedDraft {
     content: string;
     generatedAt: string;
     edited: boolean;
+    documentId?: string;
     tips?: ResumeTip[];
     estimatedPages?: number;
 }
@@ -602,6 +628,10 @@ function DocumentStep({
     const [resumeTips, setResumeTips] = useState<ResumeTip[]>([]);
     const [estimatedPages, setEstimatedPages] = useState<number | null>(null);
     const [showTips, setShowTips] = useState(false);
+    const [grammarIssues, setGrammarIssues] = useState<string[]>([]);
+    const [showGrammarWarning, setShowGrammarWarning] = useState(false);
+    const [documentId, setDocumentId] = useState<string | null>(null);
+    const [edited, setEdited] = useState(false);
 
     const navigate = useNavigate();
     const isCoverLetter = stepId === 'cover-letter';
@@ -679,11 +709,15 @@ function DocumentStep({
         if (draft) {
             setContent(draft.content);
             setHasDraft(true);
+            setEdited(draft.edited || false);
+            setDocumentId(draft.documentId || null);
             if (draft.tips) setResumeTips(draft.tips);
             if (draft.estimatedPages) setEstimatedPages(draft.estimatedPages);
         } else {
             setContent('');
             setHasDraft(false);
+            setEdited(false);
+            setDocumentId(null);
         }
         setEditing(false);
         if (isSC) {
@@ -724,13 +758,17 @@ function DocumentStep({
             }
 
             const { data } = await api.post<{
+                id?: string;
                 content: string;
                 tips?: ResumeTip[];
                 estimatedPages?: number;
                 groundingWarnings?: string[];
             }>(endpoint, payload);
             const text = typeof data?.content === 'string' ? sanitizeContent(data.content) : '';
+            const docId = data?.id || null;
             setContent(text);
+            setDocumentId(docId);
+            setEdited(false);
             const tips = stepId === 'resume' ? (data?.tips ?? []) : [];
             const pages = stepId === 'resume' ? (data?.estimatedPages ?? null) : null;
             setResumeTips(tips);
@@ -745,6 +783,7 @@ function DocumentStep({
                 content: text,
                 generatedAt: new Date().toISOString(),
                 edited: false,
+                documentId: docId || undefined,
                 tips,
                 estimatedPages: pages ?? undefined,
             });
@@ -775,26 +814,44 @@ function DocumentStep({
 
     const handleCopy = () => {
         if (!content) return;
-        navigator.clipboard.writeText(content);
+        // Phase 3: Convert markdown to plain text before copying
+        const plainText = markdownToPlainText(content);
+        navigator.clipboard.writeText(plainText);
         toast.success('Copied');
     };
 
-    // Commit any in-progress inline edit to content + localStorage. Idempotent:
+    // Commit any in-progress inline edit to content + localStorage + server. Idempotent:
     // a no-op when not editing or nothing changed, and it never toggles
     // `editing` itself (callers own that). That makes it safe to fire from the
     // textarea's onBlur without fighting the button click that follows. Returns
     // the effective post-commit content so callers can act on the fresh value
     // without waiting for the async setContent.
-    const commitEdit = (): string => {
+    const commitEdit = async (): Promise<string> => {
         if (!editing) return content;
         const trimmed = editBuffer.trim();
         if (trimmed.length > 0 && trimmed !== content) {
             setContent(trimmed);
-            saveDraft(workspaceKey, stepId, {
+            setEdited(true);
+            const draftData: PersistedDraft = {
                 content: trimmed,
                 generatedAt: new Date().toISOString(),
                 edited: true,
-            });
+                documentId: documentId || undefined,
+            };
+            saveDraft(workspaceKey, stepId, draftData);
+
+            // Phase 3: Persist edit to server
+            if (documentId) {
+                try {
+                    await api.patch(`/documents/${documentId}`, {
+                        content: trimmed,
+                        edited: true,
+                    });
+                } catch (err) {
+                    console.error('Failed to persist edit to server:', err);
+                }
+            }
+
             toast.success('Edits saved');
             return trimmed;
         }
@@ -828,6 +885,16 @@ function DocumentStep({
 
     const handleDownload = async (formatOverride?: 'docx' | 'pdf') => {
         if (!content) return;
+
+        // Phase 3: Grammar check before download
+        setShowGrammarWarning(false);
+        const issues = await checkGrammar(content);
+        if (issues.length > 0) {
+            setGrammarIssues(issues);
+            setShowGrammarWarning(true);
+            // Don't block download, just show warning
+        }
+
         const fmt = formatOverride ?? downloadFormat;
         if (formatOverride) setFormatPref(formatOverride);
         setFormatMenuOpen(false);
@@ -865,9 +932,24 @@ function DocumentStep({
             minHeight: 420,
         }}>
             <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: warm.colors.textMuted }}>
-                    {stepLabel}
-                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: warm.colors.textMuted }}>
+                        {stepLabel}
+                    </p>
+                    {/* Phase 3: Edited by you badge */}
+                    {edited && (
+                        <span style={{
+                            fontSize: 10,
+                            fontWeight: 600,
+                            color: '#92400e',
+                            background: '#fef3c7',
+                            padding: '2px 8px',
+                            borderRadius: 4,
+                        }}>
+                            Edited by you
+                        </span>
+                    )}
+                </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     {hasDraft && !editing && (
                         <>
@@ -950,6 +1032,40 @@ function DocumentStep({
                     hasCriteria={hasCriteria}
                     jobHasSC={jobHasSC}
                 />
+            )}
+
+            {/* Phase 3: Grammar warning */}
+            {showGrammarWarning && grammarIssues.length > 0 && (
+                <div style={{
+                    background: '#fef3c7',
+                    border: '1px solid #d97706',
+                    borderRadius: 8,
+                    padding: 12,
+                    marginBottom: 8,
+                }}>
+                    <p style={{ margin: '0 0 8px 0', fontSize: 12, fontWeight: 600, color: '#92400e' }}>
+                        ⚠️ Review these lines before sending:
+                    </p>
+                    <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12, color: '#78350f' }}>
+                        {grammarIssues.map((issue, i) => (
+                            <li key={i} style={{ marginBottom: 4 }}>{issue}</li>
+                        ))}
+                    </ul>
+                    <button
+                        onClick={() => setShowGrammarWarning(false)}
+                        style={{
+                            marginTop: 8,
+                            fontSize: 11,
+                            color: '#92400e',
+                            background: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            textDecoration: 'underline',
+                        }}
+                    >
+                        Dismiss
+                    </button>
+                </div>
             )}
 
             {/* Body */}
