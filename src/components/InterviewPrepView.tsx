@@ -462,12 +462,12 @@ export function InterviewPrepView({ doc, company, role }: { doc: string; company
                         </CollapsibleSection>
                     )}
                     {data.watchOuts.length > 0 && (
-                        <CollapsibleSection title="Watch-Outs" accent="text-amber-400">
+                        <CollapsibleSection title="Watch-Outs" accent="text-red-800">
                             <ul className="space-y-2">
                                 {data.watchOuts.map((w, i) => (
                                     <li key={i} className="flex items-start gap-2.5">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500/60 shrink-0 mt-1.5" />
-                                        <span className="text-[13px] text-amber-200/80 leading-relaxed">{w}</span>
+                                        <span className="w-1.5 h-1.5 rounded-full bg-red-700 shrink-0 mt-1.5" />
+                                        <span className="text-[13px] text-red-900 leading-relaxed">{w}</span>
                                     </li>
                                 ))}
                             </ul>
