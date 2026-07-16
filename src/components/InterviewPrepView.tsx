@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronRight, Eye, EyeOff, Lightbulb } from 'lucide-react';
+import { MindsetAnchors } from './interview/MindsetAnchors';
+import { OnTheDay } from './interview/OnTheDay';
+import { FinalChecklist } from './interview/FinalChecklist';
 
 interface StoryCard {
     title: string;
@@ -20,6 +23,8 @@ interface QuestionType {
 }
 
 interface InterviewPrepData {
+    whyYou: string;
+    anchor: string;
     companyIntelligence: string[];
     lookingFor: string;
     watchOuts: string[];
@@ -37,6 +42,8 @@ const TYPE_CONFIG: Record<string, { color: string; bg: string; border: string; d
 
 function parseInterviewDoc(raw: string): InterviewPrepData {
     const result: InterviewPrepData = {
+        whyYou: '',
+        anchor: '',
         companyIntelligence: [],
         lookingFor: '',
         watchOuts: [],
@@ -84,12 +91,21 @@ function parseInterviewDoc(raw: string): InterviewPrepData {
         if (!line) continue;
 
         // Top-level section detection
+        if (/^#{1,4}\s*your edge/i.test(line)) { section = 'edge'; subSection = ''; continue; }
         if (/^#{1,3}\s*1\.\s*know the stage/i.test(line)) { section = 'know'; subSection = ''; continue; }
         if (/^#{1,3}\s*2\.\s*story bank/i.test(line)) { section = 'stories'; flushStory(); subSection = ''; continue; }
         if (/^#{1,3}\s*3\.\s*prove it/i.test(line)) { section = 'prove'; flushStory(); flushQType(); subSection = ''; continue; }
         if (/^#{1,3}\s*4\.\s*questions to ask/i.test(line)) { section = 'ask'; flushQType(); subSection = ''; continue; }
 
         // Sub-sections within "Know the Stage"
+        if (section === 'edge') {
+            const whyMatch = line.match(/^\*{0,2}why you[:\s]+\*{0,2}\s*(.+)/i);
+            const anchorMatch = line.match(/^\*{0,2}your anchor[:\s]+\*{0,2}\s*(.+)/i);
+            if (whyMatch) { result.whyYou = whyMatch[1].replace(/\*+/g, '').trim(); }
+            else if (anchorMatch) { result.anchor = anchorMatch[1].replace(/\*+/g, '').trim(); }
+            continue;
+        }
+
         if (section === 'know') {
             if (/^#{2,4}\s*company intelligence/i.test(line)) { subSection = 'company'; continue; }
             if (/^#{2,4}\s*what they.re looking for/i.test(line)) { subSection = 'looking'; lookingForLines = []; continue; }
@@ -403,7 +419,26 @@ export function InterviewPrepView({ doc, company, role }: { doc: string; company
     }
 
     return (
-        <div className="w-full max-w-3xl space-y-4">
+        <div className="w-full max-w-3xl space-y-8">
+
+            {/* Header — Role · Organisation · Why You */}
+            <div className="space-y-3">
+                <div>
+                    <p className="text-[9px] font-black text-[#8B847B] uppercase tracking-widest">Interview Prep</p>
+                    <h1 className="text-2xl font-bold text-[#1A1814] leading-tight mt-1">
+                        {role || 'Your interview'}{company ? ` · ${company}` : ''}
+                    </h1>
+                </div>
+                {data.whyYou && (
+                    <div className="rounded-xl border border-brand-600/30 bg-brand-600/5 p-4">
+                        <p className="text-[9px] font-black text-brand-400 uppercase tracking-widest">Why You</p>
+                        <p className="text-[13px] text-[#1A1814] leading-relaxed mt-1.5">{data.whyYou}</p>
+                    </div>
+                )}
+            </div>
+
+            {/* Before You Walk In — mindset anchors */}
+            <MindsetAnchors anchor={data.anchor} />
 
             {/* Section 1, Know the Stage */}
             {hasKnow && (
@@ -540,6 +575,12 @@ export function InterviewPrepView({ doc, company, role }: { doc: string; company
                     </CollapsibleSection>
                 </div>
             )}
+
+            {/* On The Day — static */}
+            <OnTheDay />
+
+            {/* Final Checklist — static */}
+            <FinalChecklist company={company} />
         </div>
     );
 }
