@@ -268,22 +268,6 @@ export const CoachDashboard: React.FC = () => {
 
     return (
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '8px 4px 60px' }}>
-            {/* TEMPORARY DEMO MODE BANNER */}
-            <div style={{
-                background: 'linear-gradient(90deg, #C4713A, #B0563C)',
-                color: 'white',
-                padding: '10px 16px',
-                borderRadius: 10,
-                marginBottom: 16,
-                fontSize: 13,
-                fontWeight: 700,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-            }}>
-                <span>🎭 DEMO MODE — Mock data for presentation. NO real customer data affected.</span>
-                <span style={{ fontSize: 11, opacity: 0.9 }}>27 members | April–July 2026 timeline</span>
-            </div>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
                 <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
