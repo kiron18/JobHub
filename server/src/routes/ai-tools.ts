@@ -2,7 +2,6 @@
  * /api/analyze — AI-powered writing tools
  *
  * POST /polish-achievement      Rewrite a rough achievement into polished STAR format
- * POST /interview-questions     Generate 8 likely interview Qs with talking points
  * POST /email-cover-letter      Condense cover letter into email body + subject
  * POST /profile-advisor         Grade profile A-D with 5 prioritised improvements
  * POST /notes-actions           Extract follow-up action items from job notes
@@ -71,62 +70,6 @@ Return ONLY valid JSON.`;
     } catch (err: any) {
         console.error('[Polish Achievement] Error:', err.message);
         res.status(500).json({ error: 'Failed to polish achievement.' });
-    }
-});
-
-router.post('/interview-questions', async (req: any, res: any) => {
-    try {
-        const userId = req.user.id;
-        const { jobDescription } = req.body as { jobDescription?: string };
-
-        if (!jobDescription || jobDescription.length < 50) {
-            return res.status(400).json({ error: 'Job description required.' });
-        }
-
-        const profile = await prisma.candidateProfile.findUnique({
-            where: { userId },
-            include: { achievements: { select: { title: true, description: true, metric: true } } }
-        });
-        const achievementBank = profile?.achievements.slice(0, 12)
-            .map((a: any) => `- ${a.title}${a.metric ? ` [${a.metric}]` : ''}: ${(a.description || '').slice(0, 200)}`)
-            .join('\n') || 'none';
-
-        const prompt = `You are an expert career coach preparing an Australian job seeker for an interview.
-
-JOB DESCRIPTION (first 2000 chars):
-${jobDescription.slice(0, 2000)}
-
-CANDIDATE'S ACHIEVEMENT BANK:
-${achievementBank}
-
-Generate exactly 8 interview questions the hiring manager is most likely to ask. Mix types: behavioral, situational, role-specific, motivation.
-
-For each question, provide 2-3 CAR-structured talking points (Context, Action, Result): one short line of context, what the candidate did, and the outcome it produced. Draw each talking point from the candidate's real achievement bank above wherever possible — name the actual project, role, or metric so the candidate recognises their own story. Never invent an achievement or a metric that is not in the bank. If the bank has nothing relevant, give a talking point that coaches them on how to structure an honest answer instead.
-
-Return JSON:
-{
-  "questions": [
-    {
-      "question": "Exact question the interviewer might ask",
-      "type": "behavioral" | "situational" | "role-specific" | "motivation",
-      "talkingPoints": ["Point 1", "Point 2", "Point 3"],
-      "why": "One sentence explaining why interviewers ask this for this role"
-    }
-  ]
-}
-
-Return ONLY valid JSON. Exactly 8 questions. Order: 2 behavioral, 2 situational, 2 role-specific, 1 motivation, 1 wildcard.`;
-
-        const { content: raw } = await callClaude(prompt, true);
-        const result = parseLLMJson(raw);
-
-        return res.json({
-            questions: Array.isArray(result.questions) ? result.questions.slice(0, 8) : [],
-        });
-
-    } catch (err: any) {
-        console.error('[Interview Questions] Error:', err.message);
-        res.status(500).json({ error: 'Failed to extract interview questions.' });
     }
 });
 

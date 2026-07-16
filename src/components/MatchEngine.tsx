@@ -235,16 +235,16 @@ export const MatchEngine: React.FC = () => {
             setShowLowMatchWarning(true);
             return;
         }
-        navigate('/application-workspace', {
-            state: { jobDescription, analysis: result, initialTab: type }
+        navigate('/apply', {
+            state: { jobDescription }
         });
     };
 
     const handleLowMatchProceed = () => {
         setShowLowMatchWarning(false);
         if (pendingNavType) {
-            navigate('/application-workspace', {
-                state: { jobDescription, analysis: result, initialTab: pendingNavType }
+            navigate('/apply', {
+                state: { jobDescription }
             });
         }
         setPendingNavType(null);
