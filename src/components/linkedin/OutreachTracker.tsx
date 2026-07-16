@@ -24,7 +24,7 @@ const STATUS_LABELS: Record<OutreachLogEntry['status'], string> = {
   CLOSED_MANUAL: 'Closed',
 };
 
-function LadderDots({ messages, nextTouchNumber, status }: { messages: Array<{ touchNumber: number }>; nextTouchNumber: number | null; status: string }) {
+function LadderDots({ messages, nextTouchNumber }: { messages: Array<{ touchNumber: number }>; nextTouchNumber: number | null; status: string }) {
   return (
     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
       {[1, 2, 3].map((touch) => {

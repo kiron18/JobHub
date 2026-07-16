@@ -3,8 +3,7 @@ import { Loader2, Copy, Check, ChevronDown, ChevronUp, UserCheck } from 'lucide-
 import { toast } from 'sonner';
 import api from '../../lib/api';
 import { warm } from '../../lib/theme/warmTokens';
-import type { OutreachData, OutreachLogEntry } from './types';
-import { TOUCH_2_TEMPLATE, TOUCH_3_TEMPLATE } from '../../data/outreachTemplates';
+import type { OutreachData } from './types';
 
 const COACHING_TIPS: Record<keyof Omit<OutreachData, 'questionSuggestions'>, string> = {
   connectionNote: 'The specificity of the reference is what makes it work. Generic openers get ignored.',

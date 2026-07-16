@@ -22,4 +22,5 @@ export type SectionId =
   | 'jobs'
   | 'linkedin'
   | 'emailTemplates'
-  | 'mindset';
+  | 'mindset'
+  | 'local-experience';

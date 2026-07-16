@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import {
     Users, Flame, AlertTriangle, Loader2, ChevronDown, ChevronUp,
     PauseCircle, Check, RefreshCcw, Search,
@@ -222,7 +222,6 @@ const fmt = (iso: string) =>
 const goalLabel = (goal: number, type: string) => `${goal}/${type === 'weekly' ? 'wk' : 'day'}`;
 
 export const CoachDashboard: React.FC = () => {
-    const queryClient = useQueryClient();
     const [expanded, setExpanded] = useState<string | null>(null);
     const [search, setSearch] = useState('');
     const [override, setOverride] = useState({ appGoal: 5, appGoalType: 'daily', outreachGoal: 4, outreachGoalType: 'daily' });

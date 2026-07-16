@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Loader2, Plus, X, Check, Calendar, Building2, Briefcase, Clock, BookOpen } from 'lucide-react';
+import { Loader2, Plus, X, Check, Calendar, Building2, Clock, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import { warm } from '../../lib/theme/warmTokens';
