@@ -81,10 +81,18 @@ function markdownToPlainText(markdown: string): string {
         .trim();
 }
 
+/** Minimum word count for cover letters (mirrors server styleLint). */
+const COVER_LETTER_MIN_WORDS = 400;
+
+/** Count words the same way the server styleLint does — split on whitespace. */
+function countWords(text: string): number {
+    return text.trim().split(/\s+/).filter(w => w.length > 0).length;
+}
+
 /** Grammar check via API (Phase 3) */
 async function checkGrammar(text: string): Promise<string[]> {
     try {
-        const { data } = await api.post<{ issues: string[] }>('/grammar-check', { text });
+        const { data } = await api.post<{ issues: string[] }>('/generate/grammar-check', { text });
         return data.issues || [];
     } catch {
         return [];
@@ -853,6 +861,22 @@ function DocumentStep({
             }
 
             toast.success('Edits saved');
+
+            // Warn when a hand-edited cover letter drops below the server's
+            // minimum. The style lint only runs at generation time, so edits
+            // that shorten the letter would otherwise pass silently.
+            if (stepId === 'cover-letter') {
+                const words = countWords(markdownToPlainText(trimmed));
+                if (words < COVER_LETTER_MIN_WORDS) {
+                    setGrammarIssues([
+                        `Cover letter is ${words} words — below the recommended minimum of ${COVER_LETTER_MIN_WORDS}. Consider adding detail before sending.`,
+                    ]);
+                    setShowGrammarWarning(true);
+                } else {
+                    setShowGrammarWarning(false);
+                }
+            }
+
             return trimmed;
         }
         return content;
