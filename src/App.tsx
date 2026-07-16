@@ -63,6 +63,9 @@ const StrategyHub = React.lazy(() =>
 const StepperWorkspace = React.lazy(() =>
   import('./pages/StepperWorkspace').then(m => ({ default: m.StepperWorkspace }))
 );
+const InterviewPrepWorkspace = React.lazy(() =>
+  import('./pages/InterviewPrepWorkspace').then(m => ({ default: m.InterviewPrepWorkspace }))
+);
 const VisaSponsorsPage = React.lazy(() =>
   import('./pages/VisaSponsorsPage').then(m => ({ default: m.VisaSponsorsPage }))
 );
@@ -372,6 +375,7 @@ function ReportOrDashboard() {
                 <Route path="/tracker" element={<ApplicationTracker />} />
                 <Route path="/leaderboard" element={<LeaderboardPage />} />
                 <Route path="/apply" element={<StepperWorkspace />} />
+                <Route path="/interview/:jobId" element={<InterviewPrepWorkspace />} />
                 <Route path="/workspace" element={<Workspace />} />
                 <Route path="/documents" element={<DocumentLibrary />} />
                 <Route path="/email-templates" element={<EmailTemplatesLibrary />} />
