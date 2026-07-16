@@ -8,6 +8,7 @@ import {
     Copy,
     ChevronDown,
     ChevronUp,
+    ChevronRight,
     Bell,
     Trash2,
     Mail,
@@ -15,10 +16,9 @@ import {
     Sparkles,
     HelpCircle,
     ExternalLink,
-    MessageSquare,
 } from 'lucide-react';
-import { InterviewQuestionsPanel } from '../InterviewQuestionsPanel';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import { useQuery } from '@tanstack/react-query';
@@ -43,6 +43,7 @@ const BADGE_COLORS: Record<TrackerDocument['type'], { label: string; color: stri
     RESUME: { label: 'Resume', color: '#7DA67D' },
     COVER_LETTER: { label: 'Cover Letter', color: '#C5A059' },
     STAR_RESPONSE: { label: 'Selection Criteria', color: '#2D5A6E' },
+    INTERVIEW_PREP: { label: 'Interview Prep', color: '#818cf8' },
 };
 
 // ─── DocumentBadge ──────────────────────────────────────────────────────────
@@ -74,10 +75,11 @@ const DocumentViewerModal: React.FC<{
     };
 
     const handleDownload = async () => {
-        const docTypeMap: Record<TrackerDocument['type'], 'resume' | 'cover-letter' | 'selection-criteria'> = {
+        const docTypeMap: Record<TrackerDocument['type'], 'resume' | 'cover-letter' | 'selection-criteria' | 'interview-prep'> = {
             RESUME: 'resume',
             COVER_LETTER: 'cover-letter',
             STAR_RESPONSE: 'selection-criteria',
+            INTERVIEW_PREP: 'interview-prep',
         };
         try {
             await exportDocx(doc.content, docTypeMap[doc.type], company, jobTitle);
@@ -88,10 +90,11 @@ const DocumentViewerModal: React.FC<{
     };
 
     const handleDownloadPdf = async () => {
-        const docTypeMap: Record<TrackerDocument['type'], 'resume' | 'cover-letter' | 'selection-criteria'> = {
+        const docTypeMap: Record<TrackerDocument['type'], 'resume' | 'cover-letter' | 'selection-criteria' | 'interview-prep'> = {
             RESUME: 'resume',
             COVER_LETTER: 'cover-letter',
             STAR_RESPONSE: 'selection-criteria',
+            INTERVIEW_PREP: 'interview-prep',
         };
         try {
             await exportPdf(doc.content, docTypeMap[doc.type], company, jobTitle, '');
@@ -724,7 +727,6 @@ export const JobCard: React.FC<JobCardProps> = ({ job, isFirst, onStatusChange, 
     const [expanded, setExpanded] = useState(false);
     const [selectedDoc, setSelectedDoc] = useState<TrackerDocument | null>(null);
     const [thankYouOpen, setThankYouOpen] = useState(false);
-    const [interviewPrepOpen, setInterviewPrepOpen] = useState(false);
     const [notesValue, setNotesValue] = useState(job.notes || '');
     const [notesSaving, setNotesSaving] = useState(false);
     const [negotiationGuide, setNegotiationGuide] = useState<string | null>(null);
@@ -1148,44 +1150,28 @@ export const JobCard: React.FC<JobCardProps> = ({ job, isFirst, onStatusChange, 
                                 )}
 
                                 {/* Post-interview thank-you email */}
-                                {/* Interview prep — likely questions with CAR talking points */}
-                                {job.description && job.description.length >= 50 && (
-                                    <div style={{
-                                        border: '1px solid rgba(99,102,241,0.30)',
-                                        borderRadius: 12, overflow: 'hidden',
-                                        background: 'rgba(99,102,241,0.05)',
-                                    }}>
-                                        <button
-                                            onClick={() => setInterviewPrepOpen(o => !o)}
-                                            style={{
-                                                width: '100%', padding: '12px 16px',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                                background: 'transparent', border: 'none', cursor: 'pointer',
-                                                color: 'inherit', fontFamily: 'inherit',
-                                            }}
-                                        >
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                <MessageSquare size={13} style={{ color: '#818cf8' }} />
-                                                <span style={{ fontSize: 12, fontWeight: 700, color: '#818cf8' }}>Interview prep</span>
-                                            </div>
-                                            {interviewPrepOpen ? <ChevronUp size={12} style={{ color: 'rgba(99,102,241,0.6)' }} /> : <ChevronDown size={12} style={{ color: 'rgba(99,102,241,0.6)' }} />}
-                                        </button>
-                                        <AnimatePresence>
-                                            {interviewPrepOpen && (
-                                                <motion.div
-                                                    initial={{ height: 0, opacity: 0 }}
-                                                    animate={{ height: 'auto', opacity: 1 }}
-                                                    exit={{ height: 0, opacity: 0 }}
-                                                    transition={{ duration: 0.2 }}
-                                                    style={{ overflow: 'hidden', borderTop: '1px solid rgba(99,102,241,0.15)' }}
-                                                >
-                                                    <div style={{ padding: 16 }}>
-                                                        <InterviewQuestionsPanel jobDescription={job.description} />
-                                                    </div>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
+                                {/* Interview prep, links to the dedicated page */}
+                                {job.status === 'INTERVIEW' && (
+                                    <Link
+                                        to={`/interview/${job.id}`}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                                            padding: '12px 16px', borderRadius: 12,
+                                            border: '1px solid rgba(129,140,248,0.35)',
+                                            background: 'rgba(129,140,248,0.08)',
+                                            textDecoration: 'none',
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                            <Sparkles size={13} style={{ color: '#818cf8' }} />
+                                            <span style={{ fontSize: 12, fontWeight: 700, color: '#818cf8' }}>
+                                                {job.documents.some(d => d.type === 'INTERVIEW_PREP')
+                                                    ? 'Open your interview prep'
+                                                    : 'Prepare for your interview'}
+                                            </span>
+                                        </div>
+                                        <ChevronRight size={14} style={{ color: 'rgba(129,140,248,0.7)' }} />
+                                    </Link>
                                 )}
 
                                 {job.status === 'INTERVIEW' && (
