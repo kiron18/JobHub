@@ -10,11 +10,12 @@ import { BannerCanvas } from '../components/linkedin/BannerCanvas';
 import { HeadshotGenerator } from '../components/linkedin/HeadshotGenerator';
 import { OutreachTemplates } from '../components/linkedin/OutreachTemplates';
 import { OutreachTracker } from '../components/linkedin/OutreachTracker';
+import { LocalExperience } from '../components/linkedin/LocalExperience';
 import type { LinkedInProfileData, BannerConfig } from '../components/linkedin/types';
 import { useProfile } from '../hooks/useProfile';
 import { SectionIntroBanner } from '../components/processStrip';
 
-type Tab = 'profile' | 'outreach' | 'tracker';
+type Tab = 'profile' | 'outreach' | 'tracker' | 'local-experience';
 
 const DEFAULT_BANNER: BannerConfig = {
   mainMessage: '',
@@ -112,7 +113,7 @@ export const LinkedInPage: React.FC = () => {
           LinkedIn Hub
         </h1>
         <p style={{ fontSize: 14, color: warm.colors.textSecondary, margin: 0 }}>
-          Profile · Outreach · Tracker · Headshot · Banner — one cohesive system
+          Profile · Outreach · Tracker · Local Experience · Headshot · Banner — one cohesive system
         </p>
       </div>
 
@@ -125,6 +126,7 @@ export const LinkedInPage: React.FC = () => {
         <button style={tabStyle(tab === 'profile')} onClick={() => setTab('profile')}>Profile</button>
         <button style={tabStyle(tab === 'outreach')} onClick={() => setTab('outreach')}>Outreach</button>
         <button style={tabStyle(tab === 'tracker')} onClick={() => setTab('tracker')}>Tracker</button>
+        <button style={tabStyle(tab === 'local-experience')} onClick={() => setTab('local-experience')}>Local Experience</button>
       </div>
 
       {tab === 'profile' && (
@@ -173,6 +175,7 @@ export const LinkedInPage: React.FC = () => {
 
       {tab === 'outreach' && <OutreachTemplates />}
       {tab === 'tracker' && <OutreachTracker />}
+      {tab === 'local-experience' && <LocalExperience />}
     </div>
   );
 };

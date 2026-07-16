@@ -34,6 +34,188 @@ interface CoachMember {
 
 interface CoachData { weekStart: string; members: CoachMember[]; }
 
+// TEMPORARY MOCK DATA GENERATOR for demo purposes - does NOT affect real users
+const MOCK_NAMES = [
+    'Jairaj Bhagat', 'Shahzaib Ali Adil', 'Abhishek Kathuria', 'Nagaraja Sai Nandimandalam',
+    'Mary Nyokabi', 'Shishir Dhakal', 'Ani Bharadwaj', 'Rahul Madathil', 'Adam Pearce',
+    'Priya Sharma', 'Mohammed Al-Rashid', 'Lisa Chen', 'James Wilson', 'Fatima Hassan',
+    'David Kim', 'Sofia Martinez', 'Aryan Patel', 'Emma Thompson', 'Lucas Silva',
+    'Zara Ahmed', 'Daniel Lee', 'Olivia Brown', 'Noah Garcia', 'Aisha Okafor',
+    'Benjamin Taylor', 'Mia Anderson', 'Ethan Wright'
+];
+
+const MOCK_EMAILS = [
+    'jairaj.b@gmail.com', 'shahzaib.adil@outlook.com', 'abhishek.k@yahoo.com', 'sai.n@hotmail.com',
+    'mary.nyokabi@gmail.com', 'shishir.d@gmail.com', 'ani.b@outlook.com', 'rahul.m@yahoo.com', 'adam.pearce@email.com',
+    'priya.s@gmail.com', 'mohammed.ar@outlook.com', 'lisa.chen@email.com', 'james.w@gmail.com', 'fatima.h@yahoo.com',
+    'david.kim@outlook.com', 'sofia.m@email.com', 'aryan.p@gmail.com', 'emma.t@hotmail.com', 'lucas.s@email.com',
+    'zara.a@gmail.com', 'daniel.lee@outlook.com', 'olivia.b@yahoo.com', 'noah.g@gmail.com', 'aisha.o@email.com',
+    'ben.taylor@outlook.com', 'mia.a@hotmail.com', 'ethan.w@gmail.com'
+];
+
+function generateMockData(): CoachData {
+    const today = new Date('2026-07-13'); // Current week start
+    const weekStart = '2026-07-13';
+
+    // Helper to get Monday of a week offset
+    const getMonday = (weeksAgo: number) => {
+        const d = new Date(today);
+        d.setDate(d.getDate() - (weeksAgo * 7));
+        return d.toISOString().slice(0, 10);
+    };
+
+    // Member age distribution: 16 (1mo), 8 (2mo), 3 (3mo)
+    const memberAges = [
+        ...Array(16).fill(1),  // 1 month old (joined mid-June)
+        ...Array(8).fill(2),   // 2 months old (joined mid-May)
+        ...Array(3).fill(3)    // 3 months old (joined mid-April, early adopters)
+    ];
+
+    const members: CoachMember[] = MOCK_NAMES.map((name, i) => {
+        const ageMonths = memberAges[i];
+        const email = MOCK_EMAILS[i];
+
+        // Goals: mix of daily and weekly
+        const appGoalType = Math.random() > 0.7 ? 'weekly' : 'daily';
+        const outreachGoalType = Math.random() > 0.7 ? 'weekly' : 'daily';
+        const appGoal = appGoalType === 'daily' ? (Math.random() > 0.5 ? 5 : 3) : 25;
+        const outreachGoal = outreachGoalType === 'daily' ? (Math.random() > 0.5 ? 4 : 2) : 20;
+        const weeklyAppTarget = appGoalType === 'daily' ? appGoal * 5 : appGoal;
+        const weeklyOutreachTarget = outreachGoalType === 'daily' ? outreachGoal * 5 : outreachGoal;
+
+        // Current week progress (Tuesday of the week)
+        const daysIntoWeek = 2; // Tuesday
+        const dailyProgress = daysIntoWeek / 5; // 40% through week
+
+        // Performance tier affects current stats
+        const rand = Math.random();
+        let performance: 'high' | 'medium' | 'low';
+        if (rand > 0.6) performance = 'high';
+        else if (rand > 0.25) performance = 'medium';
+        else performance = 'low';
+
+        let appsCurrent: number, outreachCurrent: number;
+        if (performance === 'high') {
+            appsCurrent = Math.floor(weeklyAppTarget * (0.5 + Math.random() * 0.6));
+            outreachCurrent = Math.floor(weeklyOutreachTarget * (0.5 + Math.random() * 0.6));
+        } else if (performance === 'medium') {
+            appsCurrent = Math.floor(weeklyAppTarget * (0.3 + Math.random() * 0.5));
+            outreachCurrent = Math.floor(weeklyOutreachTarget * (0.3 + Math.random() * 0.5));
+        } else {
+            appsCurrent = Math.floor(weeklyAppTarget * Math.random() * 0.4);
+            outreachCurrent = Math.floor(weeklyOutreachTarget * Math.random() * 0.4);
+        }
+
+        // Cap at targets
+        appsCurrent = Math.min(appsCurrent, weeklyAppTarget);
+        outreachCurrent = Math.min(outreachCurrent, weeklyOutreachTarget);
+
+        const onTrackApps = appsCurrent >= (weeklyAppTarget * dailyProgress);
+        const onTrackOutreach = outreachCurrent >= (weeklyOutreachTarget * dailyProgress);
+        const isPaused = Math.random() > 0.92; // ~8% paused
+
+        // Generate last 4 weeks history based on member age
+        const lastFourWeeks: WeekCell[] = [];
+        const maxWeeks = ageMonths * 4; // How many weeks of history they could have
+        const weeksAvailable = Math.min(4, maxWeeks);
+
+        let hitCount = 0;
+        for (let w = 0; w < 4; w++) {
+            const ws = getMonday(3 - w);
+            if (w >= weeksAvailable) {
+                // No history yet (joined after this week)
+                lastFourWeeks.push({ weekStart: ws, applications: 0, outreach: 0, paused: false, hit: false });
+                continue;
+            }
+
+            const weekPaused = Math.random() > 0.9;
+            if (weekPaused) {
+                lastFourWeeks.push({ weekStart: ws, applications: 0, outreach: 0, paused: true, hit: false });
+                continue;
+            }
+
+            // Simulate weekly performance
+            const wkPerformance = Math.random();
+            const wkApps = weekPaused ? 0 : Math.floor(weeklyAppTarget * (0.3 + wkPerformance * 0.9));
+            const wkOutreach = weekPaused ? 0 : Math.floor(weeklyOutreachTarget * (0.3 + wkPerformance * 0.9));
+            const hit = wkApps >= weeklyAppTarget && wkOutreach >= weeklyOutreachTarget;
+            if (hit) hitCount++;
+
+            lastFourWeeks.push({
+                weekStart: ws,
+                applications: wkApps,
+                outreach: wkOutreach,
+                paused: weekPaused,
+                hit
+            });
+        }
+
+        // Calculate streak (consecutive weeks hitting goals)
+        let streak = 0;
+        for (const week of lastFourWeeks) {
+            if (week.hit) streak++;
+            else if (!week.paused) break;
+        }
+        // Add historical streak for older members
+        if (ageMonths >= 2 && performance === 'high') streak += Math.floor(Math.random() * 6) + 2;
+        else if (ageMonths >= 3 && performance === 'high') streak += Math.floor(Math.random() * 8) + 4;
+
+        // Flags
+        const missedWeeks = lastFourWeeks.filter(w => !w.hit && !w.paused).length;
+        const needsConversation = missedWeeks >= 2 && performance === 'low';
+        const backdatedEntries14d = Math.random() > 0.85 ? Math.floor(Math.random() * 3) + 1 : 0;
+
+        // Goal changes
+        const countLast90d = ageMonths >= 2 ? Math.floor(Math.random() * 2) : 0;
+        const recent: CoachMember['goalChanges']['recent'] = [];
+        if (countLast90d > 0 && ageMonths >= 2) {
+            recent.push({
+                appGoal: appGoal - 1,
+                appGoalType,
+                outreachGoal: outreachGoal - 1,
+                outreachGoalType,
+                byCoach: Math.random() > 0.5,
+                createdAt: getMonday(8),
+                effectiveAt: getMonday(4)
+            });
+        }
+
+        // Pause weeks
+        const pauseWeeks: string[] = [];
+        if (isPaused) pauseWeeks.push(weekStart);
+        if (Math.random() > 0.8) {
+            const prevWeek = getMonday(1);
+            if (!isPaused || prevWeek !== weekStart) pauseWeeks.push(prevWeek);
+        }
+
+        return {
+            userId: `mock-user-${i}`,
+            name,
+            email,
+            goals: { appGoal, appGoalType, outreachGoal, outreachGoalType, weeklyAppTarget, weeklyOutreachTarget },
+            week: {
+                applications: isPaused ? 0 : appsCurrent,
+                outreach: isPaused ? 0 : outreachCurrent,
+                paused: isPaused,
+                onTrackApps: isPaused ? true : onTrackApps,
+                onTrackOutreach: isPaused ? true : onTrackOutreach
+            },
+            streak,
+            lastFourWeeks,
+            flags: { missedWeeks, backdatedEntries14d, needsConversation },
+            goalChanges: {
+                countLast90d,
+                lastChangeAt: countLast90d > 0 ? getMonday(8) : null,
+                pending: null,
+                recent
+            },
+            pauseWeeks
+        };
+    });
+
+    return { weekStart, members };
+}
+
 const fmt = (iso: string) =>
     new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', timeZone: 'Australia/Sydney' });
 
@@ -45,27 +227,31 @@ export const CoachDashboard: React.FC = () => {
     const [search, setSearch] = useState('');
     const [override, setOverride] = useState({ appGoal: 5, appGoalType: 'daily', outreachGoal: 4, outreachGoalType: 'daily' });
 
+    // TEMPORARY: Use mock data for demo (100% safe - no API calls, no DB writes)
     const { data, isLoading, isFetching, refetch } = useQuery({
         queryKey: ['coach-overview'],
-        queryFn: async () => (await api.get('/admin/coach/overview')).data as CoachData,
+        queryFn: async () => generateMockData(),
     });
 
+    // TEMPORARY: Mock mutations that just show toast (no API calls)
     const pauseMutation = useMutation({
-        mutationFn: async (body: { userId: string; weekStart: string; remove?: boolean }) =>
-            (await api.post('/admin/coach/pause', { ...body, reason: 'coach granted' })).data,
+        mutationFn: async (_body: { userId: string; weekStart: string; remove?: boolean }) => {
+            await new Promise(r => setTimeout(r, 300));
+            return { success: true };
+        },
         onSuccess: (_d, vars) => {
-            queryClient.invalidateQueries({ queryKey: ['coach-overview'] });
-            toast.success(vars.remove ? 'Pause removed' : 'Pause week granted');
+            toast.success(vars.remove ? 'Pause removed (demo)' : 'Pause week granted (demo)');
         },
         onError: () => toast.error('Could not update pause week'),
     });
 
     const overrideMutation = useMutation({
-        mutationFn: async (body: { userId: string }) =>
-            (await api.post('/admin/coach/goals', { ...body, ...override, note: 'coach override' })).data,
+        mutationFn: async (_body: { userId: string }) => {
+            await new Promise(r => setTimeout(r, 300));
+            return { success: true };
+        },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['coach-overview'] });
-            toast.success('Goals overridden — applies immediately');
+            toast.success('Goals overridden — applies immediately (demo)');
         },
         onError: (err: any) => toast.error(err?.response?.data?.error ?? 'Override failed'),
     });
@@ -83,6 +269,22 @@ export const CoachDashboard: React.FC = () => {
 
     return (
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '8px 4px 60px' }}>
+            {/* TEMPORARY DEMO MODE BANNER */}
+            <div style={{
+                background: 'linear-gradient(90deg, #C4713A, #B0563C)',
+                color: 'white',
+                padding: '10px 16px',
+                borderRadius: 10,
+                marginBottom: 16,
+                fontSize: 13,
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+            }}>
+                <span>🎭 DEMO MODE — Mock data for presentation. NO real customer data affected.</span>
+                <span style={{ fontSize: 11, opacity: 0.9 }}>27 members | April–July 2026 timeline</span>
+            </div>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
                 <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>

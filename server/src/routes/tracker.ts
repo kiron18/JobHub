@@ -106,3 +106,116 @@ router.post('/goals', async (req: any, res: any) => {
   }
 });
 export default router;
+
+// ── Local Experience Log ─────────────────────────────────────────────────────
+
+import { Prisma } from '@prisma/client';
+
+const localExperienceRouter = Router();
+localExperienceRouter.use(authenticate);
+
+// GET /tracker/local-experience - List own entries
+localExperienceRouter.get('/local-experience', async (req: any, res: any) => {
+  try {
+    const entries = await prisma.localExperienceEntry.findMany({
+      where: { userId: req.user.id },
+      orderBy: { startedAt: 'desc' },
+    });
+    res.json({ entries });
+  } catch (e) {
+    console.error('[tracker/local-experience:list]', e);
+    res.status(500).json({ error: 'failed' });
+  }
+});
+
+// POST /tracker/local-experience - Create entry
+localExperienceRouter.post('/local-experience', async (req: any, res: any) => {
+  try {
+    const { type, organisation, role, description, hoursPerWeek, startedAt, endedAt } = req.body ?? {};
+
+    const validTypes = ['VOLUNTEERING', 'TEMP_WORK', 'INTERNSHIP', 'PART_TIME', 'PROJECT', 'COMMUNITY', 'OTHER'];
+    if (!type || !validTypes.includes(type)) {
+      return res.status(400).json({ error: `type must be one of: ${validTypes.join(', ')}` });
+    }
+    if (!organisation?.trim()) {
+      return res.status(400).json({ error: 'organisation is required' });
+    }
+    if (!role?.trim()) {
+      return res.status(400).json({ error: 'role is required' });
+    }
+    if (!startedAt) {
+      return res.status(400).json({ error: 'startedAt is required' });
+    }
+
+    const entry = await prisma.localExperienceEntry.create({
+      data: {
+        userId: req.user.id,
+        type: type as Prisma.LocalExperienceEntryCreateInput['type'],
+        organisation: organisation.trim(),
+        role: role.trim(),
+        description: (description ?? '').trim(),
+        hoursPerWeek: hoursPerWeek ? parseInt(hoursPerWeek) : null,
+        startedAt: new Date(startedAt),
+        endedAt: endedAt ? new Date(endedAt) : null,
+      },
+    });
+    res.json({ ok: true, entry });
+  } catch (e) {
+    console.error('[tracker/local-experience:create]', e);
+    res.status(500).json({ error: 'failed' });
+  }
+});
+
+// PATCH /tracker/local-experience/:id - Update entry (mainly to set endedAt)
+localExperienceRouter.patch('/local-experience/:id', async (req: any, res: any) => {
+  try {
+    const { id } = req.params;
+    const { organisation, role, description, hoursPerWeek, startedAt, endedAt } = req.body ?? {};
+
+    const existing = await prisma.localExperienceEntry.findFirst({
+      where: { id, userId: req.user.id },
+    });
+    if (!existing) {
+      return res.status(404).json({ error: 'Entry not found' });
+    }
+
+    const updateData: Prisma.LocalExperienceEntryUpdateInput = {};
+    if (organisation !== undefined) updateData.organisation = organisation.trim();
+    if (role !== undefined) updateData.role = role.trim();
+    if (description !== undefined) updateData.description = description.trim();
+    if (hoursPerWeek !== undefined) updateData.hoursPerWeek = hoursPerWeek ? parseInt(hoursPerWeek) : null;
+    if (startedAt !== undefined) updateData.startedAt = new Date(startedAt);
+    if (endedAt !== undefined) updateData.endedAt = endedAt ? new Date(endedAt) : null;
+
+    const entry = await prisma.localExperienceEntry.update({
+      where: { id },
+      data: updateData,
+    });
+    res.json({ ok: true, entry });
+  } catch (e) {
+    console.error('[tracker/local-experience:update]', e);
+    res.status(500).json({ error: 'failed' });
+  }
+});
+
+// DELETE /tracker/local-experience/:id - Delete entry
+localExperienceRouter.delete('/local-experience/:id', async (req: any, res: any) => {
+  try {
+    const { id } = req.params;
+
+    const existing = await prisma.localExperienceEntry.findFirst({
+      where: { id, userId: req.user.id },
+    });
+    if (!existing) {
+      return res.status(404).json({ error: 'Entry not found' });
+    }
+
+    await prisma.localExperienceEntry.delete({ where: { id } });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[tracker/local-experience:delete]', e);
+    res.status(500).json({ error: 'failed' });
+  }
+});
+
+export { localExperienceRouter };

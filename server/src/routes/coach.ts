@@ -42,7 +42,7 @@ router.get('/overview', async (_req, res) => {
         const userIds = await getRealUserIds();
         if (userIds.length === 0) return res.json({ weekStart: monday.toISOString().slice(0, 10), members: [] });
 
-        const [profiles, appRows, outreachRows, pauses, goalChanges, recentCreated] = await Promise.all([
+        const [profiles, appRows, outreachRows, pauses, goalChanges, recentCreated, outreachWithStatus, localExpEntries] = await Promise.all([
             prisma.candidateProfile.findMany({
                 where: { userId: { in: userIds } },
                 select: {
@@ -75,6 +75,16 @@ router.get('/overview', async (_req, res) => {
                     dateApplied: { not: null },
                 },
                 select: { userId: true, createdAt: true, dateApplied: true },
+            }),
+            // Outreach with status for funnel
+            prisma.outreachLog.findMany({
+                where: { userId: { in: userIds }, createdAt: { gte: firstMonday } },
+                select: { userId: true, status: true, createdAt: true },
+            }),
+            // Local experience entries
+            prisma.localExperienceEntry.findMany({
+                where: { userId: { in: userIds } },
+                select: { userId: true, type: true, organisation: true, role: true, startedAt: true, endedAt: true },
             }),
         ]);
 
@@ -120,6 +130,36 @@ router.get('/overview', async (_req, res) => {
             const appliedInstant = r.dateApplied!.getTime() - AEST_OFFSET_MS;
             if (r.createdAt.getTime() - appliedInstant > 2.5 * DAY_MS) {
                 backdatedByUser.set(r.userId, (backdatedByUser.get(r.userId) ?? 0) + 1);
+            }
+        }
+
+        // Aggregate outreach funnel by user (last 4 weeks + current)
+        const outreachFunnelByUser = new Map<string, { sent: number; replied: number; callsBooked: number; referrals: number; closedNoReply: number }>();
+        for (const o of outreachWithStatus) {
+            const counts = outreachFunnelByUser.get(o.userId) ?? { sent: 0, replied: 0, callsBooked: 0, referrals: 0, closedNoReply: 0 };
+            counts.sent++;
+            if (o.status === 'REPLIED' || o.status === 'CALL_BOOKED' || o.status === 'REFERRAL') counts.replied++;
+            if (o.status === 'CALL_BOOKED') counts.callsBooked++;
+            if (o.status === 'REFERRAL') counts.referrals++;
+            if (o.status === 'CLOSED_NO_REPLY') counts.closedNoReply++;
+            outreachFunnelByUser.set(o.userId, counts);
+        }
+
+        // Aggregate local experience by user
+        const localExpByUser = new Map<string, Array<{ type: string; organisation: string; role: string; startedAt: Date; endedAt: Date | null }>>();
+        const activeLocalExpCountByUser = new Map<string, number>();
+        for (const e of localExpEntries) {
+            const entries = localExpByUser.get(e.userId) ?? [];
+            entries.push({
+                type: e.type,
+                organisation: e.organisation,
+                role: e.role,
+                startedAt: e.startedAt,
+                endedAt: e.endedAt,
+            });
+            localExpByUser.set(e.userId, entries);
+            if (!e.endedAt) {
+                activeLocalExpCountByUser.set(e.userId, (activeLocalExpCountByUser.get(e.userId) ?? 0) + 1);
             }
         }
 
@@ -193,6 +233,11 @@ router.get('/overview', async (_req, res) => {
                     })),
                 },
                 pauseWeeks: [...(pausesByUser.get(p.userId) ?? [])].sort(),
+                outreachFunnel: outreachFunnelByUser.get(p.userId) ?? { sent: 0, replied: 0, callsBooked: 0, referrals: 0, closedNoReply: 0 },
+                localExperience: {
+                    activeCount: activeLocalExpCountByUser.get(p.userId) ?? 0,
+                    entries: localExpByUser.get(p.userId) ?? [],
+                },
             };
         });
 

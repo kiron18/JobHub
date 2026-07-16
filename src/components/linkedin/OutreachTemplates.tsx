@@ -3,7 +3,8 @@ import { Loader2, Copy, Check, ChevronDown, ChevronUp, UserCheck } from 'lucide-
 import { toast } from 'sonner';
 import api from '../../lib/api';
 import { warm } from '../../lib/theme/warmTokens';
-import type { OutreachData } from './types';
+import type { OutreachData, OutreachLogEntry } from './types';
+import { TOUCH_2_TEMPLATE, TOUCH_3_TEMPLATE } from '../../data/outreachTemplates';
 
 const COACHING_TIPS: Record<keyof Omit<OutreachData, 'questionSuggestions'>, string> = {
   connectionNote: 'The specificity of the reference is what makes it work. Generic openers get ignored.',
@@ -19,12 +20,20 @@ const TEMPLATE_LABELS: Record<keyof Omit<OutreachData, 'questionSuggestions'>, s
   directAsk: 'Direct Ask for Help',
 };
 
-function TemplateCard({ label, content, tip, charLimit, editableNote }: {
-  label: string; content: string; tip: string; charLimit?: number; editableNote?: string;
+function TemplateCard({ label, content, tip, charLimit, editableNote, touchNumber, outreachLogId, onCopyLogged }: {
+  label: string;
+  content: string;
+  tip: string;
+  charLimit?: number;
+  editableNote?: string;
+  touchNumber?: number;
+  outreachLogId?: string;
+  onCopyLogged?: () => void;
 }) {
   const [copied, setCopied] = useState(false);
   const [showTip, setShowTip] = useState(false);
   const [editedContent, setEditedContent] = useState(content);
+  const [logging, setLogging] = useState(false);
 
   const charCount = editedContent.length;
   const overLimit = charLimit ? charCount > charLimit : false;
@@ -34,6 +43,22 @@ function TemplateCard({ label, content, tip, charLimit, editableNote }: {
     setCopied(true);
     toast.success('Copied to clipboard');
     setTimeout(() => setCopied(false), 1800);
+
+    // Log the copy if we have an outreachLogId and touchNumber
+    if (outreachLogId && touchNumber && !logging) {
+      setLogging(true);
+      try {
+        await api.post(`/outreach/${outreachLogId}/copy`, {
+          touchNumber,
+          body: editedContent,
+        });
+        onCopyLogged?.();
+      } catch (err) {
+        console.error('Failed to log copy:', err);
+      } finally {
+        setLogging(false);
+      }
+    }
   }
 
   return (
@@ -113,18 +138,20 @@ export const OutreachTemplates: React.FC = () => {
   const [showPlaybook, setShowPlaybook] = useState(false);
   const [logging, setLogging] = useState(false);
   const [loggedThisGen, setLoggedThisGen] = useState(false);
+  const [outreachLogId, setOutreachLogId] = useState<string | null>(null);
 
   async function handleLogConnected() {
     if (logging || loggedThisGen || !outreach) return;
     setLogging(true);
     try {
-      await api.post('/linkedin/outreach/log', {
+      const { data } = await api.post('/linkedin/outreach/log', {
         personName: targetFirstName,
         company: targetCompany,
         topic: targetTopicOrPost,
         specificQuestion,
         firstMessage: outreach.firstMessage,
       });
+      setOutreachLogId(data.entry.id);
       setLoggedThisGen(true);
       toast.success(`Logged — ${targetFirstName} at ${targetCompany}`);
     } catch {
@@ -327,12 +354,15 @@ export const OutreachTemplates: React.FC = () => {
             content={outreach.connectionNote}
             tip={COACHING_TIPS.connectionNote}
             charLimit={200}
+            outreachLogId={outreachLogId ?? undefined}
           />
           <TemplateCard
             key={`${genId}-firstMessage`}
             label={TEMPLATE_LABELS.firstMessage}
             content={outreach.firstMessage}
             tip={COACHING_TIPS.firstMessage}
+            touchNumber={1}
+            outreachLogId={outreachLogId ?? undefined}
           />
 
           {/* Connected — one-tap outreach log */}
@@ -368,6 +398,7 @@ export const OutreachTemplates: React.FC = () => {
             content={outreach.afterConversationFollowUp}
             tip={COACHING_TIPS.afterConversationFollowUp}
             editableNote="Send within 24 hours of any real exchange — a chat, a call, or a message thread. Fill in [THEIR_POINT] with something specific they actually said."
+            outreachLogId={outreachLogId ?? undefined}
           />
           <TemplateCard
             key={`${genId}-directAsk`}
@@ -375,6 +406,7 @@ export const OutreachTemplates: React.FC = () => {
             content={outreach.directAsk}
             tip={COACHING_TIPS.directAsk}
             editableNote="Only use this after at least one meaningful exchange. Do not skip to this — but do not skip it either. Make the ask."
+            outreachLogId={outreachLogId ?? undefined}
           />
         </>
       )}

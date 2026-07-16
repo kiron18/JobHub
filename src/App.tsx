@@ -14,6 +14,7 @@ const ProfileBank          = React.lazy(() => import('./components/ProfileBank')
 const DocumentLibrary      = React.lazy(() => import('./components/DocumentLibrary').then(m => ({ default: m.DocumentLibrary })));
 const EmailTemplatesLibrary = React.lazy(() => import('./components/EmailTemplatesLibrary').then(m => ({ default: m.EmailTemplatesLibrary })));
 const LinkedInPage         = React.lazy(() => import('./pages/LinkedInPage').then(m => ({ default: m.LinkedInPage })));
+const LocalExperiencePlaybookPage = React.lazy(() => import('./pages/LocalExperiencePlaybookPage').then(m => ({ default: m.LocalExperiencePlaybookPage })));
 const FridayBriefPage = React.lazy(() =>
   import('./pages/FridayBriefPage').then(m => ({ default: m.FridayBriefPage }))
 );
@@ -375,6 +376,7 @@ function ReportOrDashboard() {
                 <Route path="/documents" element={<DocumentLibrary />} />
                 <Route path="/email-templates" element={<EmailTemplatesLibrary />} />
                 <Route path="/linkedin" element={<LinkedInPage />} />
+                <Route path="/local-experience-playbook" element={<LocalExperiencePlaybookPage />} />
                 <Route path="/skipped" element={<SkippedJobsPage />} />
                 {/* Job feed removed — app runs on pasted jobs. Stray links to /jobs land on the dashboard. */}
                 <Route path="/jobs" element={<Navigate to="/" replace />} />

@@ -399,4 +399,252 @@ router.patch('/outreach/log/:id', authenticate, async (req: AuthRequest, res) =>
   }
 });
 
+// ── Outreach Ladder (3-touch follow-up system) ───────────────────────────────
+
+const OUTREACH_CADENCE = [0, 4, 6]; // days after previous touch
+const CLOSING_WINDOW_DAYS = 7; // days after touch 3 to auto-close
+
+function getNextTouchDate(lastTouchDate: Date, touchNumber: number): Date {
+  const daysToAdd = OUTREACH_CADENCE[touchNumber - 1] ?? OUTREACH_CADENCE[OUTREACH_CADENCE.length - 1];
+  return new Date(lastTouchDate.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
+}
+
+function isOverdue(nextTouchDate: Date): boolean {
+  const now = new Date();
+  return nextTouchDate <= now;
+}
+
+// POST /outreach/:id/copy - Log when a message is copied (upsert touch)
+router.post('/outreach/:id/copy', authenticate, async (req: AuthRequest, res) => {
+  const userId = req.user!.id;
+  const outreachLogId = req.params.id as string;
+  const { touchNumber, body } = req.body as { touchNumber?: number; body?: string };
+
+  if (!touchNumber || touchNumber < 1 || touchNumber > 3) {
+    return res.status(400).json({ error: 'touchNumber must be 1, 2, or 3' });
+  }
+  if (!body || typeof body !== 'string') {
+    return res.status(400).json({ error: 'body is required' });
+  }
+
+  try {
+    // Verify the outreach belongs to this user
+    const outreach = await prisma.outreachLog.findFirst({
+      where: { id: outreachLogId, userId },
+    });
+    if (!outreach) {
+      return res.status(404).json({ error: 'Outreach not found' });
+    }
+
+    // Upsert the message (last copy wins)
+    const message = await prisma.outreachMessage.upsert({
+      where: {
+        outreachLogId_touchNumber: {
+          outreachLogId,
+          touchNumber,
+        },
+      },
+      create: {
+        outreachLogId,
+        touchNumber,
+        body: body.trim(),
+        copiedAt: new Date(),
+      },
+      update: {
+        body: body.trim(),
+        copiedAt: new Date(),
+      },
+    });
+
+    // Return updated ladder state
+    const messages = await prisma.outreachMessage.findMany({
+      where: { outreachLogId },
+      orderBy: { touchNumber: 'asc' },
+    });
+
+    const lastTouch = messages[messages.length - 1];
+    const nextTouchNumber = lastTouch ? lastTouch.touchNumber + 1 : 1;
+    const nextTouchDue = nextTouchNumber <= 3
+      ? getNextTouchDate(lastTouch.copiedAt, nextTouchNumber)
+      : null;
+
+    return res.json({
+      message,
+      ladder: {
+        touches: messages.map(m => ({
+          touchNumber: m.touchNumber,
+          copiedAt: m.copiedAt,
+        })),
+        nextTouchNumber: nextTouchNumber <= 3 ? nextTouchNumber : null,
+        nextTouchDue,
+        isClosed: outreach.status === 'CLOSED_NO_REPLY' || outreach.status === 'CLOSED_MANUAL',
+      },
+    });
+  } catch (err) {
+    console.error('[outreach/copy]', err);
+    return res.status(500).json({ error: 'Failed to log copy' });
+  }
+});
+
+// POST /outreach/:id/status - Update outreach status
+router.post('/outreach/:id/status', authenticate, async (req: AuthRequest, res) => {
+  const userId = req.user!.id;
+  const outreachLogId = req.params.id as string;
+  const { status } = req.body as { status?: string };
+
+  const validStatuses = ['ACTIVE', 'REPLIED', 'CALL_BOOKED', 'REFERRAL', 'CLOSED_NO_REPLY', 'CLOSED_MANUAL'];
+  if (!status || !validStatuses.includes(status)) {
+    return res.status(400).json({ error: `status must be one of: ${validStatuses.join(', ')}` });
+  }
+
+  try {
+    const outreach = await prisma.outreachLog.findFirst({
+      where: { id: outreachLogId, userId },
+    });
+    if (!outreach) {
+      return res.status(404).json({ error: 'Outreach not found' });
+    }
+
+    // Validate state transitions
+    const currentStatus = outreach.status;
+    const allowedTransitions: Record<string, string[]> = {
+      ACTIVE: ['REPLIED', 'CLOSED_MANUAL', 'CLOSED_NO_REPLY'],
+      REPLIED: ['CALL_BOOKED', 'REFERRAL', 'CLOSED_MANUAL'],
+      CALL_BOOKED: ['CLOSED_MANUAL'],
+      REFERRAL: ['CLOSED_MANUAL'],
+      CLOSED_NO_REPLY: [],
+      CLOSED_MANUAL: [],
+    };
+
+    if (currentStatus !== status && !allowedTransitions[currentStatus]?.includes(status)) {
+      return res.status(400).json({
+        error: `Cannot transition from ${currentStatus} to ${status}`,
+        allowed: allowedTransitions[currentStatus] ?? [],
+      });
+    }
+
+    const updated = await prisma.outreachLog.update({
+      where: { id: outreachLogId },
+      data: { status: status as any },
+    });
+
+    return res.json({ ok: true, outreach: updated });
+  } catch (err) {
+    console.error('[outreach/status]', err);
+    return res.status(500).json({ error: 'Failed to update status' });
+  }
+});
+
+// GET /outreach/due - Get follow-ups that are due today or overdue
+router.get('/outreach/due', authenticate, async (req: AuthRequest, res) => {
+  const userId = req.user!.id;
+
+  try {
+    // Get all active outreaches with their messages
+    const outreaches = await prisma.outreachLog.findMany({
+      where: { userId, status: 'ACTIVE' },
+      include: { messages: { orderBy: { touchNumber: 'asc' } } },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const due: Array<{
+      id: string;
+      personName: string;
+      company: string;
+      topic: string;
+      specificQuestion: string;
+      nextTouchNumber: number;
+      daysSinceLastTouch: number;
+      nextTouchDue: Date;
+    }> = [];
+
+    for (const outreach of outreaches) {
+      const lastTouch = outreach.messages[outreach.messages.length - 1];
+      const nextTouchNumber = lastTouch ? lastTouch.touchNumber + 1 : 1;
+
+      // Only show if there are more touches in the ladder
+      if (nextTouchNumber > 3) continue;
+
+      const lastTouchDate = lastTouch ? lastTouch.copiedAt : outreach.createdAt;
+      const nextTouchDue = getNextTouchDate(lastTouchDate, nextTouchNumber);
+
+      // Include if due or overdue
+      if (isOverdue(nextTouchDue)) {
+        const daysSinceLastTouch = Math.floor(
+          (Date.now() - lastTouchDate.getTime()) / (24 * 60 * 60 * 1000)
+        );
+
+        due.push({
+          id: outreach.id,
+          personName: outreach.personName,
+          company: outreach.company,
+          topic: outreach.topic,
+          specificQuestion: outreach.specificQuestion,
+          nextTouchNumber,
+          daysSinceLastTouch,
+          nextTouchDue,
+        });
+      }
+    }
+
+    return res.json({ due });
+  } catch (err) {
+    console.error('[outreach/due]', err);
+    return res.status(500).json({ error: 'Failed to load due follow-ups' });
+  }
+});
+
+// GET /outreach - List all outreaches with full ladder state
+router.get('/outreach', authenticate, async (req: AuthRequest, res) => {
+  const userId = req.user!.id;
+
+  try {
+    const outreaches = await prisma.outreachLog.findMany({
+      where: { userId },
+      include: { messages: { orderBy: { touchNumber: 'asc' } } },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+
+    const now = new Date();
+
+    const enriched = outreaches.map(outreach => {
+      const lastTouch = outreach.messages[outreach.messages.length - 1];
+      const nextTouchNumber = lastTouch ? lastTouch.touchNumber + 1 : 1;
+      const lastTouchDate = lastTouch ? lastTouch.copiedAt : outreach.createdAt;
+
+      // Check for auto-close (touch 3 + 7 days with no reply)
+      let computedStatus = outreach.status;
+      if (outreach.status === 'ACTIVE' && lastTouch?.touchNumber === 3) {
+        const closeDate = new Date(lastTouchDate.getTime() + CLOSING_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+        if (closeDate <= now) {
+          computedStatus = 'CLOSED_NO_REPLY';
+        }
+      }
+
+      return {
+        ...outreach,
+        computedStatus,
+        ladder: {
+          touches: outreach.messages.map(m => ({
+            touchNumber: m.touchNumber,
+            copiedAt: m.copiedAt,
+            body: m.body,
+          })),
+          nextTouchNumber: nextTouchNumber <= 3 ? nextTouchNumber : null,
+          nextTouchDue: nextTouchNumber <= 3
+            ? getNextTouchDate(lastTouchDate, nextTouchNumber)
+            : null,
+          canAutoClose: lastTouch?.touchNumber === 3 && computedStatus === 'CLOSED_NO_REPLY',
+        },
+      };
+    });
+
+    return res.json({ entries: enriched });
+  } catch (err) {
+    console.error('[outreach/list]', err);
+    return res.status(500).json({ error: 'Failed to load outreaches' });
+  }
+});
+
 export default router;
