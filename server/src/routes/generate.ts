@@ -168,7 +168,7 @@ router.post('/:type', authenticate, async (req, res, next) => {
         );
 
         const ruleBase = await getRuleBase(type);
-        const docType = type === 'selection-criteria' || type === 'interview-prep' || type === 'followup-email' || type === 'teaching-philosophy' || type === 'research-statement' || type === 'offer-negotiation' || type === 'linkedin-profile' || type === 'cold-outreach' || type === 'rejection-response' ? 'STAR_RESPONSE' : (type === 'cover-letter' ? 'COVER_LETTER' : 'RESUME');
+        const docType = type === 'interview-prep' ? 'INTERVIEW_PREP' : (type === 'selection-criteria' || type === 'followup-email' || type === 'teaching-philosophy' || type === 'research-statement' || type === 'offer-negotiation' || type === 'linkedin-profile' || type === 'cold-outreach' || type === 'rejection-response' ? 'STAR_RESPONSE' : (type === 'cover-letter' ? 'COVER_LETTER' : 'RESUME'));
         const sanitizedJobAppId = jobApplicationId === 'temp-id' ? null : (jobApplicationId || null);
 
         // ── STAGE 1: Strategic Blueprint (Claude) ──────────────────────────────

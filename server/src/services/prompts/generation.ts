@@ -41,7 +41,7 @@ export interface ProfileSnapshot {
 export const QUALITY_GATE_PROMPT = (
     blueprint: StrategyBlueprint,
     generatedContent: string,
-    docType: 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE' = 'COVER_LETTER',
+    docType: 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE' | 'INTERVIEW_PREP' = 'COVER_LETTER',
     profileSnapshot?: ProfileSnapshot | null
 ): string => {
     const candidateFirstName = docType === 'RESUME' && profileSnapshot?.candidateName
@@ -195,7 +195,7 @@ Apply HEW level-appropriate language. Focus on operational delivery, service qua
  *   but blueprint.toneBlueprint takes precedence when present.
  */
 export const DOCUMENT_GENERATION_PROMPT_WITH_BLUEPRINT = (
-    type: 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE',
+    type: 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE' | 'INTERVIEW_PREP',
     jd: string,
     profile: any,
     selectedAchievements: any[],
@@ -515,7 +515,7 @@ Apply this feedback directly and deliberately. This overrides default choices wh
 // =============================================================================
 
 export const DOCUMENT_GENERATION_PROMPT = (
-    type: 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE',
+    type: 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE' | 'INTERVIEW_PREP',
     jd: string,
     profile: any,
     selectedAchievements: any[],

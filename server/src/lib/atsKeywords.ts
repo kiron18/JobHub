@@ -1,7 +1,7 @@
 export interface AtsCheckOptions {
     jobDescription: string;
     generatedDocument: string;
-    docType: 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE';
+    docType: 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE' | 'INTERVIEW_PREP';
 }
 
 export interface AtsCheckResult {

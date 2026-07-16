@@ -34,7 +34,7 @@ function extractProfileSnapshot(profile: any): ProfileSnapshot {
 export async function reviewDocument(
     blueprint: StrategyBlueprint,
     generatedContent: string,
-    docType: 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE' = 'COVER_LETTER',
+    docType: 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE' | 'INTERVIEW_PREP' = 'COVER_LETTER',
     profile?: any
 ): Promise<QualityGateOutcome> {
     const snapshot = profile ? extractProfileSnapshot(profile) : null;

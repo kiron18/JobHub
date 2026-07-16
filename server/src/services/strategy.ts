@@ -18,7 +18,7 @@ export async function generateBlueprint(
     jd: string,
     profile: any,
     selectedAchievements: any[],
-    docType: 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE',
+    docType: 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE' | 'INTERVIEW_PREP',
     identityCard?: { label: string; summary: string; tone: string; keyStrengths: string[] } | null,
     achievementsUserSelected?: boolean,
 ): Promise<BlueprintResult> {

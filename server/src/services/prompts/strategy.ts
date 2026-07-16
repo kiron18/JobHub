@@ -54,7 +54,7 @@ export const STRATEGY_BLUEPRINT_PROMPT = (
     jd: string,
     profile: any,
     selectedAchievements: any[],
-    docType: 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE',
+    docType: 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE' | 'INTERVIEW_PREP',
     identityCard?: { label: string; summary: string; tone: string; keyStrengths: string[] } | null,
     // True when the achievements were explicitly ticked by the candidate in the
     // pre-write confirmation step. Confirmed achievements are guaranteed coverage:
