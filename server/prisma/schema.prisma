@@ -377,6 +377,7 @@ enum DocumentType {
   COVER_LETTER
   STAR_RESPONSE
   BASELINE_RESUME
+  INTERVIEW_PREP
 }
 
 enum JobPriority {

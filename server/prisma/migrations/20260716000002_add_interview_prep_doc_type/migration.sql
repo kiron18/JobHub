@@ -1,0 +1,2 @@
+-- Add INTERVIEW_PREP to DocumentType enum
+ALTER TYPE "DocumentType" ADD VALUE IF NOT EXISTS 'INTERVIEW_PREP';
