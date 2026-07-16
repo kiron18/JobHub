@@ -5,7 +5,7 @@ export type JobPriority = 'DREAM' | 'TARGET' | 'BACKUP' | null;
 
 export interface TrackerDocument {
     id: string;
-    type: 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE';
+    type: 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE' | 'INTERVIEW_PREP';
     content: string;
     title?: string;
     createdAt: string;
