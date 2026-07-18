@@ -12,7 +12,7 @@ import { randomUUID } from 'crypto';
 import { extractTextFromBuffer } from '../services/pdf';
 import { callLLM } from '../services/llm';
 import { prisma } from '../index';
-import { authenticate, AuthRequest } from '../middleware/auth';
+import { authenticate, optionalAuthenticate, AuthRequest } from '../middleware/auth';
 import { autoExtractAchievements } from '../services/autoExtract';
 import { reconcileProfileEmail } from '../services/onboarding';
 import { parseLLMJson } from '../utils/parseLLMResponse';
@@ -69,7 +69,9 @@ RESUME:
 ${resumeText}`;
 
 // POST /api/welcome/brief — upload resume, get the educational prose read.
-router.post('/brief', authenticate, handleUpload, async (req: Request, res: Response) => {
+// optionalAuthenticate: anonymous visitors can upload and see their brief BEFORE
+// creating an account. The account (via email OTP) is only needed at /finish.
+router.post('/brief', optionalAuthenticate, handleUpload, async (req: Request, res: Response) => {
   try {
     const file = (req.files as any)?.resume?.[0];
     if (!file) { res.status(400).json({ error: 'Resume file is required' }); return; }

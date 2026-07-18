@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Loader2, UploadCloud, ArrowRight, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../lib/api';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { colors, type as T } from '../components/landing/tokens';
 
@@ -11,7 +12,8 @@ import { colors, type as T } from '../components/landing/tokens';
 const GRAIN =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E\")";
 
-type Step = 'upload' | 'loading' | 'brief' | 'roles' | 'finishing';
+// upload -> loading -> brief -> roles -> [email -> code, only if not signed in] -> finishing
+type Step = 'upload' | 'loading' | 'brief' | 'roles' | 'email' | 'code' | 'finishing';
 
 const EASE = [0.25, 1, 0.5, 1] as const;
 
@@ -19,7 +21,7 @@ const ROLE_PLACEHOLDERS = ['e.g. Marketing Coordinator', 'e.g. Business Analyst'
 
 export const WelcomePage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
 
   const [step, setStep] = useState<Step>('upload');
   const [file, setFile] = useState<File | null>(null);
@@ -28,6 +30,10 @@ export const WelcomePage: React.FC = () => {
   const [brief, setBrief] = useState('');
   const [roles, setRoles] = useState<string[]>(['']);
   const [city, setCity] = useState('');
+  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
+  const [sending, setSending] = useState(false);
+  const [verifying, setVerifying] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function uploadResume(f: File) {
@@ -50,29 +56,71 @@ export const WelcomePage: React.FC = () => {
     }
   }
 
-  async function finish() {
-    const clean = roles.map(r => r.trim()).filter(Boolean).slice(0, 3);
-    if (clean.length === 0) { toast.error('Add at least one target role.'); return; }
+  function cleanRoles() {
+    return roles.map(r => r.trim()).filter(Boolean).slice(0, 3);
+  }
+
+  // From the roles step: signed-in users finish immediately; everyone else goes
+  // through the email + code step first (which creates their account).
+  function onRolesContinue() {
+    if (cleanRoles().length === 0) { toast.error('Add at least one target role.'); return; }
+    if (user) { finishNow(); return; }
+    if (!email) { setEmail(''); }
+    setStep('email');
+  }
+
+  // Send the 6-digit login code. shouldCreateUser makes this double as sign-up.
+  // emailRedirectTo is a fallback: if they click the link in the email instead of
+  // typing the code, they land back here (already signed in) rather than the homepage.
+  async function sendCode() {
+    const addr = email.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(addr)) { toast.error('Enter a valid email address.'); return; }
+    setSending(true);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: addr,
+        options: { shouldCreateUser: true, emailRedirectTo: `${window.location.origin}/welcome` },
+      });
+      if (error) throw error;
+      setEmail(addr);
+      setCode('');
+      setStep('code');
+    } catch (err: any) {
+      toast.error(err?.message || 'Could not send your code, please try again.');
+    } finally {
+      setSending(false);
+    }
+  }
+
+  // Verify the code -> establishes the session -> persist everything.
+  async function verifyAndFinish() {
+    const otp = code.trim();
+    if (otp.length < 6) { toast.error('Enter the 6-digit code from your email.'); return; }
+    setVerifying(true);
+    try {
+      const { error } = await supabase.auth.verifyOtp({ email: email.trim().toLowerCase(), token: otp, type: 'email' });
+      if (error) throw error;
+      await finishNow();
+    } catch (err: any) {
+      toast.error(err?.message || "That code didn't match. Check it and try again.");
+      setVerifying(false);
+    }
+  }
+
+  // Persist resume + target roles and complete onboarding. Requires a session,
+  // which exists by now (either they were already signed in, or just verified).
+  async function finishNow() {
+    const clean = cleanRoles();
+    if (clean.length === 0) { toast.error('Add at least one target role.'); setStep('roles'); return; }
     setStep('finishing');
     try {
       await api.post('/welcome/finish', { token, targetRoles: clean, targetCity: city.trim() || null });
       navigate('/', { replace: true });
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'Could not complete setup, please try again.');
-      setStep('roles');
+      setStep(user ? 'roles' : 'code');
+      setVerifying(false);
     }
-  }
-
-  // ── Not signed in: they should arrive via their set-up link ──────────────────
-  if (!authLoading && !user) {
-    return (
-      <Shell>
-        <Eyebrow>Welcome</Eyebrow>
-        <Display>Open your set-up link</Display>
-        <p style={bodyText}>Use the link from your welcome email to get started, or sign in if you already have a password.</p>
-        <PrimaryBtn label="Sign in" onClick={() => navigate('/auth')} />
-      </Shell>
-    );
   }
 
   // ── Step: brief (the grained solid) ──────────────────────────────────────────
@@ -106,7 +154,7 @@ export const WelcomePage: React.FC = () => {
   }
 
   // ── Step: roles ──────────────────────────────────────────────────────────────
-  if (step === 'roles' || step === 'finishing') {
+  if (step === 'roles') {
     return (
       <Shell>
         <Eyebrow>Step 2 of your setup</Eyebrow>
@@ -145,7 +193,78 @@ export const WelcomePage: React.FC = () => {
         </div>
 
         <div style={{ marginTop: 26 }}>
-          <PrimaryBtn label={step === 'finishing' ? '' : 'Finish setup'} onClick={finish} loading={step === 'finishing'} />
+          <PrimaryBtn label={user ? 'Finish setup' : 'Continue'} onClick={onRolesContinue} />
+        </div>
+      </Shell>
+    );
+  }
+
+  // ── Step: email (create account) ─────────────────────────────────────────────
+  if (step === 'email') {
+    return (
+      <Shell>
+        <Eyebrow>Last step · save your progress</Eyebrow>
+        <Display>Where should we save this?</Display>
+        <p style={bodyText}>Enter your email and we'll send you a 6-digit code. That creates your account so your resume and plan are saved and waiting whenever you log back in.</p>
+
+        <input
+          type="email" inputMode="email" autoComplete="email" autoFocus
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && !sending) sendCode(); }}
+          placeholder="you@email.com"
+          style={inputStyle}
+        />
+
+        <div style={{ marginTop: 22 }}>
+          <PrimaryBtn label={sending ? '' : 'Email me a code'} onClick={sendCode} loading={sending} />
+        </div>
+      </Shell>
+    );
+  }
+
+  // ── Step: code (verify) ──────────────────────────────────────────────────────
+  if (step === 'code') {
+    return (
+      <Shell>
+        <Eyebrow>Check your inbox</Eyebrow>
+        <Display>Enter your code</Display>
+        <p style={bodyText}>We sent a 6-digit code to <strong style={{ color: colors.textPrimary }}>{email}</strong>. Type it in below to finish. It can take a minute to arrive, and it is worth checking spam just in case.</p>
+
+        <input
+          inputMode="numeric" autoComplete="one-time-code" autoFocus
+          value={code}
+          onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+          onKeyDown={e => { if (e.key === 'Enter' && !verifying) verifyAndFinish(); }}
+          placeholder="6-digit code"
+          style={{ ...inputStyle, fontSize: 22, letterSpacing: '0.3em', fontWeight: 700 }}
+        />
+
+        <div style={{ marginTop: 22 }}>
+          <PrimaryBtn label={verifying ? '' : 'Verify and finish'} onClick={verifyAndFinish} loading={verifying} />
+        </div>
+
+        <div style={{ marginTop: 18, display: 'flex', gap: 20 }}>
+          <button onClick={sendCode} disabled={sending}
+            style={{ background: 'transparent', border: 'none', cursor: sending ? 'default' : 'pointer', color: colors.accentPetrol, fontFamily: T.body, fontSize: 13.5, fontWeight: 700, padding: 0 }}>
+            {sending ? 'Sending…' : 'Resend code'}
+          </button>
+          <button onClick={() => { setCode(''); setStep('email'); }}
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: colors.textMuted, fontFamily: T.body, fontSize: 13.5, fontWeight: 700, padding: 0 }}>
+            Use a different email
+          </button>
+        </div>
+      </Shell>
+    );
+  }
+
+  // ── Step: finishing ──────────────────────────────────────────────────────────
+  if (step === 'finishing') {
+    return (
+      <Shell>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: colors.textSecondary, fontFamily: T.body, fontSize: 15.5 }}>
+          <Loader2 size={20} className="animate-spin" style={{ color: colors.accentPetrol }} />
+          Setting everything up…
         </div>
       </Shell>
     );
