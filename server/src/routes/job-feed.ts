@@ -152,6 +152,13 @@ async function requirePremium(userId: string, res: Response): Promise<boolean> {
 
 // POST /api/job-feed/refresh — rebuild today's feed (30-min cooldown)
 router.post('/refresh', async (req: any, res: any) => {
+  // Job feed is shelved (2026-07-19). Hard-stop any live scrape / API credit
+  // spend at the source, regardless of stray UI calls. Flip JOB_FEED_ENABLED=true
+  // to restore. The /jobs page already redirects to the dashboard.
+  if (process.env.JOB_FEED_ENABLED !== 'true') {
+    return res.status(503).json({ error: 'Job feed is currently disabled.', disabled: true });
+  }
+
   const userId = req.user.id;
   const today = todayAEST();
   const COOLDOWN_MS = 30 * 60 * 1000;

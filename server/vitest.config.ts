@@ -7,6 +7,10 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./src/tests/setup.ts'],
     testTimeout: 10000,
+    // Only run TypeScript source tests. The compiled dist/ copies are CommonJS
+    // and can't import vitest — scanning them produced 61 phantom failures.
+    include: ['src/**/*.test.ts'],
+    exclude: ['dist/**', 'node_modules/**'],
   },
   resolve: {
     alias: {
