@@ -7,6 +7,7 @@ import { getRealUserIds } from './admin';
 import {
     mondayAEST,
     tokenToInstant,
+    appliedToken,
     computeStreak,
     weeklyEquivalent,
     requestGoalChange,
@@ -42,7 +43,7 @@ router.get('/overview', async (_req, res) => {
         const userIds = await getRealUserIds();
         if (userIds.length === 0) return res.json({ weekStart: monday.toISOString().slice(0, 10), members: [] });
 
-        const [profiles, appRows, outreachRows, pauses, goalChanges, recentCreated, outreachWithStatus, localExpEntries] = await Promise.all([
+        const [profiles, appRows, outreachRows, pauses, goalChanges, recentCreated, outreachWithStatus, localExpEntries, lifetimeApps] = await Promise.all([
             prisma.candidateProfile.findMany({
                 where: { userId: { in: userIds } },
                 select: {
@@ -52,7 +53,7 @@ router.get('/overview', async (_req, res) => {
                 },
             }),
             prisma.jobApplication.findMany({
-                where: { userId: { in: userIds }, dateApplied: { gte: firstMonday } },
+                where: { userId: { in: userIds }, dateApplied: { gte: tokenToInstant(firstMonday) } },
                 select: { userId: true, sourceUrl: true, id: true, dateApplied: true },
             }),
             prisma.outreachLog.findMany({
@@ -76,9 +77,9 @@ router.get('/overview', async (_req, res) => {
                 },
                 select: { userId: true, createdAt: true, dateApplied: true },
             }),
-            // Outreach with status for funnel
+            // Outreach with status for funnel (12-week window, same boundary as outreachRows)
             prisma.outreachLog.findMany({
-                where: { userId: { in: userIds }, createdAt: { gte: firstMonday } },
+                where: { userId: { in: userIds }, createdAt: { gte: tokenToInstant(firstMonday) } },
                 select: { userId: true, status: true, createdAt: true },
             }),
             // Local experience entries
@@ -86,7 +87,15 @@ router.get('/overview', async (_req, res) => {
                 where: { userId: { in: userIds } },
                 select: { userId: true, type: true, organisation: true, role: true, startedAt: true, endedAt: true },
             }),
+            // Lifetime applications: every logged application ever, no window.
+            prisma.jobApplication.groupBy({
+                by: ['userId'],
+                where: { userId: { in: userIds }, dateApplied: { not: null } },
+                _count: { _all: true },
+            }),
         ]);
+
+        const lifetimeByUser = new Map<string, number>(lifetimeApps.map(g => [g.userId, g._count._all]));
 
         const weekIndexFromToken = (token: Date) =>
             Math.floor((token.getTime() - firstMonday.getTime()) / (7 * DAY_MS));
@@ -103,7 +112,9 @@ router.get('/overview', async (_req, res) => {
         for (const r of appRows) {
             if (!r.dateApplied) continue;
             ensure(r.userId);
-            const idx = weekIndexFromToken(r.dateApplied);
+            // appliedToken: feed applies store raw timestamps, manual entries store
+            // date tokens — normalise both to the AEST calendar date before bucketing.
+            const idx = weekIndexFromToken(appliedToken(r.dateApplied));
             if (idx >= 0 && idx < weeks) appsByUser.get(r.userId)![idx].add(r.sourceUrl ?? `__id:${r.id}`);
         }
         for (const r of outreachRows) {
@@ -127,7 +138,7 @@ router.get('/overview', async (_req, res) => {
 
         const backdatedByUser = new Map<string, number>();
         for (const r of recentCreated) {
-            const appliedInstant = r.dateApplied!.getTime() - AEST_OFFSET_MS;
+            const appliedInstant = appliedToken(r.dateApplied!).getTime() - AEST_OFFSET_MS;
             if (r.createdAt.getTime() - appliedInstant > 2.5 * DAY_MS) {
                 backdatedByUser.set(r.userId, (backdatedByUser.get(r.userId) ?? 0) + 1);
             }
@@ -208,6 +219,7 @@ router.get('/overview', async (_req, res) => {
                     onTrackApps: currentWeek.applications >= appTarget,
                     onTrackOutreach: currentWeek.outreach >= outreachTarget,
                 },
+                lifetimeApplications: lifetimeByUser.get(p.userId) ?? 0,
                 streak: computeStreak(weeklyCounts),
                 lastFourWeeks: lastFour,
                 flags: {

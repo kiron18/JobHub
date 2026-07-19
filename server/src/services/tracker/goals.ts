@@ -41,6 +41,16 @@ export function tokenToInstant(token: Date): Date {
   return new Date(token.getTime() - AEST_OFFSET_MS);
 }
 
+/**
+ * AEST date token for a stored dateApplied. Write paths are mixed: manual
+ * entries store a midnight-UTC date token, feed applies store a raw
+ * `new Date()` timestamp. This is a no-op for tokens and converts raw
+ * timestamps to the Sydney calendar date they belong to.
+ */
+export function appliedToken(d: Date): Date {
+  return new Date(Math.floor((d.getTime() + AEST_OFFSET_MS) / DAY_MS) * DAY_MS);
+}
+
 /** Monday of the current week in AEST, as a midnight-UTC token. */
 export function mondayAEST(): Date {
   const today = todayAEST();
@@ -116,7 +126,9 @@ export async function getWeeklyCounts(userId: string, weeks = 26): Promise<WeekC
 
   const [appRows, outreachRows, pauses] = await Promise.all([
     prisma.jobApplication.findMany({
-      where: { userId, dateApplied: { gte: firstMonday } },
+      // tokenToInstant so raw-timestamp rows from 00:00-10:00 AEST Monday
+      // of the first week aren't dropped by the query boundary.
+      where: { userId, dateApplied: { gte: tokenToInstant(firstMonday) } },
       select: { sourceUrl: true, id: true, dateApplied: true },
     }),
     prisma.outreachLog.findMany({
@@ -135,7 +147,7 @@ export async function getWeeklyCounts(userId: string, weeks = 26): Promise<WeekC
   const appsByWeek: Array<Set<string>> = Array.from({ length: weeks }, () => new Set());
   for (const r of appRows) {
     if (!r.dateApplied) continue;
-    const idx = weekIndexFromToken(r.dateApplied);
+    const idx = weekIndexFromToken(appliedToken(r.dateApplied));
     if (idx >= 0 && idx < weeks) appsByWeek[idx].add(r.sourceUrl ?? `__id:${r.id}`);
   }
 
@@ -194,7 +206,7 @@ export async function getWeeklyCountsBatch(userIds: string[], weeks: number): Pr
 
   const [appRows, outreachRows, pauses] = await Promise.all([
     prisma.jobApplication.findMany({
-      where: { userId: { in: userIds }, dateApplied: { gte: firstMonday } },
+      where: { userId: { in: userIds }, dateApplied: { gte: tokenToInstant(firstMonday) } },
       select: { userId: true, sourceUrl: true, id: true, dateApplied: true },
     }),
     prisma.outreachLog.findMany({
@@ -224,7 +236,7 @@ export async function getWeeklyCountsBatch(userIds: string[], weeks: number): Pr
   for (const r of appRows) {
     if (!r.dateApplied) continue;
     ensure(r.userId);
-    const idx = weekIndexFromToken(r.dateApplied);
+    const idx = weekIndexFromToken(appliedToken(r.dateApplied));
     if (idx >= 0 && idx < weeks) apps.get(r.userId)![idx].add(r.sourceUrl ?? `__id:${r.id}`);
   }
   for (const r of outreachRows) {
@@ -428,7 +440,8 @@ export async function getGoalState(userId: string): Promise<GoalState> {
 
   const [todayApps, weekly, pendingRow, eligibility, history, todayOutreach] = await Promise.all([
     prisma.jobApplication.findMany({
-      where: { userId, dateApplied: { gte: today } },
+      // tokenToInstant so raw-timestamp rows logged 00:00-10:00 AEST count as today.
+      where: { userId, dateApplied: { gte: tokenToInstant(today) } },
       select: { sourceUrl: true, id: true },
     }),
     getWeeklyCounts(userId, 26),

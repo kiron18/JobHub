@@ -9,13 +9,16 @@ import {
     promoteAndGetSettings,
     GoalChangeError,
     mondayAEST as mondayAESTShared,
+    tokenToInstant,
 } from '../services/tracker/goals';
 
 export async function getDailyProgress(userId: string): Promise<{ appliedToday: number; goal: number }> {
   // promoteAndGetSettings applies any goal change that has become effective.
   const goal = (await promoteAndGetSettings(userId)).appGoal;
   const rows = await prisma.jobApplication.findMany({
-    where: { userId, dateApplied: { gte: todayAEST() } },
+    // tokenToInstant: feed applies store raw timestamps, so entries logged
+    // 00:00-10:00 AEST sit before the midnight-UTC token and would be missed.
+    where: { userId, dateApplied: { gte: tokenToInstant(todayAEST()) } },
     select: { sourceUrl: true, id: true },
   });
   return { appliedToday: countDistinctJobs(rows), goal };
@@ -32,7 +35,7 @@ export async function getGoalProgress(userId: string): Promise<{
   const goal = settings.appGoal;
   const since = goalType === 'weekly' ? mondayAEST() : todayAEST();
   const rows = await prisma.jobApplication.findMany({
-    where: { userId, dateApplied: { gte: since } },
+    where: { userId, dateApplied: { gte: tokenToInstant(since) } },
     select: { sourceUrl: true, id: true },
   });
   return { goalType, goal, applied: countDistinctJobs(rows) };
@@ -41,7 +44,7 @@ export async function getGoalProgress(userId: string): Promise<{
 export async function getActivity(userId: string, days = 365): Promise<Array<{ date: string; count: number }>> {
   const since = new Date(todayAEST().getTime() - (days - 1) * 86400000);
   const rows = await prisma.jobApplication.findMany({
-    where: { userId, dateApplied: { gte: since } },
+    where: { userId, dateApplied: { gte: tokenToInstant(since) } },
     select: { sourceUrl: true, id: true, dateApplied: true },
   });
   return bucketByDay(rows as any, days, todayAEST());
