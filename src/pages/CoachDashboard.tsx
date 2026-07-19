@@ -20,6 +20,7 @@ interface CoachMember {
         weeklyAppTarget: number; weeklyOutreachTarget: number;
     };
     week: { applications: number; outreach: number; paused: boolean; onTrackApps: boolean; onTrackOutreach: boolean };
+    lifetimeApplications: number;
     streak: number;
     lastFourWeeks: WeekCell[];
     flags: { missedWeeks: number; backdatedEntries14d: number; needsConversation: boolean };
@@ -174,6 +175,7 @@ export const CoachDashboard: React.FC = () => {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
                                         <Stat label="Apps" value={`${m.week.applications}/${m.goals.weeklyAppTarget}`} good={m.week.onTrackApps} />
                                         <Stat label="Outreach" value={`${m.week.outreach}/${m.goals.weeklyOutreachTarget}`} good={m.week.onTrackOutreach} />
+                                        <Stat label="All-time" value={`${m.lifetimeApplications}`} neutral />
                                         <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                                             {m.lastFourWeeks.map(w => (
                                                 <span key={w.weekStart} title={`${w.weekStart}: ${w.applications} apps, ${w.outreach} outreach${w.paused ? ' (paused)' : ''}`}
@@ -374,10 +376,10 @@ const NudgePreview: React.FC = () => {
     );
 };
 
-const Stat: React.FC<{ label: string; value: string; good: boolean }> = ({ label, value, good }) => (
+const Stat: React.FC<{ label: string; value: string; good?: boolean; neutral?: boolean }> = ({ label, value, good, neutral }) => (
     <div style={{ textAlign: 'center' }}>
         <div style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: warm.colors.textMuted }}>{label}</div>
-        <div style={{ fontSize: 14, fontWeight: 800, color: good ? warm.colors.success : '#B0563C' }}>{value}</div>
+        <div style={{ fontSize: 14, fontWeight: 800, color: neutral ? warm.colors.textPrimary : good ? warm.colors.success : '#B0563C' }}>{value}</div>
     </div>
 );
 

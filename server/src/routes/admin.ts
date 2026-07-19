@@ -14,6 +14,7 @@ const router = Router();
 const EXCLUDED_EMAILS = new Set([
   'kiron182@gmail.com',
   'yornorik281@gmail.com',
+  'yornorik281@hotmail.com',
   'kamiproject2021@gmail.com',
   'kironorik182@gmail.com',
   'kironorik@gmail.com',
