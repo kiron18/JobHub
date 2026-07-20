@@ -17,8 +17,9 @@ export function DRAFT_CRITIQUE_PROMPT(params: {
     content: string;
     jobDescription?: string | null;
     positioningStatement: PositioningStatement | null;
+    resumeText?: string | null;
 }): string {
-    const { docType, content, jobDescription, positioningStatement } = params;
+    const { docType, content, jobDescription, positioningStatement, resumeText } = params;
 
     const docTypeLabel =
         docType === 'cover-letter' ? 'Cover Letter' :
@@ -38,6 +39,14 @@ ${jobDescription.trim()}
 """
 `
         : 'TARGET JOB DESCRIPTION: not provided — critique against general Australian-market recruiter expectations.';
+
+    const resumeBlock = resumeText && resumeText.trim().length > 100
+        ? `THE CANDIDATE'S SOURCE RESUME (ground truth for what they have actually done — use it for failure mode 8):
+"""
+${resumeText.trim()}
+"""
+`
+        : 'SOURCE RESUME: not available — skip failure mode 8 entirely.';
 
     return `You are a senior career strategist auditing a candidate's ${docTypeLabel} BEFORE they send it. The candidate is an international graduate job-hunting in Australia. Your job is to surface the specific failure modes that get applications screened out by recruiters, the things automated generation misses.
 
@@ -66,11 +75,16 @@ DO NOT rewrite the document. DO NOT suggest stylistic polish. Catch the failure 
 7. GENERIC POSITIONING
    "I'm a passionate marketing professional who thrives in fast-paced environments." Means nothing. Should be replaced with a specific positioning anchored in role + seniority + domain + proof point.
 
+8. INFLATION BEYOND THE RESUME (highest value — check this one hardest)
+   Claims of capability, seniority, or experience that the source resume does not strictly support. This is NOT about fabricated facts (names and numbers are checked elsewhere). It is about honest facts stretched into dishonest capability: "overseeing client engagements is familiar ground" when the resume shows reporting to stakeholders, not overseeing anything; "fluent in how these systems are built" backed by one online course; job-description vocabulary mirrored back as the candidate's own experience. For each: quote the claim, name what the resume actually supports, and give the honest phrasing that survives an interviewer probing it. An interview is where these claims get cross-examined — flag anything the candidate could not defend for two minutes.
+
 ═══ INPUTS ═══
 
 ${positioningBlock}
 
 ${jdBlock}
+
+${resumeBlock}
 
 DOCUMENT (${docTypeLabel}):
 """
@@ -88,7 +102,7 @@ Return STRICT JSON, no markdown fences, no preamble:
   },
   "issues": [
     {
-      "category": "desperation" | "overselling" | "hedging" | "vagueness" | "weak_opening" | "incoherence" | "generic_positioning",
+      "category": "desperation" | "overselling" | "hedging" | "vagueness" | "weak_opening" | "incoherence" | "generic_positioning" | "inflation",
       "severity": "high" | "medium" | "low",
       "snippet": "<the exact short phrase from the document, quoted>",
       "why": "<one sentence: why this signal hurts recruiter trust>",
@@ -104,6 +118,7 @@ Return STRICT JSON, no markdown fences, no preamble:
 
 - ONLY flag actual instances. If the document doesn't oversell, return an empty issues array on that category. Do NOT invent issues to fill the list.
 - Maximum 6 issues total. Lead with the highest-severity ones.
+- "inflation" issues are severity "high" and outrank every other category — a recruiter forgives a vague phrase, an interviewer never forgives a claim that collapses under questioning. Reframing, reordering, and tailoring to the job are NOT inflation; only flag claims the resume cannot support at all.
 - Quote the exact phrase. Single sentence excerpts. Do not paraphrase.
 - "fix" must be specific, not generic. "Replace with a number" is bad; "Replace 'helped with marketing campaigns' with 'Led the rollout of X to N audiences, delivering Y%' is good (use placeholders if metrics not visible).
 - Strengths: 1-3 entries max. Only genuine strengths. No empty pleasantries.

@@ -13,7 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, ShieldCheck, ChevronDown, X, AlertCircle, ShieldAlert, ThumbsUp } from 'lucide-react';
 import { warm } from '../../lib/theme/warmTokens';
 
-export type CritiqueCategory = 'desperation' | 'overselling' | 'hedging' | 'vagueness' | 'weak_opening' | 'incoherence' | 'generic_positioning';
+export type CritiqueCategory = 'desperation' | 'overselling' | 'hedging' | 'vagueness' | 'weak_opening' | 'incoherence' | 'generic_positioning' | 'inflation';
 
 export interface CritiqueIssue {
     category: CritiqueCategory;
@@ -37,6 +37,7 @@ const CATEGORY_LABEL: Record<CritiqueCategory, string> = {
     weak_opening: 'Weak opening',
     incoherence: 'Narrative gap',
     generic_positioning: 'Generic positioning',
+    inflation: 'Bigger than your resume',
 };
 
 interface Props {
@@ -85,10 +86,10 @@ export function DraftCritiquePanel({ open, onClose, loading, result }: Props) {
                             textTransform: 'uppercase',
                             color: warm.colors.textSecondary,
                         }}>
-                            Draft review
+                            Coach's advice
                         </p>
                         <p style={{ margin: 0, fontSize: 13, color: warm.colors.textSecondary, lineHeight: 1.55 }}>
-                            What a recruiter scans for, before the words register.
+                            What a recruiter scans for, and what an interviewer would probe.
                         </p>
                     </div>
                 </div>

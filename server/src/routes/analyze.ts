@@ -10,7 +10,7 @@ import { Router } from 'express';
 import { prisma } from '../index';
 import { authenticate } from '../middleware/auth';
 import { analyzeRateLimit } from '../middleware/analyzeRateLimit';
-import { callLLM } from '../services/llm';
+import { callLLM, callClaude } from '../services/llm';
 import { callLLMWithRetry } from '../utils/callLLMWithRetry';
 import { searchAchievements } from '../services/vector';
 import { JOB_ANALYSIS_PROMPT, ACHIEVEMENT_DRAFT_PROMPT, DRAFT_CRITIQUE_PROMPT } from '../services/prompts';
@@ -458,8 +458,9 @@ router.post('/draft-achievement', async (req: any, res: any) => {
 // Reads a generated resume / cover letter / SC document back and flags the
 // recruiter-trust failure modes that AI generators tend to miss: desperation,
 // overselling, hedging, vagueness, weak openings, narrative incoherence,
-// generic positioning. Button-driven in the UI (not auto-run on every
-// generation) to keep the LLM cost surface manageable.
+// generic positioning, and inflation beyond the source resume. Runs on Haiku
+// (Llama fallback). The UI auto-runs it once per fresh generation and caches
+// the result on the draft, so the cost surface is one Haiku call per document.
 
 router.post('/critique', async (req: any, res: any) => {
     try {
@@ -491,14 +492,24 @@ router.post('/critique', async (req: any, res: any) => {
             content,
             jobDescription: jobDescription ?? null,
             positioningStatement,
+            resumeText: profile.resumeRawText ?? null,
         });
 
+        // Haiku first: the inflation check (failure mode 8) needs claim-vs-resume
+        // judgement that the cheap Llama path gets wrong too often. Llama stays as
+        // the fallback so the coach panel never goes dark on a Haiku outage.
         let raw;
         try {
-            raw = await callLLMWithRetry(prompt, true);
-        } catch (err: any) {
-            console.error('[analyze/critique] LLM call failed:', err.message);
-            return res.status(503).json({ error: 'Critique is temporarily unavailable. Please try again.' });
+            const { content: haikuRaw } = await callClaude(prompt, true, undefined, 'anthropic/claude-haiku-4-5');
+            raw = haikuRaw;
+        } catch (haikuErr: any) {
+            console.warn('[analyze/critique] Haiku call failed, falling back to Llama:', haikuErr.message);
+            try {
+                raw = await callLLMWithRetry(prompt, true);
+            } catch (err: any) {
+                console.error('[analyze/critique] LLM call failed:', err.message);
+                return res.status(503).json({ error: 'Critique is temporarily unavailable. Please try again.' });
+            }
         }
 
         let critique: any;
