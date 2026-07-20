@@ -215,6 +215,50 @@ I'll keep you posted as [specific thing develops]. And if I can ever return the 
 (Tip: This message turns one chat into an ongoing relationship. Send it the same day. Reference something specific they said — not a generic "thanks for your time". Show you listened.)`,
     },
     {
+        id: 'recruiter-job-followup',
+        title: 'Recruiter Follow-Up — Job You Already Applied For',
+        category: 'Outreach',
+        subject: 'Following Up on My Application — [Job Title] at [Company]',
+        body: `Hi [Recruiter Name],
+
+I applied for the [Job Title] role at [Company] on [date] and wanted to reach out directly, since I saw you're recruiting for [team/role area].
+
+Quick summary of why I think I'd be a strong fit: [one or two sentences — the single most relevant skill or achievement from your resume, ideally something that maps directly to a line in the job ad].
+
+I know you're likely working through a high volume of applications, so I don't expect a full review right now — I just wanted to flag mine directly and see if there's anything else useful I can send over (portfolio, references, a specific writing sample) to support it.
+
+Really appreciate your time either way, and I'd love the chance to talk if there's a fit.
+
+Best,
+[Your Name]
+[LinkedIn URL] | [Phone]`,
+    },
+    {
+        id: 'find-recruiter-email-guide',
+        title: 'How to Find a Recruiter\'s Email (Hunter.io, RocketReach, Apollo.io)',
+        category: 'Tools',
+        subject: '(Reference guide — not an email)',
+        body: `Before you can send the recruiter templates above, you need an actual email address. LinkedIn DMs work too, but many recruiters check email first — and email lets you attach your resume. Here's how to find one in under five minutes.
+
+STEP 1 — Get the two things you need
+- The recruiter's full name (from the job ad, LinkedIn, or the company's "Meet the team" page)
+- The company's actual domain (e.g. atlassian.com) — not the LinkedIn company page, the real website
+
+STEP 2 — Try Hunter.io first (best for "find the pattern")
+Go to hunter.io → Email Finder. Enter the recruiter's name and the company domain — Hunter guesses the address from the company's known email pattern (e.g. first.last@company.com) and gives you a confidence score. If the name search comes up empty, use "Domain Search" instead — it lists every email pattern Hunter has seen at that company, so you can build the address yourself. The free tier covers a modest number of searches a month, which is usually enough for a focused job search.
+
+STEP 3 — Cross-check with RocketReach
+RocketReach pulls contact info directly from public profiles, so it sometimes surfaces an email Hunter doesn't. Search the recruiter's name + company, open their profile, and reveal the email. Use it to confirm Hunter's guess, or as a fallback when Hunter comes back empty.
+
+STEP 4 — Apollo.io when you only know the company, not a person yet
+Apollo is a full B2B contact database. If you don't have a specific recruiter's name, search the company and filter by title ("Recruiter", "Talent Acquisition", "Talent Partner") to find who's actually hiring for your function. Apollo flags emails as verified vs. guessed — always prefer verified.
+
+STEP 5 — Verify before you send
+Never send to a guessed address blind. Run it through Hunter's free Email Verifier (or a tool like NeverBounce) before you hit send. A bounce wastes the outreach and can hurt your own domain's sending reputation if you're emailing from a personal or custom domain address.
+
+(Tip: Start with Hunter's Domain Search — it's free, fast, and usually enough. Reach for RocketReach or Apollo only when Hunter comes up empty, or when you need to find WHO the recruiter even is.)`,
+    },
+    {
         id: 'linkedin-soft-ask',
         title: '6. The Soft Ask (After Standing)',
         category: 'LinkedIn Outreach',
@@ -241,6 +285,7 @@ const categoryLabelColor: Record<string, string> = {
     Interview: warm.colors.success,
     Networking: '#7C6CB5',
     Offer: warm.colors.accentPetrol,
+    Tools: '#0A66C2',
 };
 
 const cardStyle: React.CSSProperties = {
