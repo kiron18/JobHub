@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { useNavigate } from 'react-router-dom';
 import { warm } from '../lib/theme/warmTokens';
 import api from '../lib/api';
 import { ProfileStrip } from '../components/linkedin/ProfileStrip';
@@ -27,7 +26,6 @@ const DEFAULT_BANNER: BannerConfig = {
 export const LinkedInPage: React.FC = () => {
   const { profile } = useProfile();
 
-  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('profile');
   const [targetRole, setTargetRole] = useState('');
   const [generating, setGenerating] = useState(false);
@@ -59,7 +57,7 @@ export const LinkedInPage: React.FC = () => {
       toast.success('LinkedIn profile generated');
     } catch (err: any) {
       if (err?.response?.status === 402) {
-        navigate('/pricing');
+        toast.error('LinkedIn generation needs a paid plan — contact us to upgrade.');
       } else {
         toast.error('Generation failed — try again.');
       }
@@ -79,7 +77,7 @@ export const LinkedInPage: React.FC = () => {
       setProfileData(prev => prev ? { ...prev, [key]: data[key] } : data);
     } catch (err: any) {
       if (err?.response?.status === 402) {
-        navigate('/pricing');
+        toast.error('LinkedIn generation needs a paid plan — contact us to upgrade.');
       } else {
         toast.error('Regeneration failed — try again.');
       }

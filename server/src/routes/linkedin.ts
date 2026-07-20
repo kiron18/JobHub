@@ -5,7 +5,14 @@ import { callClaude } from '../services/llm';
 import { parseLLMJson } from '../utils/parseLLMResponse';
 import { EXEMPT_EMAILS } from './stripe';
 
-async function requirePaid(req: AuthRequest, res: any): Promise<boolean> {
+async function requirePaid(_req: AuthRequest, _res: any): Promise<boolean> {
+  // PAYMENTS PAUSED: unlimited access for all users during pricing rework
+  // (mirrors accessControl.ts#checkAccess, which every other gate already uses).
+  // This gate was missed when payments were paused, so free/unpaid accounts like
+  // Mayank's got a 402 here while every other feature stayed unlocked.
+  return true;
+
+  /* ORIGINAL CODE - restore when payments resume
   const email = (req.user?.email ?? '').toLowerCase();
   if (EXEMPT_EMAILS.includes(email)) return true;
   const profile = await prisma.candidateProfile.findUnique({
@@ -25,6 +32,7 @@ async function requirePaid(req: AuthRequest, res: any): Promise<boolean> {
     return false;
   }
   return true;
+  */
 }
 import multer from 'multer';
 import { GoogleGenAI } from '@google/genai';
