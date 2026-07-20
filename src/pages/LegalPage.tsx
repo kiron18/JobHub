@@ -328,7 +328,7 @@ export function LegalPage() {
           </span>
         </div>
         <button
-          onClick={() => navigate('/pricing')}
+          onClick={() => navigate('/')}
           style={{
             background: warm.colors.bgAlt,
             border: `1px solid ${warm.colors.borderWhisper}`,
@@ -340,7 +340,8 @@ export function LegalPage() {
             cursor: 'pointer',
           }}
         >
-          Back to pricing
+          {/* PAYMENTS PAUSED: /pricing route removed during pricing rework — was bouncing to dashboard via catch-all, same bug as LinkedInPage.tsx */}
+          Back to home
         </button>
       </div>
 
