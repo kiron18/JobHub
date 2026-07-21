@@ -9,25 +9,24 @@ const COACHING_TIPS: Record<keyof Omit<OutreachData, 'questionSuggestions'>, str
   connectionNote: 'The specificity of the reference is what makes it work. Generic openers get ignored.',
   firstMessage: 'A precise question about something they actually know is hard to walk away from.',
   afterConversationFollowUp: 'Shows you were paying attention. Plants a seed of reciprocity without being transactional.',
-  directAsk: 'This is the highest-impact message in the sequence. Ask for a name or a direction — not a job — but make sure you actually ask. A conversation that ends without an ask is a lottery ticket you never scratched.',
+  directAsk: 'Send this whenever the conversation has earned it — could be your 2nd message, could be your 4th. Ask for a quick Zoom or Google Meet call, never a phone number. Make sure you actually ask — a conversation that drifts with no ask is a wasted opportunity.',
 };
 
 const TEMPLATE_LABELS: Record<keyof Omit<OutreachData, 'questionSuggestions'>, string> = {
   connectionNote: 'Connection Request Note',
   firstMessage: 'First Message After Connecting',
   afterConversationFollowUp: 'After-Conversation Follow-Up',
-  directAsk: 'Direct Ask for Help',
+  directAsk: 'Ask for a Call (Zoom / Google Meet)',
 };
 
-function TemplateCard({ label, content, tip, charLimit, editableNote, touchNumber, outreachLogId, onCopyLogged }: {
+function TemplateCard({ label, content, tip, charLimit, editableNote, logEnabled, onLogCopy }: {
   label: string;
   content: string;
   tip: string;
   charLimit?: number;
   editableNote?: string;
-  touchNumber?: number;
-  outreachLogId?: string;
-  onCopyLogged?: () => void;
+  logEnabled?: boolean;
+  onLogCopy?: (body: string) => Promise<void>;
 }) {
   const [copied, setCopied] = useState(false);
   const [showTip, setShowTip] = useState(false);
@@ -43,15 +42,11 @@ function TemplateCard({ label, content, tip, charLimit, editableNote, touchNumbe
     toast.success('Copied to clipboard');
     setTimeout(() => setCopied(false), 1800);
 
-    // Log the copy if we have an outreachLogId and touchNumber
-    if (outreachLogId && touchNumber && !logging) {
+    // Log the copy as the next message sent, if this card supports logging
+    if (logEnabled && onLogCopy && !logging) {
       setLogging(true);
       try {
-        await api.post(`/outreach/${outreachLogId}/copy`, {
-          touchNumber,
-          body: editedContent,
-        });
-        onCopyLogged?.();
+        await onLogCopy(editedContent);
       } catch (err) {
         console.error('Failed to log copy:', err);
       } finally {
@@ -138,6 +133,10 @@ export const OutreachTemplates: React.FC = () => {
   const [logging, setLogging] = useState(false);
   const [loggedThisGen, setLoggedThisGen] = useState(false);
   const [outreachLogId, setOutreachLogId] = useState<string | null>(null);
+  // Connection note + first message get logged together as touches 1 and 2
+  // by "Log This Outreach". Everything sent after that (follow-up, call ask)
+  // is self-timed by the user, so it logs sequentially as touch 3, 4, 5...
+  const [nextTouchNumber, setNextTouchNumber] = useState(3);
 
   async function handleLogConnected() {
     if (logging || loggedThisGen || !outreach) return;
@@ -148,16 +147,25 @@ export const OutreachTemplates: React.FC = () => {
         company: targetCompany,
         topic: targetTopicOrPost,
         specificQuestion,
+        connectionNote: outreach.connectionNote,
         firstMessage: outreach.firstMessage,
       });
       setOutreachLogId(data.entry.id);
       setLoggedThisGen(true);
+      setNextTouchNumber(3);
       toast.success(`Logged — ${targetFirstName} at ${targetCompany}`);
     } catch {
       toast.error('Could not log this outreach — try again.');
     } finally {
       setLogging(false);
     }
+  }
+
+  async function logNextTouch(body: string) {
+    if (!outreachLogId) return;
+    const touchNumber = nextTouchNumber;
+    await api.post(`/linkedin/outreach/${outreachLogId}/copy`, { touchNumber, body });
+    setNextTouchNumber(touchNumber + 1);
   }
 
   async function handleGenerate() {
@@ -171,6 +179,8 @@ export const OutreachTemplates: React.FC = () => {
       setOutreach(data);
       setGenId(g => g + 1);
       setLoggedThisGen(false);
+      setOutreachLogId(null);
+      setNextTouchNumber(3);
     } catch (err: any) {
       if (err?.response?.status === 402) {
         // PAYMENTS PAUSED: no longer redirecting to pricing - unlimited access active
@@ -216,10 +226,10 @@ export const OutreachTemplates: React.FC = () => {
           The outreach strategy
         </p>
         <p style={{ margin: '0 0 6px', fontSize: 13, lineHeight: 1.6, color: warm.colors.textPrimary, fontWeight: 600 }}>
-          Don't ask for a job. Become someone people are glad they know — then ask for a name or a direction.
+          Don't ask for a job. Become someone people are glad they know — then ask for a quick Zoom or Google Meet call.
         </p>
         <p style={{ margin: '0 0 6px', fontSize: 12.5, lineHeight: 1.6, color: warm.colors.textSecondary }}>
-          Fill in the person you want to reach below. We'll generate four templates in sequence: a connection note, a first message after they accept, an after-conversation follow-up, and a small direct ask. Use them in that order — each one earns the right to send the next.
+          Fill in the person you want to reach below. We'll generate four templates: a connection note, a first message after they accept, an after-conversation follow-up, and an ask for a quick call. Send the connection note and first message in order — after that, you decide when the conversation has earned the call ask. Most people get there by message 3; don't wait past that if it's going well.
         </p>
         <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6, color: warm.colors.textSecondary }}>
           Stay curious and playful in these conversations — this is focused play and socialising, not a transaction. Think of it as relationship building, not career growth. The career growth is a byproduct of strong relationships.
@@ -257,7 +267,7 @@ export const OutreachTemplates: React.FC = () => {
               <li><strong>First message after connecting</strong> — research their company, ask one specific question.</li>
               <li><strong>Have the conversation</strong> — prepare 3 specific questions, listen more than you talk, do not ask for a job.</li>
               <li><strong>Stay on their radar</strong> — thoughtful comments 1–2x/month, share relevant articles.</li>
-              <li><strong>Convert to opportunities</strong> — only make a direct ask after at least one meaningful exchange.</li>
+              <li><strong>Ask for the call</strong> — a quick Zoom or Google Meet, once there's real back-and-forth. Don't wait for a fixed number of messages — most people get there by message 3.</li>
             </ol>
           </div>
         )}
@@ -353,25 +363,22 @@ export const OutreachTemplates: React.FC = () => {
             content={outreach.connectionNote}
             tip={COACHING_TIPS.connectionNote}
             charLimit={200}
-            outreachLogId={outreachLogId ?? undefined}
           />
           <TemplateCard
             key={`${genId}-firstMessage`}
             label={TEMPLATE_LABELS.firstMessage}
             content={outreach.firstMessage}
             tip={COACHING_TIPS.firstMessage}
-            touchNumber={1}
-            outreachLogId={outreachLogId ?? undefined}
           />
 
-          {/* Connected — one-tap outreach log */}
+          {/* Sent both — one-tap outreach log, logs the connection note and first message together */}
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
             background: warm.colors.bgAlt, border: `1px solid ${warm.colors.borderWhisper}`,
             borderRadius: 12, padding: '12px 16px', marginBottom: 14,
           }}>
             <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5, color: warm.colors.textSecondary }}>
-              Sent the first message? Log it — one tap, and it lands in the Tracker tab above.
+              Sent the connection note and first message? Log it — one tap, and it lands in the Tracker tab above.
             </p>
             <button
               onClick={handleLogConnected}
@@ -387,7 +394,7 @@ export const OutreachTemplates: React.FC = () => {
             >
               {logging ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} />
                 : loggedThisGen ? <Check size={13} /> : <UserCheck size={13} />}
-              {loggedThisGen ? 'Connected' : 'Mark as Connected'}
+              {loggedThisGen ? 'Logged' : 'Log This Outreach'}
             </button>
           </div>
 
@@ -397,16 +404,23 @@ export const OutreachTemplates: React.FC = () => {
             content={outreach.afterConversationFollowUp}
             tip={COACHING_TIPS.afterConversationFollowUp}
             editableNote="Send within 24 hours of any real exchange — a chat, a call, or a message thread. Fill in [THEIR_POINT] with something specific they actually said."
-            outreachLogId={outreachLogId ?? undefined}
+            logEnabled={loggedThisGen}
+            onLogCopy={logNextTouch}
           />
           <TemplateCard
             key={`${genId}-directAsk`}
             label={TEMPLATE_LABELS.directAsk}
             content={outreach.directAsk}
             tip={COACHING_TIPS.directAsk}
-            editableNote="Only use this after at least one meaningful exchange. Do not skip to this — but do not skip it either. Make the ask."
-            outreachLogId={outreachLogId ?? undefined}
+            editableNote="Send this whenever the conversation has earned it — it doesn't have to be last. Ask for a quick Zoom or Google Meet call, never a phone number. Do not skip it — make the ask."
+            logEnabled={loggedThisGen}
+            onLogCopy={logNextTouch}
           />
+          {loggedThisGen && (
+            <p style={{ fontSize: 11.5, color: warm.colors.textMuted, textAlign: 'center', margin: '4px 0 0' }}>
+              Every message you copy from here on logs automatically to the Tracker tab.
+            </p>
+          )}
         </>
       )}
     </div>

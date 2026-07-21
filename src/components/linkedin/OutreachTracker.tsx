@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Loader2, Check, Phone, UserPlus, X, MessageCircle, Clock } from 'lucide-react';
+import { Loader2, Check, Video, UserPlus, X, MessageCircle, Clock } from 'lucide-react';
 import api from '../../lib/api';
 import { warm } from '../../lib/theme/warmTokens';
 import type { OutreachLogEntry } from './types';
-import { renderTemplate } from '../../data/outreachTemplates';
+import { renderFollowUpNudge } from '../../data/outreachTemplates';
 
 const STATUS_COLORS: Record<OutreachLogEntry['status'], string> = {
   ACTIVE: '#60a5fa',
@@ -18,34 +18,61 @@ const STATUS_COLORS: Record<OutreachLogEntry['status'], string> = {
 const STATUS_LABELS: Record<OutreachLogEntry['status'], string> = {
   ACTIVE: 'Active',
   REPLIED: 'Replied',
-  CALL_BOOKED: 'Call Booked',
+  CALL_BOOKED: 'Call Happened',
   REFERRAL: 'Referral',
   CLOSED_NO_REPLY: 'No Reply',
   CLOSED_MANUAL: 'Closed',
 };
 
-function LadderDots({ messages, nextTouchNumber }: { messages: Array<{ touchNumber: number }>; nextTouchNumber: number | null; status: string }) {
+function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-      {[1, 2, 3].map((touch) => {
-        const isSent = messages.some((m) => m.touchNumber === touch);
-        const isNext = nextTouchNumber === touch;
-        const color = isSent ? '#34d399' : isNext ? '#fbbf24' : '#e2e8f0';
-        return (
-          <div
-            key={touch}
-            style={{
-              width: 10,
-              height: 10,
-              borderRadius: '50%',
-              background: color,
-              border: isNext ? '2px solid #f59e0b' : 'none',
-            }}
-            title={`Touch ${touch}: ${isSent ? 'Sent' : isNext ? 'Due' : 'Pending'}`}
-          />
-        );
-      })}
+    <div style={{
+      flex: 1, minWidth: 90, background: warm.colors.bgSurface,
+      border: `1px solid ${warm.colors.borderWhisper}`, borderRadius: 14,
+      padding: '14px 16px', textAlign: 'center',
+    }}>
+      <p style={{ margin: 0, fontSize: 22, fontWeight: 800, color, fontVariantNumeric: 'tabular-nums' }}>{value}</p>
+      <p style={{ margin: '4px 0 0', fontSize: 10, fontWeight: 700, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</p>
     </div>
+  );
+}
+
+function StatsRow({ entries }: { entries: OutreachLogEntry[] }) {
+  const active = entries.filter((e) => e.status === 'ACTIVE').length;
+  const replied = entries.filter((e) => e.status === 'REPLIED').length;
+  const callsHappened = entries.filter((e) => e.status === 'CALL_BOOKED').length;
+  const referrals = entries.filter((e) => e.status === 'REFERRAL').length;
+
+  return (
+    <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
+      <StatCard label="Sent" value={entries.length} color={warm.colors.textPrimary} />
+      <StatCard label="Active" value={active} color="#60a5fa" />
+      <StatCard label="Replied" value={replied} color="#34d399" />
+      <StatCard label="Calls Happened" value={callsHappened} color="#a78bfa" />
+      <StatCard label="Referrals" value={referrals} color="#fbbf24" />
+    </div>
+  );
+}
+
+// Users self-select when to send each message, so this just counts what's
+// been sent rather than plotting progress against a fixed number of touches.
+function MessageCount({ messages }: { messages: Array<{ touchNumber: number }> }) {
+  const count = messages.length;
+  return (
+    <span
+      style={{
+        fontSize: 11,
+        fontWeight: 700,
+        color: warm.colors.textSecondary,
+        background: warm.colors.bgAlt,
+        border: `1px solid ${warm.colors.borderWhisper}`,
+        borderRadius: 20,
+        padding: '3px 10px',
+      }}
+      title="Messages logged for this outreach"
+    >
+      {count} {count === 1 ? 'message' : 'messages'} sent
+    </span>
   );
 }
 
@@ -81,7 +108,7 @@ function EntryCard({
   async function handleStatusChange(newStatus: OutreachLogEntry['status']) {
     setUpdating(newStatus);
     try {
-      await api.post(`/outreach/${entry.id}/status`, { status: newStatus });
+      await api.post(`/linkedin/outreach/${entry.id}/status`, { status: newStatus });
       onUpdate({ ...entry, status: newStatus });
       toast.success(`Status updated to ${STATUS_LABELS[newStatus]}`);
     } catch {
@@ -92,7 +119,6 @@ function EntryCard({
   }
 
   const messages = entry.messages ?? entry.ladder?.touches ?? [];
-  const nextTouchNumber = entry.ladder?.nextTouchNumber ?? messages.length + 1;
   const displayStatus = entry.ladder?.canAutoClose ? 'CLOSED_NO_REPLY' : entry.status;
 
   // Determine which buttons to show based on current status
@@ -126,7 +152,7 @@ function EntryCard({
           <span style={{ fontSize: 13, color: warm.colors.textSecondary }}>· {entry.company}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <LadderDots messages={messages} nextTouchNumber={nextTouchNumber} status={entry.status} />
+          <MessageCount messages={messages} />
           <StatusChip status={displayStatus} />
         </div>
       </div>
@@ -184,6 +210,7 @@ function EntryCard({
             <button
               onClick={() => handleStatusChange('CALL_BOOKED')}
               disabled={!!updating}
+              title="Zoom or Google Meet — mark this once the call has actually happened"
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -201,9 +228,9 @@ function EntryCard({
               {updating === 'CALL_BOOKED' ? (
                 <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} />
               ) : (
-                <Phone size={12} />
+                <Video size={12} />
               )}
-              Call Booked
+              Call Happened
             </button>
 
             <button
@@ -282,7 +309,7 @@ function FollowUpDueCard({
   onCopied: () => void;
 }) {
   const [message, setMessage] = useState(() =>
-    renderTemplate(due.nextTouchNumber, {
+    renderFollowUpNudge({
       firstName: due.personName.split(' ')[0],
       company: due.company,
       topic: due.topic,
@@ -294,7 +321,7 @@ function FollowUpDueCard({
     setCopying(true);
     try {
       await navigator.clipboard.writeText(message);
-      await api.post(`/outreach/${due.id}/copy`, {
+      await api.post(`/linkedin/outreach/${due.id}/copy`, {
         touchNumber: due.nextTouchNumber,
         body: message,
       });
@@ -306,8 +333,6 @@ function FollowUpDueCard({
       setCopying(false);
     }
   }
-
-  const touchLabel = due.nextTouchNumber === 2 ? 'Touch 2: Friendly bump' : 'Touch 3: Graceful close';
 
   return (
     <div
@@ -335,7 +360,7 @@ function FollowUpDueCard({
           <span style={{ fontSize: 13, color: warm.colors.textSecondary }}> · {due.company}</span>
           <div style={{ fontSize: 11, color: '#f59e0b', marginTop: 4 }}>
             <Clock size={11} style={{ display: 'inline', marginRight: 4 }} />
-            {due.daysSinceLastTouch} days since last touch · {touchLabel}
+            No reply in {due.daysSinceLastTouch} days · here's a nudge to send
           </div>
         </div>
       </div>
@@ -411,7 +436,7 @@ export const OutreachTracker: React.FC = () => {
 
   async function loadData() {
     try {
-      const { data } = await api.get('/outreach');
+      const { data } = await api.get('/linkedin/outreach');
       setEntries(data.entries || []);
     } catch {
       toast.error('Could not load your outreach tracker.');
@@ -422,7 +447,7 @@ export const OutreachTracker: React.FC = () => {
 
   async function loadDue() {
     try {
-      const { data } = await api.get('/outreach/due');
+      const { data } = await api.get('/linkedin/outreach/due');
       setDueEntries(data.due || []);
     } catch {
       console.error('Could not load due follow-ups');
@@ -461,6 +486,8 @@ export const OutreachTracker: React.FC = () => {
 
   return (
     <div>
+      {entries.length > 0 && <StatsRow entries={entries} />}
+
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
         <button
@@ -578,7 +605,7 @@ export const OutreachTracker: React.FC = () => {
             >
               <p style={{ margin: 0, fontSize: 13.5, color: warm.colors.textSecondary, lineHeight: 1.6 }}>
                 Nothing logged yet. Generate templates in the Outreach tab, send your connection request and first
-                message, then tap "Mark as Connected" — it'll show up here.
+                message, then tap "Log This Outreach" — it'll show up here.
               </p>
             </div>
           ) : (

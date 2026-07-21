@@ -42,11 +42,12 @@ Formula: Reference something specific they said → offer reciprocity
 - Plant a seed of reciprocity without being transactional
 - Keep it warm, brief, genuine
 
-### directAsk (only after meaningful exchange — this is the highest-impact message in the sequence)
-Formula: Context → specific ask for a name or direction → not a job ask
-- Do NOT ask for a job
-- The message MUST contain an explicit, concrete ask for help — a name, an introduction, or a direction. A vague "keep me in mind" is a wasted message.
-- "Is there anyone you would suggest I speak with, or any companies worth approaching?"
+### directAsk — the call ask (self-timed, not fixed to a position in the sequence)
+Formula: Context → ask for a short call → make it a video call, not a phone call
+- This is an ask for a 15–20 minute call over Zoom or Google Meet — never a phone call, and never ask for a phone number. A video link keeps the ask low-friction and doesn't require either person to share private contact details.
+- The candidate should feel free to send this as soon as the conversation has real warmth — that might be the 2nd message, the 3rd, or later. It does not have to be the last message in the sequence, and it should not be saved for message 4 by default. Waiting too long to ask is its own failure mode — a conversation that drifts on for many messages with no ask is a wasted opportunity.
+- Do NOT ask for a job on the call
+- The message MUST contain an explicit, concrete ask — "Would you be up for a quick 15-minute call over Zoom or Google Meet sometime?" A vague "keep me in mind" is a wasted message.
 - Reference that you have been building toward this conversation
 - Small ask, high likelihood of yes — but it must actually be asked
 

@@ -338,9 +338,9 @@ router.post('/headshot/save', authenticate, async (req: AuthRequest, res) => {
 
 router.post('/outreach/log', authenticate, async (req: AuthRequest, res) => {
   const userId = req.user!.id;
-  const { personName, company, topic, specificQuestion, firstMessage } = req.body as {
+  const { personName, company, topic, specificQuestion, firstMessage, connectionNote } = req.body as {
     personName?: string; company?: string; topic?: string;
-    specificQuestion?: string; firstMessage?: string;
+    specificQuestion?: string; firstMessage?: string; connectionNote?: string;
   };
 
   if (!personName?.trim() || !company?.trim()) {
@@ -348,15 +348,34 @@ router.post('/outreach/log', authenticate, async (req: AuthRequest, res) => {
   }
 
   try {
-    const entry = await prisma.outreachLog.create({
-      data: {
-        userId,
-        personName: personName.trim(),
-        company: company.trim(),
-        topic: (topic ?? '').trim(),
-        specificQuestion: (specificQuestion ?? '').trim(),
-        firstMessage: (firstMessage ?? '').trim(),
-      },
+    // One click logs everything already sent by this point: the connection
+    // note (touch 1) and the first message (touch 2). Everything after that
+    // (follow-up, call ask) gets logged individually as the user sends it,
+    // since the user self-selects when to send those.
+    const entry = await prisma.$transaction(async (tx) => {
+      const log = await tx.outreachLog.create({
+        data: {
+          userId,
+          personName: personName.trim(),
+          company: company.trim(),
+          topic: (topic ?? '').trim(),
+          specificQuestion: (specificQuestion ?? '').trim(),
+          firstMessage: (firstMessage ?? '').trim(),
+        },
+      });
+
+      if (connectionNote?.trim()) {
+        await tx.outreachMessage.create({
+          data: { outreachLogId: log.id, touchNumber: 1, body: connectionNote.trim() },
+        });
+      }
+      if (firstMessage?.trim()) {
+        await tx.outreachMessage.create({
+          data: { outreachLogId: log.id, touchNumber: connectionNote?.trim() ? 2 : 1, body: firstMessage.trim() },
+        });
+      }
+
+      return log;
     });
     return res.json({ ok: true, entry });
   } catch (err) {
@@ -407,10 +426,12 @@ router.patch('/outreach/log/:id', authenticate, async (req: AuthRequest, res) =>
   }
 });
 
-// ── Outreach Ladder (3-touch follow-up system) ───────────────────────────────
+// ── Outreach Ladder (message log, uncapped — users self-select when to send
+// the follow-up and the call ask, so the ladder just records whatever they've
+// sent so far rather than enforcing a fixed number of touches) ─────────────
 
-const OUTREACH_CADENCE = [0, 4, 6]; // days after previous touch
-const CLOSING_WINDOW_DAYS = 7; // days after touch 3 to auto-close
+const OUTREACH_CADENCE = [0, 4, 6]; // days after previous touch; touch 4+ reuses the last entry
+const CLOSING_WINDOW_DAYS = 7; // days of no reply before a stalled thread is flagged
 
 function getNextTouchDate(lastTouchDate: Date, touchNumber: number): Date {
   const daysToAdd = OUTREACH_CADENCE[touchNumber - 1] ?? OUTREACH_CADENCE[OUTREACH_CADENCE.length - 1];
@@ -428,8 +449,8 @@ router.post('/outreach/:id/copy', authenticate, async (req: AuthRequest, res) =>
   const outreachLogId = req.params.id as string;
   const { touchNumber, body } = req.body as { touchNumber?: number; body?: string };
 
-  if (!touchNumber || touchNumber < 1 || touchNumber > 3) {
-    return res.status(400).json({ error: 'touchNumber must be 1, 2, or 3' });
+  if (!touchNumber || touchNumber < 1 || touchNumber > 20) {
+    return res.status(400).json({ error: 'touchNumber must be between 1 and 20' });
   }
   if (!body || typeof body !== 'string') {
     return res.status(400).json({ error: 'body is required' });
@@ -471,10 +492,8 @@ router.post('/outreach/:id/copy', authenticate, async (req: AuthRequest, res) =>
     });
 
     const lastTouch = messages[messages.length - 1];
-    const nextTouchNumber = lastTouch ? lastTouch.touchNumber + 1 : 1;
-    const nextTouchDue = nextTouchNumber <= 3
-      ? getNextTouchDate(lastTouch.copiedAt, nextTouchNumber)
-      : null;
+    const nextTouchNumber = lastTouch.touchNumber + 1;
+    const nextTouchDue = getNextTouchDate(lastTouch.copiedAt, nextTouchNumber);
 
     return res.json({
       message,
@@ -483,7 +502,7 @@ router.post('/outreach/:id/copy', authenticate, async (req: AuthRequest, res) =>
           touchNumber: m.touchNumber,
           copiedAt: m.copiedAt,
         })),
-        nextTouchNumber: nextTouchNumber <= 3 ? nextTouchNumber : null,
+        nextTouchNumber,
         nextTouchDue,
         isClosed: outreach.status === 'CLOSED_NO_REPLY' || outreach.status === 'CLOSED_MANUAL',
       },
@@ -568,12 +587,10 @@ router.get('/outreach/due', authenticate, async (req: AuthRequest, res) => {
 
     for (const outreach of outreaches) {
       const lastTouch = outreach.messages[outreach.messages.length - 1];
-      const nextTouchNumber = lastTouch ? lastTouch.touchNumber + 1 : 1;
+      if (!lastTouch) continue; // nothing sent yet, nothing to follow up on
+      const nextTouchNumber = lastTouch.touchNumber + 1;
 
-      // Only show if there are more touches in the ladder
-      if (nextTouchNumber > 3) continue;
-
-      const lastTouchDate = lastTouch ? lastTouch.copiedAt : outreach.createdAt;
+      const lastTouchDate = lastTouch.copiedAt;
       const nextTouchDue = getNextTouchDate(lastTouchDate, nextTouchNumber);
 
       // Include if due or overdue
@@ -621,9 +638,11 @@ router.get('/outreach', authenticate, async (req: AuthRequest, res) => {
       const nextTouchNumber = lastTouch ? lastTouch.touchNumber + 1 : 1;
       const lastTouchDate = lastTouch ? lastTouch.copiedAt : outreach.createdAt;
 
-      // Check for auto-close (touch 3 + 7 days with no reply)
+      // Flag a stalled thread: still ACTIVE (no reply logged) and it's been
+      // a while since the last message went out — regardless of how many
+      // messages that was, since the user self-selects the sequence.
       let computedStatus = outreach.status;
-      if (outreach.status === 'ACTIVE' && lastTouch?.touchNumber === 3) {
+      if (outreach.status === 'ACTIVE' && lastTouch) {
         const closeDate = new Date(lastTouchDate.getTime() + CLOSING_WINDOW_DAYS * 24 * 60 * 60 * 1000);
         if (closeDate <= now) {
           computedStatus = 'CLOSED_NO_REPLY';
@@ -639,11 +658,9 @@ router.get('/outreach', authenticate, async (req: AuthRequest, res) => {
             copiedAt: m.copiedAt,
             body: m.body,
           })),
-          nextTouchNumber: nextTouchNumber <= 3 ? nextTouchNumber : null,
-          nextTouchDue: nextTouchNumber <= 3
-            ? getNextTouchDate(lastTouchDate, nextTouchNumber)
-            : null,
-          canAutoClose: lastTouch?.touchNumber === 3 && computedStatus === 'CLOSED_NO_REPLY',
+          nextTouchNumber,
+          nextTouchDue: getNextTouchDate(lastTouchDate, nextTouchNumber),
+          canAutoClose: computedStatus === 'CLOSED_NO_REPLY' && outreach.status === 'ACTIVE',
         },
       };
     });
