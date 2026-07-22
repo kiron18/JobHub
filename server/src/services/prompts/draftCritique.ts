@@ -122,7 +122,6 @@ Return STRICT JSON, no markdown fences, no preamble:
   inflation; only flag claims the resume cannot support at all.
 - Quote the exact phrase. Single sentence excerpts. Do not paraphrase.
 - "fix" must be specific, not generic. "Replace with a number" is bad; "Replace 'helped with marketing campaigns' with 'Led the rollout of X to N audiences, delivering Y%' is good (use placeholders if metrics not visible).
-- Strengths: 1-3 entries max. Only genuine strengths. No empty pleasantries.
 - No em dashes (—) in any output string. Use periods, commas, or colons.
 - Australian English in your prose: organisation, programme, behaviour.
 - AUSTRALIAN RESUME CONVENTION (absolute): a referees section, or the line "References available on request", is standard and expected on an Australian resume. NEVER advise removing, deleting, shortening, or replacing the referees or references section, and never call it outdated, filler, or unnecessary. This is correct local practice, not a flaw.
