@@ -236,6 +236,15 @@ model OutreachLog {
   createdAt        DateTime          @default(now())
   messages         OutreachMessage[]
 
+  // Draft bodies for the four generated templates. Kept separate from
+  // OutreachMessage (which records what was actually sent) so a user can log
+  // at connection-request time and come back to the drafts days later, once
+  // the person accepts. Without these, closing the tab lost the drafts.
+  connectionNote   String            @default("")
+  followUpDraft    String            @default("")
+  directAskDraft   String            @default("")
+  draftsUpdatedAt  DateTime          @default(now())
+
   @@index([userId])
 }
 

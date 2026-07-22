@@ -30,7 +30,7 @@ export function DRAFT_CRITIQUE_PROMPT(params: {
         ? `CANDIDATE POSITIONING (use this to check coherence — claims in the draft should be consistent with this shape):
   ${positioningStatement.raw}
 `
-        : 'CANDIDATE POSITIONING: not available — score coherence against the document itself only.';
+        : 'CANDIDATE POSITIONING: not available — judge coherence against the document itself only.';
 
     const jdBlock = jobDescription && jobDescription.trim().length > 50
         ? `TARGET JOB DESCRIPTION:
@@ -48,9 +48,9 @@ ${resumeText.trim()}
 `
         : 'SOURCE RESUME: not available — skip failure mode 8 entirely.';
 
-    return `You are a senior career strategist auditing a candidate's ${docTypeLabel} BEFORE they send it. The candidate is an international graduate job-hunting in Australia. Your job is to surface the specific failure modes that get applications screened out by recruiters, the things automated generation misses.
+    return `You are a senior career strategist glancing over a candidate's ${docTypeLabel} before they send it. The candidate is an international graduate job-hunting in Australia. Offer at most two suggestions they can take or leave.
 
-DO NOT rewrite the document. DO NOT suggest stylistic polish. Catch the failure modes below, with concrete quoted snippets.
+DO NOT rewrite the document. DO NOT suggest stylistic polish. DO NOT score or grade it. Pick the two most useful observations from the failure modes below, with concrete quoted snippets, and stop there.
 
 ═══ FAILURE MODES TO AUDIT ═══
 
@@ -96,29 +96,30 @@ ${content}
 Return STRICT JSON, no markdown fences, no preamble:
 
 {
-  "overall": {
-    "verdict": "<one short sentence — calm, evidence-led, no panic words. Examples: 'Solid draft, two specific tightens will lift it.' / 'Strong frame, one weak opening line to fix.' />",
-    "trustScore": <integer 0-100 — how a recruiter would read this for trust, not polish>
-  },
   "issues": [
     {
       "category": "desperation" | "overselling" | "hedging" | "vagueness" | "weak_opening" | "incoherence" | "generic_positioning" | "inflation",
-      "severity": "high" | "medium" | "low",
       "snippet": "<the exact short phrase from the document, quoted>",
       "why": "<one sentence: why this signal hurts recruiter trust>",
       "fix": "<one sentence: how the candidate could rewrite it. Be specific. No platitudes.>"
     }
-  ],
-  "strengths": [
-    "<one sentence per strength — what the draft does WELL. 1-3 entries. Honest, not flattery. Skip this array if there are no genuine strengths.>"
   ]
 }
 
 ═══ RULES ═══
 
-- ONLY flag actual instances. If the document doesn't oversell, return an empty issues array on that category. Do NOT invent issues to fill the list.
-- Maximum 6 issues total. Lead with the highest-severity ones.
-- "inflation" issues are severity "high" and outrank every other category — a recruiter forgives a vague phrase, an interviewer never forgives a claim that collapses under questioning. Reframing, reordering, and tailoring to the job are NOT inflation; only flag claims the resume cannot support at all.
+- AT MOST 2 issues. Not 3, not 6. Pick the two that would most change how a
+  recruiter reads this document, and say nothing about the rest. A short,
+  ignorable note is the point; a long audit is not.
+- If the document is genuinely fine, return an empty issues array. An empty
+  array is a perfectly good answer. Do NOT invent issues to fill the list.
+- Do NOT grade, score, rank, or rate the document. No numbers, no percentages,
+  no letter grades, no "out of 10" anywhere in your output. These are
+  suggestions the candidate is free to ignore, not an assessment.
+- "inflation" outranks every other category — a recruiter forgives a vague
+  phrase, an interviewer never forgives a claim that collapses under
+  questioning. Reframing, reordering, and tailoring to the job are NOT
+  inflation; only flag claims the resume cannot support at all.
 - Quote the exact phrase. Single sentence excerpts. Do not paraphrase.
 - "fix" must be specific, not generic. "Replace with a number" is bad; "Replace 'helped with marketing campaigns' with 'Led the rollout of X to N audiences, delivering Y%' is good (use placeholders if metrics not visible).
 - Strengths: 1-3 entries max. Only genuine strengths. No empty pleasantries.

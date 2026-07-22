@@ -171,7 +171,12 @@ export const LinkedInPage: React.FC = () => {
         </>
       )}
 
-      {tab === 'outreach' && <OutreachTemplates />}
+      {/* Outreach stays mounted once opened: unmounting it threw away the
+          generated templates and everything typed into them, so flicking to
+          the Tracker to check something cost you the draft you were writing. */}
+      <div style={{ display: tab === 'outreach' ? 'block' : 'none' }}>
+        <OutreachTemplates />
+      </div>
       {tab === 'tracker' && <OutreachTracker />}
       {tab === 'local-experience' && <LocalExperience />}
     </div>

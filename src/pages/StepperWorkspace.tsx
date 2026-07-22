@@ -15,7 +15,7 @@
  * as markdown via ReactMarkdown. Inline editing is out of scope for this
  * commit; users copy or download for now.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -34,7 +34,6 @@ import {
     RefreshCw,
     ListChecks,
     Briefcase,
-    ShieldCheck,
 } from 'lucide-react';
 import { DraftCritiquePanel, type CritiqueResult } from '../components/strategy/DraftCritiquePanel';
 import { ApplyDeepLinkButton } from '../components/strategy/ApplyDeepLinkButton';
@@ -208,7 +207,6 @@ interface PersistedDraft {
     documentId?: string;
     tips?: ResumeTip[];
     estimatedPages?: number;
-    critique?: CritiqueResult;
 }
 
 // ── Workspace key ───────────────────────────────────────────────────────────
@@ -678,19 +676,13 @@ function DocumentStep({
         return words.length && words[0] !== '' ? words.length : 0;
     }, [content]);
 
-    // Draft critique — the coach's-advice pass. Auto-runs once per fresh
-    // generation (Haiku, negligible cost) and is cached on the draft so
-    // revisits and page reloads never re-spend the call. The button remains
-    // for manual re-runs after edits.
+    // Optional second opinion. Strictly on demand: it never runs by itself and
+    // never opens on its own, so it stays out of the path between generating a
+    // draft and sending it. Nothing is cached — the result is only as current
+    // as the moment you asked for it.
     const [critiqueOpen, setCritiqueOpen] = useState(false);
     const [critiqueLoading, setCritiqueLoading] = useState(false);
     const [critiqueResult, setCritiqueResult] = useState<CritiqueResult | null>(null);
-    const autoCritiqueKey = useRef<string | null>(null);
-
-    const persistCritique = (critique: CritiqueResult) => {
-        const draft = loadDraft(workspaceKey, stepId);
-        if (draft) saveDraft(workspaceKey, stepId, { ...draft, critique });
-    };
 
     const handleReviewDraft = async () => {
         if (!content || critiqueLoading) return;
@@ -703,12 +695,11 @@ function DocumentStep({
                 jobDescription,
             });
             setCritiqueResult(data);
-            persistCritique(data);
         } catch (err: any) {
             const status = err?.response?.status;
-            const msg = status === 503 ? 'Review is temporarily unavailable. Please try again.' :
-                        status === 400 ? 'Draft needs to be a bit longer before we can review it.' :
-                        'Could not review this draft. Please retry.';
+            const msg = status === 503 ? 'Suggestions are temporarily unavailable. Please try again.' :
+                        status === 400 ? 'Draft needs to be a bit longer first.' :
+                        'Could not read this draft. Please retry.';
             toast.error(msg);
             setCritiqueOpen(false);
         } finally {
@@ -716,61 +707,13 @@ function DocumentStep({
         }
     };
 
-    // Reset critique whenever the step changes or the content is regenerated.
+    // Drop the suggestions whenever the step changes or the draft is edited or
+    // regenerated — stale notes about text that no longer exists are worse
+    // than none.
     useEffect(() => {
         setCritiqueOpen(false);
         setCritiqueResult(null);
-    }, [workspaceKey, stepId]);
-
-    // Coach's advice auto-run: fire once per freshly generated draft. The ref
-    // holds the key of the run that currently "owns" the panel; a late response
-    // whose key no longer matches applies nothing. Cached results restore
-    // without a call; edited drafts are skipped (the user owns those, the
-    // button covers them); failures close the panel silently — advice is a
-    // bonus, never a blocker.
-    useEffect(() => {
-        const draft = loadDraft(workspaceKey, stepId);
-        if (!draft || !draft.content || draft.content.trim().length < 100) {
-            autoCritiqueKey.current = `${workspaceKey}:${stepId}:skip`;
-            return;
-        }
-        const runKey = `${workspaceKey}:${stepId}:${draft.generatedAt}`;
-        if (draft.critique) {
-            autoCritiqueKey.current = runKey;
-            setCritiqueResult(draft.critique);
-            return;
-        }
-        if (draft.edited) {
-            autoCritiqueKey.current = `${workspaceKey}:${stepId}:skip`;
-            return;
-        }
-        if (autoCritiqueKey.current === runKey) return;
-        autoCritiqueKey.current = runKey;
-
-        setCritiqueLoading(true);
-        setCritiqueOpen(true);
-        api.post<CritiqueResult>('/analyze/critique', {
-            docType: stepId,
-            content: draft.content,
-            jobDescription,
-        })
-            .then(({ data }) => {
-                // Cache onto the draft only if it is still the same generation.
-                const current = loadDraft(workspaceKey, stepId);
-                if (current && current.generatedAt === draft.generatedAt) {
-                    saveDraft(workspaceKey, stepId, { ...current, critique: data });
-                }
-                if (autoCritiqueKey.current !== runKey) return; // superseded
-                setCritiqueResult(data);
-                setCritiqueLoading(false);
-            })
-            .catch(() => {
-                if (autoCritiqueKey.current !== runKey) return;
-                setCritiqueOpen(false);
-                setCritiqueLoading(false);
-            });
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [workspaceKey, stepId, hasDraft, content, edited]);
+    }, [workspaceKey, stepId, content]);
 
     // Load the persisted draft + criteria on step entry. Never regenerates on navigation.
     useEffect(() => {
@@ -1038,11 +981,6 @@ function DocumentStep({
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     {hasDraft && !editing && (
                         <>
-                            <ToolbarButton
-                                icon={critiqueLoading ? <Loader2 size={13} className="animate-spin" /> : <ShieldCheck size={13} />}
-                                label="Coach's advice"
-                                onClick={handleReviewDraft}
-                            />
                             <ToolbarButton icon={<Copy size={13} />} label="Copy" onClick={handleCopy} />
                             {/* Per-step download label (spec §8.7) */}
                             <DownloadSplit
@@ -1288,7 +1226,28 @@ function DocumentStep({
                 )}
             </div>
 
-            {/* Draft critique panel — mounts below the preview when triggered */}
+            {/* Opt-in second opinion. Deliberately a quiet text link below the
+                draft rather than a toolbar action: it should be findable when
+                someone wants it, and easy to never notice when they don't. */}
+            {hasDraft && !editing && !critiqueOpen && (
+                <button
+                    onClick={handleReviewDraft}
+                    style={{
+                        alignSelf: 'flex-start',
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        fontSize: 12,
+                        color: warm.colors.textMuted,
+                        cursor: 'pointer',
+                        textDecoration: 'underline',
+                        textUnderlineOffset: 3,
+                    }}
+                >
+                    Want a second opinion on this draft?
+                </button>
+            )}
+
             <AnimatePresence>
                 {critiqueOpen && (
                     <DraftCritiquePanel

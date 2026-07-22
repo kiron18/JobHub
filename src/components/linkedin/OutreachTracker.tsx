@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Loader2, Check, Video, UserPlus, X, MessageCircle, Clock } from 'lucide-react';
+import { Loader2, Check, Video, UserPlus, X, MessageCircle, Clock, Copy, Send, ChevronDown, ChevronUp, Plus } from 'lucide-react';
 import api from '../../lib/api';
 import { warm } from '../../lib/theme/warmTokens';
 import type { OutreachLogEntry } from './types';
@@ -96,14 +96,237 @@ function StatusChip({ status }: { status: OutreachLogEntry['status'] }) {
   );
 }
 
+// A saved draft, editable in place, with copy-and-mark-sent. This is where a
+// user comes back days later once the person accepts their request.
+function DraftRow({
+  label,
+  value,
+  hint,
+  sent,
+  onSave,
+  onSend,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  sent: boolean;
+  onSave: (body: string) => void;
+  onSend?: (body: string) => Promise<void>;
+}) {
+  const [body, setBody] = useState(value);
+  const [copied, setCopied] = useState(false);
+  const [sending, setSending] = useState(false);
+
+  async function handleCopy() {
+    await navigator.clipboard.writeText(body);
+    setCopied(true);
+    toast.success('Copied to clipboard');
+    setTimeout(() => setCopied(false), 1800);
+  }
+
+  async function handleSend() {
+    if (!onSend || sending) return;
+    setSending(true);
+    try {
+      await onSend(body);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 5 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: sent ? '#34d399' : '#0A66C2' }}>
+          {label}{sent ? ' · sent' : ''}
+        </span>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button
+            onClick={handleCopy}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 4, fontSize: 10.5, fontWeight: 700,
+              padding: '3px 9px', borderRadius: 6, cursor: 'pointer',
+              border: `1px solid ${copied ? '#34d399' : warm.colors.borderWhisper}`,
+              background: copied ? 'rgba(52,211,153,0.1)' : 'transparent',
+              color: copied ? '#34d399' : warm.colors.textSecondary,
+            }}
+          >
+            {copied ? <Check size={10} /> : <Copy size={10} />}
+            {copied ? 'Copied' : 'Copy'}
+          </button>
+          {onSend && !sent && (
+            <button
+              onClick={handleSend}
+              disabled={sending}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4, fontSize: 10.5, fontWeight: 700,
+                padding: '3px 9px', borderRadius: 6, cursor: sending ? 'default' : 'pointer',
+                border: '1px solid rgba(10,102,194,0.4)', background: 'rgba(10,102,194,0.1)',
+                color: '#60a5fa',
+              }}
+            >
+              {sending ? <Loader2 size={10} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={10} />}
+              Mark sent
+            </button>
+          )}
+        </div>
+      </div>
+      {hint && (
+        <p style={{ margin: '0 0 5px', fontSize: 11, color: warm.colors.textMuted, lineHeight: 1.45 }}>{hint}</p>
+      )}
+      <textarea
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        onBlur={() => { if (body !== value) onSave(body); }}
+        rows={3}
+        style={{
+          width: '100%', background: 'rgba(255,255,255,0.03)',
+          border: `1px solid ${warm.colors.borderWhisper}`, borderRadius: 8,
+          padding: '8px 10px', fontSize: 12.5, color: warm.colors.textPrimary,
+          resize: 'vertical', lineHeight: 1.55, fontFamily: 'inherit',
+          outline: 'none', boxSizing: 'border-box',
+        }}
+      />
+    </div>
+  );
+}
+
+// A message already sent that didn't come from a template. Kept read-only —
+// rewriting history would make the thread log untrustworthy.
+function ReadOnlyMessage({ body, sentAt }: { body: string; sentAt?: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    await navigator.clipboard.writeText(body);
+    setCopied(true);
+    toast.success('Copied to clipboard');
+    setTimeout(() => setCopied(false), 1800);
+  }
+
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 5 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#34d399' }}>
+          Sent{sentAt ? ` · ${new Date(sentAt).toLocaleDateString()}` : ''}
+        </span>
+        <button
+          onClick={handleCopy}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 4, fontSize: 10.5, fontWeight: 700,
+            padding: '3px 9px', borderRadius: 6, cursor: 'pointer',
+            border: `1px solid ${copied ? '#34d399' : warm.colors.borderWhisper}`,
+            background: copied ? 'rgba(52,211,153,0.1)' : 'transparent',
+            color: copied ? '#34d399' : warm.colors.textSecondary,
+          }}
+        >
+          {copied ? <Check size={10} /> : <Copy size={10} />}
+          {copied ? 'Copied' : 'Copy'}
+        </button>
+      </div>
+      <p style={{
+        margin: 0, fontSize: 12.5, color: warm.colors.textSecondary, lineHeight: 1.55,
+        background: 'rgba(255,255,255,0.02)', border: `1px solid ${warm.colors.borderWhisper}`,
+        borderRadius: 8, padding: '8px 10px', whiteSpace: 'pre-wrap',
+      }}>
+        {body}
+      </p>
+    </div>
+  );
+}
+
+// Log a message that wasn't generated here — a reply typed straight into
+// LinkedIn. Without this the thread log has holes, so coming back to see what
+// you last said to someone doesn't work.
+function AddMessageRow({ onAdd, personName }: { onAdd: (body: string) => Promise<void>; personName: string }) {
+  const [open, setOpen] = useState(false);
+  const [body, setBody] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  async function handleAdd() {
+    if (!body.trim() || saving) return;
+    setSaving(true);
+    try {
+      await onAdd(body.trim());
+      setBody('');
+      setOpen(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none',
+          color: warm.colors.textMuted, cursor: 'pointer', fontSize: 11.5, fontWeight: 600,
+          padding: 0, marginTop: 4,
+        }}
+      >
+        <Plus size={12} />
+        Log another message you sent {personName}
+      </button>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      <textarea
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        placeholder={`Paste what you sent ${personName}…`}
+        rows={3}
+        autoFocus
+        style={{
+          width: '100%', background: 'rgba(255,255,255,0.03)',
+          border: `1px solid ${warm.colors.borderWhisper}`, borderRadius: 8,
+          padding: '8px 10px', fontSize: 12.5, color: warm.colors.textPrimary,
+          resize: 'vertical', lineHeight: 1.55, fontFamily: 'inherit',
+          outline: 'none', boxSizing: 'border-box', marginBottom: 8,
+        }}
+      />
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button
+          onClick={handleAdd}
+          disabled={!body.trim() || saving}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700,
+            padding: '5px 12px', borderRadius: 6,
+            border: '1px solid rgba(10,102,194,0.4)',
+            background: body.trim() ? 'rgba(10,102,194,0.12)' : 'transparent',
+            color: '#60a5fa', cursor: !body.trim() || saving ? 'default' : 'pointer',
+          }}
+        >
+          {saving ? <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> : <Check size={11} />}
+          Save to thread
+        </button>
+        <button
+          onClick={() => { setOpen(false); setBody(''); }}
+          style={{
+            fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 6,
+            border: `1px solid ${warm.colors.borderWhisper}`, background: 'transparent',
+            color: warm.colors.textMuted, cursor: 'pointer',
+          }}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function EntryCard({
   entry,
   onUpdate,
+  onRefresh,
 }: {
   entry: OutreachLogEntry;
   onUpdate: (entry: OutreachLogEntry) => void;
+  onRefresh: () => void;
 }) {
   const [updating, setUpdating] = useState<string | null>(null);
+  const [showDrafts, setShowDrafts] = useState(false);
 
   async function handleStatusChange(newStatus: OutreachLogEntry['status']) {
     setUpdating(newStatus);
@@ -120,6 +343,44 @@ function EntryCard({
 
   const messages = entry.messages ?? entry.ladder?.touches ?? [];
   const displayStatus = entry.ladder?.canAutoClose ? 'CLOSED_NO_REPLY' : entry.status;
+
+  // A draft counts as sent once a message with that body is on the ladder.
+  const sentBodies = new Set(messages.map((m: any) => (m.body ?? '').trim()).filter(Boolean));
+  const nextTouchNumber = messages.length
+    ? Math.max(...messages.map((m) => m.touchNumber)) + 1
+    : 1;
+
+  async function saveDraft(field: string, body: string) {
+    try {
+      await api.patch(`/linkedin/outreach/${entry.id}/drafts`, { [field]: body });
+      onUpdate({ ...entry, [field]: body } as OutreachLogEntry);
+    } catch {
+      toast.error('Could not save that edit');
+    }
+  }
+
+  async function markSent(body: string) {
+    try {
+      await api.post(`/linkedin/outreach/${entry.id}/copy`, { touchNumber: nextTouchNumber, body });
+      toast.success('Logged as sent');
+      onRefresh();
+    } catch {
+      toast.error('Could not log that message');
+    }
+  }
+
+  const drafts = [
+    { field: 'connectionNote', label: 'Connection request note', value: entry.connectionNote, hint: undefined },
+    { field: 'firstMessage', label: 'First message after connecting', value: entry.firstMessage, hint: 'Send this once they accept your request.' },
+    { field: 'followUpDraft', label: 'After-conversation follow-up', value: entry.followUpDraft, hint: 'Send within 24 hours of any real exchange.' },
+    { field: 'directAskDraft', label: 'Ask for a call', value: entry.directAskDraft, hint: 'Send whenever the conversation has earned it.' },
+  ].filter((d) => (d.value ?? '').trim().length > 0);
+
+  // Messages already sent that didn't come from one of the four templates —
+  // ad-hoc replies logged by hand. Shown so the thread with this person is
+  // complete and copy-pasteable when they write back.
+  const draftBodies = new Set(drafts.map((d) => d.value.trim()));
+  const adHocSent = messages.filter((m: any) => (m.body ?? '').trim() && !draftBodies.has((m.body ?? '').trim()));
 
   // Determine which buttons to show based on current status
   const showRepliedButton = entry.status === 'ACTIVE';
@@ -288,6 +549,44 @@ function EntryCard({
           </button>
         )}
       </div>
+
+      {/* Saved drafts — the reason an outreach can be logged before the person
+          accepts. Everything written for them stays retrievable here. */}
+      {(drafts.length > 0 || adHocSent.length > 0) && (
+        <div style={{ marginTop: 14, borderTop: `1px solid ${warm.colors.borderWhisper}`, paddingTop: 12 }}>
+          <button
+            onClick={() => setShowDrafts((v) => !v)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none',
+              color: warm.colors.textSecondary, cursor: 'pointer', fontSize: 11.5, fontWeight: 700, padding: 0,
+            }}
+          >
+            {showDrafts ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+            {showDrafts ? 'Hide' : 'Show'} messages for {entry.personName} ({drafts.length + adHocSent.length})
+          </button>
+          {showDrafts && (
+            <div style={{ marginTop: 12 }}>
+              {drafts.map((d) => (
+                <DraftRow
+                  key={d.field}
+                  label={d.label}
+                  value={d.value}
+                  hint={d.hint}
+                  sent={sentBodies.has((d.value ?? '').trim())}
+                  onSave={(body) => saveDraft(d.field, body)}
+                  onSend={d.field === 'connectionNote' ? undefined : markSent}
+                />
+              ))}
+
+              {adHocSent.map((m: any, i: number) => (
+                <ReadOnlyMessage key={`adhoc-${i}`} body={m.body} sentAt={m.copiedAt} />
+              ))}
+
+              <AddMessageRow onAdd={markSent} personName={entry.personName} />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -623,7 +922,7 @@ export const OutreachTracker: React.FC = () => {
                 {entries.length} logged
               </p>
               {entries.map((entry) => (
-                <EntryCard key={entry.id} entry={entry} onUpdate={handleEntrySaved} />
+                <EntryCard key={entry.id} entry={entry} onUpdate={handleEntrySaved} onRefresh={handleDueCopied} />
               ))}
             </>
           )}

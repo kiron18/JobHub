@@ -333,14 +333,27 @@ router.post('/headshot/save', authenticate, async (req: AuthRequest, res) => {
 });
 
 // ── Outreach log ("Connected") ──────────────────────────────────────────────
-// One tap after the first message goes out. Free for all users — logging
-// outreach must never be behind a paywall or students will stop tracking.
+// One tap as soon as the connection request goes out. Free for all users —
+// logging outreach must never be behind a paywall or students will stop
+// tracking.
+//
+// Logging happens at connection-request time, not after the first message.
+// LinkedIn makes you wait for the person to accept before you can send
+// anything else, which can be days, so requiring both messages meant users
+// with a batch of pending requests had nowhere to keep their drafts. All four
+// generated templates are stored on the entry as drafts; a template only
+// becomes an OutreachMessage once the user says they have actually sent it.
 
 router.post('/outreach/log', authenticate, async (req: AuthRequest, res) => {
   const userId = req.user!.id;
-  const { personName, company, topic, specificQuestion, firstMessage, connectionNote } = req.body as {
+  const {
+    personName, company, topic, specificQuestion,
+    firstMessage, connectionNote, followUpDraft, directAskDraft,
+    firstMessageSent,
+  } = req.body as {
     personName?: string; company?: string; topic?: string;
     specificQuestion?: string; firstMessage?: string; connectionNote?: string;
+    followUpDraft?: string; directAskDraft?: string; firstMessageSent?: boolean;
   };
 
   if (!personName?.trim() || !company?.trim()) {
@@ -348,10 +361,6 @@ router.post('/outreach/log', authenticate, async (req: AuthRequest, res) => {
   }
 
   try {
-    // One click logs everything already sent by this point: the connection
-    // note (touch 1) and the first message (touch 2). Everything after that
-    // (follow-up, call ask) gets logged individually as the user sends it,
-    // since the user self-selects when to send those.
     const entry = await prisma.$transaction(async (tx) => {
       const log = await tx.outreachLog.create({
         data: {
@@ -361,15 +370,22 @@ router.post('/outreach/log', authenticate, async (req: AuthRequest, res) => {
           topic: (topic ?? '').trim(),
           specificQuestion: (specificQuestion ?? '').trim(),
           firstMessage: (firstMessage ?? '').trim(),
+          connectionNote: (connectionNote ?? '').trim(),
+          followUpDraft: (followUpDraft ?? '').trim(),
+          directAskDraft: (directAskDraft ?? '').trim(),
+          draftsUpdatedAt: new Date(),
         },
       });
 
+      // The connection note is the one thing definitely sent by this point.
       if (connectionNote?.trim()) {
         await tx.outreachMessage.create({
           data: { outreachLogId: log.id, touchNumber: 1, body: connectionNote.trim() },
         });
       }
-      if (firstMessage?.trim()) {
+      // The first message only counts as sent if the user says so — normally
+      // it is still queued, waiting on the person to accept.
+      if (firstMessageSent && firstMessage?.trim()) {
         await tx.outreachMessage.create({
           data: { outreachLogId: log.id, touchNumber: connectionNote?.trim() ? 2 : 1, body: firstMessage.trim() },
         });
@@ -381,6 +397,40 @@ router.post('/outreach/log', authenticate, async (req: AuthRequest, res) => {
   } catch (err) {
     console.error('[outreach/log] create error:', err);
     return res.status(500).json({ error: 'Failed to log outreach' });
+  }
+});
+
+// Save edits to the stored drafts. Called as the user tweaks a template so
+// the wording they settled on survives a reload or a switch to another person.
+router.patch('/outreach/:id/drafts', authenticate, async (req: AuthRequest, res) => {
+  const userId = req.user!.id;
+  const id = req.params.id as string;
+  const { connectionNote, firstMessage, followUpDraft, directAskDraft } = req.body as {
+    connectionNote?: string; firstMessage?: string;
+    followUpDraft?: string; directAskDraft?: string;
+  };
+
+  const data: Record<string, string | Date> = {};
+  if (typeof connectionNote === 'string') data.connectionNote = connectionNote;
+  if (typeof firstMessage === 'string') data.firstMessage = firstMessage;
+  if (typeof followUpDraft === 'string') data.followUpDraft = followUpDraft;
+  if (typeof directAskDraft === 'string') data.directAskDraft = directAskDraft;
+
+  if (Object.keys(data).length === 0) {
+    return res.status(400).json({ error: 'No draft fields supplied' });
+  }
+  data.draftsUpdatedAt = new Date();
+
+  try {
+    const existing = await prisma.outreachLog.findFirst({ where: { id, userId } });
+    if (!existing) {
+      return res.status(404).json({ error: 'Outreach not found' });
+    }
+    const entry = await prisma.outreachLog.update({ where: { id }, data });
+    return res.json({ ok: true, entry });
+  } catch (err) {
+    console.error('[outreach/drafts] update error:', err);
+    return res.status(500).json({ error: 'Failed to save drafts' });
   }
 });
 
@@ -588,6 +638,10 @@ router.get('/outreach/due', authenticate, async (req: AuthRequest, res) => {
     for (const outreach of outreaches) {
       const lastTouch = outreach.messages[outreach.messages.length - 1];
       if (!lastTouch) continue; // nothing sent yet, nothing to follow up on
+      // A lone connection note means the request is still pending — LinkedIn
+      // won't let them message until it's accepted, so nudging is useless
+      // noise. Wait until a real message has gone out.
+      if (outreach.messages.length < 2) continue;
       const nextTouchNumber = lastTouch.touchNumber + 1;
 
       const lastTouchDate = lastTouch.copiedAt;

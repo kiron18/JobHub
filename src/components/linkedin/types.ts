@@ -27,9 +27,14 @@ export interface OutreachLogEntry {
   company: string;
   topic: string;
   specificQuestion: string;
-  firstMessage: string;
   status: 'ACTIVE' | 'REPLIED' | 'CALL_BOOKED' | 'REFERRAL' | 'CLOSED_NO_REPLY' | 'CLOSED_MANUAL';
   createdAt: string;
+  // Stored drafts of the four generated templates. Persist from the moment the
+  // connection request is sent, so they survive moving to the next person.
+  connectionNote: string;
+  firstMessage: string;
+  followUpDraft: string;
+  directAskDraft: string;
   messages?: Array<{
     touchNumber: number;
     body: string;

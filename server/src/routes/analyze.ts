@@ -520,26 +520,20 @@ router.post('/critique', async (req: any, res: any) => {
         }
 
         // Defensive normalisation — never crash the UI on a malformed response.
-        const overall = critique?.overall ?? {};
+        // No score is returned: this surface offers a couple of optional
+        // suggestions, it does not grade the document.
         const issues = Array.isArray(critique?.issues) ? critique.issues : [];
-        const strengths = Array.isArray(critique?.strengths) ? critique.strengths : [];
 
         return res.json({
-            overall: {
-                verdict: typeof overall.verdict === 'string' ? overall.verdict : '',
-                trustScore: Math.max(0, Math.min(100, Math.round(Number(overall.trustScore ?? 0)))),
-            },
             issues: issues
                 .filter((it: any) => it && typeof it.snippet === 'string' && typeof it.category === 'string')
-                .slice(0, 8)
+                .slice(0, 2)
                 .map((it: any) => ({
                     category: it.category,
-                    severity: ['high', 'medium', 'low'].includes(it.severity) ? it.severity : 'medium',
                     snippet: it.snippet,
                     why: typeof it.why === 'string' ? it.why : '',
                     fix: typeof it.fix === 'string' ? it.fix : '',
                 })),
-            strengths: strengths.filter((s: any) => typeof s === 'string').slice(0, 4),
         });
     } catch (err: any) {
         console.error('[analyze/critique] unexpected error:', err);

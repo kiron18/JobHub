@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Loader2, Copy, Check, ChevronDown, ChevronUp, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../../lib/api';
@@ -19,7 +19,7 @@ const TEMPLATE_LABELS: Record<keyof Omit<OutreachData, 'questionSuggestions'>, s
   directAsk: 'Ask for a Call (Zoom / Google Meet)',
 };
 
-function TemplateCard({ label, content, tip, charLimit, editableNote, logEnabled, onLogCopy }: {
+function TemplateCard({ label, content, tip, charLimit, editableNote, logEnabled, onLogCopy, onContentChange }: {
   label: string;
   content: string;
   tip: string;
@@ -27,6 +27,7 @@ function TemplateCard({ label, content, tip, charLimit, editableNote, logEnabled
   editableNote?: string;
   logEnabled?: boolean;
   onLogCopy?: (body: string) => Promise<void>;
+  onContentChange?: (body: string) => void;
 }) {
   const [copied, setCopied] = useState(false);
   const [showTip, setShowTip] = useState(false);
@@ -35,6 +36,11 @@ function TemplateCard({ label, content, tip, charLimit, editableNote, logEnabled
 
   const charCount = editedContent.length;
   const overLimit = charLimit ? charCount > charLimit : false;
+
+  function handleEdit(value: string) {
+    setEditedContent(value);
+    onContentChange?.(value);
+  }
 
   async function handleCopy() {
     await navigator.clipboard.writeText(editedContent);
@@ -91,7 +97,7 @@ function TemplateCard({ label, content, tip, charLimit, editableNote, logEnabled
 
       <textarea
         value={editedContent}
-        onChange={e => setEditedContent(e.target.value)}
+        onChange={e => handleEdit(e.target.value)}
         rows={5}
         style={{
           width: '100%', background: 'rgba(255,255,255,0.03)',
@@ -133,10 +139,35 @@ export const OutreachTemplates: React.FC = () => {
   const [logging, setLogging] = useState(false);
   const [loggedThisGen, setLoggedThisGen] = useState(false);
   const [outreachLogId, setOutreachLogId] = useState<string | null>(null);
-  // Connection note + first message get logged together as touches 1 and 2
-  // by "Log This Outreach". Everything sent after that (follow-up, call ask)
-  // is self-timed by the user, so it logs sequentially as touch 3, 4, 5...
-  const [nextTouchNumber, setNextTouchNumber] = useState(3);
+  // The connection note is touch 1, logged the moment the request goes out.
+  // The first message can't be sent until the person accepts, so it and
+  // everything after it log individually as the user actually sends them.
+  const [nextTouchNumber, setNextTouchNumber] = useState(2);
+
+  // Live draft bodies, mirrored from the template cards so edits are what
+  // get persisted — not the original generated text.
+  const draftsRef = useRef({ connectionNote: '', firstMessage: '', followUpDraft: '', directAskDraft: '' });
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounced draft save. Only runs once the outreach has been logged, since
+  // before that there's no row to attach the drafts to.
+  function queueDraftSave() {
+    if (!outreachLogId) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      api.patch(`/linkedin/outreach/${outreachLogId}/drafts`, draftsRef.current)
+        .catch(() => { /* non-blocking: a failed autosave shouldn't interrupt writing */ });
+    }, 900);
+  }
+
+  useEffect(() => () => { if (saveTimer.current) clearTimeout(saveTimer.current); }, []);
+
+  function trackDraft(field: keyof typeof draftsRef.current) {
+    return (body: string) => {
+      draftsRef.current[field] = body;
+      queueDraftSave();
+    };
+  }
 
   async function handleLogConnected() {
     if (logging || loggedThisGen || !outreach) return;
@@ -147,15 +178,15 @@ export const OutreachTemplates: React.FC = () => {
         company: targetCompany,
         topic: targetTopicOrPost,
         specificQuestion,
-        connectionNote: outreach.connectionNote,
-        firstMessage: outreach.firstMessage,
+        ...draftsRef.current,
+        firstMessageSent: false,
       });
       setOutreachLogId(data.entry.id);
       setLoggedThisGen(true);
-      setNextTouchNumber(3);
-      toast.success(`Logged — ${targetFirstName} at ${targetCompany}`);
+      setNextTouchNumber(2);
+      toast.success(`Saved — ${targetFirstName} at ${targetCompany}`);
     } catch {
-      toast.error('Could not log this outreach — try again.');
+      toast.error('Could not save this outreach — try again.');
     } finally {
       setLogging(false);
     }
@@ -177,10 +208,16 @@ export const OutreachTemplates: React.FC = () => {
         specificQuestion: specificQuestion || undefined,
       });
       setOutreach(data);
+      draftsRef.current = {
+        connectionNote: data.connectionNote ?? '',
+        firstMessage: data.firstMessage ?? '',
+        followUpDraft: data.afterConversationFollowUp ?? '',
+        directAskDraft: data.directAsk ?? '',
+      };
       setGenId(g => g + 1);
       setLoggedThisGen(false);
       setOutreachLogId(null);
-      setNextTouchNumber(3);
+      setNextTouchNumber(2);
     } catch (err: any) {
       if (err?.response?.status === 402) {
         // PAYMENTS PAUSED: no longer redirecting to pricing - unlimited access active
@@ -363,22 +400,22 @@ export const OutreachTemplates: React.FC = () => {
             content={outreach.connectionNote}
             tip={COACHING_TIPS.connectionNote}
             charLimit={200}
-          />
-          <TemplateCard
-            key={`${genId}-firstMessage`}
-            label={TEMPLATE_LABELS.firstMessage}
-            content={outreach.firstMessage}
-            tip={COACHING_TIPS.firstMessage}
+            onContentChange={trackDraft('connectionNote')}
           />
 
-          {/* Sent both — one-tap outreach log, logs the connection note and first message together */}
+          {/* Save point. Sits right after the connection note because that is
+              the only message you can send before they accept — everything
+              below is a draft you'll come back to, sometimes days later. */}
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-            background: warm.colors.bgAlt, border: `1px solid ${warm.colors.borderWhisper}`,
+            background: loggedThisGen ? 'rgba(52,211,153,0.06)' : warm.colors.bgAlt,
+            border: `1px solid ${loggedThisGen ? 'rgba(52,211,153,0.25)' : warm.colors.borderWhisper}`,
             borderRadius: 12, padding: '12px 16px', marginBottom: 14,
           }}>
             <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5, color: warm.colors.textSecondary }}>
-              Sent the connection note and first message? Log it — one tap, and it lands in the Tracker tab above.
+              {loggedThisGen
+                ? `Saved. All four drafts are stored against ${targetFirstName || 'this person'} in the Tracker tab — when they accept, open the Tracker to copy your first message. Edits here keep saving automatically.`
+                : 'Sent the connection request? Save it now. All four drafts are stored so you can move on to the next person without losing this one.'}
             </p>
             <button
               onClick={handleLogConnected}
@@ -394,10 +431,20 @@ export const OutreachTemplates: React.FC = () => {
             >
               {logging ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} />
                 : loggedThisGen ? <Check size={13} /> : <UserCheck size={13} />}
-              {loggedThisGen ? 'Logged' : 'Log This Outreach'}
+              {loggedThisGen ? 'Saved' : 'Save This Outreach'}
             </button>
           </div>
 
+          <TemplateCard
+            key={`${genId}-firstMessage`}
+            label={TEMPLATE_LABELS.firstMessage}
+            content={outreach.firstMessage}
+            tip={COACHING_TIPS.firstMessage}
+            editableNote="You can't send this until they accept your request. Save the outreach above, then copy it from the Tracker tab once they do."
+            logEnabled={loggedThisGen}
+            onLogCopy={logNextTouch}
+            onContentChange={trackDraft('firstMessage')}
+          />
           <TemplateCard
             key={`${genId}-afterConversationFollowUp`}
             label={TEMPLATE_LABELS.afterConversationFollowUp}
@@ -406,6 +453,7 @@ export const OutreachTemplates: React.FC = () => {
             editableNote="Send within 24 hours of any real exchange — a chat, a call, or a message thread. Fill in [THEIR_POINT] with something specific they actually said."
             logEnabled={loggedThisGen}
             onLogCopy={logNextTouch}
+            onContentChange={trackDraft('followUpDraft')}
           />
           <TemplateCard
             key={`${genId}-directAsk`}
@@ -415,6 +463,7 @@ export const OutreachTemplates: React.FC = () => {
             editableNote="Send this whenever the conversation has earned it — it doesn't have to be last. Ask for a quick Zoom or Google Meet call, never a phone number. Do not skip it — make the ask."
             logEnabled={loggedThisGen}
             onLogCopy={logNextTouch}
+            onContentChange={trackDraft('directAskDraft')}
           />
           {loggedThisGen && (
             <p style={{ fontSize: 11.5, color: warm.colors.textMuted, textAlign: 'center', margin: '4px 0 0' }}>
