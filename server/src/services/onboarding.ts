@@ -18,10 +18,7 @@
 import { supabase } from '../lib/supabase';
 import { prisma } from '../index';
 import { sendClientOnboardingEmail } from './email';
-
-const APP_URL = (process.env.ALLOWED_ORIGIN ?? 'https://aussiegradcareers.com.au')
-  .split(',')[0]
-  .trim();
+import { PUBLIC_APP_URL } from '../lib/appUrl';
 
 /**
  * CandidateProfile.email is unique. When `userId`'s login is about to take
@@ -133,7 +130,7 @@ export async function onboardPaidCustomer(params: {
     const { data, error } = await supabase.auth.admin.generateLink({
       type: 'recovery',
       email,
-      options: { redirectTo: `${APP_URL}/set-password` },
+      options: { redirectTo: `${PUBLIC_APP_URL}/set-password` },
     });
     if (error || !data?.properties?.action_link) {
       throw new Error(error?.message ?? 'no action_link returned');

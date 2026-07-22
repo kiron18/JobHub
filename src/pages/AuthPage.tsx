@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { warm } from '../lib/theme/warmTokens';
 import { PrimaryButton } from '../components/shared/PrimaryButton';
 import { Card } from '../components/shared/Card';
+import api from '../lib/api';
 
 export const AuthPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -16,6 +17,7 @@ export const AuthPage: React.FC = () => {
   const [email, setEmail] = useState(() => searchParams.get('email') ?? '');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sendingReset, setSendingReset] = useState(false);
 
   const navigate = useNavigate();
   const [isSignup, setIsSignup] = useState(() => searchParams.get('intent') === 'signup');
@@ -34,6 +36,28 @@ export const AuthPage: React.FC = () => {
       toast.error(err.message || 'Authentication failed');
     } finally {
       setLoading(false);
+    }
+  }
+
+  /**
+   * Email a fresh set-password link. Same endpoint the expired-link screen uses.
+   * Reuses whatever is already typed in the email field rather than opening a
+   * separate screen, so recovery is one click from where they got stuck.
+   */
+  async function handleForgotPassword() {
+    const target = email.trim();
+    if (!target || !target.includes('@')) {
+      toast.error('Enter your email above first, then tap this again.');
+      return;
+    }
+    setSendingReset(true);
+    try {
+      const { data } = await api.post('/auth/resend-password-link', { email: target });
+      toast.success(data?.message ?? 'Check your inbox.');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Could not send the link. Try again shortly.');
+    } finally {
+      setSendingReset(false);
     }
   }
 
@@ -177,6 +201,26 @@ export const AuthPage: React.FC = () => {
                       e.currentTarget.style.boxShadow = 'none';
                     }}
                   />
+                  {!isSignup && (
+                    <div style={{ textAlign: 'right', marginTop: 10 }}>
+                      <button
+                        type="button"
+                        onClick={handleForgotPassword}
+                        disabled={sendingReset}
+                        style={{
+                          background: 'none', border: 'none', padding: 0,
+                          color: warm.colors.accentPetrol,
+                          fontWeight: 600, fontSize: 12.5,
+                          cursor: sendingReset ? 'default' : 'pointer',
+                          opacity: sendingReset ? 0.6 : 1,
+                          fontFamily: warm.type.fontBody,
+                          textDecoration: 'underline', textUnderlineOffset: 3,
+                        }}
+                      >
+                        {sendingReset ? 'Sending…' : 'Forgot password?'}
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <PrimaryButton
                   label={loading ? '' : (isSignup ? 'Create account' : 'Sign in')}

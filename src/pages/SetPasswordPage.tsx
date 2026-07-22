@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { warm } from '../lib/theme/warmTokens';
 import { PrimaryButton } from '../components/shared/PrimaryButton';
 import { Card } from '../components/shared/Card';
+import api from '../lib/api';
 
 /**
  * Landing page for the set-password link emailed after payment.
@@ -23,6 +24,14 @@ export const SetPasswordPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resendEmail, setResendEmail] = useState('');
+  const [resending, setResending] = useState(false);
+  const [resent, setResent] = useState(false);
+
+  // `?flow=reset` marks a link from "forgot password" / a resend rather than the
+  // post-payment welcome email. Same page, but a returning user should land back
+  // in the app instead of being walked through onboarding again.
+  const isReset = new URLSearchParams(window.location.search).get('flow') === 'reset';
 
   useEffect(() => {
     let settled = false;
@@ -69,6 +78,20 @@ export const SetPasswordPage: React.FC = () => {
     return () => { subscription.unsubscribe(); if (timer) clearTimeout(timer); };
   }, []);
 
+  async function handleResend(e: React.FormEvent) {
+    e.preventDefault();
+    setResending(true);
+    try {
+      const { data } = await api.post('/auth/resend-password-link', { email: resendEmail });
+      toast.success(data?.message ?? 'Check your inbox.');
+      setResent(true);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Could not send the link. Try again shortly.');
+    } finally {
+      setResending(false);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (password.length < 8) {
@@ -83,10 +106,11 @@ export const SetPasswordPage: React.FC = () => {
     try {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
-      // This page is only reached via the paid-client email link, so send them
-      // into the paid-client onboarding at /welcome (upload resume, read, roles).
-      toast.success('Password set. Welcome in.');
-      navigate('/welcome', { replace: true });
+      // A reset is a returning user, so drop them in the app. The welcome-email
+      // path is a fresh buyer, so send them to paid-client onboarding at
+      // /welcome (upload resume, read, roles).
+      toast.success(isReset ? 'Password updated.' : 'Password set. Welcome in.');
+      navigate(isReset ? '/' : '/welcome', { replace: true });
     } catch (err: any) {
       toast.error(err.message || 'Could not set your password.');
     } finally {
@@ -133,22 +157,52 @@ export const SetPasswordPage: React.FC = () => {
             fontSize: 26, fontWeight: 600, color: warm.colors.textPrimary,
             margin: '0 0 8px', letterSpacing: '-0.02em', fontFamily: warm.type.fontBody,
           }}>
-            Set your password
+            {isReset ? 'Choose a new password' : 'Set your password'}
           </h1>
           <p style={{ fontSize: 14, color: warm.colors.textSecondary, margin: 0 }}>
-            Choose a password to finish setting up your account
+            {isReset
+              ? 'Pick a new password and we\'ll sign you straight in'
+              : 'Choose a password to finish setting up your account'}
           </p>
         </div>
 
         <Card padding="32px" style={{ boxShadow: warm.shadow.lifted }}>
           {linkInvalid ? (
-            <div style={{ textAlign: 'center' }}>
-              <p style={{ fontSize: 14, color: warm.colors.textSecondary, margin: '0 0 20px', lineHeight: 1.6 }}>
-                This set-password link has expired or already been used. Head to the
-                sign-in page and use "forgot password" to get a fresh one.
-              </p>
-              <PrimaryButton label="Go to sign in" onClick={() => navigate('/auth', { replace: true })} />
-            </div>
+            resent ? (
+              <div style={{ textAlign: 'center' }}>
+                <p style={{ fontSize: 14, color: warm.colors.textSecondary, margin: '0 0 20px', lineHeight: 1.6 }}>
+                  If that email has an account, a new link is on its way. It's good for
+                  one use, so open it as soon as you can.
+                </p>
+                <PrimaryButton label="Go to sign in" onClick={() => navigate('/auth', { replace: true })} />
+              </div>
+            ) : (
+              <form onSubmit={handleResend}>
+                <p style={{ fontSize: 14, color: warm.colors.textSecondary, margin: '0 0 20px', lineHeight: 1.6 }}>
+                  This link has expired or has already been used. Links are single use,
+                  so enter your email and we'll send a fresh one. Your account and access
+                  are unaffected.
+                </p>
+                <div style={{ marginBottom: 20 }}>
+                  <label style={labelStyle}>Email</label>
+                  <input
+                    type="email" value={resendEmail} onChange={e => setResendEmail(e.target.value)}
+                    placeholder="you@example.com" required autoFocus style={inputStyle}
+                  />
+                </div>
+                <PrimaryButton
+                  label={resending ? '' : 'Email me a new link'}
+                  onClick={() => {}}
+                  disabled={resending}
+                  type="submit"
+                />
+                {resending && (
+                  <div style={{ textAlign: 'center', marginTop: 12 }}>
+                    <Loader2 size={18} className="animate-spin" style={{ color: warm.colors.accentPetrol }} />
+                  </div>
+                )}
+              </form>
+            )
           ) : !ready ? (
             <div style={{ textAlign: 'center', padding: '24px 0' }}>
               <Loader2 size={22} className="animate-spin" style={{ color: warm.colors.accentPetrol }} />

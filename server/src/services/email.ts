@@ -128,6 +128,41 @@ export async function sendClientOnboardingEmail(params: {
   });
 }
 
+/**
+ * Fresh password link, sent when someone asks for one: either their onboarding
+ * link lapsed (Supabase recovery tokens are single-use and time-limited) or
+ * they used "forgot password" on the sign-in page.
+ *
+ * Deliberately separate from sendClientOnboardingEmail, which opens with
+ * "your payment is confirmed" and would read as a duplicate receipt here.
+ */
+export async function sendPasswordResetEmail(params: {
+  to: string;
+  actionLink: string;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[email] RESEND_API_KEY not set, skipping password reset email');
+    return;
+  }
+  const { to, actionLink } = params;
+
+  await resend.emails.send({
+    from: FROM_ADDRESS,
+    to,
+    subject: 'Your new password link',
+    html: [
+      `<table cellpadding="0" cellspacing="0" style="width: 100%; max-width: 560px; margin: 0 auto; font-family: Arial, sans-serif;">`,
+      `<tr><td style="padding: 32px 24px; background: #f5f3ef; border-radius: 12px;">`,
+      `<h1 style="font-size: 20px; font-weight: 600; color: #1a1814; margin: 0 0 12px;">Set your password</h1>`,
+      `<p style="font-size: 14px; color: #6b6559; margin: 0 0 20px; line-height: 1.6;">Here's a fresh link for <strong>${to}</strong>. Your account and access are unchanged, you just need to choose a password.</p>`,
+      `<p style="margin: 0 0 24px;"><a href="${actionLink}" style="display: inline-block; background: #2d5a6e; color: #faf7f2; text-decoration: none; font-size: 14px; font-weight: 700; padding: 12px 24px; border-radius: 8px;">Choose your password</a></p>`,
+      `<p style="font-size: 12px; color: #9b9488; margin: 0 0 0; border-top: 1px solid #dddad2; padding-top: 16px; line-height: 1.6;">This link works once and expires for security. If it lapses, request another from the sign-in page. If you didn't ask for this, you can ignore it, nothing has changed.<br/><br/>The Aussie Grad Careers team &middot; <a href="${APP_URL}" style="color: #2d5a6e;">aussiegradcareers.com.au</a></p>`,
+      `</td></tr>`,
+      `</table>`,
+    ].join(''),
+  });
+}
+
 export async function sendStatusEmail(params: {
   to: string;
   status: 'APPLIED' | 'REJECTED';
