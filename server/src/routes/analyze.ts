@@ -534,6 +534,15 @@ router.post('/critique', async (req: any, res: any) => {
                     why: typeof it.why === 'string' ? it.why : '',
                     fix: typeof it.fix === 'string' ? it.fix : '',
                 })),
+            // TRANSITIONAL SHIM — delete after one deploy cycle.
+            // The old panel reads `result.overall.verdict` and
+            // `result.strengths.length` without optional chaining, and the old
+            // build auto-ran this endpoint on every fresh generation. Dropping
+            // these fields outright would throw inside render for anyone still
+            // holding a cached bundle. Empty values are inert in the new UI,
+            // which ignores both.
+            overall: { verdict: '', trustScore: 0 },
+            strengths: [],
         });
     } catch (err: any) {
         console.error('[analyze/critique] unexpected error:', err);
