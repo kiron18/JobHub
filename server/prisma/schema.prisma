@@ -71,6 +71,9 @@ model CandidateProfile {
   dailyOutreachGoal            Int       @default(4)
   outreachGoalType             String    @default("daily")
   documentsUpdatedAt           DateTime?
+  // When we last sent this candidate a follow-up nudge email. Throttles the
+  // reminder to one per person every 4 days instead of one per application.
+  lastFollowUpNudgeAt          DateTime?
   positioningStatement         Json?
   analysisCache                Json?
   achievements                 Achievement[]

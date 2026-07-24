@@ -214,31 +214,95 @@ export async function sendStatusEmail(params: {
 
 export async function sendFollowUpReminderEmail(params: {
   to: string;
-  jobTitle: string;
-  company: string;
+  firstName?: string;
+  jobs: { title: string; company: string }[];
+  totalCount: number;
 }): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
     console.warn('[email] RESEND_API_KEY not set — skipping follow-up email');
     return;
   }
-  const { to, jobTitle, company } = params;
-  const role = `${jobTitle} at ${company}`;
+  const { to, firstName, jobs, totalCount } = params;
+  const dashboardUrl = `${APP_URL}/`;
+  const screenshotUrl = `${APP_URL}/followup-section.png`;
+
+  const greeting = firstName ? `Hey ${firstName},` : 'Hey there,';
+  const countLabel =
+    totalCount === 1 ? '1 application' : `${totalCount} applications`;
+  const remaining = totalCount - jobs.length;
+
+  // Subject leads with the most relevant single job when there's one, otherwise
+  // frames the batch.
+  const subject =
+    totalCount === 1
+      ? `Time to follow up — ${jobs[0].title} at ${jobs[0].company}`
+      : `${countLabel} worth a follow-up — here's exactly how`;
+
+  const jobListItems = jobs
+    .map(
+      j =>
+        `<li style="margin: 0 0 4px;"><strong style="color: #1a1814;">${j.title}</strong> <span style="color: #6b6559;">at ${j.company}</span></li>`,
+    )
+    .join('');
+  const moreLine =
+    remaining > 0
+      ? `<li style="margin: 4px 0 0; color: #9b9488;">…and ${remaining} more in your dashboard</li>`
+      : '';
+
+  const A = '#2d5a6e'; // petrol accent, matches the dashboard buttons
+  const btn = (href: string, label: string) =>
+    `<a href="${href}" style="display: inline-block; background: ${A}; color: #faf7f2; text-decoration: none; font-size: 14px; font-weight: 700; padding: 12px 24px; border-radius: 8px;">${label}</a>`;
+  const tool = (href: string, name: string, how: string) =>
+    `<li style="margin: 0 0 10px;"><a href="${href}" style="color: ${A}; font-weight: 700; text-decoration: none;">${name}</a> — <span style="color: #6b6559;">${how}</span></li>`;
 
   await resend.emails.send({
     from: FROM_ADDRESS,
     to,
-    subject: `Time to follow up — ${jobTitle} at ${company}`,
-    text: [
-      `It's been 7 days since you applied for ${role}.`,
-      '',
-      "If you haven't heard back, now is the right time for a short follow-up.",
-      '',
-      "Keep it to 3-4 lines: confirm your interest, reference something specific about the role, and ask if there's anything else they need from you.",
-      '',
-      "Most candidates don't follow up. You should.",
-      '',
-      'The JobReady team',
-    ].join('\n'),
+    subject,
+    html: [
+      `<table cellpadding="0" cellspacing="0" style="width: 100%; max-width: 560px; margin: 0 auto; font-family: Arial, sans-serif;">`,
+      `<tr><td style="padding: 32px 24px; background: #f5f3ef; border-radius: 12px;">`,
+
+      `<h1 style="font-size: 20px; font-weight: 600; color: #1a1814; margin: 0 0 12px;">${greeting}</h1>`,
+      `<p style="font-size: 14px; color: #6b6559; margin: 0 0 12px; line-height: 1.6;">You've got <strong>${countLabel}</strong> from over a week ago that are worth a follow-up. If you haven't heard back, this is the moment — not next week.</p>`,
+      `<ul style="font-size: 14px; margin: 0 0 20px; padding-left: 18px; line-height: 1.6;">${jobListItems}${moreLine}</ul>`,
+
+      // Why it's worth doing
+      `<p style="font-size: 13px; color: #1a1814; font-weight: 700; margin: 0 0 8px;">Why it's worth two minutes:</p>`,
+      `<ul style="font-size: 13px; color: #6b6559; margin: 0 0 24px; padding-left: 18px; line-height: 1.7;">`,
+      `<li>Recruiters sift through dozens of applicants — a follow-up moves you back to the top of the pile.</li>`,
+      `<li>It signals initiative and genuine interest, the exact traits they're hiring for.</li>`,
+      `<li>Applications genuinely get buried or stalled; a nudge at the right time can be the difference between a callback and silence.</li>`,
+      `<li><strong>Most candidates never follow up.</strong> That's exactly why it works.</li>`,
+      `</ul>`,
+
+      // Step 1 — the template
+      `<p style="font-size: 14px; color: #1a1814; font-weight: 700; margin: 0 0 6px;">1. Grab your ready-made message</p>`,
+      `<p style="font-size: 13px; color: #6b6559; margin: 0 0 14px; line-height: 1.6;">Open your dashboard, find the job under <strong>Follow up</strong>, and click the <strong>Follow up</strong> button. A template is already written and waiting — just copy it.</p>`,
+      `<p style="margin: 0 0 14px;">${btn(dashboardUrl, 'Open your dashboard')}</p>`,
+      `<p style="margin: 0 0 24px;"><img src="${screenshotUrl}" alt="The Follow up section on your dashboard" width="512" style="width: 100%; max-width: 512px; border: 1px solid #dddad2; border-radius: 10px; display: block;" /></p>`,
+
+      // Step 2 — who to send it to
+      `<p style="font-size: 14px; color: #1a1814; font-weight: 700; margin: 0 0 6px;">2. Work out who to send it to</p>`,
+      `<p style="font-size: 13px; color: #6b6559; margin: 0 0 24px; line-height: 1.6;">Best target is <strong>HR / talent acquisition / the recruiter</strong> on the listing. If there's no HR contact, go to the <strong>hiring manager</strong> — the person who'd be your department head if you got the role.</p>`,
+
+      // Step 3 — find the email
+      `<p style="font-size: 14px; color: #1a1814; font-weight: 700; margin: 0 0 6px;">3. Find their email</p>`,
+      `<p style="font-size: 13px; color: #6b6559; margin: 0 0 10px; line-height: 1.6;">Use any one of these (all have free tiers):</p>`,
+      `<ul style="font-size: 13px; margin: 0 0 24px; padding-left: 18px; line-height: 1.6; list-style: none;">`,
+      tool('https://hunter.io', 'Hunter.io', "enter the company's website; it shows staff emails and the pattern (e.g. firstname@company.com)."),
+      tool('https://rocketreach.co', 'RocketReach.co', 'search the person’s name + company; reveals their verified work email.'),
+      tool('https://apollo.io', 'Apollo.io', 'search the company, filter by role or department (e.g. “HR”), pull the verified email.'),
+      `</ul>`,
+
+      `<p style="font-size: 13px; color: #6b6559; margin: 0 0 24px; line-height: 1.6;">Then send. Two minutes of effort that most people skip.</p>`,
+
+      // Sign-off
+      `<p style="font-size: 13px; color: #6b6559; margin: 0; line-height: 1.6; border-top: 1px solid #dddad2; padding-top: 16px;">Kiron<br/><strong style="color: #1a1814;">Aussie Grad Careers</strong><br/>Rooting for your success 🇦🇺<br/><br/><a href="${APP_URL}" style="color: ${A};">aussiegradcareers.com.au</a></p>`,
+
+      `</td></tr>`,
+      `</table>`,
+    ].join(''),
   });
 }
 

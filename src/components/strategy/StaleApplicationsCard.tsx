@@ -15,6 +15,9 @@ interface JobApplicationLite {
 }
 
 const STALE_DAYS = 7;
+// Past 30 days the window has closed — a follow-up that late reads as desperate,
+// so we quietly drop it from the list (and the reminder emails stop too).
+const MAX_FOLLOWUP_DAYS = 30;
 
 function daysSince(iso: string | null): number | null {
   if (!iso) return null;
@@ -239,10 +242,11 @@ export function StaleApplicationsCard() {
   });
 
   const stale = (jobs ?? [])
-    .filter(j =>
-      j.status === 'APPLIED' &&
-      (daysSince(j.dateApplied) ?? 0) >= STALE_DAYS
-    )
+    .filter(j => {
+      if (j.status !== 'APPLIED') return false;
+      const d = daysSince(j.dateApplied) ?? 0;
+      return d >= STALE_DAYS && d <= MAX_FOLLOWUP_DAYS;
+    })
     .sort((a, b) => (daysSince(b.dateApplied) ?? 0) - (daysSince(a.dateApplied) ?? 0))
     .slice(0, 5);
 
