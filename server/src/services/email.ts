@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
 import type { CvGapResult, RoadmapStep } from './cvGapScan';
+import { PUBLIC_APP_URL } from '../lib/appUrl';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -223,8 +224,10 @@ export async function sendFollowUpReminderEmail(params: {
     return;
   }
   const { to, firstName, jobs, totalCount } = params;
-  const dashboardUrl = `${APP_URL}/`;
-  const screenshotUrl = `${APP_URL}/followup-section.png`;
+  // Env-aware origin so the screenshot + links resolve to the right host on
+  // staging vs production (a hardcoded prod URL would 404 the image on staging).
+  const dashboardUrl = `${PUBLIC_APP_URL}/`;
+  const screenshotUrl = `${PUBLIC_APP_URL}/followup-section.png`;
 
   const greeting = firstName ? `Hey ${firstName},` : 'Hey there,';
   const countLabel =
@@ -298,7 +301,7 @@ export async function sendFollowUpReminderEmail(params: {
       `<p style="font-size: 13px; color: #6b6559; margin: 0 0 24px; line-height: 1.6;">Then send. Two minutes of effort that most people skip.</p>`,
 
       // Sign-off
-      `<p style="font-size: 13px; color: #6b6559; margin: 0; line-height: 1.6; border-top: 1px solid #dddad2; padding-top: 16px;">Kiron<br/><strong style="color: #1a1814;">Aussie Grad Careers</strong><br/>Rooting for your success 🇦🇺<br/><br/><a href="${APP_URL}" style="color: ${A};">aussiegradcareers.com.au</a></p>`,
+      `<p style="font-size: 13px; color: #6b6559; margin: 0; line-height: 1.6; border-top: 1px solid #dddad2; padding-top: 16px;">Kiron<br/><strong style="color: #1a1814;">Aussie Grad Careers</strong><br/>Rooting for your success 🇦🇺<br/><br/><a href="${PUBLIC_APP_URL}" style="color: ${A};">aussiegradcareers.com.au</a></p>`,
 
       `</td></tr>`,
       `</table>`,
