@@ -740,11 +740,49 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
             }
         }
 
-        // Emphasise the figure in each bullet so a recruiter scanning the page
-        // lands on the results. Applied here, after the grounding and style
-        // retries, so the added markdown can never trigger a re-generation.
-        const { boldMetricsInMarkdown } = await import('../lib/boldEmphasis');
-        finalContent = boldMetricsInMarkdown(finalContent);
+        // ── Emphasis ────────────────────────────────────────────────────────
+        // A dedicated pass decides what this hiring manager must see. Emphasis
+        // chosen while the resume is being written follows the numbers rather
+        // than the relevance, because the model is picking content, tailoring
+        // and budgeting length at the same time. Reading the finished page with
+        // one question in mind is a different and much easier job.
+        //
+        // Everything about it is optional: the pass is verified line by line and
+        // discarded on any doubt, and if it fails for any reason the
+        // deterministic pass still emphasises the figures. Runs after the
+        // grounding and style retries so it can never trigger a re-generation.
+        const { boldMetricsInMarkdown, capEmphasisInMarkdown } = await import('../lib/boldEmphasis');
+        const { verifyEmphasisPass } = await import('../lib/emphasisPass');
+
+        let emphasisApplied = false;
+        try {
+            const { EMPHASIS_PASS_PROMPT } = await import('../services/prompts/emphasisPass');
+            const emphasisPrompt = EMPHASIS_PASS_PROMPT(finalContent, jobDescription);
+            const { content: emphasised, usage: emphasisUsage } = await callClaude(
+                emphasisPrompt, false, undefined, PREMIUM_MODEL,
+            );
+
+            stage2Cost +=
+                (emphasisUsage.promptTokens / 1_000_000) * CLAUDE_INPUT_COST_PER_M +
+                (emphasisUsage.completionTokens / 1_000_000) * CLAUDE_OUTPUT_COST_PER_M;
+
+            const verdict = verifyEmphasisPass(finalContent, emphasised);
+            if (verdict.accepted) {
+                // Cap only. Filling the bullets it left plain would undo the very
+                // judgement worth paying for — an unmarked figure is a decision.
+                finalContent = capEmphasisInMarkdown(verdict.content);
+                emphasisApplied = true;
+                console.log('[ResumeStructured] Emphasis pass accepted.');
+            } else {
+                console.warn(`[ResumeStructured] Emphasis pass rejected: ${verdict.reason}`);
+            }
+        } catch (err: any) {
+            console.warn('[ResumeStructured] Emphasis pass failed:', err?.message);
+        }
+
+        if (!emphasisApplied) {
+            finalContent = boldMetricsInMarkdown(finalContent);
+        }
 
         // Estimate pages: ~45 non-empty lines per A4 page at standard margins.
         const nonEmptyLines = finalContent.split('\n').filter(l => l.trim().length > 0).length;

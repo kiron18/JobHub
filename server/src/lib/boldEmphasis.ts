@@ -159,13 +159,32 @@ export function capBoldEmphasis(descriptions: string[], maxTotal = MAX_BOLD_SPAN
  * line, which is the failure mode that would scramble someone's layout.
  */
 export function boldMetricsInMarkdown(markdown: string, maxTotal = MAX_BOLD_SPANS): string {
-    const lines = markdown.split('\n');
+    const { lines, budget } = capEmphasisLines(markdown.split('\n'), maxTotal);
+    return fillEmphasisLines(lines, budget).join('\n');
+}
 
-    // Pass one: hold whatever the model emphasised to one span per bullet and to
-    // the ceiling overall, spending the budget top-down. Without this an
-    // over-eager model can bold half the page and nothing trims it — a resume
-    // where everything is emphasised is worse than one where nothing is.
+/**
+ * Trim only — hold emphasis to one span per bullet and to the ceiling overall,
+ * without adding any.
+ *
+ * This is what runs behind the emphasis pass. Once a model has read the whole
+ * document and chosen deliberately, filling in the bullets it left plain would
+ * undo exactly the judgement that was worth paying for: a figure left unmarked
+ * is usually a decision, not an oversight.
+ */
+export function capEmphasisInMarkdown(markdown: string, maxTotal = MAX_BOLD_SPANS): string {
+    return capEmphasisLines(markdown.split('\n'), maxTotal).lines.join('\n');
+}
+
+/**
+ * Hold whatever is already emphasised to one span per bullet and to the ceiling
+ * overall, spending the budget top-down. Without this an over-eager model can
+ * bold half the page untouched — and a resume where everything is emphasised is
+ * worse than one where nothing is.
+ */
+function capEmphasisLines(lines: string[], maxTotal: number): { lines: string[]; budget: number } {
     let budget = maxTotal;
+
     const capped = lines.map((line) => {
         if (!line.startsWith('- ') || !line.includes('**')) return line;
         const { line: next, used } = capBoldInLine(line, budget);
@@ -173,16 +192,22 @@ export function boldMetricsInMarkdown(markdown: string, maxTotal = MAX_BOLD_SPAN
         return next;
     });
 
-    // Pass two: spend what is left on bullets that carry a figure but no
-    // emphasis, so the result never depends on the model having complied.
-    return capped
-        .map((line) => {
-            if (budget <= 0 || !line.startsWith('- ')) return line;
-            const { line: next, bolded } = boldFirstMetric(line);
-            if (bolded) budget--;
-            return next;
-        })
-        .join('\n');
+    return { lines: capped, budget };
+}
+
+/**
+ * Spend the remaining budget on bullets that carry a figure but no emphasis, so
+ * a document reaches the page emphasised even when the model returned nothing.
+ */
+function fillEmphasisLines(lines: string[], budget: number): string[] {
+    let remaining = budget;
+
+    return lines.map((line) => {
+        if (remaining <= 0 || !line.startsWith('- ')) return line;
+        const { line: next, bolded } = boldFirstMetric(line);
+        if (bolded) remaining--;
+        return next;
+    });
 }
 
 /**
