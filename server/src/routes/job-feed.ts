@@ -203,6 +203,19 @@ router.get('/feed', async (req: any, res: any) => {
   if (isNaN(offset) || offset < 0) offset = 0;
   const today = todayAEST();
 
+  // Job feed is shelved. Gating /refresh alone was not enough: this read path
+  // both serves stale JobFeedItem rows ingested before the pause AND triggers a
+  // fresh buildDailyFeedMultiSource scrape when none exist for today. Return an
+  // empty, settled feed so no suggested job can reach the dashboard and no
+  // credit is spent. Flip JOB_FEED_ENABLED=true to restore.
+  if (process.env.JOB_FEED_ENABLED !== 'true') {
+    return res.json({
+      jobs: [], total: 0, hasMore: false,
+      feedDate: today.toISOString().slice(0, 10),
+      building: false, disabled: true,
+    });
+  }
+
   try {
     const userEmail = (req.user?.email ?? '').toLowerCase();
 

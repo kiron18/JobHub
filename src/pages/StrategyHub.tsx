@@ -9,7 +9,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, NavLink, useLocation } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, Loader2, Target, X, Check } from 'lucide-react';
 import { toast } from 'sonner';
@@ -21,9 +21,8 @@ import { ApplyFeedStrip } from '../components/strategy/ApplyFeedStrip';
 import { JobStream } from '../components/strategy/JobStream';
 import { StaleApplicationsCard } from '../components/strategy/StaleApplicationsCard';
 import { FirstApplicationCelebration } from '../components/FirstApplicationCelebration';
-import { FeedStateNotice, type FeedReadiness } from '../components/strategy/FeedStateNotice';
 import type { JobFeedItem } from '../components/jobs/JobCard';
-import { FocusedApplyView } from '../components/jobs/FocusedApplyView';
+import { DailyProgressBar } from '../components/jobs/DailyProgressBar';
 import { warm } from '../lib/theme/warmTokens';
 
 /** Detect whether a job description mentions selection criteria. */
@@ -808,53 +807,11 @@ export function StrategyHub() {
         staleTime: 5 * 60 * 1000,
     });
 
-    const { data: feedData, isPending: feedPending } = useQuery({
-        queryKey: ['job-feed', 0],
-        queryFn: async () => {
-            const { data } = await api.get('/job-feed/feed?offset=0');
-            return data;
-        },
-        staleTime: 5 * 60 * 1000,
-        // The first fetch returns building:true while the background scrape runs
-        // (~1 min). Poll until jobs land, then stop. Without this the dashboard sits
-        // on the "Searching…" notice until a manual hard refresh. refetchInterval
-        // reads the query's own data so it doesn't depend on the derived consts below.
-        refetchInterval: (query) => {
-            const d = query.state.data as { building?: boolean; profileIncomplete?: boolean } | undefined;
-            return d?.building || d?.profileIncomplete ? 4000 : false;
-        },
-    });
-
-    const feedJobs = (feedData?.jobs ?? []) as JobFeedItem[];
-    const feedTotal = feedData?.total ?? 0;
-    const feedBuilding = feedData?.building ?? false;
-    const feedProfileIncomplete = feedData?.profileIncomplete ?? false;
-    const feedError = feedData?.error ?? false;
-    const feedReports = feedData?.reports as Array<{ source: string }> | undefined;
-
-    // Determine feed readiness state for FeedStateNotice
-    const feedReadiness: FeedReadiness = useMemo(() => {
-        // First fetch still in flight (no data yet) — the /feed call takes a few
-        // seconds, so treat it as "searching" rather than falling through to the
-        // empty state, which caused a multi-second "no listings" flash on load.
-        if (feedPending) return 'building';
-        if (feedProfileIncomplete) return 'incomplete-profile';
-        if (feedBuilding) return 'building';
-        if (feedError) return 'error';
-        if (feedJobs.length === 0) return 'empty';
-        // If we have jobs and any report came from cache, it's partial
-        const hasCache = feedReports?.some((r) => r.source === 'cache');
-        if (hasCache) return 'partial';
-        return 'complete';
-    }, [feedPending, feedJobs.length, feedBuilding, feedProfileIncomplete, feedError, feedReports]);
-
-    const queryClient = useQueryClient();
-    const navigate = useNavigate();
-    const handleRefresh = () => {
-        queryClient.invalidateQueries({ queryKey: ['job-feed'] });
-    };
-
-    const showJobsFirst = feedJobs.length > 0;
+    // Suggested jobs are OFF on the dashboard (removed 2026-07-29, per repeated
+    // request). The app runs on pasted jobs only. Deliberately no /job-feed/feed
+    // query here: fetching it is what resurrected the suggestion card, because
+    // the endpoint served stale ingested rows and re-triggered a scrape. Do not
+    // reintroduce this query or the FocusedApplyView / FeedStateNotice renders.
 
     return (
         <div style={{ maxWidth: 720, margin: '0 auto' }}>
@@ -863,45 +820,16 @@ export function StrategyHub() {
             <DimRegion>
                 <HubHeader profile={profile} jobs={jobs ?? []} />
 
-                {/* JOBS FIRST: Show curated jobs above the paste section when available */}
-                {showJobsFirst && feedReadiness !== 'error' && (
-                    <DimTarget style={{ marginBottom: 40 }}>
-                        <FocusedApplyView jobs={feedJobs.slice(0, 6)} />
-                    </DimTarget>
-                )}
+                {/* Daily application target — kept; it used to live inside the
+                    (now removed) suggested-jobs card. */}
+                <DimPeer style={{ marginBottom: 32 }}>
+                    <DailyProgressBar />
+                </DimPeer>
 
-                {/* Feed state notice - shows while building/searching */}
-                {(feedReadiness === 'building' || feedReadiness === 'partial') && (
-                    <DimPeer style={{ marginBottom: 32 }}>
-                        <FeedStateNotice
-                            state={feedReadiness}
-                            total={feedTotal}
-                            targetRole={profile?.targetRole}
-                            targetCity={profile?.targetCity}
-                            onRefresh={handleRefresh}
-                            onGoToProfile={() => navigate('/workspace')}
-                        />
-                    </DimPeer>
-                )}
-
-                {/* Paste/Apply section - always shown below jobs */}
+                {/* Paste/Apply section — the only way a job enters the flow */}
                 <DimTarget style={{ marginBottom: 40 }}>
                     <AnalysisHeroCard />
                 </DimTarget>
-
-                {/* Error or empty states shown below paste section */}
-                {(feedReadiness === 'error' || feedReadiness === 'empty' || feedReadiness === 'incomplete-profile') && (
-                    <DimPeer style={{ marginBottom: 32 }}>
-                        <FeedStateNotice
-                            state={feedReadiness}
-                            total={feedTotal}
-                            targetRole={profile?.targetRole}
-                            targetCity={profile?.targetCity}
-                            onRefresh={handleRefresh}
-                            onGoToProfile={() => navigate('/workspace')}
-                        />
-                    </DimPeer>
-                )}
 
                 {/* CoherenceCard (story health) removed per user request 2026-06-08 */}
                 {SHOW_DASHBOARD_INSIGHTS && (
