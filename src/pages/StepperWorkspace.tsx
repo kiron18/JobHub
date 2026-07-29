@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import { DraftCritiquePanel, type CritiqueResult } from '../components/strategy/DraftCritiquePanel';
 import { ApplyDeepLinkButton } from '../components/strategy/ApplyDeepLinkButton';
+import { PostApplyOutreach } from '../components/strategy/PostApplyOutreach';
 import ReactMarkdown from 'react-markdown';
 import { toggleEmphasis, type EmphasisMarker } from '../lib/toggleEmphasis';
 import React from 'react';
@@ -1649,6 +1650,16 @@ function TrackStep({
                     />
                 </div>
             )}
+
+            {/* Reaching a person at the company is the only lever left once the
+                application is in. Sits above the navigation deliberately — it is
+                the next useful thing to do, but the buttons below stay live so it
+                never becomes a toll gate on the way to the next application. */}
+            <PostApplyOutreach
+                jobTitle={role}
+                company={company}
+                jobDescription={jobDescription}
+            />
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 4 }}>
                 <button onClick={onBack} style={ghostButtonStyle(false)}>
