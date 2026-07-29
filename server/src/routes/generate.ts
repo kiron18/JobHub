@@ -740,6 +740,12 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
             }
         }
 
+        // Emphasise the figure in each bullet so a recruiter scanning the page
+        // lands on the results. Applied here, after the grounding and style
+        // retries, so the added markdown can never trigger a re-generation.
+        const { boldMetricsInMarkdown } = await import('../lib/boldEmphasis');
+        finalContent = boldMetricsInMarkdown(finalContent);
+
         // Estimate pages: ~45 non-empty lines per A4 page at standard margins.
         const nonEmptyLines = finalContent.split('\n').filter(l => l.trim().length > 0).length;
         const estimatedPages = Math.ceil(nonEmptyLines / 45);

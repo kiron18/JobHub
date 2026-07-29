@@ -66,8 +66,11 @@ function parseLine(line: string): ParsedLine {
 /** Parse inline bold/italic within a text string into TextRun segments */
 function parseInline(text: string, font: string, size: number): TextRun[] {
     const runs: TextRun[] = [];
-    // Match **bold**, *italic*, or plain text
-    const regex = /(\*\*(.+?)\*\*|\*(.+?)\*|([^*]+))/g;
+    // Match **bold**, *italic*, or plain text. Emphasised spans must open on a
+    // non-asterisk: without that, a run of bare asterisks ("****") parses as an
+    // italic span wrapping an asterisk and a character is lost. Kept in step
+    // with `renderInline` in exportPdf.tsx so PDF and Word downloads agree.
+    const regex = /(\*\*([^*].*?)\*\*|\*([^*].*?)\*|([^*]+))/g;
     let match: RegExpExecArray | null;
     while ((match = regex.exec(text)) !== null) {
         if (match[2]) {

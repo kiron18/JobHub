@@ -11,6 +11,7 @@ import {
   scrubBannedPhrases,
 } from './voiceEnforcer';
 import { tagAIRewrites } from './provenanceTagging';
+import { applyBoldEmphasis, unwrapBold } from './boldEmphasis';
 
 import type { ResumeData } from './resumeData';
 
@@ -106,14 +107,30 @@ export function enforceResumeQuality(
   summary = enforceSummaryVoice(summary, opts);
   summary = applyScrubAITells(summary);
   summary = applyScrubBannedPhrases(summary);
+  // The summary is the most-read block on the page; emphasis there reads as
+  // shouting, so it stays clean no matter what the model returned.
+  summary = summary ? unwrapBold(summary) : summary;
 
   // ── Experience ────────────────────────────────────────────────────────
-  const experience = data.experience.map((exp) => {
+  const scrubbed = data.experience.map((exp) => {
     let desc = exp.description;
     desc = applyScrubAITells(desc);
     desc = applyScrubBannedPhrases(desc);
     desc = applyTagAIRewrites(desc, sources);
+    return desc;
+  });
 
+  // Emphasis is applied across the whole resume in role order, so it has to run
+  // once the individual descriptions are final. Whatever the model bolded is
+  // honoured and capped; the remaining budget then bolds the figure in bullets
+  // that still have none, which is what makes this independent of the model.
+  const capped = applyBoldEmphasis(scrubbed.map((d) => d ?? ''));
+
+  const experience = data.experience.map((exp, i) => {
+    // A role with no description stays exactly as it was — never turn a missing
+    // description into an empty string.
+    if (!exp.description) return exp;
+    const desc = capped[i];
     // Only create a new object if something actually changed
     if (desc === exp.description) return exp;
     return { ...exp, description: desc };
