@@ -1655,11 +1655,7 @@ function TrackStep({
                 application is in. Sits above the navigation deliberately — it is
                 the next useful thing to do, but the buttons below stay live so it
                 never becomes a toll gate on the way to the next application. */}
-            <PostApplyOutreach
-                jobTitle={role}
-                company={company}
-                jobDescription={jobDescription}
-            />
+            <PostApplyOutreach jobTitle={role} company={company} />
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 4 }}>
                 <button onClick={onBack} style={ghostButtonStyle(false)}>

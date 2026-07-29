@@ -808,50 +808,67 @@ const coverStyles = StyleSheet.create({
     },
 });
 
-function CoverLetterDocument({ content }: { content: string }) {
-    const lines = content.split('\n').filter(l => l.trim());
+export interface ParsedCoverLetter {
+    contactBlock: string[];
+    date: string;
+    salutation: string;
+    bodyParagraphs: string[];
+    signoff: string[];
+}
 
-    // Extract components
-    let contactBlock: string[] = [];
+/** A date on its own line, e.g. "July 2026". */
+const COVER_DATE_LINE = /^[A-Z][a-z]+\s+\d{4}$/;
+
+/**
+ * Split a cover letter into the blocks the PDF renders.
+ *
+ * Anchored on the salutation, because that is the only line whose position is
+ * dependable. The generated format opens directly on "Dear …" with no contact
+ * block and no date, and an earlier version of this walked a state machine that
+ * only left its opening state when it met a date line — so with nothing above
+ * the salutation the whole letter stayed classified as contact details and got
+ * rendered in small grey type, body formatting and inline emphasis included.
+ *
+ * A letter with no salutation at all (someone deleted it) is treated as all
+ * body: readable paragraphs are a far better failure than a page of grey.
+ */
+export function parseCoverLetter(content: string): ParsedCoverLetter {
+    const lines = content.split('\n').map(l => l.trim()).filter(Boolean);
+    const salutationIndex = lines.findIndex(l => l.startsWith('Dear '));
+
+    const contactBlock: string[] = [];
     let date = '';
-    let salutation = '';
-    let bodyParagraphs: string[] = [];
-    let signoff: string[] = [];
 
-    let inContact = true;
-    let inBody = false;
+    // Everything above the salutation is letterhead: an optional date line, and
+    // the sender's contact details.
+    for (const line of lines.slice(0, salutationIndex === -1 ? 0 : salutationIndex)) {
+        if (!date && COVER_DATE_LINE.test(line)) date = line;
+        else contactBlock.push(line);
+    }
+
+    const bodyParagraphs: string[] = [];
+    const signoff: string[] = [];
     let inSignoff = false;
 
-    for (const line of lines) {
-        const trimmed = line.trim();
-
-        if (inContact) {
-            if (trimmed.match(/^[A-Z][a-z]+\s+\d{4}$/)) {
-                date = trimmed;
-                inContact = false;
-                continue;
-            }
-            contactBlock.push(trimmed);
-            continue;
-        }
-
-        if (trimmed.startsWith('Dear ')) {
-            salutation = trimmed;
-            inBody = true;
-            continue;
-        }
-
-        if (trimmed.includes('Yours sincerely') || trimmed.includes('Yours faithfully')) {
-            inBody = false;
+    for (const line of lines.slice(salutationIndex + 1)) {
+        if (line.includes('Yours sincerely') || line.includes('Yours faithfully')) {
             inSignoff = true;
         }
-
-        if (inSignoff) {
-            signoff.push(trimmed);
-        } else if (inBody) {
-            bodyParagraphs.push(trimmed);
-        }
+        (inSignoff ? signoff : bodyParagraphs).push(line);
     }
+
+    return {
+        contactBlock,
+        date,
+        salutation: salutationIndex === -1 ? '' : lines[salutationIndex],
+        bodyParagraphs,
+        signoff,
+    };
+}
+
+// Exported for the render harness in scripts/, same as ResumeDocument.
+export function CoverLetterDocument({ content }: { content: string }) {
+    const { contactBlock, date, salutation, bodyParagraphs, signoff } = parseCoverLetter(content);
 
     return (
         <Document>
