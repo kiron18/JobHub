@@ -628,12 +628,16 @@ function DocumentStep({
     const editorRef = useRef<HTMLTextAreaElement>(null);
     // Where the caret should land once React has re-rendered the edited buffer.
     const pendingSelection = useRef<[number, number] | null>(null);
+    // PDF is the default download everywhere: it is the format we control the
+    // look of end to end, and it cannot be reflowed by whatever Word version the
+    // employer opens it in. Someone who has explicitly picked .docx before keeps
+    // that choice; everyone else gets PDF.
     const [downloadFormat, setDownloadFormat] = useState<'docx' | 'pdf'>(() => {
         try {
             const stored = localStorage.getItem('jobhub_download_format');
-            return stored === 'pdf' ? 'pdf' : 'docx';
+            return stored === 'docx' ? 'docx' : 'pdf';
         } catch {
-            return 'docx';
+            return 'pdf';
         }
     });
     const [formatMenuOpen, setFormatMenuOpen] = useState(false);

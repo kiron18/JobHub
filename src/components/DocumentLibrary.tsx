@@ -269,12 +269,21 @@ const DocCard: React.FC<DocCardProps> = ({ doc, onDelete, deleting }) => {
                                     <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: warm.colors.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.title}</p>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                                    <button onClick={handleDownload} style={{
+                                    <button onClick={handleDownloadPdf} style={{
                                         display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px',
                                         borderRadius: 8, fontSize: 10, fontWeight: 800, textTransform: 'uppercase',
                                         letterSpacing: '0.04em', cursor: 'pointer',
                                         color: warm.colors.success, border: `1px solid ${warm.colors.success}40`,
                                         background: `${warm.colors.success}10`,
+                                    }}>
+                                        <Download size={11} /> PDF
+                                    </button>
+                                    <button onClick={handleDownload} style={{
+                                        display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px',
+                                        borderRadius: 8, fontSize: 10, fontWeight: 800, textTransform: 'uppercase',
+                                        letterSpacing: '0.04em', cursor: 'pointer',
+                                        color: warm.colors.textMuted, border: `1px solid ${warm.colors.borderDefined}`,
+                                        background: 'transparent',
                                     }}>
                                         <Download size={11} /> .docx
                                     </button>

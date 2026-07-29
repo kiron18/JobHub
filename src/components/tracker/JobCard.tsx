@@ -157,22 +157,8 @@ const DocumentViewerModal: React.FC<{
                         </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                        <button
-                            onClick={handleDownload}
-                            aria-label="Download as Word document"
-                            onMouseEnter={() => setDlHovered(true)}
-                            onMouseLeave={() => setDlHovered(false)}
-                            style={{
-                                display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px',
-                                borderRadius: 8, fontSize: 10, fontWeight: 800, textTransform: 'uppercase',
-                                letterSpacing: '0.04em', cursor: 'pointer',
-                                color: warm.colors.success, border: `1px solid rgba(42,157,111,${dlHovered ? 0.50 : 0.35})`,
-                                background: dlHovered ? 'rgba(42,157,111,0.10)' : 'transparent',
-                            }}
-                        >
-                            <FileText size={11} />
-                            .docx
-                        </button>
+                        {/* PDF first and styled as the primary action: it is the
+                            format we control the look of end to end. */}
                         <button
                             onClick={handleDownloadPdf}
                             aria-label="Download as PDF"
@@ -182,12 +168,28 @@ const DocumentViewerModal: React.FC<{
                                 display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px',
                                 borderRadius: 8, fontSize: 10, fontWeight: 800, textTransform: 'uppercase',
                                 letterSpacing: '0.04em', cursor: 'pointer',
-                                color: warm.colors.danger, border: `1px solid ${warm.colors.danger}${pdfHovered ? '60' : '40'}`,
-                                background: pdfHovered ? `${warm.colors.danger}10` : 'transparent',
+                                color: warm.colors.success, border: `1px solid rgba(42,157,111,${pdfHovered ? 0.50 : 0.35})`,
+                                background: pdfHovered ? 'rgba(42,157,111,0.10)' : 'transparent',
                             }}
                         >
                             <FileText size={11} />
                             .pdf
+                        </button>
+                        <button
+                            onClick={handleDownload}
+                            aria-label="Download as Word document"
+                            onMouseEnter={() => setDlHovered(true)}
+                            onMouseLeave={() => setDlHovered(false)}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px',
+                                borderRadius: 8, fontSize: 10, fontWeight: 800, textTransform: 'uppercase',
+                                letterSpacing: '0.04em', cursor: 'pointer',
+                                color: warm.colors.textMuted, border: `1px solid ${warm.colors.borderDefined}`,
+                                background: dlHovered ? `${warm.colors.textMuted}10` : 'transparent',
+                            }}
+                        >
+                            <FileText size={11} />
+                            .docx
                         </button>
                         <button
                             onClick={handleCopy}

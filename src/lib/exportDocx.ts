@@ -22,8 +22,12 @@ import {
     TableCell,
     WidthType,
     ShadingType,
+    TabStopType,
+    Tab,
 } from 'docx';
 import { saveAs } from 'file-saver';
+import { parseResume, parseResumeHeader } from './resumeStructure';
+import type { ResumeItem } from './resumeStructure';
 
 export type DocType = 'resume' | 'cover-letter' | 'selection-criteria' | 'interview-prep' | 'teaching-philosophy' | 'research-statement';
 
@@ -64,7 +68,7 @@ function parseLine(line: string): ParsedLine {
 }
 
 /** Parse inline bold/italic within a text string into TextRun segments */
-function parseInline(text: string, font: string, size: number): TextRun[] {
+function parseInline(text: string, font: string, size: number, color?: string): TextRun[] {
     const runs: TextRun[] = [];
     // Match **bold**, *italic*, or plain text. Emphasised spans must open on a
     // non-asterisk: without that, a run of bare asterisks ("****") parses as an
@@ -74,14 +78,14 @@ function parseInline(text: string, font: string, size: number): TextRun[] {
     let match: RegExpExecArray | null;
     while ((match = regex.exec(text)) !== null) {
         if (match[2]) {
-            runs.push(new TextRun({ text: match[2], bold: true, font, size }));
+            runs.push(new TextRun({ text: match[2], bold: true, font, size, color }));
         } else if (match[3]) {
-            runs.push(new TextRun({ text: match[3], italics: true, font, size }));
+            runs.push(new TextRun({ text: match[3], italics: true, font, size, color }));
         } else if (match[4]) {
-            runs.push(new TextRun({ text: match[4], font, size }));
+            runs.push(new TextRun({ text: match[4], font, size, color }));
         }
     }
-    return runs.length > 0 ? runs : [new TextRun({ text, font, size })];
+    return runs.length > 0 ? runs : [new TextRun({ text, font, size, color })];
 }
 
 function buildSetupNotice(font: string): Array<Table | Paragraph> {
@@ -247,6 +251,180 @@ function buildParagraphs(markdown: string, docType: DocType): Paragraph[] {
     return paragraphs;
 }
 
+// -------------------------------------------------------------------
+// Resume rendering — Master Resume Standard
+//
+// The Word download is the PDF, in Word: same page setup, same type scale, same
+// colours, same structure off the shared parser (resumeStructure.ts). PDF is the
+// default download and the one we point people at, but the .docx has to stand on
+// its own when someone grabs it instead. Resumes used to fall through the generic
+// markdown path below, where every date line and every "Part-time, Melbourne"
+// descriptor became a full-height 11pt paragraph at 1.15 spacing — enough to
+// push a two-page resume to three or four. Dates now sit right-aligned on the
+// job-title line via a tab stop, the way the PDF and the signed-off template do.
+// -------------------------------------------------------------------
+
+const ACCENT = '475569';
+const TEXT_DARK = '1A1A1A';
+const MUTED = '6B7280';
+
+// Same page setup as the PDF: 20mm sides, 48pt top and bottom. A4 is 11906
+// twips wide, so this is the text column — and the position the right tab stop
+// for the dates has to sit at.
+const RESUME_MARGIN_X = 1134;  // 20mm
+const RESUME_MARGIN_Y = 960;   // 48pt
+const RESUME_CONTENT_WIDTH = 11906 - RESUME_MARGIN_X * 2;
+
+// Half-points, matching exportPdf.tsx's point sizes.
+const SZ_NAME = 44;      // 22pt
+const SZ_HEADLINE = 22;  // 11pt
+const SZ_CONTACT = 18;   // 9pt
+const SZ_SECTION = 19;   // 9.5pt
+const SZ_ROLE = 22;      // 11pt
+const SZ_DATES = 19;     // 9.5pt
+const SZ_BODY = 20;      // 10pt
+// The PDF's `lineHeight: 1.3` is a multiple of the FONT SIZE (10pt -> 13pt line).
+// Word's w:line with lineRule="auto" is a multiple of the font's NATURAL line
+// height instead, which for Calibri is ~1.221em. Passing 312 (1.3) here would
+// therefore give a 15.9pt line, looser than the resume it is meant to match and
+// looser than the old broken export. 256/240 * 1.221 * 10pt = 13.0pt.
+const LINE_BODY = 256;
+
+// The name is the one serif element in the design. Georgia ships with both
+// Windows and macOS, so the file opens looking the same on a recruiter's screen.
+const SERIF = 'Georgia';
+
+function sectionHeading(title: string, font: string, isFirst: boolean): Paragraph {
+    return new Paragraph({
+        children: [new TextRun({
+            text: title.toUpperCase(),
+            bold: true, font, size: SZ_SECTION, color: ACCENT,
+            characterSpacing: 22,   // ~1.1pt tracking
+        })],
+        spacing: { before: isFirst ? 160 : 180, after: 80 },
+        border: { bottom: { color: ACCENT, style: BorderStyle.SINGLE, size: 4 } },
+    });
+}
+
+/** Job title on the left, dates right-aligned on the same line via a tab stop. */
+function entryHeader(title: string, dates: string | undefined, font: string): Paragraph {
+    const children = [new TextRun({ text: title, bold: true, font, size: SZ_ROLE, color: TEXT_DARK })];
+    if (dates) {
+        // Must be a real <w:tab/> element: a literal "\t" inside the run text is
+        // not a tab to Word, and the date would butt against the job title.
+        children.push(new TextRun({ children: [new Tab(), dates], font, size: SZ_DATES, color: MUTED }));
+    }
+    return new Paragraph({
+        children,
+        tabStops: [{ type: TabStopType.RIGHT, position: RESUME_CONTENT_WIDTH }],
+        spacing: { before: 100, after: 20 },
+    });
+}
+
+/** The italic line under a title: employer, or "Part-time, Melbourne". */
+function subtitleLine(text: string, font: string): Paragraph {
+    return new Paragraph({
+        children: [new TextRun({ text, italics: true, font, size: SZ_BODY, color: MUTED })],
+        spacing: { before: 0, after: 60 },
+    });
+}
+
+function bulletLine(text: string, font: string): Paragraph {
+    return new Paragraph({
+        children: parseInline(text, font, SZ_BODY),
+        bullet: { level: 0 },
+        spacing: { before: 0, after: 40, line: LINE_BODY, lineRule: 'auto' as any },
+        indent: { left: 240, hanging: 120 },
+    });
+}
+
+function bodyLine(text: string, font: string, after = 120): Paragraph {
+    return new Paragraph({
+        children: parseInline(text, font, SZ_BODY),
+        spacing: { before: 0, after, line: LINE_BODY, lineRule: 'auto' as any },
+    });
+}
+
+function entryBlock(item: ResumeItem, font: string): Paragraph[] {
+    const out: Paragraph[] = [entryHeader(item.title ?? '', item.dates, font)];
+    if (item.organization) out.push(subtitleLine(item.organization, font));
+    if (item.descriptor) out.push(subtitleLine(item.descriptor, font));
+    for (const bullet of item.bullets ?? []) out.push(bulletLine(bullet, font));
+    for (const note of item.notes ?? []) out.push(bodyLine(note, font));
+    return out;
+}
+
+function buildResumeParagraphs(markdown: string, font: string): Paragraph[] {
+    const sections = parseResume(markdown);
+    const out: Paragraph[] = [];
+    let seenHeading = false;
+
+    for (const section of sections) {
+        if (section.type === 'header') {
+            const { name, headline, contactParts } = parseResumeHeader(section);
+            if (name) {
+                out.push(new Paragraph({
+                    children: [new TextRun({ text: name, bold: true, font: SERIF, size: SZ_NAME, color: TEXT_DARK })],
+                    spacing: { before: 0, after: 40, line: 240, lineRule: 'auto' as any },
+                }));
+            }
+            if (headline) {
+                out.push(new Paragraph({
+                    children: [new TextRun({ text: headline, bold: true, font, size: SZ_HEADLINE, color: ACCENT })],
+                    spacing: { before: 0, after: 120 },
+                }));
+            }
+            if (contactParts.length) {
+                out.push(new Paragraph({
+                    children: [new TextRun({ text: contactParts.join('  |  '), font, size: SZ_CONTACT, color: MUTED })],
+                    spacing: { before: 0, after: 200 },
+                }));
+            }
+            continue;
+        }
+
+        out.push(sectionHeading(section.title, font, !seenHeading));
+        seenHeading = true;
+
+        for (const item of section.content) {
+            switch (item.type) {
+                case 'skill':
+                    out.push(new Paragraph({
+                        children: [
+                            new TextRun({ text: `${item.label}:  `, bold: true, font, size: SZ_SECTION, color: TEXT_DARK }),
+                            ...parseInline(item.values ?? '', font, SZ_BODY),
+                        ],
+                        spacing: { before: 0, after: 60, line: LINE_BODY, lineRule: 'auto' as any },
+                    }));
+                    break;
+
+                case 'role':
+                case 'project':
+                case 'degree':
+                    out.push(...entryBlock(item, font));
+                    break;
+
+                case 'cert':
+                    out.push(bulletLine(item.title ?? '', font));
+                    break;
+
+                default:
+                    if (item.text) {
+                        out.push(section.type === 'referees'
+                            ? new Paragraph({
+                                children: [new TextRun({ text: item.text, italics: true, font, size: SZ_BODY, color: MUTED })],
+                                spacing: { before: 0, after: 60 },
+                            })
+                            : bodyLine(item.text, font));
+                    }
+                    break;
+            }
+        }
+    }
+
+    return out;
+}
+
 function sanitizeForExport(raw: string): string {
     // 1. Force section headers onto their own line. Some LLM outputs glue
     //    '## Section' onto the end of a paragraph; without this, parseLine()
@@ -284,10 +462,15 @@ export async function exportDocx(
     content = sanitizeForExport(content);
     const font = FONTS[docType];
 
-    // Page margins: APS = 25mm all sides; default = 20mm sides, 25mm top/bottom
+    const isResume = docType === 'resume';
+
+    // Page margins: APS = 25mm all sides; resume matches the PDF design system
+    // (20mm sides, 48pt top/bottom); everything else keeps the old defaults.
     const marginInches = docType === 'selection-criteria'
         ? { top: 1440, right: 1440, bottom: 1440, left: 1440 }   // ~25mm in twips
-        : { top: 1440, right: 1152, bottom: 1440, left: 1152 };   // 25mm top/bottom, 20mm sides
+        : isResume
+            ? { top: RESUME_MARGIN_Y, right: RESUME_MARGIN_X, bottom: RESUME_MARGIN_Y, left: RESUME_MARGIN_X }
+            : { top: 1440, right: 1152, bottom: 1440, left: 1152 };   // 25mm top/bottom, 20mm sides
 
     const docTypeLabel: Record<DocType, string> = {
         'resume': 'Resume',
@@ -302,14 +485,17 @@ export async function exportDocx(
         styles: {
             default: {
                 document: {
-                    run: { font, size: FONT_SIZES[docType] },
-                    paragraph: { spacing: { line: 276, lineRule: 'auto' as any } },
+                    run: { font, size: isResume ? SZ_BODY : FONT_SIZES[docType] },
+                    // The resume sets line height per paragraph; a 1.15 document
+                    // default here would stack on top of it and blow the page count.
+                    paragraph: { spacing: { line: isResume ? 240 : 276, lineRule: 'auto' as any } },
                 },
             },
         },
         sections: [{
             properties: {
                 page: {
+                    size: { width: 11906, height: 16838 },   // A4, stated so it never falls back to Letter
                     margin: marginInches,
                 },
             },
@@ -328,7 +514,9 @@ export async function exportDocx(
                     ],
                 }),
             } : undefined,
-            footers: {
+            // No page-number footer on a resume: the signed-off template has
+            // none, and on a two-page resume it reads as report furniture.
+            footers: isResume ? undefined : {
                 default: new Footer({
                     children: [
                         new Paragraph({
@@ -344,9 +532,12 @@ export async function exportDocx(
                     ],
                 }),
             },
-            children: showSetupNotice
-                ? [...buildSetupNotice(font), ...buildParagraphs(content, docType)]
-                : buildParagraphs(content, docType),
+            children: (() => {
+                const body = isResume
+                    ? buildResumeParagraphs(content, font)
+                    : buildParagraphs(content, docType);
+                return showSetupNotice ? [...buildSetupNotice(font), ...body] : body;
+            })(),
         }],
     });
 

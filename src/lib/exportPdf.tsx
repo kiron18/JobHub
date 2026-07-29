@@ -20,6 +20,9 @@ import fileSaverModule from 'file-saver';
 const saveAs: (blob: Blob, filename?: string) => void =
     (fileSaverModule as any).saveAs ?? (fileSaverModule as any);
 
+import { parseResume, parseResumeHeader } from './resumeStructure';
+import type { ResumeSection, ResumeItem } from './resumeStructure';
+
 export type DocType =
     | 'resume'
     | 'cover-letter'
@@ -237,244 +240,10 @@ const styles = StyleSheet.create({
 // Resume Content Parser
 // -------------------------------------------------------------------
 
-interface ResumeSection {
-    type: 'header' | 'summary' | 'experience' | 'education' | 'skills' | 'projects' | 'publications' | 'certifications' | 'languages' | 'referees' | 'other';
-    title: string;
-    content: ResumeItem[];
-}
-
-interface ResumeItem {
-    type: 'role' | 'degree' | 'project' | 'publication' | 'cert' | 'language' | 'skill' | 'text';
-    title?: string;
-    organization?: string;
-    descriptor?: string;
-    dates?: string;
-    bullets?: string[];
-    /**
-     * Free-standing lines that appear *after* an entry's bullets have started.
-     * The renderer only ever emits an entry's metadata (dates, location, tech
-     * stack) before its bullets, so anything arriving afterwards is body copy —
-     * usually a line the user typed or emphasised themselves. Keeping it apart
-     * from `descriptor` stops it being glued onto the company line, where it
-     * would render as an italic subtitle under the job title instead of as the
-     * paragraph the on-screen preview showed them.
-     */
-    notes?: string[];
-    text?: string;
-    label?: string;
-    values?: string;
-}
-
-/**
- * Parse resume markdown into structured sections
- * (exported for render tests)
- */
-export function parseResume(markdown: string): ResumeSection[] {
-    const lines = markdown.split('\n');
-    const sections: ResumeSection[] = [];
-    let currentSection: ResumeSection | null = null;
-    let currentItem: ResumeItem | null = null;
-    let inHeader = true;
-    let headerLines: string[] = [];
-
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
-
-        // Parse header (name, headline, contact) — the header spans everything
-        // up to the first "## " section, with blank lines in between.
-        if (inHeader) {
-            if (line.startsWith('## ')) {
-                inHeader = false;
-                sections.push({
-                    type: 'header',
-                    title: '',
-                    content: [{ type: 'text', text: headerLines.join('\n') }],
-                });
-                // fall through to the section-header handling below
-            } else {
-                if (line.startsWith('# ')) {
-                    headerLines.push(line);
-                } else if (line.startsWith('*') && line.endsWith('*') && !line.startsWith('**')) {
-                    headerLines.push(line);
-                } else if (line.includes('|')) {
-                    headerLines.push(line);
-                }
-                continue;
-            }
-        }
-
-        // Section headers
-        if (line.startsWith('## ')) {
-            if (currentSection) {
-                if (currentItem) {
-                    currentSection.content.push(currentItem);
-                    currentItem = null;
-                }
-                sections.push(currentSection);
-            }
-            const title = line.slice(3).trim();
-            currentSection = {
-                type: classifySection(title),
-                title,
-                content: [],
-            };
-            continue;
-        }
-
-        // Role/project entries (### Role | Company)
-        if (line.startsWith('### ')) {
-            if (currentItem && currentSection) {
-                currentSection.content.push(currentItem);
-            }
-            const roleMatch = line.slice(4).match(/^(.+?)\s*\|\s*(.+)$/);
-            if (roleMatch) {
-                currentItem = {
-                    type: currentSection?.type === 'projects' ? 'project' : 'role',
-                    title: roleMatch[1].trim(),
-                    organization: roleMatch[2].trim(),
-                    bullets: [],
-                };
-            } else {
-                currentItem = {
-                    type: 'role',
-                    title: line.slice(4).trim(),
-                    bullets: [],
-                };
-            }
-            continue;
-        }
-
-        // Date lines (*Mmm YYYY - Mmm YYYY*, *2023*, *2024 - 2025*) and italic
-        // descriptor lines under an entry (tech stack, company blurb)
-        if (line.startsWith('*') && line.endsWith('*') && !line.startsWith('**') && currentItem) {
-            // Metadata only ever precedes the bullets. Once bullets have begun,
-            // an italicised line is something the user wrote or emphasised, and
-            // must not be absorbed into the entry's company line.
-            if (currentItem.bullets?.length) {
-                (currentItem.notes ??= []).push(line);
-                continue;
-            }
-            const inner = line.replace(/^\*+|\*+$/g, '').trim();
-            if (/\d{4}/.test(inner) && !currentItem.dates) {
-                currentItem.dates = inner;
-            } else if (inner) {
-                currentItem.descriptor = currentItem.descriptor ? `${currentItem.descriptor} ${inner}` : inner;
-            }
-            continue;
-        }
-
-        // Bullets
-        if (line.startsWith('- ') && currentItem) {
-            currentItem.bullets?.push(line.slice(2).trim());
-            continue;
-        }
-
-        // Education entries (**Degree** · Year)
-        if (line.startsWith('**') && line.includes('**') && currentSection?.type === 'education') {
-            if (currentItem && currentSection) {
-                currentSection.content.push(currentItem);
-            }
-            const degreeMatch = line.match(/\*\*(.+?)\*\*\s*·\s*(.+)/);
-            if (degreeMatch) {
-                currentItem = {
-                    type: 'degree',
-                    title: degreeMatch[1].trim(),
-                    dates: degreeMatch[2].trim(),
-                };
-            }
-            continue;
-        }
-
-        // Institution line (follows degree)
-        if (currentItem?.type === 'degree' && !currentItem.organization && line && !line.startsWith('**')) {
-            currentItem.organization = line.trim();
-            continue;
-        }
-
-        // Skills lines (**Label:** values)
-        if (line.startsWith('**') && line.includes(':**') && currentSection?.type === 'skills') {
-            const skillMatch = line.match(/\*\*(.+?):\*\*\s*(.+)/);
-            if (skillMatch) {
-                currentSection.content.push({
-                    type: 'skill',
-                    label: skillMatch[1].trim(),
-                    values: skillMatch[2].trim(),
-                });
-            }
-            continue;
-        }
-
-        // Publication lines
-        if (currentSection?.type === 'publications' && line && !line.startsWith('##')) {
-            currentSection.content.push({ type: 'publication', text: line });
-            continue;
-        }
-
-        // Certification lines (bold or plain bullets)
-        if (currentSection?.type === 'certifications' && line.startsWith('- ')) {
-            const certMatch = line.match(/- \*\*(.+?)\*\*/);
-            currentSection.content.push({
-                type: 'cert',
-                title: certMatch ? certMatch[1].trim() : line.slice(2).trim(),
-            });
-            continue;
-        }
-
-        // Language lines
-        if (currentSection?.type === 'languages' && line) {
-            currentSection.content.push({ type: 'language', text: line });
-            continue;
-        }
-
-        // Referees
-        if (currentSection?.type === 'referees' && line) {
-            currentSection.content.push({ type: 'text', text: line });
-            continue;
-        }
-
-        // Plain descriptor lines under a role/project (company blurb, tech stack).
-        // Same rule as above: descriptors precede bullets, body copy follows them.
-        if (line && currentItem && (currentItem.type === 'role' || currentItem.type === 'project')) {
-            if (currentItem.bullets?.length) {
-                (currentItem.notes ??= []).push(line);
-            } else {
-                currentItem.descriptor = currentItem.descriptor ? `${currentItem.descriptor} ${line}` : line;
-            }
-            continue;
-        }
-
-        // Generic text for other sections
-        if (line && currentSection && !currentItem) {
-            if (currentSection.type === 'summary') {
-                currentSection.content.push({ type: 'text', text: line });
-            }
-        }
-    }
-
-    // Push final section/item
-    if (currentItem && currentSection) {
-        currentSection.content.push(currentItem);
-    }
-    if (currentSection) {
-        sections.push(currentSection);
-    }
-
-    return sections;
-}
-
-function classifySection(title: string): ResumeSection['type'] {
-    const lower = title.toLowerCase();
-    if (lower.includes('summary') || lower.includes('profile')) return 'summary';
-    if (lower.includes('experience') || lower.includes('work')) return 'experience';
-    if (lower.includes('education')) return 'education';
-    if (lower.includes('skill')) return 'skills';
-    if (lower.includes('project')) return 'projects';
-    if (lower.includes('publication')) return 'publications';
-    if (lower.includes('certification')) return 'certifications';
-    if (lower.includes('language')) return 'languages';
-    if (lower.includes('referee')) return 'referees';
-    return 'other';
-}
+// The parser lives in resumeStructure.ts so the Word exporter renders the
+// exact same structure. Re-exported here because tests and older call sites
+// import `parseResume` from this module.
+export { parseResume };
 
 // -------------------------------------------------------------------
 // Inline emphasis
@@ -533,25 +302,11 @@ export function renderInline(text: string): React.ReactNode {
 // -------------------------------------------------------------------
 
 function HeaderSection({ content }: { content: ResumeItem[] }) {
-    const text = content[0]?.text || '';
-    const lines = text.split('\n');
-
-    let name = '';
-    let headline = '';
-    let contact = '';
-
-    for (const line of lines) {
-        if (line.startsWith('# ')) {
-            name = line.slice(2).trim();
-        } else if (line.startsWith('*') && line.endsWith('*') && !line.startsWith('**')) {
-            headline = line.slice(1, -1).trim();
-        } else if (line.includes('|')) {
-            contact = line;
-        }
-    }
-
-    // Parse contact line into styled segments
-    const contactParts = contact.split('|').map(p => p.trim()).filter(Boolean);
+    const { name, headline, contactParts } = parseResumeHeader({
+        type: 'header',
+        title: '',
+        content,
+    });
 
     return (
         <View>

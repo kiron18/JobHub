@@ -69,8 +69,8 @@ export function BaselineResumeBanner({ isDark }: Props) {
     setDownloading(true);
     try {
       const { data } = await api.get(`/documents/${documentId}`);
-      const { exportDocx } = await import('../lib/exportDocx');
-      await exportDocx(data.content, 'resume', '');
+      const { exportPdf } = await import('../lib/exportPdf');
+      await exportPdf(data.content, 'resume', '');
       dismiss();
       setShowModal(true);
     } catch {
