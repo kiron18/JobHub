@@ -146,6 +146,42 @@ export function capBoldEmphasis(descriptions: string[], maxTotal = MAX_BOLD_SPAN
 }
 
 /**
+ * Emphasise the figures in a finished resume markdown document.
+ *
+ * This is the version that runs on the live generation path, where the model
+ * returns the whole document as markdown rather than a list of bullet strings.
+ *
+ * Only "- " bullet lines are touched. Headings, the summary paragraph, dates and
+ * the "**Label:**" rows in education and skills are left exactly as they are —
+ * those already carry markdown of their own, and boldFirstMetric declines any
+ * line that does. Because emphasis is only ever added inside a bullet's text and
+ * never at the start of a line, it cannot change how the exporters classify a
+ * line, which is the failure mode that would scramble someone's layout.
+ */
+export function boldMetricsInMarkdown(markdown: string, maxTotal = MAX_BOLD_SPANS): string {
+    let remaining = maxTotal - countBoldSpansInBullets(markdown);
+    if (remaining <= 0) return markdown;
+
+    return markdown
+        .split('\n')
+        .map((line) => {
+            if (remaining <= 0 || !line.startsWith('- ')) return line;
+            const { line: next, bolded } = boldFirstMetric(line);
+            if (bolded) remaining--;
+            return next;
+        })
+        .join('\n');
+}
+
+/** Bold spans already present in bullet lines — the budget starts from these. */
+function countBoldSpansInBullets(markdown: string): number {
+    return markdown
+        .split('\n')
+        .filter((line) => line.startsWith('- '))
+        .reduce((sum, line) => sum + countBoldSpans(line), 0);
+}
+
+/**
  * Emphasise the figures across a resume: honour whatever the model bolded,
  * hold it to the ceiling, then fill the remaining budget by bolding the figure
  * in bullets that still have none.

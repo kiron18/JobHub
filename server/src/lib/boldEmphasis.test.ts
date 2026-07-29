@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
     applyBoldEmphasis,
     boldFirstMetric,
+    boldMetricsInMarkdown,
     capBoldEmphasis,
     capBoldInLine,
     countBoldSpans,
@@ -184,5 +185,85 @@ describe('applyBoldEmphasis', () => {
     it('never bolds more than once in a single bullet', () => {
         const [out] = applyBoldEmphasis(['Grew revenue 12% while cutting churn 3pts and saving $40k']);
         expect(countBoldSpans(out)).toBe(1);
+    });
+});
+
+describe('boldMetricsInMarkdown', () => {
+    // Mirrors what the live generation path actually returns: a whole markdown
+    // document written by the model, not a list of bullet strings.
+    const RESUME = `# Priya Nair
+
+*Business Analyst*
+
+## Professional Summary
+
+Business analyst with 6 years across financial services and logistics.
+
+## Work Experience
+
+### Business Analyst | Meridian Logistics
+*Feb 2023 - Present*
+
+- Cut invoice processing time by 40% across three teams
+- Documented 45 process flows ahead of a migration
+- Led requirements gathering for a warehouse replacement
+
+## Education
+
+**Bachelor of Commerce**  ·  2020
+University of Melbourne
+
+## Skills & Competencies
+
+**Technical Skills:** SQL • Power BI
+
+## Certifications
+
+- **Certified Business Analysis Professional** - IIBA  ·  2024
+`;
+
+    const out = boldMetricsInMarkdown(RESUME);
+
+    it('bolds the figure in each experience bullet', () => {
+        expect(out).toContain('- Cut invoice processing time by **40%** across three teams');
+        expect(out).toContain('- Documented **45** process flows ahead of a migration');
+    });
+
+    it('leaves a bullet with no figure alone', () => {
+        expect(out).toContain('- Led requirements gathering for a warehouse replacement');
+    });
+
+    it('never touches the summary paragraph', () => {
+        // "6 years" sits in prose, not a bullet — emphasis there reads as shouting.
+        expect(out).toContain('Business analyst with 6 years across financial services');
+    });
+
+    it('leaves headings, dates and label rows exactly as they were', () => {
+        expect(out).toContain('### Business Analyst | Meridian Logistics');
+        expect(out).toContain('*Feb 2023 - Present*');
+        expect(out).toContain('**Bachelor of Commerce**  ·  2020');
+        expect(out).toContain('**Technical Skills:** SQL • Power BI');
+    });
+
+    it('does not re-emphasise a certification line that already carries bold', () => {
+        expect(out).toContain('- **Certified Business Analysis Professional** - IIBA  ·  2024');
+    });
+
+    it('changes nothing except adding markers', () => {
+        expect(unwrapBold(out)).toBe(unwrapBold(RESUME));
+    });
+
+    it('holds the document to the ceiling', () => {
+        const many = ['## Work Experience', '']
+            .concat(Array.from({ length: 20 }, (_, i) => `- Improved result ${i} by ${i + 1}%`))
+            .join('\n');
+        expect(countBoldSpans(boldMetricsInMarkdown(many))).toBe(MAX_BOLD_SPANS);
+    });
+
+    it('counts emphasis the model already added towards the ceiling', () => {
+        const already = ['- Grew revenue by **12%**']
+            .concat(Array.from({ length: 20 }, (_, i) => `- Improved result ${i} by ${i + 1}%`))
+            .join('\n');
+        expect(countBoldSpans(boldMetricsInMarkdown(already))).toBe(MAX_BOLD_SPANS);
     });
 });
