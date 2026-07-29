@@ -1,0 +1,81 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`parseResume — structural baseline > parses a resume containing hazardous user-applied emphasis 1`] = `
+"[header] (header)
+  - type=text text="# PRIYA NAIR\\n*Business Analyst*\\npriya.nair@example.com | 0412 345 678 | Sydney, NSW"
+[summary] Professional Summary
+  - type=text text="**This entire summary line has been bolded by the user.**"
+  - type=text text="*This entire summary line has been italicised by the user.*"
+[experience] Work Experience
+  - type=role title="Business Analyst" org="Meridian Logistics" dates="Feb 2023 - Present · Sydney"
+      • "**This entire bullet has been bolded by the user**"
+      • "**40%** reduction in invoice processing time after redesigning approvals"
+      • "Cut invoice processing time by **40%** across three teams"
+      • "*This entire bullet has been italicised by the user*"
+      ¶ "*The user italicised this whole standalone line under a role.*"
+      ¶ "**Key result:** the user bolded a label at the start of a standalone line under a role."
+  - type=role title="Junior Analyst" org="Corebank Services" dates="Jul 2020 - Jan 2023 · Melbourne"
+      • "Documented 45 process flows ahead of a core banking migration"
+[education] Education
+  - type=degree title="Bachelor of Commerce - Information Systems" org="University of Melbourne - Melbourne" dates="2020"
+[skills] Skills & Competencies
+  - type=skill label="Technical Skills" values="SQL • Power BI • Jira"
+[referees] Referees
+  - type=text text="Available upon request.""
+`;
+
+exports[`parseResume — structural baseline > parses a resume with inline bold on metrics 1`] = `
+"[header] (header)
+  - type=text text="# PRIYA NAIR\\n*Business Analyst*\\npriya.nair@example.com | 0412 345 678 | linkedin.com/in/priyanair | Sydney, NSW"
+[summary] Professional Summary
+  - type=text text="Business analyst with six years across financial services and logistics, most recently owning requirements and stakeholder alignment for a payments migration. Comfortable moving between process mapping, data analysis and steering-group reporting."
+[experience] Work Experience
+  - type=role title="Business Analyst" org="Meridian Logistics" dates="Feb 2023 - Present · Sydney"
+      • "Cut invoice processing time by **40%** by redesigning the approvals workflow across three teams"
+      • "Led requirements gathering for a warehouse management replacement covering **12 sites**"
+      • "Built a reconciliation dashboard that surfaced **1.2M in unbilled freight charges**"
+  - type=role title="Junior Analyst" org="Corebank Services" dates="Jul 2020 - Jan 2023 · Melbourne"
+      • "Documented **45 process flows** ahead of a core banking migration"
+      • "Supported UAT across two release cycles with a *defect reopen rate under 5%*"
+[education] Education
+  - type=degree title="Bachelor of Commerce - Information Systems" org="University of Melbourne - Melbourne" dates="2020"
+[skills] Skills & Competencies
+  - type=skill label="Technical Skills" values="SQL • Power BI • Jira • Confluence • Visio"
+  - type=skill label="Industry Knowledge" values="Payments • Freight and logistics • Regulatory reporting"
+  - type=skill label="Soft Skills" values="Stakeholder management • Facilitation • Written communication"
+[certifications] Certifications & Professional Development
+  - type=cert title="Certified Business Analysis Professional"
+  - type=cert title="Agile Fundamentals"
+[languages] Languages
+  - type=language text="English (Native) • Hindi (Fluent) • Malayalam (Conversational)"
+[referees] Referees
+  - type=text text="Available upon request.""
+`;
+
+exports[`parseResume — structural baseline > parses a standard generated resume 1`] = `
+"[header] (header)
+  - type=text text="# PRIYA NAIR\\n*Business Analyst*\\npriya.nair@example.com | 0412 345 678 | linkedin.com/in/priyanair | Sydney, NSW"
+[summary] Professional Summary
+  - type=text text="Business analyst with six years across financial services and logistics, most recently owning requirements and stakeholder alignment for a payments migration. Comfortable moving between process mapping, data analysis and steering-group reporting."
+[experience] Work Experience
+  - type=role title="Business Analyst" org="Meridian Logistics" dates="Feb 2023 - Present · Sydney"
+      • "Cut invoice processing time by 40% by redesigning the approvals workflow across three teams"
+      • "Led requirements gathering for a warehouse management replacement covering 12 sites"
+      • "Built a reconciliation dashboard that surfaced 1.2M in unbilled freight charges"
+  - type=role title="Junior Analyst" org="Corebank Services" dates="Jul 2020 - Jan 2023 · Melbourne"
+      • "Documented 45 process flows ahead of a core banking migration"
+      • "Supported UAT across two release cycles with a defect reopen rate under 5%"
+[education] Education
+  - type=degree title="Bachelor of Commerce - Information Systems" org="University of Melbourne - Melbourne" dates="2020"
+[skills] Skills & Competencies
+  - type=skill label="Technical Skills" values="SQL • Power BI • Jira • Confluence • Visio"
+  - type=skill label="Industry Knowledge" values="Payments • Freight and logistics • Regulatory reporting"
+  - type=skill label="Soft Skills" values="Stakeholder management • Facilitation • Written communication"
+[certifications] Certifications & Professional Development
+  - type=cert title="Certified Business Analysis Professional"
+  - type=cert title="Agile Fundamentals"
+[languages] Languages
+  - type=language text="English (Native) • Hindi (Fluent) • Malayalam (Conversational)"
+[referees] Referees
+  - type=text text="Available upon request.""
+`;

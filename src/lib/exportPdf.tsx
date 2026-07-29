@@ -250,6 +250,16 @@ interface ResumeItem {
     descriptor?: string;
     dates?: string;
     bullets?: string[];
+    /**
+     * Free-standing lines that appear *after* an entry's bullets have started.
+     * The renderer only ever emits an entry's metadata (dates, location, tech
+     * stack) before its bullets, so anything arriving afterwards is body copy —
+     * usually a line the user typed or emphasised themselves. Keeping it apart
+     * from `descriptor` stops it being glued onto the company line, where it
+     * would render as an italic subtitle under the job title instead of as the
+     * paragraph the on-screen preview showed them.
+     */
+    notes?: string[];
     text?: string;
     label?: string;
     values?: string;
@@ -337,6 +347,13 @@ export function parseResume(markdown: string): ResumeSection[] {
         // Date lines (*Mmm YYYY - Mmm YYYY*, *2023*, *2024 - 2025*) and italic
         // descriptor lines under an entry (tech stack, company blurb)
         if (line.startsWith('*') && line.endsWith('*') && !line.startsWith('**') && currentItem) {
+            // Metadata only ever precedes the bullets. Once bullets have begun,
+            // an italicised line is something the user wrote or emphasised, and
+            // must not be absorbed into the entry's company line.
+            if (currentItem.bullets?.length) {
+                (currentItem.notes ??= []).push(line);
+                continue;
+            }
             const inner = line.replace(/^\*+|\*+$/g, '').trim();
             if (/\d{4}/.test(inner) && !currentItem.dates) {
                 currentItem.dates = inner;
@@ -415,9 +432,14 @@ export function parseResume(markdown: string): ResumeSection[] {
             continue;
         }
 
-        // Plain descriptor lines under a role/project (company blurb, tech stack)
+        // Plain descriptor lines under a role/project (company blurb, tech stack).
+        // Same rule as above: descriptors precede bullets, body copy follows them.
         if (line && currentItem && (currentItem.type === 'role' || currentItem.type === 'project')) {
-            currentItem.descriptor = currentItem.descriptor ? `${currentItem.descriptor} ${line}` : line;
+            if (currentItem.bullets?.length) {
+                (currentItem.notes ??= []).push(line);
+            } else {
+                currentItem.descriptor = currentItem.descriptor ? `${currentItem.descriptor} ${line}` : line;
+            }
             continue;
         }
 
@@ -452,6 +474,58 @@ function classifySection(title: string): ResumeSection['type'] {
     if (lower.includes('language')) return 'languages';
     if (lower.includes('referee')) return 'referees';
     return 'other';
+}
+
+// -------------------------------------------------------------------
+// Inline emphasis
+// -------------------------------------------------------------------
+
+const inlineStyles = StyleSheet.create({
+    bold: { fontWeight: 'bold' },
+    italic: { fontStyle: 'italic' },
+});
+
+/**
+ * Render inline markdown emphasis (**bold**, *italic*) as nested <Text> runs.
+ *
+ * Without this, `**40%**` reached the page as literal asterisks — the markdown
+ * survived the parser but nothing ever turned it into formatting. The regex is
+ * deliberately identical to `parseInline` in exportDocx.ts so a resume looks the
+ * same whichever format the user downloads.
+ *
+ * Only ever called on body copy, which is all set in SourceSans (Regular, Bold
+ * and Italic are registered). The one serif style — the candidate's name — is
+ * left alone: SourceSerif ships without an italic face here, and asking
+ * react-pdf for a face it has not been given throws at render time.
+ *
+ * Text with no emphasis is returned untouched, including any stray unmatched
+ * asterisk, so nothing a user typed can silently vanish from their resume.
+ */
+export function renderInline(text: string): React.ReactNode {
+    if (!text || !text.includes('*')) return text;
+
+    const nodes: React.ReactNode[] = [];
+    // Emphasised spans must open on a non-asterisk. Without that guard a run of
+    // bare asterisks ("****") parses as an italic span wrapping an asterisk and
+    // one of the user's characters disappears from the page.
+    const regex = /(\*\*([^*].*?)\*\*|\*([^*].*?)\*|([^*]+))/g;
+    let match: RegExpExecArray | null;
+    let key = 0;
+    let emphasised = false;
+
+    while ((match = regex.exec(text)) !== null) {
+        if (match[2] !== undefined) {
+            nodes.push(<Text key={key++} style={inlineStyles.bold}>{match[2]}</Text>);
+            emphasised = true;
+        } else if (match[3] !== undefined) {
+            nodes.push(<Text key={key++} style={inlineStyles.italic}>{match[3]}</Text>);
+            emphasised = true;
+        } else if (match[4] !== undefined) {
+            nodes.push(match[4]);
+        }
+    }
+
+    return emphasised ? nodes : text;
 }
 
 // -------------------------------------------------------------------
@@ -501,7 +575,7 @@ function HeaderSection({ content }: { content: ResumeItem[] }) {
 
 function SummarySection({ content }: { content: ResumeItem[] }) {
     const text = content.map(c => c.text).filter(Boolean).join(' ');
-    return <Text style={styles.summary}>{text}</Text>;
+    return <Text style={styles.summary}>{renderInline(text)}</Text>;
 }
 
 function ExperienceSection({ content, isFirst }: { content: ResumeItem[]; isFirst: boolean }) {
@@ -521,7 +595,10 @@ function ExperienceSection({ content, isFirst }: { content: ResumeItem[]; isFirs
                         <Text style={styles.companyLine}>{item.descriptor}</Text>
                     )}
                     {item.bullets?.map((bullet, j) => (
-                        <Text key={j} style={styles.bullet}>•  {bullet}</Text>
+                        <Text key={j} style={styles.bullet}>•  {renderInline(bullet)}</Text>
+                    ))}
+                    {item.notes?.map((note, j) => (
+                        <Text key={`n${j}`} style={styles.paragraph}>{renderInline(note)}</Text>
                     ))}
                 </View>
             ))}
@@ -556,7 +633,7 @@ function SkillsSection({ content }: { content: ResumeItem[] }) {
                 item.type === 'skill' && (
                     <View key={i} style={styles.skillRow}>
                         <Text style={styles.skillLabel}>{item.label}:</Text>
-                        <Text style={styles.skillValues}>{item.values}</Text>
+                        <Text style={styles.skillValues}>{renderInline(item.values ?? '')}</Text>
                     </View>
                 )
             ))}
@@ -581,7 +658,10 @@ function ProjectsSection({ content }: { content: ResumeItem[] }) {
                         <Text style={styles.companyLine}>{item.descriptor}</Text>
                     )}
                     {item.bullets?.map((bullet, j) => (
-                        <Text key={j} style={styles.bullet}>•  {bullet}</Text>
+                        <Text key={j} style={styles.bullet}>•  {renderInline(bullet)}</Text>
+                    ))}
+                    {item.notes?.map((note, j) => (
+                        <Text key={`n${j}`} style={styles.paragraph}>{renderInline(note)}</Text>
                     ))}
                 </View>
             ))}
@@ -594,7 +674,7 @@ function PublicationsSection({ content }: { content: ResumeItem[] }) {
         <View>
             <Text minPresenceAhead={40} style={styles.sectionHeader}>Publications</Text>
             {content.map((item, i) => (
-                <Text key={i} style={styles.paragraph}>{item.text}</Text>
+                <Text key={i} style={styles.paragraph}>{renderInline(item.text ?? '')}</Text>
             ))}
         </View>
     );
@@ -605,7 +685,7 @@ function CertificationsSection({ content }: { content: ResumeItem[] }) {
         <View>
             <Text minPresenceAhead={40} style={styles.sectionHeader}>Certifications</Text>
             {content.map((item, i) => (
-                <Text key={i} style={styles.bullet}>•  {item.title}</Text>
+                <Text key={i} style={styles.bullet}>•  {renderInline(item.title ?? '')}</Text>
             ))}
         </View>
     );
@@ -616,7 +696,7 @@ function LanguagesSection({ content }: { content: ResumeItem[] }) {
         <View>
             <Text minPresenceAhead={40} style={styles.sectionHeader}>Languages</Text>
             {content.map((item, i) => (
-                <Text key={i} style={styles.paragraph}>{item.text}</Text>
+                <Text key={i} style={styles.paragraph}>{renderInline(item.text ?? '')}</Text>
             ))}
         </View>
     );
@@ -637,7 +717,7 @@ function GenericSection({ title, content }: { title: string; content: ResumeItem
         <View>
             <Text minPresenceAhead={40} style={styles.sectionHeader}>{title}</Text>
             {content.map((item, i) => (
-                <Text key={i} style={styles.paragraph}>{item.text || item.title}</Text>
+                <Text key={i} style={styles.paragraph}>{renderInline(item.text || item.title || '')}</Text>
             ))}
         </View>
     );
@@ -784,7 +864,7 @@ function CoverLetterDocument({ content }: { content: string }) {
                 {date && <Text style={coverStyles.date}>{date}</Text>}
                 {salutation && <Text style={coverStyles.salutation}>{salutation}</Text>}
                 {bodyParagraphs.map((para, i) => (
-                    <Text key={i} style={coverStyles.paragraph}>{para}</Text>
+                    <Text key={i} style={coverStyles.paragraph}>{renderInline(para)}</Text>
                 ))}
                 <View style={coverStyles.signoff}>
                     {signoff.map((line, i) => (
