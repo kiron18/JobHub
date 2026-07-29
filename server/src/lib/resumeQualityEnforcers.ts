@@ -11,7 +11,7 @@ import {
   scrubBannedPhrases,
 } from './voiceEnforcer';
 import { tagAIRewrites } from './provenanceTagging';
-import { capBoldEmphasis, unwrapBold } from './boldEmphasis';
+import { applyBoldEmphasis, unwrapBold } from './boldEmphasis';
 
 import type { ResumeData } from './resumeData';
 
@@ -120,9 +120,11 @@ export function enforceResumeQuality(
     return desc;
   });
 
-  // Bold budget is spent across the whole resume in role order, so the cap has
-  // to be applied once the individual descriptions are final.
-  const capped = capBoldEmphasis(scrubbed.map((d) => d ?? ''));
+  // Emphasis is applied across the whole resume in role order, so it has to run
+  // once the individual descriptions are final. Whatever the model bolded is
+  // honoured and capped; the remaining budget then bolds the figure in bullets
+  // that still have none, which is what makes this independent of the model.
+  const capped = applyBoldEmphasis(scrubbed.map((d) => d ?? ''));
 
   const experience = data.experience.map((exp, i) => {
     // A role with no description stays exactly as it was — never turn a missing
