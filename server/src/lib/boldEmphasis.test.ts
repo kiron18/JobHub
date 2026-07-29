@@ -267,3 +267,44 @@ University of Melbourne
         expect(countBoldSpans(boldMetricsInMarkdown(already))).toBe(MAX_BOLD_SPANS);
     });
 });
+
+describe('boldMetricsInMarkdown — the two layers together', () => {
+    it('keeps the model\'s richer phrase rather than replacing it with the bare figure', () => {
+        // Claude picking the meaningful phrase is the reason for letting it try.
+        const md = '- Cut invoice processing time by **40% across three teams**';
+        expect(boldMetricsInMarkdown(md)).toBe(md);
+    });
+
+    it('fills in the bullets the model left plain', () => {
+        const md = [
+            '- Cut processing time by **40% across three teams**',
+            '- Documented 45 process flows ahead of a migration',
+        ].join('\n');
+        expect(boldMetricsInMarkdown(md)).toBe([
+            '- Cut processing time by **40% across three teams**',
+            '- Documented **45** process flows ahead of a migration',
+        ].join('\n'));
+    });
+
+    it('trims a model that bolded several things in one bullet', () => {
+        const md = '- Grew revenue **12%**, cut churn **3pts** and saved **$40k**';
+        const out = boldMetricsInMarkdown(md);
+        expect(countBoldSpans(out)).toBe(1);
+        expect(out).toBe('- Grew revenue **12%**, cut churn 3pts and saved $40k');
+    });
+
+    it('trims a model that bolded half the page', () => {
+        const md = Array.from({ length: 25 }, (_, i) => `- Improved result ${i} by **${i + 1}%**`).join('\n');
+        expect(countBoldSpans(boldMetricsInMarkdown(md))).toBe(MAX_BOLD_SPANS);
+    });
+
+    it('loses no words while trimming', () => {
+        const md = '- Grew revenue **12%**, cut churn **3pts** and saved **$40k**';
+        expect(unwrapBold(boldMetricsInMarkdown(md))).toBe(unwrapBold(md));
+    });
+
+    it('still refuses to touch structural lines the model may have bolded', () => {
+        const md = ['**Bachelor of Commerce**  ·  2020', '**Technical Skills:** SQL • Power BI'].join('\n');
+        expect(boldMetricsInMarkdown(md)).toBe(md);
+    });
+});
