@@ -308,7 +308,11 @@ const cleanBullets = (description?: string): string[] => {
   if (!description) return [];
   return description
     .split('\n')
-    .map(l => l.replace(/^\s*[-•*]\s*/, '').trim())
+    // Strip a leading bullet marker. An asterisk only counts as a marker when
+    // whitespace follows it ("* item"): otherwise a bullet that opens on an
+    // emphasised metric ("**40%** reduction…") loses one of its asterisks here
+    // and reaches the page as broken markdown.
+    .map(l => l.replace(/^\s*(?:[-•]\s*|\*\s+)/, '').trim())
     .filter(Boolean);
 };
 

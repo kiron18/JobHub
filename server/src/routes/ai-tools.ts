@@ -12,6 +12,7 @@ import { authenticate } from '../middleware/auth';
 import { analyzeRateLimit } from '../middleware/analyzeRateLimit';
 import { callLLM, callClaude } from '../services/llm';
 import { parseLLMJson } from '../utils/parseLLMResponse';
+import { buildApplicationOutreachPrompt, normaliseOutreachDraft } from '../services/prompts/applicationOutreach';
 
 const router = Router();
 router.use(authenticate, analyzeRateLimit);
@@ -265,6 +266,58 @@ Return ONLY valid JSON with 2-4 actions. If no actionable items exist, return { 
     } catch (err: any) {
         console.error('[Notes Actions] Error:', err.message);
         res.status(500).json({ error: 'Failed to extract actions.' });
+    }
+});
+
+/**
+ * POST /application-outreach
+ *
+ * Drafts the two messages a candidate sends to a human at the company just
+ * after applying: a LinkedIn connection note and a short email.
+ *
+ * Only the messages are generated. Who to approach and how to find them is
+ * fixed guidance rendered by the client — it does not vary by application, and
+ * a model paraphrasing it each time would only add cost and a chance of being
+ * wrong about which tools exist.
+ */
+router.post('/application-outreach', async (req: any, res: any) => {
+    try {
+        const userId = req.user.id;
+        const { jobTitle, company, jobDescription } = req.body as {
+            jobTitle?: string; company?: string; jobDescription?: string;
+        };
+
+        if (!jobTitle || !company) {
+            return res.status(400).json({ error: 'Job title and company required.' });
+        }
+
+        const profile = await prisma.candidateProfile.findUnique({
+            where: { userId },
+            select: {
+                name: true,
+                professionalSummary: true,
+                skills: true,
+                experience: {
+                    select: { role: true, company: true, description: true, isCurrent: true },
+                    take: 4,
+                },
+            },
+        });
+        if (!profile) return res.status(404).json({ error: 'Profile not found.' });
+
+        const prompt = buildApplicationOutreachPrompt(jobTitle, company, jobDescription, profile);
+        const raw = await callLLM(prompt, true);
+        const draft = normaliseOutreachDraft(parseLLMJson(raw), jobTitle, profile.name);
+
+        if (!draft) {
+            return res.status(500).json({ error: 'Outreach draft failed — unexpected LLM response.' });
+        }
+
+        return res.json(draft);
+
+    } catch (err: any) {
+        console.error('[Application Outreach] Error:', err.message);
+        res.status(500).json({ error: 'Failed to draft outreach.' });
     }
 });
 

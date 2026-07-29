@@ -15,7 +15,7 @@
  * as markdown via ReactMarkdown. Inline editing is out of scope for this
  * commit; users copy or download for now.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -37,7 +37,9 @@ import {
 } from 'lucide-react';
 import { DraftCritiquePanel, type CritiqueResult } from '../components/strategy/DraftCritiquePanel';
 import { ApplyDeepLinkButton } from '../components/strategy/ApplyDeepLinkButton';
+import { PostApplyOutreach } from '../components/strategy/PostApplyOutreach';
 import ReactMarkdown from 'react-markdown';
+import { toggleEmphasis, type EmphasisMarker } from '../lib/toggleEmphasis';
 import React from 'react';
 import { toast } from 'sonner';
 import api from '../lib/api';
@@ -623,6 +625,9 @@ function DocumentStep({
     const [editing, setEditing] = useState(false);
     const [confirmRegen, setConfirmRegen] = useState(false);
     const [editBuffer, setEditBuffer] = useState('');
+    const editorRef = useRef<HTMLTextAreaElement>(null);
+    // Where the caret should land once React has re-rendered the edited buffer.
+    const pendingSelection = useRef<[number, number] | null>(null);
     const [downloadFormat, setDownloadFormat] = useState<'docx' | 'pdf'>(() => {
         try {
             const stored = localStorage.getItem('jobhub_download_format');
@@ -904,6 +909,40 @@ function DocumentStep({
         }
     };
 
+    /**
+     * Bold / italic over the current selection. `toggleEmphasis` owns the rules
+     * about what may be marked — it keeps bullet and heading prefixes outside
+     * the markers, since a line emphasised end to end can be re-read as a date
+     * or a skills row when the document is exported.
+     *
+     * The caret is restored after React has re-rendered with the new buffer, so
+     * the marked text stays selected and pressing the button again undoes it.
+     */
+    const applyEmphasis = (marker: EmphasisMarker) => {
+        const textarea = editorRef.current;
+        if (!textarea) return;
+
+        const result = toggleEmphasis(
+            editBuffer,
+            textarea.selectionStart,
+            textarea.selectionEnd,
+            marker,
+        );
+        if (result.text === editBuffer) return;
+
+        pendingSelection.current = [result.selectionStart, result.selectionEnd];
+        setEditBuffer(result.text);
+    };
+
+    useLayoutEffect(() => {
+        const pending = pendingSelection.current;
+        const textarea = editorRef.current;
+        if (!pending || !textarea) return;
+        pendingSelection.current = null;
+        textarea.focus();
+        textarea.setSelectionRange(pending[0], pending[1]);
+    }, [editBuffer]);
+
     const exportType = stepId === 'cover-letter' ? 'cover-letter' : stepId === 'selection-criteria' ? 'selection-criteria' : 'resume';
 
     const setFormatPref = (next: 'docx' | 'pdf') => {
@@ -1128,6 +1167,53 @@ function DocumentStep({
                     </button>
                 )}
 
+                {/* Formatting controls — only while editing. `onMouseDown` is
+                    prevented so clicking a button never pulls focus out of the
+                    textarea, which would drop the user's selection before the
+                    toggle could act on it. */}
+                {editing && (
+                    <div style={{
+                        position: 'absolute',
+                        top: 10,
+                        right: 62,
+                        display: 'flex',
+                        gap: 4,
+                        zIndex: 1,
+                    }}>
+                        {([
+                            { marker: '**' as EmphasisMarker, label: 'B', title: 'Bold (Ctrl+B)', weight: 800, style: 'normal' as const },
+                            { marker: '*' as EmphasisMarker, label: 'I', title: 'Italic (Ctrl+I)', weight: 500, style: 'italic' as const },
+                        ]).map(({ marker, label, title, weight, style }) => (
+                            <button
+                                key={label}
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => applyEmphasis(marker)}
+                                title={title}
+                                aria-label={title}
+                                style={{
+                                    width: 24,
+                                    height: 24,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    background: 'transparent',
+                                    border: `1px solid ${warm.colors.borderWhisper}`,
+                                    borderRadius: 5,
+                                    color: warm.colors.textMuted,
+                                    fontSize: 12,
+                                    fontWeight: weight,
+                                    fontStyle: style,
+                                    lineHeight: 1,
+                                    cursor: 'pointer',
+                                    padding: 0,
+                                }}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                )}
+
                 {stepId === 'resume' && resumeTips.length > 0 && !editing && (
                     <button
                         onClick={() => setShowTips(t => !t)}
@@ -1156,9 +1242,17 @@ function DocumentStep({
                     <GenerationProgress docType={stepId === 'cover-letter' ? 'cover-letter' : stepId === 'selection-criteria' ? 'selection-criteria' : 'resume'} />
                 ) : editing ? (
                     <textarea
+                        ref={editorRef}
                         value={editBuffer}
                         onChange={(e) => setEditBuffer(e.target.value)}
                         onBlur={() => commitEdit()}
+                        onKeyDown={(e) => {
+                            if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+                            const key = e.key.toLowerCase();
+                            if (key !== 'b' && key !== 'i') return;
+                            e.preventDefault();
+                            applyEmphasis(key === 'b' ? '**' : '*');
+                        }}
                         spellCheck
                         style={{
                             width: '100%',
@@ -1556,6 +1650,16 @@ function TrackStep({
                     />
                 </div>
             )}
+
+            {/* Reaching a person at the company is the only lever left once the
+                application is in. Sits above the navigation deliberately — it is
+                the next useful thing to do, but the buttons below stay live so it
+                never becomes a toll gate on the way to the next application. */}
+            <PostApplyOutreach
+                jobTitle={role}
+                company={company}
+                jobDescription={jobDescription}
+            />
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 4 }}>
                 <button onClick={onBack} style={ghostButtonStyle(false)}>
