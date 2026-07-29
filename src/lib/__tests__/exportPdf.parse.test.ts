@@ -20,6 +20,24 @@ const fixture = (name: string) =>
     readFileSync(join(__dirname, 'fixtures', `${name}.md`), 'utf-8');
 
 /**
+ * The fields `parseResume` can put on an item. Declared here rather than
+ * exported from exportPdf so the test reads what it inspects and the module
+ * keeps its current public surface.
+ */
+interface ParsedItem {
+    type?: string;
+    title?: string;
+    organization?: string;
+    dates?: string;
+    descriptor?: string;
+    label?: string;
+    values?: string;
+    text?: string;
+    bullets?: string[];
+    notes?: string[];
+}
+
+/**
  * Flatten parsed sections into a stable, human-readable shape. Deliberately
  * verbose over a raw object snapshot — when this diff shows up in review, the
  * damage (or the absence of it) should be obvious at a glance.
@@ -28,7 +46,7 @@ function summarise(markdown: string): string {
     const out: string[] = [];
     for (const section of parseResume(markdown)) {
         out.push(`[${section.type}] ${section.title || '(header)'}`);
-        for (const item of section.content as any[]) {
+        for (const item of section.content as ParsedItem[]) {
             const parts = [
                 item.type ? `type=${item.type}` : null,
                 item.title ? `title=${JSON.stringify(item.title)}` : null,
@@ -77,7 +95,7 @@ describe('parseResume — inline emphasis must not change structure', () => {
                 type: section.type,
                 title: section.title,
                 items: section.content.length,
-                bullets: (section.content as any[]).map((i) => i.bullets?.length ?? 0),
+                bullets: (section.content as ParsedItem[]).map((i) => i.bullets?.length ?? 0),
             }));
 
         expect(skeleton(fixture('bolded'))).toEqual(skeleton(fixture('standard')));
