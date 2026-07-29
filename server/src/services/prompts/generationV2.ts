@@ -64,6 +64,22 @@ Required conventions (the renderer depends on these):
 - End with "## Referees" containing "Available upon request." unless the resume lists
   referees.
 
+== EMPHASIS ==
+A recruiter scans this page for about thirty seconds. Bold the result in a bullet so
+their eye lands on it.
+- Bold the figure and the few words that give it meaning, e.g.
+  "- Cut invoice processing time by **40% across three teams**".
+- At most ONE bolded span per bullet, and only in bullets that carry a real figure from
+  the resume (a %, an amount, a count, a duration). Most bullets will have none.
+- Six to ten bolded spans across the whole resume. Never more than twelve.
+- NEVER bold a skill, tool, company, job title or date. That reads as keyword stuffing
+  and is the fastest way to make a resume look machine-written.
+- Bold ONLY inside the text of a "- " bullet. Never bold a whole line, a heading, the
+  summary, or a date line — the renderer reads those positions structurally and emphasis
+  there changes how the line is interpreted.
+- Leave the "**{Degree}**" and "**{Label}:**" conventions above exactly as specified.
+If you are unsure whether something deserves emphasis, leave it plain.
+
 == THE CANDIDATE'S RESUME ==
 """
 ${resumeText}

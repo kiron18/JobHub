@@ -159,26 +159,30 @@ export function capBoldEmphasis(descriptions: string[], maxTotal = MAX_BOLD_SPAN
  * line, which is the failure mode that would scramble someone's layout.
  */
 export function boldMetricsInMarkdown(markdown: string, maxTotal = MAX_BOLD_SPANS): string {
-    let remaining = maxTotal - countBoldSpansInBullets(markdown);
-    if (remaining <= 0) return markdown;
+    const lines = markdown.split('\n');
 
-    return markdown
-        .split('\n')
+    // Pass one: hold whatever the model emphasised to one span per bullet and to
+    // the ceiling overall, spending the budget top-down. Without this an
+    // over-eager model can bold half the page and nothing trims it — a resume
+    // where everything is emphasised is worse than one where nothing is.
+    let budget = maxTotal;
+    const capped = lines.map((line) => {
+        if (!line.startsWith('- ') || !line.includes('**')) return line;
+        const { line: next, used } = capBoldInLine(line, budget);
+        budget -= used;
+        return next;
+    });
+
+    // Pass two: spend what is left on bullets that carry a figure but no
+    // emphasis, so the result never depends on the model having complied.
+    return capped
         .map((line) => {
-            if (remaining <= 0 || !line.startsWith('- ')) return line;
+            if (budget <= 0 || !line.startsWith('- ')) return line;
             const { line: next, bolded } = boldFirstMetric(line);
-            if (bolded) remaining--;
+            if (bolded) budget--;
             return next;
         })
         .join('\n');
-}
-
-/** Bold spans already present in bullet lines — the budget starts from these. */
-function countBoldSpansInBullets(markdown: string): number {
-    return markdown
-        .split('\n')
-        .filter((line) => line.startsWith('- '))
-        .reduce((sum, line) => sum + countBoldSpans(line), 0);
 }
 
 /**
