@@ -19,6 +19,14 @@ const EASE = [0.25, 1, 0.5, 1] as const;
 
 const ROLE_PLACEHOLDERS = ['e.g. Marketing Coordinator', 'e.g. Business Analyst', 'e.g. Registered Nurse', 'e.g. Software Engineer', 'e.g. Project Manager', 'e.g. Graphic Designer'];
 
+// Supabase's email OTP length is a project setting (6-10 digits) that can be
+// changed in the dashboard without touching this code. It was 6, is currently 8,
+// and a hardcoded 6 here silently truncated the code so sign-in could never
+// succeed. Never hardcode the length again — accept the whole range and let
+// Supabase reject a wrong code.
+const OTP_MIN = 6;
+const OTP_MAX = 10;
+
 export const WelcomePage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -69,7 +77,7 @@ export const WelcomePage: React.FC = () => {
     setStep('email');
   }
 
-  // Send the 6-digit login code. shouldCreateUser makes this double as sign-up.
+  // Send the login code. shouldCreateUser makes this double as sign-up.
   // emailRedirectTo is a fallback: if they click the link in the email instead of
   // typing the code, they land back here (already signed in) rather than the homepage.
   async function sendCode() {
@@ -95,7 +103,7 @@ export const WelcomePage: React.FC = () => {
   // Verify the code -> establishes the session -> persist everything.
   async function verifyAndFinish() {
     const otp = code.trim();
-    if (otp.length < 6) { toast.error('Enter the 6-digit code from your email.'); return; }
+    if (otp.length < OTP_MIN) { toast.error('Enter the full code from your email.'); return; }
     setVerifying(true);
     try {
       const { error } = await supabase.auth.verifyOtp({ email: email.trim().toLowerCase(), token: otp, type: 'email' });
@@ -205,7 +213,7 @@ export const WelcomePage: React.FC = () => {
       <Shell>
         <Eyebrow>Last step · save your progress</Eyebrow>
         <Display>Where should we save this?</Display>
-        <p style={bodyText}>Enter your email and we'll send you a 6-digit code. That creates your account so your resume and plan are saved and waiting whenever you log back in.</p>
+        <p style={bodyText}>Enter your email and we'll send you a login code. That creates your account so your resume and plan are saved and waiting whenever you log back in.</p>
 
         <input
           type="email" inputMode="email" autoComplete="email" autoFocus
@@ -229,14 +237,14 @@ export const WelcomePage: React.FC = () => {
       <Shell>
         <Eyebrow>Check your inbox</Eyebrow>
         <Display>Enter your code</Display>
-        <p style={bodyText}>We sent a 6-digit code to <strong style={{ color: colors.textPrimary }}>{email}</strong>. Type it in below to finish. It can take a minute to arrive, and it is worth checking spam just in case.</p>
+        <p style={bodyText}>We sent a login code to <strong style={{ color: colors.textPrimary }}>{email}</strong>. Type it in below to finish. It can take a minute to arrive, and it is worth checking spam just in case.</p>
 
         <input
           inputMode="numeric" autoComplete="one-time-code" autoFocus
           value={code}
-          onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+          onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, OTP_MAX))}
           onKeyDown={e => { if (e.key === 'Enter' && !verifying) verifyAndFinish(); }}
-          placeholder="6-digit code"
+          placeholder="Your login code"
           style={{ ...inputStyle, fontSize: 22, letterSpacing: '0.3em', fontWeight: 700 }}
         />
 
