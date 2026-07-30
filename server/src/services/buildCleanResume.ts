@@ -69,6 +69,8 @@ ${SILENT_FIXES}
 ${answersBlock}
 
 ${targetRole ? `The candidate is targeting: ${targetRole}. Position the summary and ordering for that, using only evidence already in their resume.\n` : ''}
+NOTHING IS LOST — this rewrite must never make the resume smaller. Every role, employer, date range, qualification, certification, publication, award, language and skill in the original must survive into the clean version, along with every figure the original already states. You are restructuring and sharpening, never pruning. If a bullet reads poorly, rewrite it — do not delete it. Losing something real the candidate earned is a worse outcome than any formatting flaw you were trying to fix.
+
 OUTPUT FORMAT — absolute requirements:
 - NO square-bracket placeholders of any kind. Not "[how many]", not "[X]", not "[insert metric]", not "[Company]". If a figure is missing and the candidate did not supply it, write the bullet cleanly WITHOUT the figure. A bullet with no number is correct. A bracket is a defect that would be copied into every future application.
 - No preamble, no meta-commentary, no explanation, no closing note. Output the resume and nothing else.
@@ -104,7 +106,8 @@ function buildAnswersBlock(answers: IntakeAnswer[]): string {
 
   if (withheld.length) {
     parts.push(
-      `NOT AVAILABLE — the candidate could not supply these. Write the relevant lines cleanly with NO figure and NO placeholder. Do not substitute a number of your own, and do not draw attention to the absence:\n` +
+      `NOT AVAILABLE — the candidate could not supply these. For each one, keep the underlying bullet and everything the original resume already says about it, INCLUDING any figure already written there. Simply do not add the detail that is missing: no invented number, no placeholder, no remark about the gap.\n\n` +
+        `An unanswered question is never a reason to delete anything. Several of these questions ask the candidate to CLARIFY a figure their resume already contains — if they could not clarify it, the existing figure stays exactly as written. Dropping a bullet or stripping a real number because a question went unanswered makes the resume worse than the one they uploaded, which is a failure.\n\n` +
         withheld.map((a) => `- ${a.question}`).join('\n'),
     );
   }

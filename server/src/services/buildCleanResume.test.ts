@@ -94,8 +94,27 @@ describe('buildCleanResume', () => {
     });
     const prompt = callLLMWithRetry.mock.calls[0]?.[0] as string;
     expect(prompt).toContain('NOT AVAILABLE');
-    expect(prompt).toContain('NO figure and NO placeholder');
+    expect(prompt).toContain('no invented number, no placeholder');
     expect(prompt).not.toContain('FACTS THE CANDIDATE HAS CONFIRMED');
+  });
+
+  it('forbids deleting content when a question goes unanswered', async () => {
+    // Regression: a "later" answer to a question that asked the candidate to
+    // CLARIFY an existing figure made the model strip "97% delivery compliance"
+    // and then drop the bullet entirely, leaving a resume worse than the upload.
+    callLLMWithRetry.mockResolvedValueOnce('clean resume text');
+    await buildCleanResume({ resumeText: RESUME, answers: [answer({ status: 'later', value: '' })] });
+    const prompt = callLLMWithRetry.mock.calls[0]?.[0] as string;
+    expect(prompt).toContain('INCLUDING any figure already written there');
+    expect(prompt).toContain('never a reason to delete anything');
+  });
+
+  it('always carries the no-content-loss rule, answers or not', async () => {
+    callLLMWithRetry.mockResolvedValueOnce('clean resume text');
+    await buildCleanResume({ resumeText: RESUME, answers: [] });
+    const prompt = callLLMWithRetry.mock.calls[0]?.[0] as string;
+    expect(prompt).toContain('NOTHING IS LOST');
+    expect(prompt).toContain('must survive into the clean version');
   });
 
   it('passes confirmed answers through as facts and forbids sharpening them', async () => {
