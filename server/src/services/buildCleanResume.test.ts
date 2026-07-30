@@ -1,0 +1,121 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+// callLLMWithRetry is the only external dependency; stub it so these tests are
+// about the gate, not the model.
+const callLLMWithRetry = vi.fn();
+vi.mock('../utils/callLLMWithRetry', () => ({
+  callLLMWithRetry: (...args: unknown[]) => callLLMWithRetry(...args),
+}));
+
+import { buildCleanResume, findBlanks, BlankLeakError, IntakeAnswer } from './buildCleanResume';
+
+const RESUME = `Jane Smith
+jane@example.com
+
+## Work Experience
+Coles, Retail Assistant, 2019 - 2023
+- Responsible for serving customers on the checkout
+- Duties included restocking shelves and closing the register
+`.repeat(3); // pad past the 200-char minimum
+
+function answer(partial: Partial<IntakeAnswer> = {}): IntakeAnswer {
+  return {
+    questionId: 'q1',
+    question: 'At Coles, roughly how many customers did you serve in a normal shift?',
+    anchor: '- Responsible for serving customers on the checkout',
+    status: 'answered',
+    value: 'about 80',
+    ...partial,
+  };
+}
+
+describe('findBlanks', () => {
+  it('catches the placeholder shapes diagnosticReport deliberately emits', () => {
+    expect(findBlanks('Served [how many] customers')).toEqual(['[how many]']);
+    expect(findBlanks('Lifted resolution to [what figure] over [over what period]'))
+      .toEqual(['[what figure]', '[over what period]']);
+    expect(findBlanks('Worked at [Company Name]')).toEqual(['[Company Name]']);
+    expect(findBlanks('Add [X] here')).toEqual(['[X]']);
+  });
+
+  it('deduplicates repeats so the retry instruction stays short', () => {
+    expect(findBlanks('[how many] and [how many] again')).toEqual(['[how many]']);
+  });
+
+  it('does not fire on clean resume text', () => {
+    expect(findBlanks('Served around 80 customers a shift, lifting resolution to 92%')).toEqual([]);
+    expect(findBlanks('Mar 2019 - May 2023\n## Skills\nPython, SQL')).toEqual([]);
+  });
+
+  it('ignores empty or numeric-only brackets, which are not placeholders', () => {
+    expect(findBlanks('array[0] lookup')).toEqual([]);
+    expect(findBlanks('nothing []')).toEqual([]);
+  });
+});
+
+describe('buildCleanResume', () => {
+  beforeEach(() => callLLMWithRetry.mockReset());
+  afterEach(() => vi.restoreAllMocks());
+
+  it('returns the resume when the model produces no blanks', async () => {
+    callLLMWithRetry.mockResolvedValueOnce('## Professional Summary\nRetail assistant who served around 80 customers a shift.');
+    const out = await buildCleanResume({ resumeText: RESUME, answers: [answer()] });
+    expect(out).toContain('around 80 customers');
+    expect(callLLMWithRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries once with the offending strings when a blank leaks', async () => {
+    callLLMWithRetry
+      .mockResolvedValueOnce('Served [how many] customers a shift')
+      .mockResolvedValueOnce('Served around 80 customers a shift');
+
+    const out = await buildCleanResume({ resumeText: RESUME, answers: [answer()] });
+
+    expect(out).toBe('Served around 80 customers a shift');
+    expect(callLLMWithRetry).toHaveBeenCalledTimes(2);
+    // The corrective prompt must name what was wrong, or the retry is a coin flip.
+    expect(callLLMWithRetry.mock.calls[1]?.[0]).toContain('[how many]');
+    expect(callLLMWithRetry.mock.calls[1]?.[0]).toContain('REJECTED');
+  });
+
+  it('throws rather than returning a resume that still has blanks', async () => {
+    callLLMWithRetry.mockResolvedValue('Served [how many] customers a shift');
+    // A persisted blank would be copied into every future generation, so failing
+    // the build is the correct outcome.
+    await expect(buildCleanResume({ resumeText: RESUME, answers: [] })).rejects.toThrow(BlankLeakError);
+    expect(callLLMWithRetry).toHaveBeenCalledTimes(2);
+  });
+
+  it('tells the model to leave withheld figures out entirely', async () => {
+    callLLMWithRetry.mockResolvedValueOnce('## Work Experience\nServed customers on the checkout');
+    await buildCleanResume({
+      resumeText: RESUME,
+      answers: [answer({ status: 'unknown', value: '' }), answer({ questionId: 'q2', status: 'later', value: '' })],
+    });
+    const prompt = callLLMWithRetry.mock.calls[0]?.[0] as string;
+    expect(prompt).toContain('NOT AVAILABLE');
+    expect(prompt).toContain('NO figure and NO placeholder');
+    expect(prompt).not.toContain('FACTS THE CANDIDATE HAS CONFIRMED');
+  });
+
+  it('passes confirmed answers through as facts and forbids sharpening them', async () => {
+    callLLMWithRetry.mockResolvedValueOnce('clean resume text');
+    await buildCleanResume({ resumeText: RESUME, answers: [answer({ value: '20 to 50' })] });
+    const prompt = callLLMWithRetry.mock.calls[0]?.[0] as string;
+    expect(prompt).toContain('FACTS THE CANDIDATE HAS CONFIRMED');
+    expect(prompt).toContain('20 to 50');
+    // A range must stay a range — sharpening "20 to 50" into "35" is fabrication.
+    expect(prompt).toContain('keep it hedged');
+  });
+
+  it('carries the shared evidence rule, since a prompt missing it caused a real incident', async () => {
+    callLLMWithRetry.mockResolvedValueOnce('clean resume text');
+    await buildCleanResume({ resumeText: RESUME, answers: [] });
+    expect(callLLMWithRetry.mock.calls[0]?.[0]).toContain('EVIDENCE RULE');
+  });
+
+  it('refuses a resume too short to be real rather than calling the model', async () => {
+    await expect(buildCleanResume({ resumeText: 'too short', answers: [] })).rejects.toThrow(/too short/);
+    expect(callLLMWithRetry).not.toHaveBeenCalled();
+  });
+});

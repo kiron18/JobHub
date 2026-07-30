@@ -1,7 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, UploadCloud, ArrowRight, Plus, X } from 'lucide-react';
+import { Loader2, UploadCloud, ArrowRight, Plus, X, Search } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
 import api from '../lib/api';
 import { supabase } from '../lib/supabase';
@@ -12,8 +13,12 @@ import { colors, type as T } from '../components/landing/tokens';
 const GRAIN =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E\")";
 
-// upload -> loading -> brief -> roles -> [email -> code, only if not signed in] -> finishing
-type Step = 'upload' | 'loading' | 'brief' | 'roles' | 'email' | 'code' | 'finishing';
+// The resume is built BEFORE we ask for an email — they see the finished thing,
+// then decide to save it. Email/code only appear if they aren't already signed in.
+type Step =
+  | 'upload' | 'loading' | 'brief' | 'roles'
+  | 'questions' | 'building' | 'resume'
+  | 'email' | 'code' | 'finishing';
 
 const EASE = [0.25, 1, 0.5, 1] as const;
 
@@ -27,6 +32,20 @@ const ROLE_PLACEHOLDERS = ['e.g. Marketing Coordinator', 'e.g. Business Analyst'
 const OTP_MIN = 6;
 const OTP_MAX = 10;
 
+interface IntakeQuestion {
+  id: string;
+  anchor: string;
+  question: string;
+  why: string;
+  example: string;
+  kind: 'number' | 'text';
+  ranges: string[];
+  hint: string;
+}
+
+type AnswerStatus = 'answered' | 'later' | 'unknown';
+type Answers = Record<string, { status: AnswerStatus; value: string }>;
+
 export const WelcomePage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -38,11 +57,30 @@ export const WelcomePage: React.FC = () => {
   const [brief, setBrief] = useState('');
   const [roles, setRoles] = useState<string[]>(['']);
   const [city, setCity] = useState('');
+
+  const [questions, setQuestions] = useState<IntakeQuestion[]>([]);
+  const [qIndex, setQIndex] = useState(0);
+  const [answers, setAnswers] = useState<Answers>({});
+  const [draft, setDraft] = useState('');
+  // Questions where they've said "I don't know" once and we've shown the help.
+  // We push exactly once, then accept whatever they give us.
+  const [pushed, setPushed] = useState<Record<string, boolean>>({});
+
+  const [cleanResume, setCleanResume] = useState('');
+  const [outstanding, setOutstanding] = useState(0);
+
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [sending, setSending] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const current = questions[qIndex];
+  const isPushed = current ? !!pushed[current.id] : false;
+
+  function cleanRoles() {
+    return roles.map(r => r.trim()).filter(Boolean).slice(0, 3);
+  }
 
   async function uploadResume(f: File) {
     setStep('loading');
@@ -50,12 +88,13 @@ export const WelcomePage: React.FC = () => {
       const fd = new FormData();
       fd.append('resume', f);
       const { data } = await api.post('/welcome/brief', fd, {
-        timeout: 120000,
+        timeout: 180000,
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       setToken(data.token);
       setFirstName(data.firstName || '');
       setBrief(data.brief || '');
+      setQuestions(Array.isArray(data.questions) ? data.questions : []);
       if (data.currentRole) setRoles([data.currentRole]);
       setStep('brief');
     } catch (err: any) {
@@ -64,22 +103,64 @@ export const WelcomePage: React.FC = () => {
     }
   }
 
-  function cleanRoles() {
-    return roles.map(r => r.trim()).filter(Boolean).slice(0, 3);
-  }
-
-  // From the roles step: signed-in users finish immediately; everyone else goes
-  // through the email + code step first (which creates their account).
+  // Roles come before the questions: it's the easy one, it builds momentum, and
+  // the rebuild uses the target role for positioning.
   function onRolesContinue() {
     if (cleanRoles().length === 0) { toast.error('Add at least one target role.'); return; }
-    if (user) { finishNow(); return; }
-    if (!email) { setEmail(''); }
+    if (questions.length === 0) { void buildResume({}); return; }
+    setQIndex(0);
+    setDraft('');
+    setStep('questions');
+  }
+
+  function commitAnswer(status: AnswerStatus, value: string) {
+    if (!current) return;
+    const next: Answers = { ...answers, [current.id]: { status, value } };
+    setAnswers(next);
+    setDraft('');
+
+    if (qIndex + 1 < questions.length) {
+      setQIndex(qIndex + 1);
+    } else {
+      void buildResume(next);
+    }
+  }
+
+  // "I don't know" is not accepted the first time. We show them where to look and
+  // offer coarse ranges, because an honest estimate beats a blank bullet. Only
+  // after that push do we let it go.
+  function onDontKnow() {
+    if (!current) return;
+    if (!isPushed) { setPushed(prev => ({ ...prev, [current.id]: true })); return; }
+    commitAnswer('unknown', '');
+  }
+
+  async function buildResume(finalAnswers: Answers) {
+    setStep('building');
+    try {
+      const { data } = await api.post('/welcome/build', {
+        token,
+        answers: finalAnswers,
+        targetRole: cleanRoles()[0] ?? null,
+      }, { timeout: 240000 });
+      setCleanResume(data.resume || '');
+      setOutstanding(Array.isArray(data.outstanding) ? data.outstanding.length : 0);
+      setStep('resume');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Could not build your resume, please try again.');
+      setStep('questions');
+    }
+  }
+
+  // From the finished resume: signed-in users save immediately, everyone else
+  // goes through email + code, which doubles as registration.
+  function onSaveResume() {
+    if (user) { void finishNow(); return; }
     setStep('email');
   }
 
-  // Send the login code. shouldCreateUser makes this double as sign-up.
-  // emailRedirectTo is a fallback: if they click the link in the email instead of
-  // typing the code, they land back here (already signed in) rather than the homepage.
+  // Send the login code. shouldCreateUser makes this double as sign-up: an
+  // existing client just signs in, a new email becomes their registration.
   async function sendCode() {
     const addr = email.trim().toLowerCase();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(addr)) { toast.error('Enter a valid email address.'); return; }
@@ -100,7 +181,6 @@ export const WelcomePage: React.FC = () => {
     }
   }
 
-  // Verify the code -> establishes the session -> persist everything.
   async function verifyAndFinish() {
     const otp = code.trim();
     if (otp.length < OTP_MIN) { toast.error('Enter the full code from your email.'); return; }
@@ -115,8 +195,6 @@ export const WelcomePage: React.FC = () => {
     }
   }
 
-  // Persist resume + target roles and complete onboarding. Requires a session,
-  // which exists by now (either they were already signed in, or just verified).
   async function finishNow() {
     const clean = cleanRoles();
     if (clean.length === 0) { toast.error('Add at least one target role.'); setStep('roles'); return; }
@@ -126,7 +204,7 @@ export const WelcomePage: React.FC = () => {
       navigate('/', { replace: true });
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'Could not complete setup, please try again.');
-      setStep(user ? 'roles' : 'code');
+      setStep(user ? 'resume' : 'code');
       setVerifying(false);
     }
   }
@@ -201,19 +279,176 @@ export const WelcomePage: React.FC = () => {
         </div>
 
         <div style={{ marginTop: 26 }}>
-          <PrimaryBtn label={user ? 'Finish setup' : 'Continue'} onClick={onRolesContinue} />
+          <PrimaryBtn label="Continue" onClick={onRolesContinue} />
         </div>
       </Shell>
     );
   }
 
-  // ── Step: email (create account) ─────────────────────────────────────────────
+  // ── Step: questions ──────────────────────────────────────────────────────────
+  if (step === 'questions' && current) {
+    const canSubmit = draft.trim().length > 0;
+    return (
+      <Shell>
+        <Eyebrow>Question {qIndex + 1} of {questions.length}</Eyebrow>
+
+        {/* Progress bar — people answer more when they can see the end. */}
+        <div style={{ height: 4, borderRadius: 99, background: colors.borderDefined, marginBottom: 22, overflow: 'hidden' }}>
+          <motion.div
+            animate={{ width: `${(qIndex / questions.length) * 100}%` }}
+            transition={{ duration: 0.4, ease: EASE }}
+            style={{ height: '100%', background: colors.accentPetrol }}
+          />
+        </div>
+
+        {qIndex === 0 && (
+          <p style={{ ...bodyText, marginBottom: 18 }}>
+            This is the only time we ask. Every number you give here makes every application we build after this stronger.
+          </p>
+        )}
+
+        {current.anchor && (
+          <div style={{ borderLeft: `3px solid ${colors.borderDefined}`, padding: '2px 0 2px 14px', margin: '0 0 18px' }}>
+            <span style={{ ...labelStyle, marginBottom: 4 }}>From your resume</span>
+            <span style={{ fontFamily: T.body, fontSize: 14.5, lineHeight: 1.5, color: colors.textSecondary, fontStyle: 'italic' }}>
+              {current.anchor}
+            </span>
+          </div>
+        )}
+
+        <h1 style={{ fontFamily: T.display, fontWeight: 600, letterSpacing: '-0.01em', lineHeight: 1.25, color: colors.textPrimary, fontSize: 'clamp(21px, 3vw, 27px)', margin: '0 0 10px' }}>
+          {current.question}
+        </h1>
+        {current.why && (
+          <p style={{ fontFamily: T.body, fontSize: 14, lineHeight: 1.6, color: colors.textMuted, margin: '0 0 20px' }}>
+            {current.why}
+          </p>
+        )}
+
+        <input
+          value={draft}
+          autoFocus
+          inputMode={current.kind === 'number' ? 'numeric' : 'text'}
+          onChange={e => setDraft(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && canSubmit) commitAnswer('answered', draft.trim()); }}
+          placeholder={current.example || 'Your answer'}
+          style={inputStyle}
+        />
+
+        <div style={{ marginTop: 22, display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
+          <PrimaryBtn
+            label={qIndex + 1 === questions.length ? 'Build my resume' : 'Next'}
+            onClick={() => canSubmit && commitAnswer('answered', draft.trim())}
+            dim={!canSubmit}
+          />
+          <button onClick={onDontKnow}
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: colors.textMuted, fontFamily: T.body, fontSize: 13.5, fontWeight: 700, padding: 0 }}>
+            I don't know
+          </button>
+        </div>
+
+        {/* The push. Shown once, after the first "I don't know". */}
+        <AnimatePresence>
+          {isPushed && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+              transition={{ duration: 0.3, ease: EASE }}
+              style={{ marginTop: 24, padding: 18, borderRadius: 14, background: colors.bgAlt, border: `1px solid ${colors.borderDefined}` }}
+            >
+              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <span style={{ color: colors.accentPetrol, flexShrink: 0, marginTop: 2 }}><Search size={17} /></span>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontFamily: T.body, fontSize: 14.5, fontWeight: 600, color: colors.textPrimary, margin: '0 0 6px' }}>
+                    You don't need the exact figure.
+                  </p>
+                  <p style={{ fontFamily: T.body, fontSize: 14, lineHeight: 1.6, color: colors.textSecondary, margin: 0 }}>
+                    {current.hint
+                      ? `An honest estimate is a real answer and it beats leaving this line bare. ${current.hint}`
+                      : 'An honest estimate is a real answer and it beats leaving this line bare. Think about a normal week and round.'}
+                  </p>
+                </div>
+              </div>
+
+              {current.ranges.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 16 }}>
+                  {current.ranges.map(r => (
+                    <button key={r} onClick={() => commitAnswer('answered', r)}
+                      style={{ fontFamily: T.body, fontSize: 13.5, fontWeight: 600, cursor: 'pointer', padding: '9px 15px', borderRadius: 99, border: `1px solid ${colors.accentPetrol}`, background: 'transparent', color: colors.accentPetrol }}>
+                      {r}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 20, marginTop: 18, flexWrap: 'wrap' }}>
+                <button onClick={() => commitAnswer('later', '')}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: colors.accentPetrol, fontFamily: T.body, fontSize: 13.5, fontWeight: 700, padding: 0 }}>
+                  I'll find out and add it later
+                </button>
+                <button onClick={() => commitAnswer('unknown', '')}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: colors.textMuted, fontFamily: T.body, fontSize: 13.5, fontWeight: 700, padding: 0 }}>
+                  Leave this one out
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </Shell>
+    );
+  }
+
+  // ── Step: building ───────────────────────────────────────────────────────────
+  if (step === 'building') {
+    return (
+      <Shell>
+        <Eyebrow>Almost there</Eyebrow>
+        <Display>Building your resume.</Display>
+        <p style={bodyText}>Cleaning the formatting, leading with your outcomes, and working in everything you just told us. This takes up to a minute.</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: colors.textSecondary, fontFamily: T.body, fontSize: 15 }}>
+          <Loader2 size={20} className="animate-spin" style={{ color: colors.accentPetrol }} />
+          Writing it now...
+        </div>
+      </Shell>
+    );
+  }
+
+  // ── Step: resume (the payoff, still anonymous) ───────────────────────────────
+  if (step === 'resume') {
+    return (
+      <Shell wide>
+        <Eyebrow>Done</Eyebrow>
+        <Display>{firstName ? `${firstName}, here's your resume.` : "Here's your resume."}</Display>
+        <p style={bodyText}>
+          This is now the version everything we build for you is based on. Every application, every cover letter, grounded on this.
+          {outstanding > 0 && ` You left ${outstanding} ${outstanding === 1 ? 'question' : 'questions'} open — we've saved ${outstanding === 1 ? 'it' : 'them'} for your dashboard so you can add ${outstanding === 1 ? 'it' : 'them'} any time.`}
+        </p>
+
+        <div style={{
+          maxHeight: '46vh', overflowY: 'auto', padding: '22px 26px', borderRadius: 16,
+          border: `1px solid ${colors.borderDefined}`, background: colors.bgSurface, marginBottom: 26,
+        }}>
+          <div style={{ fontFamily: T.body, fontSize: 14.5, lineHeight: 1.7, color: colors.textPrimary }} className="welcome-resume-preview">
+            <ReactMarkdown>{cleanResume}</ReactMarkdown>
+          </div>
+        </div>
+
+        <PrimaryBtn label={user ? 'Save to my account' : 'Save this resume'} onClick={onSaveResume} />
+        {!user && (
+          <p style={{ fontFamily: T.body, fontSize: 13.5, color: colors.textMuted, margin: '14px 0 0' }}>
+            We'll ask for your email next so this is waiting for you whenever you log in.
+          </p>
+        )}
+      </Shell>
+    );
+  }
+
+  // ── Step: email (sign up or sign in — same door) ──────────────────────────────
   if (step === 'email') {
     return (
       <Shell>
-        <Eyebrow>Last step · save your progress</Eyebrow>
+        <Eyebrow>Last step · save your resume</Eyebrow>
         <Display>Where should we save this?</Display>
-        <p style={bodyText}>Enter your email and we'll send you a login code. That creates your account so your resume and plan are saved and waiting whenever you log back in.</p>
+        <p style={bodyText}>Enter your email and we'll send you a login code. If you've been here before this signs you straight back in. If you haven't, this creates your account.</p>
 
         <input
           type="email" inputMode="email" autoComplete="email" autoFocus
@@ -272,7 +507,7 @@ export const WelcomePage: React.FC = () => {
       <Shell>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: colors.textSecondary, fontFamily: T.body, fontSize: 15.5 }}>
           <Loader2 size={20} className="animate-spin" style={{ color: colors.accentPetrol }} />
-          Setting everything up…
+          Saving your resume…
         </div>
       </Shell>
     );
@@ -283,7 +518,7 @@ export const WelcomePage: React.FC = () => {
     <Shell>
       <Eyebrow>Welcome · Step 1 of your setup</Eyebrow>
       <Display>Let's get you set up.</Display>
-      <p style={bodyText}>Start with your current resume. We read it, show you plainly where it stands, then fix it together. No scores, no judgement.</p>
+      <p style={bodyText}>Start with your current resume. We read it, show you plainly where it stands, ask you the few things only you can tell us, then rebuild it properly. No scores, no judgement.</p>
 
       <AnimatePresence mode="wait">
         {step === 'loading' ? (
@@ -331,11 +566,11 @@ const inputStyle: React.CSSProperties = {
 };
 const labelStyle: React.CSSProperties = { display: 'block', fontFamily: T.body, fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: colors.textMuted, marginBottom: 8 };
 
-function Shell({ children }: { children: React.ReactNode }) {
+function Shell({ children, wide }: { children: React.ReactNode; wide?: boolean }) {
   return (
     <div style={{ height: '100dvh', overflowY: 'auto', background: colors.bgCanvas, display: 'flex', padding: '48px 24px', boxSizing: 'border-box' }}>
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}
-        style={{ width: '100%', maxWidth: 520, margin: 'auto' }}>
+        style={{ width: '100%', maxWidth: wide ? 720 : 520, margin: 'auto' }}>
         {children}
       </motion.div>
     </div>
@@ -358,10 +593,11 @@ function Display({ children }: { children: React.ReactNode }) {
   );
 }
 
-function PrimaryBtn({ label, onClick, loading }: { label: string; onClick: () => void; loading?: boolean }) {
+function PrimaryBtn({ label, onClick, loading, dim }: { label: string; onClick: () => void; loading?: boolean; dim?: boolean }) {
+  const inert = loading || dim;
   return (
-    <motion.button onClick={onClick} disabled={loading} whileHover={{ scale: loading ? 1 : 1.02 }} whileTap={{ scale: loading ? 1 : 0.98 }}
-      style={{ fontFamily: T.body, fontSize: 16, fontWeight: 700, cursor: loading ? 'default' : 'pointer', padding: '15px 28px', borderRadius: 14, border: 'none', background: colors.accentPetrol, color: colors.textOnDeep, display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 150, justifyContent: 'center' }}>
+    <motion.button onClick={onClick} disabled={loading} whileHover={{ scale: inert ? 1 : 1.02 }} whileTap={{ scale: inert ? 1 : 0.98 }}
+      style={{ fontFamily: T.body, fontSize: 16, fontWeight: 700, cursor: loading ? 'default' : 'pointer', padding: '15px 28px', borderRadius: 14, border: 'none', background: colors.accentPetrol, color: colors.textOnDeep, display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 150, justifyContent: 'center', opacity: dim ? 0.45 : 1, transition: 'opacity 0.2s' }}>
       {loading ? <Loader2 size={18} className="animate-spin" /> : <>{label} <ArrowRight size={18} /></>}
     </motion.button>
   );

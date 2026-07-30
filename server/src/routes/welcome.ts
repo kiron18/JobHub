@@ -1,25 +1,51 @@
 /**
- * /api/welcome — the paid-client onboarding (mirror of the CV scan, but calmer).
+ * /api/welcome — the paid-client onboarding.
  *
- * These users have already paid, so there is NO selling and NO scoring. The flow
- * is: upload resume -> a short, warm, educational read on the gaps (a single
- * Claude prompt, written as prose) -> we tell them we'll fix it -> capture target
- * roles -> mark onboarding complete and send them to the dashboard.
+ * The whole point of this flow is that the resume gets fixed ONCE, properly,
+ * before anything else happens. `profile.resumeRawText` is what generate.ts
+ * grounds every future resume and cover letter on, so whatever lands there is
+ * what the client's applications are built from for the life of their account.
+ * This route puts the CLEAN rebuilt resume there and keeps the original upload
+ * in resumeOriginalText.
+ *
+ * The flow, and why it is shaped this way:
+ *
+ *   POST /brief   (anonymous) upload -> read + the questions only they can answer
+ *   POST /build   (anonymous) answers -> the finished clean resume, shown to them
+ *   POST /finish  (authed)    claim the session onto their account
+ *
+ * Everything up to /finish is anonymous on purpose: they do the work, they see
+ * the finished resume, and only then are they asked for an email to save it.
+ * Asking first loses people who have not yet been given a reason to trust us.
+ *
+ * State lives in the WelcomeSession table rather than in memory because a
+ * Railway redeploy mid-flow would otherwise discard ten minutes of someone's
+ * work.
  */
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { randomUUID } from 'crypto';
 import { extractTextFromBuffer } from '../services/pdf';
-import { callLLM } from '../services/llm';
 import { prisma } from '../index';
 import { authenticate, optionalAuthenticate, AuthRequest } from '../middleware/auth';
 import { autoExtractAchievements } from '../services/autoExtract';
 import { reconcileProfileEmail } from '../services/onboarding';
-import { parseLLMJson } from '../utils/parseLLMResponse';
+import { analyseIntakeResume, IntakeQuestion } from '../services/intakeAnalysis';
+import {
+  buildCleanResume,
+  BlankLeakError,
+  IntakeAnswer,
+  IntakeAnswerStatus,
+} from '../services/buildCleanResume';
 
 const router = Router();
 
-// ── Upload (same shape as cv-scan / onboarding) ──────────────────────────────
+/** A session is good for a day — long enough to finish, short enough to sweep. */
+const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
+/** Rebuilds allowed per anonymous session. Each one costs an LLM call. */
+const MAX_BUILDS = 3;
+
+// ── Upload ───────────────────────────────────────────────────────────────────
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
@@ -43,34 +69,30 @@ function handleUpload(req: Request, res: Response, next: NextFunction) {
   });
 }
 
-// token -> stored resume text, so /finish can persist the exact resume they saw.
-const welcomeStore = new Map<string, { resumeText: string; filename: string | null; at: number }>();
-const TTL = 60 * 60 * 1000;
-function trimStore() {
-  if (welcomeStore.size <= 100) return;
-  const sorted = [...welcomeStore.entries()].sort((a, b) => b[1].at - a[1].at);
-  welcomeStore.clear();
-  for (const [k, v] of sorted.slice(0, 100)) welcomeStore.set(k, v);
+/**
+ * Unclaimed sessions hold a full resume for someone who never signed up, so they
+ * are not kept indefinitely. Swept opportunistically on upload rather than by a
+ * cron — this runs often enough and costs one indexed delete.
+ */
+function sweepExpiredSessions(): void {
+  prisma.welcomeSession
+    .deleteMany({ where: { createdAt: { lt: new Date(Date.now() - SESSION_TTL_MS) } } })
+    .then(({ count }) => { if (count) console.log(`[welcome] swept ${count} expired session(s)`); })
+    .catch((err) => console.warn('[welcome] session sweep failed (non-fatal):', err?.message));
 }
 
-const WELCOME_BRIEF_PROMPT = (resumeText: string): string => `You are a warm, expert Australian career coach welcoming a NEW PAYING CLIENT who has just uploaded their resume. They have already committed to the program, so do NOT sell, pitch, congratulate them on joining, or mention price. Your only job is to educate them, briefly and kindly, about where their resume stands.
+/** Loads a live, unclaimed session or returns null so the caller can 410. */
+async function loadSession(token: unknown) {
+  if (typeof token !== 'string' || !token) return null;
+  const session = await prisma.welcomeSession.findUnique({ where: { token } });
+  if (!session) return null;
+  if (Date.now() - session.createdAt.getTime() >= SESSION_TTL_MS) return null;
+  return session;
+}
 
-Read the resume and write a short, human read in flowing prose. Rules:
-- 2 or 3 short paragraphs. Plain sentences. NO bullet points, NO numbered lists, NO headings, NO score.
-- Name the two or three most important things holding it back in the Australian market (for example: bullets that describe duties instead of outcomes, missing keywords local employers scan for, formatting that trips the automated screen, or unclear positioning). Explain each as understanding, not as a verdict or a failure.
-- Warm and direct, second person ("your resume", "you"). Never clinical or alarming.
-- End by reassuring them that this is exactly what we will fix together, starting now.
-- Australian English. No em dashes or en dashes. About 90 to 140 words total.
-
-Return ONLY this JSON object, nothing else:
-{ "firstName": "their first name, or an empty string if unclear", "currentRole": "their current or most recent job title, in plain title case, or an empty string if unclear", "brief": "the prose read, as one string with \\n\\n between paragraphs" }
-
-RESUME:
-${resumeText}`;
-
-// POST /api/welcome/brief — upload resume, get the educational prose read.
-// optionalAuthenticate: anonymous visitors can upload and see their brief BEFORE
-// creating an account. The account (via email OTP) is only needed at /finish.
+// ── POST /api/welcome/brief ──────────────────────────────────────────────────
+// Upload the resume. Returns the prose read plus the question list. Anonymous:
+// optionalAuthenticate so a signed-in client can also re-run this.
 router.post('/brief', optionalAuthenticate, handleUpload, async (req: Request, res: Response) => {
   try {
     const file = (req.files as any)?.resume?.[0];
@@ -82,25 +104,113 @@ router.post('/brief', optionalAuthenticate, handleUpload, async (req: Request, r
       return;
     }
 
-    const raw = await callLLM(WELCOME_BRIEF_PROMPT(text), true, 0.4);
-    const parsed = typeof raw === 'string' ? parseLLMJson(raw) : raw;
-    const firstName = String(parsed.firstName ?? '').trim();
-    const currentRole = String(parsed.currentRole ?? '').trim();
-    const brief = String(parsed.brief ?? '').trim();
-    if (!brief) { res.status(502).json({ error: 'Could not read your resume, please try again.' }); return; }
+    sweepExpiredSessions();
 
+    const analysis = await analyseIntakeResume(text);
     const token = randomUUID();
-    welcomeStore.set(token, { resumeText: text, filename: file.originalname ?? null, at: Date.now() });
-    trimStore();
 
-    res.json({ token, firstName, currentRole, brief });
+    await prisma.welcomeSession.create({
+      data: {
+        token,
+        resumeOriginalText: text,
+        resumeFilename: file.originalname ?? null,
+        firstName: analysis.firstName || null,
+        currentRole: analysis.currentRole || null,
+        brief: analysis.brief,
+        questions: analysis.questions as any,
+      },
+    });
+
+    res.json({
+      token,
+      firstName: analysis.firstName,
+      currentRole: analysis.currentRole,
+      brief: analysis.brief,
+      questions: analysis.questions,
+    });
   } catch (err) {
     console.error('[welcome/brief]', err instanceof Error ? `${err.name}: ${err.message}` : String(err));
     res.status(502).json({ error: 'Could not read your resume, please try again.' });
   }
 });
 
-// POST /api/welcome/finish — persist resume + target roles, complete onboarding.
+// ── POST /api/welcome/build ──────────────────────────────────────────────────
+// Their answers in, the finished clean resume out. Still anonymous — this is the
+// value we hand over before asking for anything.
+router.post('/build', async (req: Request, res: Response) => {
+  try {
+    const { token, answers, targetRole } = req.body || {};
+
+    const session = await loadSession(token);
+    if (!session) {
+      res.status(410).json({ error: 'Your session expired, please upload your resume again.' });
+      return;
+    }
+    if (session.claimedByUserId) {
+      res.status(409).json({ error: 'This resume has already been saved to an account.' });
+      return;
+    }
+    if (session.buildCount >= MAX_BUILDS) {
+      res.status(429).json({ error: 'You have rebuilt this resume a few times already. Upload it again to start fresh.' });
+      return;
+    }
+
+    // Only accept answers to questions we actually asked, and take the question
+    // wording from OUR stored copy so a client cannot rewrite the prompt.
+    const asked = (session.questions as unknown as IntakeQuestion[] | null) ?? [];
+    const byId = new Map(asked.map((q) => [q.id, q]));
+    const submitted: Record<string, { status?: string; value?: string }> =
+      answers && typeof answers === 'object' && !Array.isArray(answers) ? answers : {};
+
+    const resolved: IntakeAnswer[] = asked.map((q) => {
+      const raw = submitted[q.id] ?? {};
+      const value = String(raw.value ?? '').trim().slice(0, 500);
+      let status = String(raw.status ?? '') as IntakeAnswerStatus;
+      if (status !== 'answered' && status !== 'later' && status !== 'unknown') {
+        status = value ? 'answered' : 'unknown';
+      }
+      if (status === 'answered' && !value) status = 'unknown';
+      return { questionId: q.id, question: q.question, anchor: byId.get(q.id)?.anchor ?? '', status, value };
+    });
+
+    await prisma.welcomeSession.update({
+      where: { id: session.id },
+      data: { buildCount: { increment: 1 }, answers: resolved as any },
+    });
+
+    const clean = await buildCleanResume({
+      resumeText: session.resumeOriginalText,
+      answers: resolved,
+      targetRole: typeof targetRole === 'string' && targetRole.trim() ? targetRole.trim() : null,
+    });
+
+    await prisma.welcomeSession.update({
+      where: { id: session.id },
+      data: { resumeCleanText: clean },
+    });
+
+    const unanswered = resolved.filter((a) => a.status !== 'answered');
+    res.json({
+      resume: clean,
+      answeredCount: resolved.length - unanswered.length,
+      outstanding: unanswered.map((a) => ({ questionId: a.questionId, question: a.question, status: a.status })),
+    });
+  } catch (err) {
+    if (err instanceof BlankLeakError) {
+      // Never persist this. Better to ask them to retry than to poison every
+      // future generation with "[how many]" sitting in their resume text.
+      console.error('[welcome/build] blank leak, refused to save:', err.message);
+      res.status(502).json({ error: 'We could not finish your resume cleanly. Please try again.' });
+      return;
+    }
+    console.error('[welcome/build]', err instanceof Error ? `${err.name}: ${err.message}` : String(err));
+    res.status(502).json({ error: 'Could not build your resume, please try again.' });
+  }
+});
+
+// ── POST /api/welcome/finish ─────────────────────────────────────────────────
+// Now they have an account. Claim the session onto it. Works identically whether
+// this email is brand new (the OTP created it) or an existing client signing in.
 router.post('/finish', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id;
@@ -113,17 +223,39 @@ router.post('/finish', authenticate, async (req: AuthRequest, res: Response) => 
       .slice(0, 3);
     if (roles.length === 0) { res.status(400).json({ error: 'Add at least one target role' }); return; }
 
-    const entry = welcomeStore.get(token);
-    if (!entry || Date.now() - entry.at >= TTL) {
+    const session = await loadSession(token);
+    if (!session) {
       res.status(410).json({ error: 'Your session expired, please upload your resume again.' });
+      return;
+    }
+    if (session.claimedByUserId && session.claimedByUserId !== userId) {
+      res.status(409).json({ error: 'This resume has already been saved to another account.' });
+      return;
+    }
+    if (!session.resumeCleanText) {
+      res.status(409).json({ error: 'Your resume has not been built yet.' });
       return;
     }
 
     const loc = String(targetCity || '').trim() || null;
+
+    // email is unique on CandidateProfile — a previous free-scan row under an
+    // old userId can already hold it, which would make the upsert throw.
+    await reconcileProfileEmail(userId, email);
+
+    const existing = await prisma.candidateProfile.findUnique({
+      where: { userId },
+      select: { resumeOriginalText: true },
+    });
+
     const data = {
       email,
-      resumeRawText: entry.resumeText,
-      resumeFilename: entry.filename,
+      // The CLEAN resume is what every generation grounds on. This is the line
+      // the entire intake exists to make true.
+      resumeRawText: session.resumeCleanText,
+      // Keep the untouched upload, but never clobber an earlier original.
+      resumeOriginalText: existing?.resumeOriginalText ?? session.resumeOriginalText,
+      resumeFilename: session.resumeFilename,
       documentsUpdatedAt: new Date(),
       targetRole: roles[0],
       targetRoles: roles,
@@ -132,18 +264,19 @@ router.post('/finish', authenticate, async (req: AuthRequest, res: Response) => 
       hasCompletedOnboarding: true,
     };
 
-    // email is unique on CandidateProfile — a previous free-scan row under an
-    // old userId can already hold it, which would make the upsert throw.
-    await reconcileProfileEmail(userId, email);
-
     await prisma.candidateProfile.upsert({
       where: { userId },
       create: { userId, ...data },
       update: data,
     });
 
-    // Build the structured bank in the background so /apply has rich inputs.
-    autoExtractAchievements(userId, entry.resumeText)
+    await prisma.welcomeSession.update({
+      where: { id: session.id },
+      data: { claimedByUserId: userId },
+    });
+
+    // Build the structured bank from the CLEAN text, not the messy upload.
+    autoExtractAchievements(userId, session.resumeCleanText)
       .catch((err) => console.warn('[welcome/finish] autoExtract failed (non-fatal):', err?.message));
 
     res.json({ ok: true });

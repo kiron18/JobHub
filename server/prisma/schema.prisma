@@ -30,6 +30,10 @@ model CandidateProfile {
   perceivedBlocker             String?
   responsePattern              String?
   resumeRawText                String?
+  // The untouched text of the file they uploaded. resumeRawText holds the CLEAN
+  // rebuilt resume that every generation grounds on, so we keep the original
+  // here for diffing and recovery. Never overwrite this once set.
+  resumeOriginalText           String?
   searchDuration               String?
   seniority                    String?
   yearsOfExperience            Int?
@@ -799,4 +803,30 @@ model NudgeLog {
   sentAt    DateTime @default(now())
 
   @@unique([userId, kind, periodKey])
+}
+
+// One anonymous run through /welcome. The entire resume rebuild — analysis,
+// questions, answers, the finished clean resume — happens BEFORE we ask for an
+// email, so it cannot live in an in-memory map: a Railway redeploy mid-flow
+// would throw away work the visitor spent ten minutes on. Rows are claimed at
+// /welcome/finish and swept after 7 days.
+model WelcomeSession {
+  id                 String   @id @default(uuid())
+  token              String   @unique
+  resumeOriginalText String
+  resumeFilename     String?
+  firstName          String?
+  currentRole        String?
+  brief              String?
+  questions          Json?
+  answers            Json?
+  resumeCleanText    String?
+  // Rebuilds attempted on this session. /welcome/build is anonymous and costs an
+  // LLM call, so it is capped per session rather than left open.
+  buildCount         Int      @default(0)
+  claimedByUserId    String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([createdAt])
 }
