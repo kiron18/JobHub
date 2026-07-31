@@ -113,6 +113,7 @@ export const WelcomePage: React.FC = () => {
   const [pushed, setPushed] = useState<Record<string, boolean>>({});
 
   const [cleanResume, setCleanResume] = useState('');
+  const [retention, setRetention] = useState<{ checked: number; summary: string; repaired: boolean } | null>(null);
   const [outstanding, setOutstanding] = useState(0);
 
   const [email, setEmail] = useState('');
@@ -199,6 +200,7 @@ export const WelcomePage: React.FC = () => {
         targetRole: cleanRoles()[0] ?? null,
       }, { timeout: 240000 });
       setCleanResume(data.resume || '');
+      setRetention(data.retention ?? null);
       setOutstanding(Array.isArray(data.outstanding) ? data.outstanding.length : 0);
       setStep('resume');
     } catch (err: any) {
@@ -637,6 +639,23 @@ export const WelcomePage: React.FC = () => {
           </p>
         </div>
 
+        {/* The candidate signs off on a document they know was checked. We do the
+            work; showing it gives them a real part in it without depending on
+            them to catch anything. */}
+        {retention && retention.checked > 0 && (
+          <div style={{
+            display: 'flex', gap: 10, alignItems: 'flex-start', padding: '13px 16px', marginBottom: 14,
+            borderRadius: 12, background: 'rgba(45,90,110,0.07)', border: `1px solid rgba(45,90,110,0.20)`,
+          }}>
+            <span style={{ color: colors.accentPetrol, flexShrink: 0, marginTop: 1 }}><Check size={16} strokeWidth={3} /></span>
+            <span style={{ fontFamily: T.body, fontSize: 14, lineHeight: 1.55, color: colors.textSecondary }}>
+              {retention.summary}
+              {retention.repaired && ' One thing nearly slipped out and we put it back.'}
+              {' '}Have a read, and tell us if we missed anything.
+            </span>
+          </div>
+        )}
+
         {outstanding > 0 && (
           <div style={{
             display: 'flex', gap: 10, alignItems: 'flex-start', padding: '13px 16px', marginBottom: 22,
@@ -644,9 +663,9 @@ export const WelcomePage: React.FC = () => {
           }}>
             <span style={{ color: colors.accentPetrol, flexShrink: 0, marginTop: 1 }}><Search size={16} /></span>
             <span style={{ fontFamily: T.body, fontSize: 14, lineHeight: 1.55, color: colors.textSecondary }}>
-              {outstanding === 1 ? 'One answer is' : `${outstanding} answers are`} still missing. We saved{' '}
-              {outstanding === 1 ? 'it' : 'them'} to your dashboard. Adding {outstanding === 1 ? 'it' : 'them'} makes
-              every resume we build stronger.
+              {outstanding === 1 ? 'One question is' : `${outstanding} questions are`} still open. You can add{' '}
+              {outstanding === 1 ? 'it' : 'them'} later by uploading an updated resume, and every application we build
+              gets stronger when you do.
             </span>
           </div>
         )}

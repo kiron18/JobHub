@@ -7,7 +7,7 @@ vi.mock('../utils/callLLMWithRetry', () => ({
   callLLMWithRetry: (...args: unknown[]) => callLLMWithRetry(...args),
 }));
 
-import { buildCleanResume, findBlanks, BlankLeakError, IntakeAnswer } from './buildCleanResume';
+import { buildCleanResume, findBlanks, BlankLeakError, ContentLossError, IntakeAnswer } from './buildCleanResume';
 
 const RESUME = `Jane Smith
 jane@example.com
@@ -60,7 +60,8 @@ describe('buildCleanResume', () => {
   it('returns the resume when the model produces no blanks', async () => {
     callLLMWithRetry.mockResolvedValueOnce('## Professional Summary\nRetail assistant who served around 80 customers a shift.');
     const out = await buildCleanResume({ resumeText: RESUME, answers: [answer()] });
-    expect(out).toContain('around 80 customers');
+    expect(out.resume).toContain('around 80 customers');
+    expect(out.repaired).toBe(false);
     expect(callLLMWithRetry).toHaveBeenCalledTimes(1);
   });
 
@@ -71,7 +72,9 @@ describe('buildCleanResume', () => {
 
     const out = await buildCleanResume({ resumeText: RESUME, answers: [answer()] });
 
-    expect(out).toBe('Served around 80 customers a shift');
+    expect(out.resume).toBe('Served around 80 customers a shift');
+    // A retry was needed, which the sign-off line tells the candidate about.
+    expect(out.repaired).toBe(true);
     expect(callLLMWithRetry).toHaveBeenCalledTimes(2);
     // The corrective prompt must name what was wrong, or the retry is a coin flip.
     expect(callLLMWithRetry.mock.calls[1]?.[0]).toContain('[how many]');
@@ -83,7 +86,9 @@ describe('buildCleanResume', () => {
     // A persisted blank would be copied into every future generation, so failing
     // the build is the correct outcome.
     await expect(buildCleanResume({ resumeText: RESUME, answers: [] })).rejects.toThrow(BlankLeakError);
-    expect(callLLMWithRetry).toHaveBeenCalledTimes(2);
+    // Three attempts now: a blank leak and a content drop are independent
+    // faults, and each gets a corrective retry that names what was wrong.
+    expect(callLLMWithRetry).toHaveBeenCalledTimes(3);
   });
 
   it('tells the model to leave withheld figures out entirely', async () => {
@@ -131,6 +136,48 @@ describe('buildCleanResume', () => {
     callLLMWithRetry.mockResolvedValueOnce('clean resume text');
     await buildCleanResume({ resumeText: RESUME, answers: [] });
     expect(callLLMWithRetry.mock.calls[0]?.[0]).toContain('EVIDENCE RULE');
+  });
+
+  it('retries when the rebuild drops a real employer, naming what went missing', async () => {
+    // The Pawan case: a current role dropped while less relevant ones survived.
+    callLLMWithRetry
+      .mockResolvedValueOnce('## Work Experience\nElgar Homes Supported Residential Services')
+      .mockResolvedValueOnce('## Work Experience\nMont Albert Manor\nElgar Homes Supported Residential Services');
+
+    const out = await buildCleanResume({
+      resumeText: RESUME,
+      answers: [],
+      mustKeep: { employers: ['Mont Albert Manor', 'Elgar Homes Supported Residential Services'], qualifications: [], contacts: [] },
+    });
+
+    expect(out.resume).toContain('Mont Albert Manor');
+    expect(out.repaired).toBe(true);
+    expect(out.retention.passed).toBe(true);
+    expect(callLLMWithRetry.mock.calls[1]?.[0]).toContain('Mont Albert Manor');
+    expect(callLLMWithRetry.mock.calls[1]?.[0]).toMatch(/DROPPED CONTENT/i);
+  });
+
+  it('throws rather than persisting a resume that keeps losing content', async () => {
+    // Better to fail than to make a lost role the source of truth for every
+    // future application.
+    callLLMWithRetry.mockResolvedValue('## Work Experience\nElgar Homes only');
+    await expect(buildCleanResume({
+      resumeText: RESUME,
+      answers: [],
+      mustKeep: { employers: ['Mont Albert Manor'], qualifications: [], contacts: [] },
+    })).rejects.toThrow(ContentLossError);
+    expect(callLLMWithRetry).toHaveBeenCalledTimes(3);
+  });
+
+  it('reports how many items were verified, for the sign-off line', async () => {
+    callLLMWithRetry.mockResolvedValueOnce('Mont Albert Manor and a BSc from Deakin University, jane@example.com');
+    const out = await buildCleanResume({
+      resumeText: RESUME,
+      answers: [],
+      mustKeep: { employers: ['Mont Albert Manor'], qualifications: ['BSc, Deakin University'], contacts: ['jane@example.com'] },
+    });
+    expect(out.retention.checked).toBe(3);
+    expect(out.retention.passed).toBe(true);
   });
 
   it('refuses a resume too short to be real rather than calling the model', async () => {

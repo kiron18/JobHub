@@ -18,6 +18,7 @@ import { parseLLMJson } from '../utils/parseLLMResponse';
 import { EVIDENCE_RULE } from './intakeEvidenceRule';
 import { DocumentSignals, describeSignals } from './documentSignals';
 import { DocxStructure, describeDocxStructure } from './docxStructure';
+import { MustKeep } from './retentionGate';
 
 export interface IntakeQuestion {
   /** Stable id we key the answer off. */
@@ -80,6 +81,13 @@ export interface IntakeAnalysis {
    * to put praise, the model stops padding.
    */
   strengths: string[];
+  /**
+   * The inventory the retention gate verifies against. The model only LISTS what
+   * must survive; deterministic code does the checking. It never decides whether
+   * something may be dropped, so an incomplete list means we check less - it can
+   * never cause loss.
+   */
+  mustKeep: MustKeep;
   questions: IntakeQuestion[];
 }
 
@@ -150,7 +158,19 @@ List 2 to 5 things this resume genuinely does well, as short specific sentences.
 
 If the resume is strong overall, this is the section that should be long and the findings list that should be short. Say only what is true: if you cannot find something genuinely good, return fewer items rather than inventing praise.
 
-PART 4 - THE QUESTIONS
+PART 4 - WHAT MUST NOT BE LOST
+
+Before the questions, list everything in this resume that would be a serious error to leave out when it is rewritten. This is an inventory, not a judgement: you are not deciding what is worth keeping, you are recording what is there.
+
+Be exhaustive and literal. Copy the names as they appear in the resume, so they can be matched against the rewrite:
+
+- "employers": every company, organisation, agency, client or place of work named anywhere, including casual jobs, internships, volunteering and one-off event work. A current role matters most of all. Include every one, even if it looks unimportant or unrelated to their target job.
+- "qualifications": every degree, diploma, certificate, licence, course, publication, award and the institution that granted it.
+- "contacts": their email address, phone number, and LinkedIn URL if present, exactly as written.
+
+Do not filter, rank, summarise or merge entries. Two similar employers are two entries. If you are unsure whether something counts, include it - a longer list costs nothing and a missing entry means a real part of their history can quietly disappear.
+
+PART 5 - THE QUESTIONS
 
 Generate AT MOST ${MAX_QUESTIONS} questions. Fewer is better. Rank them by how much the answer would improve the resume, best first.
 
@@ -185,6 +205,11 @@ Return ONLY this JSON object and nothing else:
     { "title": "short label, max 6 words", "detail": "one sentence on what it costs them", "owner": "we_fix | needs_you | worth_knowing", "severity": "critical | important | minor" }
   ],
   "strengths": ["short specific sentence on something the resume genuinely does well"],
+  "mustKeep": {
+    "employers": ["every employer, organisation and client named, exactly as written"],
+    "qualifications": ["every degree, certificate, publication and award, with its institution"],
+    "contacts": ["email, phone, LinkedIn as written"]
+  },
   "questions": [
     { "id": "q1", "anchor": "...", "question": "...", "why": "...", "example": "...", "kind": "number", "ranges": ["...","...","...","..."], "hint": "..." }
   ]
@@ -220,6 +245,21 @@ function normaliseFindings(raw: unknown): IntakeFinding[] {
     out.push({ title, detail: String((f as any).detail ?? '').trim(), owner, severity });
   }
   return out.sort((a, b) => rank[a.severity] - rank[b.severity]);
+}
+
+/** Coerce the inventory into clean string lists. Deliberately uncapped - a
+ *  truncated inventory silently reduces what the retention gate can protect. */
+function normaliseMustKeep(raw: unknown): MustKeep {
+  const list = (v: unknown): string[] =>
+    Array.isArray(v)
+      ? [...new Set(v.map((x) => String(x ?? '').trim()).filter((x) => x.length > 1))]
+      : [];
+  const o = (raw ?? {}) as Record<string, unknown>;
+  return {
+    employers: list(o.employers),
+    qualifications: list(o.qualifications),
+    contacts: list(o.contacts),
+  };
 }
 
 /** Coerce whatever the model returned into a safe, bounded question list. */
@@ -301,6 +341,7 @@ export async function analyseIntakeResume(
       strengths: Array.isArray(parsed?.strengths)
         ? parsed.strengths.map((x: unknown) => String(x).trim()).filter(Boolean).slice(0, 5)
         : [],
+      mustKeep: normaliseMustKeep(parsed?.mustKeep),
       questions: normaliseQuestions(parsed?.questions),
     };
   };

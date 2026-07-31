@@ -21,6 +21,12 @@ import path from 'path';
 import { callLLMWithRetry } from '../utils/callLLMWithRetry';
 import { EVIDENCE_RULE } from './intakeEvidenceRule';
 import { DocumentSignals, describeSignals } from './documentSignals';
+import {
+  MustKeep,
+  RetentionResult,
+  checkRetention,
+  retentionRetryInstruction,
+} from './retentionGate';
 
 const RESUME_RULES = fs.readFileSync(
   path.join(__dirname, '..', '..', 'rules', 'resume_rules.md'),
@@ -138,6 +144,14 @@ export function findBlanks(content: string): string[] {
   return [...new Set(content.match(BLANK_PATTERN) ?? [])];
 }
 
+/** Raised when a rebuild keeps dropping real content. Never persist past this. */
+export class ContentLossError extends Error {
+  constructor(public readonly missing: Array<{ item: string; kind: string }>) {
+    super(`Rebuilt resume dropped ${missing.length} item(s): ${missing.map((m) => m.item).slice(0, 5).join(', ')}`);
+    this.name = 'ContentLossError';
+  }
+}
+
 export class BlankLeakError extends Error {
   constructor(public readonly blanks: string[]) {
     super(`Clean resume contained ${blanks.length} placeholder blank(s): ${blanks.slice(0, 5).join(', ')}`);
@@ -150,6 +164,16 @@ export interface BuildCleanResumeInput {
   answers: IntakeAnswer[];
   targetRole?: string | null;
   signals?: DocumentSignals;
+  /** Inventory the rebuild is verified against before it may become the truth. */
+  mustKeep?: MustKeep | null;
+}
+
+export interface BuildCleanResumeOutput {
+  resume: string;
+  /** Surfaced to the candidate so they sign off on a checked document. */
+  retention: RetentionResult;
+  /** True when a retry was needed to recover dropped content. */
+  repaired: boolean;
 }
 
 /**
@@ -162,7 +186,8 @@ export async function buildCleanResume({
   answers,
   targetRole = null,
   signals,
-}: BuildCleanResumeInput): Promise<string> {
+  mustKeep,
+}: BuildCleanResumeInput): Promise<BuildCleanResumeOutput> {
   if (!resumeText || resumeText.trim().length < 200) {
     throw new Error('buildCleanResume: resume text too short to rebuild');
   }
@@ -174,27 +199,42 @@ export async function buildCleanResume({
     signals ? describeSignals(signals) : '',
   );
 
-  // One corrective retry: a stray bracket is usually a formatting slip the model
-  // will fix when told exactly which strings were wrong. A second failure is
-  // real and must not be persisted.
+  // Three attempts, because there are two independent ways a rebuild can be
+  // unusable and each gets a corrective retry that names precisely what was
+  // wrong. Naming the fault fixes it the overwhelming majority of the time,
+  // which keeps the candidate out of it entirely.
   let lastBlanks: string[] = [];
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    const instruction =
-      attempt === 1
-        ? prompt
-        : `${prompt}\n\nYOUR PREVIOUS ATTEMPT WAS REJECTED. It contained these forbidden square-bracket placeholders: ${lastBlanks.join(', ')}. Rewrite the resume with those lines carrying no figure and no brackets at all.`;
+  let lastRetention: RetentionResult | null = null;
+  let correction = '';
 
-    const raw = await callLLMWithRetry(instruction, false);
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const raw = await callLLMWithRetry(correction ? `${prompt}\n\n${correction}` : prompt, false);
     const content = (typeof raw === 'string' ? raw : String(raw ?? '')).trim();
     if (!content) throw new Error('buildCleanResume: model returned empty content');
 
+    // Placeholder blanks would be copied into every future application.
     lastBlanks = findBlanks(content);
-    if (lastBlanks.length === 0) return content;
+    if (lastBlanks.length > 0) {
+      console.warn(`[buildCleanResume] attempt ${attempt}: ${lastBlanks.length} blank(s)`);
+      correction = `YOUR PREVIOUS ATTEMPT WAS REJECTED. It contained these forbidden square-bracket placeholders: ${lastBlanks.join(', ')}. Rewrite the resume with those lines carrying no figure and no brackets at all.`;
+      continue;
+    }
 
-    console.warn(
-      `[buildCleanResume] attempt ${attempt} rejected, ${lastBlanks.length} blank(s): ${lastBlanks.slice(0, 5).join(', ')}`,
-    );
+    // Nothing from their real history may quietly disappear.
+    const retention = checkRetention(resumeText, content, mustKeep);
+    lastRetention = retention;
+    if (!retention.passed) {
+      console.warn(
+        `[buildCleanResume] attempt ${attempt}: dropped ${retention.missing.length} item(s): `
+        + retention.missing.map((m) => m.item).join(', '),
+      );
+      correction = retentionRetryInstruction(retention.missing);
+      continue;
+    }
+
+    return { resume: content, retention, repaired: attempt > 1 };
   }
 
-  throw new BlankLeakError(lastBlanks);
+  if (lastBlanks.length > 0) throw new BlankLeakError(lastBlanks);
+  throw new ContentLossError(lastRetention?.missing ?? []);
 }

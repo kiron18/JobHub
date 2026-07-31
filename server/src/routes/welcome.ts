@@ -36,9 +36,11 @@ import { extractDocxStructure } from '../services/docxStructure';
 import {
   buildCleanResume,
   BlankLeakError,
+  ContentLossError,
   IntakeAnswer,
   IntakeAnswerStatus,
 } from '../services/buildCleanResume';
+import { MustKeep, describeRetention } from '../services/retentionGate';
 
 const router = Router();
 
@@ -144,6 +146,7 @@ router.post('/brief', optionalAuthenticate, handleUpload, async (req: Request, r
         brief: analysis.brief,
         questions: analysis.questions as any,
         signals: signals as any,
+        mustKeep: analysis.mustKeep as any,
       },
     });
 
@@ -206,12 +209,18 @@ router.post('/build', async (req: Request, res: Response) => {
       data: { buildCount: { increment: 1 }, answers: resolved as any },
     });
 
-    const clean = await buildCleanResume({
+    const built = await buildCleanResume({
       resumeText: session.resumeOriginalText,
       answers: resolved,
       targetRole: typeof targetRole === 'string' && targetRole.trim() ? targetRole.trim() : null,
       signals: (session.signals as unknown as DocumentSignals | null) ?? undefined,
+      mustKeep: (session.mustKeep as unknown as MustKeep | null) ?? undefined,
     });
+    const clean = built.resume;
+
+    if (built.repaired) {
+      console.log('[welcome/build] retention gate recovered dropped content on retry');
+    }
 
     await prisma.welcomeSession.update({
       where: { id: session.id },
@@ -221,10 +230,23 @@ router.post('/build', async (req: Request, res: Response) => {
     const unanswered = resolved.filter((a) => a.status !== 'answered');
     res.json({
       resume: clean,
+      // Shown to the candidate so they sign off on a document they know was
+      // checked, rather than being asked to proofread it themselves.
+      retention: {
+        checked: built.retention.checked,
+        summary: describeRetention(built.retention),
+        repaired: built.repaired,
+      },
       answeredCount: resolved.length - unanswered.length,
       outstanding: unanswered.map((a) => ({ questionId: a.questionId, question: a.question, status: a.status })),
     });
   } catch (err) {
+    if (err instanceof ContentLossError) {
+      // Never persist a resume that lost part of their real history.
+      console.error('[welcome/build] content loss, refused to save:', err.message);
+      res.status(502).json({ error: 'We could not rebuild your resume without leaving something out. Please try again.' });
+      return;
+    }
     if (err instanceof BlankLeakError) {
       // Never persist this. Better to ask them to retry than to poison every
       // future generation with "[how many]" sitting in their resume text.
