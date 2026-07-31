@@ -17,6 +17,7 @@ import { callLLMWithDocument } from './llm';
 import { parseLLMJson } from '../utils/parseLLMResponse';
 import { EVIDENCE_RULE } from './intakeEvidenceRule';
 import { DocumentSignals, describeSignals } from './documentSignals';
+import { DocxStructure, describeDocxStructure } from './docxStructure';
 
 export interface IntakeQuestion {
   /** Stable id we key the answer off. */
@@ -50,13 +51,22 @@ export interface IntakeAnalysis {
 /** Hard ceiling. More than this and people abandon the flow. */
 export const MAX_QUESTIONS = 8;
 
-const PROMPT = (resumeText: string, signals: string, hasDocument: boolean): string => `You are a warm, expert Australian career coach. A new client has just uploaded their resume. Your job is to read it once and return two things: a short honest read on where it stands, and the specific questions you need answered before you can rewrite it properly.
+const PROMPT = (
+  resumeText: string,
+  signals: string,
+  hasDocument: boolean,
+  structure: string,
+): string => `You are a warm, expert Australian career coach. A new client has just uploaded their resume. Your job is to read it once and return two things: a short honest read on where it stands, and the specific questions you need answered before you can rewrite it properly.
 
 ${EVIDENCE_RULE}
 ${signals ? `\n${signals}\n` : ''}
 PART 1 — THE READ
 
-You are looking at the candidate's actual resume document, exactly as an Australian recruiter would open it. Judge everything you can see, not only the words: the photo, the layout and column structure, tables and text boxes, colour, fonts, spacing and density, margins, page count, headers and footers, graphics, charts, rating bars, anything that would fail an automated screen or waste the six-second human scan. Then judge the writing.
+${hasDocument
+  ? `You are looking at the candidate's actual resume document, exactly as an Australian recruiter would open it. Judge everything you can see, not only the words: the photo, the layout and column structure, tables and text boxes, colour, fonts, spacing and density, margins, page count, headers and footers, graphics, charts, rating bars, anything that would fail an automated screen or waste the six-second human scan. Then judge the writing.`
+  : structure
+    ? `You have the candidate's resume as structure, not as a picture. Judge everything the structure shows — tables and what depends on them, heading levels, list structure, emphasis, where images sit — and then judge the writing. Be precise about the limits of what you were given: say nothing about fonts, colours, margins, columns or page count, because you genuinely cannot see them.`
+    : `You have the candidate's resume as plain text only, with all structure and appearance stripped out. Judge the writing, the content and the ordering. Say nothing about photos, tables, layout, fonts, colour or page count — you cannot see any of it, and guessing would be worse than staying silent.`}
 
 Do not work from a checklist, and do not limit yourself to problems anyone anticipated. Look at this specific document and say what is actually wrong with it. If the most serious problem is something unusual — three pages of dense grey text, a header the ATS will silently drop, a skills chart that conveys nothing, an obviously wrong date, a job that stops mid-sentence — that is the thing to name.
 
@@ -108,9 +118,11 @@ Return ONLY this JSON object and nothing else:
 
 ${hasDocument
   ? `The resume document is attached to this message — read it directly. The plain text below is the same document with all layout stripped out, provided only so you can copy exact lines into "anchor". Trust the attached document for anything about how the resume looks.`
-  : `No document could be attached, so you are working from extracted text only. You therefore CANNOT see layout, photos, colour or formatting — do not guess at them or claim anything about the resume's appearance. Judge only what the text shows.`}
+  : structure
+    ? structure
+    : `You are working from extracted text only. You therefore CANNOT see layout, tables, photos, colour or formatting — do not guess at them or claim anything about the resume's appearance. Judge only what the text shows.`}
 
-RESUME TEXT:
+RESUME TEXT${structure && !hasDocument ? ' (the same document flattened — use it to copy exact lines into "anchor")' : ''}:
 """
 ${resumeText}
 """`;
@@ -153,9 +165,13 @@ export async function analyseIntakeResume(
   resumeText: string,
   signals?: DocumentSignals,
   document?: { buffer: Buffer; filename: string; isPdf: boolean },
+  docxStructure?: DocxStructure | null,
 ): Promise<IntakeAnalysis> {
   const signalBlock = signals ? describeSignals(signals) : '';
   const canAttach = !!document?.isPdf;
+  // DOCX has no native path, so give the model the document's structure instead
+  // of a flattened text dump — otherwise tables are invisible to it.
+  const structureBlock = !canAttach && docxStructure ? describeDocxStructure(docxStructure) : '';
 
   // Parsing has to sit INSIDE the attempt, not after it. A malformed or truncated
   // JSON response from the document call is exactly the case the text fallback
@@ -164,12 +180,12 @@ export async function analyseIntakeResume(
   const attempt = async (useDocument: boolean): Promise<IntakeAnalysis> => {
     const raw = useDocument
       ? await callLLMWithDocument(
-          PROMPT(resumeText, signalBlock, true),
+          PROMPT(resumeText, signalBlock, true, ''),
           { buffer: document!.buffer, filename: document!.filename },
           true,
           0.4,
         )
-      : await callLLMWithRetry(PROMPT(resumeText, signalBlock, false), true, 3, 0.4);
+      : await callLLMWithRetry(PROMPT(resumeText, signalBlock, false, structureBlock), true, 3, 0.4);
 
     const parsed = typeof raw === 'string' ? parseLLMJson(raw) : raw;
     const brief = String(parsed?.brief ?? '').trim();

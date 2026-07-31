@@ -32,6 +32,7 @@ import { autoExtractAchievements } from '../services/autoExtract';
 import { reconcileProfileEmail } from '../services/onboarding';
 import { analyseIntakeResume, IntakeQuestion } from '../services/intakeAnalysis';
 import { detectDocumentSignals, DocumentSignals } from '../services/documentSignals';
+import { extractDocxStructure } from '../services/docxStructure';
 import {
   buildCleanResume,
   BlankLeakError,
@@ -113,12 +114,24 @@ router.post('/brief', optionalAuthenticate, handleUpload, async (req: Request, r
     const signals = detectDocumentSignals(file.buffer, file.mimetype, file.originalname);
     if (signals.likelyPhoto) console.log('[welcome/brief] photo detected on upload');
 
-    const isPdf = (file.originalname || '').toLowerCase().endsWith('.pdf') || (file.mimetype || '').includes('pdf');
-    const analysis = await analyseIntakeResume(text, signals, {
-      buffer: file.buffer,
-      filename: file.originalname || 'resume.pdf',
-      isPdf,
-    });
+    const name = (file.originalname || '').toLowerCase();
+    const isPdf = name.endsWith('.pdf') || (file.mimetype || '').includes('pdf');
+    const isDocx = name.endsWith('.docx') || (file.mimetype || '').includes('wordprocessingml');
+
+    // Word files cannot be sent natively, so convert to structure-preserving
+    // HTML instead. Without this the model cannot see tables, and content laid
+    // out in a table is one of the worst things on an Australian resume.
+    const structure = isDocx ? await extractDocxStructure(file.buffer) : null;
+    if (structure?.tableCount) {
+      console.log(`[welcome/brief] docx structure: ${structure.tableCount} table(s), largest ${structure.largestTableCells} cells`);
+    }
+
+    const analysis = await analyseIntakeResume(
+      text,
+      signals,
+      { buffer: file.buffer, filename: file.originalname || 'resume.pdf', isPdf },
+      structure,
+    );
     const token = randomUUID();
 
     await prisma.welcomeSession.create({
