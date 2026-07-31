@@ -41,15 +41,36 @@ export interface IntakeQuestion {
   hint: string;
 }
 
+/** One defect found in the resume. The brief names the worst few; this is all of them. */
+export interface IntakeFinding {
+  /** Short label, e.g. "Photo on the resume". */
+  title: string;
+  /** One sentence on what it costs them. */
+  detail: string;
+  /** critical = costs them the resume being read; minor = polish. */
+  severity: 'critical' | 'important' | 'minor';
+  /** 'look' = layout/appearance, 'writing' = content, 'admin' = dates, contact, spelling. */
+  area: 'look' | 'writing' | 'admin';
+}
+
 export interface IntakeAnalysis {
   firstName: string;
   currentRole: string;
   brief: string;
+  findings: IntakeFinding[];
   questions: IntakeQuestion[];
 }
 
 /** Hard ceiling. More than this and people abandon the flow. */
 export const MAX_QUESTIONS = 8;
+
+/**
+ * This one call returns the prose read, an intentionally uncapped list of every
+ * flaw found, AND up to 8 anchored questions. The default 8192 truncated the
+ * JSON mid-object the moment the findings list got long, which surfaced as
+ * "LLM returned unparseable response".
+ */
+const ANALYSIS_MAX_TOKENS = 16000;
 
 const PROMPT = (
   resumeText: string,
@@ -80,7 +101,23 @@ Do NOT sell, pitch, mention price, or congratulate them on joining. Warm and dir
 
 End by telling them you need a few facts from them before you rewrite it.
 
-PART 2 — THE QUESTIONS
+PART 2 — EVERY FLAW YOU FOUND
+
+The read above is deliberately short, so it can only carry the worst few problems. This part is the complete list, and it is the one that must be exhaustive.
+
+List EVERY defect you can see, not just the ones you named above. Include the ones from the read as well. There is no cap and no word limit here: if you can see twenty things wrong, list twenty. A person reading this should finish it knowing there is nothing left you noticed but did not say.
+
+Cover all of it: appearance and layout, tables, photos and graphics, page count and density, section order, headings, contact details, dates and date formats, spelling and grammar, Australian versus overseas conventions, duty-led bullets, missing outcomes, unexplained employers, gaps, inconsistencies, leftover placeholder or template text, anything that would trip an automated screen, and anything else you noticed.
+
+Order them worst first. For each one:
+- "title": a short label, at most 6 words ("Photo on the resume", "Work history inside a table")
+- "detail": ONE sentence on what it actually costs them, in plain words
+- "severity": "critical" if it can stop the resume being read or parsed at all, "important" if it costs them interviews, "minor" if it is polish
+- "area": "look" for layout and appearance, "writing" for content and wording, "admin" for dates, contact details, spelling and formatting conventions
+
+Never invent a flaw to pad the list. If the resume genuinely does something well, leave it out rather than inventing a problem. An empty-ish list on a strong resume is a correct answer.
+
+PART 3 — THE QUESTIONS
 
 Generate AT MOST ${MAX_QUESTIONS} questions. Fewer is better. Rank them by how much the answer would improve the resume, best first.
 
@@ -111,6 +148,9 @@ Return ONLY this JSON object and nothing else:
   "firstName": "their first name, or an empty string if unclear",
   "currentRole": "their current or most recent job title in plain title case, or an empty string if unclear",
   "brief": "the prose read, one string, \\n\\n between paragraphs",
+  "findings": [
+    { "title": "short label, max 6 words", "detail": "one sentence on what it costs them", "severity": "critical | important | minor", "area": "look | writing | admin" }
+  ],
   "questions": [
     { "id": "q1", "anchor": "...", "question": "...", "why": "...", "example": "...", "kind": "number", "ranges": ["...","...","...","..."], "hint": "..." }
   ]
@@ -126,6 +166,25 @@ RESUME TEXT${structure && !hasDocument ? ' (the same document flattened — use 
 """
 ${resumeText}
 """`;
+
+/** Coerce the findings list into safe values. Deliberately NOT capped — the whole
+ *  point is that nothing found goes unreported. */
+function normaliseFindings(raw: unknown): IntakeFinding[] {
+  if (!Array.isArray(raw)) return [];
+  const rank = { critical: 0, important: 1, minor: 2 } as const;
+  const out: IntakeFinding[] = [];
+  for (const f of raw) {
+    if (!f || typeof f !== 'object') continue;
+    const title = String((f as any).title ?? '').trim();
+    if (!title) continue;
+    const severity = (['critical', 'important', 'minor'] as const)
+      .find((s) => s === (f as any).severity) ?? 'important';
+    const area = (['look', 'writing', 'admin'] as const)
+      .find((a) => a === (f as any).area) ?? 'writing';
+    out.push({ title, detail: String((f as any).detail ?? '').trim(), severity, area });
+  }
+  return out.sort((a, b) => rank[a.severity] - rank[b.severity]);
+}
 
 /** Coerce whatever the model returned into a safe, bounded question list. */
 function normaliseQuestions(raw: unknown): IntakeQuestion[] {
@@ -184,8 +243,15 @@ export async function analyseIntakeResume(
           { buffer: document!.buffer, filename: document!.filename },
           true,
           0.4,
+          ANALYSIS_MAX_TOKENS,
         )
-      : await callLLMWithRetry(PROMPT(resumeText, signalBlock, false, structureBlock), true, 3, 0.4);
+      : await callLLMWithRetry(
+          PROMPT(resumeText, signalBlock, false, structureBlock),
+          true,
+          3,
+          0.4,
+          ANALYSIS_MAX_TOKENS,
+        );
 
     const parsed = typeof raw === 'string' ? parseLLMJson(raw) : raw;
     const brief = String(parsed?.brief ?? '').trim();
@@ -195,6 +261,7 @@ export async function analyseIntakeResume(
       firstName: String(parsed?.firstName ?? '').trim(),
       currentRole: String(parsed?.currentRole ?? '').trim(),
       brief,
+      findings: normaliseFindings(parsed?.findings),
       questions: normaliseQuestions(parsed?.questions),
     };
   };

@@ -22,6 +22,13 @@ type Step =
 
 const EASE = [0.25, 1, 0.5, 1] as const;
 
+/** Severity chips on the findings list, on the dark brief screen. */
+const SEVERITY = {
+  critical:  { label: 'Critical',  fg: '#FFD9D2', bg: 'rgba(196,72,48,0.30)' },
+  important: { label: 'Important', fg: '#FFE9C2', bg: 'rgba(196,138,48,0.26)' },
+  minor:     { label: 'Minor',     fg: 'rgba(250,247,242,0.72)', bg: 'rgba(250,247,242,0.10)' },
+} as const;
+
 const ROLE_PLACEHOLDERS = ['e.g. Marketing Coordinator', 'e.g. Business Analyst', 'e.g. Registered Nurse', 'e.g. Software Engineer', 'e.g. Project Manager', 'e.g. Graphic Designer'];
 
 // Supabase's email OTP length is a project setting (6-10 digits) that can be
@@ -31,6 +38,13 @@ const ROLE_PLACEHOLDERS = ['e.g. Marketing Coordinator', 'e.g. Business Analyst'
 // Supabase reject a wrong code.
 const OTP_MIN = 6;
 const OTP_MAX = 10;
+
+interface IntakeFinding {
+  title: string;
+  detail: string;
+  severity: 'critical' | 'important' | 'minor';
+  area: 'look' | 'writing' | 'admin';
+}
 
 interface IntakeQuestion {
   id: string;
@@ -58,6 +72,7 @@ export const WelcomePage: React.FC = () => {
   const [roles, setRoles] = useState<string[]>(['']);
   const [city, setCity] = useState('');
 
+  const [findings, setFindings] = useState<IntakeFinding[]>([]);
   const [questions, setQuestions] = useState<IntakeQuestion[]>([]);
   const [qIndex, setQIndex] = useState(0);
   const [answers, setAnswers] = useState<Answers>({});
@@ -94,6 +109,7 @@ export const WelcomePage: React.FC = () => {
       setToken(data.token);
       setFirstName(data.firstName || '');
       setBrief(data.brief || '');
+      setFindings(Array.isArray(data.findings) ? data.findings : []);
       setQuestions(Array.isArray(data.questions) ? data.questions : []);
       if (data.currentRole) setRoles([data.currentRole]);
       setStep('brief');
@@ -222,7 +238,7 @@ export const WelcomePage: React.FC = () => {
       <div style={{ height: '100dvh', overflowY: 'auto', background: colors.bgDeep, backgroundImage: GRAIN, display: 'flex', padding: '48px 24px', boxSizing: 'border-box' }}>
         <motion.div
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: EASE }}
-          style={{ width: '100%', maxWidth: 640, textAlign: 'left', margin: 'auto' }}
+          style={{ width: '100%', maxWidth: 660, textAlign: 'left', margin: 'auto', paddingBottom: 8 }}
         >
           <span style={{ fontFamily: T.body, fontSize: 12, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: colors.accentGold }}>
             {firstName ? `${firstName}, here is where we start` : 'Here is where we start'}
@@ -231,6 +247,39 @@ export const WelcomePage: React.FC = () => {
           <p style={{ fontFamily: T.display, fontSize: 'clamp(21px, 3vw, 27px)', lineHeight: 1.5, color: colors.textOnDeep, margin: 0, whiteSpace: 'pre-line' }}>
             {brief}
           </p>
+          {/* The prose read carries only the worst two or three. This is everything
+              found, so nothing noticed goes unreported. */}
+          {findings.length > 0 && (
+            <div style={{ marginTop: 36, borderTop: '1px solid rgba(232,215,176,0.22)', paddingTop: 24 }}>
+              <span style={{ fontFamily: T.body, fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: colors.accentGold }}>
+                Everything we found · {findings.length}
+              </span>
+              <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {findings.map((f, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                    <span style={{
+                      flexShrink: 0, marginTop: 3, fontFamily: T.body, fontSize: 10, fontWeight: 700,
+                      letterSpacing: '0.08em', textTransform: 'uppercase', padding: '3px 7px', borderRadius: 5,
+                      color: SEVERITY[f.severity].fg, background: SEVERITY[f.severity].bg, minWidth: 58, textAlign: 'center',
+                    }}>
+                      {SEVERITY[f.severity].label}
+                    </span>
+                    <span style={{ minWidth: 0 }}>
+                      <span style={{ display: 'block', fontFamily: T.body, fontSize: 15, fontWeight: 600, color: colors.textOnDeep, lineHeight: 1.4 }}>
+                        {f.title}
+                      </span>
+                      {f.detail && (
+                        <span style={{ display: 'block', fontFamily: T.body, fontSize: 14, lineHeight: 1.55, color: 'rgba(250,247,242,0.62)', marginTop: 2 }}>
+                          {f.detail}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div style={{ marginTop: 40, display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
             <motion.button
               onClick={() => startQuestions()}

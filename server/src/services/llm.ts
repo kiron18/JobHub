@@ -29,7 +29,12 @@ async function retryWithBackoff(fn: () => Promise<any>, retries: number = 2, del
  * @param jsonMode - If true, requests JSON output.
  * @returns Raw content string or parsed object as requested.
  */
-export async function callLLM(prompt: string, jsonMode: boolean = true, temperature: number = 0) {
+export async function callLLM(
+    prompt: string,
+    jsonMode: boolean = true,
+    temperature: number = 0,
+    maxTokens: number = 8192,
+) {
     if (!OPENROUTER_API_KEY) {
         throw new Error('OPENROUTER_API_KEY is not set in environment variables.');
     }
@@ -40,7 +45,7 @@ export async function callLLM(prompt: string, jsonMode: boolean = true, temperat
             {
                 model: process.env.FAST_MODEL || 'anthropic/claude-sonnet-4-5',
                 temperature,
-                max_tokens: 8192,
+                max_tokens: maxTokens,
                 messages: [
                     {
                         role: 'system',
@@ -269,6 +274,7 @@ export async function callLLMWithDocument(
     file: { buffer: Buffer; filename: string },
     jsonMode: boolean = true,
     temperature: number = 0,
+    maxTokens: number = 8192,
 ): Promise<string> {
     if (!OPENROUTER_API_KEY) {
         throw new Error('OPENROUTER_API_KEY is not set in environment variables.');
@@ -283,7 +289,7 @@ export async function callLLMWithDocument(
             {
                 model: modelSlug,
                 ...(supportsTemperature ? { temperature } : {}),
-                max_tokens: 8192,
+                max_tokens: maxTokens,
                 messages: [
                     {
                         role: 'system',
