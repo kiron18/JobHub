@@ -247,3 +247,83 @@ export async function embedText(text: string): Promise<number[]> {
     });
 }
 
+
+/**
+ * Calls Claude with the ACTUAL DOCUMENT attached, not just text extracted from it.
+ *
+ * Why this exists: extractTextFromBuffer returns text and nothing else. A resume's
+ * photo, two-column layout, tables, colour blocks, font choices, page count,
+ * margins and visual density all vanish before the model ever sees them — so no
+ * prompt can make it comment on how a resume LOOKS. It was being asked to critique
+ * a document it had never been shown.
+ *
+ * OpenRouter's `file-parser` plugin with `engine: "native"` hands the PDF to the
+ * model's own file processing, so Claude receives the rendered pages the way a
+ * human opening the file would, plus the text. This is the same thing that makes
+ * pasting a CV into the Claude web app work.
+ *
+ * PDF only — DOCX has no native path, so callers must fall back to text for those.
+ */
+export async function callLLMWithDocument(
+    prompt: string,
+    file: { buffer: Buffer; filename: string },
+    jsonMode: boolean = true,
+    temperature: number = 0,
+): Promise<string> {
+    if (!OPENROUTER_API_KEY) {
+        throw new Error('OPENROUTER_API_KEY is not set in environment variables.');
+    }
+
+    const modelSlug = CLAUDE_MODEL;
+    const supportsTemperature = !/opus-4-[78]|sonnet-5|fable/.test(modelSlug);
+
+    return await retryWithBackoff(async () => {
+        const response = await axios.post(
+            OPENROUTER_URL,
+            {
+                model: modelSlug,
+                ...(supportsTemperature ? { temperature } : {}),
+                max_tokens: 8192,
+                messages: [
+                    {
+                        role: 'system',
+                        content: 'You are an expert Australian career coach reviewing a resume document. '
+                            + (jsonMode ? 'Return ONLY valid JSON. No preamble, no markdown fences.' : ''),
+                    },
+                    {
+                        role: 'user',
+                        content: [
+                            { type: 'text', text: prompt },
+                            {
+                                type: 'file',
+                                file: {
+                                    filename: file.filename,
+                                    file_data: `data:application/pdf;base64,${file.buffer.toString('base64')}`,
+                                },
+                            },
+                        ],
+                    },
+                ],
+                // "native" = the model's own file processing, so it sees the rendered
+                // pages. The OCR/markdown engines would flatten it back to text and
+                // defeat the entire purpose of this function.
+                plugins: [{ id: 'file-parser', pdf: { engine: 'native' } }],
+            },
+            {
+                headers: {
+                    'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+                    'HTTP-Referer': process.env.OPENROUTER_REFERER || 'https://aussiegradcareers.com.au',
+                    'X-Title': process.env.OPENROUTER_APP_TITLE || 'JobHub',
+                    'Content-Type': 'application/json',
+                },
+                timeout: 180000,
+            },
+        );
+
+        const choices = response.data.choices;
+        if (!choices?.length) {
+            throw new Error(`OpenRouter returned no choices. Body: ${JSON.stringify(response.data).substring(0, 300)}`);
+        }
+        return choices[0].message.content;
+    });
+}

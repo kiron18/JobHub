@@ -113,7 +113,12 @@ router.post('/brief', optionalAuthenticate, handleUpload, async (req: Request, r
     const signals = detectDocumentSignals(file.buffer, file.mimetype, file.originalname);
     if (signals.likelyPhoto) console.log('[welcome/brief] photo detected on upload');
 
-    const analysis = await analyseIntakeResume(text, signals);
+    const isPdf = (file.originalname || '').toLowerCase().endsWith('.pdf') || (file.mimetype || '').includes('pdf');
+    const analysis = await analyseIntakeResume(text, signals, {
+      buffer: file.buffer,
+      filename: file.originalname || 'resume.pdf',
+      isPdf,
+    });
     const token = randomUUID();
 
     await prisma.welcomeSession.create({

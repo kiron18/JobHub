@@ -13,6 +13,7 @@
  *     what an unknown overseas employer does) get ASKED. Never guessed.
  */
 import { callLLMWithRetry } from '../utils/callLLMWithRetry';
+import { callLLMWithDocument } from './llm';
 import { parseLLMJson } from '../utils/parseLLMResponse';
 import { EVIDENCE_RULE } from './intakeEvidenceRule';
 import { DocumentSignals, describeSignals } from './documentSignals';
@@ -49,17 +50,21 @@ export interface IntakeAnalysis {
 /** Hard ceiling. More than this and people abandon the flow. */
 export const MAX_QUESTIONS = 8;
 
-const PROMPT = (resumeText: string, signals: string): string => `You are a warm, expert Australian career coach. A new client has just uploaded their resume. Your job is to read it once and return two things: a short honest read on where it stands, and the specific questions you need answered before you can rewrite it properly.
+const PROMPT = (resumeText: string, signals: string, hasDocument: boolean): string => `You are a warm, expert Australian career coach. A new client has just uploaded their resume. Your job is to read it once and return two things: a short honest read on where it stands, and the specific questions you need answered before you can rewrite it properly.
 
 ${EVIDENCE_RULE}
 ${signals ? `\n${signals}\n` : ''}
 PART 1 — THE READ
 
+You are looking at the candidate's actual resume document, exactly as an Australian recruiter would open it. Judge everything you can see, not only the words: the photo, the layout and column structure, tables and text boxes, colour, fonts, spacing and density, margins, page count, headers and footers, graphics, charts, rating bars, anything that would fail an automated screen or waste the six-second human scan. Then judge the writing.
+
+Do not work from a checklist, and do not limit yourself to problems anyone anticipated. Look at this specific document and say what is actually wrong with it. If the most serious problem is something unusual — three pages of dense grey text, a header the ATS will silently drop, a skills chart that conveys nothing, an obviously wrong date, a job that stops mid-sentence — that is the thing to name.
+
 2 or 3 short paragraphs of flowing prose. Plain sentences. NO bullet points, NO numbered lists, NO headings, NO score, NO percentages.
 
-Name the two or three most important things holding this resume back in the Australian market. Real examples: bullets that describe duties instead of outcomes, missing keywords the automated screen looks for, formatting that breaks the six-second scan, unclear positioning, a photo or date of birth that Australian employers do not expect. Explain each as understanding, not as a verdict. Never imply a character flaw — "duty-led" is fine, "weak" is not.
+Name the two or three MOST SERIOUS problems, worst first, ranked by what actually costs this person interviews. Explain each as understanding, not as a verdict. Never imply a character flaw — "duty-led" is fine, "weak" is not.
 
-If a DOCUMENT SIGNALS block above tells you this resume carries a photograph, that is ALWAYS one of the things you name, and you name it first. It outranks any wording or formatting issue: it is the one problem visible before a single line is read. Say plainly that Australian resumes do not carry photos, that we will remove it, and why that helps them.
+Rank by impact, and be honest about the ordering. Something visible before a single word is read — a photo, a layout that breaks the screen, three pages where one was needed — outranks any individual bullet's phrasing, because it costs them the resume being read at all. Say plainly what it is, that we will fix it, and why that helps them.
 
 Do NOT sell, pitch, mention price, or congratulate them on joining. Warm and direct, second person. Australian English. No em dashes or en dashes. 90 to 140 words.
 
@@ -101,7 +106,11 @@ Return ONLY this JSON object and nothing else:
   ]
 }
 
-RESUME:
+${hasDocument
+  ? `The resume document is attached to this message — read it directly. The plain text below is the same document with all layout stripped out, provided only so you can copy exact lines into "anchor". Trust the attached document for anything about how the resume looks.`
+  : `No document could be attached, so you are working from extracted text only. You therefore CANNOT see layout, photos, colour or formatting — do not guess at them or claim anything about the resume's appearance. Judge only what the text shows.`}
+
+RESUME TEXT:
 """
 ${resumeText}
 """`;
@@ -133,25 +142,60 @@ function normaliseQuestions(raw: unknown): IntakeQuestion[] {
   return out;
 }
 
+/**
+ * `document` is the original upload. When it is a PDF we send the FILE ITSELF, so
+ * the model sees the rendered pages — photo, layout, tables, density, page count —
+ * instead of a text dump with all of that stripped out. Everything visual about a
+ * resume is invisible in extracted text, which is why enumerating conditions in the
+ * prompt could never work. Falls back to text-only for DOCX and on any failure.
+ */
 export async function analyseIntakeResume(
   resumeText: string,
   signals?: DocumentSignals,
+  document?: { buffer: Buffer; filename: string; isPdf: boolean },
 ): Promise<IntakeAnalysis> {
-  const raw = await callLLMWithRetry(
-    PROMPT(resumeText, signals ? describeSignals(signals) : ''),
-    true,
-    3,
-    0.4,
-  );
-  const parsed = typeof raw === 'string' ? parseLLMJson(raw) : raw;
+  const signalBlock = signals ? describeSignals(signals) : '';
+  const canAttach = !!document?.isPdf;
 
-  const brief = String(parsed?.brief ?? '').trim();
-  if (!brief) throw new Error('intakeAnalysis: model returned no brief');
+  // Parsing has to sit INSIDE the attempt, not after it. A malformed or truncated
+  // JSON response from the document call is exactly the case the text fallback
+  // exists for, and leaving the parse outside meant a bad response threw a 502 at
+  // the user instead of quietly falling back.
+  const attempt = async (useDocument: boolean): Promise<IntakeAnalysis> => {
+    const raw = useDocument
+      ? await callLLMWithDocument(
+          PROMPT(resumeText, signalBlock, true),
+          { buffer: document!.buffer, filename: document!.filename },
+          true,
+          0.4,
+        )
+      : await callLLMWithRetry(PROMPT(resumeText, signalBlock, false), true, 3, 0.4);
 
-  return {
-    firstName: String(parsed?.firstName ?? '').trim(),
-    currentRole: String(parsed?.currentRole ?? '').trim(),
-    brief,
-    questions: normaliseQuestions(parsed?.questions),
+    const parsed = typeof raw === 'string' ? parseLLMJson(raw) : raw;
+    const brief = String(parsed?.brief ?? '').trim();
+    if (!brief) throw new Error('model returned no brief');
+
+    return {
+      firstName: String(parsed?.firstName ?? '').trim(),
+      currentRole: String(parsed?.currentRole ?? '').trim(),
+      brief,
+      questions: normaliseQuestions(parsed?.questions),
+    };
   };
+
+  if (canAttach) {
+    // Two shots at the document read before giving up the visual information —
+    // it is worth far more than the text-only read, so don't abandon it on one
+    // bad JSON response.
+    for (let i = 1; i <= 2; i++) {
+      try {
+        return await attempt(true);
+      } catch (err) {
+        console.warn(`[intakeAnalysis] document read attempt ${i} failed:`, (err as Error).message);
+      }
+    }
+    console.warn('[intakeAnalysis] falling back to text-only read (no layout or photo visibility)');
+  }
+
+  return attempt(false);
 }
