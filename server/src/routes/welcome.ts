@@ -31,6 +31,7 @@ import { authenticate, optionalAuthenticate, AuthRequest } from '../middleware/a
 import { autoExtractAchievements } from '../services/autoExtract';
 import { reconcileProfileEmail } from '../services/onboarding';
 import { analyseIntakeResume, IntakeQuestion } from '../services/intakeAnalysis';
+import { detectDocumentSignals, DocumentSignals } from '../services/documentSignals';
 import {
   buildCleanResume,
   BlankLeakError,
@@ -106,7 +107,13 @@ router.post('/brief', optionalAuthenticate, handleUpload, async (req: Request, r
 
     sweepExpiredSessions();
 
-    const analysis = await analyseIntakeResume(text);
+    // Text extraction cannot see a photo, a logo or any other embedded image, so
+    // inspect the raw file for what the text is structurally missing. Without
+    // this the model could never mention a photo, no matter how it was prompted.
+    const signals = detectDocumentSignals(file.buffer, file.mimetype, file.originalname);
+    if (signals.likelyPhoto) console.log('[welcome/brief] photo detected on upload');
+
+    const analysis = await analyseIntakeResume(text, signals);
     const token = randomUUID();
 
     await prisma.welcomeSession.create({
@@ -118,6 +125,7 @@ router.post('/brief', optionalAuthenticate, handleUpload, async (req: Request, r
         currentRole: analysis.currentRole || null,
         brief: analysis.brief,
         questions: analysis.questions as any,
+        signals: signals as any,
       },
     });
 
@@ -182,6 +190,7 @@ router.post('/build', async (req: Request, res: Response) => {
       resumeText: session.resumeOriginalText,
       answers: resolved,
       targetRole: typeof targetRole === 'string' && targetRole.trim() ? targetRole.trim() : null,
+      signals: (session.signals as unknown as DocumentSignals | null) ?? undefined,
     });
 
     await prisma.welcomeSession.update({

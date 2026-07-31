@@ -103,14 +103,21 @@ export const WelcomePage: React.FC = () => {
     }
   }
 
-  // Roles come before the questions: it's the easy one, it builds momentum, and
-  // the rebuild uses the target role for positioning.
-  function onRolesContinue() {
-    if (cleanRoles().length === 0) { toast.error('Add at least one target role.'); return; }
-    if (questions.length === 0) { void buildResume({}); return; }
+  // The brief ends with "I need a few facts from you before I rewrite it", so
+  // the questions must be the very next thing. Sending them to a target-role
+  // form here reads as a broken promise.
+  function startQuestions() {
+    if (questions.length === 0) { setStep('roles'); return; }
     setQIndex(0);
     setDraft('');
     setStep('questions');
+  }
+
+  // Roles are asked after the questions, immediately before the rebuild, because
+  // the rewrite uses the target role for positioning.
+  function onRolesContinue() {
+    if (cleanRoles().length === 0) { toast.error('Add at least one target role.'); return; }
+    void buildResume(answers);
   }
 
   function commitAnswer(status: AnswerStatus, value: string) {
@@ -122,7 +129,7 @@ export const WelcomePage: React.FC = () => {
     if (qIndex + 1 < questions.length) {
       setQIndex(qIndex + 1);
     } else {
-      void buildResume(next);
+      setStep('roles');
     }
   }
 
@@ -148,7 +155,7 @@ export const WelcomePage: React.FC = () => {
       setStep('resume');
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'Could not build your resume, please try again.');
-      setStep('questions');
+      setStep('roles');
     }
   }
 
@@ -226,13 +233,15 @@ export const WelcomePage: React.FC = () => {
           </p>
           <div style={{ marginTop: 40, display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
             <motion.button
-              onClick={() => setStep('roles')}
+              onClick={() => startQuestions()}
               whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
               style={{ fontFamily: T.body, fontSize: 16, fontWeight: 700, cursor: 'pointer', padding: '15px 28px', borderRadius: 14, border: 'none', background: colors.accentGold, color: colors.bgDeep, display: 'inline-flex', alignItems: 'center', gap: 8 }}
             >
               We fix this together <ArrowRight size={18} />
             </motion.button>
-            <span style={{ fontFamily: T.body, fontSize: 13.5, color: 'rgba(250,247,242,0.6)' }}>Next: your target roles.</span>
+            <span style={{ fontFamily: T.body, fontSize: 13.5, color: 'rgba(250,247,242,0.6)' }}>
+              {questions.length > 0 ? `Next: ${questions.length} quick questions.` : 'Next: your target roles.'}
+            </span>
           </div>
         </motion.div>
       </div>
@@ -243,7 +252,7 @@ export const WelcomePage: React.FC = () => {
   if (step === 'roles') {
     return (
       <Shell>
-        <Eyebrow>Step 2 of your setup</Eyebrow>
+        <Eyebrow>Last thing before we rebuild it</Eyebrow>
         <Display>Where are we aiming?</Display>
         <p style={bodyText}>Tell us the roles you want to land. This points your feed, your matches and everything we build with you.</p>
 
@@ -279,7 +288,7 @@ export const WelcomePage: React.FC = () => {
         </div>
 
         <div style={{ marginTop: 26 }}>
-          <PrimaryBtn label="Continue" onClick={onRolesContinue} />
+          <PrimaryBtn label="Build my resume" onClick={onRolesContinue} />
         </div>
       </Shell>
     );
@@ -337,7 +346,7 @@ export const WelcomePage: React.FC = () => {
 
         <div style={{ marginTop: 22, display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
           <PrimaryBtn
-            label={qIndex + 1 === questions.length ? 'Build my resume' : 'Next'}
+            label={qIndex + 1 === questions.length ? 'Done' : 'Next'}
             onClick={() => canSubmit && commitAnswer('answered', draft.trim())}
             dim={!canSubmit}
           />

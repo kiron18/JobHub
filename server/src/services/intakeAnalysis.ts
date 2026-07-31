@@ -15,6 +15,7 @@
 import { callLLMWithRetry } from '../utils/callLLMWithRetry';
 import { parseLLMJson } from '../utils/parseLLMResponse';
 import { EVIDENCE_RULE } from './intakeEvidenceRule';
+import { DocumentSignals, describeSignals } from './documentSignals';
 
 export interface IntakeQuestion {
   /** Stable id we key the answer off. */
@@ -48,15 +49,17 @@ export interface IntakeAnalysis {
 /** Hard ceiling. More than this and people abandon the flow. */
 export const MAX_QUESTIONS = 8;
 
-const PROMPT = (resumeText: string): string => `You are a warm, expert Australian career coach. A new client has just uploaded their resume. Your job is to read it once and return two things: a short honest read on where it stands, and the specific questions you need answered before you can rewrite it properly.
+const PROMPT = (resumeText: string, signals: string): string => `You are a warm, expert Australian career coach. A new client has just uploaded their resume. Your job is to read it once and return two things: a short honest read on where it stands, and the specific questions you need answered before you can rewrite it properly.
 
 ${EVIDENCE_RULE}
-
+${signals ? `\n${signals}\n` : ''}
 PART 1 — THE READ
 
 2 or 3 short paragraphs of flowing prose. Plain sentences. NO bullet points, NO numbered lists, NO headings, NO score, NO percentages.
 
 Name the two or three most important things holding this resume back in the Australian market. Real examples: bullets that describe duties instead of outcomes, missing keywords the automated screen looks for, formatting that breaks the six-second scan, unclear positioning, a photo or date of birth that Australian employers do not expect. Explain each as understanding, not as a verdict. Never imply a character flaw — "duty-led" is fine, "weak" is not.
+
+If a DOCUMENT SIGNALS block above tells you this resume carries a photograph, that is ALWAYS one of the things you name, and you name it first. It outranks any wording or formatting issue: it is the one problem visible before a single line is read. Say plainly that Australian resumes do not carry photos, that we will remove it, and why that helps them.
 
 Do NOT sell, pitch, mention price, or congratulate them on joining. Warm and direct, second person. Australian English. No em dashes or en dashes. 90 to 140 words.
 
@@ -130,8 +133,16 @@ function normaliseQuestions(raw: unknown): IntakeQuestion[] {
   return out;
 }
 
-export async function analyseIntakeResume(resumeText: string): Promise<IntakeAnalysis> {
-  const raw = await callLLMWithRetry(PROMPT(resumeText), true, 3, 0.4);
+export async function analyseIntakeResume(
+  resumeText: string,
+  signals?: DocumentSignals,
+): Promise<IntakeAnalysis> {
+  const raw = await callLLMWithRetry(
+    PROMPT(resumeText, signals ? describeSignals(signals) : ''),
+    true,
+    3,
+    0.4,
+  );
   const parsed = typeof raw === 'string' ? parseLLMJson(raw) : raw;
 
   const brief = String(parsed?.brief ?? '').trim();

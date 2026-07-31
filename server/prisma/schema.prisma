@@ -820,6 +820,8 @@ model WelcomeSession {
   brief              String?
   questions          Json?
   answers            Json?
+  // What the raw file contains that text extraction drops (photo, images).
+  signals            Json?
   resumeCleanText    String?
   // Rebuilds attempted on this session. /welcome/build is anonymous and costs an
   // LLM call, so it is capped per session rather than left open.

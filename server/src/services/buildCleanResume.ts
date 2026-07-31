@@ -20,6 +20,7 @@ import fs from 'fs';
 import path from 'path';
 import { callLLMWithRetry } from '../utils/callLLMWithRetry';
 import { EVIDENCE_RULE } from './intakeEvidenceRule';
+import { DocumentSignals, describeSignals } from './documentSignals';
 
 const RESUME_RULES = fs.readFileSync(
   path.join(__dirname, '..', '..', 'rules', 'resume_rules.md'),
@@ -57,10 +58,13 @@ const PROMPT = (
   resumeText: string,
   answersBlock: string,
   targetRole: string | null,
+  signals: string,
 ): string => `You are a professional Australian resume writer producing the definitive clean version of a candidate's resume. This single document becomes the source every future job application of theirs is built from, so it must be accurate, complete, and free of anything invented.
 
 ${EVIDENCE_RULE}
-
+${signals ? `
+${signals}
+` : ''}
 RESUME RULES — follow every rule in this document:
 ${RESUME_RULES}
 
@@ -143,6 +147,7 @@ export interface BuildCleanResumeInput {
   resumeText: string;
   answers: IntakeAnswer[];
   targetRole?: string | null;
+  signals?: DocumentSignals;
 }
 
 /**
@@ -154,12 +159,18 @@ export async function buildCleanResume({
   resumeText,
   answers,
   targetRole = null,
+  signals,
 }: BuildCleanResumeInput): Promise<string> {
   if (!resumeText || resumeText.trim().length < 200) {
     throw new Error('buildCleanResume: resume text too short to rebuild');
   }
 
-  const prompt = PROMPT(resumeText, buildAnswersBlock(answers), targetRole);
+  const prompt = PROMPT(
+    resumeText,
+    buildAnswersBlock(answers),
+    targetRole,
+    signals ? describeSignals(signals) : '',
+  );
 
   // One corrective retry: a stray bracket is usually a formatting slip the model
   // will fix when told exactly which strings were wrong. A second failure is
