@@ -79,6 +79,8 @@ OUTPUT FORMAT — absolute requirements:
 - NO square-bracket placeholders of any kind. Not "[how many]", not "[X]", not "[insert metric]", not "[Company]". If a figure is missing and the candidate did not supply it, write the bullet cleanly WITHOUT the figure. A bullet with no number is correct. A bracket is a defect that would be copied into every future application.
 - No preamble, no meta-commentary, no explanation, no closing note. Output the resume and nothing else.
 - Clean markdown. Every section header (## Professional Summary, ## Work Experience, etc.) on its own line with a blank line before and after. Never a header on the same line as body text.
+- Bullets MUST use markdown list syntax: a hyphen and a space at the start of the line ("- Served around 80 customers a shift"). Never use a bullet character such as •, ▪, ‣ or *, and never indent bullets with spaces or tabs. A line starting with • is rendered as an ordinary paragraph, so the document loses its bullet points entirely and reads as a wall of text.
+- Put the candidate's name on the first line as a level-1 heading ("# Jane Smith"), their target title on the next line, and their contact details on the line after that.
 - The Professional Summary must be in FIRST PERSON. Never third person, never the candidate's own name inside the summary.
 - Contact line: include only channels actually present in their resume. If there is no LinkedIn URL, omit LinkedIn entirely — never write the bare word "LinkedIn". If there is one, render the URL itself.
 

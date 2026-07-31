@@ -425,26 +425,55 @@ export const WelcomePage: React.FC = () => {
   if (step === 'resume') {
     return (
       <Shell wide>
-        <Eyebrow>Done</Eyebrow>
-        <Display>{firstName ? `${firstName}, here's your resume.` : "Here's your resume."}</Display>
-        <p style={bodyText}>
-          This is now the version everything we build for you is based on. Every application, every cover letter, grounded on this.
-          {outstanding > 0 && ` You left ${outstanding} ${outstanding === 1 ? 'question' : 'questions'} open — we've saved ${outstanding === 1 ? 'it' : 'them'} for your dashboard so you can add ${outstanding === 1 ? 'it' : 'them'} any time.`}
-        </p>
+        <style>{RESUME_PAPER_CSS}</style>
+        <Eyebrow>Your achievement bank</Eyebrow>
+        <Display>{firstName ? `${firstName}, this is your bank.` : 'This is your bank.'}</Display>
 
-        <div style={{
-          maxHeight: '46vh', overflowY: 'auto', padding: '22px 26px', borderRadius: 16,
-          border: `1px solid ${colors.borderDefined}`, background: colors.bgSurface, marginBottom: 26,
-        }}>
-          <div style={{ fontFamily: T.body, fontSize: 14.5, lineHeight: 1.7, color: colors.textPrimary }} className="welcome-resume-preview">
-            <ReactMarkdown>{cleanResume}</ReactMarkdown>
-          </div>
+        {/*
+          The single most important idea in the whole flow, and the one people get
+          wrong: this is NOT the document they send. It is the store we draw from.
+          Short stacked sentences, one idea each, so the conclusion lands on its own
+          rather than being asserted at them.
+        */}
+        <div style={{ margin: '0 0 26px' }}>
+          <p style={bankLine}>This is <strong style={{ color: colors.textPrimary }}>not</strong> the resume you send out.</p>
+          <p style={bankLine}>It is a bank of everything you have done.</p>
+          <p style={bankLine}>Every job ad asks for something different.</p>
+          <p style={bankLine}>So every resume you send should be different too.</p>
+          <p style={bankLine}>Your achievements do not change. They sit safely in here.</p>
+          <p style={{ ...bankLine, color: colors.textPrimary, fontWeight: 600 }}>
+            When you apply for a job, we pick the ones that match that job, and build you a fresh resume for it.
+          </p>
+          <p style={{ ...bankLine, marginTop: 14, color: colors.textMuted, fontSize: 14.5 }}>
+            One bank. A new resume every time.
+          </p>
         </div>
 
-        <PrimaryBtn label={user ? 'Save to my account' : 'Save this resume'} onClick={onSaveResume} />
+        {outstanding > 0 && (
+          <div style={{
+            display: 'flex', gap: 10, alignItems: 'flex-start', padding: '13px 16px', marginBottom: 22,
+            borderRadius: 12, background: colors.bgAlt, border: `1px solid ${colors.borderDefined}`,
+          }}>
+            <span style={{ color: colors.accentPetrol, flexShrink: 0, marginTop: 1 }}><Search size={16} /></span>
+            <span style={{ fontFamily: T.body, fontSize: 14, lineHeight: 1.55, color: colors.textSecondary }}>
+              {outstanding === 1 ? 'One answer is' : `${outstanding} answers are`} still missing. We saved{' '}
+              {outstanding === 1 ? 'it' : 'them'} to your dashboard. Adding {outstanding === 1 ? 'it' : 'them'} makes
+              every resume we build stronger.
+            </span>
+          </div>
+        )}
+
+        {/* Rendered as a page, not a text box — people trust what looks like a document. */}
+        <div className="bank-paper">
+          <ReactMarkdown>{cleanResume}</ReactMarkdown>
+        </div>
+
+        <div style={{ marginTop: 24 }}>
+          <PrimaryBtn label={user ? 'Save my bank' : 'Save my bank'} onClick={onSaveResume} />
+        </div>
         {!user && (
           <p style={{ fontFamily: T.body, fontSize: 13.5, color: colors.textMuted, margin: '14px 0 0' }}>
-            We'll ask for your email next so this is waiting for you whenever you log in.
+            We'll ask for your email next, so your bank is here waiting whenever you log back in.
           </p>
         )}
       </Shell>
@@ -569,6 +598,52 @@ export const WelcomePage: React.FC = () => {
 // ── Small shared building blocks (kept local to this page) ─────────────────────
 
 const bodyText: React.CSSProperties = { fontFamily: T.body, fontSize: 15.5, lineHeight: 1.65, color: colors.textSecondary, margin: '0 0 24px' };
+
+/** One short sentence per line, so the bank idea builds instead of being asserted. */
+const bankLine: React.CSSProperties = {
+  fontFamily: T.body, fontSize: 16, lineHeight: 1.5, color: colors.textSecondary, margin: '0 0 7px',
+};
+
+/**
+ * The bank renders as a page, not a text dump. Markdown lists need explicit
+ * styling because the app's CSS reset strips list markers, which is why the
+ * bullets were coming out as flat lines.
+ */
+const RESUME_PAPER_CSS = `
+.bank-paper {
+  max-height: 62vh; overflow-y: auto;
+  padding: 40px 44px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid ${colors.borderDefined};
+  box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 12px 32px -12px rgba(16,24,40,.14);
+  font-family: ${T.body}; font-size: 14.5; line-height: 1.65; color: #1a2230;
+}
+.bank-paper > *:first-child { margin-top: 0; }
+.bank-paper > *:last-child { margin-bottom: 0; }
+.bank-paper h1 {
+  font-family: ${T.display}; font-size: 24px; font-weight: 600; letter-spacing: .01em;
+  margin: 0 0 4px; color: #101828;
+}
+.bank-paper h2 {
+  font-family: ${T.body}; font-size: 11.5px; font-weight: 700;
+  letter-spacing: .13em; text-transform: uppercase; color: ${colors.accentPetrol};
+  margin: 26px 0 10px; padding-bottom: 6px;
+  border-bottom: 1px solid ${colors.borderDefined};
+}
+.bank-paper h3 { font-family: ${T.body}; font-size: 15px; font-weight: 700; margin: 16px 0 2px; color: #101828; }
+.bank-paper p { margin: 0 0 10px; font-size: 14.5px; line-height: 1.65; }
+.bank-paper strong { font-weight: 700; color: #101828; }
+.bank-paper em { color: #475467; }
+.bank-paper ul, .bank-paper ol { margin: 8px 0 14px; padding-left: 22px; }
+.bank-paper ul { list-style: disc; }
+.bank-paper ol { list-style: decimal; }
+.bank-paper li { margin: 0 0 7px; font-size: 14.5px; line-height: 1.6; padding-left: 3px; }
+.bank-paper li::marker { color: ${colors.accentPetrol}; }
+.bank-paper hr { border: 0; border-top: 1px solid ${colors.borderDefined}; margin: 20px 0; }
+.bank-paper a { color: ${colors.accentPetrol}; text-decoration: none; }
+@media (max-width: 640px) { .bank-paper { padding: 24px 20px; max-height: 56vh; } }
+`;
 const inputStyle: React.CSSProperties = {
   flex: 1, width: '100%', boxSizing: 'border-box', fontFamily: T.body, fontSize: 15, padding: '13px 16px',
   borderRadius: 12, border: `1px solid ${colors.borderDefined}`, background: colors.bgSurface, color: colors.textPrimary, outline: 'none',
