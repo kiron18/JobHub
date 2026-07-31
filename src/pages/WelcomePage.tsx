@@ -30,13 +30,14 @@ const EASE = [0.25, 1, 0.5, 1] as const;
  * glance that they are not being handed a to-do list.
  */
 const GROUPS: Array<{
-  owner: FindingOwner; heading: string; note: string; ticked: boolean;
+  owner: FindingOwner; heading: string; note: string; ticked: boolean; collapsible?: boolean;
 }> = [
   {
     owner: 'we_fix',
     heading: 'We fix these for you',
     note: 'Already handled. You do not need to do anything with these.',
     ticked: true,
+    collapsible: true,
   },
   {
     owner: 'needs_you',
@@ -99,6 +100,10 @@ export const WelcomePage: React.FC = () => {
 
   const [findings, setFindings] = useState<IntakeFinding[]>([]);
   const [strengths, setStrengths] = useState<string[]>([]);
+  // The "we fix these" group is collapsed by default. It is the longest group
+  // and the one the candidate least needs to read — leaving it open buries the
+  // handful of items that actually need them under ten they can ignore.
+  const [showFixed, setShowFixed] = useState(false);
   const [questions, setQuestions] = useState<IntakeQuestion[]>([]);
   const [qIndex, setQIndex] = useState(0);
   const [answers, setAnswers] = useState<Answers>({});
@@ -291,6 +296,45 @@ export const WelcomePage: React.FC = () => {
               {GROUPS.map(g => {
                 const items = findings.filter(f => f.owner === g.owner);
                 if (!items.length) return null;
+
+                // Collapsed: one satisfying line that says it is already done,
+                // rather than ten rows the candidate has no action on.
+                if (g.collapsible && !showFixed) {
+                  const big = items.filter(f => f.severity === 'critical').length;
+                  return (
+                    <button
+                      key={g.owner}
+                      onClick={() => setShowFixed(true)}
+                      style={{
+                        marginTop: 30, width: '100%', textAlign: 'left', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: 14, padding: '16px 18px',
+                        borderRadius: 14, background: 'rgba(232,215,176,0.09)',
+                        border: '1px solid rgba(232,215,176,0.22)',
+                      }}
+                    >
+                      <span style={{
+                        flexShrink: 0, width: 30, height: 30, borderRadius: 9,
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        background: colors.accentGold, color: colors.bgDeep,
+                      }}>
+                        <Check size={18} strokeWidth={3.5} />
+                      </span>
+                      <span style={{ minWidth: 0, flex: 1 }}>
+                        <span style={{ display: 'block', fontFamily: T.body, fontSize: 15.5, fontWeight: 600, color: colors.textOnDeep, lineHeight: 1.4 }}>
+                          {items.length} {items.length === 1 ? 'thing' : 'things'} we fix for you
+                          {big > 0 && `, including ${big} big ${big === 1 ? 'one' : 'ones'}`}
+                        </span>
+                        <span style={{ display: 'block', fontFamily: T.body, fontSize: 13.5, color: 'rgba(250,247,242,0.55)', marginTop: 2 }}>
+                          All handled. Nothing for you to do here.
+                        </span>
+                      </span>
+                      <span style={{ flexShrink: 0, fontFamily: T.body, fontSize: 13.5, fontWeight: 700, color: colors.accentGold }}>
+                        Show them
+                      </span>
+                    </button>
+                  );
+                }
+
                 return (
                   <div key={g.owner} style={{ marginTop: 30 }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
@@ -300,6 +344,14 @@ export const WelcomePage: React.FC = () => {
                       <span style={{ fontFamily: T.body, fontSize: 13, fontWeight: 700, color: colors.accentGold }}>
                         {items.length}
                       </span>
+                      {g.collapsible && (
+                        <button
+                          onClick={() => setShowFixed(false)}
+                          style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, marginLeft: 'auto', fontFamily: T.body, fontSize: 13.5, fontWeight: 700, color: 'rgba(250,247,242,0.55)' }}
+                        >
+                          Hide
+                        </button>
+                      )}
                     </div>
                     <p style={{ fontFamily: T.body, fontSize: 14, lineHeight: 1.5, color: 'rgba(250,247,242,0.55)', margin: '3px 0 14px' }}>
                       {g.note}
