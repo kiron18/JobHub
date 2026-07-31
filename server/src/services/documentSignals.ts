@@ -15,6 +15,8 @@
  * what is in the file; the prompt decides how to talk about it.
  */
 
+import zlib from 'zlib';
+
 export interface EmbeddedImage {
   width: number;
   height: number;
@@ -65,20 +67,87 @@ function scanPdf(buffer: Buffer): EmbeddedImage[] {
   return images;
 }
 
+/** Reads width/height out of an image's own header bytes. 0x0 if unrecognised. */
+function imageDimensions(data: Buffer): { width: number; height: number } {
+  // PNG — IHDR is always the first chunk, width/height at fixed offsets.
+  if (data.length > 24 && data.readUInt32BE(0) === 0x89504e47) {
+    return { width: data.readUInt32BE(16), height: data.readUInt32BE(20) };
+  }
+  // GIF — logical screen descriptor, little-endian.
+  if (data.length > 10 && data.toString('latin1', 0, 3) === 'GIF') {
+    return { width: data.readUInt16LE(6), height: data.readUInt16LE(8) };
+  }
+  // BMP — DIB header.
+  if (data.length > 26 && data.toString('latin1', 0, 2) === 'BM') {
+    return { width: Math.abs(data.readInt32LE(18)), height: Math.abs(data.readInt32LE(22)) };
+  }
+  // JPEG — walk the marker segments to the start-of-frame, which carries the size.
+  if (data.length > 4 && data.readUInt16BE(0) === 0xffd8) {
+    let i = 2;
+    while (i + 9 < data.length) {
+      if (data[i] !== 0xff) { i++; continue; }
+      const marker = data[i + 1]!;
+      // SOF0-3, SOF5-7, SOF9-11, SOF13-15 — every non-differential frame type.
+      const isSOF = (marker >= 0xc0 && marker <= 0xcf)
+        && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc;
+      if (isSOF) return { width: data.readUInt16BE(i + 7), height: data.readUInt16BE(i + 5) };
+      i += 2 + data.readUInt16BE(i + 2);
+    }
+  }
+  // EMF/WMF are vector graphics — logos and rules, never a headshot.
+  return { width: 0, height: 0 };
+}
+
 /**
- * DOCX is a zip; embedded pictures live under word/media/. Filenames appear in
- * plain text in the local file headers, so a substring scan is enough to know
- * whether images exist. Dimensions are not recoverable this cheaply, so a media
- * entry that is not obviously an icon is reported at unknown size.
+ * DOCX is a zip; embedded pictures live under word/media/. Read the central
+ * directory, inflate each media entry, and pull its real dimensions from the
+ * image header — a name-only scan cannot tell a headshot from a logo, which
+ * would leave photo detection working on PDFs and silently broken on Word
+ * files. Word resumes with photos are common for this client base.
  */
 function scanDocx(buffer: Buffer): EmbeddedImage[] {
-  const bytes = buffer.toString('latin1');
-  const names = new Set(
-    [...bytes.matchAll(/word\/media\/([A-Za-z0-9_.-]+\.(?:jpe?g|png|gif|bmp|emf|wmf))/g)].map((m) => m[1]!),
-  );
-  // Size unknown from a header scan — reported as 0 so isPhotoShaped stays
-  // conservative and the prompt is told "an image" rather than "a photo".
-  return [...names].map(() => ({ width: 0, height: 0, filter: 'docx-media' }));
+  // End-of-central-directory record, scanned backwards (it has a variable-length
+  // trailing comment, so its position is not fixed).
+  let eocd = -1;
+  for (let i = buffer.length - 22; i >= 0 && i > buffer.length - 66_000; i--) {
+    if (buffer.readUInt32LE(i) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) return [];
+
+  const entries = buffer.readUInt16LE(eocd + 10);
+  let p = buffer.readUInt32LE(eocd + 16);
+  const images: EmbeddedImage[] = [];
+
+  for (let n = 0; n < entries && p + 46 <= buffer.length; n++) {
+    if (buffer.readUInt32LE(p) !== 0x02014b50) break;
+    const method = buffer.readUInt16LE(p + 10);
+    const compressedSize = buffer.readUInt32LE(p + 20);
+    const nameLen = buffer.readUInt16LE(p + 28);
+    const extraLen = buffer.readUInt16LE(p + 30);
+    const commentLen = buffer.readUInt16LE(p + 32);
+    const localOffset = buffer.readUInt32LE(p + 42);
+    const name = buffer.toString('latin1', p + 46, p + 46 + nameLen);
+    p += 46 + nameLen + extraLen + commentLen;
+
+    if (!/^word\/media\/.+\.(jpe?g|png|gif|bmp|emf|wmf)$/i.test(name)) continue;
+
+    try {
+      // The local header's extra-field length can differ from the central one,
+      // so the data offset must be computed from the local header itself.
+      const localNameLen = buffer.readUInt16LE(localOffset + 26);
+      const localExtraLen = buffer.readUInt16LE(localOffset + 28);
+      const start = localOffset + 30 + localNameLen + localExtraLen;
+      const raw = buffer.subarray(start, start + compressedSize);
+      const data = method === 8 ? zlib.inflateRawSync(raw) : raw;
+      const { width, height } = imageDimensions(data);
+      images.push({ width, height, filter: name.split('.').pop()!.toLowerCase() });
+    } catch {
+      // A single unreadable entry must not lose the others.
+      images.push({ width: 0, height: 0, filter: 'unreadable' });
+    }
+  }
+
+  return images;
 }
 
 export function detectDocumentSignals(

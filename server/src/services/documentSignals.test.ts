@@ -49,12 +49,87 @@ describe('detectDocumentSignals — PDF', () => {
 });
 
 describe('detectDocumentSignals — DOCX', () => {
-  it('finds embedded media entries in the zip headers', () => {
-    const buf = Buffer.from('PK....word/media/image1.jpeg....word/media/image2.png....', 'latin1');
-    const s = detectDocumentSignals(buf, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'cv.docx');
-    expect(s.images).toHaveLength(2);
-    // Dimensions are unrecoverable from a header scan, so stay conservative.
+  const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+  /** Builds a real (stored, uncompressed) zip carrying one word/media entry. */
+  function docxWith(filename: string, image: Buffer): Buffer {
+    const name = Buffer.from(`word/media/${filename}`, 'latin1');
+
+    const local = Buffer.alloc(30);
+    local.writeUInt32LE(0x04034b50, 0);
+    local.writeUInt16LE(0, 8);                 // stored, no compression
+    local.writeUInt32LE(image.length, 18);     // compressed size
+    local.writeUInt32LE(image.length, 22);     // uncompressed size
+    local.writeUInt16LE(name.length, 26);
+    const localBlock = Buffer.concat([local, name, image]);
+
+    const central = Buffer.alloc(46);
+    central.writeUInt32LE(0x02014b50, 0);
+    central.writeUInt16LE(0, 10);
+    central.writeUInt32LE(image.length, 20);
+    central.writeUInt32LE(image.length, 24);
+    central.writeUInt16LE(name.length, 28);
+    central.writeUInt32LE(0, 42);              // local header offset
+    const centralBlock = Buffer.concat([central, name]);
+
+    const eocd = Buffer.alloc(22);
+    eocd.writeUInt32LE(0x06054b50, 0);
+    eocd.writeUInt16LE(1, 10);                 // entry count
+    eocd.writeUInt32LE(localBlock.length, 16); // central directory offset
+    return Buffer.concat([localBlock, centralBlock, eocd]);
+  }
+
+  /** Minimal PNG whose IHDR declares the given dimensions. */
+  function png(width: number, height: number): Buffer {
+    const b = Buffer.alloc(33);
+    b.writeUInt32BE(0x89504e47, 0);
+    b.writeUInt32BE(width, 16);
+    b.writeUInt32BE(height, 20);
+    return b;
+  }
+
+  it('reads real dimensions and flags a headshot in a Word file', () => {
+    // Regression: the original name-only scan reported every DOCX image at 0x0,
+    // so a Word resume with a photo was never flagged while the same photo in a
+    // PDF was. Verified against a real .docx carrying the 323x323 headshot.
+    const s = detectDocumentSignals(docxWith('image1.png', png(323, 323)), DOCX_MIME, 'cv.docx');
+    expect(s.images).toEqual([{ width: 323, height: 323, filter: 'png' }]);
+    expect(s.likelyPhoto).toBe(true);
+  });
+
+  it('does not flag a small logo in a Word file', () => {
+    const s = detectDocumentSignals(docxWith('image1.png', png(48, 48)), DOCX_MIME, 'cv.docx');
+    expect(s.images).toHaveLength(1);
     expect(s.likelyPhoto).toBe(false);
+  });
+
+  it('treats vector graphics as non-photos — emf/wmf are logos and rules', () => {
+    const s = detectDocumentSignals(docxWith('image1.emf', Buffer.alloc(64)), DOCX_MIME, 'cv.docx');
+    expect(s.images).toEqual([{ width: 0, height: 0, filter: 'emf' }]);
+    expect(s.likelyPhoto).toBe(false);
+  });
+
+  it('reads JPEG dimensions from the start-of-frame marker', () => {
+    // SOI, then a SOF0 segment declaring height 400, width 300.
+    const jpeg = Buffer.from([
+      0xff, 0xd8,
+      0xff, 0xc0, 0x00, 0x11, 0x08, 0x01, 0x90, 0x01, 0x2c,
+      0x03, 0x01, 0x11, 0x00, 0x02, 0x11, 0x01, 0x03, 0x11, 0x01,
+    ]);
+    const s = detectDocumentSignals(docxWith('image1.jpeg', jpeg), DOCX_MIME, 'cv.docx');
+    expect(s.images[0]).toMatchObject({ width: 300, height: 400 });
+    expect(s.likelyPhoto).toBe(true);
+  });
+
+  it('ignores non-media zip entries', () => {
+    const s = detectDocumentSignals(docxWith('notes.txt', Buffer.alloc(8)), DOCX_MIME, 'cv.docx');
+    expect(s.images).toEqual([]);
+    expect(s.likelyPhoto).toBe(false);
+  });
+
+  it('never throws on a truncated or corrupt Word file', () => {
+    const s = detectDocumentSignals(Buffer.from('PKgarbage', 'latin1'), DOCX_MIME, 'cv.docx');
+    expect(s).toEqual({ images: [], likelyPhoto: false });
   });
 });
 
