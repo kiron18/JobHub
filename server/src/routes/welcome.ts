@@ -153,6 +153,7 @@ router.post('/brief', optionalAuthenticate, handleUpload, async (req: Request, r
       currentRole: analysis.currentRole,
       brief: analysis.brief,
       findings: analysis.findings,
+      strengths: analysis.strengths,
       questions: analysis.questions,
     });
   } catch (err) {

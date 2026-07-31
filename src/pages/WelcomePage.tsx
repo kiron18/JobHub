@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, UploadCloud, ArrowRight, Plus, X, Search } from 'lucide-react';
+import { Loader2, UploadCloud, ArrowRight, Plus, X, Search, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
 import api from '../lib/api';
@@ -22,12 +22,35 @@ type Step =
 
 const EASE = [0.25, 1, 0.5, 1] as const;
 
-/** Severity chips on the findings list, on the dark brief screen. */
-const SEVERITY = {
-  critical:  { label: 'Critical',  fg: '#FFD9D2', bg: 'rgba(196,72,48,0.30)' },
-  important: { label: 'Important', fg: '#FFE9C2', bg: 'rgba(196,138,48,0.26)' },
-  minor:     { label: 'Minor',     fg: 'rgba(250,247,242,0.72)', bg: 'rgba(250,247,242,0.10)' },
-} as const;
+/**
+ * The checklist groups by WHO ACTS, not by severity. Severity ranks pain but
+ * says nothing about what happens next, and a section headed "minor" just gets
+ * skipped. Grouping by owner carries the reassurance structurally: the biggest
+ * group is the one we handle, already ticked, so the candidate can see at a
+ * glance that they are not being handed a to-do list.
+ */
+const GROUPS: Array<{
+  owner: FindingOwner; heading: string; note: string; ticked: boolean;
+}> = [
+  {
+    owner: 'we_fix',
+    heading: 'We fix these for you',
+    note: 'Already handled. You do not need to do anything with these.',
+    ticked: true,
+  },
+  {
+    owner: 'needs_you',
+    heading: 'We need one thing from you',
+    note: 'Only you know these. We ask you on the next screen. It takes a minute.',
+    ticked: false,
+  },
+  {
+    owner: 'worth_knowing',
+    heading: 'Worth knowing',
+    note: 'Not a job for today. Just so you know it is there.',
+    ticked: false,
+  },
+];
 
 const ROLE_PLACEHOLDERS = ['e.g. Marketing Coordinator', 'e.g. Business Analyst', 'e.g. Registered Nurse', 'e.g. Software Engineer', 'e.g. Project Manager', 'e.g. Graphic Designer'];
 
@@ -39,11 +62,13 @@ const ROLE_PLACEHOLDERS = ['e.g. Marketing Coordinator', 'e.g. Business Analyst'
 const OTP_MIN = 6;
 const OTP_MAX = 10;
 
+type FindingOwner = 'we_fix' | 'needs_you' | 'worth_knowing';
+
 interface IntakeFinding {
   title: string;
   detail: string;
+  owner: FindingOwner;
   severity: 'critical' | 'important' | 'minor';
-  area: 'look' | 'writing' | 'admin';
 }
 
 interface IntakeQuestion {
@@ -73,6 +98,7 @@ export const WelcomePage: React.FC = () => {
   const [city, setCity] = useState('');
 
   const [findings, setFindings] = useState<IntakeFinding[]>([]);
+  const [strengths, setStrengths] = useState<string[]>([]);
   const [questions, setQuestions] = useState<IntakeQuestion[]>([]);
   const [qIndex, setQIndex] = useState(0);
   const [answers, setAnswers] = useState<Answers>({});
@@ -110,6 +136,7 @@ export const WelcomePage: React.FC = () => {
       setFirstName(data.firstName || '');
       setBrief(data.brief || '');
       setFindings(Array.isArray(data.findings) ? data.findings : []);
+      setStrengths(Array.isArray(data.strengths) ? data.strengths : []);
       setQuestions(Array.isArray(data.questions) ? data.questions : []);
       if (data.currentRole) setRoles([data.currentRole]);
       setStep('brief');
@@ -247,33 +274,91 @@ export const WelcomePage: React.FC = () => {
           <p style={{ fontFamily: T.display, fontSize: 'clamp(21px, 3vw, 27px)', lineHeight: 1.5, color: colors.textOnDeep, margin: 0, whiteSpace: 'pre-line' }}>
             {brief}
           </p>
-          {/* The prose read carries only the worst two or three. This is everything
-              found, so nothing noticed goes unreported. */}
+          {/* Everything found, grouped by who acts on it. */}
           {findings.length > 0 && (
-            <div style={{ marginTop: 36, borderTop: '1px solid rgba(232,215,176,0.22)', paddingTop: 24 }}>
+            <div style={{ marginTop: 36, borderTop: '1px solid rgba(232,215,176,0.22)', paddingTop: 26 }}>
               <span style={{ fontFamily: T.body, fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: colors.accentGold }}>
-                Everything we found · {findings.length}
+                Everything we found
               </span>
-              <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {findings.map((f, i) => (
-                  <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                    <span style={{
-                      flexShrink: 0, marginTop: 3, fontFamily: T.body, fontSize: 10, fontWeight: 700,
-                      letterSpacing: '0.08em', textTransform: 'uppercase', padding: '3px 7px', borderRadius: 5,
-                      color: SEVERITY[f.severity].fg, background: SEVERITY[f.severity].bg, minWidth: 58, textAlign: 'center',
-                    }}>
-                      {SEVERITY[f.severity].label}
-                    </span>
-                    <span style={{ minWidth: 0 }}>
-                      <span style={{ display: 'block', fontFamily: T.body, fontSize: 15, fontWeight: 600, color: colors.textOnDeep, lineHeight: 1.4 }}>
-                        {f.title}
+              <p style={{ fontFamily: T.body, fontSize: 15.5, lineHeight: 1.55, color: 'rgba(250,247,242,0.78)', margin: '12px 0 0' }}>
+                We read your resume line by line. We found {findings.length}{' '}
+                {findings.length === 1 ? 'thing' : 'things'}.
+              </p>
+              <p style={{ fontFamily: T.body, fontSize: 15.5, lineHeight: 1.55, color: colors.textOnDeep, margin: '4px 0 0', fontWeight: 600 }}>
+                You do not have to fix any of it. That is our job.
+              </p>
+
+              {GROUPS.map(g => {
+                const items = findings.filter(f => f.owner === g.owner);
+                if (!items.length) return null;
+                return (
+                  <div key={g.owner} style={{ marginTop: 30 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+                      <span style={{ fontFamily: T.display, fontSize: 19, fontWeight: 600, color: colors.textOnDeep }}>
+                        {g.heading}
                       </span>
-                      {f.detail && (
-                        <span style={{ display: 'block', fontFamily: T.body, fontSize: 14, lineHeight: 1.55, color: 'rgba(250,247,242,0.62)', marginTop: 2 }}>
-                          {f.detail}
-                        </span>
-                      )}
-                    </span>
+                      <span style={{ fontFamily: T.body, fontSize: 13, fontWeight: 700, color: colors.accentGold }}>
+                        {items.length}
+                      </span>
+                    </div>
+                    <p style={{ fontFamily: T.body, fontSize: 14, lineHeight: 1.5, color: 'rgba(250,247,242,0.55)', margin: '3px 0 14px' }}>
+                      {g.note}
+                    </p>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+                      {items.map((f, i) => (
+                        <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                          {/*
+                            Pre-ticked for anything we handle. A checkbox the user
+                            must click would be theatre, since we fix these either
+                            way - a tick that is already done says the same thing
+                            honestly.
+                          */}
+                          <span style={{
+                            flexShrink: 0, marginTop: 1, width: 20, height: 20, borderRadius: 6,
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            background: g.ticked ? colors.accentGold : 'transparent',
+                            border: g.ticked ? 'none' : '1.5px solid rgba(250,247,242,0.28)',
+                            color: colors.bgDeep,
+                          }}>
+                            {g.ticked && <Check size={13} strokeWidth={3.5} />}
+                          </span>
+                          <span style={{ minWidth: 0 }}>
+                            <span style={{ display: 'block', fontFamily: T.body, fontSize: 15, fontWeight: 600, color: colors.textOnDeep, lineHeight: 1.4 }}>
+                              {f.title}
+                              {f.severity === 'critical' && (
+                                <span style={{ fontFamily: T.body, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#FFD9D2', background: 'rgba(196,72,48,0.32)', padding: '2px 6px', borderRadius: 4, marginLeft: 8, verticalAlign: 'middle' }}>
+                                  Biggest
+                                </span>
+                              )}
+                            </span>
+                            {f.detail && (
+                              <span style={{ display: 'block', fontFamily: T.body, fontSize: 14, lineHeight: 1.55, color: 'rgba(250,247,242,0.6)', marginTop: 2 }}>
+                                {f.detail}
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Said last, once the value has landed - at the top it would deflate
+              the thing they just did before they had any reason to trust it. */}
+          {strengths.length > 0 && (
+            <div style={{ marginTop: 32, padding: '20px 22px', borderRadius: 14, background: 'rgba(232,215,176,0.07)', border: '1px solid rgba(232,215,176,0.18)' }}>
+              <span style={{ fontFamily: T.body, fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: colors.accentGold }}>
+                What already works
+              </span>
+              <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 9 }}>
+                {strengths.map((str, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                    <span style={{ color: colors.accentGold, flexShrink: 0, marginTop: 3 }}><Check size={14} strokeWidth={3} /></span>
+                    <span style={{ fontFamily: T.body, fontSize: 14.5, lineHeight: 1.55, color: 'rgba(250,247,242,0.82)' }}>{str}</span>
                   </div>
                 ))}
               </div>
@@ -286,10 +371,12 @@ export const WelcomePage: React.FC = () => {
               whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
               style={{ fontFamily: T.body, fontSize: 16, fontWeight: 700, cursor: 'pointer', padding: '15px 28px', borderRadius: 14, border: 'none', background: colors.accentGold, color: colors.bgDeep, display: 'inline-flex', alignItems: 'center', gap: 8 }}
             >
-              We fix this together <ArrowRight size={18} />
+              Fix all of this <ArrowRight size={18} />
             </motion.button>
             <span style={{ fontFamily: T.body, fontSize: 13.5, color: 'rgba(250,247,242,0.6)' }}>
-              {questions.length > 0 ? `Next: ${questions.length} quick questions.` : 'Next: your target roles.'}
+              {questions.length > 0
+                ? `Next: ${questions.length} quick ${questions.length === 1 ? 'question' : 'questions'}, then we rebuild it.`
+                : 'Next: your target roles.'}
             </span>
           </div>
         </motion.div>

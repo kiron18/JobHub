@@ -41,16 +41,31 @@ export interface IntakeQuestion {
   hint: string;
 }
 
+/**
+ * Who has to act. This is the primary grouping in the UI, deliberately chosen
+ * over severity: severity ranks pain but says nothing about what happens next,
+ * and a list headed "minor" just gets skipped. Grouping by ownership does the
+ * reassurance structurally - most items land under "we fix this", so the
+ * candidate sees they are not being handed homework.
+ */
+export type FindingOwner =
+  /** Fixable from the document alone. Shown pre-ticked: already handled. */
+  | 'we_fix'
+  /** Needs a fact only the candidate has. These become the questions. */
+  | 'needs_you'
+  /** Neither of us can fix quickly - context, not a task. */
+  | 'worth_knowing';
+
 /** One defect found in the resume. The brief names the worst few; this is all of them. */
 export interface IntakeFinding {
   /** Short label, e.g. "Photo on the resume". */
   title: string;
   /** One sentence on what it costs them. */
   detail: string;
-  /** critical = costs them the resume being read; minor = polish. */
+  /** Drives grouping in the checklist. */
+  owner: FindingOwner;
+  /** Sort key within a group. critical = stops the resume being read at all. */
   severity: 'critical' | 'important' | 'minor';
-  /** 'look' = layout/appearance, 'writing' = content, 'admin' = dates, contact, spelling. */
-  area: 'look' | 'writing' | 'admin';
 }
 
 export interface IntakeAnalysis {
@@ -58,6 +73,13 @@ export interface IntakeAnalysis {
   currentRole: string;
   brief: string;
   findings: IntakeFinding[];
+  /**
+   * What the resume already does well. This exists to remove the incentive to
+   * fabricate: with problems as the only output slot, a genuinely good resume
+   * creates pressure to invent flaws to fill the screen. Given somewhere honest
+   * to put praise, the model stops padding.
+   */
+  strengths: string[];
   questions: IntakeQuestion[];
 }
 
@@ -101,23 +123,34 @@ Do NOT sell, pitch, mention price, or congratulate them on joining. Warm and dir
 
 End by telling them you need a few facts from them before you rewrite it.
 
-PART 2 — EVERY FLAW YOU FOUND
+PART 2 - THE CHECKLIST: EVERY FLAW, AND WHO FIXES IT
 
-The read above is deliberately short, so it can only carry the worst few problems. This part is the complete list, and it is the one that must be exhaustive.
+The read above is short, so it carries only the worst few problems. This part is the complete list and it must be exhaustive.
 
-List EVERY defect you can see, not just the ones you named above. Include the ones from the read as well. There is no cap and no word limit here: if you can see twenty things wrong, list twenty. A person reading this should finish it knowing there is nothing left you noticed but did not say.
+List EVERY defect you can see, including the ones you already named above. There is no cap: if you can see twenty things, list twenty. Someone reading this should finish it knowing there is nothing you noticed and did not say.
 
-Cover all of it: appearance and layout, tables, photos and graphics, page count and density, section order, headings, contact details, dates and date formats, spelling and grammar, Australian versus overseas conventions, duty-led bullets, missing outcomes, unexplained employers, gaps, inconsistencies, leftover placeholder or template text, anything that would trip an automated screen, and anything else you noticed.
+Cover all of it: layout and appearance, tables, photos and graphics, page count and density, section order, headings, contact details, dates and date formats, spelling and grammar, tense, Australian versus overseas conventions, duty-led bullets, missing outcomes, unexplained employers, unexplained qualifications or grading scales, foreign currency figures, gaps, inconsistencies, leftover template or placeholder text, anything that would trip an automated screen, and anything else you noticed.
 
-Order them worst first. For each one:
-- "title": a short label, at most 6 words ("Photo on the resume", "Work history inside a table")
-- "detail": ONE sentence on what it actually costs them, in plain words
-- "severity": "critical" if it can stop the resume being read or parsed at all, "important" if it costs them interviews, "minor" if it is polish
-- "area": "look" for layout and appearance, "writing" for content and wording, "admin" for dates, contact details, spelling and formatting conventions
+NEVER INVENT A PROBLEM. This matters more than the list being long. If the resume does something well, that is not a flaw, and you must not manufacture one to make the list look thorough. A short honest list on a strong resume is the correct answer and is not a failure. Padding is far worse than missing something: a candidate who reads an invented criticism stops trusting everything else we tell them.
 
-Never invent a flaw to pad the list. If the resume genuinely does something well, leave it out rather than inventing a problem. An empty-ish list on a strong resume is a correct answer.
+Every finding needs an "owner", which decides how it is shown to the candidate:
 
-PART 3 — THE QUESTIONS
+- "we_fix" - anything you could correct using only what is already in the document. Removing a photo, lifting content out of tables, fixing dates, tense, spelling, Australian conventions, section order, headings, stripping template junk, rewriting a duty-led bullet to lead with the action. Use this whenever the fix needs no new information. Most findings should be this.
+- "needs_you" - the fix requires a fact only the candidate can supply: a missing number, what an unknown employer actually does, whether a role was casual or full-time, the scope they personally owned. Use this ONLY when you genuinely cannot fix it without asking them.
+- "worth_knowing" - neither of us can fix it quickly. A mismatch between their experience and the roles they are targeting, a very short work history, a long unexplained gap. This is context, not a task. Use it sparingly, and never as a disguised criticism of the person.
+
+Also give each finding:
+- "title": a short label, at most 6 words ("Photo on the resume")
+- "detail": ONE plain sentence on what it actually costs them
+- "severity": "critical" if it can stop the resume being read or parsed at all, "important" if it costs interviews, "minor" if it is polish
+
+PART 3 - WHAT ALREADY WORKS
+
+List 2 to 5 things this resume genuinely does well, as short specific sentences. Point at the real thing, not a generic compliment: "Your Storemax role names actual clients and budget ranges, which is exactly what Australian employers look for" - not "good experience".
+
+If the resume is strong overall, this is the section that should be long and the findings list that should be short. Say only what is true: if you cannot find something genuinely good, return fewer items rather than inventing praise.
+
+PART 4 - THE QUESTIONS
 
 Generate AT MOST ${MAX_QUESTIONS} questions. Fewer is better. Rank them by how much the answer would improve the resume, best first.
 
@@ -135,7 +168,7 @@ Do NOT ask for:
 - more than 2 questions about the same job
 
 Each question must:
-- quote in "anchor" the EXACT line from their resume it refers to, copied character for character so we can show it to them
+- quote in "anchor" the line from their resume it refers to, wording unchanged, but collapse every run of whitespace to a single space and never include a literal tab or line break inside it (resumes use tabs for alignment, and a raw tab inside a JSON string makes the whole response invalid)
 - be one sentence a person would actually say out loud, naming the employer where it helps ("At Coles, roughly how many customers did you serve in a normal shift?")
 - carry a "why" of at most 15 words on what it changes for an Australian employer
 - carry an "example" showing the shape of a good answer, not a real figure from their resume
@@ -149,8 +182,9 @@ Return ONLY this JSON object and nothing else:
   "currentRole": "their current or most recent job title in plain title case, or an empty string if unclear",
   "brief": "the prose read, one string, \\n\\n between paragraphs",
   "findings": [
-    { "title": "short label, max 6 words", "detail": "one sentence on what it costs them", "severity": "critical | important | minor", "area": "look | writing | admin" }
+    { "title": "short label, max 6 words", "detail": "one sentence on what it costs them", "owner": "we_fix | needs_you | worth_knowing", "severity": "critical | important | minor" }
   ],
+  "strengths": ["short specific sentence on something the resume genuinely does well"],
   "questions": [
     { "id": "q1", "anchor": "...", "question": "...", "why": "...", "example": "...", "kind": "number", "ranges": ["...","...","...","..."], "hint": "..." }
   ]
@@ -179,9 +213,11 @@ function normaliseFindings(raw: unknown): IntakeFinding[] {
     if (!title) continue;
     const severity = (['critical', 'important', 'minor'] as const)
       .find((s) => s === (f as any).severity) ?? 'important';
-    const area = (['look', 'writing', 'admin'] as const)
-      .find((a) => a === (f as any).area) ?? 'writing';
-    out.push({ title, detail: String((f as any).detail ?? '').trim(), severity, area });
+    // Default to we_fix: if the model is unsure, assuming we handle it is both
+    // the commoner case and the kinder one - it never hands out false homework.
+    const owner = (['we_fix', 'needs_you', 'worth_knowing'] as const)
+      .find((o) => o === (f as any).owner) ?? 'we_fix';
+    out.push({ title, detail: String((f as any).detail ?? '').trim(), owner, severity });
   }
   return out.sort((a, b) => rank[a.severity] - rank[b.severity]);
 }
@@ -262,6 +298,9 @@ export async function analyseIntakeResume(
       currentRole: String(parsed?.currentRole ?? '').trim(),
       brief,
       findings: normaliseFindings(parsed?.findings),
+      strengths: Array.isArray(parsed?.strengths)
+        ? parsed.strengths.map((x: unknown) => String(x).trim()).filter(Boolean).slice(0, 5)
+        : [],
       questions: normaliseQuestions(parsed?.questions),
     };
   };
@@ -280,5 +319,19 @@ export async function analyseIntakeResume(
     console.warn('[intakeAnalysis] falling back to text-only read (no layout or photo visibility)');
   }
 
-  return attempt(false);
+  // The text/structure path needs its own retries. callLLMWithRetry only retries
+  // transport errors, so a malformed JSON body used to fail the whole upload on
+  // the first try — which is why Word uploads failed intermittently while the
+  // same file succeeded when run directly. This response is long and generated
+  // at temperature 0.4, so an occasional bad body is expected, not exceptional.
+  let lastErr: unknown;
+  for (let i = 1; i <= 3; i++) {
+    try {
+      return await attempt(false);
+    } catch (err) {
+      lastErr = err;
+      console.warn(`[intakeAnalysis] text read attempt ${i} failed:`, (err as Error).message);
+    }
+  }
+  throw lastErr;
 }
