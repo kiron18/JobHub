@@ -30,9 +30,11 @@ You will receive:
   note-to-self (e.g. "04XX XXX XXX", "add correct number", "TBD").
 
 == TAILORING RULES ==
-- Reframe, do not rewrite history. Reorder sections and bullets so the experience most
-  relevant to THIS job is most prominent. Older or less relevant entries get shorter, not
-  deleted.
+- Reframe, do not rewrite history. Keep the sections and the entries in the order the source
+  resume already has them; that order is the candidate's own and it is usually deliberate.
+  Make the experience most relevant to THIS job stand out through how you word it rather than
+  by moving it up the page. Bullets can be reordered within an entry. Older or less relevant
+  entries get shorter, not deleted.
 - Mirror the job description's genuine vocabulary where the resume honestly supports it.
   Never mirror vocabulary the resume cannot support.
 - 3 to 5 bullets for the most recent or most relevant roles, 2 to 3 for older ones. Every

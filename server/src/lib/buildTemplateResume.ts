@@ -157,6 +157,9 @@ export function mergeBridgedSkills(
  * Returns a new array with experiences sorted by the provided ID sequence.
  * Experiences whose IDs are not in orderIds are appended at the end in their
  * original relative order. The input array is never mutated.
+ *
+ * Only runs when `allowExperienceReorder` is set on the build options. See the
+ * note at Step 0 in buildTemplateResume for why it is off by default.
  */
 export function reorderExperience<T extends { id: string }>(
   experiences: T[],
@@ -438,11 +441,18 @@ export interface BuildTemplateOptions {
   experienceFlags?: ExperienceFlag[] | null;
   achievementSources?: string[];
   bridgedGaps?: BridgedGap[];
+  /**
+   * Let the model's relevance ranking re-sort the experience list. Off by
+   * default: the candidate's own order is deliberate and survives the build.
+   * See Step 0 below.
+   */
+  allowExperienceReorder?: boolean;
 }
 
 /**
  * buildTemplateResume — orchestrator that:
- *   1. Reorders profile.experience + aligns polish.experience by polish.experienceOrder
+ *   1. Keeps profile.experience in the candidate's own order (opt in to re-sort
+ *      by polish.experienceOrder via options.allowExperienceReorder)
  *   2. Converts Prisma profile to ResumeData (profileToResumeData)
  *   3. Merges LLM polish JSON (applyPolish)
  *   4. Enforces summary word count backstop
@@ -458,16 +468,28 @@ export function buildTemplateResume(
   polish: PolishPayload | null,
   options?: BuildTemplateOptions
 ): string {
-  // ── Step 0: Reorder profile.experience for display order ────────────────────
-  // Content merging (applyPolish) and display flags below are matched by id,
-  // so polish.experience never needs reordering — only the profile's own
-  // display order depends on experienceOrder.
+  // ── Step 0: Keep the candidate's own experience order ───────────────────────
+  // The order roles appear in is a deliberate choice by the candidate or their
+  // coach, so by default it is passed through untouched.
+  //
+  // The model still returns `experienceOrder`, its ranking of which roles matter
+  // most for this job. We used to always re-sort by it, which quietly rewrote
+  // the candidate's own arrangement on every generation, and rewrote it
+  // differently each time because the ranking is a fresh model answer every run.
+  // One client watched two side projects get promoted above his current role in
+  // every resume he sent out.
+  //
+  // The ranking is still asked for and still applied when a caller opts in, so
+  // this is a default rather than a ban. Set `allowExperienceReorder` to get the
+  // old behaviour back, per build or later per candidate.
   let orderedProfile = profile;
   const orderedPolish = polish;
 
-  if (polish?.experienceOrder && polish.experienceOrder.length > 0) {
-    const reorderedProfileExps = reorderExperience(profile.experience, polish.experienceOrder);
-    orderedProfile = { ...profile, experience: reorderedProfileExps };
+  if (options?.allowExperienceReorder && polish?.experienceOrder?.length) {
+    orderedProfile = {
+      ...profile,
+      experience: reorderExperience(profile.experience, polish.experienceOrder),
+    };
   }
 
   // ── Step 1: Profile → ResumeData ────────────────────────────────────────────

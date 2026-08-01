@@ -14,6 +14,7 @@
 import React from 'react';
 import { pdf, Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
 import type { DocumentProps } from '@react-pdf/renderer';
+import type { Style } from '@react-pdf/types';
 // Interop-safe import: file-saver is CJS/UMD, so named imports break under
 // node ESM (used by scripts/render-test.tsx); default + fallback works in both.
 import fileSaverModule from 'file-saver';
@@ -145,10 +146,6 @@ const styles = StyleSheet.create({
         paddingBottom: 3,
         borderBottomWidth: 0.5,
         borderBottomColor: ACCENT_COLOR,
-    },
-    // Role/project entry container
-    roleEntry: {
-        marginBottom: 5,
     },
     // Role header: title left, dates right on same line
     roleHeader: {
@@ -333,190 +330,260 @@ function SummarySection({ content }: { content: ResumeItem[] }) {
     return <Text style={styles.summary}>{renderInline(text)}</Text>;
 }
 
-function ExperienceSection({ content, isFirst }: { content: ResumeItem[]; isFirst: boolean }) {
+/**
+ * A section's heading.
+ *
+ * Always the user's own heading text. Every section used to hard-code its
+ * title, so a resume with both "Professional Experience" and "Additional
+ * Experience" printed "Professional Experience" twice: `classifySection` maps
+ * anything containing "experience" to the same section type, and the renderer
+ * then ignored `section.title` entirely. The on-screen preview and the Word
+ * download both showed the real heading, so the PDF was the only place the
+ * user's wording disappeared — and it disappeared on the copy that goes to
+ * employers. `fallback` covers a section that somehow reached us untitled.
+ */
+function sectionHeading({ title, fallback, isFirst }: { title?: string; fallback: string; isFirst?: boolean }) {
     return (
-        <View>
-            <Text minPresenceAhead={40} style={isFirst ? styles.firstSectionHeader : styles.sectionHeader}>Professional Experience</Text>
-            {content.map((item, i) => (
-                <View key={i} style={styles.roleEntry}>
-                    <View minPresenceAhead={50} style={styles.roleHeader}>
-                        <Text style={styles.roleTitle}>{item.title}</Text>
-                        {item.dates && <Text style={styles.roleDates}>{item.dates}</Text>}
-                    </View>
-                    {item.organization && (
-                        <Text style={styles.companyLine}>{item.organization}</Text>
-                    )}
-                    {item.descriptor && (
-                        <Text style={styles.companyLine}>{item.descriptor}</Text>
-                    )}
-                    {item.bullets?.map((bullet, j) => (
-                        <Text key={j} style={styles.bullet}>•  {renderInline(bullet)}</Text>
-                    ))}
-                    {item.notes?.map((note, j) => (
-                        <Text key={`n${j}`} style={styles.paragraph}>{renderInline(note)}</Text>
-                    ))}
-                </View>
-            ))}
-        </View>
+        <Text style={isFirst ? styles.firstSectionHeader : styles.sectionHeader}>
+            {title?.trim() || fallback}
+        </Text>
     );
 }
 
-function EducationSection({ content }: { content: ResumeItem[] }) {
-    return (
-        <View>
-            <Text minPresenceAhead={40} style={styles.sectionHeader}>Education</Text>
-            {content.map((item, i) => (
-                <View key={i} style={{ marginBottom: 6 }}>
-                    <View minPresenceAhead={50} style={styles.roleHeader}>
-                        <Text style={styles.roleTitle}>{item.title}</Text>
-                        {item.dates && <Text style={styles.roleDates}>{item.dates}</Text>}
-                    </View>
-                    {item.organization && (
-                        <Text style={styles.companyLine}>{item.organization}</Text>
-                    )}
-                </View>
-            ))}
-        </View>
-    );
+// -------------------------------------------------------------------
+// Section builders
+//
+// Sections render to a *flat* list of page-level blocks rather than to one
+// <View> per section, and every builder below returns an array for that reason.
+//
+// react-pdf only reliably honours wrap={false} on a direct child of <Page>.
+// Nested inside a section wrapper, a block that cannot fit the remaining space
+// is drawn anyway — it runs off into the bottom margin instead of moving to the
+// next page. That is the clipped last line users see at the foot of page 1.
+//
+// Flattening also fixes the order the text sits in the PDF's content stream.
+// With nested wrappers, an entry that landed on a page boundary was emitted out
+// of sequence — in one resume a job title and employer were written after the
+// referees line, at the very end of the file. On screen it looked right,
+// because the coordinates were right; an ATS reads the stream, not the
+// coordinates, so it saw the employer filed under "Referees".
+// -------------------------------------------------------------------
+
+/**
+ * Space below an entry. This is the one number to change if entries need to
+ * breathe more or less; nothing else controls that spacing.
+ *
+ * Deliberately a touch tighter than the old wrapper `<View>` produced. That
+ * wrapper's 5pt sat outside the last bullet's own 2pt and the two stacked, so
+ * entries ending in a bullet used to get 7pt. A flat 5pt buys back roughly the
+ * space the keep-together rule below costs, which is why a sweep of 62 content
+ * lengths across two resume shapes never came out longer than before this
+ * change, and came out a page shorter once. Page count is the thing a resume
+ * cannot afford to lose, so it was worth being explicit about.
+ */
+const ENTRY_GAP = 5;
+
+/**
+ * Set the bottom margin on the block that ends an entry, standing in for the
+ * wrapper `<View>` whose margin used to do this before the tree was flattened.
+ */
+function withGap(nodes: React.ReactNode[], gap: number): React.ReactNode[] {
+    if (!nodes.length) return nodes;
+    const last = nodes[nodes.length - 1] as React.ReactElement<{ style?: Style | Style[] }>;
+    const own = last.props.style;
+    const style: Style[] = [
+        ...(Array.isArray(own) ? own : own ? [own] : []),
+        { marginBottom: gap },
+    ];
+    return [...nodes.slice(0, -1), React.cloneElement(last, { style })];
 }
 
-function SkillsSection({ content }: { content: ResumeItem[] }) {
-    return (
-        <View style={styles.skillsContainer}>
-            <Text minPresenceAhead={40} style={styles.sectionHeader}>Skills & Competencies</Text>
-            {content.map((item, i) => (
-                item.type === 'skill' && (
-                    <View key={i} style={styles.skillRow}>
-                        <Text style={styles.skillLabel}>{item.label}:</Text>
-                        <Text style={styles.skillValues}>{renderInline(item.values ?? '')}</Text>
-                    </View>
-                )
-            ))}
-        </View>
-    );
+/**
+ * One role/project/degree entry, as page-level blocks.
+ *
+ * The entry's title, dates, employer and *first* bullet are held together in a
+ * single `wrap={false}` block — the typesetting "keep with next" rule. It rules
+ * out both ways the page break used to read as a mistake: a heading stranded
+ * alone on the last line of a page, and a job title at the foot of one page
+ * with the evidence for it overleaf. When a section's heading is passed in it
+ * joins that same block, so a heading can never be the last thing on a page.
+ *
+ * Only the first bullet is held back. Holding a whole entry would shunt a long
+ * role wholesale onto the next page and leave half a page blank, which can cost
+ * a two-page resume a third page.
+ *
+ * `minPresenceAhead` was the previous attempt at this and did not hold: it
+ * reserves space *after* a node rather than binding the node to what follows,
+ * so a heading whose section started further up the page still stranded.
+ */
+function entryNodes(item: ResumeItem, heading?: React.ReactNode, gap = ENTRY_GAP): React.ReactNode[] {
+    const [firstBullet, ...restBullets] = item.bullets ?? [];
+
+    const nodes: React.ReactNode[] = [
+        <View key="head" wrap={false}>
+            {heading}
+            <View style={styles.roleHeader}>
+                <Text style={styles.roleTitle}>{item.title}</Text>
+                {item.dates && <Text style={styles.roleDates}>{item.dates}</Text>}
+            </View>
+            {item.organization && <Text style={styles.companyLine}>{item.organization}</Text>}
+            {item.descriptor && <Text style={styles.companyLine}>{item.descriptor}</Text>}
+            {firstBullet !== undefined && (
+                <Text style={styles.bullet}>•  {renderInline(firstBullet)}</Text>
+            )}
+        </View>,
+        ...restBullets.map((bullet, j) => (
+            <Text key={`b${j}`} style={styles.bullet}>•  {renderInline(bullet)}</Text>
+        )),
+        ...(item.notes ?? []).map((note, j) => (
+            <Text key={`n${j}`} style={styles.paragraph}>{renderInline(note)}</Text>
+        )),
+    ];
+
+    return withGap(nodes, gap);
 }
 
-function ProjectsSection({ content }: { content: ResumeItem[] }) {
-    return (
-        <View>
-            <Text minPresenceAhead={40} style={styles.sectionHeader}>Projects</Text>
-            {content.map((item, i) => (
-                <View key={i} style={styles.roleEntry}>
-                    <View minPresenceAhead={50} style={styles.roleHeader}>
-                        <Text style={styles.roleTitle}>{item.title}</Text>
-                        {item.dates && <Text style={styles.roleDates}>{item.dates}</Text>}
-                    </View>
-                    {item.organization && (
-                        <Text style={styles.companyLine}>{item.organization}</Text>
-                    )}
-                    {item.descriptor && (
-                        <Text style={styles.companyLine}>{item.descriptor}</Text>
-                    )}
-                    {item.bullets?.map((bullet, j) => (
-                        <Text key={j} style={styles.bullet}>•  {renderInline(bullet)}</Text>
-                    ))}
-                    {item.notes?.map((note, j) => (
-                        <Text key={`n${j}`} style={styles.paragraph}>{renderInline(note)}</Text>
-                    ))}
-                </View>
-            ))}
-        </View>
-    );
+/** A heading with its role/project entries. */
+function entryListNodes({
+    title,
+    fallback,
+    content,
+    isFirst,
+    gap,
+}: {
+    title?: string;
+    fallback: string;
+    content: ResumeItem[];
+    isFirst?: boolean;
+    gap?: number;
+}): React.ReactNode[] {
+    const heading = sectionHeading({ title, fallback, isFirst });
+
+    // A section with no entries still has to announce itself.
+    if (!content.length) return [heading];
+
+    return content.flatMap((item, i) => entryNodes(item, i === 0 ? heading : undefined, gap));
 }
 
-function PublicationsSection({ content }: { content: ResumeItem[] }) {
-    return (
-        <View>
-            <Text minPresenceAhead={40} style={styles.sectionHeader}>Publications</Text>
-            {content.map((item, i) => (
-                <Text key={i} style={styles.paragraph}>{renderInline(item.text ?? '')}</Text>
-            ))}
-        </View>
-    );
+/** A heading plus free-flowing lines (publications, languages, referees). */
+function textSectionNodes({
+    title,
+    fallback,
+    lines,
+    lineStyle,
+}: {
+    title?: string;
+    fallback: string;
+    lines: string[];
+    lineStyle: Style;
+}): React.ReactNode[] {
+    const heading = sectionHeading({ title, fallback });
+    if (!lines.length) return [heading];
+
+    const [firstLine, ...restLines] = lines;
+    return [
+        <View key="head" wrap={false}>
+            {heading}
+            <Text style={lineStyle}>{renderInline(firstLine)}</Text>
+        </View>,
+        ...restLines.map((line, i) => (
+            <Text key={`l${i}`} style={lineStyle}>{renderInline(line)}</Text>
+        )),
+    ];
 }
 
-function CertificationsSection({ content }: { content: ResumeItem[] }) {
-    return (
-        <View>
-            <Text minPresenceAhead={40} style={styles.sectionHeader}>Certifications</Text>
-            {content.map((item, i) => (
-                <Text key={i} style={styles.bullet}>•  {renderInline(item.title ?? '')}</Text>
-            ))}
+function skillsNodes({ title, content }: { title?: string; content: ResumeItem[] }): React.ReactNode[] {
+    const rows = content.filter(item => item.type === 'skill');
+    const heading = sectionHeading({ title, fallback: 'Skills & Competencies' });
+    const row = (item: ResumeItem, key: string) => (
+        <View key={key} style={styles.skillRow}>
+            <Text style={styles.skillLabel}>{item.label}:</Text>
+            <Text style={styles.skillValues}>{renderInline(item.values ?? '')}</Text>
         </View>
     );
-}
 
-function LanguagesSection({ content }: { content: ResumeItem[] }) {
-    return (
-        <View>
-            <Text minPresenceAhead={40} style={styles.sectionHeader}>Languages</Text>
-            {content.map((item, i) => (
-                <Text key={i} style={styles.paragraph}>{renderInline(item.text ?? '')}</Text>
-            ))}
-        </View>
-    );
-}
+    if (!rows.length) return [heading];
 
-function RefereesSection({ content }: { content: ResumeItem[] }) {
-    const text = content.map(c => c.text).filter(Boolean).join(' ');
-    return (
-        <View>
-            <Text minPresenceAhead={40} style={styles.sectionHeader}>Referees</Text>
-            <Text style={styles.referees}>{text || 'Available upon request.'}</Text>
-        </View>
-    );
-}
-
-function GenericSection({ title, content }: { title: string; content: ResumeItem[] }) {
-    return (
-        <View>
-            <Text minPresenceAhead={40} style={styles.sectionHeader}>{title}</Text>
-            {content.map((item, i) => (
-                <Text key={i} style={styles.paragraph}>{renderInline(item.text || item.title || '')}</Text>
-            ))}
-        </View>
-    );
+    return [
+        <View key="head" wrap={false} style={styles.skillsContainer}>
+            {heading}
+            {row(rows[0], 'r0')}
+        </View>,
+        ...rows.slice(1).map((item, i) => row(item, `r${i + 1}`)),
+    ];
 }
 
 // -------------------------------------------------------------------
 // Main Resume Document
 // -------------------------------------------------------------------
 
+/** The blocks one section contributes to the page, in reading order. */
+function sectionNodes(section: ResumeSection, isFirstExperience: boolean): React.ReactNode[] {
+    const { title, content } = section;
+
+    switch (section.type) {
+        case 'header':
+            return [<HeaderSection content={content} />];
+        case 'summary':
+            return [<SummarySection content={content} />];
+        case 'experience':
+            return entryListNodes({ title, fallback: 'Professional Experience', content, isFirst: isFirstExperience });
+        case 'education':
+            return entryListNodes({ title, fallback: 'Education', content, gap: 6 });
+        case 'skills':
+            return skillsNodes({ title, content });
+        case 'projects':
+            return entryListNodes({ title, fallback: 'Projects', content });
+        case 'publications':
+            return textSectionNodes({
+                title, fallback: 'Publications',
+                lines: content.map(item => item.text ?? ''),
+                lineStyle: styles.paragraph,
+            });
+        case 'certifications':
+            return textSectionNodes({
+                title, fallback: 'Certifications',
+                lines: content.map(item => `•  ${item.title ?? ''}`),
+                lineStyle: styles.bullet,
+            });
+        case 'languages':
+            return textSectionNodes({
+                title, fallback: 'Languages',
+                lines: content.map(item => item.text ?? ''),
+                lineStyle: styles.paragraph,
+            });
+        case 'referees':
+            return textSectionNodes({
+                title, fallback: 'Referees',
+                lines: [content.map(c => c.text).filter(Boolean).join(' ') || 'Available upon request.'],
+                lineStyle: styles.referees,
+            });
+        default:
+            return textSectionNodes({
+                title, fallback: title,
+                lines: content.map(item => item.text || item.title || ''),
+                lineStyle: styles.paragraph,
+            });
+    }
+}
+
 export function ResumeDocument({ sections }: { sections: ResumeSection[] }) {
-    let experienceSeen = false;
+    // Only the first experience section gets the tighter top margin; a resume
+    // with an "Additional Experience" section has more than one.
+    const firstExperience = sections.findIndex(s => s.type === 'experience');
+
+    // One flat list of blocks, so react-pdf can move any of them to the next
+    // page. Keys are assigned here because a block's position in the whole
+    // document is the only thing that makes it unique.
+    const blocks: React.ReactNode[] = sections.flatMap((section, i) =>
+        sectionNodes(section, i === firstExperience).map((node, j) =>
+            React.cloneElement(node as React.ReactElement, { key: `s${i}-${j}` }),
+        ),
+    );
 
     return (
         <Document>
-            <Page size="A4" style={styles.page}>
-                {sections.map((section, i) => {
-                    switch (section.type) {
-                        case 'header':
-                            return <HeaderSection key={i} content={section.content} />;
-                        case 'summary':
-                            return <SummarySection key={i} content={section.content} />;
-                        case 'experience':
-                            const isFirstExp = !experienceSeen;
-                            experienceSeen = true;
-                            return <ExperienceSection key={i} content={section.content} isFirst={isFirstExp} />;
-                        case 'education':
-                            return <EducationSection key={i} content={section.content} />;
-                        case 'skills':
-                            return <SkillsSection key={i} content={section.content} />;
-                        case 'projects':
-                            return <ProjectsSection key={i} content={section.content} />;
-                        case 'publications':
-                            return <PublicationsSection key={i} content={section.content} />;
-                        case 'certifications':
-                            return <CertificationsSection key={i} content={section.content} />;
-                        case 'languages':
-                            return <LanguagesSection key={i} content={section.content} />;
-                        case 'referees':
-                            return <RefereesSection key={i} content={section.content} />;
-                        default:
-                            return <GenericSection key={i} title={section.title} content={section.content} />;
-                    }
-                })}
-            </Page>
+            <Page size="A4" style={styles.page}>{blocks}</Page>
         </Document>
     );
 }
