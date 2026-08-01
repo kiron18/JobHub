@@ -145,6 +145,58 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
         break;
       }
 
+      /**
+       * The offer is "$250/month for three months", but a Stripe subscription
+       * bills forever unless it is told otherwise — Stripe has no concept of
+       * "for three months". Left alone, every client is charged a fourth month
+       * they never agreed to.
+       *
+       * So the moment a subscription is created, set an end date three months
+       * out. That is three charges and three months of access, ending exactly
+       * when the third month's service does.
+       *
+       * This fires however the subscription was created — payment link, Stripe
+       * dashboard, or in-app checkout — because Stripe emits it account-wide.
+       * It requires `customer.subscription.created` to be enabled on the webhook
+       * endpoint; it was not, which is why this could not be automated before.
+       */
+      case 'customer.subscription.created': {
+        const sub = event.data.object as any;
+        const months = Number(process.env.SUBSCRIPTION_MONTHS || 3);
+
+        if (sub.cancel_at || sub.cancel_at_period_end) {
+          console.log(`[stripe/webhook] ${sub.id} already has an end date — leaving it alone`);
+          break;
+        }
+
+        const price = sub.items?.data?.[0]?.price;
+        // Only monthly recurring plans get a term. One-off payments and annual
+        // plans are not the three-month offer and must not be touched.
+        if (price?.recurring?.interval !== 'month') {
+          console.log(`[stripe/webhook] ${sub.id} is not a monthly plan — no end date set`);
+          break;
+        }
+
+        const start = new Date((sub.start_date ?? sub.created) * 1000);
+        const endsAt = new Date(start);
+        endsAt.setMonth(endsAt.getMonth() + months);
+
+        try {
+          await stripe.subscriptions.update(sub.id, {
+            cancel_at: Math.floor(endsAt.getTime() / 1000),
+          });
+          console.log(
+            `[stripe/webhook] ${sub.id} set to end ${endsAt.toISOString().slice(0, 10)} `
+            + `(${months} months from ${start.toISOString().slice(0, 10)})`,
+          );
+        } catch (err: any) {
+          // Never fail the webhook over this — Stripe would retry the whole
+          // event and re-run the grant logic in the other cases.
+          console.error(`[stripe/webhook] could not set end date on ${sub.id}:`, err.message ?? err);
+        }
+        break;
+      }
+
       case 'customer.subscription.updated': {
         const sub = event.data.object;
         const profile = await prisma.candidateProfile.findFirst({
@@ -263,7 +315,29 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
 const router = Router();
 
 // POST /api/stripe/checkout
+/**
+ * In-app checkout is switched OFF, not deleted.
+ *
+ * Clients are currently signed up through a Stripe payment link, so nothing
+ * reaches this route in the normal course. Leaving it live is a hazard: the
+ * price IDs here have drifted from the real offer (MONTHLY_PRICE_ID still
+ * points at the retired $97/month price), so anyone who found /pricing and
+ * completed checkout would lock themselves into the wrong price for the life of
+ * their subscription.
+ *
+ * Set CHECKOUT_ENABLED=true to turn it back on — after re-checking the price IDs.
+ */
+const CHECKOUT_ENABLED = process.env.CHECKOUT_ENABLED === 'true';
+
 router.post('/checkout', authenticate, async (req: AuthRequest, res: Response) => {
+  if (!CHECKOUT_ENABLED) {
+    console.warn('[stripe/checkout] blocked — in-app checkout is switched off');
+    res.status(410).json({
+      error: 'Checkout has moved. Please use the payment link you were sent, or contact Kiron.',
+    });
+    return;
+  }
+
   const userId = req.user!.id;
   const userEmail = req.user!.email ?? '';
   const { plan } = req.body as { plan?: string };
