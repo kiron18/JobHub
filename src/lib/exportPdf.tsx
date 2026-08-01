@@ -492,8 +492,60 @@ function textSectionNodes({
     ];
 }
 
+/**
+ * Anything a specialised renderer did not know how to draw.
+ *
+ * Each specialised section renderer filters `content` down to the item shape it
+ * understands — `skill` rows, `cert` rows — and silently drops the rest. That
+ * loses real text: a section titled "Karaoke Skills" is typed as `skills`
+ * because the word "skill" appears in it, so a person's bullets under it were
+ * parsed correctly and then thrown away at render time. The heading still
+ * printed, which made it look like a styling quirk rather than missing content.
+ *
+ * Every specialised renderer appends this, so whatever the user wrote reaches
+ * the page even when it does not fit the section's expected shape.
+ */
+function leftoverNodes(
+    content: ResumeItem[],
+    understood: (item: ResumeItem) => boolean,
+    keyPrefix: string,
+): React.ReactNode[] {
+    const nodes: React.ReactNode[] = [];
+    content.filter(item => !understood(item)).forEach((item, i) => {
+        (item.bullets ?? []).forEach((bullet, j) => {
+            nodes.push(
+                <Text key={`${keyPrefix}b${i}-${j}`} style={styles.bullet}>•  {renderInline(bullet)}</Text>,
+            );
+        });
+        const line = item.text ?? item.title;
+        if (line) {
+            nodes.push(
+                <Text key={`${keyPrefix}t${i}`} style={styles.paragraph}>{renderInline(line)}</Text>,
+            );
+        }
+    });
+    return nodes;
+}
+
+/**
+ * Every line an item carries, in reading order, with empties removed.
+ *
+ * The single-line sections used to read one named field per item, so an item
+ * holding text where the renderer expected a title printed as a blank bullet,
+ * and any bullets it carried were lost. Reading whatever is actually there
+ * means a person's words survive however they typed them.
+ */
+function flattenItemLines(content: ResumeItem[]): string[] {
+    return content
+        .flatMap(item => [item.title, item.text, ...(item.bullets ?? [])])
+        .map(line => (line ?? '').trim())
+        .filter(Boolean);
+}
+
 function skillsNodes({ title, content }: { title?: string; content: ResumeItem[] }): React.ReactNode[] {
-    const rows = content.filter(item => item.type === 'skill');
+    const isSkill = (item: ResumeItem) => item.type === 'skill';
+    const rows = content.filter(isSkill);
+    const extra = leftoverNodes(content, isSkill, 'sk');
     const heading = sectionHeading({ title, fallback: 'Skills & Competencies' });
     const row = (item: ResumeItem, key: string) => (
         <View key={key} style={styles.skillRow}>
@@ -502,7 +554,7 @@ function skillsNodes({ title, content }: { title?: string; content: ResumeItem[]
         </View>
     );
 
-    if (!rows.length) return [heading];
+    if (!rows.length) return [heading, ...extra];
 
     return [
         <View key="head" wrap={false} style={styles.skillsContainer}>
@@ -510,6 +562,7 @@ function skillsNodes({ title, content }: { title?: string; content: ResumeItem[]
             {row(rows[0], 'r0')}
         </View>,
         ...rows.slice(1).map((item, i) => row(item, `r${i + 1}`)),
+        ...extra,
     ];
 }
 
@@ -534,28 +587,32 @@ function sectionNodes(section: ResumeSection, isFirstExperience: boolean): React
             return skillsNodes({ title, content });
         case 'projects':
             return entryListNodes({ title, fallback: 'Projects', content });
+        // These three read one line per item. Take whichever field the item
+        // actually carries, include any bullets it holds, and drop empties —
+        // mapping to a single field printed a bare "•" for anything that did
+        // not happen to have a title, and lost the rest of the item entirely.
         case 'publications':
             return textSectionNodes({
                 title, fallback: 'Publications',
-                lines: content.map(item => item.text ?? ''),
+                lines: flattenItemLines(content),
                 lineStyle: styles.paragraph,
             });
         case 'certifications':
             return textSectionNodes({
                 title, fallback: 'Certifications',
-                lines: content.map(item => `•  ${item.title ?? ''}`),
+                lines: flattenItemLines(content).map(line => `•  ${line}`),
                 lineStyle: styles.bullet,
             });
         case 'languages':
             return textSectionNodes({
                 title, fallback: 'Languages',
-                lines: content.map(item => item.text ?? ''),
+                lines: flattenItemLines(content),
                 lineStyle: styles.paragraph,
             });
         case 'referees':
             return textSectionNodes({
                 title, fallback: 'Referees',
-                lines: [content.map(c => c.text).filter(Boolean).join(' ') || 'Available upon request.'],
+                lines: [flattenItemLines(content).join(' ') || 'Available upon request.'],
                 lineStyle: styles.referees,
             });
         default:
