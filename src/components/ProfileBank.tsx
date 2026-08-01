@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -296,6 +296,9 @@ const BankIsland: React.FC = () => {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
+  // Real page count from the PDF renderer, not an estimate. Debounced, because
+  // each measurement is a full render.
+  const [pages, setPages] = useState<number | null>(null);
 
   const { data, isLoading } = useQuery<{ text: string; hasBank: boolean; versions: number }>({
     queryKey: ['profile-bank'],
@@ -325,6 +328,24 @@ const BankIsland: React.FC = () => {
 
   const text = data?.text ?? '';
 
+  // Measure whatever is currently on screen: the draft while editing, the saved
+  // document otherwise. Debounced at 600ms so typing stays responsive.
+  const measured = editing ? draft : text;
+  useEffect(() => {
+    if (!measured.trim()) { setPages(null); return; }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const { countResumePages } = await import('../lib/exportPdf');
+        const n = await countResumePages(measured);
+        if (!cancelled) setPages(n);
+      } catch {
+        if (!cancelled) setPages(null);   // never let a failed measure block editing
+      }
+    }, 600);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [measured]);
+
   const startEditing = () => {
     setDraft(text);
     setNotice(null);
@@ -339,10 +360,33 @@ const BankIsland: React.FC = () => {
         badge={!editing && data?.hasBank ? <EditButton onClick={startEditing} /> : undefined}
       />
 
-      <p style={{ fontSize: 13, lineHeight: 1.6, color: '#6b7280', margin: '0 0 14px' }}>
+      <p style={{ fontSize: 13, lineHeight: 1.6, color: '#6b7280', margin: '0 0 12px' }}>
         This is what every resume and cover letter we build for you is written from.
         Edit anything here and the next application picks it up.
       </p>
+
+      {/*
+        The length signal. Measured from the real PDF renderer, so it is the
+        page count they will actually get - not a guess from line counts, which
+        cannot account for wrapping, headings or bold runs.
+      */}
+      {pages !== null && (
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 14,
+          padding: '7px 12px', borderRadius: 8,
+          background: pages > 2 ? 'rgba(196,72,48,0.08)' : 'rgba(16,133,80,0.07)',
+          border: `1px solid ${pages > 2 ? 'rgba(196,72,48,0.28)' : 'rgba(16,133,80,0.22)'}`,
+        }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: pages > 2 ? '#9b2c1a' : '#0f6b41' }}>
+            {pages} {pages === 1 ? 'page' : 'pages'}
+          </span>
+          <span style={{ fontSize: 12.5, color: pages > 2 ? '#9b2c1a' : '#4b5563' }}>
+            {pages > 2
+              ? 'Too long. Recruiters rarely read past two - trim it back.'
+              : 'Good length.'}
+          </span>
+        </div>
+      )}
 
       {notice && (
         <div style={{
@@ -386,6 +430,37 @@ const BankIsland: React.FC = () => {
 
       {editing && (
         <>
+          {/*
+            Above the textarea, not below it: the format is only obvious once
+            you know it, and someone who types a heading without "##" gets a
+            line of body text with no warning that anything went wrong.
+          */}
+          <div style={{
+            marginBottom: 14, padding: '14px 16px', borderRadius: 10,
+            background: 'rgba(37,99,235,0.04)', border: '1px solid rgba(37,99,235,0.16)',
+          }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#111827', marginBottom: 8 }}>
+              Two rules, and everything works
+            </div>
+            <div style={{ fontSize: 13, lineHeight: 1.7, color: '#374151' }}>
+              <div style={{ marginBottom: 4 }}>
+                <strong>A new section</strong> starts with two hashes and a space.
+              </div>
+              <div style={{ marginBottom: 10 }}>
+                <strong>Every point</strong> goes on its own line, starting with a dash and a space.
+              </div>
+              <pre style={{
+                margin: 0, padding: '11px 13px', borderRadius: 8,
+                background: '#fff', border: '1px solid rgba(0,0,0,0.09)',
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                fontSize: 12.5, lineHeight: 1.7, color: '#111827', whiteSpace: 'pre-wrap',
+              }}>{'## Hobbies\n- Long distance running\n- Volunteer surf lifesaving'}</pre>
+              <div style={{ fontSize: 12.5, color: '#6b7280', marginTop: 9 }}>
+                Miss the hashes and it becomes ordinary text. Miss the dash and it will not be a bullet point.
+              </div>
+            </div>
+          </div>
+
           <textarea
             value={draft}
             onChange={e => setDraft(e.target.value)}
@@ -398,18 +473,6 @@ const BankIsland: React.FC = () => {
               fontSize: 12.5, lineHeight: 1.65, outline: 'none',
             }}
           />
-          <div style={{
-            marginTop: 10, padding: '10px 12px', borderRadius: 8,
-            background: 'rgba(37,99,235,0.05)', border: '1px solid rgba(37,99,235,0.15)',
-            fontSize: 12.5, lineHeight: 1.6, color: '#374151',
-          }}>
-            <strong style={{ color: '#111827' }}>Adding something new?</strong>{' '}
-            Start a new section with two hashes — <code style={{ fontFamily: 'ui-monospace, monospace' }}>## Hobbies</code> —
-            then put each point on its own line starting with a dash —{' '}
-            <code style={{ fontFamily: 'ui-monospace, monospace' }}>- Long distance running</code>.
-            Anything you write here comes out on your resume.
-          </div>
-
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 12 }}>
             <button
               onClick={() => save.mutate(draft)}

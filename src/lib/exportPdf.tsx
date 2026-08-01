@@ -808,6 +808,27 @@ const DOC_LABELS: Record<DocType, string> = {
     'research-statement': 'Research_Statement',
 };
 
+/**
+ * How many pages this resume actually comes to.
+ *
+ * Renders through the real PDF pipeline rather than estimating from line
+ * counts. Line counting cannot work: wrapping, headings, bold runs and bullet
+ * lengths all change how much fits, and a page marker in the wrong place is
+ * worse than none — someone will move content to fix a break that is not there.
+ * This runs the same renderer the download uses, so the number is the truth.
+ *
+ * Costs a full render (roughly 100-300ms for a resume), so callers should
+ * debounce it rather than run it on every keystroke.
+ */
+export async function countResumePages(content: string): Promise<number> {
+    const sections = parseResume(sanitizeForExport(content));
+    const blob = await pdf(<ResumeDocument sections={sections} />).toBlob();
+    const text = await blob.text();
+    // Page objects in the PDF body. The negative lookahead avoids matching
+    // "/Type /Pages", the single node that lists them.
+    return (text.match(/\/Type\s*\/Page[^s]/g) ?? []).length;
+}
+
 export async function exportPdf(
     content: string,
     docType: DocType,
