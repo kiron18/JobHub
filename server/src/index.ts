@@ -42,6 +42,7 @@ import { startJobFeedCron } from './cron/jobFeedCron';
 import { startSponsorJobScanCron } from './cron/sponsorJobScanCron';
 import { startTrialReminderCron } from './cron/trialReminderCron';
 import { startAccountabilityCron } from './cron/accountabilityCron';
+import { startPaymentReconcileCron } from './cron/paymentReconcileCron';
 import { startFollowUpReminderCron } from './cron/followUpReminderCron';
 import { analyzeRateLimit } from './middleware/analyzeRateLimit';
 import { ensureSponsorJobTable } from './db/ensureSponsorJobTable';
@@ -368,7 +369,9 @@ if (process.env.SKIP_SERVER === 'true') {
       startFollowUpReminderCron();
       startSequenceCron();
       startAccountabilityCron();
+      startPaymentReconcileCron();
       console.log('[cron] Trial reminder cron scheduled (10:00 UTC daily)');
       console.log('[cron] Follow-up reminder cron scheduled (09:00 UTC daily)');
+      console.log('[cron] Payment reconciliation cron scheduled (11:00 UTC daily)');
   });
 }

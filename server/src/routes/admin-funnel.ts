@@ -23,6 +23,7 @@ import { prisma } from '../index';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { EXEMPT_EMAILS } from './stripe';
 import { supabase } from '../lib/supabase';
+import { SENT_APPLICATION_FILTER } from '../services/tracker/metricHelpers';
 
 const router = Router();
 
@@ -105,7 +106,7 @@ router.get('/overview', authenticate, requireAdmin, async (_req, res) => {
     // Stage 4: first app sent (any APPLIED status across all apps)
     const usersWithAppliedApps = await prisma.jobApplication.groupBy({
       by: ['userId'],
-      where: { userId: { in: realUserIds }, status: { not: 'SAVED' } },
+      where: { userId: { in: realUserIds }, ...SENT_APPLICATION_FILTER },
       _count: { _all: true },
     });
     const firstAppCount = usersWithAppliedApps.length;
@@ -240,7 +241,7 @@ router.get('/trials', authenticate, requireAdmin, async (_req, res) => {
     const trialUserIds = trialProfiles.map(p => p.userId);
     const appCounts = await prisma.jobApplication.groupBy({
       by: ['userId'],
-      where: { userId: { in: trialUserIds }, status: { not: 'SAVED' } },
+      where: { userId: { in: trialUserIds }, ...SENT_APPLICATION_FILTER },
       _count: { _all: true },
     });
     const appCountByUserId = new Map(appCounts.map(g => [g.userId, g._count._all]));
@@ -296,75 +297,264 @@ router.get('/trials', authenticate, requireAdmin, async (_req, res) => {
   }
 });
 
-// GET /api/admin/funnel/user-usage — per-user usage snapshot for evaluation calls.
+/**
+ * Lowercased, with any +tag stripped from the local part. Used only to decide
+ * whether an address is one of ours: kiron182+onboardtest@gmail.com is the
+ * same mailbox as kiron182@gmail.com and must be excluded with it. Grouping
+ * still keys on the raw address, so two clients who deliberately use +tags are
+ * never merged into one person.
+ */
+function normaliseEmail(email: string): string {
+  const lower = email.trim().toLowerCase();
+  const at = lower.lastIndexOf('@');
+  if (at < 0) return lower;
+  const local = lower.slice(0, at).split('+')[0];
+  return `${local}${lower.slice(at)}`;
+}
+
+/**
+ * Is this profile a paying client right now?
+ *
+ * Three independent signals, any one of which is proof of payment. They are
+ * separate because payments reach us by three different routes: a Stripe
+ * subscription (plan/planStatus, set by the webhook), a subscription recorded
+ * only on subscriptionStatus, and a one-off 3-month bundle whose access window
+ * lives on accessExpiresAt. Reading only `plan` — what this endpoint used to do
+ * — misses anyone whose payment never got matched back to their account.
+ */
+function isPaidNow(p: {
+  plan: string | null;
+  planStatus: string | null;
+  subscriptionStatus: string | null;
+  accessExpiresAt: Date | null;
+}, now: Date): boolean {
+  const plan = (p.plan ?? 'free').toLowerCase();
+  const planStatus = (p.planStatus ?? 'active').toLowerCase();
+  if (plan !== 'free' && (planStatus === 'active' || planStatus === 'trialing')) return true;
+
+  const sub = (p.subscriptionStatus ?? '').toLowerCase();
+  if (sub === 'active' || sub === 'trialing') return true;
+
+  // A paid-for access window that has not closed yet counts, even if the plan
+  // field was never updated.
+  if (p.accessExpiresAt && p.accessExpiresAt > now) return true;
+
+  return false;
+}
+
+// GET /api/admin/funnel/user-usage — usage snapshot for PAYING CLIENTS ONLY.
+//
+// Accuracy rules this endpoint has to hold to, each of which it previously broke:
+//
+//   1. Paying clients only. Test signups (136 of 163 profiles at the time of
+//      writing) drowned the real ones and made the page unreadable.
+//   2. Payment is judged on all three billing signals, not just `plan` — see
+//      isPaidNow. Clients who paid before their account existed land as
+//      plan='free' because the webhook had no userId to match against.
+//   3. Counts are grouped by EMAIL, not userId. One person can hold several
+//      profiles (duplicate signups), and keying on userId reported only
+//      whichever profile was picked, silently dropping the rest of their work.
 router.get('/user-usage', authenticate, requireAdmin, async (_req, res) => {
   try {
-    const now = Date.now();
+    const now = new Date();
 
-    const profiles = await prisma.candidateProfile.findMany({
-      select: { userId: true, name: true, email: true, plan: true, planStatus: true, trialEndDate: true, createdAt: true },
+    // Test/internal accounts never belong on a client roster.
+    const testEmails = new Set<string>(
+      [...EXCLUDED_EMAILS, ...EXEMPT_EMAILS].map(normaliseEmail)
+    );
+
+    const allProfiles = await prisma.candidateProfile.findMany({
+      select: {
+        userId: true, name: true, email: true, plan: true, planStatus: true,
+        subscriptionStatus: true, accessExpiresAt: true, trialEndDate: true, createdAt: true,
+      },
       orderBy: { createdAt: 'desc' },
-      take: 500,
     });
 
-    // Application counts per user (total + applied).
-    const appsAll = await prisma.jobApplication.groupBy({ by: ['userId'], _count: { _all: true } });
-    const appsApplied = await prisma.jobApplication.groupBy({ by: ['userId'], where: { status: 'APPLIED' }, _count: { _all: true } });
+    const paidCandidates = allProfiles.filter(p => {
+      const email = p.email ?? '';
+      if (email && testEmails.has(normaliseEmail(email))) return false;
+      return isPaidNow(p, now);
+    });
+
+    // A real paying client always has an email — Stripe cannot bill without
+    // one. A paid-looking profile with no email is an internal test signup, so
+    // it stays off the roster. It is reported separately rather than dropped
+    // silently, because the one case where that assumption is wrong is a
+    // client whose email failed to save, and that needs fixing, not hiding.
+    const paidProfiles = paidCandidates.filter(p => (p.email ?? '').trim().length > 0);
+    const unidentified = paidCandidates.filter(p => !(p.email ?? '').trim());
+
+    // Every userId belonging to a paying client, including their duplicate
+    // profiles. Counts are summed across all of them.
+    const paidUserIds = paidProfiles.map(p => p.userId);
+    const paidUserIdSet = new Set(paidUserIds);
+
+    // Application counts, scoped to paying clients.
+    const appsAll = await prisma.jobApplication.groupBy({
+      by: ['userId'], where: { userId: { in: paidUserIds } }, _count: { _all: true },
+    });
+    const appsApplied = await prisma.jobApplication.groupBy({
+      by: ['userId'], where: { userId: { in: paidUserIds }, status: 'APPLIED' }, _count: { _all: true },
+    });
+    const appsNotSaved = await prisma.jobApplication.groupBy({
+      by: ['userId'], where: { userId: { in: paidUserIds }, ...SENT_APPLICATION_FILTER }, _count: { _all: true },
+    });
     const latestApp = await prisma.jobApplication.findMany({
-      select: { userId: true, createdAt: true }, orderBy: { createdAt: 'desc' },
+      where: { userId: { in: paidUserIds } },
+      select: { userId: true, createdAt: true },
+      orderBy: { createdAt: 'desc' },
     });
 
-    // Document counts per user (by type) + edited (updatedAt > createdAt) + latest activity.
+    // Documents, scoped to paying clients. One row per generation — a
+    // regenerated resume is a second row, which is what "resumes generated"
+    // means here.
     const docs = await prisma.document.findMany({
+      where: { userId: { in: paidUserIds } },
       select: { userId: true, type: true, createdAt: true, updatedAt: true },
     });
 
     const totalApps = new Map<string, number>();
     for (const a of appsAll) totalApps.set(a.userId, a._count._all);
-    const sentApps = new Map<string, number>();
-    for (const a of appsApplied) sentApps.set(a.userId, a._count._all);
+    const appliedApps = new Map<string, number>();
+    for (const a of appsApplied) appliedApps.set(a.userId, a._count._all);
+    const notSavedApps = new Map<string, number>();
+    for (const a of appsNotSaved) notSavedApps.set(a.userId, a._count._all);
     const lastAppAt = new Map<string, number>();
     for (const a of latestApp) if (!lastAppAt.has(a.userId)) lastAppAt.set(a.userId, a.createdAt.getTime());
 
     const resumes = new Map<string, number>();
     const covers = new Map<string, number>();
+    const criteria = new Map<string, number>();
     const edited = new Map<string, number>();
     const lastDocAt = new Map<string, number>();
+    const firstDocAt = new Map<string, number>();
     for (const d of docs) {
+      if (!paidUserIdSet.has(d.userId)) continue;
       if (d.type === 'RESUME') resumes.set(d.userId, (resumes.get(d.userId) ?? 0) + 1);
       if (d.type === 'COVER_LETTER') covers.set(d.userId, (covers.get(d.userId) ?? 0) + 1);
+      if (d.type === 'STAR_RESPONSE') criteria.set(d.userId, (criteria.get(d.userId) ?? 0) + 1);
       if (d.updatedAt.getTime() > d.createdAt.getTime() + 1000) edited.set(d.userId, (edited.get(d.userId) ?? 0) + 1);
-      const t = d.updatedAt.getTime();
-      if (t > (lastDocAt.get(d.userId) ?? 0)) lastDocAt.set(d.userId, t);
+      const updated = d.updatedAt.getTime();
+      if (updated > (lastDocAt.get(d.userId) ?? 0)) lastDocAt.set(d.userId, updated);
+      const created = d.createdAt.getTime();
+      if (created < (firstDocAt.get(d.userId) ?? Infinity)) firstDocAt.set(d.userId, created);
     }
 
-    const users = profiles.map(p => {
-      const trialDay = p.trialEndDate
-        ? 7 - Math.max(0, Math.ceil((p.trialEndDate.getTime() - now) / (1000 * 60 * 60 * 24)))
-        : null;
+    // ── Collapse duplicate profiles into one row per person ────────────────
+    interface Row {
+      userIds: string[];
+      name: string | null;
+      email: string | null;
+      plan: string;
+      planStatus: string;
+      accessExpiresAt: string | null;
+      signedUpAt: number;
+      lastActiveAt: number;
+      firstGeneratedAt: number | null;
+      applicationsStarted: number;
+      applicationsSent: number;
+      applicationsApplied: number;
+      resumesGenerated: number;
+      coverLettersGenerated: number;
+      selectionCriteriaGenerated: number;
+      documentsEdited: number;
+    }
+
+    const byPerson = new Map<string, Row>();
+    for (const p of paidProfiles) {
+      // No email means no way to tell duplicates apart — key on userId so the
+      // row still appears rather than being merged into a bogus group.
+      const key = (p.email ?? '').toLowerCase() || `userid:${p.userId}`;
+      const existing = byPerson.get(key);
       const lastActive = Math.max(
         p.createdAt.getTime(),
         lastAppAt.get(p.userId) ?? 0,
         lastDocAt.get(p.userId) ?? 0,
       );
-      return {
+      const firstGen = firstDocAt.get(p.userId) ?? null;
+
+      if (!existing) {
+        byPerson.set(key, {
+          userIds: [p.userId],
+          name: p.name ?? null,
+          email: p.email ?? null,
+          plan: p.plan ?? 'free',
+          planStatus: p.planStatus ?? 'active',
+          accessExpiresAt: p.accessExpiresAt?.toISOString() ?? null,
+          signedUpAt: p.createdAt.getTime(),
+          lastActiveAt: lastActive,
+          firstGeneratedAt: firstGen,
+          applicationsStarted: totalApps.get(p.userId) ?? 0,
+          applicationsSent: notSavedApps.get(p.userId) ?? 0,
+          applicationsApplied: appliedApps.get(p.userId) ?? 0,
+          resumesGenerated: resumes.get(p.userId) ?? 0,
+          coverLettersGenerated: covers.get(p.userId) ?? 0,
+          selectionCriteriaGenerated: criteria.get(p.userId) ?? 0,
+          documentsEdited: edited.get(p.userId) ?? 0,
+        });
+        continue;
+      }
+
+      existing.userIds.push(p.userId);
+      existing.name = existing.name ?? p.name ?? null;
+      // Earliest signup is when this person actually started with us.
+      existing.signedUpAt = Math.min(existing.signedUpAt, p.createdAt.getTime());
+      existing.lastActiveAt = Math.max(existing.lastActiveAt, lastActive);
+      if (firstGen !== null) {
+        existing.firstGeneratedAt = existing.firstGeneratedAt === null
+          ? firstGen
+          : Math.min(existing.firstGeneratedAt, firstGen);
+      }
+      existing.applicationsStarted += totalApps.get(p.userId) ?? 0;
+      existing.applicationsSent += notSavedApps.get(p.userId) ?? 0;
+      existing.applicationsApplied += appliedApps.get(p.userId) ?? 0;
+      existing.resumesGenerated += resumes.get(p.userId) ?? 0;
+      existing.coverLettersGenerated += covers.get(p.userId) ?? 0;
+      existing.selectionCriteriaGenerated += criteria.get(p.userId) ?? 0;
+      existing.documentsEdited += edited.get(p.userId) ?? 0;
+    }
+
+    const users = [...byPerson.values()]
+      .sort((a, b) => b.resumesGenerated - a.resumesGenerated)
+      .map(r => ({
+        userId: r.userIds[0],
+        userIds: r.userIds,
+        accountCount: r.userIds.length,
+        name: r.name,
+        email: r.email,
+        plan: r.plan,
+        planStatus: r.planStatus,
+        accessExpiresAt: r.accessExpiresAt,
+        trialDay: null,
+        signedUpAt: new Date(r.signedUpAt).toISOString(),
+        lastActiveAt: new Date(r.lastActiveAt).toISOString(),
+        firstGeneratedAt: r.firstGeneratedAt ? new Date(r.firstGeneratedAt).toISOString() : null,
+        applicationsStarted: r.applicationsStarted,
+        applicationsSent: r.applicationsSent,
+        applicationsApplied: r.applicationsApplied,
+        resumesGenerated: r.resumesGenerated,
+        coverLettersGenerated: r.coverLettersGenerated,
+        selectionCriteriaGenerated: r.selectionCriteriaGenerated,
+        documentsEdited: r.documentsEdited,
+      }));
+
+    res.json({
+      users,
+      unidentified: unidentified.map(p => ({
         userId: p.userId,
         name: p.name ?? null,
-        email: p.email ?? null,
         plan: p.plan ?? 'free',
         planStatus: p.planStatus ?? 'active',
-        trialDay: trialDay !== null && trialDay >= 1 && trialDay <= 7 ? trialDay : null,
         signedUpAt: p.createdAt.toISOString(),
-        lastActiveAt: new Date(lastActive).toISOString(),
-        applicationsStarted: totalApps.get(p.userId) ?? 0,
-        applicationsSent: sentApps.get(p.userId) ?? 0,
-        resumesGenerated: resumes.get(p.userId) ?? 0,
-        coverLettersGenerated: covers.get(p.userId) ?? 0,
-        documentsEdited: edited.get(p.userId) ?? 0,
-      };
+      })),
+      totals: {
+        paidClients: users.length,
+        resumesGenerated: users.reduce((n, u) => n + u.resumesGenerated, 0),
+        coverLettersGenerated: users.reduce((n, u) => n + u.coverLettersGenerated, 0),
+        applicationsSent: users.reduce((n, u) => n + u.applicationsSent, 0),
+      },
     });
-
-    res.json({ users });
   } catch (err: any) {
     console.error('[admin/user-usage]', err?.message ?? err);
     res.status(500).json({ error: 'Failed to load user usage' });

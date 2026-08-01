@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../../index';
 import { authenticate } from '../../middleware/auth';
 import { sendStatusEmail } from '../../services/email';
+import { isSentStatus } from '../../services/tracker/metricHelpers';
 
 const router = Router();
 
@@ -63,7 +64,11 @@ router.post('/jobs', authenticate, async (req, res) => {
                 // Jobs created already at INTERVIEW/OFFER still get milestone stamps.
                 ...(status === 'INTERVIEW' || status === 'OFFER' ? { interviewReachedAt: new Date() } : {}),
                 ...(status === 'OFFER' ? { offerReachedAt: new Date() } : {}),
-                dateApplied: dateApplied ? new Date(dateApplied) : null,
+                // A job created straight into a sent status is a sent
+                // application and needs a date, or it counts nowhere.
+                dateApplied: dateApplied
+                    ? new Date(dateApplied)
+                    : (status && isSentStatus(status) ? new Date() : null),
                 notes: notes || null,
                 closingDate: closingDate ? new Date(closingDate) : null,
                 userId,
@@ -88,7 +93,7 @@ router.patch('/jobs/:id', authenticate, async (req, res) => {
         // Fetch current status before update so we can detect a genuine transition.
         const existing = await prisma.jobApplication.findFirst({
             where: { id, candidateProfile: { userId } },
-            select: { status: true, title: true, company: true, interviewReachedAt: true, offerReachedAt: true },
+            select: { status: true, title: true, company: true, interviewReachedAt: true, offerReachedAt: true, dateApplied: true },
         });
 
         // Milestone timestamps power the leaderboard: stamp the first time a job
@@ -96,6 +101,23 @@ router.patch('/jobs/:id', authenticate, async (req, res) => {
         const reachedInterview =
             (status === 'INTERVIEW' || status === 'OFFER') && existing && !existing.interviewReachedAt;
         const reachedOffer = status === 'OFFER' && existing && !existing.offerReachedAt;
+
+        // dateApplied has to follow status, or the application goes missing.
+        //
+        // Moving a job out of SAVED without supplying a date used to leave
+        // dateApplied null, and the client's own tracker, the leaderboard and
+        // the coach view all filter on dateApplied — so a real application the
+        // client had sent counted nowhere they could see it. Moving one back to
+        // SAVED left the old date behind, which counted the opposite way.
+        //
+        // An explicit dateApplied in the request always wins; these only fill
+        // the gap when the caller says nothing.
+        const movingToSent = status && isSentStatus(status);
+        const movingToSaved = status === 'SAVED';
+        const stampDateApplied =
+            movingToSent && dateApplied === undefined && existing && !existing.dateApplied;
+        const clearDateApplied =
+            movingToSaved && dateApplied === undefined && existing && existing.dateApplied;
 
         const job = await prisma.jobApplication.update({
             where: {
@@ -107,6 +129,8 @@ router.patch('/jobs/:id', authenticate, async (req, res) => {
                 ...(reachedInterview && { interviewReachedAt: new Date() }),
                 ...(reachedOffer && { offerReachedAt: new Date() }),
                 ...(dateApplied !== undefined && { dateApplied: dateApplied ? new Date(dateApplied) : null }),
+                ...(stampDateApplied ? { dateApplied: new Date() } : {}),
+                ...(clearDateApplied ? { dateApplied: null } : {}),
                 ...(notes !== undefined && { notes }),
                 ...(priority !== undefined && { priority: priority || null }),
                 ...(closingDate !== undefined && { closingDate: closingDate ? new Date(closingDate) : null }),
