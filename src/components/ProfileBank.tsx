@@ -275,6 +275,161 @@ const SaveCancelButtons: React.FC<{
 
 // ── SourceDocumentsIsland ─────────────────────────────────────────────────────
 
+// ── BankIsland ────────────────────────────────────────────────────────────────
+
+/**
+ * The bank itself — `profile.resumeRawText`, the document every generated
+ * resume and cover letter is built from.
+ *
+ * Deliberately one plain textarea rather than per-field forms. The structured
+ * islands below edit database rows that generation does not read, which is why
+ * their save buttons were disconnected in June. This edits the actual document,
+ * so a change here reaches every future application.
+ *
+ * Free-form is also simply easier to use: no ambiguity about which line was
+ * meant, no dead ends on repeated lines, and a person can fix anything they can
+ * see. The safety is not in restricting the edit, it is that the previous
+ * version is snapshotted before every save, so Undo always works.
+ */
+const BankIsland: React.FC = () => {
+  const qc = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const { data, isLoading } = useQuery<{ text: string; hasBank: boolean; versions: number }>({
+    queryKey: ['profile-bank'],
+    queryFn: async () => (await api.get('/profile/bank')).data,
+  });
+
+  const save = useMutation({
+    mutationFn: (text: string) => api.put('/profile/bank', { text }),
+    onSuccess: ({ data: res }) => {
+      setEditing(false);
+      setNotice(res.warning ? `${res.summary} ${res.warning}` : res.summary);
+      qc.setQueryData(['profile-bank'], (old: any) => ({ ...old, text: res.text }));
+      qc.invalidateQueries({ queryKey: ['profile-bank'] });
+    },
+    onError: (e: any) => setNotice(e?.response?.data?.error ?? 'Could not save.'),
+  });
+
+  const undo = useMutation({
+    mutationFn: () => api.post('/profile/bank/undo'),
+    onSuccess: ({ data: res }) => {
+      setNotice('Reverted to the previous version.');
+      qc.setQueryData(['profile-bank'], (old: any) => ({ ...old, text: res.text }));
+      qc.invalidateQueries({ queryKey: ['profile-bank'] });
+    },
+    onError: (e: any) => setNotice(e?.response?.data?.error ?? 'Nothing to undo.'),
+  });
+
+  const text = data?.text ?? '';
+
+  const startEditing = () => {
+    setDraft(text);
+    setNotice(null);
+    setEditing(true);
+  };
+
+  return (
+    <Island>
+      <SectionHeader
+        icon={<FileText size={13} />}
+        title="Your bank"
+        badge={!editing && data?.hasBank ? <EditButton onClick={startEditing} /> : undefined}
+      />
+
+      <p style={{ fontSize: 13, lineHeight: 1.6, color: '#6b7280', margin: '0 0 14px' }}>
+        This is what every resume and cover letter we build for you is written from.
+        Edit anything here and the next application picks it up.
+      </p>
+
+      {notice && (
+        <div style={{
+          fontSize: 13, lineHeight: 1.5, color: '#374151', background: 'rgba(0,0,0,0.04)',
+          border: '1px solid rgba(0,0,0,0.07)', borderRadius: 9, padding: '9px 12px', marginBottom: 14,
+        }}>
+          {notice}
+          {(data?.versions ?? 0) > 0 && (
+            <button
+              onClick={() => undo.mutate()}
+              disabled={undo.isPending}
+              style={{
+                marginLeft: 10, background: 'transparent', border: 'none', padding: 0,
+                cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#2563eb',
+              }}
+            >
+              {undo.isPending ? 'Undoing…' : 'Undo'}
+            </button>
+          )}
+        </div>
+      )}
+
+      {isLoading && <div style={{ fontSize: 13, color: '#9ca3af' }}>Loading…</div>}
+
+      {!isLoading && !data?.hasBank && (
+        <div style={{ fontSize: 13, color: '#6b7280' }}>
+          You do not have a bank yet. Upload your resume above and we will build one.
+        </div>
+      )}
+
+      {!isLoading && data?.hasBank && !editing && (
+        <pre style={{
+          margin: 0, padding: '16px 18px', borderRadius: 10,
+          background: 'rgba(0,0,0,0.025)', border: '1px solid rgba(0,0,0,0.06)',
+          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+          fontSize: 12.5, lineHeight: 1.65, color: '#111827',
+          whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+          maxHeight: 460, overflowY: 'auto',
+        }}>{text}</pre>
+      )}
+
+      {editing && (
+        <>
+          <textarea
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            spellCheck
+            style={{
+              width: '100%', boxSizing: 'border-box', minHeight: 460, resize: 'vertical',
+              padding: '16px 18px', borderRadius: 10,
+              border: '1px solid rgba(0,0,0,0.18)', background: '#fff', color: '#111827',
+              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+              fontSize: 12.5, lineHeight: 1.65, outline: 'none',
+            }}
+          />
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 12 }}>
+            <button
+              onClick={() => save.mutate(draft)}
+              disabled={save.isPending || draft === text}
+              style={{
+                padding: '9px 18px', borderRadius: 9, border: 'none',
+                background: draft === text ? 'rgba(0,0,0,0.12)' : '#111827',
+                color: '#fff', fontSize: 13.5, fontWeight: 600,
+                cursor: save.isPending || draft === text ? 'default' : 'pointer',
+              }}
+            >
+              {save.isPending ? 'Saving…' : 'Save'}
+            </button>
+            <button
+              onClick={() => { setEditing(false); setNotice(null); }}
+              style={{
+                padding: '9px 14px', borderRadius: 9, border: 'none', background: 'transparent',
+                color: '#6b7280', fontSize: 13.5, fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+            <span style={{ marginLeft: 'auto', fontSize: 12, color: '#9ca3af' }}>
+              Saved automatically to history — you can undo.
+            </span>
+          </div>
+        </>
+      )}
+    </Island>
+  );
+};
+
 const SourceDocumentsIsland: React.FC<{ profile: ProfileData }> = ({ profile }) => {
   const qc = useQueryClient();
   const resumeRef = useRef<HTMLInputElement>(null);
@@ -1586,6 +1741,7 @@ export const ProfileBank: React.FC = () => {
                 </div>
               </div>
             )}
+            <BankIsland />
             <SourceDocumentsIsland profile={profile} />
             <PersonalDetailsIsland profile={profile} />
             <SummaryIsland profile={profile} />

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { replaceLine, insertLine, removeLine, describeEdit } from './bankEdit';
+import { replaceLine, insertLine, removeLine, replaceDocument, describeEdit, MIN_BANK_CHARS } from './bankEdit';
 
 const DOC = [
   '# Jane Smith',
@@ -144,5 +144,79 @@ describe('describeEdit', () => {
     expect(describeEdit(DOC, insertLine(DOC, '- new').text)).toBe('Added 1 line. Nothing else changed.');
     expect(describeEdit(DOC, removeLine(DOC, '- Managed a team of 4').text)).toBe('Removed 1 line. Nothing else changed.');
     expect(describeEdit(DOC, DOC)).toBe('No change.');
+  });
+});
+
+describe('replaceDocument — the whole-document edit', () => {
+  it('saves a freely edited document', () => {
+    const edited = DOC.replace('20%', '16%').replace('team of 4', 'team of 6');
+    const r = replaceDocument(DOC, edited);
+    expect(r.ok).toBe(true);
+    expect(r.text).toContain('16%');
+    expect(r.text).toContain('team of 6');
+  });
+
+  it('refuses an empty document', () => {
+    expect(replaceDocument(DOC, '   ').ok).toBe(false);
+  });
+
+  it('refuses a document too short for generation to run on', () => {
+    // Generation hard-fails below this, so saving it would quietly break every
+    // future application rather than showing an error here.
+    const r = replaceDocument(DOC, '# Jane Smith');
+    expect(r.ok).toBe(false);
+    expect(r.message).toContain(String(MIN_BANK_CHARS));
+    expect(r.text).toBe(DOC);          // previous version untouched
+  });
+
+  it('counts what was added and removed', () => {
+    const edited = `${DOC}
+- Certified in Google Analytics`;
+    const r = replaceDocument(DOC, edited);
+    expect(r.change?.linesAdded).toBe(1);
+    expect(r.change?.linesRemoved).toBe(0);
+  });
+
+  it('warns when a large chunk disappears, without blocking it', () => {
+    // It is their document — they may delete what they like. But a quarter of it
+    // vanishing is usually an accident and should be said out loud. Uses a
+    // realistically sized resume, since the threshold ignores tiny documents
+    // where losing a few lines is ordinary editing.
+    const full = [
+      '# Jane Smith', 'Marketing Coordinator', '', '## Work Experience',
+      '**Marketing Coordinator | Retail Group**', 'Feb 2023 - Present',
+      '- Increased conversion by 20% across the campaign',
+      '- Managed a team of 4', '- Ran the quarterly reporting pack',
+      '- Owned the email calendar end to end', '- Briefed the design studio',
+      '**Marketing Assistant | Bright Media**', 'Jan 2021 - Jan 2023',
+      '- Scheduled social content across three brands',
+      '- Built the monthly performance deck', '', '## Education',
+      '- Bachelor of Business, Western Sydney University',
+    ].join('\n');
+
+    // Long enough to clear the minimum-length floor, so this exercises the
+    // warning rather than the rejection.
+    const gutted = [
+      '# Jane Smith', 'Marketing Coordinator', '## Work Experience',
+      '**Marketing Coordinator | Retail Group**', 'Feb 2023 - Present',
+      '- Increased conversion by 20% across the campaign',
+      '- Managed a team of 4', '- Ran the quarterly reporting pack',
+    ].join('\n');
+
+    const r = replaceDocument(full, gutted);
+    expect(r.ok).toBe(true);                       // never blocked
+    expect(r.change?.warning).toMatch(/removed \d+ lines/i);
+    expect(r.change?.warning).toMatch(/undo/i);
+  });
+
+  it('does not nag about ordinary editing', () => {
+    const edited = DOC.replace('- Managed a team of 4', '- Managed a team of 6');
+    expect(replaceDocument(DOC, edited).change?.warning).toBeUndefined();
+  });
+
+  it('normalises windows line endings so a paste does not rewrite every line', () => {
+    const r = replaceDocument(DOC, DOC.replace(/\n/g, '\r\n'));
+    expect(r.ok).toBe(true);
+    expect(r.text).toBe(DOC.trimEnd());
   });
 });

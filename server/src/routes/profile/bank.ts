@@ -15,7 +15,9 @@
 import { Router, Response } from 'express';
 import { prisma } from '../../index';
 import { authenticate, AuthRequest } from '../../middleware/auth';
-import { replaceLine, insertLine, removeLine, describeEdit, BankEditResult } from '../../services/bankEdit';
+import {
+  replaceLine, insertLine, removeLine, replaceDocument, describeEdit, BankEditResult,
+} from '../../services/bankEdit';
 
 const router = Router();
 
@@ -110,6 +112,53 @@ router.get('/profile/bank', authenticate, async (req: AuthRequest, res: Response
   } catch (err) {
     console.error('[profile/bank] read failed:', err);
     res.status(500).json({ error: 'Could not load your bank.' });
+  }
+});
+
+// ── PUT /api/profile/bank ────────────────────────────────────────────────────
+// Whole-document edit — the candidate edits their bank as one piece of text.
+// This is the primary path: simpler to use and to reason about than per-line
+// operations, and the snapshot makes any mistake one click away from undone.
+router.put('/profile/bank', authenticate, async (req: AuthRequest, res: Response) => {
+  const { text } = req.body || {};
+  if (typeof text !== 'string') {
+    res.status(400).json({ error: 'text is required.' });
+    return;
+  }
+
+  const userId = req.user!.id;
+  try {
+    const profile = await loadBank(userId);
+    if (!profile) { res.status(409).json({ error: 'No profile found.' }); return; }
+
+    const previous = profile.resumeRawText ?? '';
+    const result = replaceDocument(previous, text);
+
+    if (!result.ok) {
+      res.status(409).json({ error: result.message, failure: result.failure });
+      return;
+    }
+    if (result.text === previous) {
+      res.json({ ok: true, text: previous, summary: 'No change.' });
+      return;
+    }
+
+    await commit(userId, profile.id, previous, result.text, 'Before editing your bank');
+
+    const c = result.change!;
+    const parts: string[] = [];
+    if (c.linesAdded) parts.push(`${c.linesAdded} line${c.linesAdded === 1 ? '' : 's'} added`);
+    if (c.linesRemoved) parts.push(`${c.linesRemoved} line${c.linesRemoved === 1 ? '' : 's'} removed`);
+
+    res.json({
+      ok: true,
+      text: result.text,
+      summary: parts.length ? `Saved. ${parts.join(', ')}.` : 'Saved.',
+      warning: c.warning ?? null,
+    });
+  } catch (err) {
+    console.error('[profile/bank] save failed:', err);
+    res.status(500).json({ error: 'Could not save your bank.' });
   }
 });
 

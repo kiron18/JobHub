@@ -144,6 +144,62 @@ export function removeLine(doc: string, line: string): BankEditResult {
 }
 
 /**
+ * Generation refuses to run below this, so a bank shorter than it is not a
+ * short resume — it is a broken account. Better to stop the save and say why.
+ */
+export const MIN_BANK_CHARS = 200;
+
+export interface DocumentChange {
+  linesAdded: number;
+  linesRemoved: number;
+  linesChanged: number;
+  /** A blunt warning when a lot went missing, so an accident is visible. */
+  warning?: string;
+}
+
+/**
+ * Whole-document edit. The candidate is deliberately editing their own text, so
+ * unlike a model rewrite there is nothing to verify against — they are allowed
+ * to change whatever they like. What we owe them is that it is never
+ * unrecoverable: the caller snapshots before saving, and a large deletion is
+ * called out rather than passing silently.
+ */
+export function replaceDocument(previous: string, next: string): BankEditResult & { change?: DocumentChange } {
+  const text = next.replace(/\r\n/g, '\n').trimEnd();
+
+  if (!text.trim()) return fail(previous, 'empty');
+  if (text.length < MIN_BANK_CHARS) {
+    return {
+      ok: false,
+      text: previous,
+      failure: 'empty',
+      message: `That is too short to build applications from, so we have not saved it. A resume needs at least ${MIN_BANK_CHARS} characters. Your previous version is untouched.`,
+    };
+  }
+
+  const a = lines(previous);
+  const b = lines(text);
+  const kept = new Set(b.map((l) => l.trim()).filter(Boolean));
+  const removed = a.filter((l) => l.trim() && !kept.has(l.trim())).length;
+  const prevSet = new Set(a.map((l) => l.trim()).filter(Boolean));
+  const added = b.filter((l) => l.trim() && !prevSet.has(l.trim())).length;
+
+  const change: DocumentChange = {
+    linesAdded: added,
+    linesRemoved: removed,
+    linesChanged: Math.min(added, removed),
+  };
+
+  // Not a block — it is their document. But a quarter of it disappearing is
+  // usually a mistake, and they should be told before they navigate away.
+  if (removed > 5 && removed > a.filter((l) => l.trim()).length * 0.25) {
+    change.warning = `That removed ${removed} lines. If that was not deliberate, use Undo to get the previous version back.`;
+  }
+
+  return { ok: true, text, change };
+}
+
+/**
  * One plain sentence describing what changed, shown on save. Confidence should
  * come from us stating the change precisely, not from the candidate re-reading
  * the document to confirm nothing else moved.
