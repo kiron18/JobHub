@@ -398,6 +398,18 @@ const BankIsland: React.FC = () => {
               fontSize: 12.5, lineHeight: 1.65, outline: 'none',
             }}
           />
+          <div style={{
+            marginTop: 10, padding: '10px 12px', borderRadius: 8,
+            background: 'rgba(37,99,235,0.05)', border: '1px solid rgba(37,99,235,0.15)',
+            fontSize: 12.5, lineHeight: 1.6, color: '#374151',
+          }}>
+            <strong style={{ color: '#111827' }}>Adding something new?</strong>{' '}
+            Start a new section with two hashes — <code style={{ fontFamily: 'ui-monospace, monospace' }}>## Hobbies</code> —
+            then put each point on its own line starting with a dash —{' '}
+            <code style={{ fontFamily: 'ui-monospace, monospace' }}>- Long distance running</code>.
+            Anything you write here comes out on your resume.
+          </div>
+
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 12 }}>
             <button
               onClick={() => save.mutate(draft)}

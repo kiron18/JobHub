@@ -137,10 +137,34 @@ export function parseResume(markdown: string): ResumeSection[] {
             continue;
         }
 
+        /**
+         * Sections further down parse their own bullets into richer shapes
+         * (certifications become `cert` entries, publications become
+         * `publication`, and so on). The catch-all below must not intercept
+         * those, or a certification list turns into anonymous bullet text.
+         */
+        const SELF_PARSING_SECTIONS = [
+            'certifications', 'publications', 'languages', 'skills', 'referees', 'education',
+        ] as const;
+
         // Bullets
-        if (line.startsWith('- ') && currentItem) {
-            currentItem.bullets?.push(line.slice(2).trim());
-            continue;
+        if (line.startsWith('- ') && currentSection) {
+            if (currentItem) {
+                currentItem.bullets?.push(line.slice(2).trim());
+                continue;
+            }
+
+            // A bullet with no "### entry" above it belongs to the section
+            // itself. Someone who writes "## Hobbies" and puts bullets under it
+            // is doing the obvious thing, and until now those bullets were
+            // dropped on the floor: the heading still printed, so the loss was
+            // invisible. Give them an entry to live in — unless the section
+            // knows how to parse its own bullets.
+            if (!SELF_PARSING_SECTIONS.includes(currentSection.type as never)) {
+                currentItem = { type: 'text', bullets: [] };
+                currentItem.bullets?.push(line.slice(2).trim());
+                continue;
+            }
         }
 
         // Education entries (**Degree** · Year)
@@ -217,12 +241,22 @@ export function parseResume(markdown: string): ResumeSection[] {
             continue;
         }
 
-        // Generic text for other sections
+        // Generic text for other sections.
+        //
+        // Previously only 'summary' kept these, so a plain sentence written
+        // under any other heading was discarded while the heading still
+        // printed. Someone adding "## Interests" and a line about themselves
+        // must see it come out the other side, whatever section they invented.
         if (line && currentSection && !currentItem) {
-            if (currentSection.type === 'summary') {
-                currentSection.content.push({ type: 'text', text: line });
-            }
+            // Strip a leading bullet marker. A line only reaches here when the
+            // section's own parser did not take it, and rendering "- Bachelor of
+            // Business" would print the dash literally as body text.
+            currentSection.content.push({
+                type: 'text',
+                text: line.startsWith('- ') ? line.slice(2).trim() : line,
+            });
         }
+
     }
 
     // Push final section/item

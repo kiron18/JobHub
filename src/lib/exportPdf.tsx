@@ -559,6 +559,13 @@ function sectionNodes(section: ResumeSection, isFirstExperience: boolean): React
                 lineStyle: styles.referees,
             });
         default:
+            // A section we do not recognise — "Hobbies", "Interests", anything
+            // a user invents. It must still render everything it holds. This
+            // used to map items to `text` only, so bullets under an unfamiliar
+            // heading vanished while the heading itself printed.
+            if (content.some(item => item.bullets?.length)) {
+                return entryListNodes({ title, fallback: title, content });
+            }
             return textSectionNodes({
                 title, fallback: title,
                 lines: content.map(item => item.text || item.title || ''),
