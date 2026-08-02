@@ -593,6 +593,35 @@ function Stepper({
 
 // ── DocumentStep ────────────────────────────────────────────────────────────
 
+/**
+ * Resume length, stated plainly. Two pages is the practical ceiling for the
+ * roles these candidates apply for, and the number is only useful if it is the
+ * real one — so this reports a measured render, and marks itself an estimate
+ * when it is not.
+ */
+const PageCountBadge: React.FC<{ pages: number; measured: boolean }> = ({ pages, measured }) => {
+    const tooLong = pages > 2;
+    return (
+        <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 9,
+            padding: '7px 12px', marginBottom: 12, borderRadius: 7,
+            background: tooLong ? 'rgba(217, 119, 6, 0.12)' : 'rgba(16, 133, 80, 0.10)',
+            border: `1px solid ${tooLong ? 'rgba(217, 119, 6, 0.35)' : 'rgba(16, 133, 80, 0.28)'}`,
+            fontSize: 12.5,
+        }}>
+            <span style={{ fontWeight: 700, color: tooLong ? '#d97706' : '#0f6b41' }}>
+                {pages} {pages === 1 ? 'page' : 'pages'}
+            </span>
+            <span style={{ color: tooLong ? '#d97706' : warm.colors.textMuted }}>
+                {tooLong
+                    ? 'Too long. Most roles shortlist resumes under two pages — trim the least relevant bullets.'
+                    : 'Good length.'}
+                {!measured && ' (estimate)'}
+            </span>
+        </div>
+    );
+};
+
 function DocumentStep({
     stepId,
     workspaceKey,
@@ -643,6 +672,14 @@ function DocumentStep({
     const [formatMenuOpen, setFormatMenuOpen] = useState(false);
     const [resumeTips, setResumeTips] = useState<ResumeTip[]>([]);
     const [estimatedPages, setEstimatedPages] = useState<number | null>(null);
+    /**
+     * Pages measured by actually rendering the PDF, as opposed to
+     * `estimatedPages`, which the server derives from lineCount/45 at
+     * generation time. That estimate cannot account for wrapping, headings or
+     * bold runs, and it never changes while you edit — so it was silent on
+     * documents that really were too long. This one updates as you type.
+     */
+    const [measuredPages, setMeasuredPages] = useState<number | null>(null);
     const [showTips, setShowTips] = useState(false);
     const [grammarIssues, setGrammarIssues] = useState<string[]>([]);
     const [showGrammarWarning, setShowGrammarWarning] = useState(false);
@@ -983,6 +1020,24 @@ function DocumentStep({
         }
     };
 
+    // Measure the draft while editing, the saved content otherwise. Debounced
+    // at 700ms because each measurement is a full PDF render.
+    const measurable = stepId === 'resume' ? (editing ? editBuffer : content) : '';
+    useEffect(() => {
+        if (!measurable || !measurable.trim()) { setMeasuredPages(null); return; }
+        let cancelled = false;
+        const timer = setTimeout(async () => {
+            try {
+                const { countResumePages } = await import('../lib/exportPdf');
+                const n = await countResumePages(measurable);
+                if (!cancelled) setMeasuredPages(n);
+            } catch {
+                if (!cancelled) setMeasuredPages(null);  // never block editing
+            }
+        }, 700);
+        return () => { cancelled = true; clearTimeout(timer); };
+    }, [measurable]);
+
     const stepLabel = stepId === 'resume' ? 'Tailored Resume' : stepId === 'cover-letter' ? 'Cover Letter' : 'Selection Criteria';
     const coverLetterNote = 'Most candidates skip the cover letter. Australian recruiters use it to filter genuine interest from automated applications, a tailored cover letter measurably increases callback rates.';
 
@@ -1245,6 +1300,35 @@ function DocumentStep({
                 {generating || (generationStatus === 'generating' && !content) ? (
                     <GenerationProgress docType={stepId === 'cover-letter' ? 'cover-letter' : stepId === 'selection-criteria' ? 'selection-criteria' : 'resume'} />
                 ) : editing ? (
+                    <>
+                    {/*
+                        Shown above the editor, because the format is only
+                        obvious once you know it: type a heading without "##"
+                        and you get a line of body text, with nothing to signal
+                        that anything went wrong.
+                    */}
+                    <div style={{
+                        marginBottom: 14, padding: '12px 14px', borderRadius: 8,
+                        background: 'rgba(255,255,255,0.04)',
+                        border: '1px solid rgba(255,255,255,0.10)',
+                    }}>
+                        <div style={{ fontSize: 12.5, fontWeight: 700, color: warm.colors.textPrimary, marginBottom: 7 }}>
+                            Two rules, and everything works
+                        </div>
+                        <div style={{ fontSize: 12.5, lineHeight: 1.65, color: warm.colors.textMuted }}>
+                            <div><strong style={{ color: warm.colors.textPrimary }}>A new section</strong> starts with two hashes and a space.</div>
+                            <div style={{ marginBottom: 9 }}><strong style={{ color: warm.colors.textPrimary }}>Every point</strong> goes on its own line, starting with a dash and a space.</div>
+                            <pre style={{
+                                margin: 0, padding: '10px 12px', borderRadius: 6,
+                                background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.08)',
+                                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                                fontSize: 12, lineHeight: 1.7, color: warm.colors.textPrimary, whiteSpace: 'pre-wrap',
+                            }}>{'## Hobbies\n- Long distance running\n- Volunteer surf lifesaving'}</pre>
+                            <div style={{ marginTop: 8 }}>
+                                Miss the hashes and it becomes ordinary text. Miss the dash and it will not be a bullet point.
+                            </div>
+                        </div>
+                    </div>
                     <textarea
                         ref={editorRef}
                         value={editBuffer}
@@ -1274,24 +1358,17 @@ function DocumentStep({
                             boxSizing: 'border-box',
                         }}
                     />
+                    </>
                 ) : content ? (
                     <>
-                        {stepId === 'resume' && estimatedPages !== null && estimatedPages > 2 && (
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 8,
-                                padding: '8px 12px',
-                                marginBottom: 12,
-                                background: 'rgba(217, 119, 6, 0.12)',
-                                border: '1px solid rgba(217, 119, 6, 0.35)',
-                                borderRadius: 6,
-                                fontSize: 12,
-                                color: '#d97706',
-                                fontWeight: 500,
-                            }}>
-                                <span>Your resume is estimated at {estimatedPages} pages. Most roles shortlist resumes under 2 pages. Consider trimming less relevant roles or bullets before downloading.</span>
-                            </div>
+                        {/*
+                            Measured from the real PDF, so it is the page count
+                            that will actually come out. Shown at any length,
+                            not only when over — silence is otherwise
+                            indistinguishable from the check not running.
+                        */}
+                        {stepId === 'resume' && (measuredPages ?? estimatedPages) !== null && (
+                            <PageCountBadge pages={(measuredPages ?? estimatedPages)!} measured={measuredPages !== null} />
                         )}
                         <div className="prose prose-invert max-w-none" style={{ color: warm.colors.textPrimary, fontSize: 13.5, lineHeight: 1.7 }}>
                             <ReactMarkdown components={markdownComponents as any}>{content}</ReactMarkdown>
