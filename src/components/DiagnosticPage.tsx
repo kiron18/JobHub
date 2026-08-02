@@ -13,6 +13,30 @@ const GOLD   = '#C5A059';
 const SAGE   = '#7DA67D';
 const SLATE  = '#A0A4A8';
 
+/**
+ * The diagnostic runs on white rather than the warm cream the rest of the app
+ * uses. It is a report, and the page should recede behind the writing.
+ *
+ * Text stays near-black rather than pure black: #1A1814 holds a trace of warmth
+ * and is easier to read over this much prose than #000 on #FFF, which is harsh
+ * at this length. The gold, petrol and sage accents are untouched — they are
+ * what stops white from reading cold, so the page keeps the premium feel.
+ *
+ * Everything else falls through to the shared tokens, so this only says what is
+ * different here rather than restating the palette.
+ */
+const page = {
+  ...warm.colors,
+  bgCanvas:  '#FFFFFF',
+  bgSurface: '#FFFFFF',
+  // Inset rows have to lift off white without going grey, hence a warm tint
+  // rather than a step down in lightness.
+  bgAlt:     '#FAF7F3',
+  // A whisper border vanishes against white; the cards need slightly more to
+  // hold their edges now that they no longer sit on cream.
+  borderWhisper: 'rgba(26, 24, 20, 0.11)',
+};
+
 const SECTION_META: Record<string, { label: string; color: string }> = {
   headline_insight: { label: 'Headline Insight',         color: GOLD },
   targeting:        { label: 'Targeting',                color: SLATE },
@@ -77,7 +101,7 @@ function renderInline(text: string, headingColor?: string): React.ReactNode {
     <>
       {parts.map((part, i) =>
         part.startsWith('**') && part.endsWith('**')
-          ? <strong key={i} style={{ fontWeight: 700, color: headingColor ?? warm.colors.textPrimary }}>{part.slice(2, -2)}</strong>
+          ? <strong key={i} style={{ fontWeight: 700, color: headingColor ?? page.textPrimary }}>{part.slice(2, -2)}</strong>
           : <span key={i}>{part}</span>
       )}
     </>
@@ -93,7 +117,7 @@ function SectionContent({ text, color }: { text: string; color: string }) {
         if (t.startsWith('> ')) {
           return (
             <div key={i} style={{ borderLeft: `3px solid ${color}`, padding: '8px 12px 8px 14px', background: `${color}08`, borderRadius: '0 6px 6px 0' }}>
-              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, fontStyle: 'italic', fontWeight: 450, color: warm.colors.textSecondary }}>{renderInline(t.replace(/^>\s?/, ''))}</p>
+              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, fontStyle: 'italic', fontWeight: 450, color: page.textSecondary }}>{renderInline(t.replace(/^>\s?/, ''))}</p>
             </div>
           );
         }
@@ -101,14 +125,14 @@ function SectionContent({ text, color }: { text: string; color: string }) {
           return (
             <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
               <span style={{ color, fontWeight: 800, flexShrink: 0, fontSize: 14 }}>·</span>
-              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, fontWeight: 500, color: warm.colors.textSecondary }}>{renderInline(t.replace(/^[-•]\s/, ''))}</p>
+              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, fontWeight: 500, color: page.textSecondary }}>{renderInline(t.replace(/^[-•]\s/, ''))}</p>
             </div>
           );
         }
         if (t.startsWith('##')) {
           return <p key={i} style={{ margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color, opacity: 0.85 }}>{t.replace(/^##+\s*/, '')}</p>;
         }
-        return <p key={i} style={{ margin: 0, fontSize: 14, lineHeight: 1.8, fontWeight: 450, color: warm.colors.textSecondary }}>{renderInline(t)}</p>;
+        return <p key={i} style={{ margin: 0, fontSize: 14, lineHeight: 1.8, fontWeight: 450, color: page.textSecondary }}>{renderInline(t)}</p>;
       })}
     </div>
   );
@@ -213,7 +237,7 @@ export function DiagnosticPage({ profile, onDone }: DiagnosticPageProps) {
   const hasDiagnosticContent = cardSections.length > 0;
 
   return (
-    <div style={{ background: warm.colors.bgCanvas, height: '100vh', overflowY: 'auto' }}>
+    <div style={{ background: page.bgCanvas, height: '100vh', overflowY: 'auto' }}>
       {/* ── LOADING STATE ── */}
       {reportStatus === 'loading' && (
         <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 24px' }}>
@@ -225,7 +249,7 @@ export function DiagnosticPage({ profile, onDone }: DiagnosticPageProps) {
           >
             <div style={{
               width: 20, height: 20, borderRadius: '50%', margin: '0 auto 20px',
-              border: `2px solid ${warm.colors.borderWhisper}`, borderTopColor: GOLD,
+              border: `2px solid ${page.borderWhisper}`, borderTopColor: GOLD,
               animation: 'dspin 0.8s linear infinite',
             }} />
             <style>{`@keyframes dspin { to { transform: rotate(360deg); } }`}</style>
@@ -235,13 +259,13 @@ export function DiagnosticPage({ profile, onDone }: DiagnosticPageProps) {
             </p>
 
             <p style={{
-              margin: '0 auto', fontSize: 15, color: warm.colors.textSecondary, lineHeight: 1.65,
+              margin: '0 auto', fontSize: 15, color: page.textSecondary, lineHeight: 1.65,
               fontWeight: 500, minHeight: 50,
             }}>
               {LOADING_MESSAGES[msgIndex]}
             </p>
 
-            <p style={{ margin: '28px 0 0', fontSize: 12, color: warm.colors.textMuted, fontStyle: 'italic' }}>
+            <p style={{ margin: '28px 0 0', fontSize: 12, color: page.textMuted, fontStyle: 'italic' }}>
               We've captured your data — this takes about a minute
             </p>
           </motion.div>
@@ -261,24 +285,24 @@ export function DiagnosticPage({ profile, onDone }: DiagnosticPageProps) {
             >
               {reportStatus === 'failed' ? (
                 <div style={{ textAlign: 'center' }}>
-                  <p style={{ margin: '0 0 12px', fontSize: 10, fontWeight: 800, letterSpacing: '0.18em', color: warm.colors.danger, textTransform: 'uppercase' }}>
+                  <p style={{ margin: '0 0 12px', fontSize: 10, fontWeight: 800, letterSpacing: '0.18em', color: page.danger, textTransform: 'uppercase' }}>
                     Report incomplete
                   </p>
-                  <p style={{ color: warm.colors.textSecondary, fontSize: 15, marginBottom: 8 }}>
+                  <p style={{ color: page.textSecondary, fontSize: 15, marginBottom: 8 }}>
                     {failureIsNetwork
                       ? "Can't reach the server — make sure the backend is running."
                       : 'Something went wrong generating your report.'}
                   </p>
-                  <p style={{ color: warm.colors.textMuted, fontSize: 13, marginBottom: 28 }}>Your data is saved — try again or proceed to the dashboard.</p>
+                  <p style={{ color: page.textMuted, fontSize: 13, marginBottom: 28 }}>Your data is saved — try again or proceed to the dashboard.</p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
                     <button onClick={handleRetry} style={{
-                      background: PETROL, color: warm.colors.bgCanvas, border: 'none', borderRadius: 14,
+                      background: PETROL, color: page.bgCanvas, border: 'none', borderRadius: 14,
                       padding: '14px 32px', fontSize: 15, fontWeight: 700, cursor: 'pointer',
                     }}>
                       Try again
                     </button>
                     <button onClick={onDone} style={{
-                      background: 'none', border: 'none', color: warm.colors.textMuted, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                      background: 'none', border: 'none', color: page.textMuted, fontSize: 13, fontWeight: 600, cursor: 'pointer',
                     }}>
                       Go to the dashboard →
                     </button>
@@ -294,7 +318,7 @@ export function DiagnosticPage({ profile, onDone }: DiagnosticPageProps) {
                     margin: '0 0 28px',
                     fontSize: 'clamp(20px, 3.6vw, 26px)',
                     fontWeight: 700,
-                    color: warm.colors.textPrimary,
+                    color: page.textPrimary,
                     textAlign: 'center',
                     letterSpacing: '-0.02em',
                     lineHeight: 1.3,
@@ -311,8 +335,8 @@ export function DiagnosticPage({ profile, onDone }: DiagnosticPageProps) {
                       {issues.slice(0, 3).map((issue, i) => (
                         <div key={issue.key} style={{
                           display: 'flex', alignItems: 'flex-start', gap: 12,
-                          padding: '14px 16px', background: warm.colors.bgAlt,
-                          border: `1px solid ${warm.colors.borderWhisper}`,
+                          padding: '14px 16px', background: page.bgAlt,
+                          border: `1px solid ${page.borderWhisper}`,
                           borderLeft: `3px solid ${i === 0 ? GOLD : i === 1 ? PETROL : SAGE}`,
                           borderRadius: 10,
                         }}>
@@ -324,10 +348,10 @@ export function DiagnosticPage({ profile, onDone }: DiagnosticPageProps) {
                             color: i === 0 ? GOLD : i === 1 ? PETROL : SAGE,
                           }}>{i + 1}</span>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <p style={{ margin: '0 0 3px', fontSize: 13, fontWeight: 700, color: warm.colors.textPrimary }}>
+                            <p style={{ margin: '0 0 3px', fontSize: 13, fontWeight: 700, color: page.textPrimary }}>
                               {issue.label}
                             </p>
-                            <p style={{ margin: 0, fontSize: 12.5, color: warm.colors.textSecondary, lineHeight: 1.55, fontWeight: 450 }}>
+                            <p style={{ margin: 0, fontSize: 12.5, color: page.textSecondary, lineHeight: 1.55, fontWeight: 450 }}>
                               {issue.detail}
                             </p>
                           </div>
@@ -337,7 +361,7 @@ export function DiagnosticPage({ profile, onDone }: DiagnosticPageProps) {
                   )}
 
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-                    <p style={{ margin: 0, textAlign: 'center', fontSize: 12, color: warm.colors.textMuted }}>
+                    <p style={{ margin: 0, textAlign: 'center', fontSize: 12, color: page.textMuted }}>
                       {hasIssues
                         ? `${issues.length} key areas analysed`
                         : 'Full breakdown with actionable next steps below'}
@@ -348,7 +372,7 @@ export function DiagnosticPage({ profile, onDone }: DiagnosticPageProps) {
                       whileTap={{ scale: 0.99 }}
                       style={{
                         display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                        background: PETROL, color: warm.colors.bgCanvas, border: 'none', borderRadius: 14,
+                        background: PETROL, color: page.bgCanvas, border: 'none', borderRadius: 14,
                         padding: '13px 28px', fontSize: 14, fontWeight: 700, cursor: 'pointer',
                         letterSpacing: '-0.01em', boxShadow: `0 4px 16px ${PETROL}30`,
                       }}
@@ -366,9 +390,9 @@ export function DiagnosticPage({ profile, onDone }: DiagnosticPageProps) {
           {hasDiagnosticContent && (
             <div id="diagnostic-body" style={{
               maxWidth: 720, margin: '0 auto', padding: '0 24px 160px',
-              background: warm.colors.bgSurface,
+              background: page.bgSurface,
               borderRadius: '24px 24px 0 0',
-              border: `1px solid ${warm.colors.borderWhisper}`,
+              border: `1px solid ${page.borderWhisper}`,
               position: 'relative', zIndex: 2,
             }}>
               <p style={{
@@ -379,7 +403,7 @@ export function DiagnosticPage({ profile, onDone }: DiagnosticPageProps) {
               </p>
               <h2 style={{
                 margin: '0 0 28px', fontSize: 'clamp(20px, 3.6vw, 26px)', fontWeight: 700,
-                color: warm.colors.textPrimary, textAlign: 'center', letterSpacing: '-0.02em', lineHeight: 1.2,
+                color: page.textPrimary, textAlign: 'center', letterSpacing: '-0.02em', lineHeight: 1.2,
               }}>
                 {firstName ? `${firstName}, here's what we found` : "Here's what we found"}
               </h2>
@@ -398,30 +422,30 @@ export function DiagnosticPage({ profile, onDone }: DiagnosticPageProps) {
                       const moves = parseFixMoves(section.content);
                       return (
                         <div key={section.key} style={{
-                          background: warm.colors.bgSurface,
+                          background: page.bgSurface,
                           borderRadius: 18,
-                          border: `1px solid ${warm.colors.borderWhisper}`,
+                          border: `1px solid ${page.borderWhisper}`,
                           borderLeft: `4px solid ${GOLD}`, padding: '22px 24px',
                         }}>
                           <p style={{ margin: '0 0 4px', fontSize: 10, fontWeight: 900, color: GOLD, opacity: 0.5 }}>05</p>
-                          <p style={{ margin: '0 0 16px', fontSize: 11, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: warm.colors.textMuted }}>{meta.label}</p>
+                          <p style={{ margin: '0 0 16px', fontSize: 11, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: page.textMuted }}>{meta.label}</p>
                           {SECTION_QUESTIONS.fix && (
-                            <h3 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 600, color: warm.colors.textPrimary, lineHeight: 1.25 }}>{SECTION_QUESTIONS.fix}</h3>
+                            <h3 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 600, color: page.textPrimary, lineHeight: 1.25 }}>{SECTION_QUESTIONS.fix}</h3>
                           )}
-                          <p style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: warm.colors.textPrimary }}>
+                          <p style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: page.textPrimary }}>
                             Hey {firstName ?? 'there'},
                           </p>
-                          <p style={{ margin: '0 0 20px', fontSize: 14, color: warm.colors.textSecondary, lineHeight: 1.65, fontWeight: 450 }}>
+                          <p style={{ margin: '0 0 20px', fontSize: 14, color: page.textSecondary, lineHeight: 1.65, fontWeight: 450 }}>
                             Here are three moves you can take today to start closing the gaps above.
                           </p>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 22 }}>
                             {[moves.targeting, moves.resume, moves.applications].map((move, i) => (
                               <div key={i} style={{
-                                background: warm.colors.bgAlt,
-                                border: `1px solid ${warm.colors.borderWhisper}`,
+                                background: page.bgAlt,
+                                border: `1px solid ${page.borderWhisper}`,
                                 borderRadius: 14, padding: '16px 20px',
                               }}>
-                                <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: warm.colors.textPrimary, lineHeight: 1.5 }}>
+                                <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: page.textPrimary, lineHeight: 1.5 }}>
                                   {i + 1}. {move.action}
                                 </p>
                               </div>
@@ -435,9 +459,9 @@ export function DiagnosticPage({ profile, onDone }: DiagnosticPageProps) {
                       key={section.key}
                       id={section.key === 'honest' ? 'gap-anchor' : undefined}
                       style={{
-                        background: warm.colors.bgSurface,
+                        background: page.bgSurface,
                         borderRadius: 18,
-                        border: `1px solid ${isOpen ? `${meta.color}30` : warm.colors.borderWhisper}`,
+                        border: `1px solid ${isOpen ? `${meta.color}30` : page.borderWhisper}`,
                         borderLeft: `4px solid ${meta.color}`,
                         overflow: 'hidden',
                         scrollMarginTop: 24,
@@ -449,17 +473,17 @@ export function DiagnosticPage({ profile, onDone }: DiagnosticPageProps) {
                             fontSize: 10, fontWeight: 900, color: meta.color, opacity: 0.5,
                             letterSpacing: '-0.01em', fontVariantNumeric: 'tabular-nums',
                           }}>{String(idx + 1).padStart(2, '0')}</span>
-                          <p style={{ margin: 0, flex: 1, fontSize: 11, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: warm.colors.textMuted }}>
+                          <p style={{ margin: 0, flex: 1, fontSize: 11, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: page.textMuted }}>
                             {meta.label}
                           </p>
                           <div style={{ width: 6, height: 6, borderRadius: '50%', background: meta.color, flexShrink: 0, opacity: 0.7 }} />
                         </div>
                         {SECTION_QUESTIONS[section.key] && (
-                          <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: warm.colors.textPrimary, lineHeight: 1.4 }}>
+                          <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: page.textPrimary, lineHeight: 1.4 }}>
                             {SECTION_QUESTIONS[section.key]}
                           </h3>
                         )}
-                        <p style={{ margin: 0, fontSize: 14, color: warm.colors.textSecondary, lineHeight: 1.7, fontWeight: 450 }}>
+                        <p style={{ margin: 0, fontSize: 14, color: page.textSecondary, lineHeight: 1.7, fontWeight: 450 }}>
                           {renderInline(extractFirstSentence(problem, 220))}
                         </p>
                       </div>
@@ -470,10 +494,10 @@ export function DiagnosticPage({ profile, onDone }: DiagnosticPageProps) {
                             style={{
                               width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                               padding: '10px 20px', background: 'none',
-                              borderTop: `1px solid ${warm.colors.borderWhisper}`,
+                              borderTop: `1px solid ${page.borderWhisper}`,
                               borderLeft: 'none', borderRight: 'none', borderBottom: 'none',
                               cursor: 'pointer', fontSize: 12, fontWeight: 700, letterSpacing: '0.04em',
-                              color: warm.colors.textMuted,
+                              color: page.textMuted,
                             }}
                           >
                             <span>{isOpen ? 'Hide detail' : 'Why this matters'}</span>
@@ -506,9 +530,9 @@ export function DiagnosticPage({ profile, onDone }: DiagnosticPageProps) {
                       {section.key === 'honest' && (
                         <>
                         <div style={{
-                          background: warm.colors.bgAlt,
+                          background: page.bgAlt,
                           borderRadius: 18,
-                          border: `1px solid ${warm.colors.borderWhisper}`,
+                          border: `1px solid ${page.borderWhisper}`,
                           borderLeft: `4px solid ${SAGE}`,
                           padding: '28px 28px',
                         }}>
@@ -516,7 +540,7 @@ export function DiagnosticPage({ profile, onDone }: DiagnosticPageProps) {
                             fontFamily: warm.type.fontDisplay,
                             fontSize: 'clamp(20px, 3.6vw, 26px)',
                             fontWeight: 700,
-                            color: warm.colors.textPrimary,
+                            color: page.textPrimary,
                             margin: '0 0 16px',
                             lineHeight: 1.2,
                             letterSpacing: '-0.02em',
@@ -524,22 +548,22 @@ export function DiagnosticPage({ profile, onDone }: DiagnosticPageProps) {
                             Before you proceed.
                           </h2>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: warm.colors.textSecondary, fontWeight: 450 }}>
+                            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: page.textSecondary, fontWeight: 450 }}>
                               The next two sections cover the "gaps" in your documents but the good news is, we've already fixed them for you. Hurrah!
                             </p>
-                            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: warm.colors.textSecondary, fontWeight: 450 }}>
+                            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: page.textSecondary, fontWeight: 450 }}>
                               We're walking you through it anyway because understanding your gaps is what will make you competitive for promotions, better pay and ultimately a better life.
                             </p>
-                            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: warm.colors.textSecondary, fontWeight: 450 }}>
+                            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: page.textSecondary, fontWeight: 450 }}>
                               We are not gatekeeping any knowledge, understand what was actually breaking underneath and how to bridge the gap. Read the diagnosis. Understand the mechanics. Then go meet the fix.
                             </p>
-                            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: warm.colors.textSecondary, fontWeight: 450 }}>
+                            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: page.textSecondary, fontWeight: 450 }}>
                               Remember the ATS that filtered you out?
                             </p>
-                            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: warm.colors.textSecondary, fontWeight: 450 }}>
+                            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: page.textSecondary, fontWeight: 450 }}>
                               The tables have turned, your rebuilt documents are waiting in your own ATS-Application Tracking System 😉, the friendly kind. The one that works for you.
                             </p>
-                            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: warm.colors.textSecondary, fontWeight: 600 }}>
+                            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: page.textSecondary, fontWeight: 600 }}>
                               You have one now.
                             </p>
                           </div>
@@ -550,7 +574,7 @@ export function DiagnosticPage({ profile, onDone }: DiagnosticPageProps) {
                               whileTap={{ scale: 0.99 }}
                               style={{
                                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                                background: PETROL, color: warm.colors.bgCanvas, border: 'none', borderRadius: 14,
+                                background: PETROL, color: page.bgCanvas, border: 'none', borderRadius: 14,
                                 padding: '13px 28px', fontSize: 14, fontWeight: 700, cursor: 'pointer',
                                 letterSpacing: '-0.01em', boxShadow: `0 4px 16px ${PETROL}30`,
                               }}
@@ -562,7 +586,7 @@ export function DiagnosticPage({ profile, onDone }: DiagnosticPageProps) {
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '10px 0', margin: '2px 0' }}>
                           {[0, 1, 2].map((_, i) => (
-                            <div key={i} style={{ width: 5, height: 5, borderRadius: '50%', background: warm.colors.textMuted, opacity: 0.18 }} />
+                            <div key={i} style={{ width: 5, height: 5, borderRadius: '50%', background: page.textMuted, opacity: 0.18 }} />
                           ))}
                         </div>
                       </>
@@ -571,7 +595,7 @@ export function DiagnosticPage({ profile, onDone }: DiagnosticPageProps) {
                       {notLast && (
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '10px 0', margin: '2px 0' }}>
                           {[0, 1, 2].map((_, i) => (
-                            <div key={i} style={{ width: 5, height: 5, borderRadius: '50%', background: warm.colors.textMuted, opacity: 0.18 }} />
+                            <div key={i} style={{ width: 5, height: 5, borderRadius: '50%', background: page.textMuted, opacity: 0.18 }} />
                           ))}
                         </div>
                       )}
@@ -581,9 +605,9 @@ export function DiagnosticPage({ profile, onDone }: DiagnosticPageProps) {
 
                 {/* ── CTA #2 — Final closer ── */}
                 <div style={{
-                  background: warm.colors.bgAlt,
+                  background: page.bgAlt,
                   borderRadius: 18,
-                  border: `1px solid ${warm.colors.borderWhisper}`,
+                  border: `1px solid ${page.borderWhisper}`,
                   borderLeft: `4px solid ${GOLD}`,
                   padding: '32px 28px',
                   textAlign: 'center',
@@ -592,17 +616,17 @@ export function DiagnosticPage({ profile, onDone }: DiagnosticPageProps) {
                     fontFamily: warm.type.fontDisplay,
                     fontSize: 'clamp(20px, 3.6vw, 26px)',
                     fontWeight: 700,
-                    color: warm.colors.textPrimary,
+                    color: page.textPrimary,
                     margin: '0 0 16px',
                     lineHeight: 1.2,
                     letterSpacing: '-0.02em',
                   }}>
                     No long, drawn-out, over priced coaching sessions.
                   </h2>
-                  <p style={{ margin: '0 0 8px', fontSize: 14, lineHeight: 1.7, color: warm.colors.textSecondary, fontWeight: 450 }}>
+                  <p style={{ margin: '0 0 8px', fontSize: 14, lineHeight: 1.7, color: page.textSecondary, fontWeight: 450 }}>
                     You now know your gaps and we bridge them on every application you send.
                   </p>
-                  <p style={{ margin: '0 0 24px', fontSize: 14, lineHeight: 1.7, color: warm.colors.textSecondary, fontWeight: 600 }}>
+                  <p style={{ margin: '0 0 24px', fontSize: 14, lineHeight: 1.7, color: page.textSecondary, fontWeight: 600 }}>
                     Get faster, better applications today.
                   </p>
                   <motion.button
@@ -611,7 +635,7 @@ export function DiagnosticPage({ profile, onDone }: DiagnosticPageProps) {
                     whileTap={{ scale: 0.99 }}
                     style={{
                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                      background: PETROL, color: warm.colors.bgCanvas, border: 'none', borderRadius: 14,
+                      background: PETROL, color: page.bgCanvas, border: 'none', borderRadius: 14,
                       padding: '15px 32px', fontSize: 15, fontWeight: 700, cursor: 'pointer',
                       letterSpacing: '-0.01em', boxShadow: `0 6px 24px ${PETROL}40`,
                     }}
