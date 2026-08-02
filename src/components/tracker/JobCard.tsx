@@ -744,6 +744,20 @@ export const JobCard: React.FC<JobCardProps> = ({ job, isFirst, onStatusChange, 
     const [actionItems, setActionItems] = useState<Array<{ text: string; type: string; urgency: string }>>([]);
     const [extractingActions, setExtractingActions] = useState(false);
     const [cardHovered, setCardHovered] = useState(false);
+    const [jdOpen, setJdOpen] = useState(false);
+
+    /**
+     * Rows created before the job description was carried through, and rows
+     * added by hand, hold a one-line stand-in rather than the ad. Showing a
+     * "Job description" heading over "Nurse at Ramsay Health" is worse than
+     * showing nothing, so those keep the section hidden.
+     */
+    const storedJd = (job.description ?? '').trim();
+    const hasStoredJd =
+        storedJd.length > 0 &&
+        storedJd !== `${job.title} at ${job.company}` &&
+        storedJd !== `${job.title} at ${job.company} — manually added.` &&
+        storedJd.length > 120;
 
     const { data: profile } = useQuery({
         queryKey: ['profile', 'lite-for-followup'],
@@ -1110,6 +1124,49 @@ export const JobCard: React.FC<JobCardProps> = ({ job, isFirst, onStatusChange, 
                                         );
                                     })()}
                                 </div>
+
+                                {/*
+                                    The job ad this application was written
+                                    against. It has always been stored on the
+                                    row — nothing ever displayed it, so by the
+                                    time an interview came round the ad was
+                                    usually gone from the job board. Collapsed
+                                    by default because it is thousands of words.
+                                */}
+                                {hasStoredJd && (
+                                    <div>
+                                        <button
+                                            onClick={() => setJdOpen(o => !o)}
+                                            aria-expanded={jdOpen}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', gap: 6,
+                                                margin: '0 0 8px', padding: 0,
+                                                background: 'none', border: 'none', cursor: 'pointer',
+                                                fontSize: 10, fontWeight: 800, color: warm.colors.textMuted,
+                                                textTransform: 'uppercase', letterSpacing: '0.06em',
+                                            }}
+                                        >
+                                            {jdOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                                            Job description
+                                        </button>
+                                        {jdOpen && (
+                                            <div style={{
+                                                maxHeight: 300,
+                                                overflowY: 'auto',
+                                                padding: '12px 14px',
+                                                borderRadius: 8,
+                                                background: warm.colors.bgAlt,
+                                                border: `1px solid ${warm.colors.borderWhisper}`,
+                                                fontSize: 12,
+                                                lineHeight: 1.65,
+                                                color: warm.colors.textSecondary,
+                                                whiteSpace: 'pre-wrap',
+                                            }}>
+                                                {job.description}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
 
                                 {/* Documents */}
                                 {job.documents.length > 0 && (
