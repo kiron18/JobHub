@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Pencil, Check, X, AlertTriangle, CheckCircle2,
   User, Briefcase, GraduationCap,
-  Award, Heart, Wrench, Star, FileText, UploadCloud, RefreshCw, HelpCircle,
+  Award, Heart, Wrench, FileText, UploadCloud, RefreshCw, HelpCircle,
   Heading2, List, Pilcrow,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -105,12 +105,6 @@ function parseSkills(raw: string | null): SkillsJson {
 // ── Coaching hint derivation ───────────────────────────────────────────────────
 
 interface Hint { type: 'warn' | 'ok'; message: string }
-
-function hintForSummary(summary: string | null): Hint | null {
-  if (!summary || summary.length < 80)
-    return { type: 'warn', message: 'Lead with years of experience and your biggest achievement. Aim for 2–3 sentences.' };
-  return { type: 'ok', message: 'Summary looks solid.' };
-}
 
 function hintForExperience(exp: Experience, linkedAchievements: Achievement[]): Hint | null {
   if (linkedAchievements.length === 0)
@@ -913,64 +907,16 @@ const PersonalDetailsIsland: React.FC<PersonalDetailsIslandProps> = ({ profile }
   );
 };
 
-// ── SummaryIsland ─────────────────────────────────────────────────────────────
-
-interface SummaryIslandProps {
-  profile: ProfileData;
-}
-
-const SummaryIsland: React.FC<SummaryIslandProps> = ({ profile }) => {
-  const qc = useQueryClient();
-  const [editing, setEditing] = useState(false);
-  const [text, setText] = useState(profile.professionalSummary ?? '');
-
-  const mutation = useMutation({
-    mutationFn: (professionalSummary: string) => api.patch('/profile', { professionalSummary }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['profile'] });
-      setEditing(false);
-      toast.info('Summary saved.');
-    },
-    onError: () => toast.error('Failed to save. Please try again.'),
-  });
-
-  const hint = hintForSummary(profile.professionalSummary);
-
-  return (
-    <Island>
-      <SectionHeader icon={<Star size={13} />} title="Professional Summary"         badge={<EditButton onClick={() => setEditing(e => !e)} />} />
-
-      <AnimatePresence mode="wait">
-        {editing ? (
-          <motion.div key="edit" {...slideIn}>
-            <textarea
-              rows={5}
-              style={{ ...inputStyle(), resize: 'vertical' }}
-              value={text}
-              onChange={e => setText(e.target.value)}
-              placeholder="2–3 sentences. Lead with your years of experience and single biggest achievement."
-            />
-            <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>
-              {text.length} chars {text.length < 80 && <span style={{ color: '#d97706' }}>(aim for 80+)</span>}
-            </div>
-            <SaveCancelButtons
-              onSave={() => mutation.mutate(text)}
-              onCancel={() => setEditing(false)}
-              saving={mutation.isPending}
-                          />
-          </motion.div>
-        ) : (
-          <motion.div key="view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            {profile.professionalSummary
-              ? <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.7 }}>{profile.professionalSummary}</p>
-              : <p style={{ fontSize: 14, color: '#d97706', fontStyle: 'italic' }}>No summary yet.</p>}
-            {hint && <CoachHint hint={hint} />}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </Island>
-  );
-};
+/*
+ * SummaryIsland removed 2026-08-02.
+ *
+ * `professionalSummary` had exactly two readers left, and neither runs:
+ * buildTemplateResume, which /generate/:type now answers 410 for, and
+ * profileToCoverLetterData, which has no callers at all. Editing the summary
+ * changed nothing a candidate could see.
+ *
+ * The column and its data are untouched — only the editor is gone.
+ */
 
 // ── AchievementRow ────────────────────────────────────────────────────────────
 
@@ -1973,7 +1919,6 @@ export const ProfileBank: React.FC = () => {
             <BankIsland />
             <SourceDocumentsIsland profile={profile} />
             <PersonalDetailsIsland profile={profile} />
-            <SummaryIsland profile={profile} />
             <ExperienceIsland experience={profile.experience} achievements={profile.achievements} />
             <ProjectsIsland experience={profile.experience} achievements={profile.achievements} />
             <EducationIsland education={profile.education} />
