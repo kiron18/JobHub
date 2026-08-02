@@ -28,6 +28,7 @@ import {
 import { saveAs } from 'file-saver';
 import { parseResume, parseResumeHeader } from './resumeStructure';
 import type { ResumeItem } from './resumeStructure';
+import { buildExportFilename, deriveFromContent, type ExportDocType } from './exportFilename';
 
 export type DocType = 'resume' | 'cover-letter' | 'selection-criteria' | 'interview-prep' | 'teaching-philosophy' | 'research-statement';
 
@@ -462,6 +463,16 @@ export async function exportDocx(
     content = sanitizeForExport(content);
     const font = FONTS[docType];
 
+    // Same recovery the PDF export does. Its absence here was the whole bug:
+    // call sites pass an empty candidate name, so every Word download came out
+    // as `document_Cover_Letter.docx` while the PDF of the same draft was named
+    // properly.
+    if (!candidateName || !jobTitle) {
+        const derived = deriveFromContent(content);
+        candidateName = candidateName || (derived.candidateName ?? '');
+        jobTitle = jobTitle || derived.jobTitle;
+    }
+
     const isResume = docType === 'resume';
 
     // Page margins: APS = 25mm all sides; resume matches the PDF design system
@@ -542,16 +553,15 @@ export async function exportDocx(
     });
 
     const blob = await Packer.toBlob(doc);
-    const namePart = candidateName.replace(/\s+/g, '_') || 'document';
-    const identifier = company
-        ? company.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_').slice(0, 25)
-        : jobTitle
-            ? jobTitle.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_').slice(0, 30)
-            : '';
-    const typeLabel = docTypeLabel[docType].replace(/\s+/g, '_');
-    const fileName = identifier
-        ? `${namePart}_${identifier}_${typeLabel}.docx`
-        : `${namePart}_${typeLabel}.docx`;
 
-    saveAs(blob, fileName);
+    // `docTypeLabel` above stays as the heading printed inside the document.
+    // The filename label is deliberately shorter and lives in one shared place,
+    // so Word and PDF downloads of the same draft agree on their name.
+    saveAs(blob, buildExportFilename({
+        candidateName,
+        company,
+        jobTitle,
+        docType: docType as ExportDocType,
+        extension: 'docx',
+    }));
 }

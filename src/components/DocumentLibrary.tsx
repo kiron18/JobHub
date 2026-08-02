@@ -99,13 +99,19 @@ const DocCard: React.FC<DocCardProps> = ({ doc, onDelete, deleting }) => {
         toast.success('Copied to clipboard');
     };
 
+    // Title is stored as "TYPE - Company — Role"; the exporters take
+    // (content, type, candidateName, jobTitle, company) and the docx call used
+    // to hand them company-as-name and role-as-title, so saved documents came
+    // down named after the employer. The candidate's own name is left to the
+    // exporter to recover from the document.
+    const titleParts = doc.title.replace(/^[A-Z-]+ - /, '').split(' — ');
+    const docCompany = titleParts[0] || undefined;
+    const docRole = titleParts[1] || undefined;
+
     const handleDownload = async () => {
         try {
-            const parts = doc.title.replace(/^[A-Z-]+ - /, '').split(' — ');
-            const company = parts[0] || '';
-            const role = parts[1] || '';
             const { exportDocx } = await import('../lib/exportDocx');
-            await exportDocx(doc.content, DOC_TYPE_MAP[resolvedType], company, role);
+            await exportDocx(doc.content, DOC_TYPE_MAP[resolvedType], '', docRole, docCompany);
             toast.success('Downloaded as .docx');
         } catch {
             toast.error('Download failed. Copy the content instead.');
@@ -115,7 +121,7 @@ const DocCard: React.FC<DocCardProps> = ({ doc, onDelete, deleting }) => {
     const handleDownloadPdf = async () => {
         try {
             const { exportPdf } = await import('../lib/exportPdf');
-            await exportPdf(doc.content, DOC_TYPE_MAP[resolvedType] as any, '', '');
+            await exportPdf(doc.content, DOC_TYPE_MAP[resolvedType] as any, '', docRole, docCompany);
             toast.success('Downloaded as PDF');
         } catch {
             toast.error('PDF download failed. Try .docx instead.');

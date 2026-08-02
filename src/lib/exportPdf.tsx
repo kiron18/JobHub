@@ -23,6 +23,7 @@ const saveAs: (blob: Blob, filename?: string) => void =
 
 import { parseResume, parseResumeHeader } from './resumeStructure';
 import type { ResumeSection, ResumeItem } from './resumeStructure';
+import { buildExportFilename, deriveFromContent, type ExportDocType } from './exportFilename';
 
 export type DocType =
     | 'resume'
@@ -799,15 +800,6 @@ function sanitizeForExport(raw: string): string {
 // Public Export Functions
 // -------------------------------------------------------------------
 
-const DOC_LABELS: Record<DocType, string> = {
-    'resume': 'Resume',
-    'cover-letter': 'Cover_Letter',
-    'selection-criteria': 'Selection_Criteria',
-    'interview-prep': 'Interview_Prep',
-    'teaching-philosophy': 'Teaching_Philosophy',
-    'research-statement': 'Research_Statement',
-};
-
 /**
  * How many pages this resume actually comes to.
  *
@@ -838,14 +830,12 @@ export async function exportPdf(
 ): Promise<void> {
     content = sanitizeForExport(content);
 
-    // Callers often can't supply name/title; the generated markdown itself
-    // carries both ("# Name" line, then "*Job Title*" line), so derive
-    // missing values from it rather than falling back to a generic filename.
-    if (!candidateName) {
-        candidateName = content.match(/^#\s+(.+)$/m)?.[1]?.trim() ?? '';
-    }
-    if (!jobTitle) {
-        jobTitle = content.match(/^\*([^*\n]+)\*$/m)?.[1]?.trim() ?? '';
+    // Callers often can't supply name/title; the document itself carries them,
+    // so recover what's missing rather than falling back to a generic filename.
+    if (!candidateName || !jobTitle) {
+        const derived = deriveFromContent(content);
+        candidateName = candidateName || (derived.candidateName ?? '');
+        jobTitle = jobTitle || derived.jobTitle;
     }
 
     let doc: React.ReactElement<DocumentProps>;
@@ -863,16 +853,13 @@ export async function exportPdf(
 
     const blob = await pdf(doc).toBlob();
 
-    const namePart = candidateName.replace(/\s+/g, '_') || 'document';
-    const identifier = company
-        ? company.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_').slice(0, 25)
-        : jobTitle
-            ? jobTitle.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_').slice(0, 30)
-            : '';
-    const label = DOC_LABELS[docType];
-    const fileName = identifier ? `${namePart}_${identifier}_${label}.pdf` : `${namePart}_${label}.pdf`;
-
-    saveAs(blob, fileName);
+    saveAs(blob, buildExportFilename({
+        candidateName,
+        company,
+        jobTitle,
+        docType: docType as ExportDocType,
+        extension: 'pdf',
+    }));
 }
 
 export default exportPdf;
