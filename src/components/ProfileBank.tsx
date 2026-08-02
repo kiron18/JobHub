@@ -1,10 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Pencil, Check, X, AlertTriangle, CheckCircle2,
   User, Briefcase, GraduationCap,
   Award, Heart, Wrench, Star, FileText, UploadCloud, RefreshCw, HelpCircle,
+  Heading2, List, Pilcrow,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../lib/api';
@@ -13,6 +14,8 @@ import { SectionIntroBanner } from './processStrip';
 import { ProfileExplainerModal, hasSeenProfileExplainer } from './ProfileExplainerModal';
 import { AchievementVideoModal } from './AchievementVideoModal';
 import { trackAchievementAdded } from '../lib/analytics';
+import { toggleEmphasis, type EmphasisMarker } from '../lib/toggleEmphasis';
+import { toggleLinePrefix, continueList, lineStyleOf, type LineStyle } from '../lib/toggleLinePrefix';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -349,8 +352,60 @@ const BankIsland: React.FC = () => {
   const startEditing = () => {
     setDraft(text);
     setNotice(null);
+    setActiveLineStyle(lineStyleOf(currentLine(text, 0)));
     setEditing(true);
   };
+
+  /* ── Formatting toolbar ────────────────────────────────────────────────
+     Same behaviour as the draft editor in the apply flow, over the same two
+     pure modules. This editor had no toolbar at all, so every heading and
+     bullet here had to be typed by hand from the instructions above it.   */
+
+  const editorRef = useRef<HTMLTextAreaElement>(null);
+  const pendingSelection = useRef<[number, number] | null>(null);
+  const [activeLineStyle, setActiveLineStyle] = useState<LineStyle>('body');
+
+  const currentLine = (value: string, position: number) => {
+    const start = position <= 0 ? 0 : value.lastIndexOf('\n', position - 1) + 1;
+    const newline = value.indexOf('\n', position);
+    return value.slice(start, newline === -1 ? value.length : newline);
+  };
+
+  const syncActiveLineStyle = () => {
+    const textarea = editorRef.current;
+    if (!textarea) return;
+    setActiveLineStyle(lineStyleOf(currentLine(textarea.value, textarea.selectionStart)));
+  };
+
+  const applyEmphasis = (marker: EmphasisMarker) => {
+    const textarea = editorRef.current;
+    if (!textarea) return;
+    const result = toggleEmphasis(draft, textarea.selectionStart, textarea.selectionEnd, marker);
+    if (result.text === draft) return;
+    pendingSelection.current = [result.selectionStart, result.selectionEnd];
+    setDraft(result.text);
+  };
+
+  const applyLineStyle = (style: LineStyle) => {
+    const textarea = editorRef.current;
+    if (!textarea) return;
+    const result = toggleLinePrefix(draft, textarea.selectionStart, textarea.selectionEnd, style);
+    if (result.text === draft) return;
+    pendingSelection.current = [result.selectionStart, result.selectionEnd];
+    setDraft(result.text);
+    setActiveLineStyle(lineStyleOf(currentLine(result.text, result.selectionStart)));
+  };
+
+  // Restore the caret after React has re-rendered with the new draft, so the
+  // marked text stays selected and pressing the button again undoes it.
+  useLayoutEffect(() => {
+    const pending = pendingSelection.current;
+    const textarea = editorRef.current;
+    if (!pending || !textarea) return;
+    pendingSelection.current = null;
+    textarea.focus();
+    textarea.setSelectionRange(pending[0], pending[1]);
+  }, [draft]);
 
   return (
     <Island>
@@ -444,10 +499,13 @@ const BankIsland: React.FC = () => {
             </div>
             <div style={{ fontSize: 13, lineHeight: 1.7, color: '#374151' }}>
               <div style={{ marginBottom: 4 }}>
-                <strong>A new section</strong> starts with two hashes and a space.
+                Put the cursor on a line and use the buttons below: <strong>heading</strong> for a
+                new section, <strong>list</strong> for a point, <strong>¶</strong> for ordinary text.
+                The lit-up button tells you what the line already is.
               </div>
               <div style={{ marginBottom: 10 }}>
-                <strong>Every point</strong> goes on its own line, starting with a dash and a space.
+                Press <strong>Enter</strong> at the end of a point and the next one starts itself.
+                Press it on an empty point to finish the list.
               </div>
               <pre style={{
                 margin: 0, padding: '11px 13px', borderRadius: 8,
@@ -456,21 +514,117 @@ const BankIsland: React.FC = () => {
                 fontSize: 12.5, lineHeight: 1.7, color: '#111827', whiteSpace: 'pre-wrap',
               }}>{'## Hobbies\n- Long distance running\n- Volunteer surf lifesaving'}</pre>
               <div style={{ fontSize: 12.5, color: '#6b7280', marginTop: 9 }}>
-                Miss the hashes and it becomes ordinary text. Miss the dash and it will not be a bullet point.
+                Typing the marks by hand works too — that is all the buttons do.
               </div>
             </div>
           </div>
 
+          {/* Toolbar. Sits directly on top of the textarea and shares its
+              border, so the two read as one editor rather than two boxes.
+              `onMouseDown` is prevented so clicking a button never pulls focus
+              out of the textarea, which would drop the selection before the
+              toggle could act on it. */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 4,
+            padding: '6px 8px',
+            borderRadius: '10px 10px 0 0',
+            border: '1px solid rgba(0,0,0,0.18)',
+            borderBottom: 'none',
+            background: '#f9fafb',
+          }}>
+            {([
+              { style: 'heading' as LineStyle, Icon: Heading2, title: 'Section heading' },
+              { style: 'bullet' as LineStyle, Icon: List, title: 'Bullet point' },
+              { style: 'body' as LineStyle, Icon: Pilcrow, title: 'Plain paragraph' },
+            ]).map(({ style, Icon, title }) => {
+              const active = activeLineStyle === style;
+              return (
+                <button
+                  key={style}
+                  onMouseDown={e => e.preventDefault()}
+                  onClick={() => applyLineStyle(style)}
+                  title={title}
+                  aria-label={title}
+                  aria-pressed={active}
+                  style={{
+                    width: 28, height: 26,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: active ? 'rgba(37,99,235,0.10)' : 'transparent',
+                    border: `1px solid ${active ? 'rgba(37,99,235,0.55)' : 'rgba(0,0,0,0.10)'}`,
+                    borderRadius: 6,
+                    color: active ? '#2563eb' : '#6b7280',
+                    cursor: 'pointer', padding: 0,
+                  }}
+                >
+                  <Icon size={14} strokeWidth={active ? 2.4 : 2} />
+                </button>
+              );
+            })}
+
+            <div style={{ width: 1, height: 16, background: 'rgba(0,0,0,0.12)', margin: '0 3px' }} />
+
+            {([
+              { marker: '**' as EmphasisMarker, label: 'B', title: 'Bold (Ctrl+B)', weight: 800, fontStyle: 'normal' as const },
+              { marker: '*' as EmphasisMarker, label: 'I', title: 'Italic (Ctrl+I)', weight: 500, fontStyle: 'italic' as const },
+            ]).map(({ marker, label, title, weight, fontStyle }) => (
+              <button
+                key={label}
+                onMouseDown={e => e.preventDefault()}
+                onClick={() => applyEmphasis(marker)}
+                title={title}
+                aria-label={title}
+                style={{
+                  width: 26, height: 26,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'transparent',
+                  border: '1px solid rgba(0,0,0,0.10)',
+                  borderRadius: 6,
+                  color: '#6b7280',
+                  fontSize: 13, fontWeight: weight, fontStyle, lineHeight: 1,
+                  cursor: 'pointer', padding: 0,
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
           <textarea
+            ref={editorRef}
             value={draft}
             onChange={e => setDraft(e.target.value)}
+            onSelect={syncActiveLineStyle}
+            onClick={syncActiveLineStyle}
+            onKeyUp={syncActiveLineStyle}
+            onKeyDown={e => {
+              // Enter carries the list on, so a section of points costs one
+              // `- ` rather than one per line. Shift+Enter is left alone as
+              // the way to break out mid-point.
+              if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                const textarea = e.currentTarget;
+                const carried = continueList(draft, textarea.selectionStart, textarea.selectionEnd);
+                if (carried) {
+                  e.preventDefault();
+                  pendingSelection.current = [carried.selectionStart, carried.selectionEnd];
+                  setDraft(carried.text);
+                  setActiveLineStyle(lineStyleOf(currentLine(carried.text, carried.selectionStart)));
+                }
+                return;
+              }
+              if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+              const key = e.key.toLowerCase();
+              if (key !== 'b' && key !== 'i') return;
+              e.preventDefault();
+              applyEmphasis(key === 'b' ? '**' : '*');
+            }}
             spellCheck
             style={{
               width: '100%', boxSizing: 'border-box', minHeight: 460, resize: 'vertical',
-              padding: '16px 18px', borderRadius: 10,
+              padding: '16px 18px', borderRadius: '0 0 10px 10px',
               border: '1px solid rgba(0,0,0,0.18)', background: '#fff', color: '#111827',
               fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
               fontSize: 12.5, lineHeight: 1.65, outline: 'none',
+              display: 'block',
             }}
           />
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 12 }}>
