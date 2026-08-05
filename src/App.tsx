@@ -75,6 +75,7 @@ const SkippedJobsPage = React.lazy(() =>
 const MockLandingPage = React.lazy(() =>
   import('./pages/MockLandingPage').then(m => ({ default: m.MockLandingPage }))
 );
+const SessionSignupPage = React.lazy(() => import('./pages/SessionSignupPage'));
 const BookCallPage = React.lazy(() =>
   import('./pages/BookCallPage').then(m => ({ default: m.BookCallPage }))
 );
@@ -443,6 +444,17 @@ function App() {
               <Route path="/book-a-call" element={
                 <React.Suspense fallback={null}>
                   <BookCallPage />
+                </React.Suspense>
+              } />
+              {/* Group-session registration. /webinar is an alias so either link works. */}
+              <Route path="/session" element={
+                <React.Suspense fallback={null}>
+                  <SessionSignupPage />
+                </React.Suspense>
+              } />
+              <Route path="/webinar" element={
+                <React.Suspense fallback={null}>
+                  <SessionSignupPage />
                 </React.Suspense>
               } />
               <Route path="/the-receipts" element={

@@ -38,6 +38,7 @@ import sponsorsRouter, { loadFilterCache as loadSponsorFilterCache } from './rou
 import { cvScanRouter } from './routes/cv-scan';
 import { welcomeRouter } from './routes/welcome';
 import bookingsRouter from './routes/bookings';
+import sessionSignupRouter from './routes/session-signup';
 import { startJobFeedCron } from './cron/jobFeedCron';
 import { startSponsorJobScanCron } from './cron/sponsorJobScanCron';
 import { startTrialReminderCron } from './cron/trialReminderCron';
@@ -176,6 +177,7 @@ app.use('/api/sponsors', sponsorsRouter);
 app.use('/api/cv-scan', cvScanRouter);
 app.use('/api/welcome', welcomeRouter);
 app.use('/api/bookings', bookingsRouter);
+app.use('/api/session-signup', sessionSignupRouter);
 app.use('/api', emailOpenRouter);
 app.use('/api', emailClickRouter);
 app.use('/api', emailContactRouter);
