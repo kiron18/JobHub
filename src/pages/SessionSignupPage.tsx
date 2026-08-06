@@ -271,11 +271,16 @@ export default function SessionSignupPage() {
     }
   };
 
+  // index.css sets `body { overflow: hidden }` and pins #root to 100vh, so the
+  // app is a fixed-viewport shell and every public page has to own its own
+  // scroll container. minHeight alone silently makes the page unscrollable.
   const page: React.CSSProperties = {
-    minHeight: '100vh',
+    height: '100vh',
+    overflowY: 'auto',
     background: colors.bgCanvas,
     padding: '56px 20px 96px',
     fontFamily: typeTokens.body,
+    boxSizing: 'border-box',
   };
   const shell: React.CSSProperties = { maxWidth: spacing.containerReadable, margin: '0 auto' };
 
