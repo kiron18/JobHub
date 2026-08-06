@@ -42,12 +42,14 @@ import sessionSignupRouter from './routes/session-signup';
 import { startJobFeedCron } from './cron/jobFeedCron';
 import { startSponsorJobScanCron } from './cron/sponsorJobScanCron';
 import { startTrialReminderCron } from './cron/trialReminderCron';
+import { startWorkshopReminderCron } from './cron/workshopReminderCron';
 import { startAccountabilityCron } from './cron/accountabilityCron';
 import { startPaymentReconcileCron } from './cron/paymentReconcileCron';
 import { startFollowUpReminderCron } from './cron/followUpReminderCron';
 import { analyzeRateLimit } from './middleware/analyzeRateLimit';
 import { ensureSponsorJobTable } from './db/ensureSponsorJobTable';
 import { ensureEmailTables } from './db/ensureEmailTables';
+import { ensureQcReviewTable } from './db/ensureQcReviewTable';
 import { seedTags, seedTemplates, seedSequences } from './email/admin/seedData';
 import { startSequenceCron } from './cron/sequenceCron';
 import { linkCandidateProfiles } from './email/sync/linkCandidateProfiles';
@@ -211,7 +213,12 @@ async function ensureColumns() {
     `);
     await prisma.$executeRawUnsafe(`
       ALTER TABLE "Document"
-        ADD COLUMN IF NOT EXISTS "qualitySignals" JSONB;
+        ADD COLUMN IF NOT EXISTS "qualitySignals" JSONB,
+        ADD COLUMN IF NOT EXISTS "jobDescriptionHash" TEXT;
+    `);
+    await prisma.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "Document_userId_jobDescriptionHash_idx"
+        ON "Document"("userId", "jobDescriptionHash");
     `);
     await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS "OutreachLog" (
@@ -293,6 +300,7 @@ async function ensureColumns() {
     `);
     await ensureSponsorJobTable(prisma);
     await ensureEmailTables(prisma);
+    await ensureQcReviewTable(prisma);
     await seedTags(prisma);
     await seedTemplates(prisma);
     await seedSequences(prisma);
@@ -372,6 +380,7 @@ if (process.env.SKIP_SERVER === 'true') {
       startSequenceCron();
       startAccountabilityCron();
       startPaymentReconcileCron();
+      startWorkshopReminderCron();
       console.log('[cron] Trial reminder cron scheduled (10:00 UTC daily)');
       console.log('[cron] Follow-up reminder cron scheduled (09:00 UTC daily)');
       console.log('[cron] Payment reconciliation cron scheduled (11:00 UTC daily)');

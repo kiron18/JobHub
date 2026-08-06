@@ -177,10 +177,12 @@ export function buildWorkshopIcs(params: {
     'ACTION:DISPLAY',
     `DESCRIPTION:${icsEscape(workshopTitle)} starts in an hour`,
     'END:VALARM',
+    // Matches the reminder email so the calendar and the inbox nudge at the
+    // same moment rather than pestering them twice a few minutes apart.
     'BEGIN:VALARM',
-    'TRIGGER:-PT10M',
+    'TRIGGER:-PT20M',
     'ACTION:DISPLAY',
-    `DESCRIPTION:${icsEscape(workshopTitle)} starts in 10 minutes`,
+    `DESCRIPTION:${icsEscape(workshopTitle)} starts in 20 minutes`,
     'END:VALARM',
     'END:VEVENT',
     'END:VCALENDAR',
@@ -260,6 +262,48 @@ export async function sendWorkshopConfirmationEmail(params: {
       'aussiegradcareers.com.au',
     ].join('\n'),
     ...(attachments.length ? { attachments } : {}),
+  });
+}
+
+/**
+ * The nudge that goes out shortly before the workshop starts.
+ *
+ * This exists because the calendar alarm only fires for people who actually
+ * added the invite. This one lands regardless.
+ *
+ * Deliberately no em dashes in this copy.
+ */
+export async function sendWorkshopReminderEmail(params: {
+  to: string;
+  name: string;
+  meetLink: string;
+  workshopTitle: string;
+  minutesBefore: number;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[email] RESEND_API_KEY not set — skipping workshop reminder');
+    return;
+  }
+  const { to, name, meetLink, workshopTitle, minutesBefore } = params;
+  const firstName = (name || '').trim().split(/\s+/)[0] || '';
+
+  await resend.emails.send({
+    from: FROM_ADDRESS,
+    to,
+    subject: `Starting in ${minutesBefore} minutes`,
+    text: [
+      firstName ? `Hey ${firstName},` : 'Hey,',
+      '',
+      `The ${workshopTitle} starts in ${minutesBefore} minutes.`,
+      '',
+      'Here is the link:',
+      meetLink,
+      '',
+      'Come with the thing you actually want answered. See you in there.',
+      '',
+      'Kiron',
+      'aussiegradcareers.com.au',
+    ].join('\n'),
   });
 }
 

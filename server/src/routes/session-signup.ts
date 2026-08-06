@@ -19,41 +19,16 @@ import multer from 'multer';
 import { extractTextFromBuffer } from '../services/pdf';
 import { sendWorkshopConfirmationEmail } from '../services/email';
 import { prisma } from '../index';
+import {
+  CURRENT_SESSION_KEY,
+  MEET_LINK,
+  WORKSHOP_TITLE,
+  WORKSHOP_DURATION_MINUTES,
+  EXPORT_KEY,
+  workshopStart,
+} from '../config/workshop';
 
 const router = Router();
-
-/** Which session new registrations belong to. Bump this before the next call. */
-const CURRENT_SESSION_KEY = process.env.SESSION_KEY || '2026-08-06';
-
-/** Where the workshop actually happens. Override per session without a deploy. */
-const MEET_LINK = process.env.WORKSHOP_MEET_LINK || 'https://meet.google.com/tsg-arac-krg';
-
-/** Used in the confirmation subject line and body. */
-const WORKSHOP_TITLE = process.env.WORKSHOP_TITLE || '"Your first Aussie Job" Workshop';
-
-/**
- * Start time, as an ISO timestamp with an offset, e.g. 2026-08-06T18:00:00+10:00.
- * When set, the confirmation carries a calendar invite and their own calendar
- * handles the reminders. When unset the email still sends, just without it.
- */
-const WORKSHOP_START = process.env.WORKSHOP_START || '';
-const WORKSHOP_DURATION_MINUTES = Number(process.env.WORKSHOP_DURATION_MINUTES || 60);
-
-function workshopStart(): Date | null {
-  if (!WORKSHOP_START) return null;
-  const d = new Date(WORKSHOP_START);
-  if (Number.isNaN(d.getTime())) {
-    console.warn('[session-signup] WORKSHOP_START is not a valid date, skipping calendar invite:', WORKSHOP_START);
-    return null;
-  }
-  return d;
-}
-
-/**
- * Guards the export. Set SESSION_EXPORT_KEY in the Railway env; the fallback
- * exists so the endpoint works locally without setup, and is not a secret.
- */
-const EXPORT_KEY = process.env.SESSION_EXPORT_KEY || 'agc-session-export';
 
 // ── Upload ───────────────────────────────────────────────────────────────────
 const upload = multer({

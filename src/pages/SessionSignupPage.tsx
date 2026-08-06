@@ -108,7 +108,7 @@ const QUESTIONS: Question[] = [
     id: 'one_answer',
     type: 'text',
     label: 'If you get one thing answered in this workshop, what is it?',
-    help: 'Optional — but this is the one I read out. Ask the real question.',
+    help: 'Optional, but this is the one I read out. Ask the real question.',
     placeholder: 'e.g. is my visa actually the reason I’m getting rejected?',
     long: true,
   },
@@ -502,7 +502,7 @@ export default function SessionSignupPage() {
                     background: colors.bgCanvas, color: colors.textSecondary, fontSize: '0.9375rem', fontWeight: 500,
                   }}>
                     <Upload size={18} />
-                    Upload your resume — PDF, DOCX or TXT
+                    Upload your resume (PDF, DOCX or TXT)
                     <input
                       type="file"
                       accept=".pdf,.docx,.doc,.txt"
@@ -537,7 +537,7 @@ export default function SessionSignupPage() {
                   ) : (
                     <div style={{ marginTop: 12 }}>
                       <p style={{ ...helpStyle, marginTop: 0, marginBottom: 8 }}>
-                        No problem — tell me why in one line and I’ll still take the registration.
+                        No problem, tell me why in one line and I’ll still take the registration.
                       </p>
                       <input
                         style={inputStyle}
