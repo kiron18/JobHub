@@ -17,12 +17,17 @@ import { colors, type as typeTokens, spacing } from '../components/landing/token
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
 
-// ── The session ───────────────────────────────────────────────────────────────
+// ── The workshop ──────────────────────────────────────────────────────────────
 const SESSION = {
-  title: 'The Workshop',
+  title: '"Your first Aussie Job" Workshop',
   when: 'Today',
-  blurb:
-    'Answer these before you join. The workshop gets built around what you say here — the more specific you are, the more of it is actually about you.',
+  portrait: '/Assets/kiron-workshop.png',
+  // Deliberately no em dashes anywhere in this copy.
+  blurb: [
+    'Hi, thanks for showing interest in the workshop.',
+    'I want you to leave knowing exactly where your gaps are, and with actionable steps you can take to bridge them. Generic advice is plentiful online, so to make sure you get a good return on your time, I have prepared a short list of questions that lets me personalise the workshop to your specific needs.',
+    'It shouldn’t take more than a minute to fill out, but it will really help me know exactly where you need help.',
+  ],
 };
 
 /**
@@ -301,24 +306,54 @@ export default function SessionSignupPage() {
   return (
     <div style={page}>
       <div style={shell}>
-        {/* Header */}
-        <div style={{ marginBottom: 40 }}>
-          <span style={{
-            fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.18em',
-            textTransform: 'uppercase', color: colors.textMuted,
-          }}>
-            {SESSION.when}
-          </span>
-          <h1 style={{
-            fontFamily: typeTokens.display, fontWeight: 500, fontSize: '2.25rem',
-            color: colors.textPrimary, letterSpacing: '-0.015em', margin: '10px 0 14px',
-            fontVariationSettings: "'SOFT' 50, 'WONK' 1",
-          }}>
-            {SESSION.title}
-          </h1>
-          <p style={{ fontSize: '1.0625rem', color: colors.textSecondary, lineHeight: 1.6, margin: 0 }}>
-            {SESSION.blurb}
-          </p>
+        {/* Header. Portrait sits beside the copy on desktop and drops above it
+            on narrow screens, which is why this wraps rather than using a grid. */}
+        <div style={{
+          marginBottom: 40, display: 'flex', flexWrap: 'wrap-reverse',
+          // wrap-reverse flips the cross axis, so flex-end is the visual top.
+          // It also puts the portrait above the copy once this wraps on mobile.
+          gap: 28, alignItems: 'flex-end',
+        }}>
+          <div style={{ flex: '1 1 320px', minWidth: 0 }}>
+            <span style={{
+              fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.18em',
+              textTransform: 'uppercase', color: colors.textMuted,
+            }}>
+              {SESSION.when}
+            </span>
+            <h1 style={{
+              fontFamily: typeTokens.display, fontWeight: 500, fontSize: '2.25rem',
+              color: colors.textPrimary, letterSpacing: '-0.015em', margin: '10px 0 14px',
+              fontVariationSettings: "'SOFT' 50, 'WONK' 1",
+            }}>
+              {SESSION.title}
+            </h1>
+            {SESSION.blurb.map((para, i) => (
+              <p key={i} style={{
+                fontSize: '1.0625rem', color: colors.textSecondary, lineHeight: 1.6,
+                margin: i === 0 ? '0 0 12px' : '0 0 12px',
+              }}>
+                {para}
+              </p>
+            ))}
+          </div>
+
+          <img
+            src={SESSION.portrait}
+            alt="Kiron, who runs the workshop"
+            style={{
+              width: 'clamp(112px, 20vw, 176px)',
+              aspectRatio: '1 / 1',
+              objectFit: 'cover',
+              // The headshot sits high in the frame, so bias the crop upward.
+              objectPosition: 'center 18%',
+              borderRadius: '50%',
+              background: colors.bgSurface,
+              border: `1px solid ${colors.borderWhisper}`,
+              flex: '0 0 auto',
+              marginTop: 6,
+            }}
+          />
         </div>
 
         <div style={{
