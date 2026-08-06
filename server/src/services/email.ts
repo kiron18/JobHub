@@ -95,11 +95,107 @@ export async function sendWelcomeEmail(to: string): Promise<void> {
   });
 }
 
+function icsEscape(value: string): string {
+  // RFC 5545: backslash, semicolon and comma are escaped, newlines become \n.
+  return value.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+}
+
+function icsStamp(d: Date): string {
+  return d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+}
+
+/**
+ * RFC 5545 caps a content line at 75 octets and continues it with CRLF plus a
+ * single space. Gmail tolerates long lines; Outlook is less forgiving, so fold.
+ * Counts bytes rather than characters so a multi-byte name cannot push a line
+ * over the limit unnoticed.
+ */
+function icsFold(line: string): string {
+  const bytes = Buffer.from(line, 'utf8');
+  if (bytes.length <= 75) return line;
+  const out: string[] = [];
+  let start = 0;
+  let limit = 75;
+  while (start < bytes.length) {
+    let end = Math.min(start + limit, bytes.length);
+    // Never split a multi-byte character: back off to a lead byte boundary.
+    while (end > start && end < bytes.length && (bytes[end] & 0xc0) === 0x80) end--;
+    out.push(bytes.subarray(start, end).toString('utf8'));
+    start = end;
+    limit = 74; // continuation lines carry a leading space
+  }
+  return out.join('\r\n ');
+}
+
+/**
+ * A calendar invite for the workshop, as an .ics attachment.
+ *
+ * This is the reminder mechanism. Google only sends reminders itself for events
+ * created through the Calendar API with the person added as an attendee, which
+ * needs OAuth we do not have here. An .ics attachment needs no auth, is
+ * rendered by Gmail as a real invite with an add-to-calendar button, and once
+ * it is in their calendar their own default reminders do the work. It also
+ * covers Outlook and Apple Calendar, which a Google-only path would not.
+ *
+ * METHOD:REQUEST with an organizer and an attendee is what makes Gmail show the
+ * rich invite card rather than a bare file attachment.
+ */
+export function buildWorkshopIcs(params: {
+  to: string;
+  meetLink: string;
+  workshopTitle: string;
+  start: Date;
+  end: Date;
+  uid: string;
+}): string {
+  const { to, meetLink, workshopTitle, start, end, uid } = params;
+  return [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Aussie Grad Careers//Workshop//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:REQUEST',
+    'BEGIN:VEVENT',
+    `UID:${uid}`,
+    `DTSTAMP:${icsStamp(new Date())}`,
+    `DTSTART:${icsStamp(start)}`,
+    `DTEND:${icsStamp(end)}`,
+    `SUMMARY:${icsEscape(workshopTitle)}`,
+    `DESCRIPTION:${icsEscape(`Join here: ${meetLink}`)}`,
+    `LOCATION:${icsEscape(meetLink)}`,
+    `URL:${meetLink}`,
+    // CN is quoted because it contains a comma, which is otherwise read as a
+    // parameter value separator.
+    'ORGANIZER;CN="Kiron, Aussie Grad Careers":mailto:kiron@aussiegradcareers.com.au',
+    `ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:mailto:${to}`,
+    'STATUS:CONFIRMED',
+    'SEQUENCE:0',
+    // Belt and braces. Most clients apply the user's own defaults over these,
+    // which is fine, but a client with no defaults still nudges them.
+    'BEGIN:VALARM',
+    'TRIGGER:-PT1H',
+    'ACTION:DISPLAY',
+    `DESCRIPTION:${icsEscape(workshopTitle)} starts in an hour`,
+    'END:VALARM',
+    'BEGIN:VALARM',
+    'TRIGGER:-PT10M',
+    'ACTION:DISPLAY',
+    `DESCRIPTION:${icsEscape(workshopTitle)} starts in 10 minutes`,
+    'END:VALARM',
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].map(icsFold).join('\r\n');
+}
+
 /**
  * Confirmation for a workshop registration, sent the moment the form is
  * submitted. Its whole job is to put the join link in their inbox while they
  * are still paying attention, so the link is the first thing in the body and
  * is not buried behind a button.
+ *
+ * When a start time is configured, a calendar invite rides along so the event
+ * lands in their calendar and their own reminders fire. Without one the email
+ * still sends, just without the invite.
  *
  * Deliberately no em dashes in this copy.
  */
@@ -108,36 +204,62 @@ export async function sendWorkshopConfirmationEmail(params: {
   name: string;
   meetLink: string;
   workshopTitle: string;
+  start?: Date | null;
+  durationMinutes?: number;
 }): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
     console.warn('[email] RESEND_API_KEY not set — skipping workshop confirmation');
     return;
   }
-  const { to, name, meetLink, workshopTitle } = params;
+  const { to, name, meetLink, workshopTitle, start, durationMinutes = 60 } = params;
   // They typed their own name, so it can be anything. Take the first word and
   // fall back to a bare greeting rather than printing "Hey ,".
   const firstName = (name || '').trim().split(/\s+/)[0] || '';
+  const greeting = firstName ? `Hey ${firstName}, thanks for filling the form.` : 'Hey, thanks for filling the form.';
+
+  const attachments = [];
+  if (start && !Number.isNaN(start.getTime())) {
+    const end = new Date(start.getTime() + durationMinutes * 60_000);
+    const ics = buildWorkshopIcs({
+      to,
+      meetLink,
+      workshopTitle,
+      start,
+      end,
+      // Stable per person per workshop, so a resend updates the same calendar
+      // entry instead of creating a duplicate.
+      uid: `workshop-${start.toISOString().slice(0, 10)}-${Buffer.from(to).toString('hex').slice(0, 24)}@aussiegradcareers.com.au`,
+    });
+    attachments.push({
+      filename: 'workshop.ics',
+      content: Buffer.from(ics, 'utf8').toString('base64'),
+      contentType: 'text/calendar; method=REQUEST; charset=utf-8',
+    });
+  }
 
   await resend.emails.send({
     from: FROM_ADDRESS,
     to,
     subject: `You're in. Here's your ${workshopTitle} link`,
     text: [
-      firstName ? `Hey ${firstName},` : 'Hey,',
+      greeting,
       '',
-      `Thanks for filling that in. You're registered for the ${workshopTitle}.`,
+      `You're registered for the ${workshopTitle}.`,
       '',
       'Here is the link to join:',
       meetLink,
       '',
-      'Save it now or drop it straight into your calendar, so you are not hunting for it when we start.',
+      start
+        ? 'The calendar invite is attached, so add it and your calendar will remind you before we start.'
+        : 'Save it now or drop it straight into your calendar, so you are not hunting for it when we start.',
       '',
-      'I read every set of answers before we go live, so what we cover will be shaped by what you told me. If anything about your situation changes between now and then, just reply to this email and let me know.',
+      'I read every set of answers before we go live, so what we cover will be shaped by what you told me.',
       '',
       'See you there,',
       'Kiron',
       'aussiegradcareers.com.au',
     ].join('\n'),
+    ...(attachments.length ? { attachments } : {}),
   });
 }
 

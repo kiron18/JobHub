@@ -32,6 +32,24 @@ const MEET_LINK = process.env.WORKSHOP_MEET_LINK || 'https://meet.google.com/tsg
 const WORKSHOP_TITLE = process.env.WORKSHOP_TITLE || '"Your first Aussie Job" Workshop';
 
 /**
+ * Start time, as an ISO timestamp with an offset, e.g. 2026-08-06T18:00:00+10:00.
+ * When set, the confirmation carries a calendar invite and their own calendar
+ * handles the reminders. When unset the email still sends, just without it.
+ */
+const WORKSHOP_START = process.env.WORKSHOP_START || '';
+const WORKSHOP_DURATION_MINUTES = Number(process.env.WORKSHOP_DURATION_MINUTES || 60);
+
+function workshopStart(): Date | null {
+  if (!WORKSHOP_START) return null;
+  const d = new Date(WORKSHOP_START);
+  if (Number.isNaN(d.getTime())) {
+    console.warn('[session-signup] WORKSHOP_START is not a valid date, skipping calendar invite:', WORKSHOP_START);
+    return null;
+  }
+  return d;
+}
+
+/**
  * Guards the export. Set SESSION_EXPORT_KEY in the Railway env; the fallback
  * exists so the endpoint works locally without setup, and is not a secret.
  */
@@ -155,6 +173,8 @@ router.post('/register', handleUpload, async (req: Request, res: Response) => {
           name,
           meetLink: MEET_LINK,
           workshopTitle: WORKSHOP_TITLE,
+          start: workshopStart(),
+          durationMinutes: WORKSHOP_DURATION_MINUTES,
         });
       } catch (err) {
         console.error('[session-signup] confirmation email failed for', email, err);
