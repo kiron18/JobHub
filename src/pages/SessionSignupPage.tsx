@@ -7,7 +7,7 @@
    so adding, removing or rewording a question needs no server change and no
    migration. Keep the ids stable if you want answers to line up across sessions.
 
-   Pull the answers before the call:
+   Pull the answers before the workshop:
      /api/session-signup/export?key=…            the pre-call read (counts + quotes)
      /api/session-signup/export?key=…&format=csv the spreadsheet
    ──────────────────────────────────────────────────────────────────────────── */
@@ -19,10 +19,10 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
 
 // ── The session ───────────────────────────────────────────────────────────────
 const SESSION = {
-  title: 'The Group Session',
+  title: 'The Workshop',
   when: 'Today',
   blurb:
-    'Answer these before you join. The session gets built around what you say here — the more specific you are, the more of it is actually about you.',
+    'Answer these before you join. The workshop gets built around what you say here — the more specific you are, the more of it is actually about you.',
 };
 
 /**
@@ -102,7 +102,7 @@ const QUESTIONS: Question[] = [
   {
     id: 'one_answer',
     type: 'text',
-    label: 'If you get one thing answered on this call, what is it?',
+    label: 'If you get one thing answered in this workshop, what is it?',
     help: 'Optional — but this is the one I read out. Ask the real question.',
     placeholder: 'e.g. is my visa actually the reason I’m getting rejected?',
     long: true,
@@ -185,7 +185,6 @@ function Chip({ selected, onClick, children }: {
 export default function SessionSignupPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [file, setFile] = useState<File | null>(null);
   const [skipOpen, setSkipOpen] = useState(false);
@@ -242,7 +241,6 @@ export default function SessionSignupPage() {
       const fd = new FormData();
       fd.append('name', name.trim());
       fd.append('email', email.trim());
-      if (phone.trim()) fd.append('phone', phone.trim());
       fd.append('answers', JSON.stringify(answers));
       // Sent so the export can label and aggregate the answers correctly without
       // having to infer a question's type from the answers it received.
@@ -293,7 +291,7 @@ export default function SessionSignupPage() {
             You’re in.
           </h1>
           <p style={{ fontSize: '1.0625rem', color: colors.textSecondary, lineHeight: 1.6, margin: 0 }}>
-            I read every one of these before the call. If your question is a common one, you’ll hear it answered.
+            I read every one of these before the workshop. If your question is a common one, you’ll hear it answered.
           </p>
         </div>
       </div>
@@ -344,7 +342,7 @@ export default function SessionSignupPage() {
           <div data-error={errors.has('email')}>
             <Field
               label="Email"
-              help="Where the session link goes. Use the one you actually check."
+              help="Where the workshop link goes. Use the one you actually check."
               error={errors.has('email')}
             >
               <input
@@ -357,17 +355,6 @@ export default function SessionSignupPage() {
               />
             </Field>
           </div>
-
-          <Field label="Phone" help="Optional. Only used if the link breaks on the day.">
-            <input
-              style={inputStyle}
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="04…"
-              type="tel"
-              autoComplete="tel"
-            />
-          </Field>
 
           <hr style={{ border: 'none', borderTop: `1px solid ${colors.borderWhisper}`, margin: '8px 0 32px' }} />
 
@@ -418,7 +405,7 @@ export default function SessionSignupPage() {
           <div data-error={errors.has('resume')}>
             <Field
               label="Your resume"
-              help="This is the part that makes the session about you rather than about people in general. I read them beforehand and the examples I use come out of them."
+              help="This is the part that makes the workshop about you rather than about people in general. I read them beforehand and the examples I use come out of them."
               error={errors.has('resume')}
             >
               {file ? (
