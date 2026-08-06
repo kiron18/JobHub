@@ -199,6 +199,9 @@ export default function SessionSignupPage() {
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState('');
   const [done, setDone] = useState(false);
+  // Comes back from the register call so there is one source of truth for the
+  // join link, shared with the confirmation email.
+  const [meetLink, setMeetLink] = useState('');
 
   const setAnswer = (id: string, value: string | string[]) => {
     setAnswers((prev) => ({ ...prev, [id]: value }));
@@ -262,6 +265,7 @@ export default function SessionSignupPage() {
       const res = await fetch(`${API_BASE}/session-signup/register`, { method: 'POST', body: fd });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Something went wrong. Please try again.');
+      if (data.meetLink) setMeetLink(data.meetLink);
       setDone(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
@@ -303,6 +307,29 @@ export default function SessionSignupPage() {
           <p style={{ fontSize: '1.0625rem', color: colors.textSecondary, lineHeight: 1.6, margin: 0 }}>
             I read every one of these before the workshop. If your question is a common one, you’ll hear it answered.
           </p>
+
+          {meetLink && (
+            <div style={{
+              marginTop: 28, padding: '20px 22px', borderRadius: 14,
+              background: colors.bgSurface, border: `1px solid ${colors.borderWhisper}`,
+              textAlign: 'left',
+            }}>
+              <p style={{ ...helpStyle, marginTop: 0, marginBottom: 8 }}>
+                Your join link is on its way to your inbox. Here it is as well, in case it lands in spam:
+              </p>
+              <a
+                href={meetLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  fontSize: '1.0625rem', fontWeight: 600, color: colors.accentPetrol,
+                  wordBreak: 'break-all', textDecoration: 'none',
+                }}
+              >
+                {meetLink}
+              </a>
+            </div>
+          )}
         </div>
       </div>
     );

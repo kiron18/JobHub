@@ -95,6 +95,52 @@ export async function sendWelcomeEmail(to: string): Promise<void> {
   });
 }
 
+/**
+ * Confirmation for a workshop registration, sent the moment the form is
+ * submitted. Its whole job is to put the join link in their inbox while they
+ * are still paying attention, so the link is the first thing in the body and
+ * is not buried behind a button.
+ *
+ * Deliberately no em dashes in this copy.
+ */
+export async function sendWorkshopConfirmationEmail(params: {
+  to: string;
+  name: string;
+  meetLink: string;
+  workshopTitle: string;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[email] RESEND_API_KEY not set — skipping workshop confirmation');
+    return;
+  }
+  const { to, name, meetLink, workshopTitle } = params;
+  // They typed their own name, so it can be anything. Take the first word and
+  // fall back to a bare greeting rather than printing "Hey ,".
+  const firstName = (name || '').trim().split(/\s+/)[0] || '';
+
+  await resend.emails.send({
+    from: FROM_ADDRESS,
+    to,
+    subject: `You're in. Here's your ${workshopTitle} link`,
+    text: [
+      firstName ? `Hey ${firstName},` : 'Hey,',
+      '',
+      `Thanks for filling that in. You're registered for the ${workshopTitle}.`,
+      '',
+      'Here is the link to join:',
+      meetLink,
+      '',
+      'Save it now or drop it straight into your calendar, so you are not hunting for it when we start.',
+      '',
+      'I read every set of answers before we go live, so what we cover will be shaped by what you told me. If anything about your situation changes between now and then, just reply to this email and let me know.',
+      '',
+      'See you there,',
+      'Kiron',
+      'aussiegradcareers.com.au',
+    ].join('\n'),
+  });
+}
+
 export async function sendClientOnboardingEmail(params: {
   to: string;
   actionLink: string;

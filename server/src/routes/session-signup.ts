@@ -17,12 +17,19 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { extractTextFromBuffer } from '../services/pdf';
+import { sendWorkshopConfirmationEmail } from '../services/email';
 import { prisma } from '../index';
 
 const router = Router();
 
 /** Which session new registrations belong to. Bump this before the next call. */
 const CURRENT_SESSION_KEY = process.env.SESSION_KEY || '2026-08-06';
+
+/** Where the workshop actually happens. Override per session without a deploy. */
+const MEET_LINK = process.env.WORKSHOP_MEET_LINK || 'https://meet.google.com/tsg-arac-krg';
+
+/** Used in the confirmation subject line and body. */
+const WORKSHOP_TITLE = process.env.WORKSHOP_TITLE || '"Your first Aussie Job" Workshop';
 
 /**
  * Guards the export. Set SESSION_EXPORT_KEY in the Railway env; the fallback
@@ -124,13 +131,40 @@ router.post('/register', handleUpload, async (req: Request, res: Response) => {
       ...(resumeFilename ? { resumeFilename } : {}),
     };
 
+    // Whether this is a first registration decides if we send the confirmation.
+    // Someone re-submitting to fix an answer already has the link, and a second
+    // copy of the same email is how you end up in their spam folder.
+    const existing = await prisma.sessionRegistration.findUnique({
+      where: { email },
+      select: { id: true },
+    });
+
     await prisma.sessionRegistration.upsert({
       where: { email },
       create: { email, ...data },
       update: data,
     });
 
-    res.json({ ok: true });
+    // The registration is already saved. A mail provider having a bad minute
+    // must not turn a successful signup into an error on their screen, so this
+    // is awaited for the log but never allowed to reject the request.
+    if (!existing) {
+      try {
+        await sendWorkshopConfirmationEmail({
+          to: email,
+          name,
+          meetLink: MEET_LINK,
+          workshopTitle: WORKSHOP_TITLE,
+        });
+      } catch (err) {
+        console.error('[session-signup] confirmation email failed for', email, err);
+      }
+    }
+
+    // Returned so the success screen can show the link too. Email is the
+    // primary delivery, but it can be slow or land in spam, and they are
+    // looking at the screen right now.
+    res.json({ ok: true, meetLink: MEET_LINK });
   } catch (err) {
     console.error('[session-signup] register failed', err);
     res.status(500).json({ error: 'Something went wrong on our end. Please try again.' });
