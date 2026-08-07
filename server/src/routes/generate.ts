@@ -17,6 +17,7 @@ import { logEmployerGroundingCheck } from '../lib/employerGroundingCheck';
 import { checkAtsKeywords } from '../lib/atsKeywords';
 import { collectSignals } from '../lib/qualitySignals';
 import { parseJD } from '../lib/jdParser';
+import { jobDescriptionHash } from '../services/qc/linkDocuments';
 import fs from 'fs';
 import path from 'path';
 
@@ -539,6 +540,9 @@ router.post('/:type', authenticate, async (req, res, next) => {
                 type: docType,
                 userId,
                 jobApplicationId: sanitizedJobAppId,
+                // The workspace saves the tracker row in a separate call after
+                // this one, so the link is made later by matching on this.
+                jobDescriptionHash: jobDescriptionHash(jobDescription),
                 qualitySignals: qualitySignals.length > 0 ? qualitySignals : undefined,
             }
         });
@@ -796,6 +800,7 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
                 type: 'RESUME',
                 userId,
                 jobApplicationId: sanitizedJobAppId,
+                jobDescriptionHash: jobDescriptionHash(jobDescription),
             },
         });
 
@@ -1014,6 +1019,7 @@ router.post('/cover-letter-structured', authenticate, async (req: any, res: any)
                 type: 'COVER_LETTER',
                 userId,
                 jobApplicationId: sanitizedJobAppId,
+                jobDescriptionHash: jobDescriptionHash(jobDescription),
             },
         });
 
@@ -1085,6 +1091,7 @@ router.post('/selection-criteria-structured', authenticate, async (req: any, res
                 type: 'STAR_RESPONSE',
                 userId,
                 jobApplicationId: sanitizedJobAppId,
+                jobDescriptionHash: jobDescriptionHash(jobDescription),
             },
         });
 

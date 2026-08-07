@@ -15,6 +15,9 @@ import {
     WEEKLY_MINIMUM,
     type GoalType,
 } from '../services/tracker/goals';
+import { SENT_APPLICATION_FILTER } from '../services/tracker/metricHelpers';
+import { sentApplicationTotals } from '../services/tracker/sentApplications';
+import qcRouter from './coach-qc';
 
 const router = Router();
 const DAY_MS = 86400000;
@@ -28,6 +31,9 @@ async function requireAdmin(req: AuthRequest, res: Response, next: NextFunction)
 }
 
 router.use(authenticate, requireAdmin);
+
+// Quality control lives behind the same gate as the rest of the coach view.
+router.use('/qc', qcRouter);
 
 /**
  * GET /api/admin/coach/overview
@@ -43,7 +49,7 @@ router.get('/overview', async (_req, res) => {
         const userIds = await getRealUserIds();
         if (userIds.length === 0) return res.json({ weekStart: monday.toISOString().slice(0, 10), members: [] });
 
-        const [profiles, appRows, outreachRows, pauses, goalChanges, recentCreated, outreachWithStatus, localExpEntries, lifetimeApps] = await Promise.all([
+        const [profiles, appRows, outreachRows, pauses, goalChanges, recentCreated, outreachWithStatus, localExpEntries, lifetimeTotals] = await Promise.all([
             prisma.candidateProfile.findMany({
                 where: { userId: { in: userIds } },
                 select: {
@@ -53,7 +59,7 @@ router.get('/overview', async (_req, res) => {
                 },
             }),
             prisma.jobApplication.findMany({
-                where: { userId: { in: userIds }, dateApplied: { gte: tokenToInstant(firstMonday) } },
+                where: { userId: { in: userIds }, ...SENT_APPLICATION_FILTER, dateApplied: { gte: tokenToInstant(firstMonday) } },
                 select: { userId: true, sourceUrl: true, id: true, dateApplied: true },
             }),
             prisma.outreachLog.findMany({
@@ -72,6 +78,7 @@ router.get('/overview', async (_req, res) => {
             prisma.jobApplication.findMany({
                 where: {
                     userId: { in: userIds },
+                    ...SENT_APPLICATION_FILTER,
                     createdAt: { gte: new Date(Date.now() - 14 * DAY_MS) },
                     dateApplied: { not: null },
                 },
@@ -87,15 +94,13 @@ router.get('/overview', async (_req, res) => {
                 where: { userId: { in: userIds } },
                 select: { userId: true, type: true, organisation: true, role: true, startedAt: true, endedAt: true },
             }),
-            // Lifetime applications: every logged application ever, no window.
-            prisma.jobApplication.groupBy({
-                by: ['userId'],
-                where: { userId: { in: userIds }, dateApplied: { not: null } },
-                _count: { _all: true },
-            }),
+            // Lifetime applications: every application ever sent, no window.
+            // Counted by the shared helper so this column agrees with the admin
+            // roster — it used to be a raw row count over dateApplied, which
+            // both double-counted a re-logged job and quietly included rows
+            // still sitting in SAVED.
+            sentApplicationTotals(userIds),
         ]);
-
-        const lifetimeByUser = new Map<string, number>(lifetimeApps.map(g => [g.userId, g._count._all]));
 
         const weekIndexFromToken = (token: Date) =>
             Math.floor((token.getTime() - firstMonday.getTime()) / (7 * DAY_MS));
@@ -219,12 +224,17 @@ router.get('/overview', async (_req, res) => {
                     onTrackApps: currentWeek.applications >= appTarget,
                     onTrackOutreach: currentWeek.outreach >= outreachTarget,
                 },
-                lifetimeApplications: lifetimeByUser.get(p.userId) ?? 0,
+                lifetimeApplications: lifetimeTotals.get(p.userId)?.sent ?? 0,
                 streak: computeStreak(weeklyCounts),
                 lastFourWeeks: lastFour,
                 flags: {
                     missedWeeks,
                     backdatedEntries14d: backdatedByUser.get(p.userId) ?? 0,
+                    // Sent applications carrying no date. They are in the
+                    // lifetime total but cannot sit in any week, so they are
+                    // the exact difference between this member's weekly
+                    // columns and their all-time figure.
+                    undatedApplications: lifetimeTotals.get(p.userId)?.undated ?? 0,
                     needsConversation: missedWeeks >= 2,
                 },
                 goalChanges: {

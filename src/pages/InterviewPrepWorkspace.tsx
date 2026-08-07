@@ -20,15 +20,14 @@ export function InterviewPrepWorkspace() {
     const [generating, setGenerating] = useState(false);
     const [loadingLine, setLoadingLine] = useState(0);
 
-    const { data: jobs = [], isLoading } = useQuery<JobApplication[]>({
-        queryKey: ['jobs'],
-        queryFn: async () => {
-            const { data } = await api.get('/jobs');
-            return data;
-        },
+    // One application, bodies included. This used to pull the client's entire
+    // job list — every description and every generated document — to find one row.
+    const { data: job, isLoading } = useQuery<JobApplication>({
+        queryKey: ['job', jobId],
+        queryFn: async () => (await api.get(`/jobs/${jobId}`)).data,
+        enabled: Boolean(jobId),
     });
 
-    const job = useMemo(() => jobs.find(j => j.id === jobId), [jobs, jobId]);
     const prepDoc = useMemo(() => job?.documents.find(d => d.type === 'INTERVIEW_PREP') ?? null, [job]);
 
     // Rotate the calm loading copy while generating.
@@ -48,6 +47,8 @@ export function InterviewPrepWorkspace() {
                 jobApplicationId: job.id,
                 analysisContext: { tone: 'Professional, polished, direct.', competencies: [] },
             });
+            await queryClient.invalidateQueries({ queryKey: ['job', jobId] });
+            // The tracker list shows a badge per document, so it is stale too.
             await queryClient.invalidateQueries({ queryKey: ['jobs'] });
         } catch (err: any) {
             const status = err?.response?.status;
@@ -79,8 +80,8 @@ export function InterviewPrepWorkspace() {
                     <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: warm.colors.textSecondary }}>Application not found</p>
                     <p style={{ margin: '6px 0 0', fontSize: 13, color: warm.colors.textMuted }}>It may have been removed. Head back to your tracker.</p>
                 </div>
-            ) : prepDoc ? (
-                <InterviewPrepView doc={prepDoc.content} company={job.company} role={job.title} />
+            ) : prepDoc?.content ? (
+                <InterviewPrepView doc={prepDoc.content ?? ''} company={job.company} role={job.title} />
             ) : generating ? (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, padding: '80px 0' }}>
                     <Loader2 size={28} className="animate-spin" style={{ color: warm.colors.accentGold }} />

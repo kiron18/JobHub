@@ -334,13 +334,41 @@ model Document {
   edited           Boolean            @default(false)
   templateConfig   Json?
   qualitySignals   Json?
+  // Fingerprint of the advert this document was generated against. Generation
+  // and the tracker row are created by two separate calls, so without this
+  // there is nothing to join them on and the document stays orphaned — which
+  // is why 97% of them had no application attached.
+  jobDescriptionHash String?
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
   jobApplication   JobApplication?    @relation(fields: [jobApplicationId], references: [id])
   feedback         DocumentFeedback[]
+  qcReviews        DocumentQcReview[]
 
   @@index([userId])
   @@index([jobApplicationId])
+  @@index([userId, jobDescriptionHash])
+}
+
+// A coach's spot-check of one generated document, cached against a hash of
+// everything the judge was shown. Editing the document, repairing its job
+// description or re-uploading the client's resume changes the hash and earns a
+// fresh verdict; nothing else does, so re-opening a document is free.
+model DocumentQcReview {
+  id           String   @id @default(uuid())
+  documentId   String
+  contentHash  String
+  verdict      Json
+  model        String
+  promptTokens Int      @default(0)
+  outputTokens Int      @default(0)
+  costUsd      Float    @default(0)
+  reviewedBy   String?
+  createdAt    DateTime @default(now())
+  document     Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, contentHash])
+  @@index([documentId])
 }
 
 model DocumentFeedback {
@@ -849,12 +877,10 @@ model SessionRegistration {
 
   answers Json
 
-  /// The question list as it stood when they answered, as an ordered
-  /// [{ id, label, type }] array. Stored per row so the export can label and
-  /// aggregate correctly even after the questions are rewritten for the next
-  /// session, and so it never has to guess a question's type from the shape of
-  /// the answers. An array rather than an object because Postgres jsonb does
-  /// not preserve object key order.
+  /// The question list as it stood when they answered: { id: { label, type } }.
+  /// Stored per row so the export can label and aggregate correctly even after
+  /// the questions are rewritten for the next session, and so it never has to
+  /// guess a question's type from the shape of the answers.
   questionSchema Json?
 
   resumeText     String?

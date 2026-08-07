@@ -6,7 +6,11 @@ export type JobPriority = 'DREAM' | 'TARGET' | 'BACKUP' | null;
 export interface TrackerDocument {
     id: string;
     type: 'RESUME' | 'COVER_LETTER' | 'STAR_RESPONSE' | 'INTERVIEW_PREP';
-    content: string;
+    /**
+     * Absent in the /jobs list — the bodies are megabytes and nothing renders
+     * them until a document is opened. Fetch from /documents/:id at that point.
+     */
+    content?: string;
     title?: string;
     createdAt: string;
 }

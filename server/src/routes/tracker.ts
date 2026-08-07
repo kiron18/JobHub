@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../index';
 import { authenticate } from '../middleware/auth';
 import { todayAEST } from '../services/jobFeed';
-import { countDistinctJobs, bucketByDay } from '../services/tracker/metricHelpers';
+import { countDistinctJobs, bucketByDay, SENT_APPLICATION_FILTER } from '../services/tracker/metricHelpers';
 import {
     getGoalState,
     requestGoalChange,
@@ -18,7 +18,7 @@ export async function getDailyProgress(userId: string): Promise<{ appliedToday: 
   const rows = await prisma.jobApplication.findMany({
     // tokenToInstant: feed applies store raw timestamps, so entries logged
     // 00:00-10:00 AEST sit before the midnight-UTC token and would be missed.
-    where: { userId, dateApplied: { gte: tokenToInstant(todayAEST()) } },
+    where: { userId, ...SENT_APPLICATION_FILTER, dateApplied: { gte: tokenToInstant(todayAEST()) } },
     select: { sourceUrl: true, id: true },
   });
   return { appliedToday: countDistinctJobs(rows), goal };
@@ -35,7 +35,7 @@ export async function getGoalProgress(userId: string): Promise<{
   const goal = settings.appGoal;
   const since = goalType === 'weekly' ? mondayAEST() : todayAEST();
   const rows = await prisma.jobApplication.findMany({
-    where: { userId, dateApplied: { gte: tokenToInstant(since) } },
+    where: { userId, ...SENT_APPLICATION_FILTER, dateApplied: { gte: tokenToInstant(since) } },
     select: { sourceUrl: true, id: true },
   });
   return { goalType, goal, applied: countDistinctJobs(rows) };
@@ -44,7 +44,7 @@ export async function getGoalProgress(userId: string): Promise<{
 export async function getActivity(userId: string, days = 365): Promise<Array<{ date: string; count: number }>> {
   const since = new Date(todayAEST().getTime() - (days - 1) * 86400000);
   const rows = await prisma.jobApplication.findMany({
-    where: { userId, dateApplied: { gte: tokenToInstant(since) } },
+    where: { userId, ...SENT_APPLICATION_FILTER, dateApplied: { gte: tokenToInstant(since) } },
     select: { sourceUrl: true, id: true, dateApplied: true },
   });
   return bucketByDay(rows as any, days, todayAEST());

@@ -23,7 +23,7 @@ import { prisma } from '../index';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { EXEMPT_EMAILS } from './stripe';
 import { supabase } from '../lib/supabase';
-import { SENT_APPLICATION_FILTER } from '../services/tracker/metricHelpers';
+import { sentApplicationCounts } from '../services/tracker/sentApplications';
 
 const router = Router();
 
@@ -103,14 +103,11 @@ router.get('/overview', authenticate, requireAdmin, async (_req, res) => {
       where: { userId: { in: realUserIds }, status: 'COMPLETE' },
     });
 
-    // Stage 4: first app sent (any APPLIED status across all apps)
-    const usersWithAppliedApps = await prisma.jobApplication.groupBy({
-      by: ['userId'],
-      where: { userId: { in: realUserIds }, ...SENT_APPLICATION_FILTER },
-      _count: { _all: true },
-    });
-    const firstAppCount = usersWithAppliedApps.length;
-    const fivePlusCount = usersWithAppliedApps.filter(g => g._count._all >= FREE_APP_QUOTA).length;
+    // Stage 4: first app sent. Distinct jobs, not rows — logging the same
+    // advert twice must not push someone over the free quota on paper.
+    const sentByUser = await sentApplicationCounts(realUserIds);
+    const firstAppCount = sentByUser.size;
+    const fivePlusCount = [...sentByUser.values()].filter(n => n >= FREE_APP_QUOTA).length;
 
     // Stage 6: paid (plan != 'free' OR active subscription)
     const paidProfiles = await prisma.candidateProfile.findMany({
@@ -239,12 +236,7 @@ router.get('/trials', authenticate, requireAdmin, async (_req, res) => {
 
     // Pull apps-sent counts for these users in one round-trip.
     const trialUserIds = trialProfiles.map(p => p.userId);
-    const appCounts = await prisma.jobApplication.groupBy({
-      by: ['userId'],
-      where: { userId: { in: trialUserIds }, ...SENT_APPLICATION_FILTER },
-      _count: { _all: true },
-    });
-    const appCountByUserId = new Map(appCounts.map(g => [g.userId, g._count._all]));
+    const appCountByUserId = await sentApplicationCounts(trialUserIds);
 
     // Last activity = most recent of (profile updatedAt, latest JobApplication
     // createdAt). One round-trip pulls the latest app per user.
@@ -397,9 +389,9 @@ router.get('/user-usage', authenticate, requireAdmin, async (_req, res) => {
     const appsApplied = await prisma.jobApplication.groupBy({
       by: ['userId'], where: { userId: { in: paidUserIds }, status: 'APPLIED' }, _count: { _all: true },
     });
-    const appsNotSaved = await prisma.jobApplication.groupBy({
-      by: ['userId'], where: { userId: { in: paidUserIds }, ...SENT_APPLICATION_FILTER }, _count: { _all: true },
-    });
+    // "Sent" comes from the shared helper so this roster and the coach view
+    // quote the same number for the same client.
+    const notSavedApps = await sentApplicationCounts(paidUserIds);
     const latestApp = await prisma.jobApplication.findMany({
       where: { userId: { in: paidUserIds } },
       select: { userId: true, createdAt: true },
@@ -418,8 +410,6 @@ router.get('/user-usage', authenticate, requireAdmin, async (_req, res) => {
     for (const a of appsAll) totalApps.set(a.userId, a._count._all);
     const appliedApps = new Map<string, number>();
     for (const a of appsApplied) appliedApps.set(a.userId, a._count._all);
-    const notSavedApps = new Map<string, number>();
-    for (const a of appsNotSaved) notSavedApps.set(a.userId, a._count._all);
     const lastAppAt = new Map<string, number>();
     for (const a of latestApp) if (!lastAppAt.has(a.userId)) lastAppAt.set(a.userId, a.createdAt.getTime());
 

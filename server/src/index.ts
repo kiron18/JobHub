@@ -49,6 +49,7 @@ import { startFollowUpReminderCron } from './cron/followUpReminderCron';
 import { analyzeRateLimit } from './middleware/analyzeRateLimit';
 import { ensureSponsorJobTable } from './db/ensureSponsorJobTable';
 import { ensureEmailTables } from './db/ensureEmailTables';
+import { ensureQcReviewTable } from './db/ensureQcReviewTable';
 import { seedTags, seedTemplates, seedSequences } from './email/admin/seedData';
 import { startSequenceCron } from './cron/sequenceCron';
 import { linkCandidateProfiles } from './email/sync/linkCandidateProfiles';
@@ -212,7 +213,12 @@ async function ensureColumns() {
     `);
     await prisma.$executeRawUnsafe(`
       ALTER TABLE "Document"
-        ADD COLUMN IF NOT EXISTS "qualitySignals" JSONB;
+        ADD COLUMN IF NOT EXISTS "qualitySignals" JSONB,
+        ADD COLUMN IF NOT EXISTS "jobDescriptionHash" TEXT;
+    `);
+    await prisma.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "Document_userId_jobDescriptionHash_idx"
+        ON "Document"("userId", "jobDescriptionHash");
     `);
     await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS "OutreachLog" (
@@ -294,6 +300,7 @@ async function ensureColumns() {
     `);
     await ensureSponsorJobTable(prisma);
     await ensureEmailTables(prisma);
+    await ensureQcReviewTable(prisma);
     await seedTags(prisma);
     await seedTemplates(prisma);
     await seedSequences(prisma);

@@ -69,8 +69,20 @@ const DocumentViewerModal: React.FC<{
     company: string;
     onClose: () => void;
 }> = ({ doc, jobTitle, company, onClose }) => {
+    // The /jobs list carries no document bodies — shipping every generated
+    // resume on every dashboard load cost megabytes to render nothing. The one
+    // being opened is fetched here, and cached, so re-opening is instant.
+    const { data: fetched, isLoading } = useQuery({
+        queryKey: ['document', doc.id],
+        queryFn: async () => (await api.get(`/documents/${doc.id}`)).data as { content: string },
+        enabled: !doc.content,
+        staleTime: 5 * 60 * 1000,
+    });
+    const content = doc.content ?? fetched?.content ?? '';
+
     const handleCopy = () => {
-        navigator.clipboard.writeText(doc.content);
+        if (!content) return;
+        navigator.clipboard.writeText(content);
         toast.success('Copied to clipboard');
     };
 
@@ -81,8 +93,9 @@ const DocumentViewerModal: React.FC<{
             STAR_RESPONSE: 'selection-criteria',
             INTERVIEW_PREP: 'interview-prep',
         };
+        if (!content) return;
         try {
-            await exportDocx(doc.content, docTypeMap[doc.type], company, jobTitle);
+            await exportDocx(content, docTypeMap[doc.type], company, jobTitle);
             toast.success('Downloaded as .docx');
         } catch {
             toast.error('Download failed, copy the content instead.');
@@ -96,8 +109,9 @@ const DocumentViewerModal: React.FC<{
             STAR_RESPONSE: 'selection-criteria',
             INTERVIEW_PREP: 'interview-prep',
         };
+        if (!content) return;
         try {
-            await exportPdf(doc.content, docTypeMap[doc.type], company, jobTitle, '');
+            await exportPdf(content, docTypeMap[doc.type], company, jobTitle, '');
             toast.success('Downloaded as PDF');
         } catch {
             toast.error('PDF download failed, try .docx instead.');
@@ -223,9 +237,19 @@ const DocumentViewerModal: React.FC<{
 
                 {/* Content */}
                 <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
-                    <div className="prose prose-slate max-w-none">
-                        <ReactMarkdown>{doc.content}</ReactMarkdown>
-                    </div>
+                    {isLoading ? (
+                        <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
+                            <Loader2 size={20} className="animate-spin" style={{ color: warm.colors.textMuted }} />
+                        </div>
+                    ) : content ? (
+                        <div className="prose prose-slate max-w-none">
+                            <ReactMarkdown>{content}</ReactMarkdown>
+                        </div>
+                    ) : (
+                        <p style={{ margin: 0, fontSize: 13, color: warm.colors.textMuted }}>
+                            This document could not be loaded. Close and try again.
+                        </p>
+                    )}
                 </div>
             </motion.div>
         </div>

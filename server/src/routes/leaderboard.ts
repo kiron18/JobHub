@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../index';
 import { authenticate } from '../middleware/auth';
 import { getRealUserIds } from './admin';
-import { countDistinctJobs } from '../services/tracker/metricHelpers';
+import { countDistinctJobs, SENT_APPLICATION_FILTER } from '../services/tracker/metricHelpers';
 import {
     mondayAEST,
     tokenToInstant,
@@ -70,7 +70,7 @@ router.get('/', async (req: any, res: any) => {
             getWeeklyCountsBatch(userIds, STREAK_WEEKS),
             period === 'all'
                 ? prisma.jobApplication.findMany({
-                    where: { userId: { in: userIds }, dateApplied: { not: null } },
+                    where: { userId: { in: userIds }, ...SENT_APPLICATION_FILTER },
                     select: { userId: true, sourceUrl: true, id: true },
                 })
                 : Promise.resolve(null),

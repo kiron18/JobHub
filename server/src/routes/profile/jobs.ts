@@ -3,17 +3,37 @@ import { prisma } from '../../index';
 import { authenticate } from '../../middleware/auth';
 import { sendStatusEmail } from '../../services/email';
 import { isSentStatus } from '../../services/tracker/metricHelpers';
+import { linkDocumentsToApplication } from '../../services/qc/linkDocuments';
 
 const router = Router();
 
+/**
+ * Columns of a document the tracker list actually needs: enough to draw the
+ * badges and know what exists. The generated text itself is deliberately left
+ * out — see the note on GET /api/jobs.
+ */
+const DOCUMENT_LIST_FIELDS = {
+    id: true, type: true, title: true, edited: true, createdAt: true, updatedAt: true,
+} as const;
+
 // GET /api/jobs
+//
+// The list used to `include: { documents: true }`, which shipped the full text
+// of every resume, cover letter and prep pack the client had ever generated on
+// every dashboard load — megabytes for an active client, none of it rendered
+// until they open a document. The bodies are fetched one at a time from
+// /api/documents/:id when something is actually opened.
+//
+// The job description stays: it is what the tracker's "Job description" panel
+// shows and what the in-card generation actions are grounded on, and losing it
+// here would quietly downgrade them to "Title at Company".
 router.get('/jobs', authenticate, async (req, res) => {
     const userId = (req as any).user.id;
     try {
         const jobs = await prisma.jobApplication.findMany({
             where: { candidateProfile: { userId } },
             orderBy: { createdAt: 'desc' },
-            include: { documents: true }
+            include: { documents: { select: DOCUMENT_LIST_FIELDS } },
         });
         res.json(jobs);
     } catch (error) {
@@ -36,6 +56,25 @@ router.get('/jobs/sent-count', authenticate, async (req, res) => {
         res.json({ count });
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch sent count' });
+    }
+});
+
+// GET /api/jobs/:id — one application in full, document bodies included.
+// Must stay below /jobs/sent-count: a bare :id pattern matches that literal
+// path too, and whichever is registered first wins.
+router.get('/jobs/:id', authenticate, async (req, res) => {
+    const userId = (req as any).user.id;
+    const { id } = req.params as any;
+    try {
+        const job = await prisma.jobApplication.findFirst({
+            where: { id: id as string, candidateProfile: { userId } },
+            include: { documents: true },
+        });
+        if (!job) return res.status(404).json({ error: 'Application not found' });
+        res.json(job);
+    } catch (error) {
+        console.error('Get Job Error:', error);
+        res.status(500).json({ error: 'Failed to fetch job application' });
     }
 });
 
@@ -76,6 +115,24 @@ router.post('/jobs', authenticate, async (req, res) => {
             },
             include: { documents: true }
         });
+
+        // The workspace generates the documents first and saves this row after,
+        // so attach anything already generated against the same advert.
+        // Never fatal: the application is saved either way.
+        try {
+            const linked = await linkDocumentsToApplication(userId, job.id, description);
+            if (linked > 0) {
+                console.log(`[jobs] linked ${linked} existing document(s) to application ${job.id}`);
+                const withDocs = await prisma.jobApplication.findUnique({
+                    where: { id: job.id },
+                    include: { documents: true },
+                });
+                if (withDocs) return res.status(201).json(withDocs);
+            }
+        } catch (err: any) {
+            console.error('[jobs] document linking failed (non-fatal):', err?.message ?? err);
+        }
+
         res.status(201).json(job);
     } catch (error) {
         console.error('Create Job Error:', error);

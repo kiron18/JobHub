@@ -34,8 +34,10 @@ export async function getRealUserIds(): Promise<string[]> {
   if (error || !data?.users) {
     // Fall back to profile-level exclusion if Supabase admin call fails
     console.warn('[admin] supabase.auth.admin.listUsers failed, falling back to email exclusion:', error?.message);
+    // `email NOT IN (...)` is NULL for a profile with no email, so a bare
+    // notIn silently drops those rows. They are real users, so keep them.
     const profiles = await prisma.candidateProfile.findMany({
-      where: { email: { notIn: [...EXCLUDED_EMAILS] } },
+      where: { OR: [{ email: null }, { email: { notIn: [...EXCLUDED_EMAILS] } }] },
       select: { userId: true },
     });
     return profiles.map(p => p.userId);

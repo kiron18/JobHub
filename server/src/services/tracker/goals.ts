@@ -1,6 +1,6 @@
 import { prisma } from '../../index';
 import { todayAEST } from '../jobFeed';
-import { countDistinctJobs } from './metricHelpers';
+import { countDistinctJobs, SENT_APPLICATION_FILTER } from './metricHelpers';
 
 /**
  * Accountability rules for the AGC program.
@@ -128,7 +128,9 @@ export async function getWeeklyCounts(userId: string, weeks = 26): Promise<WeekC
     prisma.jobApplication.findMany({
       // tokenToInstant so raw-timestamp rows from 00:00-10:00 AEST Monday
       // of the first week aren't dropped by the query boundary.
-      where: { userId, dateApplied: { gte: tokenToInstant(firstMonday) } },
+      // SENT_APPLICATION_FILTER: a row still sitting in SAVED is not an
+      // application, whatever date it happens to carry.
+      where: { userId, ...SENT_APPLICATION_FILTER, dateApplied: { gte: tokenToInstant(firstMonday) } },
       select: { sourceUrl: true, id: true, dateApplied: true },
     }),
     prisma.outreachLog.findMany({
@@ -206,7 +208,7 @@ export async function getWeeklyCountsBatch(userIds: string[], weeks: number): Pr
 
   const [appRows, outreachRows, pauses] = await Promise.all([
     prisma.jobApplication.findMany({
-      where: { userId: { in: userIds }, dateApplied: { gte: tokenToInstant(firstMonday) } },
+      where: { userId: { in: userIds }, ...SENT_APPLICATION_FILTER, dateApplied: { gte: tokenToInstant(firstMonday) } },
       select: { userId: true, sourceUrl: true, id: true, dateApplied: true },
     }),
     prisma.outreachLog.findMany({
@@ -441,7 +443,7 @@ export async function getGoalState(userId: string): Promise<GoalState> {
   const [todayApps, weekly, pendingRow, eligibility, history, todayOutreach] = await Promise.all([
     prisma.jobApplication.findMany({
       // tokenToInstant so raw-timestamp rows logged 00:00-10:00 AEST count as today.
-      where: { userId, dateApplied: { gte: tokenToInstant(today) } },
+      where: { userId, ...SENT_APPLICATION_FILTER, dateApplied: { gte: tokenToInstant(today) } },
       select: { sourceUrl: true, id: true },
     }),
     getWeeklyCounts(userId, 26),

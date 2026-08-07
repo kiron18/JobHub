@@ -7,6 +7,7 @@ import {
 import { toast } from 'sonner';
 import api from '../lib/api';
 import { warm } from '../lib/theme/warmTokens';
+import { QualityControlPanel } from '../components/coach/QualityControlPanel';
 
 interface WeekCell { weekStart: string; applications: number; outreach: number; paused: boolean; hit: boolean; }
 
@@ -23,7 +24,7 @@ interface CoachMember {
     lifetimeApplications: number;
     streak: number;
     lastFourWeeks: WeekCell[];
-    flags: { missedWeeks: number; backdatedEntries14d: number; needsConversation: boolean };
+    flags: { missedWeeks: number; backdatedEntries14d: number; undatedApplications: number; needsConversation: boolean };
     goalChanges: {
         countLast90d: number;
         lastChangeAt: string | null;
@@ -196,6 +197,12 @@ export const CoachDashboard: React.FC = () => {
                                                 {m.flags.backdatedEntries14d} backdated
                                             </span>
                                         )}
+                                        {m.flags.undatedApplications > 0 && (
+                                            <span title="Sent applications with no applied date. They count in All-time but cannot sit in any week, so they are the exact difference between the weekly columns and the all-time figure."
+                                                style={{ fontSize: 11, fontWeight: 700, color: '#B0563C' }}>
+                                                {m.flags.undatedApplications} undated
+                                            </span>
+                                        )}
                                     </div>
 
                                     <div style={{ marginLeft: 'auto', color: warm.colors.textMuted }}>
@@ -312,6 +319,8 @@ export const CoachDashboard: React.FC = () => {
             <p style={{ margin: '14px 4px 0', fontSize: 11.5, color: warm.colors.textMuted }}>
                 Squares = last 4 completed weeks (green hit both minimums, red missed, grey paused). "Talk to them" = 2+ missed weeks in the last 4.
             </p>
+
+            <QualityControlPanel />
 
             <NudgePreview />
         </div>
