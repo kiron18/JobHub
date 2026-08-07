@@ -3,6 +3,7 @@ import { authenticate } from '../middleware/auth';
 import { callLLM } from '../services/llm';
 import { STAGE_1_PROMPT, STAGE_2_PROMPT } from '../services/prompts';
 import { parseLLMJson } from '../utils/parseLLMResponse';
+import { fetchSeekJobFromUrl, SeekUrlError } from '../services/seekJobUrl';
 
 const router = Router();
 
@@ -84,6 +85,39 @@ router.post('/resume', authenticate, async (req, res) => {
                 details: error.message,
                 stack: error.stack,
             }),
+        });
+    }
+});
+
+/**
+ * POST /api/extract/from-url — resolve a pasted Seek link into a job.
+ *
+ * Deliberately does NOT generate anything. It returns the resolved job so the
+ * UI can show the title and company back and let the user confirm before we
+ * tailor a resume to it. The silent-wrong-job failure (a search-page URL whose
+ * slug names a different role than the job it carries) is the one that costs
+ * the user real time, so confirmation is a required step, not a nicety.
+ */
+router.post('/from-url', authenticate, async (req, res) => {
+    const { url } = req.body ?? {};
+
+    if (typeof url !== 'string' || !url.trim()) {
+        return res.status(400).json({ error: 'Paste a Seek job link to continue.', code: 'not_a_url' });
+    }
+
+    try {
+        const job = await fetchSeekJobFromUrl(url);
+        return res.json({ job });
+    } catch (err: any) {
+        if (err instanceof SeekUrlError) {
+            // 422: we understood the request, the link just isn't usable. The
+            // message is written for the user — pass it straight through.
+            return res.status(422).json({ error: err.message, code: err.code });
+        }
+        console.error('[extract/from-url]', err);
+        return res.status(500).json({
+            error: 'Something went wrong reading that link. Try again, or paste the description instead.',
+            code: 'fetch_failed',
         });
     }
 });
