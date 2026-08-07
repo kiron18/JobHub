@@ -262,11 +262,10 @@ type ReportFlowStage = 'loading' | 'diagnostic' | 'from-scratch' | 'dashboard';
 function LandingPageOrExisting() {
   const { user, loading } = useAuth();
   if (loading) return null;
-  if (!user) return (
-    <React.Suspense fallback={null}>
-      <MockLandingPage />
-    </React.Suspense>
-  );
+  // Signed out, the site IS the scan. There is one way in and it collects the
+  // resume and creates the account in the same pass, so an account without a
+  // resume can't exist. The old marketing page is still at /mock-landing.
+  if (!user) return <WelcomePage />;
   // Authenticated — render the existing protected route content
   return (
     <ProtectedRoute>

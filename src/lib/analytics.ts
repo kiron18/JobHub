@@ -56,6 +56,36 @@ export function trackDiagnosticReportViewed() {
   posthog.capture('diagnostic_report_viewed');
 }
 
+// ── Welcome funnel (the public scan at /welcome) ──────────────────────────────
+// This is the acquisition flow: anonymous resume upload through to signup.
+// It ran completely untracked until 2026-08-07, so the only thing we knew about
+// it was the pageview count. One event per step, fired wherever the step is set.
+
+/** Ordered so a PostHog funnel can be built straight off step_index. */
+export const WELCOME_STEPS = [
+  'upload', 'loading', 'brief', 'questions', 'roles',
+  'building', 'resume', 'email', 'code', 'finishing',
+] as const;
+
+export type WelcomeStep = (typeof WELCOME_STEPS)[number];
+
+export function trackWelcomeStep(step: WelcomeStep) {
+  posthog.capture('welcome_step_viewed', {
+    step,
+    step_index: WELCOME_STEPS.indexOf(step),
+  });
+}
+
+/** A step the user could not get past. `reason` should be short and stable. */
+export function trackWelcomeFailed(step: WelcomeStep, reason: string) {
+  posthog.capture('welcome_step_failed', { step, reason });
+}
+
+/** Terminal success: account created (or signed in) with a resume attached. */
+export function trackWelcomeCompleted(wasNewUser: boolean) {
+  posthog.capture('welcome_completed', { new_user: wasNewUser });
+}
+
 export function trackSection5CtaClicked() {
   posthog.capture('section_5_cta_clicked');
 }

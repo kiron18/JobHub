@@ -30,6 +30,7 @@ import { prisma } from '../index';
 import { authenticate, optionalAuthenticate, AuthRequest } from '../middleware/auth';
 import { autoExtractAchievements } from '../services/autoExtract';
 import { reconcileProfileEmail } from '../services/onboarding';
+import { sendWelcomeResumeEmail } from '../services/email';
 import { analyseIntakeResume, IntakeQuestion } from '../services/intakeAnalysis';
 import { detectDocumentSignals, DocumentSignals } from '../services/documentSignals';
 import { extractDocxStructure } from '../services/docxStructure';
@@ -83,6 +84,30 @@ function sweepExpiredSessions(): void {
     .deleteMany({ where: { createdAt: { lt: new Date(Date.now() - SESSION_TTL_MS) } } })
     .then(({ count }) => { if (count) console.log(`[welcome] swept ${count} expired session(s)`); })
     .catch((err) => console.warn('[welcome] session sweep failed (non-fatal):', err?.message));
+}
+
+/**
+ * The email address printed on the resume, if there is one.
+ *
+ * Used to pre-fill the address field at the end of the flow: people mistype the
+ * thing they have typed ten thousand times, and a wrong address means the copy of
+ * their resume never arrives and we can never reach them again. Their own
+ * document is the most reliable source we have.
+ *
+ * Deliberately conservative: the first plausible match in the opening stretch of
+ * the document, where contact details live. A referee's address further down
+ * should never win.
+ */
+export function emailFromResume(text: string): string | null {
+  const head = (text || '').slice(0, 1500);
+  const match = head.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/);
+  if (!match) return null;
+
+  const addr = match[0].toLowerCase().replace(/[.,;:]+$/, '');
+  // Sample addresses left in templates people downloaded and never cleaned up.
+  if (/^(example|email|yourname|name|firstname|lastname)@/.test(addr)) return null;
+  if (/@(example|domain|email|company)\.(com|org)$/.test(addr)) return null;
+  return addr;
 }
 
 /** Loads a live, unclaimed session or returns null so the caller can 410. */
@@ -152,6 +177,7 @@ router.post('/brief', optionalAuthenticate, handleUpload, async (req: Request, r
 
     res.json({
       token,
+      resumeEmail: emailFromResume(text),
       firstName: analysis.firstName,
       currentRole: analysis.currentRole,
       brief: analysis.brief,
@@ -329,6 +355,16 @@ router.post('/finish', authenticate, async (req: AuthRequest, res: Response) => 
     // Build the structured bank from the CLEAN text, not the messy upload.
     autoExtractAchievements(userId, session.resumeCleanText)
       .catch((err) => console.warn('[welcome/finish] autoExtract failed (non-fatal):', err?.message));
+
+    // Their copy of the resume, plus the reason to come back. Fire-and-forget:
+    // a mail failure must never cost them the account they just finished making.
+    if (email) {
+      sendWelcomeResumeEmail({
+        to: email,
+        firstName: session.firstName,
+        resumeMarkdown: session.resumeCleanText,
+      }).catch((err) => console.warn('[welcome/finish] resume email failed (non-fatal):', err?.message));
+    }
 
     res.json({ ok: true });
   } catch (err) {

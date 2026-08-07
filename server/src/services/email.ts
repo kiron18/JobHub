@@ -798,3 +798,119 @@ export async function sendCoachDigestEmail(params: {
     text: lines.join('\n'),
   });
 }
+
+// ── The welcome payoff: their rewritten resume, emailed ──────────────────────
+// Sent the moment an account is created at the end of /welcome. Two jobs: give
+// them the artefact they just earned so it exists outside our app, and make the
+// address they typed matter — an email they want is the only verification that
+// never feels like friction.
+
+/** Email-safe escape. Resume text is user-supplied and goes into an HTML email. */
+function esc(s: string): string {
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+/** Inline **bold** and *italic* only, after escaping. */
+function inlineMd(s: string): string {
+  return esc(s)
+    .replace(/\*\*([^*]+)\*\*/g, '<strong style="font-weight:700;color:#101828;">$1</strong>')
+    .replace(/(^|[^*])\*([^*]+)\*/g, '$1<em style="color:#475467;">$2</em>');
+}
+
+/**
+ * Minimal markdown to email HTML, styled to match the resume as it appears in
+ * the app: Georgia standing in for Fraunces on headings, a system sans for body,
+ * petrol section rules. Deliberately hand-rolled — a general markdown library
+ * emits class-based HTML, and email clients need inline styles on every node.
+ */
+export function resumeMarkdownToHtml(md: string): string {
+  const out: string[] = [];
+  let inList = false;
+
+  const closeList = () => { if (inList) { out.push('</ul>'); inList = false; } };
+
+  for (const rawLine of String(md || '').split(/\r?\n/)) {
+    const line = rawLine.trimEnd();
+
+    if (!line.trim()) { closeList(); continue; }
+
+    if (/^#{1}\s+/.test(line)) {
+      closeList();
+      out.push(`<h1 style="font-family:Georgia,'Times New Roman',serif;font-size:23px;font-weight:600;color:#101828;margin:0 0 4px;letter-spacing:.01em;">${inlineMd(line.replace(/^#\s+/, ''))}</h1>`);
+      continue;
+    }
+    if (/^#{2}\s+/.test(line)) {
+      closeList();
+      out.push(`<h2 style="font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:11.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#2d5a6e;margin:26px 0 10px;padding-bottom:6px;border-bottom:1px solid #dddad2;">${inlineMd(line.replace(/^##\s+/, ''))}</h2>`);
+      continue;
+    }
+    if (/^#{3,}\s+/.test(line)) {
+      closeList();
+      out.push(`<h3 style="font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:15px;font-weight:700;color:#101828;margin:16px 0 2px;">${inlineMd(line.replace(/^#{3,}\s+/, ''))}</h3>`);
+      continue;
+    }
+    if (/^(-{3,}|\*{3,}|_{3,})$/.test(line.trim())) {
+      closeList();
+      out.push('<hr style="border:0;border-top:1px solid #dddad2;margin:20px 0;">');
+      continue;
+    }
+    if (/^\s*[-*•]\s+/.test(line)) {
+      if (!inList) { out.push('<ul style="margin:8px 0 14px;padding-left:22px;">'); inList = true; }
+      out.push(`<li style="font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:14.5px;line-height:1.6;color:#344054;margin:0 0 7px;">${inlineMd(line.replace(/^\s*[-*•]\s+/, ''))}</li>`);
+      continue;
+    }
+
+    closeList();
+    out.push(`<p style="font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:14.5px;line-height:1.65;color:#344054;margin:0 0 10px;">${inlineMd(line)}</p>`);
+  }
+  closeList();
+  return out.join('');
+}
+
+export async function sendWelcomeResumeEmail(params: {
+  to: string;
+  firstName?: string | null;
+  resumeMarkdown: string;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[email] RESEND_API_KEY not set — skipping welcome resume email');
+    return;
+  }
+  const { to, firstName, resumeMarkdown } = params;
+  const name = (firstName || '').trim();
+  const hi = name ? `Hey ${esc(name)},` : 'Hey,';
+
+  const html = [
+    `<div style="background:#faf7f2;padding:28px 12px;">`,
+    `<table cellpadding="0" cellspacing="0" style="width:100%;max-width:640px;margin:0 auto;">`,
+    `<tr><td>`,
+
+    `<p style="font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:15px;color:#1a1814;margin:0 0 14px;line-height:1.6;">${hi}</p>`,
+    `<p style="font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:15px;color:#5c5750;margin:0 0 22px;line-height:1.65;">Here is your rewritten resume. Keep this email — it is your copy, and it says what you actually did instead of what you were responsible for.</p>`,
+
+    // The resume itself, on white paper inside the warm canvas.
+    `<div style="background:#ffffff;border:1px solid #dddad2;border-radius:12px;padding:34px 34px 30px;">`,
+    resumeMarkdownToHtml(resumeMarkdown),
+    `</div>`,
+
+    // The anticipation beat: the resume is the ticket, not the job.
+    `<div style="margin:26px 0 0;padding:22px 24px;background:#ffffff;border:1px solid #dddad2;border-radius:12px;">`,
+    `<p style="font-family:Georgia,'Times New Roman',serif;font-size:19px;font-weight:600;color:#101828;margin:0 0 10px;line-height:1.35;">A resume gets you read. It does not get you hired.</p>`,
+    `<p style="font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:14.5px;color:#5c5750;margin:0 0 14px;line-height:1.65;">This was the part you could see. The reason most people here never hear back is the part they cannot: who you contact before you apply, how the visa question gets read when you do not raise it first, and what happens in the 48 hours after you hit submit.</p>`,
+    `<p style="font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:14.5px;color:#5c5750;margin:0 0 20px;line-height:1.65;">That is all waiting in your dashboard, along with the achievement bank we built with you.</p>`,
+    `<p style="margin:0;"><a href="${APP_URL}" style="display:inline-block;background:#2d5a6e;color:#faf7f2;text-decoration:none;font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:14.5px;font-weight:700;padding:13px 26px;border-radius:8px;">See what else is missing</a></p>`,
+    `</div>`,
+
+    `<p style="font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:12.5px;color:#9b9488;margin:22px 0 0;line-height:1.6;">Sent to ${esc(to)} because you created an Aussie Grad Careers account. Kiron.</p>`,
+    `</td></tr></table></div>`,
+  ].join('');
+
+  await resend.emails.send({
+    from: FROM_ADDRESS,
+    to,
+    subject: name ? `${name}, here is your rewritten resume` : 'Here is your rewritten resume',
+    html,
+  });
+}

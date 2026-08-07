@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, UploadCloud, ArrowRight, Plus, X, Search, Check } from 'lucide-react';
@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import api from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { trackWelcomeStep, trackWelcomeFailed, trackWelcomeCompleted } from '../lib/analytics';
 import { colors, type as T } from '../components/landing/tokens';
 
 // Subtle film grain over a solid, for the "brief" screen. Self-contained SVG.
@@ -63,6 +64,38 @@ const ROLE_PLACEHOLDERS = ['e.g. Marketing Coordinator', 'e.g. Business Analyst'
 const OTP_MIN = 6;
 const OTP_MAX = 10;
 
+/**
+ * Domain typos, and what they were meant to be.
+ *
+ * Real mistyping clusters in the domain, not the name — people have typed their
+ * own username thousands of times and the domain is the bit they fumble. This
+ * list is short on purpose: it only holds mistakes common enough to be worth
+ * interrupting someone over, and a wrong suggestion is worse than none.
+ */
+const DOMAIN_TYPOS: Record<string, string> = {
+  'gmial.com': 'gmail.com', 'gmai.com': 'gmail.com', 'gmail.co': 'gmail.com',
+  'gmail.con': 'gmail.com', 'gmaill.com': 'gmail.com', 'gnail.com': 'gmail.com',
+  'gamil.com': 'gmail.com', 'gmail.cm': 'gmail.com',
+  'hotnail.com': 'hotmail.com', 'hotmial.com': 'hotmail.com', 'hotmai.com': 'hotmail.com',
+  'hotmail.co': 'hotmail.com', 'hotmail.con': 'hotmail.com',
+  'yahooo.com': 'yahoo.com', 'yaho.com': 'yahoo.com', 'yahoo.co': 'yahoo.com',
+  'outlok.com': 'outlook.com', 'outllook.com': 'outlook.com', 'outlook.co': 'outlook.com',
+  'iclould.com': 'icloud.com', 'icloud.co': 'icloud.com',
+};
+
+/** The corrected address, or null when it already looks right. */
+function suggestEmailFix(value: string): string | null {
+  const at = value.lastIndexOf('@');
+  if (at < 1) return null;
+  const local = value.slice(0, at);
+  const domain = value.slice(at + 1).toLowerCase().trim();
+  const fixed = DOMAIN_TYPOS[domain];
+  return fixed ? `${local}@${fixed}` : null;
+}
+// Supabase rejects anything under 6 by default; keep the client in step with it
+// so people find out before the round trip rather than after.
+const PASSWORD_MIN = 8;
+
 type FindingOwner = 'we_fix' | 'needs_you' | 'worth_knowing';
 
 interface IntakeFinding {
@@ -91,6 +124,18 @@ export const WelcomePage: React.FC = () => {
   const { user } = useAuth();
 
   const [step, setStep] = useState<Step>('upload');
+
+  const [password, setPassword] = useState('');
+  const passwordRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
+  const [resumeEmail, setResumeEmail] = useState('');
+
+  // One event per step the user actually reaches. Done as an effect on `step`
+  // rather than at each setStep call site so a new step can never be added
+  // without being tracked — this funnel ran blind until 2026-08-07 and the
+  // whole point is that it stays measured.
+  useEffect(() => { trackWelcomeStep(step); }, [step]);
+
   const [file, setFile] = useState<File | null>(null);
   const [token, setToken] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -139,6 +184,10 @@ export const WelcomePage: React.FC = () => {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       setToken(data.token);
+      // The address on their own resume. Pre-fills the field at the end, and is
+      // what we compare against if they type something different.
+      setResumeEmail(typeof data.resumeEmail === 'string' ? data.resumeEmail : '');
+      if (data.resumeEmail && !email) setEmail(data.resumeEmail);
       setFirstName(data.firstName || '');
       setBrief(data.brief || '');
       setFindings(Array.isArray(data.findings) ? data.findings : []);
@@ -147,6 +196,7 @@ export const WelcomePage: React.FC = () => {
       if (data.currentRole) setRoles([data.currentRole]);
       setStep('brief');
     } catch (err: any) {
+      trackWelcomeFailed('loading', 'brief_failed');
       toast.error(err?.response?.data?.error || 'Could not read your resume, please try again.');
       setStep('upload');
     }
@@ -204,6 +254,7 @@ export const WelcomePage: React.FC = () => {
       setOutstanding(Array.isArray(data.outstanding) ? data.outstanding.length : 0);
       setStep('resume');
     } catch (err: any) {
+      trackWelcomeFailed('building', 'build_failed');
       toast.error(err?.response?.data?.error || 'Could not build your resume, please try again.');
       setStep('roles');
     }
@@ -214,6 +265,65 @@ export const WelcomePage: React.FC = () => {
   function onSaveResume() {
     if (user) { void finishNow(); return; }
     setStep('email');
+  }
+
+  /**
+   * Email + password, one submit, for both new and returning people.
+   *
+   * Sign-in is tried FIRST. That single ordering is what removes the "do you
+   * already have an account?" question — which people get wrong about
+   * themselves — and it means we never have to expose an endpoint that reveals
+   * whether an address is registered. Three outcomes:
+   *
+   *   signs in            -> returning member, straight through
+   *   no such credentials -> try to create the account
+   *   already registered  -> right email, wrong password: say exactly that
+   *
+   * Supabase has mailer_autoconfirm on, so signUp returns a live session and
+   * nobody has to leave for their inbox. If that setting is ever turned off,
+   * signUp comes back with no session and the code fallback below is the path.
+   */
+  async function submitPassword() {
+    const addr = email.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(addr)) { toast.error('Enter a valid email address.'); return; }
+    if (password.length < PASSWORD_MIN) { toast.error(`Your password needs at least ${PASSWORD_MIN} characters.`); return; }
+
+    setSending(true);
+    try {
+      const signIn = await supabase.auth.signInWithPassword({ email: addr, password });
+      if (!signIn.error && signIn.data.session) {
+        setEmail(addr);
+        await finishNow();
+        return;
+      }
+
+      const signUp = await supabase.auth.signUp({ email: addr, password });
+
+      if (signUp.error) {
+        const msg = /registered|already/i.test(signUp.error.message)
+          ? 'That email already has an account and the password did not match. Try again, or use "Email me a code instead".'
+          : signUp.error.message;
+        trackWelcomeFailed('email', 'signup_rejected');
+        toast.error(msg);
+        return;
+      }
+
+      if (!signUp.data.session) {
+        // Email confirmation is on: no session yet, so fall back to the code.
+        trackWelcomeFailed('email', 'confirmation_required');
+        toast.info('Almost there — we need to verify your email. Sending you a code.');
+        await sendCode();
+        return;
+      }
+
+      setEmail(addr);
+      await finishNow();
+    } catch (err: any) {
+      trackWelcomeFailed('email', 'unexpected');
+      toast.error(err?.message || 'Could not save your resume, please try again.');
+    } finally {
+      setSending(false);
+    }
   }
 
   // Send the login code. shouldCreateUser makes this double as sign-up: an
@@ -258,8 +368,11 @@ export const WelcomePage: React.FC = () => {
     setStep('finishing');
     try {
       await api.post('/welcome/finish', { token, targetRoles: clean, targetCity: city.trim() || null });
+      // Terminal success: from here they have an account AND a resume on file.
+      trackWelcomeCompleted(!user);
       navigate('/', { replace: true });
     } catch (err: any) {
+      trackWelcomeFailed('finishing', 'finish_failed');
       toast.error(err?.response?.data?.error || 'Could not complete setup, please try again.');
       setStep(user ? 'resume' : 'code');
       setVerifying(false);
@@ -687,25 +800,71 @@ export const WelcomePage: React.FC = () => {
     );
   }
 
-  // ── Step: email (sign up or sign in — same door) ──────────────────────────────
+  // ── Step: email + password (sign up or sign in — same door) ───────────────────
+  const emailFix = suggestEmailFix(email.trim());
+  // Only worth raising once what they've typed is a complete, different address —
+  // nagging mid-typing would fire on every keystroke of a legitimate new one.
+  const showResumeEmailNudge = Boolean(
+    resumeEmail &&
+    /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim()) &&
+    email.trim().toLowerCase() !== resumeEmail.toLowerCase(),
+  );
+
   if (step === 'email') {
     return (
       <Shell>
         <Eyebrow>Last step · save your resume</Eyebrow>
-        <Display>Where should we save this?</Display>
-        <p style={bodyText}>Enter your email and we'll send you a login code. If you've been here before this signs you straight back in. If you haven't, this creates your account.</p>
+        <Display>Where should we send it?</Display>
+        <p style={{ ...bodyText, marginBottom: 10 }}>
+          We'll email your rewritten resume here so you always have a copy, and it's how you get back in.
+        </p>
+        <p style={{ ...bodyText, marginBottom: 24 }}>
+          Worth knowing before you go: <strong style={{ color: colors.textPrimary, fontWeight: 700 }}>the resume is the ticket, not the job.</strong> There are three other things deciding whether you hear back, and they're waiting inside.
+        </p>
 
         <input
           type="email" inputMode="email" autoComplete="email" autoFocus
           value={email}
           onChange={e => setEmail(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter' && !sending) sendCode(); }}
+          onKeyDown={e => { if (e.key === 'Enter') passwordRef.current?.focus(); }}
           placeholder="you@email.com"
           style={inputStyle}
         />
 
+        {/* Two quiet corrections, both one tap. Neither blocks anyone. */}
+        {emailFix && (
+          <button onClick={() => setEmail(emailFix)}
+            style={typoNudgeStyle}>
+            Did you mean <strong style={{ fontWeight: 700 }}>{emailFix}</strong>?
+          </button>
+        )}
+        {!emailFix && showResumeEmailNudge && (
+          <button onClick={() => setEmail(resumeEmail)}
+            style={typoNudgeStyle}>
+            Your resume lists <strong style={{ fontWeight: 700 }}>{resumeEmail}</strong> — send it there instead?
+          </button>
+        )}
+
+        <input
+          ref={passwordRef}
+          type="password" autoComplete="current-password"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && !sending) void submitPassword(); }}
+          placeholder="Create a password"
+          style={{ ...inputStyle, marginTop: 12 }}
+        />
+        <p style={{ ...bodyText, fontSize: 13, marginTop: 8 }}>At least {PASSWORD_MIN} characters.</p>
+
         <div style={{ marginTop: 22 }}>
-          <PrimaryBtn label={sending ? '' : 'Email me a code'} onClick={sendCode} loading={sending} />
+          <PrimaryBtn label={sending ? '' : 'Save my resume'} onClick={() => void submitPassword()} loading={sending} />
+        </div>
+
+        <div style={{ marginTop: 18 }}>
+          <button onClick={sendCode} disabled={sending}
+            style={{ background: 'transparent', border: 'none', cursor: sending ? 'default' : 'pointer', color: colors.textMuted, fontFamily: T.body, fontSize: 13.5, fontWeight: 700, padding: 0 }}>
+            Email me a code instead
+          </button>
         </div>
       </Shell>
     );
@@ -759,16 +918,22 @@ export const WelcomePage: React.FC = () => {
   }
 
   // ── Step: upload / loading ───────────────────────────────────────────────────
+  // This is the front door of the site, not just a step. Signed-out visitors at
+  // aussiegradcareers.com.au land here, so the promise and the dropzone are the
+  // whole screen: one headline, one target, nothing else to decide.
   return (
-    <Shell>
-      <Eyebrow>Welcome · Step 1 of your setup</Eyebrow>
-      <Display>Let's get you set up.</Display>
-      <p style={bodyText}>Start with your current resume. We read it, show you plainly where it stands, ask you the few things only you can tell us, then rebuild it properly. No scores, no judgement.</p>
+    <Shell wide>
+      <div style={{ textAlign: 'center' }}>
+        <Display>Find out what's costing you interviews.</Display>
+        <p style={{ ...bodyText, maxWidth: 560, margin: '0 auto 32px' }}>
+          Upload your resume. We read it, show you plainly where it stands, ask the few things only you can tell us, then rebuild it properly. No account needed to start.
+        </p>
+      </div>
 
       <AnimatePresence mode="wait">
         {step === 'loading' ? (
           <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8, color: colors.textSecondary, fontFamily: T.body, fontSize: 15 }}>
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 8, color: colors.textSecondary, fontFamily: T.body, fontSize: 15 }}>
             <Loader2 size={20} className="animate-spin" style={{ color: colors.accentPetrol }} />
             Reading your resume...
           </motion.div>
@@ -776,21 +941,33 @@ export const WelcomePage: React.FC = () => {
           <motion.div key="drop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <button
               onClick={() => inputRef.current?.click()}
+              onDragOver={e => { e.preventDefault(); if (!dragging) setDragging(true); }}
+              onDragLeave={e => { e.preventDefault(); setDragging(false); }}
+              onDrop={e => {
+                e.preventDefault();
+                setDragging(false);
+                const f = e.dataTransfer.files?.[0] ?? null;
+                if (f) { setFile(f); void uploadResume(f); }
+              }}
               style={{
-                width: '100%', display: 'flex', alignItems: 'center', gap: 14, textAlign: 'left',
-                padding: '20px', borderRadius: 16, cursor: 'pointer',
-                border: `2px dashed ${file ? colors.accentPetrol : colors.borderDefined}`,
-                background: file ? 'rgba(45,90,110,0.05)' : colors.bgAlt,
+                width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center',
+                justifyContent: 'center', gap: 16, textAlign: 'center',
+                padding: 'clamp(40px, 9vh, 76px) 28px', borderRadius: 20, cursor: 'pointer',
+                border: `2px dashed ${dragging || file ? colors.accentPetrol : colors.borderDefined}`,
+                background: dragging || file ? 'rgba(45,90,110,0.06)' : colors.bgAlt,
+                transition: 'border-color .15s ease, background .15s ease',
               }}
             >
-              <span style={{ color: file ? colors.accentPetrol : colors.textMuted, flexShrink: 0 }}>
-                <UploadCloud size={26} />
+              <span style={{ color: dragging || file ? colors.accentPetrol : colors.textMuted }}>
+                <UploadCloud size={52} strokeWidth={1.5} />
               </span>
-              <span style={{ minWidth: 0 }}>
-                <span style={{ display: 'block', fontFamily: T.body, fontSize: 15, fontWeight: 600, color: colors.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {file ? file.name : 'Upload your resume'}
+              <span style={{ minWidth: 0, maxWidth: '100%' }}>
+                <span style={{ display: 'block', fontFamily: T.display, fontSize: 'clamp(19px, 2.4vw, 24px)', fontWeight: 600, color: colors.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {file ? file.name : dragging ? 'Drop it here' : 'Upload your resume'}
                 </span>
-                <span style={{ display: 'block', fontFamily: T.body, fontSize: 12.5, color: colors.textMuted, marginTop: 2 }}>PDF or Word, up to 5MB.</span>
+                <span style={{ display: 'block', fontFamily: T.body, fontSize: 14, color: colors.textMuted, marginTop: 7 }}>
+                  Drag it in, or click to browse. PDF or Word, up to 5MB.
+                </span>
               </span>
             </button>
             <input ref={inputRef} type="file" accept=".pdf,.docx,.doc,.txt" style={{ display: 'none' }}
@@ -856,6 +1033,14 @@ const inputStyle: React.CSSProperties = {
   borderRadius: 12, border: `1px solid ${colors.borderDefined}`, background: colors.bgSurface, color: colors.textPrimary, outline: 'none',
 };
 const labelStyle: React.CSSProperties = { display: 'block', fontFamily: T.body, fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: colors.textMuted, marginBottom: 8 };
+
+/** The one-tap address correction. A suggestion, never a blocker. */
+const typoNudgeStyle: React.CSSProperties = {
+  display: 'block', width: '100%', textAlign: 'left', marginTop: 10,
+  padding: '10px 14px', borderRadius: 10, cursor: 'pointer',
+  background: 'rgba(45,90,110,0.07)', border: '1px solid rgba(45,90,110,0.22)',
+  fontFamily: T.body, fontSize: 13.5, color: colors.accentPetrol, fontWeight: 600,
+};
 
 function Shell({ children, wide }: { children: React.ReactNode; wide?: boolean }) {
   return (
