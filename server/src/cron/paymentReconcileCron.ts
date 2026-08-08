@@ -26,22 +26,29 @@ export function startPaymentReconcileCron(): void {
         return;
       }
 
-      console.log(`[paymentReconcile] scanned=${result.scanned} granted=${result.granted.length} unmatched=${result.unmatched.length} errors=${result.errors.length}`);
+      console.log(`[paymentReconcile] scanned=${result.scanned} granted=${result.granted.length} unmatched=${result.unmatched.length} alerting=${result.toAlert.length} resolved=${result.resolved.length} errors=${result.errors.length}`);
       for (const g of result.granted) {
         console.log(`[paymentReconcile] GRANTED ${g.email} -> ${g.plan} (${g.reason})`);
       }
       for (const u of result.unmatched) {
         console.warn(`[paymentReconcile] UNMATCHED ${u} — paid but has no JobHub account`);
       }
+      for (const r of result.resolved) {
+        console.log(`[paymentReconcile] RESOLVED ${r} — now has an account, alerts closed`);
+      }
       for (const e of result.errors) console.error(`[paymentReconcile] ERROR ${e}`);
 
-      // A payer with no account needs a human. Reuse the existing alert.
-      for (const email of result.unmatched) {
+      // A payer with no account needs a human — but only the ones that are
+      // newly seen or due a weekly reminder. Alerting on every unmatched payer
+      // every night buried the real signal under repeats.
+      for (const u of result.toAlert) {
         sendAdminPaymentAlert({
           event: 'payment_unmatched',
-          userEmail: email,
-          plan: 'unknown (reconciliation sweep)',
-          subscriptionId: 'n/a',
+          userEmail: u.email,
+          plan: u.amount != null ? `${u.plan} — $${u.amount.toFixed(2)}` : u.plan,
+          subscriptionId: u.reason,
+          firstSeenAt: u.firstSeenAt,
+          alertCount: u.alertCount,
         }).catch(() => {});
       }
     } catch (err) {

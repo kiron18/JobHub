@@ -42,13 +42,18 @@ async function main() {
   const email = emailArg.toLowerCase().trim();
 
   const profile = await prisma.candidateProfile.findFirst({
-    where: { email },
+    where: { email: { equals: email, mode: 'insensitive' } },
     select: { id: true, userId: true, email: true, name: true, plan: true, planStatus: true },
   });
 
   if (!profile) {
     console.error(`No profile found for email "${email}".`);
-    console.error('The user must have signed up to JobHub with this exact email first.');
+    console.error('');
+    console.error('This script can only mark an EXISTING profile as paid. If this address');
+    console.error('came from a "PAID BUT UNMATCHED" alert, they have no account at all —');
+    console.error('use the script that creates one and emails them a set-password link:');
+    console.error('');
+    console.error(`  npx tsx src/scripts/onboard_paid.ts ${email}`);
     process.exit(1);
   }
 

@@ -29,13 +29,86 @@ export interface ReconcileResult {
   granted: Array<{ email: string; plan: string; reason: string }>;
   onboarded: string[];
   unmatched: string[];
+  /** Unmatched payers seen for the first time, or due a re-nag. Only these
+   *  warrant an admin email — see UnmatchedPayment in the schema. */
+  toAlert: Array<{ email: string; plan: string; amount: number | null; reason: string; firstSeenAt: Date; alertCount: number }>;
+  /** Previously-unmatched payers that now have a profile. */
+  resolved: string[];
   errors: string[];
 }
+
+/** How long an unresolved payer stays quiet between admin reminders. */
+const RENAG_DAYS = 7;
 
 function stripeClient(): InstanceType<typeof StripeLib> | null {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return null;
   return new StripeLib(key, { apiVersion: '2026-03-25.dahlia' as any });
+}
+
+/**
+ * Record a payer we could not match, and decide whether it is worth an email.
+ *
+ * The rule: alert the first time we ever see them, then at most once every
+ * RENAG_DAYS while they stay unresolved. Before this table existed the sweep
+ * had no memory and re-sent the same alert every night.
+ */
+async function noteUnmatched(
+  result: ReconcileResult,
+  email: string,
+  payer: { plan: string; reason: string; customerId: string | null; amount: number | null },
+): Promise<void> {
+  const now = new Date();
+  const existing = await prisma.unmatchedPayment.findUnique({ where: { email } });
+
+  // A row that was resolved before but is unmatched again is a fresh problem.
+  const reopened = existing?.resolvedAt != null;
+  const lastAlert = reopened ? null : existing?.alertedAt ?? null;
+  const due = !lastAlert || now.getTime() - lastAlert.getTime() >= RENAG_DAYS * 86400000;
+
+  const record = await prisma.unmatchedPayment.upsert({
+    where: { email },
+    create: {
+      email,
+      plan: payer.plan,
+      amount: payer.amount,
+      reason: payer.reason,
+      stripeCustomerId: payer.customerId,
+      alertedAt: due ? now : null,
+      alertCount: due ? 1 : 0,
+    },
+    update: {
+      plan: payer.plan,
+      amount: payer.amount,
+      reason: payer.reason,
+      stripeCustomerId: payer.customerId,
+      resolvedAt: null,
+      ...(due ? { alertedAt: now, alertCount: { increment: 1 } } : {}),
+      ...(reopened ? { firstSeenAt: now } : {}),
+    },
+  });
+
+  if (due) {
+    result.toAlert.push({
+      email,
+      plan: payer.plan,
+      amount: payer.amount,
+      reason: payer.reason,
+      firstSeenAt: record.firstSeenAt,
+      alertCount: record.alertCount,
+    });
+  }
+}
+
+/** Close an open unmatched record now that the payer has a profile. */
+async function markResolved(result: ReconcileResult, email: string): Promise<void> {
+  const open = await prisma.unmatchedPayment.findFirst({
+    where: { email, resolvedAt: null },
+    select: { id: true },
+  });
+  if (!open) return;
+  await prisma.unmatchedPayment.update({ where: { id: open.id }, data: { resolvedAt: new Date() } });
+  result.resolved.push(email);
 }
 
 /**
@@ -50,7 +123,7 @@ export async function reconcileStripePayments(opts: {
   lookbackDays?: number;
 } = {}): Promise<ReconcileResult> {
   const { write = false, autoOnboard = false, lookbackDays = 120 } = opts;
-  const result: ReconcileResult = { scanned: 0, granted: [], onboarded: [], unmatched: [], errors: [] };
+  const result: ReconcileResult = { scanned: 0, granted: [], onboarded: [], unmatched: [], toAlert: [], resolved: [], errors: [] };
 
   const stripe = stripeClient();
   if (!stripe) {
@@ -61,7 +134,7 @@ export async function reconcileStripePayments(opts: {
   // Who is paying, according to Stripe? Two sources, because the two plan
   // shapes leave different traces: subscriptions for monthly/annual, bare
   // charges for the one-off bundle bought through a payment link.
-  const payers = new Map<string, { plan: string; reason: string; customerId: string | null; subscriptionId: string | null; paidAt: Date }>();
+  const payers = new Map<string, { plan: string; reason: string; customerId: string | null; subscriptionId: string | null; paidAt: Date; amount: number | null }>();
 
   try {
     const subs = await stripe.subscriptions.list({ limit: 100, status: 'all', expand: ['data.customer'] });
@@ -76,6 +149,7 @@ export async function reconcileStripePayments(opts: {
         customerId: typeof customer === 'string' ? customer : customer?.id ?? null,
         subscriptionId: s.id,
         paidAt: new Date(s.created * 1000),
+        amount: s.items.data[0]?.price?.unit_amount != null ? s.items.data[0].price.unit_amount / 100 : null,
       });
     }
   } catch (err: any) {
@@ -95,6 +169,7 @@ export async function reconcileStripePayments(opts: {
         customerId: typeof ch.customer === 'string' ? ch.customer : null,
         subscriptionId: null,
         paidAt: new Date(ch.created * 1000),
+        amount: ch.amount / 100,
       });
     }
   } catch (err: any) {
@@ -105,21 +180,35 @@ export async function reconcileStripePayments(opts: {
 
   for (const [email, payer] of payers) {
     try {
+      // Case-insensitive: Stripe emails are lowercased above, but a profile
+      // written by any other path may not be, and Postgres `=` is exact.
       let profile = await prisma.candidateProfile.findFirst({
-        where: { email },
+        where: { email: { equals: email, mode: 'insensitive' } },
         select: { userId: true, plan: true, planStatus: true, accessExpiresAt: true },
       });
 
       if (!profile) {
-        if (!autoOnboard) { result.unmatched.push(email); continue; }
+        if (!autoOnboard) {
+          result.unmatched.push(email);
+          if (write) await noteUnmatched(result, email, payer);
+          continue;
+        }
         const onboard = await onboardPaidCustomer({ email, stripeCustomerId: payer.customerId });
         result.onboarded.push(email);
         profile = await prisma.candidateProfile.findFirst({
           where: { userId: onboard.userId },
           select: { userId: true, plan: true, planStatus: true, accessExpiresAt: true },
         });
-        if (!profile) { result.unmatched.push(email); continue; }
+        if (!profile) {
+          result.unmatched.push(email);
+          if (write) await noteUnmatched(result, email, payer);
+          continue;
+        }
       }
+
+      // They have an account now, so close out any open unmatched record —
+      // whether a human fixed it or they signed up themselves.
+      if (write) await markResolved(result, email);
 
       // Already correctly marked — nothing to do.
       const alreadyPaid = (profile.plan ?? 'free') !== 'free'

@@ -902,3 +902,27 @@ model SessionRegistration {
 
   @@index([sessionKey, createdAt])
 }
+
+/// A Stripe payment the reconciliation sweep could not tie to a JobHub
+/// account. Exists so the nightly sweep has a memory: without it the same
+/// unresolved payer generated a fresh admin alert every single night.
+model UnmatchedPayment {
+  id               String    @id @default(uuid())
+  email            String    @unique
+  plan             String?
+  amount           Float?
+  /// Human-readable Stripe provenance, e.g. "one-off charge ch_123 ($500.00)".
+  reason           String?
+  stripeCustomerId String?
+
+  firstSeenAt DateTime  @default(now())
+  lastSeenAt  DateTime  @updatedAt
+  /// When the admin was last emailed about this payer. Drives the re-nag
+  /// interval so an unresolved payer is raised weekly, not nightly.
+  alertedAt   DateTime?
+  alertCount  Int       @default(0)
+  /// Set the moment the sweep finds a matching profile. Never alerted again.
+  resolvedAt  DateTime?
+
+  @@index([resolvedAt, alertedAt])
+}

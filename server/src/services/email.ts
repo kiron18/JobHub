@@ -526,29 +526,47 @@ export async function sendAdminPaymentAlert(params: {
   userEmail: string;
   plan: string;
   subscriptionId: string;
+  /** Unmatched only: how long this payer has been outstanding. */
+  firstSeenAt?: Date;
+  /** Unmatched only: how many times this alert has now been sent. */
+  alertCount?: number;
 }): Promise<void> {
   if (!process.env.RESEND_API_KEY) return;
-  const { event, userEmail, plan, subscriptionId } = params;
+  const { event, userEmail, plan, subscriptionId, firstSeenAt, alertCount } = params;
 
   // A payment Stripe collected that we could NOT tie to a JobHub account
   // (e.g. a manually-created payment link with no userId metadata and an
   // email that matches no profile). Needs manual reconciliation — the
   // customer has paid but won't have access until granted.
   if (event === 'payment_unmatched') {
+    const outstandingDays = firstSeenAt
+      ? Math.max(0, Math.floor((Date.now() - firstSeenAt.getTime()) / 86400000))
+      : null;
+    const repeat = (alertCount ?? 1) > 1;
+
     await resend.emails.send({
       from: FROM_ADDRESS,
       to: ADMIN_EMAIL,
-      subject: `[JobHub] ⚠️ PAID BUT UNMATCHED — ${userEmail}`,
+      subject: repeat
+        ? `[JobHub] ⚠️ STILL UNRESOLVED (${outstandingDays}d) — ${userEmail}`
+        : `[JobHub] ⚠️ PAID BUT UNMATCHED — ${userEmail}`,
       text: [
         'A payment was collected but could NOT be matched to a JobHub account.',
-        'The customer has paid and will be capped until you grant access manually.',
+        'This customer has paid and has no way in until you create their account.',
         '',
         `Customer email: ${userEmail}`,
         `Plan / amount:  ${plan}`,
         `Reference:      ${subscriptionId}`,
+        ...(outstandingDays !== null ? [`Outstanding:    ${outstandingDays} day(s)`] : []),
         '',
-        'To grant access, run from server/:',
-        `  npx tsx src/scripts/grant_access.ts ${userEmail} three_month`,
+        'They have NO account, so this is not a grant_access case. Run from server/:',
+        `  npx tsx src/scripts/onboard_paid.ts ${userEmail}`,
+        '',
+        'That creates their login, opens 90 days of access, and emails them a',
+        'set-password link. Add --dry-run first to see it without sending.',
+        '',
+        'One reminder a week while this stays unresolved, then nothing once they',
+        'have an account.',
         '',
         `Stripe: https://dashboard.stripe.com/payments`,
       ].join('\n'),
