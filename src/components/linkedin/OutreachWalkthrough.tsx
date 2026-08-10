@@ -231,8 +231,10 @@ export const OutreachWalkthrough: React.FC = () => {
           color: warm.colors.textOnDeep, fontFamily: 'inherit',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <Eye size={13} color={warm.colors.accentGold} />
+        {/* flex-start, not center: the eyebrow wraps to two lines on mobile
+            and a vertically-centred icon then floats off the first line. */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 10 }}>
+          <Eye size={13} color={warm.colors.accentGold} style={{ flexShrink: 0, marginTop: 2 }} />
           <span style={{
             fontSize: 10, fontWeight: 800, letterSpacing: '0.14em',
             textTransform: 'uppercase', color: warm.colors.accentGold,
