@@ -3,6 +3,7 @@ import { Loader2, Copy, Check, ChevronDown, ChevronUp, UserCheck } from 'lucide-
 import { toast } from 'sonner';
 import api from '../../lib/api';
 import { warm } from '../../lib/theme/warmTokens';
+import { OutreachWalkthrough } from './OutreachWalkthrough';
 import type { OutreachData } from './types';
 
 const COACHING_TIPS: Record<keyof Omit<OutreachData, 'questionSuggestions'>, string> = {
@@ -243,6 +244,10 @@ export const OutreachTemplates: React.FC = () => {
 
   return (
     <div>
+      {/* The annotated transcript. Sits first because the shape it teaches is
+          what makes every generated draft below actually work. */}
+      <OutreachWalkthrough />
+
       {/* Brief strategy overview — always visible, sets up the playbook below */}
       <div style={{
         background: warm.colors.bgAlt,
