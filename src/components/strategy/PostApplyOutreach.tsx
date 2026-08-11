@@ -21,8 +21,13 @@ import { Check, ChevronDown, ChevronUp, Copy, Linkedin, Mail, Search } from 'luc
 import { toast } from 'sonner';
 import { warm } from '../../lib/theme/warmTokens';
 
-/** LinkedIn rejects a connection note over 300 characters. */
-const LINKEDIN_NOTE_LIMIT = 300;
+/**
+ * LinkedIn caps connection notes at 200 characters on a free account and 300 on
+ * Premium. Most of this audience is on free, so 200 is the limit we hold people
+ * to: a note written to 200 sends for everyone, a note written to 300 silently
+ * fails for the majority.
+ */
+const LINKEDIN_NOTE_LIMIT = 200;
 
 /**
  * Placeholders are written in [brackets] so they survive a copy to plain text.

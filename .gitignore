@@ -65,3 +65,7 @@ dist-ssr
 *.sw?
 
 .vercel
+
+# marketing capture output
+marketing/
+.capture-profile/

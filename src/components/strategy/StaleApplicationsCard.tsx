@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, Copy, Check, X, ExternalLink } from 'lucide-react';
+import { Clock, Copy, Check, X, ExternalLink, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../../lib/api';
 import { warm } from '../../lib/theme/warmTokens';
+import { renderTemplate, PRE_SEND_WARNING } from '../../lib/emailTemplates';
 
 interface JobApplicationLite {
   id: string;
@@ -25,36 +26,6 @@ function daysSince(iso: string | null): number | null {
   return Math.floor(diffMs / (24 * 60 * 60 * 1000));
 }
 
-function generateFollowUpEmail(company: string, days: number): string {
-  const templates = [
-    `Subject: Following up on my application
-
-Hi [Hiring Manager Name],
-
-I hope this message finds you well. I wanted to follow up on my application for a role at ${company} that I submitted ${days} days ago.
-
-I'm very interested in the opportunity and would welcome the chance to discuss how my skills could contribute to your team. If there's any additional information I can provide to support my application, please let me know.
-
-Thank you for your time and consideration.
-
-Best regards,
-[Your Name]`,
-
-    `Subject: Application follow-up
-
-Hello,
-
-I hope you're doing well. I'm writing to follow up on my recent application to ${company}, submitted ${days} days ago.
-
-I remain enthusiastic about the opportunity to join your team and would appreciate any updates you might be able to share regarding the hiring process.
-
-Please don't hesitate to reach out if you need any further information from me.
-
-Kind regards,
-[Your Name]`,
-  ];
-  return templates[Math.floor(Math.random() * templates.length)];
-}
 
 interface FollowUpModalProps {
   job: JobApplicationLite;
@@ -64,7 +35,15 @@ interface FollowUpModalProps {
 
 function FollowUpModal({ job, days, onClose }: FollowUpModalProps) {
   const [copied, setCopied] = useState(false);
-  const email = generateFollowUpEmail(job.company, days);
+
+  // Same canonical template the tracker uses, so the app, the course and the
+  // free swipe file all say the same thing. Profile fills in the sign-off.
+  const { data: profile } = useQuery({
+    queryKey: ['profile'],
+    queryFn: async () => (await api.get('/profile')).data,
+    staleTime: 5 * 60 * 1000,
+  });
+  const email = renderTemplate('application-followup', job, profile).full;
 
   async function handleCopy() {
     await navigator.clipboard.writeText(email);
@@ -147,6 +126,22 @@ function FollowUpModal({ job, days, onClose }: FollowUpModalProps) {
             }}>
               {email}
             </pre>
+          </div>
+
+          <div style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 8,
+            padding: '10px 12px',
+            marginBottom: 12,
+            borderRadius: 10,
+            background: 'rgba(197, 160, 89, 0.12)',
+            border: '1px solid rgba(197, 160, 89, 0.40)',
+          }}>
+            <AlertCircle size={15} style={{ color: '#8A6400', flexShrink: 0, marginTop: 1 }} />
+            <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5, color: warm.colors.textSecondary }}>
+              {PRE_SEND_WARNING}
+            </p>
           </div>
 
           <button

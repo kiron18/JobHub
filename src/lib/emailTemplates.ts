@@ -1,5 +1,3 @@
-import type { JobApplication } from '../components/tracker/types';
-
 export type EmailTemplateId =
   | 'application-followup'
   | 'interview-thankyou';
@@ -9,6 +7,25 @@ export interface UserProfileLite {
   phone?: string | null;
   email?: string | null;
 }
+
+/**
+ * The minimum a template needs off a job. Kept structural so both the full
+ * JobApplication and the lighter shapes used elsewhere satisfy it.
+ */
+export interface JobContextLite {
+  title: string;
+  company: string;
+  dateApplied: string | null;
+}
+
+/**
+ * Shown anywhere a template is copied. Templates prefill what we know for
+ * certain (name, company, role, date) and deliberately leave the judgement
+ * calls as placeholders, so the user must read before sending.
+ */
+export const PRE_SEND_WARNING =
+  'Check before you send. Anything still in [square brackets] needs your input, ' +
+  'and the details we filled in for you are worth a glance too.';
 
 export interface RenderedEmail {
   subject: string;
@@ -20,17 +37,15 @@ export interface RenderedEmail {
 // ── Raw templates (canonical source) ──────────────────────────────────────
 
 const RAW_TEMPLATES: Record<EmailTemplateId, { subject: string; body: string }> = {
+  // Kiron's script, module 05 at 5:18, word for word. Two sentences on purpose:
+  // the doctrine is that a follow-up confirms the application arrived and does
+  // NOT ask for the job. Do not pad this out. Every extra line is a line that can
+  // be held against the candidate, and none of them make the email work better.
   'application-followup': {
-    subject: 'Following Up — [Job Title] Application',
+    subject: 'Application for [Job Title], submitted [date]',
     body: `Hi [Hiring Manager Name],
 
-I wanted to follow up on my application for the [Job Title] role at [Company], submitted on [date].
-
-I remain very interested in the position, particularly because of [specific reason — e.g., "your team's work on [project/product] aligns closely with my background in [area]"].
-
-Please let me know if you need any additional information to support my application. I'm happy to provide references, work samples, or answer any questions at your convenience.
-
-Thank you for your consideration.
+I submitted an application for [Job Title] at [Company] on [date] and wanted to check if it arrived. I remain very interested, happy to provide any additional information if helpful.
 
 Kind regards,
 [Your Name]
@@ -80,7 +95,7 @@ function fmtDate(dateStr: string | null): string {
  */
 export function renderTemplate(
   id: EmailTemplateId,
-  job: JobApplication,
+  job: JobContextLite,
   profile?: UserProfileLite,
 ): RenderedEmail {
   const raw = RAW_TEMPLATES[id];

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Copy, CheckCircle, ChevronDown, ChevronUp, Mail } from 'lucide-react';
+import { Copy, CheckCircle, ChevronDown, ChevronUp, Mail, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { warm } from '../lib/theme/warmTokens';
 import { SectionIntroBanner } from './processStrip';
-import { getRawTemplate } from '../lib/emailTemplates';
+import { getRawTemplate, PRE_SEND_WARNING } from '../lib/emailTemplates';
 
 interface Template {
     id: string;
@@ -150,7 +150,7 @@ Would love to follow your work as I navigate this. No agenda — just curious ho
 
 [Your first name]
 
-(Tip: LinkedIn connection requests are capped at ~300 characters. Trim if needed. Lead with the specific thing about them — never with a generic "I'd love to connect.")`,
+(Tip: LinkedIn caps connection notes at 200 characters on a free account, 300 on Premium. Write to 200 and it sends either way. Lead with the specific thing about them — never with a generic "I'd love to connect.")`,
     },
     {
         id: 'linkedin-post-acceptance',
@@ -369,6 +369,18 @@ const TemplateCard: React.FC<TemplateCardProps> = ({ template }) => {
                         style={{ overflow: 'hidden', borderTop: `1px solid ${warm.colors.borderWhisper}` }}
                     >
                         <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            <div style={{
+                                display: 'flex', alignItems: 'flex-start', gap: 7,
+                                padding: '8px 10px', borderRadius: 8,
+                                background: 'rgba(197, 160, 89, 0.12)',
+                                border: '1px solid rgba(197, 160, 89, 0.40)',
+                            }}>
+                                <AlertCircle size={13} style={{ color: '#8A6400', flexShrink: 0, marginTop: 1 }} />
+                                <p style={{ margin: 0, fontSize: 11.5, lineHeight: 1.45, color: warm.colors.textSecondary }}>
+                                    {PRE_SEND_WARNING}
+                                </p>
+                            </div>
+
                             {/* Subject line */}
                             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                                 <div style={{ flex: 1, minWidth: 0 }}>
