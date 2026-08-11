@@ -7,18 +7,25 @@ import { OutreachWalkthrough } from './OutreachWalkthrough';
 import type { OutreachData } from './types';
 
 const COACHING_TIPS: Record<keyof Omit<OutreachData, 'questionSuggestions'>, string> = {
-  connectionNote: 'The specificity of the reference is what makes it work. Generic openers get ignored.',
-  firstMessage: 'A precise question about something they actually know is hard to walk away from.',
+  connectionNote: 'The specificity of the reference is what makes it work. Generic openers get ignored. No ask here: the connection request is already an ask.',
+  firstMessage: 'This is the one that gets the call. It says plainly what you are after and asks for the 15 minutes in the same breath, so nothing about it feels like a bait and switch later.',
   afterConversationFollowUp: 'Shows you were paying attention. Plants a seed of reciprocity without being transactional.',
-  directAsk: 'Send this whenever the conversation has earned it — could be your 2nd message, could be your 4th. Ask for a quick Zoom or Google Meet call, never a phone number. Make sure you actually ask — a conversation that drifts with no ask is a wasted opportunity.',
+  directAsk: 'Your second run at the call, for when the first message did not land it. Reference something from the conversation so it does not read as a copy-paste, and make the ask explicitly.',
 };
 
 const TEMPLATE_LABELS: Record<keyof Omit<OutreachData, 'questionSuggestions'>, string> = {
   connectionNote: 'Connection Request Note',
-  firstMessage: 'First Message After Connecting',
+  firstMessage: 'First Message After Connecting (asks for the call)',
   afterConversationFollowUp: 'After-Conversation Follow-Up',
-  directAsk: 'Ask for a Call (Zoom / Google Meet)',
+  directAsk: 'Ask Again for the Call (if the first message did not land it)',
 };
+
+/* LinkedIn caps the connection note at 200 characters on a free account and 300
+   on Premium. We generate to 200 because that is what most people have; the
+   toggle just lifts the counter for anyone who actually pays for LinkedIn. */
+const NOTE_LIMIT_FREE = 200;
+const NOTE_LIMIT_PREMIUM = 300;
+const NOTE_PREMIUM_KEY = 'agc.linkedinNotePremium';
 
 function TemplateCard({ label, content, tip, charLimit, editableNote, logEnabled, onLogCopy, onContentChange }: {
   label: string;
@@ -137,6 +144,10 @@ export const OutreachTemplates: React.FC = () => {
   const [outreach, setOutreach] = useState<OutreachData | null>(null);
   const [genId, setGenId] = useState(0);
   const [showPlaybook, setShowPlaybook] = useState(false);
+  // Whether this person pays for LinkedIn, which is the only thing separating a
+  // 200-character connection note from a 300-character one. Nothing on our side
+  // can detect it, so they tell us once and we remember the answer.
+  const [notePremium, setNotePremium] = useState(false);
   const [logging, setLogging] = useState(false);
   const [loggedThisGen, setLoggedThisGen] = useState(false);
   const [outreachLogId, setOutreachLogId] = useState<string | null>(null);
@@ -146,7 +157,7 @@ export const OutreachTemplates: React.FC = () => {
   const [nextTouchNumber, setNextTouchNumber] = useState(2);
 
   // Live draft bodies, mirrored from the template cards so edits are what
-  // get persisted — not the original generated text.
+  // get persisted, not the original generated text.
   const draftsRef = useRef({ connectionNote: '', firstMessage: '', followUpDraft: '', directAskDraft: '' });
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -162,6 +173,18 @@ export const OutreachTemplates: React.FC = () => {
   }
 
   useEffect(() => () => { if (saveTimer.current) clearTimeout(saveTimer.current); }, []);
+
+  useEffect(() => {
+    try { setNotePremium(localStorage.getItem(NOTE_PREMIUM_KEY) === '1'); } catch { /* private mode: stay on the free limit */ }
+  }, []);
+
+  function toggleNotePremium() {
+    setNotePremium(v => {
+      const next = !v;
+      try { localStorage.setItem(NOTE_PREMIUM_KEY, next ? '1' : '0'); } catch { /* non-blocking */ }
+      return next;
+    });
+  }
 
   function trackDraft(field: keyof typeof draftsRef.current) {
     return (body: string) => {
@@ -185,9 +208,9 @@ export const OutreachTemplates: React.FC = () => {
       setOutreachLogId(data.entry.id);
       setLoggedThisGen(true);
       setNextTouchNumber(2);
-      toast.success(`Saved — ${targetFirstName} at ${targetCompany}`);
+      toast.success(`Saved: ${targetFirstName} at ${targetCompany}`);
     } catch {
-      toast.error('Could not save this outreach — try again.');
+      toast.error('Could not save this outreach. Try again.');
     } finally {
       setLogging(false);
     }
@@ -224,7 +247,7 @@ export const OutreachTemplates: React.FC = () => {
         // PAYMENTS PAUSED: no longer redirecting to pricing - unlimited access active
         toast.error('Service temporarily unavailable. Please try again later.');
       } else {
-        toast.error('Generation failed — try again.');
+        toast.error('Generation failed. Try again.');
       }
     } finally {
       setGenerating(false);
@@ -248,7 +271,7 @@ export const OutreachTemplates: React.FC = () => {
           what makes every generated draft below actually work. */}
       <OutreachWalkthrough />
 
-      {/* Brief strategy overview — always visible, sets up the playbook below */}
+      {/* Brief strategy overview: always visible, sets up the playbook below */}
       <div style={{
         background: warm.colors.bgAlt,
         border: `1px solid ${warm.colors.borderWhisper}`,
@@ -268,13 +291,13 @@ export const OutreachTemplates: React.FC = () => {
           The outreach strategy
         </p>
         <p style={{ margin: '0 0 6px', fontSize: 13, lineHeight: 1.6, color: warm.colors.textPrimary, fontWeight: 600 }}>
-          Don't ask for a job. Become someone people are glad they know — then ask for a quick Zoom or Google Meet call.
+          Don't ask for a job. Become someone people are glad they know, then ask for a quick Zoom or Google Meet call.
         </p>
         <p style={{ margin: '0 0 6px', fontSize: 12.5, lineHeight: 1.6, color: warm.colors.textSecondary }}>
-          Fill in the person you want to reach below. We'll generate four templates: a connection note, a first message after they accept, an after-conversation follow-up, and an ask for a quick call. Send the connection note and first message in order — after that, you decide when the conversation has earned the call ask. Most people get there by message 3; don't wait past that if it's going well.
+          Fill in the person you want to reach below. We'll generate four templates: a connection note, the first message after they accept, an after-conversation follow-up, and a second run at the call ask. Send the connection note, then the first message once they accept. The first message is the one that asks for the call, so you are not sitting on the ask for three rounds hoping the moment feels right.
         </p>
         <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6, color: warm.colors.textSecondary }}>
-          Stay curious and playful in these conversations — this is focused play and socialising, not a transaction. Think of it as relationship building, not career growth. The career growth is a byproduct of strong relationships.
+          Stay curious and playful in these conversations: this is focused play and socialising, not a transaction. Think of it as relationship building, not career growth. The career growth is a byproduct of strong relationships.
         </p>
       </div>
 
@@ -293,7 +316,7 @@ export const OutreachTemplates: React.FC = () => {
             color: showPlaybook ? warm.colors.textPrimary : '#f87171', fontWeight: 700, fontSize: 14,
           }}
         >
-          Before you start — The 7-Step Networking Playbook
+          Before you start: The 7-Step Networking Playbook
           {showPlaybook ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </button>
         {showPlaybook && (
@@ -303,13 +326,13 @@ export const OutreachTemplates: React.FC = () => {
               LinkedIn networking is not about asking people for jobs. It is about becoming someone people are glad they know. Give before you ask.
             </blockquote>
             <ol style={{ paddingLeft: 20, margin: 0 }}>
-              <li><strong>Find the right people</strong> — target professionals with 400–500 connections who post regularly. Avoid mega-accounts.</li>
-              <li><strong>Comment before you connect</strong> — a genuine, specific comment makes you familiar before your request arrives.</li>
-              <li><strong>Send a connection note</strong> — reference something real, keep it under 200 characters.</li>
-              <li><strong>First message after connecting</strong> — research their company, ask one specific question.</li>
-              <li><strong>Have the conversation</strong> — prepare 3 specific questions, listen more than you talk, do not ask for a job.</li>
-              <li><strong>Stay on their radar</strong> — thoughtful comments 1–2x/month, share relevant articles.</li>
-              <li><strong>Ask for the call</strong> — a quick Zoom or Google Meet, once there's real back-and-forth. Don't wait for a fixed number of messages — most people get there by message 3.</li>
+              <li><strong>Find the right people.</strong> Target professionals with 400-500 connections who post regularly. Avoid mega-accounts.</li>
+              <li><strong>Comment before you connect.</strong> A genuine, specific comment makes you familiar before your request arrives.</li>
+              <li><strong>Send a connection note.</strong> Reference something real, keep it under 200 characters, and don't put an ask in it. The connection request is already an ask.</li>
+              <li><strong>First message after connecting.</strong> Say plainly that you're moving into this field, then ask for the 15-20 minute call. This is the message that books it.</li>
+              <li><strong>Have the conversation.</strong> Prepare 3 specific questions, listen more than you talk, do not ask for a job. Close by asking for a name, not a referral.</li>
+              <li><strong>Follow up within 24 hours,</strong> then again in 3-4 weeks with something you actually did off the back of their advice. That second one is where referrals come from.</li>
+              <li><strong>Stay on their radar.</strong> Thoughtful comments 1-2x/month, share relevant articles.</li>
             </ol>
           </div>
         )}
@@ -395,7 +418,7 @@ export const OutreachTemplates: React.FC = () => {
           }}>
             <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6, color: warm.colors.textSecondary }}>
               <strong style={{ color: warm.colors.textPrimary }}>These are starting points, not scripts.</strong>{' '}
-              Edit them until they sound like something you would actually say — a message in your own voice lands better than a polished one that isn't. Authenticity beats "perfection".
+              Edit them until they sound like something you would actually say. A message in your own voice lands better than a polished one that isn't. Authenticity beats "perfection".
             </p>
           </div>
 
@@ -404,12 +427,37 @@ export const OutreachTemplates: React.FC = () => {
             label={TEMPLATE_LABELS.connectionNote}
             content={outreach.connectionNote}
             tip={COACHING_TIPS.connectionNote}
-            charLimit={200}
+            charLimit={notePremium ? NOTE_LIMIT_PREMIUM : NOTE_LIMIT_FREE}
             onContentChange={trackDraft('connectionNote')}
           />
 
+          {/* The note is written to 200 because that's the free-account cap.
+              Premium gets 300, but only the user knows which they have. */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap',
+            margin: '-4px 0 14px', padding: '0 2px',
+          }}>
+            <label style={{
+              display: 'inline-flex', alignItems: 'center', gap: 7,
+              fontSize: 12, color: warm.colors.textSecondary, cursor: 'pointer',
+            }}>
+              <input
+                type="checkbox"
+                checked={notePremium}
+                onChange={toggleNotePremium}
+                style={{ width: 14, height: 14, accentColor: '#0A66C2', cursor: 'pointer' }}
+              />
+              I have LinkedIn Premium
+            </label>
+            <span style={{ fontSize: 11.5, color: warm.colors.textMuted }}>
+              {notePremium
+                ? 'Premium lets you write up to 300 characters in a connection note.'
+                : 'Free accounts cap connection notes at 200 characters.'}
+            </span>
+          </div>
+
           {/* Save point. Sits right after the connection note because that is
-              the only message you can send before they accept — everything
+              the only message you can send before they accept. Everything
               below is a draft you'll come back to, sometimes days later. */}
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
@@ -419,7 +467,7 @@ export const OutreachTemplates: React.FC = () => {
           }}>
             <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5, color: warm.colors.textSecondary }}>
               {loggedThisGen
-                ? `Saved. All four drafts are stored against ${targetFirstName || 'this person'} in the Tracker tab — when they accept, open the Tracker to copy your first message. Edits here keep saving automatically.`
+                ? `Saved. All four drafts are stored against ${targetFirstName || 'this person'} in the Tracker tab. When they accept, open the Tracker to copy your first message. Edits here keep saving automatically.`
                 : 'Sent the connection request? Save it now. All four drafts are stored so you can move on to the next person without losing this one.'}
             </p>
             <button
@@ -455,7 +503,7 @@ export const OutreachTemplates: React.FC = () => {
             label={TEMPLATE_LABELS.afterConversationFollowUp}
             content={outreach.afterConversationFollowUp}
             tip={COACHING_TIPS.afterConversationFollowUp}
-            editableNote="Send within 24 hours of any real exchange — a chat, a call, or a message thread. Fill in [THEIR_POINT] with something specific they actually said."
+            editableNote="Send within 24 hours of any real exchange: a chat, a call, or a message thread. Fill in [THEIR_POINT] with something specific they actually said."
             logEnabled={loggedThisGen}
             onLogCopy={logNextTouch}
             onContentChange={trackDraft('followUpDraft')}
@@ -465,7 +513,7 @@ export const OutreachTemplates: React.FC = () => {
             label={TEMPLATE_LABELS.directAsk}
             content={outreach.directAsk}
             tip={COACHING_TIPS.directAsk}
-            editableNote="Send this whenever the conversation has earned it — it doesn't have to be last. Ask for a quick Zoom or Google Meet call, never a phone number. Do not skip it — make the ask."
+            editableNote="Only needed if the first message didn't land the call. Wait until the conversation has moved on a bit, then ask again plainly. Zoom or Google Meet, never a phone number, and no reference to them not having replied."
             logEnabled={loggedThisGen}
             onLogCopy={logNextTouch}
             onContentChange={trackDraft('directAskDraft')}

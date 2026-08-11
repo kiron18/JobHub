@@ -5,6 +5,19 @@ import { callClaude } from '../services/llm';
 import { parseLLMJson } from '../utils/parseLLMResponse';
 import { EXEMPT_EMAILS } from './stripe';
 
+/**
+ * Safety net for the no-dash rule in the prompt rules. The old version replaced
+ * every dash with a bare "-", which left LinkedIn drafts reading "new markets -
+ * especially in a category...". Number ranges keep the hyphen; a dash used as a
+ * clause break becomes a comma, which is what the sentence actually wanted.
+ */
+function stripDashes(text: string): string {
+  return text
+    .replace(/(\d)\s*[–—]\s*(\d)/g, '$1-$2')
+    .replace(/\s*[–—]\s*/g, ', ')
+    .replace(/,\s*,/g, ',');
+}
+
 async function requirePaid(_req: AuthRequest, _res: any): Promise<boolean> {
   // PAYMENTS PAUSED: unlimited access for all users during pricing rework
   // (mirrors accessControl.ts#checkAccess, which every other gate already uses).
@@ -132,7 +145,7 @@ Skills: ${profile.skills ?? 'Not provided'}
 
 ## Work Experience
 ${profile.experience
-  .map(e => `${e.role} at ${e.company} (${e.startDate} – ${e.endDate ?? 'Present'})\n${e.description ?? ''}`)
+  .map(e => `${e.role} at ${e.company} (${e.startDate} to ${e.endDate ?? 'Present'})\n${e.description ?? ''}`)
   .join('\n\n')}
 
 ## Top Achievements
@@ -142,7 +155,7 @@ ${profile.achievements
   .join('\n')}
 
 ## Education
-${profile.education.map(e => `${e.degree} — ${e.institution}${e.year ? ` (${e.year})` : ''}`).join('\n')}
+${profile.education.map(e => `${e.degree}, ${e.institution}${e.year ? ` (${e.year})` : ''}`).join('\n')}
 
 ## Diagnostic Report (first 3000 chars)
 ${diagnostic?.reportMarkdown?.substring(0, 3000) ?? 'Not available'}
@@ -152,7 +165,7 @@ ${targetRole ? `## Target Role\nThe candidate is targeting: ${targetRole}` : ''}
 Return ONLY valid JSON matching the schema in the rules above.`;
 
     const { content } = await callClaude(prompt, true);
-    const cleaned = content.replace(/\u2014/g, '-').replace(/\u2013/g, '-');
+    const cleaned = stripDashes(content);
     const parsed = parseLLMJson(cleaned);
     // Hard-enforce character limits the LLM sometimes ignores
     if (parsed?.openToWork?.length > 150) parsed.openToWork = parsed.openToWork.slice(0, 147) + '...';
@@ -207,7 +220,7 @@ ${specificQuestion ? `Specific question candidate wants to ask: ${specificQuesti
 Return ONLY valid JSON matching the schema in the rules above.`;
 
     const { content } = await callClaude(prompt, true);
-    const cleaned = content.replace(/\u2014/g, '-').replace(/\u2013/g, '-');
+    const cleaned = stripDashes(content);
     return res.json(parseLLMJson(cleaned));
   } catch (err: any) {
     console.error('[LinkedIn /outreach]', err.message);

@@ -57,9 +57,9 @@ export const LinkedInPage: React.FC = () => {
       toast.success('LinkedIn profile generated');
     } catch (err: any) {
       if (err?.response?.status === 402) {
-        toast.error('LinkedIn generation needs a paid plan — contact us to upgrade.');
+        toast.error('LinkedIn generation needs a paid plan. Contact us to upgrade.');
       } else {
-        toast.error('Generation failed — try again.');
+        toast.error('Generation failed. Try again.');
       }
     } finally {
       setGenerating(false);
@@ -77,9 +77,9 @@ export const LinkedInPage: React.FC = () => {
       setProfileData(prev => prev ? { ...prev, [key]: data[key] } : data);
     } catch (err: any) {
       if (err?.response?.status === 402) {
-        toast.error('LinkedIn generation needs a paid plan — contact us to upgrade.');
+        toast.error('LinkedIn generation needs a paid plan. Contact us to upgrade.');
       } else {
-        toast.error('Regeneration failed — try again.');
+        toast.error('Regeneration failed. Try again.');
       }
     } finally {
       setRegeneratingSection(null);
@@ -111,7 +111,7 @@ export const LinkedInPage: React.FC = () => {
           LinkedIn Hub
         </h1>
         <p style={{ fontSize: 14, color: warm.colors.textSecondary, margin: 0 }}>
-          Profile · Outreach · Tracker · Local Experience · Headshot · Banner — one cohesive system
+          Profile · Outreach · Tracker · Local Experience · Headshot · Banner · one cohesive system
         </p>
       </div>
 

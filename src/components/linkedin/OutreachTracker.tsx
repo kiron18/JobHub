@@ -191,7 +191,7 @@ function DraftRow({
   );
 }
 
-// A message already sent that didn't come from a template. Kept read-only —
+// A message already sent that didn't come from a template. Kept read-only:
 // rewriting history would make the thread log untrustworthy.
 function ReadOnlyMessage({ body, sentAt }: { body: string; sentAt?: string }) {
   const [copied, setCopied] = useState(false);
@@ -234,7 +234,7 @@ function ReadOnlyMessage({ body, sentAt }: { body: string; sentAt?: string }) {
   );
 }
 
-// Log a message that wasn't generated here — a reply typed straight into
+// Log a message that wasn't generated here, a reply typed straight into
 // LinkedIn. Without this the thread log has holes, so coming back to see what
 // you last said to someone doesn't work.
 function AddMessageRow({ onAdd, personName }: { onAdd: (body: string) => Promise<void>; personName: string }) {
@@ -371,12 +371,12 @@ function EntryCard({
 
   const drafts = [
     { field: 'connectionNote', label: 'Connection request note', value: entry.connectionNote, hint: undefined },
-    { field: 'firstMessage', label: 'First message after connecting', value: entry.firstMessage, hint: 'Send this once they accept your request.' },
+    { field: 'firstMessage', label: 'First message after connecting', value: entry.firstMessage, hint: 'Send this once they accept your request. It asks for the call.' },
     { field: 'followUpDraft', label: 'After-conversation follow-up', value: entry.followUpDraft, hint: 'Send within 24 hours of any real exchange.' },
-    { field: 'directAskDraft', label: 'Ask for a call', value: entry.directAskDraft, hint: 'Send whenever the conversation has earned it.' },
+    { field: 'directAskDraft', label: 'Ask again for the call', value: entry.directAskDraft, hint: 'Only if the first message did not land the call.' },
   ].filter((d) => (d.value ?? '').trim().length > 0);
 
-  // Messages already sent that didn't come from one of the four templates —
+  // Messages already sent that didn't come from one of the four templates:
   // ad-hoc replies logged by hand. Shown so the thread with this person is
   // complete and copy-pasteable when they write back.
   const draftBodies = new Set(drafts.map((d) => d.value.trim()));
@@ -437,6 +437,40 @@ function EntryCard({
         </div>
       )}
 
+      {/* Call prep. Shown on REPLIED because that's when a call is being
+          arranged; CALL_BOOKED means it already happened, which is too late to
+          prep for. The name-not-a-job ask is the whole point of the call and it
+          otherwise only lives inside a collapsed panel on the Outreach tab. */}
+      {entry.status === 'REPLIED' && (
+        <div style={{
+          marginTop: 12,
+          borderLeft: '2px solid #a78bfa',
+          background: 'rgba(167,139,250,0.07)',
+          borderRadius: '0 10px 10px 0',
+          padding: '11px 14px',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+            <Video size={12} color="#a78bfa" />
+            <span style={{
+              fontSize: 10, fontWeight: 800, letterSpacing: '0.1em',
+              textTransform: 'uppercase', color: '#a78bfa',
+            }}>
+              If this turns into a call
+            </span>
+          </div>
+          <p style={{ margin: '0 0 6px', fontSize: 12.5, lineHeight: 1.6, color: warm.colors.textSecondary }}>
+            Open by saying you're not there to ask for a job. Then let them talk for most of it:
+            if you're speaking more than a third of the time, it's gone wrong.
+          </p>
+          <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6, color: warm.colors.textSecondary }}>
+            <strong style={{ color: warm.colors.textPrimary }}>Close by asking for a name, not a job.</strong>{' '}
+            "Is there anyone else you think I should be talking to?" A referral is a big ask for
+            someone who met you 15 minutes ago. A name costs them nothing, and every name turns
+            one conversation into two.
+          </p>
+        </div>
+      )}
+
       {/* Action buttons */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
         {showRepliedButton && (
@@ -471,7 +505,7 @@ function EntryCard({
             <button
               onClick={() => handleStatusChange('CALL_BOOKED')}
               disabled={!!updating}
-              title="Zoom or Google Meet — mark this once the call has actually happened"
+              title="Zoom or Google Meet. Mark this once the call has actually happened"
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -550,7 +584,7 @@ function EntryCard({
         )}
       </div>
 
-      {/* Saved drafts — the reason an outreach can be logged before the person
+      {/* Saved drafts: the reason an outreach can be logged before the person
           accepts. Everything written for them stays retrievable here. */}
       {(drafts.length > 0 || adHocSent.length > 0) && (
         <div style={{ marginTop: 14, borderTop: `1px solid ${warm.colors.borderWhisper}`, paddingTop: 12 }}>
@@ -904,7 +938,7 @@ export const OutreachTracker: React.FC = () => {
             >
               <p style={{ margin: 0, fontSize: 13.5, color: warm.colors.textSecondary, lineHeight: 1.6 }}>
                 Nothing logged yet. Generate templates in the Outreach tab, send your connection request and first
-                message, then tap "Log This Outreach" — it'll show up here.
+                message, then tap "Log This Outreach" and it'll show up here.
               </p>
             </div>
           ) : (

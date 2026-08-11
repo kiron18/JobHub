@@ -5,7 +5,7 @@ import { warm } from '../../lib/theme/warmTokens';
 /* ── The annotated transcript ──────────────────────────────────────────
    Sits above the generator on the Outreach tab. Collapsed by default, but
    loud enough that people want to open it: what the templates below can't
-   teach is the SHAPE — message → call → follow-up — and especially the two
+   teach is the SHAPE (message, then call, then follow-up), and especially the two
    places everyone drops it (the ask on the call, and the second follow-up
    weeks later). Reading this once makes every generated draft land better.  */
 
@@ -201,7 +201,7 @@ export const OutreachWalkthrough: React.FC = () => {
   const [seen, setSeen] = useState(true); // assume seen until localStorage says otherwise, so it never flashes
 
   useEffect(() => {
-    try { setSeen(localStorage.getItem(SEEN_KEY) === '1'); } catch { /* private mode — just show it quietly */ }
+    try { setSeen(localStorage.getItem(SEEN_KEY) === '1'); } catch { /* private mode: just show it quietly */ }
   }, []);
 
   function toggle() {
@@ -255,7 +255,7 @@ export const OutreachWalkthrough: React.FC = () => {
           margin: '0 0 14px', fontSize: 13.5, lineHeight: 1.65,
           color: 'rgba(250,247,242,0.82)', maxWidth: 560,
         }}>
-          Spy on a real one, start to finish — the message that got the call, the call itself,
+          Spy on a real one, start to finish: the message that got the call, the call itself,
           and the two follow-ups that turned a stranger into a referral. Annotated so you can
           see <em>why</em> every line is there.
         </p>
@@ -290,7 +290,7 @@ export const OutreachWalkthrough: React.FC = () => {
             {[
               ['1', 'The message', 'Gets you the call. Small ask, easy yes.'],
               ['2', 'The call', 'Builds the relationship. One specific ask at the end.'],
-              ['3', 'The follow-up', 'Where referrals are actually born — not on the call itself.'],
+              ['3', 'The follow-up', 'Where referrals are actually born, not on the call itself.'],
             ].map(([n, t, d]) => (
               <div key={n} style={{
                 display: 'flex', gap: 10, alignItems: 'center',
@@ -303,7 +303,7 @@ export const OutreachWalkthrough: React.FC = () => {
                   fontSize: 11, fontWeight: 800,
                 }}>{n}</span>
                 <span style={{ fontSize: 13, color: warm.colors.textSecondary }}>
-                  <strong style={{ color: warm.colors.textPrimary }}>{t}</strong> — {d}
+                  <strong style={{ color: warm.colors.textPrimary }}>{t}.</strong> {d}
                 </span>
               </div>
             ))}
@@ -326,7 +326,7 @@ export const OutreachWalkthrough: React.FC = () => {
             <p style={{ margin: '0 0 10px', fontSize: 13, lineHeight: 1.65, color: warm.colors.textSecondary }}>
               <strong style={{ color: warm.colors.textPrimary }}>Hiding your intent until the end.</strong>{' '}
               If you frame the whole thing as “just curious about your work” and only reveal at the
-              end that you're job hunting, sharp people notice the switch — and it feels like they
+              end that you're job hunting, sharp people notice the switch, and it feels like they
               were used for information. Be upfront early that you're exploring the space. The
               conversation can still be genuinely about learning from them.
             </p>
@@ -357,27 +357,27 @@ export const OutreachWalkthrough: React.FC = () => {
           <ChatFrame>
             <Bubble from="you" time="Tue 9:12 am">
               Hi Ananya, I saw your post about the demand forecasting model your team shipped last
-              month — the part about reworking the seasonality inputs was really interesting. I just
+              month, and the part about reworking the seasonality inputs was really interesting. I just
               finished a Master's in Data Science and I'm trying to break into supply chain analytics
               in Australia, so I'm doing a bit of a listening tour with people actually doing the work
               rather than just applying cold. Would you be open to a 15 minute call sometime in the
               next couple of weeks? Happy to work around your schedule.
             </Bubble>
             <Bubble from="them" time="Tue 6:40 pm">
-              Hi Rohan — sure, happy to. Thursday around 4 work for you?
+              Hi Rohan! Sure, happy to. Thursday around 4 work for you?
             </Bubble>
           </ChatFrame>
 
           <Why>
             Three things are doing the work here. It references something{' '}
             <strong>real and specific</strong> (not “great post”). It's{' '}
-            <strong>honest about the intent</strong> — “trying to break into supply chain analytics” —
+            <strong>honest about the intent</strong> (“trying to break into supply chain analytics”)
             without making it a job request. And the ask is <strong>15 minutes</strong>, which is
             small enough that saying yes costs her nothing.
           </Why>
 
           {/* ── ACT 2 ─────────────────────────────────────────────── */}
-          <ActHeading n="2" title="The call" sub="15–20 minutes. She should be talking for most of it." />
+          <ActHeading n="2" title="The call" sub="15-20 minutes. She should be talking for most of it." />
 
           <div style={{
             background: warm.colors.bgSurface, border: `1px solid ${warm.colors.borderWhisper}`,
@@ -394,9 +394,9 @@ export const OutreachWalkthrough: React.FC = () => {
 
             <div style={{ padding: '18px 16px 2px' }}>
               <Beat
-                time="1–2 min"
+                time="1-2 min"
                 title="Open by taking the awkwardness off the table"
-                lines={['Thanks so much for making time. Before we start, just so you know where I\'m coming from — I\'m not going to ask you for a job today. I\'m genuinely trying to understand how people actually break into this space and what the day-to-day is like. If anything comes up naturally where you think you could point me somewhere, I\'d love that, but that\'s not why I asked for this.']}
+                lines={['Thanks so much for making time. Before we start, just so you know where I\'m coming from: I\'m not going to ask you for a job today. I\'m genuinely trying to understand how people actually break into this space and what the day-to-day is like. If anything comes up naturally where you think you could point me somewhere, I\'d love that, but that\'s not why I asked for this.']}
               >
                 <Why>
                   One line, and you both relax. She stops bracing for the ask; you stop dreading
@@ -405,8 +405,8 @@ export const OutreachWalkthrough: React.FC = () => {
               </Beat>
 
               <Beat
-                time="8–10 min"
-                title="Her story — you're mostly listening"
+                time="8-10 min"
+                title="Her story: you're mostly listening"
                 lines={[
                   'How did you end up in supply chain analytics? Was that the plan from the start?',
                   'What does a normal week actually look like for you?',
@@ -415,14 +415,14 @@ export const OutreachWalkthrough: React.FC = () => {
               >
                 <Why>
                   If you're talking for more than a third of this call, it's gone wrong. People
-                  remember the conversations where <em>they</em> did the talking — and they refer
+                  remember the conversations where <em>they</em> did the talking, and they refer
                   the people they remember.
                 </Why>
               </Beat>
 
               <Beat
-                time="60–90 sec"
-                title="Your background — keep it tight"
+                time="60-90 sec"
+                title="Your background: keep it tight"
                 lines={['For context on me, I just finished a Master\'s focused on forecasting and time series work, and I built a couple of projects modelling inventory demand for a retail dataset. I\'m looking to move into an analyst role somewhere in logistics or retail supply chain.']}
               >
                 <Why>
@@ -432,14 +432,14 @@ export const OutreachWalkthrough: React.FC = () => {
               </Beat>
 
               <Beat
-                time="2–3 min"
-                title="The ask — a name, not a job"
-                lines={['This has been really useful. One thing that would help a lot — is there anyone else you think I should be talking to, either on your team or elsewhere, who\'s working on similar problems? I don\'t want to put you on the spot for a referral to your own company — even just a name or two of people worth reaching out to would mean a lot.']}
+                time="2-3 min"
+                title="The ask: a name, not a job"
+                lines={['This has been really useful. One thing that would help a lot: is there anyone else you think I should be talking to, either on your team or elsewhere, who\'s working on similar problems? I don\'t want to put you on the spot for a referral to your own company. Even just a name or two of people worth reaching out to would mean a lot.']}
               >
                 <Why label="Why this is the whole game">
                   This is the single highest-leverage line in the entire playbook. A referral is a
                   big thing to ask someone who met you 15 minutes ago. <strong>A name is not.</strong>{' '}
-                  She can answer it on the spot without spending any of her own credibility — and
+                  She can answer it on the spot without spending any of her own credibility, and
                   every name turns one conversation into two. Do this ten times and you have a
                   network, not ten dead ends.
                 </Why>
@@ -459,34 +459,34 @@ export const OutreachWalkthrough: React.FC = () => {
           </div>
 
           {/* ── ACT 3 ─────────────────────────────────────────────── */}
-          <ActHeading n="3" title="The follow-up" sub="Where most people drop the ball — and where referrals actually come from." />
+          <ActHeading n="3" title="The follow-up" sub="Where most people drop the ball, and where referrals actually come from." />
 
           <ChatFrame>
             <TimeDivider>Next morning</TimeDivider>
             <Bubble from="you" time="Fri 8:20 am">
               Hi Ananya, thank you again for the call yesterday. The point you made about how the
               forecasting models are only as good as the operations data feeding them really stuck
-              with me — going to read more into that before I keep building my own projects. If you
+              with me. Going to read more into that before I keep building my own projects. If you
               do think of anyone worth reaching out to, no rush at all, I really appreciated your
               time either way.
             </Bubble>
 
             <TimeDivider>Three weeks later · no reply yet</TimeDivider>
             <Bubble from="you" time="Mon 10:05 am">
-              Hi Ananya, hope things have been good. Small update on my end — I ended up building a
+              Hi Ananya, hope things have been good. Small update on my end: I ended up building a
               forecasting model on a public retail dataset after our chat, mainly inspired by what
               you said about operations data quality. Not asking for anything, just wanted to share
               since you were the reason I went down that path.
             </Bubble>
             <Bubble from="them" time="Mon 1:31 pm">
-              This is great, Rohan. Funny timing — we're about to open a junior analyst role. Send
+              This is great, Rohan. Funny timing! We're about to open a junior analyst role. Send
               me your CV and I'll put it in front of my manager.
             </Bubble>
           </ChatFrame>
 
           <Why label="Why the second message is the one that works">
             The first note is manners. The second one is the referral engine. It arrives weeks
-            later, asks for nothing, and proves you actually <em>did</em> something with her advice —
+            later, asks for nothing, and proves you actually <em>did</em> something with her advice,
             which is rare enough that it's memorable. Most referrals don't happen on the call. They
             happen the week a role opens up and you're the person she happens to be thinking about.
             Note also that “not asking for anything” is honest here, because Rohan was upfront about
@@ -506,12 +506,12 @@ export const OutreachWalkthrough: React.FC = () => {
               Sanity check before you send anything
             </p>
             {[
-              'Does the message reference something specific and real about them — not a generic compliment?',
+              'Does the message reference something specific and real about them, not a generic compliment?',
               'Am I honest about exploring opportunities, without making the ask about a job?',
               'On the call, are they talking more than I am?',
               'Is my ask specific enough that they could act on it in ten seconds?',
               'Do I have a follow-up ready to send within 24 hours?',
-              'Do I have a plan to come back in 3–4 weeks with something I actually did?',
+              'Do I have a plan to come back in 3-4 weeks with something I actually did?',
             ].map((item, i) => (
               <div key={i} style={{ display: 'flex', gap: 9, alignItems: 'flex-start', marginBottom: i === 5 ? 0 : 9 }}>
                 <span style={{
@@ -533,7 +533,7 @@ export const OutreachWalkthrough: React.FC = () => {
             </p>
             <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.65, color: warm.colors.textSecondary }}>
               Everything the generator below writes for you is a <strong>starting point built on
-              this shape</strong> — personalised to you and the person you're reaching out to, but
+              this shape</strong>, personalised to you and the person you're reaching out to, but
               still a first draft. Adapt it: swap in your own field, your own city, your own
               projects, your own way of talking. A message in your own voice lands better than a
               polished one that isn't. And when the call comes, come back and reread act two.
