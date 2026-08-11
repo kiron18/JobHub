@@ -1,13 +1,13 @@
 # LinkedIn Outreach Template Generation Rules
 
 ## Purpose
-Generate four personalised LinkedIn outreach messages by combining the candidate's profile data with the target person's details. Every template must sound like a real person wrote it: specific, warm, never transactional.
+Generate five personalised LinkedIn outreach messages by combining the candidate's profile data with the target person's details. Every template must sound like a real person wrote it: specific, warm, never transactional.
 
 ## Core Principle
 LinkedIn networking is not about asking people for jobs. It is about becoming someone people are glad they know. Every message is a deposit in a relationship account. Withdrawals (asks) only work once the account has a balance. This is relationship building, not career growth. The career growth is a byproduct of strong relationship building.
 
 ## The shape of the conversation
-The sequence is: connection request → first message (this is the one that gets the call) → the call → follow-up. Two rules govern the whole thing:
+The sequence is: connection request → first message (this is the one that gets the call) → the call → follow-up within 24 hours → a second follow-up 3-4 weeks later. Most referrals come from that last message, not from the call. Two rules govern the whole thing:
 
 1. **Be honest about intent early.** The candidate is exploring a move into a field. Say so in the first real message, not at the end of a long thread. If the intent only surfaces after several friendly messages, the other person notices the switch and it reads as though they were used for information. Being upfront costs nothing and makes every later message honest.
 2. **Never end on a vague ask.** "Let me know if you hear of anything" gives them nothing to do. Every ask must be actionable in ten seconds: a specific call, a name, an intro.
@@ -23,6 +23,7 @@ Never use em dashes or en dashes. Use commas, colons, semicolons or full stops i
   "firstMessage": "string, 90 to 130 words",
   "afterConversationFollowUp": "string, 50 to 80 words",
   "directAsk": "string, 60 to 90 words",
+  "reContact": "string, 50 to 80 words",
   "questionSuggestions": ["question1", "question2", "question3"]
 }
 ```
@@ -68,6 +69,16 @@ Formula: Reference the exchange so far → ask again, plainly → keep it light
 - Do NOT ask for a job on the call
 - No guilt, no reference to them not having replied. Warm and easy to say yes or no to.
 - A conversation that drifts on for many messages with no ask is a wasted opportunity, so this exists to make sure the ask actually happens
+
+### reContact, the 3-4 week follow-up (50 to 80 words)
+**This is the message that produces referrals.** The 24-hour follow-up is manners; this one is the engine. It lands weeks after the thread went quiet, asks for nothing at all, and reports something the candidate actually did because of the person's advice. Referrals rarely happen on the call. They happen the week a role opens and the candidate is the person who happens to be on their mind.
+
+Formula: Light re-open → what you did off the back of their advice → explicitly no ask
+- Open warmly and briefly. "Hope things have been good" is enough. No guilt about the gap, no reference to them not replying.
+- The body is one concrete thing the candidate did since: a project built, a course finished, a dataset modelled, a change made after what the person said. Tie it back to their advice by name. Leave [WHAT_I_DID] as a placeholder where the candidate fills in the specific thing.
+- State plainly that this is not an ask: "Not asking for anything, just wanted to share since you were the reason I went down that path."
+- That line is only honest because intent was declared back in firstMessage. Do not soften or remove the earlier honesty to make this one land better.
+- Never attach a request, a CV, or a "let me know if anything comes up" to this message. Its power is that it asks for nothing.
 
 ### questionSuggestions (3 items)
 Generate 3 specific questions the candidate could ask this person based on:

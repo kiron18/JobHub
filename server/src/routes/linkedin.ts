@@ -361,12 +361,13 @@ router.post('/outreach/log', authenticate, async (req: AuthRequest, res) => {
   const userId = req.user!.id;
   const {
     personName, company, topic, specificQuestion,
-    firstMessage, connectionNote, followUpDraft, directAskDraft,
+    firstMessage, connectionNote, followUpDraft, directAskDraft, reContactDraft,
     firstMessageSent,
   } = req.body as {
     personName?: string; company?: string; topic?: string;
     specificQuestion?: string; firstMessage?: string; connectionNote?: string;
-    followUpDraft?: string; directAskDraft?: string; firstMessageSent?: boolean;
+    followUpDraft?: string; directAskDraft?: string; reContactDraft?: string;
+    firstMessageSent?: boolean;
   };
 
   if (!personName?.trim() || !company?.trim()) {
@@ -386,6 +387,7 @@ router.post('/outreach/log', authenticate, async (req: AuthRequest, res) => {
           connectionNote: (connectionNote ?? '').trim(),
           followUpDraft: (followUpDraft ?? '').trim(),
           directAskDraft: (directAskDraft ?? '').trim(),
+          reContactDraft: (reContactDraft ?? '').trim(),
           draftsUpdatedAt: new Date(),
         },
       });
@@ -418,9 +420,9 @@ router.post('/outreach/log', authenticate, async (req: AuthRequest, res) => {
 router.patch('/outreach/:id/drafts', authenticate, async (req: AuthRequest, res) => {
   const userId = req.user!.id;
   const id = req.params.id as string;
-  const { connectionNote, firstMessage, followUpDraft, directAskDraft } = req.body as {
+  const { connectionNote, firstMessage, followUpDraft, directAskDraft, reContactDraft } = req.body as {
     connectionNote?: string; firstMessage?: string;
-    followUpDraft?: string; directAskDraft?: string;
+    followUpDraft?: string; directAskDraft?: string; reContactDraft?: string;
   };
 
   const data: Record<string, string | Date> = {};
@@ -428,6 +430,7 @@ router.patch('/outreach/:id/drafts', authenticate, async (req: AuthRequest, res)
   if (typeof firstMessage === 'string') data.firstMessage = firstMessage;
   if (typeof followUpDraft === 'string') data.followUpDraft = followUpDraft;
   if (typeof directAskDraft === 'string') data.directAskDraft = directAskDraft;
+  if (typeof reContactDraft === 'string') data.reContactDraft = reContactDraft;
 
   if (Object.keys(data).length === 0) {
     return res.status(400).json({ error: 'No draft fields supplied' });

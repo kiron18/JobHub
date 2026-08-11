@@ -11,6 +11,7 @@ const COACHING_TIPS: Record<keyof Omit<OutreachData, 'questionSuggestions'>, str
   firstMessage: 'This is the one that gets the call. It says plainly what you are after and asks for the 15 minutes in the same breath, so nothing about it feels like a bait and switch later.',
   afterConversationFollowUp: 'Shows you were paying attention. Plants a seed of reciprocity without being transactional.',
   directAsk: 'Your second run at the call, for when the first message did not land it. Reference something from the conversation so it does not read as a copy-paste, and make the ask explicitly.',
+  reContact: 'The one that actually produces referrals. It lands weeks later, asks for nothing, and proves you did something with their advice. Most referrals happen the week a role opens and you are the person they happen to be thinking about.',
 };
 
 const TEMPLATE_LABELS: Record<keyof Omit<OutreachData, 'questionSuggestions'>, string> = {
@@ -18,6 +19,7 @@ const TEMPLATE_LABELS: Record<keyof Omit<OutreachData, 'questionSuggestions'>, s
   firstMessage: 'First Message After Connecting (asks for the call)',
   afterConversationFollowUp: 'After-Conversation Follow-Up',
   directAsk: 'Ask Again for the Call (if the first message did not land it)',
+  reContact: 'The 3-4 Week Follow-Up (where referrals come from)',
 };
 
 /* LinkedIn caps the connection note at 200 characters on a free account and 300
@@ -158,7 +160,7 @@ export const OutreachTemplates: React.FC = () => {
 
   // Live draft bodies, mirrored from the template cards so edits are what
   // get persisted, not the original generated text.
-  const draftsRef = useRef({ connectionNote: '', firstMessage: '', followUpDraft: '', directAskDraft: '' });
+  const draftsRef = useRef({ connectionNote: '', firstMessage: '', followUpDraft: '', directAskDraft: '', reContactDraft: '' });
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Debounced draft save. Only runs once the outreach has been logged, since
@@ -237,6 +239,7 @@ export const OutreachTemplates: React.FC = () => {
         firstMessage: data.firstMessage ?? '',
         followUpDraft: data.afterConversationFollowUp ?? '',
         directAskDraft: data.directAsk ?? '',
+        reContactDraft: data.reContact ?? '',
       };
       setGenId(g => g + 1);
       setLoggedThisGen(false);
@@ -294,7 +297,7 @@ export const OutreachTemplates: React.FC = () => {
           Don't ask for a job. Become someone people are glad they know, then ask for a quick Zoom or Google Meet call.
         </p>
         <p style={{ margin: '0 0 6px', fontSize: 12.5, lineHeight: 1.6, color: warm.colors.textSecondary }}>
-          Fill in the person you want to reach below. We'll generate four templates: a connection note, the first message after they accept, an after-conversation follow-up, and a second run at the call ask. Send the connection note, then the first message once they accept. The first message is the one that asks for the call, so you are not sitting on the ask for three rounds hoping the moment feels right.
+          Fill in the person you want to reach below. We'll generate five templates: a connection note, the first message after they accept, an after-conversation follow-up, a second run at the call ask, and the 3-4 week follow-up. Send the connection note, then the first message once they accept. The first message is the one that asks for the call, so you are not sitting on the ask for three rounds hoping the moment feels right.
         </p>
         <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6, color: warm.colors.textSecondary }}>
           Stay curious and playful in these conversations: this is focused play and socialising, not a transaction. Think of it as relationship building, not career growth. The career growth is a byproduct of strong relationships.
@@ -467,8 +470,8 @@ export const OutreachTemplates: React.FC = () => {
           }}>
             <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5, color: warm.colors.textSecondary }}>
               {loggedThisGen
-                ? `Saved. All four drafts are stored against ${targetFirstName || 'this person'} in the Tracker tab. When they accept, open the Tracker to copy your first message. Edits here keep saving automatically.`
-                : 'Sent the connection request? Save it now. All four drafts are stored so you can move on to the next person without losing this one.'}
+                ? `Saved. All five drafts are stored against ${targetFirstName || 'this person'} in the Tracker tab. When they accept, open the Tracker to copy your first message. Edits here keep saving automatically.`
+                : 'Sent the connection request? Save it now. All five drafts are stored so you can move on to the next person without losing this one.'}
             </p>
             <button
               onClick={handleLogConnected}
@@ -517,6 +520,16 @@ export const OutreachTemplates: React.FC = () => {
             logEnabled={loggedThisGen}
             onLogCopy={logNextTouch}
             onContentChange={trackDraft('directAskDraft')}
+          />
+          <TemplateCard
+            key={`${genId}-reContact`}
+            label={TEMPLATE_LABELS.reContact}
+            content={outreach.reContact}
+            tip={COACHING_TIPS.reContact}
+            editableNote="Diarise this for 3-4 weeks after your last exchange, whether or not they replied. Fill in [WHAT_I_DID] with something you actually did because of their advice. Attach no ask to it: that is the entire point."
+            logEnabled={loggedThisGen}
+            onLogCopy={logNextTouch}
+            onContentChange={trackDraft('reContactDraft')}
           />
           {loggedThisGen && (
             <p style={{ fontSize: 11.5, color: warm.colors.textMuted, textAlign: 'center', margin: '4px 0 0' }}>

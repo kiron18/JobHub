@@ -18,6 +18,7 @@ export interface OutreachData {
   firstMessage: string;
   afterConversationFollowUp: string;
   directAsk: string;
+  reContact: string;
   questionSuggestions: string[];
 }
 
@@ -29,12 +30,13 @@ export interface OutreachLogEntry {
   specificQuestion: string;
   status: 'ACTIVE' | 'REPLIED' | 'CALL_BOOKED' | 'REFERRAL' | 'CLOSED_NO_REPLY' | 'CLOSED_MANUAL';
   createdAt: string;
-  // Stored drafts of the four generated templates. Persist from the moment the
+  // Stored drafts of the five generated templates. Persist from the moment the
   // connection request is sent, so they survive moving to the next person.
   connectionNote: string;
   firstMessage: string;
   followUpDraft: string;
   directAskDraft: string;
+  reContactDraft: string;
   messages?: Array<{
     touchNumber: number;
     body: string;

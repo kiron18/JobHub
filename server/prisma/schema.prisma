@@ -243,13 +243,17 @@ model OutreachLog {
   createdAt        DateTime          @default(now())
   messages         OutreachMessage[]
 
-  // Draft bodies for the four generated templates. Kept separate from
+  // Draft bodies for the five generated templates. Kept separate from
   // OutreachMessage (which records what was actually sent) so a user can log
   // at connection-request time and come back to the drafts days later, once
   // the person accepts. Without these, closing the tab lost the drafts.
   connectionNote   String            @default("")
   followUpDraft    String            @default("")
   directAskDraft   String            @default("")
+  // The 3-4 week re-contact: arrives long after the thread went quiet, asks
+  // for nothing, and reports something the candidate actually did off the back
+  // of the person's advice. Most referrals come from this message, not the call.
+  reContactDraft   String            @default("")
   draftsUpdatedAt  DateTime          @default(now())
 
   @@index([userId])

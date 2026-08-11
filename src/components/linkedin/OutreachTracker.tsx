@@ -374,9 +374,10 @@ function EntryCard({
     { field: 'firstMessage', label: 'First message after connecting', value: entry.firstMessage, hint: 'Send this once they accept your request. It asks for the call.' },
     { field: 'followUpDraft', label: 'After-conversation follow-up', value: entry.followUpDraft, hint: 'Send within 24 hours of any real exchange.' },
     { field: 'directAskDraft', label: 'Ask again for the call', value: entry.directAskDraft, hint: 'Only if the first message did not land the call.' },
+    { field: 'reContactDraft', label: 'The 3-4 week follow-up', value: entry.reContactDraft, hint: 'Send 3-4 weeks after your last exchange, reply or no reply. This is the one that produces referrals.' },
   ].filter((d) => (d.value ?? '').trim().length > 0);
 
-  // Messages already sent that didn't come from one of the four templates:
+  // Messages already sent that didn't come from one of the five templates:
   // ad-hoc replies logged by hand. Shown so the thread with this person is
   // complete and copy-pasteable when they write back.
   const draftBodies = new Set(drafts.map((d) => d.value.trim()));
