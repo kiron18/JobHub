@@ -496,17 +496,27 @@ router.patch('/outreach/log/:id', authenticate, async (req: AuthRequest, res) =>
 // the follow-up and the call ask, so the ladder just records whatever they've
 // sent so far rather than enforcing a fixed number of touches) ─────────────
 
-const OUTREACH_CADENCE = [0, 4, 6]; // days after previous touch; touch 4+ reuses the last entry
+// Days to wait before each touch becomes due, indexed by touch number - 1.
+// Touch 4 is the 3-4 week re-contact: the message that lands long after the
+// thread went quiet, asks for nothing, and reports what the candidate did with
+// the person's advice. It is where referrals actually come from, so it has to
+// be reminded about rather than left to memory three weeks later.
+const OUTREACH_CADENCE = [0, 4, 6, 21];
+const RE_CONTACT_TOUCH = 4;
 const CLOSING_WINDOW_DAYS = 7; // days of no reply before a stalled thread is flagged
 
-function getNextTouchDate(lastTouchDate: Date, touchNumber: number): Date {
-  const daysToAdd = OUTREACH_CADENCE[touchNumber - 1] ?? OUTREACH_CADENCE[OUTREACH_CADENCE.length - 1];
+// null means no further reminder is owed. Past the re-contact you stay on their
+// radar by commenting on their posts, not by sending more DMs, so the ladder
+// deliberately stops nagging instead of repeating the last interval forever.
+export function getNextTouchDate(lastTouchDate: Date, touchNumber: number): Date | null {
+  const daysToAdd = OUTREACH_CADENCE[touchNumber - 1];
+  if (daysToAdd === undefined) return null;
   return new Date(lastTouchDate.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
 }
 
-function isOverdue(nextTouchDate: Date): boolean {
-  const now = new Date();
-  return nextTouchDate <= now;
+export function isOverdue(nextTouchDate: Date | null): boolean {
+  if (!nextTouchDate) return false;
+  return nextTouchDate <= new Date();
 }
 
 // POST /outreach/:id/copy - Log when a message is copied (upsert touch)
@@ -649,6 +659,8 @@ router.get('/outreach/due', authenticate, async (req: AuthRequest, res) => {
       nextTouchNumber: number;
       daysSinceLastTouch: number;
       nextTouchDue: Date;
+      isReContact: boolean;
+      reContactDraft: string;
     }> = [];
 
     for (const outreach of outreaches) {
@@ -663,8 +675,8 @@ router.get('/outreach/due', authenticate, async (req: AuthRequest, res) => {
       const lastTouchDate = lastTouch.copiedAt;
       const nextTouchDue = getNextTouchDate(lastTouchDate, nextTouchNumber);
 
-      // Include if due or overdue
-      if (isOverdue(nextTouchDue)) {
+      // Include if due or overdue. A null date means the ladder is finished.
+      if (nextTouchDue && isOverdue(nextTouchDue)) {
         const daysSinceLastTouch = Math.floor(
           (Date.now() - lastTouchDate.getTime()) / (24 * 60 * 60 * 1000)
         );
@@ -678,6 +690,11 @@ router.get('/outreach/due', authenticate, async (req: AuthRequest, res) => {
           nextTouchNumber,
           daysSinceLastTouch,
           nextTouchDue,
+          // The re-contact was already written and personalised when this
+          // outreach was generated, so the reminder can offer that exact draft
+          // instead of the generic "floating this back up" nudge.
+          isReContact: nextTouchNumber === RE_CONTACT_TOUCH,
+          reContactDraft: outreach.reContactDraft ?? '',
         });
       }
     }
@@ -708,11 +725,13 @@ router.get('/outreach', authenticate, async (req: AuthRequest, res) => {
       const nextTouchNumber = lastTouch ? lastTouch.touchNumber + 1 : 1;
       const lastTouchDate = lastTouch ? lastTouch.copiedAt : outreach.createdAt;
 
-      // Flag a stalled thread: still ACTIVE (no reply logged) and it's been
-      // a while since the last message went out — regardless of how many
-      // messages that was, since the user self-selects the sequence.
+      // Flag a stalled thread: still ACTIVE (no reply logged) and it's been a
+      // while since the last message went out. A thread that has not yet had
+      // its 3-4 week re-contact is NOT stalled, it is waiting: writing it off
+      // at day 7 would bury the one message most likely to produce a referral,
+      // which goes out at day 21 whether or not they ever replied.
       let computedStatus = outreach.status;
-      if (outreach.status === 'ACTIVE' && lastTouch) {
+      if (outreach.status === 'ACTIVE' && lastTouch && lastTouch.touchNumber >= RE_CONTACT_TOUCH) {
         const closeDate = new Date(lastTouchDate.getTime() + CLOSING_WINDOW_DAYS * 24 * 60 * 60 * 1000);
         if (closeDate <= now) {
           computedStatus = 'CLOSED_NO_REPLY';

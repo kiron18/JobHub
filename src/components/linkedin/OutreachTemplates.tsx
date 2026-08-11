@@ -23,11 +23,9 @@ const TEMPLATE_LABELS: Record<keyof Omit<OutreachData, 'questionSuggestions'>, s
 };
 
 /* LinkedIn caps the connection note at 200 characters on a free account and 300
-   on Premium. We generate to 200 because that is what most people have; the
-   toggle just lifts the counter for anyone who actually pays for LinkedIn. */
+   on Premium. We generate and count to 200 so the note sends on either, and
+   just tell the user both numbers rather than asking which account they have. */
 const NOTE_LIMIT_FREE = 200;
-const NOTE_LIMIT_PREMIUM = 300;
-const NOTE_PREMIUM_KEY = 'agc.linkedinNotePremium';
 
 function TemplateCard({ label, content, tip, charLimit, editableNote, logEnabled, onLogCopy, onContentChange }: {
   label: string;
@@ -146,10 +144,6 @@ export const OutreachTemplates: React.FC = () => {
   const [outreach, setOutreach] = useState<OutreachData | null>(null);
   const [genId, setGenId] = useState(0);
   const [showPlaybook, setShowPlaybook] = useState(false);
-  // Whether this person pays for LinkedIn, which is the only thing separating a
-  // 200-character connection note from a 300-character one. Nothing on our side
-  // can detect it, so they tell us once and we remember the answer.
-  const [notePremium, setNotePremium] = useState(false);
   const [logging, setLogging] = useState(false);
   const [loggedThisGen, setLoggedThisGen] = useState(false);
   const [outreachLogId, setOutreachLogId] = useState<string | null>(null);
@@ -176,17 +170,6 @@ export const OutreachTemplates: React.FC = () => {
 
   useEffect(() => () => { if (saveTimer.current) clearTimeout(saveTimer.current); }, []);
 
-  useEffect(() => {
-    try { setNotePremium(localStorage.getItem(NOTE_PREMIUM_KEY) === '1'); } catch { /* private mode: stay on the free limit */ }
-  }, []);
-
-  function toggleNotePremium() {
-    setNotePremium(v => {
-      const next = !v;
-      try { localStorage.setItem(NOTE_PREMIUM_KEY, next ? '1' : '0'); } catch { /* non-blocking */ }
-      return next;
-    });
-  }
 
   function trackDraft(field: keyof typeof draftsRef.current) {
     return (body: string) => {
@@ -430,34 +413,18 @@ export const OutreachTemplates: React.FC = () => {
             label={TEMPLATE_LABELS.connectionNote}
             content={outreach.connectionNote}
             tip={COACHING_TIPS.connectionNote}
-            charLimit={notePremium ? NOTE_LIMIT_PREMIUM : NOTE_LIMIT_FREE}
+            charLimit={NOTE_LIMIT_FREE}
             onContentChange={trackDraft('connectionNote')}
           />
 
-          {/* The note is written to 200 because that's the free-account cap.
-              Premium gets 300, but only the user knows which they have. */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap',
+          {/* Written to 200 so it fits either account type without an edit. */}
+          <p style={{
             margin: '-4px 0 14px', padding: '0 2px',
+            fontSize: 11.5, lineHeight: 1.55, color: warm.colors.textMuted,
           }}>
-            <label style={{
-              display: 'inline-flex', alignItems: 'center', gap: 7,
-              fontSize: 12, color: warm.colors.textSecondary, cursor: 'pointer',
-            }}>
-              <input
-                type="checkbox"
-                checked={notePremium}
-                onChange={toggleNotePremium}
-                style={{ width: 14, height: 14, accentColor: '#0A66C2', cursor: 'pointer' }}
-              />
-              I have LinkedIn Premium
-            </label>
-            <span style={{ fontSize: 11.5, color: warm.colors.textMuted }}>
-              {notePremium
-                ? 'Premium lets you write up to 300 characters in a connection note.'
-                : 'Free accounts cap connection notes at 200 characters.'}
-            </span>
-          </div>
+            LinkedIn caps connection notes at <strong>200 characters</strong> on a free account
+            and <strong>300</strong> on Premium. This one is written to 200, so it sends either way.
+          </p>
 
           {/* Save point. Sits right after the connection note because that is
               the only message you can send before they accept. Everything

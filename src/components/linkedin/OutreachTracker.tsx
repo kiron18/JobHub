@@ -639,15 +639,22 @@ function FollowUpDueCard({
     specificQuestion: string;
     nextTouchNumber: number;
     daysSinceLastTouch: number;
+    isReContact?: boolean;
+    reContactDraft?: string;
   };
   onCopied: () => void;
 }) {
+  // At the 3-4 week mark the right message is the re-contact that was written
+  // and personalised when this outreach was generated, not the generic bump.
+  const isReContact = !!due.isReContact && !!due.reContactDraft?.trim();
   const [message, setMessage] = useState(() =>
-    renderFollowUpNudge({
-      firstName: due.personName.split(' ')[0],
-      company: due.company,
-      topic: due.topic,
-    })
+    isReContact
+      ? due.reContactDraft!
+      : renderFollowUpNudge({
+          firstName: due.personName.split(' ')[0],
+          company: due.company,
+          topic: due.topic,
+        })
   );
   const [copying, setCopying] = useState(false);
 
@@ -694,8 +701,15 @@ function FollowUpDueCard({
           <span style={{ fontSize: 13, color: warm.colors.textSecondary }}> · {due.company}</span>
           <div style={{ fontSize: 11, color: '#f59e0b', marginTop: 4 }}>
             <Clock size={11} style={{ display: 'inline', marginRight: 4 }} />
-            No reply in {due.daysSinceLastTouch} days · here's a nudge to send
+            {isReContact
+              ? `${due.daysSinceLastTouch} days since your last message · time for the 3-4 week follow-up`
+              : `No reply in ${due.daysSinceLastTouch} days · here's a nudge to send`}
           </div>
+          {isReContact && (
+            <div style={{ fontSize: 11, color: warm.colors.textMuted, marginTop: 3 }}>
+              Fill in [WHAT_I_DID] before you send. Attach no ask to it: that is what makes it work.
+            </div>
+          )}
         </div>
       </div>
 
@@ -758,6 +772,8 @@ export const OutreachTracker: React.FC = () => {
     specificQuestion: string;
     nextTouchNumber: number;
     daysSinceLastTouch: number;
+    isReContact?: boolean;
+    reContactDraft?: string;
   }>>([]);
   const [loading, setLoading] = useState(true);
   const [dueLoading, setDueLoading] = useState(true);

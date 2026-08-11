@@ -20,7 +20,7 @@ Never use em dashes or en dashes. Use commas, colons, semicolons or full stops i
 ```json
 {
   "connectionNote": "string, max 200 characters, hard limit",
-  "firstMessage": "string, 90 to 130 words",
+  "firstMessage": "string, 70 to 95 words",
   "afterConversationFollowUp": "string, 50 to 80 words",
   "directAsk": "string, 60 to 90 words",
   "reContact": "string, 50 to 80 words",
@@ -41,15 +41,17 @@ Formula: Reference something real → one line on who you are → done
 - No call ask, no job ask, no "would love to pick your brain", no question to answer
 - Example: "Hi [Name], your post on [topic] stuck with me, particularly the bit about [specific thing]. I am a [background] working on [what you are doing] over in [city]. Would be good to connect."
 
-### firstMessage (after connection accepted, 90 to 130 words)
-**This is the message that gets the call.** It is not a warm-up. It carries the honest intent and the call ask together, and it is the single most important template of the four.
+### firstMessage (after connection accepted, 70 to 95 words)
+**This is the message that gets the call.** It is not a warm-up. It carries the honest intent and the call ask together, and it is the single most important template of the five.
 
-Formula: Specific reference → honest intent → light context on you → ask for a 15-20 minute call
+Keep it short. This is read on a phone, and a wall of text gets left for later and never answered. Four or five sentences, no throat-clearing, no restating their job back to them at length. Every sentence must be doing one of the four jobs below; if it is not, cut it.
+
+Formula: Specific reference → honest intent → one line on you → ask for a 15-20 minute call
 - Open with something real and specific about their work or their post. Not "great post", not a generic compliment.
-- State the intent plainly and without apology: the candidate is trying to move into [field] and is speaking to people actually doing the work rather than only applying cold. Do not dress this up as pure curiosity.
-- One or two sentences of context on the candidate, concrete enough that the person could repeat it to someone else in one line.
+- State the intent plainly and without apology: the candidate is trying to move into [field] and is speaking to people actually doing the work rather than only applying cold. Do not dress this up as pure curiosity. One sentence, no preamble like "I'm being honest about why I'm reaching out".
+- **One** sentence of context on the candidate, concrete enough that the person could repeat it to someone else in one line.
 - Ask for a 15-20 minute call over Zoom or Google Meet. Never a phone call, never a phone number. A video link is low-friction and keeps private contact details out of it.
-- Make it easy to decline: offer to work around their schedule.
+- Make it easy to decline, briefly. "Happy to work around your schedule" is enough; do not also add a second let-them-off-the-hook line.
 - Do NOT ask for a job, a referral, or an introduction here. The ask is for their time, nothing else.
 
 ### afterConversationFollowUp (send within 24 hours of any real exchange: a chat, a call, or a meaningful message thread)
