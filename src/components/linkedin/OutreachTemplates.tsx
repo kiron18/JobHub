@@ -156,6 +156,18 @@ export const OutreachTemplates: React.FC = () => {
   // get persisted, not the original generated text.
   const draftsRef = useRef({ connectionNote: '', firstMessage: '', followUpDraft: '', directAskDraft: '', reContactDraft: '' });
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
+
+  // Jump to the drafts once they land. The form sits below the walkthrough and
+  // the playbook, so on a laptop the results render well below the fold and it
+  // reads as though nothing happened. Keyed on genId rather than outreach so a
+  // regeneration scrolls back up to the new drafts too.
+  useEffect(() => {
+    if (!outreach || !resultsRef.current) return;
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    resultsRef.current.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [genId]);
 
   // Debounced draft save. Only runs once the outreach has been logged, since
   // before that there's no row to attach the drafts to.
@@ -396,6 +408,8 @@ export const OutreachTemplates: React.FC = () => {
 
       {outreach && (
         <>
+          <div ref={resultsRef} aria-hidden style={{ scrollMarginTop: 16 }} />
+
           {/* Authenticity note */}
           <div style={{
             background: 'rgba(42,157,111,0.07)',
