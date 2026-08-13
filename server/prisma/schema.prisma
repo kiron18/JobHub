@@ -889,6 +889,12 @@ model SessionRegistration {
 
   resumeText     String?
   resumeFilename String?
+  /// The original bytes. Kept because the ATS structural check has to inspect
+  /// the real document: a DOCX is a zip of XML, and its text boxes and tables
+  /// are invisible once the file has been flattened to text. Capped at 5MB by
+  /// the upload middleware.
+  resumeFile     Bytes?
+  resumeMimetype String?
   /// Set only when they take the "I can't upload right now" escape. Their
   /// reason is kept because it is itself a qualifying signal.
   resumeSkipReason String?
@@ -901,10 +907,28 @@ model SessionRegistration {
   /// couple of minutes cannot send it twice.
   reminderSentAt DateTime?
 
+  /// Set when they claim the link dropped in the Meet chat partway through the
+  /// session. Only people in the room see that link, so this IS the attendance
+  /// record. Nothing else tells us who actually turned up.
+  attendedAt DateTime?
+
+  /// The generated diagnostic, stored whole. The report page reads this rather
+  /// than re-running the scan: a re-run costs two more LLM calls and would show
+  /// them something different from what they were emailed.
+  report            Json?
+  /// The only credential on the report URL. Unguessable, and per person.
+  reportToken       String?   @unique
+  reportGeneratedAt DateTime?
+  reportSentAt      DateTime?
+  /// Last failure, kept so a stuck row is visible instead of silently retrying
+  /// forever.
+  reportError       String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([sessionKey, createdAt])
+  @@index([attendedAt, reportGeneratedAt])
 }
 
 /// A Stripe payment the reconciliation sweep could not tie to a JobHub

@@ -1243,7 +1243,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
             </p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
               <a
-                href="https://www.skool.com/aussiegradcareers" target="_blank" rel="noopener noreferrer"
+                href="/community?src=report" target="_blank" rel="noopener noreferrer"
                 style={{
                   background: isDark ? `rgba(15,118,110,0.12)` : `rgba(15,118,110,0.09)`,
                   border: '1px solid rgba(15,118,110,0.30)',

@@ -19,16 +19,39 @@ import multer from 'multer';
 import { extractTextFromBuffer } from '../services/pdf';
 import { sendWorkshopConfirmationEmail } from '../services/email';
 import { prisma } from '../index';
+import { timingSafeEqual } from 'crypto';
 import {
-  CURRENT_SESSION_KEY,
+  currentSessionKey,
   MEET_LINK,
+  SKOOL_URL,
   WORKSHOP_TITLE,
   WORKSHOP_DURATION_MINUTES,
+  WORKSHOP_TZ,
   EXPORT_KEY,
   workshopStart,
 } from '../config/workshop';
 
 const router = Router();
+
+/**
+ * When the next workshop is. Public and deliberately free of anything private:
+ * the signup page reads it so the date on screen is the real one.
+ *
+ * The page used to say "Today" as a hardcoded string, which was true on the day
+ * it was written and wrong every day after. Now that the schedule rolls weekly
+ * on its own, the page has to roll with it or it lies to every registrant about
+ * the one fact they need in order to turn up.
+ */
+router.get('/next', (_req: Request, res: Response) => {
+  const start = workshopStart();
+  res.json({
+    sessionKey: currentSessionKey(),
+    startsAt: start ? start.toISOString() : null,
+    durationMinutes: WORKSHOP_DURATION_MINUTES,
+    timeZone: WORKSHOP_TZ,
+    title: WORKSHOP_TITLE,
+  });
+});
 
 // ── Upload ───────────────────────────────────────────────────────────────────
 const upload = multer({
@@ -57,6 +80,68 @@ function handleUpload(req: Request, res: Response, next: NextFunction) {
     next();
   });
 }
+
+// ── Parse ────────────────────────────────────────────────────────────────────
+
+/**
+ * Pull the email off a resume so the form can pre-fill it instead of asking for
+ * something the person has already given us.
+ *
+ * Pre-fill, never substitute. The email is the join key across the CRM, JobHub
+ * and Stripe, and a silently mis-parsed one is worse than an empty field: it
+ * creates a record nobody can match to a payment later. So this hands back a
+ * suggestion, the form shows it, and the person confirms it in one tap.
+ */
+const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
+
+/** Filenames and asset paths in an extracted PDF read as emails to a regex. */
+const NOT_AN_EMAIL = /\.(png|jpe?g|gif|svg|webp|pdf|docx?)$/i;
+
+function detectEmail(text: string): string | null {
+  const matches = text.match(EMAIL_RE) || [];
+  for (const m of matches) {
+    if (NOT_AN_EMAIL.test(m)) continue;
+    return m.toLowerCase();
+  }
+  return null;
+}
+
+/**
+ * The name is almost always the first line of a resume, set larger than
+ * everything else. Anything that looks like contact details, a heading or a
+ * sentence is rejected rather than guessed at, because a wrong pre-filled name
+ * is more annoying to correct than an empty one.
+ */
+function detectName(text: string): string | null {
+  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).slice(0, 6);
+  for (const line of lines) {
+    if (line.length > 40 || line.includes('@') || /\d/.test(line)) continue;
+    if (/^(curriculum vitae|resume|cv|profile|summary)$/i.test(line)) continue;
+    const words = line.split(/\s+/);
+    if (words.length < 2 || words.length > 4) continue;
+    if (!words.every((w) => /^[A-Za-z][A-Za-z'’.-]*$/.test(w))) continue;
+    return line;
+  }
+  return null;
+}
+
+router.post('/parse-resume', handleUpload, async (req: Request, res: Response) => {
+  const files = req.files as Record<string, Express.Multer.File[]> | undefined;
+  const file = files?.resume?.[0];
+  if (!file) return res.status(400).json({ error: 'No file received.' });
+
+  // A failed parse is not an error the person needs to see. They keep the file
+  // they just picked and simply type the two fields themselves, which is where
+  // the form was before this route existed.
+  try {
+    const text = await extractTextFromBuffer(file.buffer, file.mimetype, file.originalname);
+    if (!text?.trim()) return res.json({ email: null, name: null });
+    return res.json({ email: detectEmail(text), name: detectName(text) });
+  } catch (err) {
+    console.error('[session-signup] parse failed', err);
+    return res.json({ email: null, name: null });
+  }
+});
 
 // ── Register ─────────────────────────────────────────────────────────────────
 router.post('/register', handleUpload, async (req: Request, res: Response) => {
@@ -100,8 +185,18 @@ router.post('/register', handleUpload, async (req: Request, res: Response) => {
     let resumeText: string | null = null;
     let resumeFilename: string | null = null;
 
+    let resumeFile: Uint8Array<ArrayBuffer> | null = null;
+    let resumeMimetype: string | null = null;
+
     if (file) {
       resumeFilename = file.originalname;
+      // The bytes are kept alongside the text: the ATS structural check in the
+      // report has to inspect the real document, and a flattened string has
+      // already lost the text boxes and tables that check looks for.
+      // Copied into a plain Uint8Array: Prisma's Bytes field wants a view over a
+      // real ArrayBuffer, and a Node Buffer can sit on a SharedArrayBuffer.
+      resumeFile = new Uint8Array(file.buffer);
+      resumeMimetype = file.mimetype;
       try {
         const text = await extractTextFromBuffer(file.buffer, file.mimetype, file.originalname);
         resumeText = text?.trim() ? text : null;
@@ -119,9 +214,13 @@ router.post('/register', handleUpload, async (req: Request, res: Response) => {
       answers: answers as object,
       ...(questionSchema ? { questionSchema: questionSchema as object } : {}),
       resumeSkipReason,
-      sessionKey: CURRENT_SESSION_KEY,
+      // Resolved per request, never at module load: the server runs for weeks
+      // and a hoisted value would file every registration against whichever
+      // week the process happened to boot in.
+      sessionKey: currentSessionKey(),
       ...(resumeText ? { resumeText } : {}),
       ...(resumeFilename ? { resumeFilename } : {}),
+      ...(resumeFile ? { resumeFile, resumeMimetype } : {}),
     };
 
     // Whether this is a first registration decides if we send the confirmation.
@@ -159,11 +258,89 @@ router.post('/register', handleUpload, async (req: Request, res: Response) => {
     // Returned so the success screen can show the link too. Email is the
     // primary delivery, but it can be slow or land in spam, and they are
     // looking at the screen right now.
-    res.json({ ok: true, meetLink: MEET_LINK });
+    //
+    // The Skool URL rides along for the same reason it lives in config: the
+    // confirmation screen and the confirmation email must never disagree about
+    // where the group is.
+    res.json({ ok: true, meetLink: MEET_LINK, skoolUrl: SKOOL_URL });
   } catch (err) {
     console.error('[session-signup] register failed', err);
     res.status(500).json({ error: 'Something went wrong on our end. Please try again.' });
   }
+});
+
+// ── Attendance ───────────────────────────────────────────────────────────────
+
+/**
+ * The claim link, dropped in the Meet chat partway through the session.
+ *
+ * One link for the whole room rather than a personal link each: it has to be
+ * pasteable into a chat window in one go. What makes it an attendance record is
+ * that only people in the room ever see it, so claiming is proof of presence.
+ * They identify themselves with the email they registered with, which we
+ * already hold.
+ *
+ * Unknown emails are told so plainly. Someone who typoed their address needs to
+ * know now, while they are still in the room and can fix it, and the honest
+ * answer leaks nothing: the roster is the set of people who filled in a public
+ * form.
+ */
+router.post('/claim', async (req: Request, res: Response) => {
+  try {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: 'That email address does not look right.' });
+    }
+
+    const existing = await prisma.sessionRegistration.findUnique({
+      where: { email },
+      select: { id: true, attendedAt: true, resumeText: true },
+    });
+
+    if (!existing) {
+      return res.status(404).json({
+        error: 'I cannot find that email on the registration list. Check for a typo, or use the address you signed up with.',
+      });
+    }
+
+    // Re-claiming is not an error. People tap the link twice, or on a second
+    // device, and the first claim is the one that counts.
+    if (!existing.attendedAt) {
+      await prisma.sessionRegistration.update({
+        where: { id: existing.id },
+        data: { attendedAt: new Date() },
+      });
+    }
+
+    // Said up front, because it is the one case where the promised report is
+    // never going to arrive and they can still fix it tonight.
+    res.json({ ok: true, hasResume: !!existing.resumeText });
+  } catch (err) {
+    console.error('[session-signup] claim failed', err);
+    res.status(500).json({ error: 'Something went wrong on our end. Please try again.' });
+  }
+});
+
+// ── The report ───────────────────────────────────────────────────────────────
+
+/**
+ * The generated diagnostic, addressed by its unguessable token.
+ *
+ * The token is the only credential, which is the right trade for something
+ * emailed to someone who has no account and should not need one to read what
+ * they were promised.
+ */
+router.get('/report/:token', async (req: Request, res: Response) => {
+  const token = String(req.params.token || '');
+  if (token.length < 20) return res.status(404).json({ error: 'Not found' });
+
+  const row = await prisma.sessionRegistration.findUnique({
+    where: { reportToken: token },
+    select: { report: true, name: true },
+  });
+
+  if (!row?.report) return res.status(404).json({ error: 'Not found' });
+  res.json({ report: row.report, name: row.name });
 });
 
 // ── Export ───────────────────────────────────────────────────────────────────
@@ -173,12 +350,33 @@ function csvCell(value: unknown): string {
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
+/**
+ * Constant-time key check.
+ *
+ * A plain `!==` on a secret leaks its length and, in principle, its prefix
+ * through response timing. That mattered less when the key was a placeholder
+ * everyone could read; now that it is the only thing standing between the open
+ * internet and everyone's resume, the comparison is worth doing properly.
+ */
+function keyMatches(supplied: string, expected: string): boolean {
+  const a = Buffer.from(supplied);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
+
 router.get('/export', async (req: Request, res: Response) => {
-  if (String(req.query.key || '') !== EXPORT_KEY) {
+  // No key configured means the endpoint is off, not open. See the note on
+  // EXPORT_KEY in config/workshop.ts for why there is no fallback value.
+  if (!EXPORT_KEY) {
+    console.warn('[session-signup] export requested but SESSION_EXPORT_KEY is unset');
+    return res.status(503).send('The roster export is not configured.');
+  }
+  if (!keyMatches(String(req.query.key || ''), EXPORT_KEY)) {
     return res.status(403).send('Forbidden');
   }
 
-  const sessionKey = String(req.query.session || CURRENT_SESSION_KEY);
+  const sessionKey = String(req.query.session || currentSessionKey());
   const format = String(req.query.format || 'brief');
 
   const rows = await prisma.sessionRegistration.findMany({

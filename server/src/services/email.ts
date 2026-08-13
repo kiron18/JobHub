@@ -932,3 +932,64 @@ export async function sendWelcomeResumeEmail(params: {
     html,
   });
 }
+
+/**
+ * Delivers the post-workshop diagnostic.
+ *
+ * Plain text, and short. The email is not the asset, the report is; every extra
+ * line here is another chance to lose them before they click. What earns the
+ * click is that the summary is unmistakably about them: their first name, their
+ * counted numbers, and the promise of the one line we rewrote.
+ */
+export async function sendGapReportEmail(params: {
+  to: string;
+  name: string;
+  reportUrl: string;
+  dutyBullets: number;
+  totalBullets: number;
+  atsRisk: boolean;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[email] RESEND_API_KEY not set — skipping gap report');
+    return;
+  }
+  const { to, name, reportUrl, dutyBullets, totalBullets, atsRisk } = params;
+  const firstName = (name || '').trim().split(/\s+/)[0] || '';
+
+  // Only state a count when there is a real one behind it. A report that opens
+  // with "0 of 0 bullet points" reads as broken and undoes the personalisation
+  // the rest of the email is doing.
+  const findings: string[] = [];
+  if (totalBullets > 0 && dutyBullets > 0) {
+    findings.push(
+      `${dutyBullets} of your ${totalBullets} bullet points open with a duty instead of a result`,
+    );
+  }
+  if (atsRisk) {
+    findings.push('the file itself is built in a way applicant tracking systems cannot read');
+  }
+
+  const summary = findings.length
+    ? `The short version: ${findings.join(', and ')}.`
+    : 'I went through it properly and pulled out what is holding it back.';
+
+  await resend.emails.send({
+    from: FROM_ADDRESS,
+    to,
+    subject: firstName ? `${firstName}, the line I would change first` : 'The line I would change first',
+    text: [
+      firstName ? `Hey ${firstName},` : 'Hey,',
+      '',
+      'Thanks for being in the room tonight. I said I would look at your resume properly and send you what I found, so here it is.',
+      '',
+      summary,
+      '',
+      'I have rewritten one of your own lines so you can see the difference. It is the first thing in the report.',
+      '',
+      reportUrl,
+      '',
+      'Kiron',
+      'aussiegradcareers.com.au',
+    ].join('\n'),
+  });
+}

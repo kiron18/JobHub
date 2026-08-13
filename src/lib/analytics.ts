@@ -56,6 +56,16 @@ export function trackDiagnosticReportViewed() {
   posthog.capture('diagnostic_report_viewed');
 }
 
+// ── Community (the free Skool group) ─────────────────────────────────────────
+// Every route into the group goes through /community?src=…, so this one event
+// answers a question nothing else in the funnel can: which moment actually
+// produces a member. `src` is normalised to a small set so the breakdown stays
+// readable; `src_raw` keeps whatever was on the URL for anything unexpected.
+
+export function trackCommunityClick(src: string, srcRaw: string | null) {
+  posthog.capture('community_link_clicked', { src, src_raw: srcRaw });
+}
+
 // ── Welcome funnel (the public scan at /welcome) ──────────────────────────────
 // This is the acquisition flow: anonymous resume upload through to signup.
 // It ran completely untracked until 2026-08-07, so the only thing we knew about

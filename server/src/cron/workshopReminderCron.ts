@@ -14,7 +14,7 @@ import cron from 'node-cron';
 import { prisma } from '../index';
 import { sendWorkshopReminderEmail } from '../services/email';
 import {
-  CURRENT_SESSION_KEY,
+  currentSessionKey,
   MEET_LINK,
   WORKSHOP_TITLE,
   REMINDER_MINUTES_BEFORE,
@@ -31,10 +31,14 @@ export function startWorkshopReminderCron(): void {
   // window once per workshop, so the cost of ticking often is negligible and it
   // buys tight control over when the nudge actually lands.
   cron.schedule('*/2 * * * *', async () => {
-    const start = workshopStart();
+    // Both re-derived on every tick against the same instant, so the reminder
+    // and the roster it pulls can never disagree about which week it is. The
+    // schedule rolls to next week the moment tonight's room ends, and this tick
+    // follows it without a restart or a config change.
+    const now = new Date();
+    const start = workshopStart(now);
     if (!start) return;
 
-    const now = new Date();
     // Opens slightly before the target so a two-minute tick cannot skip past it,
     // and closes before the start so nobody gets a "starts in 20 minutes" email
     // after it has already begun.
@@ -44,7 +48,7 @@ export function startWorkshopReminderCron(): void {
 
     try {
       const due = await prisma.sessionRegistration.findMany({
-        where: { sessionKey: CURRENT_SESSION_KEY, reminderSentAt: null },
+        where: { sessionKey: currentSessionKey(now), reminderSentAt: null },
         select: { id: true, email: true, name: true },
       });
       if (!due.length) return;

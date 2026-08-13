@@ -76,6 +76,9 @@ const MockLandingPage = React.lazy(() =>
   import('./pages/MockLandingPage').then(m => ({ default: m.MockLandingPage }))
 );
 const SessionSignupPage = React.lazy(() => import('./pages/SessionSignupPage'));
+const ClaimPage = React.lazy(() => import('./pages/ClaimPage'));
+const GapReportPage = React.lazy(() => import('./pages/GapReportPage'));
+const CommunityRedirect = React.lazy(() => import('./pages/CommunityRedirect'));
 const BookCallPage = React.lazy(() =>
   import('./pages/BookCallPage').then(m => ({ default: m.BookCallPage }))
 );
@@ -454,6 +457,30 @@ function App() {
               <Route path="/webinar" element={
                 <React.Suspense fallback={null}>
                   <SessionSignupPage />
+                </React.Suspense>
+              } />
+              {/* Dropped in the Meet chat partway through the session. Only
+                  people in the room see it, so claiming it is what records
+                  attendance and triggers their diagnostic. */}
+              <Route path="/claim" element={
+                <React.Suspense fallback={null}>
+                  <ClaimPage />
+                </React.Suspense>
+              } />
+              {/* The diagnostic itself. The token in the path is the only
+                  credential, which is the right trade for something emailed to
+                  someone who has no account. */}
+              <Route path="/report/:token" element={
+                <React.Suspense fallback={null}>
+                  <GapReportPage />
+                </React.Suspense>
+              } />
+              {/* The branded door to the free Skool group. Everything that
+                  mentions the group links here with a ?src= so we can see which
+                  moment produced the member. */}
+              <Route path="/community" element={
+                <React.Suspense fallback={null}>
+                  <CommunityRedirect />
                 </React.Suspense>
               } />
               <Route path="/the-receipts" element={

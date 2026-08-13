@@ -43,6 +43,7 @@ import { startJobFeedCron } from './cron/jobFeedCron';
 import { startSponsorJobScanCron } from './cron/sponsorJobScanCron';
 import { startTrialReminderCron } from './cron/trialReminderCron';
 import { startWorkshopReminderCron } from './cron/workshopReminderCron';
+import { startGapReportCron } from './cron/gapReportCron';
 import { startAccountabilityCron } from './cron/accountabilityCron';
 import { startPaymentReconcileCron } from './cron/paymentReconcileCron';
 import { startFollowUpReminderCron } from './cron/followUpReminderCron';
@@ -381,6 +382,7 @@ if (process.env.SKIP_SERVER === 'true') {
       startAccountabilityCron();
       startPaymentReconcileCron();
       startWorkshopReminderCron();
+      startGapReportCron();
       console.log('[cron] Trial reminder cron scheduled (10:00 UTC daily)');
       console.log('[cron] Follow-up reminder cron scheduled (09:00 UTC daily)');
       console.log('[cron] Payment reconciliation cron scheduled (11:00 UTC daily)');
