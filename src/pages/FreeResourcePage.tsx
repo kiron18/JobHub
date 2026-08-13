@@ -49,6 +49,10 @@ const C = {
   goldTint: '#FBF3E3',
   danger: '#B4432F',
   good: '#1E8A5F',
+  /* The handwriting red. Deliberately not the error red and not the gold: it
+     reads as something scrawled on top of the page rather than part of the
+     brand, which is exactly the job. Used once, nowhere else. */
+  marker: '#D63B26',
 };
 
 const DISPLAY = "'Fraunces', Georgia, 'Times New Roman', serif";
@@ -306,7 +310,22 @@ export default function FreeResourcePage() {
         <section style={{ display: 'flex', flexDirection: 'column', gap: 26, textAlign: 'center' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <p style={eyebrow}>The whole system</p>
-            <h2 style={h2}>Get the full system</h2>
+            {/* "free" is set as an annotation, not as part of the heading: a
+                different face, off the baseline, slightly rotated. It reads as
+                something added by hand afterwards, which is why it carries more
+                weight than the same word set in the heading's own type. */}
+            <h2 style={h2}>
+              Get the full system{' '}
+              <span style={{
+                fontFamily: "'Caveat', 'Segoe Script', 'Bradley Hand', cursive",
+                color: C.marker, fontWeight: 700,
+                fontSize: '1.5em', lineHeight: 0.8,
+                display: 'inline-block', transform: 'rotate(-7deg)',
+                margin: '0 0 0 6px', verticalAlign: 'baseline',
+              }}>
+                free
+              </span>
+            </h2>
           </div>
 
           <div className="agc-map">
@@ -371,7 +390,7 @@ export default function FreeResourcePage() {
         }}>
           <h2 style={h2}>The reality of getting hired in Australia as a migrant</h2>
           <p style={{ fontSize: '1.0625rem', color: C.ink2, lineHeight: 1.7, margin: 0 }}>
-            You have reworked your resume a dozen times, applied for everything, and followed
+            You have reworked your resume a thousand times, applied for everything, and followed
             every piece of advice you were given. None of it moved.
           </p>
           <p style={{ fontSize: '1.0625rem', color: C.ink2, lineHeight: 1.7, margin: 0 }}>
