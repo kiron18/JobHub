@@ -4,6 +4,7 @@ import { prisma } from '../index';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { sendAdminPaymentAlert } from '../services/email';
 import { onboardPaidCustomer } from '../services/onboarding';
+import { raiseSkoolUpgrade } from '../services/skoolUpgrade';
 
 export const EXEMPT_EMAILS = [
   'kamiproject2021@gmail.com',
@@ -142,6 +143,17 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
           });
           console.log(`[stripe/webhook] Subscription access granted to userId=${userId}, trialing=${isTrialing}`);
         }
+
+        // Skool Premium is granted by hand because Skool has no API. This raises
+        // the task and tells the buyer to expect a wait, exactly once per
+        // customer however many times Stripe redelivers this event. Never allowed
+        // to throw: a failure here must not fail the webhook and re-run the
+        // access grant above.
+        await raiseSkoolUpgrade({
+          userId,
+          plan: isOneTime ? 'three_month (one-time)' : (session.metadata?.plan ?? 'monthly x3'),
+        }).catch((err) => console.error('[stripe/webhook] skool upgrade handoff failed:', err));
+
         break;
       }
 

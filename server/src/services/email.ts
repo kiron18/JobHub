@@ -993,3 +993,92 @@ export async function sendGapReportEmail(params: {
     ].join('\n'),
   });
 }
+
+/**
+ * Tells Kiron to add a paying customer to the Skool Premium tier.
+ *
+ * Skool has no API, so this one step cannot be automated: the grant is a manual
+ * toggle in the Skool members admin. Everything either side of it is automatic,
+ * which makes this email the whole handoff, so it leads with the address to
+ * paste and says plainly that the customer is already waiting.
+ */
+export async function sendSkoolUpgradeTask(params: {
+  customerEmail: string;
+  customerName?: string | null;
+  plan: string;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[email] RESEND_API_KEY not set — skipping Skool upgrade task');
+    return;
+  }
+  const { customerEmail, customerName, plan } = params;
+
+  await resend.emails.send({
+    from: FROM_ADDRESS,
+    to: ADMIN_EMAIL,
+    subject: `Add to Skool Premium: ${customerEmail}`,
+    text: [
+      `${customerEmail} has paid (${plan}) and needs Premium access in Skool.`,
+      customerName ? `Name: ${customerName}` : '',
+      '',
+      'Skool has no API, so this is manual:',
+      '  1. Open the group, then Members',
+      '  2. Find them by this email address',
+      '  3. Change their plan to Premium',
+      '',
+      'They have already been emailed and are expecting it, so this is the only',
+      'thing standing between them and what they paid for.',
+      '',
+      'This task is raised once per customer. If you see it twice for the same',
+      'address, something is wrong with the dedupe and worth a look.',
+    ].filter(Boolean).join('\n'),
+  });
+}
+
+/**
+ * Tells the buyer what happens next, immediately after paying.
+ *
+ * Sent because the Skool grant is manual and therefore not instant. Silence
+ * between paying $750 and getting access is exactly where a new customer starts
+ * wondering whether they have been had, so this email exists to fill that gap
+ * honestly rather than to sell anything.
+ */
+export async function sendPremiumWelcomeEmail(params: {
+  to: string;
+  name?: string | null;
+  skoolUrl: string;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[email] RESEND_API_KEY not set — skipping premium welcome');
+    return;
+  }
+  const { to, name, skoolUrl } = params;
+  const firstName = (name || '').trim().split(/\s+/)[0] || '';
+
+  await resend.emails.send({
+    from: FROM_ADDRESS,
+    to,
+    subject: firstName ? `You're in, ${firstName}. Here is what happens now.` : "You're in. Here is what happens now.",
+    text: [
+      firstName ? `Hey ${firstName},` : 'Hey,',
+      '',
+      'Payment came through. Thank you, genuinely.',
+      '',
+      'Two things happen next.',
+      '',
+      'I am upgrading your Skool account to Premium by hand, so give it a few',
+      'hours rather than a few seconds. You do not need to do anything, and you',
+      'will see the Premium classroom appear when it is done.',
+      '',
+      'If you are not in the group yet, join here first with this same email',
+      'address, otherwise I have nothing to upgrade:',
+      skoolUrl,
+      '',
+      'Then reply to this email with your current resume, and I will have it read',
+      'before our first session.',
+      '',
+      'Kiron',
+      'aussiegradcareers.com.au',
+    ].join('\n'),
+  });
+}

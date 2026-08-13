@@ -13,6 +13,11 @@ model CandidateProfile {
   userId                       String            @unique
   name                         String?
   email                        String?           @unique
+  /// When the "add this buyer to Skool Premium" task was raised. Skool has no
+  /// API, so the grant itself is a manual toggle; this exists so a Stripe
+  /// webhook retry cannot raise the same task twice. An admin task that arrives
+  /// three times is one that stops being read.
+  skoolUpgradeNotifiedAt       DateTime?
   phone                        String?
   linkedin                     String?
   location                     String?
