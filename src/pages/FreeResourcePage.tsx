@@ -201,7 +201,7 @@ export default function FreeResourcePage() {
             background: C.alt, border: `1px solid ${C.line}`, borderRadius: 14,
             padding: 'clamp(20px, 4vw, 26px)', display: 'flex', flexDirection: 'column', gap: 14,
           }}>
-            <p style={{ ...eyebrow, color: C.blue }}>One more thing, and it matters</p>
+            <p style={{ ...eyebrow, color: C.blue }}>Get your questions answered</p>
             <p style={{ fontSize: '1rem', color: C.ink, lineHeight: 1.65, margin: 0 }}>
               Drop your question as a comment on this week's webinar post, which is pinned at the
               top of the group. That is how I know what to cover, and I answer them by name.
@@ -231,7 +231,7 @@ export default function FreeResourcePage() {
               boxShadow: '0 2px 6px rgba(24,87,160,0.20), 0 10px 26px rgba(24,87,160,0.18)',
             }}
           >
-            Open the group and get all {TOTAL_RESOURCES}
+            Join the group and claim all resources
             <ArrowRight size={19} />
           </a>
         </div>
