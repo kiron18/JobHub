@@ -5,6 +5,7 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 import { sendAdminPaymentAlert } from '../services/email';
 import { onboardPaidCustomer } from '../services/onboarding';
 import { raiseSkoolUpgrade } from '../services/skoolUpgrade';
+import { recordLeadSignal } from '../services/salesLead';
 
 export const EXEMPT_EMAILS = [
   'kamiproject2021@gmail.com',
@@ -142,6 +143,15 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
             },
           });
           console.log(`[stripe/webhook] Subscription access granted to userId=${userId}, trialing=${isTrialing}`);
+        }
+
+        // Paid is the one signal that must never be lost, so it goes onto the
+        // board before anything else that can fail.
+        if (customerEmail) {
+          await recordLeadSignal({
+            email: customerEmail,
+            signals: { paidAt: new Date() },
+          }).catch((err) => console.error('[stripe/webhook] sales board sync failed', err));
         }
 
         // Skool Premium is granted by hand because Skool has no API. This raises

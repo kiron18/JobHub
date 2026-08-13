@@ -19,6 +19,7 @@ import multer from 'multer';
 import { extractTextFromBuffer } from '../services/pdf';
 import { sendWorkshopConfirmationEmail } from '../services/email';
 import { prisma } from '../index';
+import { recordLeadSignal } from '../services/salesLead';
 import { timingSafeEqual } from 'crypto';
 import {
   currentSessionKey,
@@ -223,6 +224,19 @@ router.post('/register', handleUpload, async (req: Request, res: Response) => {
       ...(resumeFile ? { resumeFile, resumeMimetype } : {}),
     };
 
+    // Everyone who comes through the funnel lands on the sales board, whichever
+    // door they used. Never allowed to fail the registration: a board row is
+    // worth less than the registration itself.
+    await recordLeadSignal({
+      email,
+      name,
+      phone,
+      source: answers && (answers as any).source_asset ? 'free-resource' : 'session',
+      sourceAsset: (answers as any)?.source_asset ?? null,
+      hasResume: !!resumeText,
+      signals: { registeredAt: new Date() },
+    }).catch((err) => console.error('[session-signup] sales board sync failed', err));
+
     // Whether this is a first registration decides if we send the confirmation.
     // Someone re-submitting to fix an answer already has the link, and a second
     // copy of the same email is how you end up in their spam folder.
@@ -311,6 +325,11 @@ router.post('/claim', async (req: Request, res: Response) => {
         data: { attendedAt: new Date() },
       });
     }
+
+    await recordLeadSignal({
+      email,
+      signals: { attendedAt: new Date() },
+    }).catch((err) => console.error('[session-signup] sales board sync failed', err));
 
     // Said up front, because it is the one case where the promised report is
     // never going to arrive and they can still fix it tonight.

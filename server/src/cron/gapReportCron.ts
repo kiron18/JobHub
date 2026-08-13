@@ -17,6 +17,7 @@ import { prisma } from '../index';
 import { buildGapReport } from '../services/gapReport';
 import { sendGapReportEmail } from '../services/email';
 import { PUBLIC_APP_URL } from '../lib/appUrl';
+import { recordLeadSignal } from '../services/salesLead';
 
 let cronStarted = false;
 
@@ -84,6 +85,13 @@ export async function runGapReportSweep(): Promise<void> {
         where: { id: person.id },
         data: { reportSentAt: new Date() },
       });
+      await recordLeadSignal({
+        email: person.email,
+        name: person.name,
+        hasResume: true,
+        signals: { reportSentAt: new Date() },
+      }).catch((err) => console.error('[gapReport] sales board sync failed', err));
+
       console.log('[gapReport] sent to', person.email);
     } catch (err) {
       // Hand the row back so the next tick retries once, and record why. The

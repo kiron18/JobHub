@@ -27,6 +27,9 @@ const AdminFunnel = React.lazy(() =>
 const AdminUserUsage = React.lazy(() =>
   import('./pages/AdminUserUsage').then(m => ({ default: m.AdminUserUsage }))
 );
+const AdminSales = React.lazy(() =>
+  import('./pages/AdminSales').then(m => ({ default: m.default }))
+);
 const AdminContacts = React.lazy(() =>
   import('./pages/AdminContacts').then(m => ({ default: m.default }))
 );
@@ -392,6 +395,8 @@ function ReportOrDashboard() {
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/admin/coach" element={<CoachDashboard />} />
                 <Route path="/admin/funnel" element={<AdminFunnel />} />
+                {/* The sales board, replacing the local Python CRM. */}
+                <Route path="/admin/sales" element={<AdminSales />} />
                 <Route path="/admin/quality" element={<AdminQuality />} />
                 <Route path="/admin/users" element={<AdminUserUsage />} />
                 <Route path="/admin/friday-brief" element={<FridayBriefPage />} />

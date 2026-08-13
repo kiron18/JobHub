@@ -959,3 +959,57 @@ model UnmatchedPayment {
 
   @@index([resolvedAt, alertedAt])
 }
+
+/// The sales pipeline, moved off the local Python CRM and onto the same
+/// database as everything else.
+///
+/// One row per person, whether they arrived from a LinkedIn import or walked in
+/// through a /free/ page. Keeping imported leads and funnel registrations in one
+/// table is the whole point: two lists meant two places to look and a person who
+/// existed in both was invisible as the same person.
+///
+/// The stage is DERIVED from signals, not typed by hand. Registered, attended
+/// and paid are all facts the system already records, so a stage that has to be
+/// dragged is a stage that goes stale. Only Dead is set manually.
+model SalesLead {
+  id    String  @id @default(cuid())
+  name  String
+  /// The join key across the CRM, JobHub and Stripe. Nullable because an
+  /// imported LinkedIn lead may have nothing but a profile URL.
+  email String? @unique
+  phone String?
+
+  linkedinUrl String?
+  headline    String?
+  company     String?
+
+  /// Lead, Registered, Attended, Pitched, Client, Dead.
+  stage  String @default("Lead")
+  /// Where they came from: linkedin-import, free-resource, session.
+  source String @default("linkedin-import")
+  /// Which free asset brought them in, when that is how they arrived.
+  sourceAsset String?
+
+  /// Hidden from the board by default. Set for imported leads carrying neither
+  /// an email nor a resume: there is no way to contact them and nothing to work
+  /// with, so they are noise on a board that has to stay readable.
+  archived Boolean @default(false)
+
+  /// Funnel signals, denormalised so the board is one query rather than four.
+  registeredAt DateTime?
+  attendedAt   DateTime?
+  reportSentAt DateTime?
+  paidAt       DateTime?
+
+  /// True when a resume is on file, wherever it came from.
+  hasResume Boolean @default(false)
+
+  notes    String?
+  nextBest String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([archived, stage])
+  @@index([updatedAt])
+}
