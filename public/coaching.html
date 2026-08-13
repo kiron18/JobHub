@@ -7,9 +7,16 @@
 <meta name="description" content="Peer-supported cohort coaching for international job-seekers in Australia. In three months or less, go from uncertainty to turning down offers that aren't the right fit." />
 
 <!-- ============================================================
-     ▸ CONFIG — REPLACE THIS ONE LINE WITH YOUR STRIPE LINK
-     Find/replace  STRIPE_LINK_HERE  everywhere in this file,
-     or just edit the constant in the <script> at the bottom.
+     ▸ CHECKOUT — every "Enrol" link on this page points at the live
+     Stripe payment link, written into each href directly.
+
+     It used to be a placeholder that a script at the bottom was
+     supposed to fill in, except the script held the same
+     placeholder. Every button on this page was dead for as long as
+     the page existed. Hardcoding the href means a button cannot be
+     broken by a script that did not run.
+
+     To change it: find and replace the buy.stripe.com URL here.
      ============================================================ -->
 
 <link rel="icon" href="favicon.png" />
@@ -301,7 +308,7 @@
       <h1 class="display">Land your <span class="accent">first Aussie job.</span></h1>
       <p class="sub">You came here with a vision — not to be ignored by every job you apply for. In three months, we change that. Together.</p>
       <div class="cta-row">
-        <a class="btn enrol" href="STRIPE_LINK_HERE">Enrol now →</a>
+        <a class="btn enrol" href="https://buy.stripe.com/9B6bJ37d49YJ2o23psfMA04">Enrol now →</a>
         <span class="pricepill"><b>$250/mo</b> · 3 months · group coaching + community</span>
       </div>
     </div>
@@ -358,7 +365,7 @@
         <div class="amount">$250<span>/month</span></div>
         <div class="terms">for 3 months · group coaching + community</div>
         <div class="divider"></div>
-        <a class="btn enrol" href="STRIPE_LINK_HERE" style="width:100%">Enrol now →</a>
+        <a class="btn enrol" href="https://buy.stripe.com/9B6bJ37d49YJ2o23psfMA04" style="width:100%">Enrol now →</a>
         <p class="fineprint">Three months is enough to fix the strategy and start landing interviews — while you still have runway left to close the offer.</p>
       </div>
     </div>
@@ -456,7 +463,7 @@
       <h2 class="display">You've come too far to leave it to chance.</h2>
       <p class="lead">You don't need more time learning it alone. You need the right targeting and the right positioning — done with you, alongside a community in the same fight, before the runway runs out. That's exactly what this is.</p>
       <div class="cta-row">
-        <a class="btn enrol" href="STRIPE_LINK_HERE">Enrol now · $250/mo for 3 months →</a>
+        <a class="btn enrol" href="https://buy.stripe.com/9B6bJ37d49YJ2o23psfMA04">Enrol now · $250/mo for 3 months →</a>
         <p class="guarantee">Secure your spot and we'll book your first session this week. If the timing genuinely isn't right, the door stays open — but the clock doesn't wait.</p>
       </div>
     </div>
@@ -467,24 +474,21 @@
 <footer>
   <div class="wrap row">
     <span class="microcopy">© <span id="year"></span> JobHub · Coaching for international job-seekers in Australia.</span>
-    <span class="microcopy"><a href="STRIPE_LINK_HERE">Enrol →</a></span>
+    <span class="microcopy"><a href="https://buy.stripe.com/9B6bJ37d49YJ2o23psfMA04">Enrol →</a></span>
   </div>
 </footer>
 
 <!-- ── Sticky mobile CTA ───────────────────────────── -->
 <div class="stickybar">
   <span class="p"><b>$250/mo</b> · 3 months · cohort</span>
-  <a class="btn small enrol" href="STRIPE_LINK_HERE">Enrol →</a>
+  <a class="btn small enrol" href="https://buy.stripe.com/9B6bJ37d49YJ2o23psfMA04">Enrol →</a>
 </div>
 
 <script>
-  // ============================================================
-  //  ▸ SET YOUR STRIPE PAYMENT LINK HERE
-  // ============================================================
-  const STRIPE_LINK = "STRIPE_LINK_HERE"; // <-- paste your Stripe link, e.g. https://buy.stripe.com/xxxx
-  document.querySelectorAll('a.enrol, footer a').forEach(a => {
-    if (STRIPE_LINK && STRIPE_LINK !== "STRIPE_LINK_HERE") a.setAttribute('href', STRIPE_LINK);
-  });
+  // The checkout link is written into each href in the markup above, so there
+  // is nothing to rewrite here. The rewrite this replaced also targeted
+  // `footer a`, which would have pointed the copyright line at Stripe the
+  // moment anyone filled the placeholder in.
 
   // Year
   document.getElementById('year').textContent = new Date().getFullYear();
