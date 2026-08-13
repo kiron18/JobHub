@@ -120,7 +120,10 @@ export default function FreeResourcePage() {
 
   // ── Shared style objects ───────────────────────────────────────────────────
   const page: React.CSSProperties = {
-    minHeight: '100vh', background: colors.bgCanvas, color: colors.textPrimary,
+    // Fixed height plus internal scroll: the app shell constrains its children,
+    // so a page that only sets minHeight is clipped at the fold.
+    height: '100vh', overflowY: 'auto',
+    background: colors.bgCanvas, color: colors.textPrimary,
     fontFamily: typeTokens.body, padding: 'clamp(24px, 5vw, 48px) clamp(16px, 5vw, 28px) 96px',
     boxSizing: 'border-box',
   };
@@ -253,7 +256,7 @@ export default function FreeResourcePage() {
         <section style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <p style={eyebrow}>The whole system</p>
-            <h2 style={h2}>Where your download actually sits</h2>
+            <h2 style={h2}>Get the full system</h2>
           </div>
 
           <div className="agc-map">

@@ -107,7 +107,7 @@ export default function GapReportPage() {
   }, []);
 
   const page: React.CSSProperties = {
-    minHeight: '100vh', background: colors.bgCanvas,
+    height: '100vh', overflowY: 'auto', background: colors.bgCanvas,
     fontFamily: typeTokens.body, color: colors.textPrimary,
     padding: 'clamp(28px, 5vw, 56px) clamp(18px, 5vw, 32px) 96px',
     boxSizing: 'border-box',
