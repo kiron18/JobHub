@@ -221,3 +221,18 @@ export function trackSponsorOutreachLockedClicked() {
 export function trackSponsorTrialCtaClicked() {
   posthog.capture('sponsor_trial_cta_clicked');
 }
+
+// ── Free resource pages (/free/:slug) ────────────────────────────────────────
+// Each giveaway has its own URL, so these two events answer the only question
+// that matters about them: which asset pulls traffic, and which asset's traffic
+// actually converts into a registration. The download fires with no gate in
+// front of it, which is the whole point of the page, so this event is the only
+// record that the visit happened at all.
+
+export function trackFreeResourceDownloaded(slug: string, fileLabel: string) {
+  posthog.capture('free_resource_downloaded', { slug, file: fileLabel });
+}
+
+export function trackFreeResourceRegistered(slug: string, challenge: string) {
+  posthog.capture('free_resource_registered', { slug, challenge });
+}

@@ -77,6 +77,7 @@ const MockLandingPage = React.lazy(() =>
 );
 const SessionSignupPage = React.lazy(() => import('./pages/SessionSignupPage'));
 const ClaimPage = React.lazy(() => import('./pages/ClaimPage'));
+const FreeResourcePage = React.lazy(() => import('./pages/FreeResourcePage'));
 const GapReportPage = React.lazy(() => import('./pages/GapReportPage'));
 const CommunityRedirect = React.lazy(() => import('./pages/CommunityRedirect'));
 const BookCallPage = React.lazy(() =>
@@ -457,6 +458,14 @@ function App() {
               <Route path="/webinar" element={
                 <React.Suspense fallback={null}>
                   <SessionSignupPage />
+                </React.Suspense>
+              } />
+              {/* One page per free asset, all driven from config/freeResources.
+                  Under /free/ because /linkedin, /tracker and /interview are
+                  already routes and bare slugs would collide. */}
+              <Route path="/free/:slug" element={
+                <React.Suspense fallback={null}>
+                  <FreeResourcePage />
                 </React.Suspense>
               } />
               {/* Dropped in the Meet chat partway through the session. Only
