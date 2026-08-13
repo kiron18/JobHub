@@ -9,6 +9,18 @@ const APP_URL = 'https://aussiegradcareers.com.au';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'kiron@aussiegradcareers.com.au';
 const FROM_ADDRESS = `Aussie Grad Careers <kiron@aussiegradcareers.com.au>`;
 
+/**
+ * The free Skool group, as linked from the workshop emails.
+ *
+ * Attendance is members-only, so this link is a condition of entry rather than
+ * an invitation, which is why it sits directly under the join link in both
+ * emails instead of at the bottom with the sign-off.
+ *
+ * Points at the branded redirect rather than skool.com so the destination can
+ * move without a deploy and the click stays attributable to the email.
+ */
+const SKOOL_GROUP_LINK = `${APP_URL}/community?src=email`;
+
 export async function sendAccessRequestNotification(params: {
   userName: string;
   userEmail: string;
@@ -256,6 +268,15 @@ export async function sendWorkshopConfirmationEmail(params: {
         ? 'The calendar invite is attached, so add it and your calendar will remind you before we start.'
         : 'Save it now or drop it straight into your calendar, so you are not hunting for it when we start.',
       '',
+      // Membership is a real condition of entry, so it is stated here rather
+      // than discovered at the door. It sits directly under the link because
+      // that is the only place someone is guaranteed to read on the way in.
+      'One condition: the workshop is for members of the free group only.',
+      'Join here with this same email address, it takes twenty seconds:',
+      SKOOL_GROUP_LINK,
+      '',
+      'The full resource pack and every past session live in there too.',
+      '',
       'I read every set of answers before we go live, so what we cover will be shaped by what you told me.',
       '',
       'See you there,',
@@ -299,6 +320,11 @@ export async function sendWorkshopReminderEmail(params: {
       '',
       'Here is the link:',
       meetLink,
+      '',
+      // Short version of the same condition. Anyone who ignored it in the
+      // confirmation has twenty minutes left to fix it, which is enough.
+      'Members of the free group only, so if you have not joined yet, do it now:',
+      SKOOL_GROUP_LINK,
       '',
       'Come with the thing you actually want answered. See you in there.',
       '',
