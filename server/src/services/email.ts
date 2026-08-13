@@ -1,7 +1,7 @@
 import { Resend } from 'resend';
 import type { CvGapResult, RoadmapStep } from './cvGapScan';
 import { PUBLIC_APP_URL } from '../lib/appUrl';
-import { skoolMemberSearchUrl } from '../lib/skoolLinks';
+import { skoolMemberSearchUrl, skoolMemberSearchByName } from '../lib/skoolLinks';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -1027,9 +1027,19 @@ export async function sendSkoolUpgradeTask(params: {
       '',
       'Then change their plan to Premium. That is the whole job.',
       '',
-      'If the search comes back empty they have paid but never joined the group,',
-      'so there is no account to upgrade yet. They have been emailed asking them',
-      'to join with this same address, so it is worth checking again later.',
+      ...(customerName && skoolMemberSearchByName(customerName)
+        ? [
+            'Empty? They may have joined under a different address. By name:',
+            skoolMemberSearchByName(customerName)!,
+            '',
+            'Check the name match carefully before upgrading anyone found this way,',
+            'since names are not unique and the wrong upgrade is hard to notice.',
+            '',
+          ]
+        : []),
+      'Still nothing means they have paid but never joined the group, so there is',
+      'no account to upgrade yet. They have been emailed asking them to join with',
+      'this same address, so it is worth checking again later.',
       '',
       'This task is raised once per customer. If you see it twice for the same',
       'address, something is wrong with the dedupe and worth a look.',

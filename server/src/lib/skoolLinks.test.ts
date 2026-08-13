@@ -5,7 +5,7 @@
  * problem that does not exist.
  */
 import { describe, it, expect } from 'vitest';
-import { skoolMemberSearchUrl } from '../lib/skoolLinks';
+import { skoolMemberSearchUrl, skoolMemberSearchByName } from '../lib/skoolLinks';
 
 describe('skoolMemberSearchUrl', () => {
   it('encodes the @ so the query survives a mail client', () => {
@@ -22,5 +22,19 @@ describe('skoolMemberSearchUrl', () => {
 
   it('targets the members tab, not posts', () => {
     expect(skoolMemberSearchUrl('a@b.com')).toContain('&t=members');
+  });
+});
+
+describe('skoolMemberSearchByName', () => {
+  it('encodes the space between first and last name', () => {
+    expect(skoolMemberSearchByName('Arjun Menon')).toContain('q=Arjun%20Menon');
+  });
+
+  it('refuses a name too short to identify anyone', () => {
+    // A one-character search returns half the group, and picking from that list
+    // is how the wrong member gets upgraded.
+    expect(skoolMemberSearchByName('A')).toBeNull();
+    expect(skoolMemberSearchByName('   ')).toBeNull();
+    expect(skoolMemberSearchByName('')).toBeNull();
   });
 });
