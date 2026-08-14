@@ -324,4 +324,104 @@ ${jobDescription.slice(0, 12000)}
     }
 });
 
+/**
+ * POST /follow-up-email — the 7-day follow-up, written against this application.
+ *
+ * The template version filled in the role, employer, date and sign-off and said
+ * nothing whatsoever about the candidate, which made every follow-up every
+ * client sent identical. The material to fix that is already sitting on the
+ * row: the advert, and the cover letter generated against it.
+ *
+ * Note what this must NOT do. The employer already has the cover letter, so
+ * lifting a paragraph out of it verbatim reads as copy-paste and is worse than
+ * the generic version. It has to make the point again in fresh, shorter words.
+ *
+ * The doctrine from module 05 holds and is enforced in the prompt: a follow-up
+ * confirms the application arrived and does not ask for the job. Every extra
+ * line is a line that can be held against the candidate.
+ */
+router.post('/follow-up-email', async (req: any, res: any) => {
+    try {
+        const userId = req.user.id;
+        const { jobApplicationId } = req.body as { jobApplicationId?: string };
+        if (!jobApplicationId) return res.status(400).json({ error: 'jobApplicationId required.' });
+
+        const job = await prisma.jobApplication.findFirst({
+            where: { id: jobApplicationId, userId },
+            select: {
+                title: true, company: true, description: true, dateApplied: true,
+                documents: {
+                    where: { type: 'COVER_LETTER' },
+                    orderBy: { updatedAt: 'desc' },
+                    take: 1,
+                    select: { content: true },
+                },
+            },
+        });
+        if (!job) return res.status(404).json({ error: 'Application not found.' });
+
+        const coverLetter = job.documents[0]?.content;
+        if (!coverLetter) {
+            // Nothing to personalise from. The caller keeps the filled template,
+            // which is a worse email but an honest one.
+            return res.json({ body: null, reason: 'no_cover_letter' });
+        }
+
+        const profile = await prisma.candidateProfile.findUnique({
+            where: { userId },
+            select: { name: true, phone: true, email: true },
+        });
+
+        const applied = job.dateApplied
+            ? new Intl.DateTimeFormat('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })
+                .format(job.dateApplied)
+            : null;
+
+        const prompt = `Write a short follow-up email for an Australian job seeker checking on an application they already submitted.
+
+WHAT THIS EMAIL IS
+It confirms the application arrived and reminds the reader, in one specific line, why this candidate is worth a look. It is NOT a second application and it does NOT ask for the job, for an interview, or for a decision. Every extra line is a line that can be held against the candidate.
+
+HARD RULES
+- 3 short paragraphs maximum. Under 120 words in the body. Shorter is better.
+- The reader ALREADY HAS the cover letter. Never reuse a sentence or phrase from it. Make the point again in different, shorter words.
+- Every fact about the candidate must come from the cover letter below. Never invent an employer, a number, a title or an outcome. If the cover letter has no number, do not produce one.
+- Name the specific thing that connects this candidate to this role. One line. Concrete, not "I am a strong fit" or "my skills align".
+- No flattery, no "I am passionate", no "I believe I would be a great fit", no "I look forward to hearing from you", no "thank you for your time and consideration".
+- Australian English. No em dashes or en dashes anywhere, use commas or rewrite.
+- Do not write the greeting line and do not write the sign-off. Return the body paragraphs only. Those are added around your text.
+
+THE ROLE: ${job.title}
+THE EMPLOYER: ${job.company}
+${applied ? `APPLIED ON: ${applied}` : ''}
+
+THE JOB ADVERTISEMENT:
+"""
+${(job.description || '').slice(0, 6000)}
+"""
+
+THE COVER LETTER THEY ALREADY SENT (source of every fact, and text to avoid repeating):
+"""
+${coverLetter.slice(0, 6000)}
+"""
+
+Return JSON only:
+{ "body": "<the paragraphs, separated by \\n\\n>" }`;
+
+        const raw = await callLLM(prompt, true, 0.3);
+        const result = parseLLMJson(raw);
+        const body = typeof result.body === 'string' ? result.body.trim() : null;
+        if (!body) return res.json({ body: null, reason: 'empty' });
+
+        return res.json({
+            body,
+            signature: [profile?.name, [profile?.phone, profile?.email].filter(Boolean).join(' | ')]
+                .filter(Boolean),
+        });
+    } catch (err: any) {
+        console.error('[Follow-up Email] Error:', err.message);
+        res.status(500).json({ error: 'Failed to write the follow-up.' });
+    }
+});
+
 export default router;

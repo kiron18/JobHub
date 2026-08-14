@@ -5,7 +5,8 @@ import { Clock, Copy, Check, X, ExternalLink, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../../lib/api';
 import { warm } from '../../lib/theme/warmTokens';
-import { renderTemplate, PRE_SEND_WARNING } from '../../lib/emailTemplates';
+import { PRE_SEND_WARNING } from '../../lib/emailTemplates';
+import { useFollowUpEmail } from '../../lib/useFollowUpEmail';
 
 interface JobApplicationLite {
   id: string;
@@ -38,14 +39,15 @@ interface FollowUpModalProps {
 function FollowUpModal({ job, days, onClose }: FollowUpModalProps) {
   const [copied, setCopied] = useState(false);
 
-  // Same canonical template the tracker uses, so the app, the course and the
-  // free swipe file all say the same thing. Profile fills in the sign-off.
   const { data: profile } = useQuery({
     queryKey: ['profile'],
     queryFn: async () => (await api.get('/profile')).data,
     staleTime: 5 * 60 * 1000,
   });
-  const email = renderTemplate('application-followup', job, profile).full;
+
+  // Written against this application's own cover letter, falling back to the
+  // canonical template while that is in flight or if it cannot be written.
+  const { full: email, loading, personalised } = useFollowUpEmail(job, profile);
 
   async function handleCopy() {
     await navigator.clipboard.writeText(email);
@@ -106,7 +108,12 @@ function FollowUpModal({ job, days, onClose }: FollowUpModalProps) {
         </div>
 
         <p style={{ margin: '0 0 16px', fontSize: 13, color: warm.colors.textSecondary, lineHeight: 1.6 }}>
-          You applied to <strong>{job.company}</strong> {days} days ago. Here's a ready-to-send follow-up email.
+          You applied to <strong>{job.company}</strong> {days} days ago.{' '}
+          {loading
+            ? 'Writing one from your cover letter, a generic version is below in the meantime.'
+            : personalised
+              ? "Here's a follow-up written from your own cover letter."
+              : "Here's a ready-to-send follow-up email."}
         </p>
 
         <div style={{ marginBottom: 20 }}>

@@ -93,6 +93,40 @@ function fmtDate(dateStr: string | null): string {
   }
 }
 
+/** The greeting, by the salutation rule in server/rules/cover_letter_rules.md. */
+export function greetingFor(job: JobContextLite): string {
+  const contact = job.description
+    ? contactNameFromJobDescription(job.description, job.company)
+    : null;
+  return contact ? `Hi ${contact},` : 'Dear Hiring Manager,';
+}
+
+/**
+ * Wrap a personalised body, written server-side against this application's
+ * cover letter, in the greeting and sign-off the template already owns.
+ *
+ * Only the middle of the email is generated. The greeting rule and the sign-off
+ * are settled questions and there is no reason to spend a model call, or risk a
+ * model's judgement, on either.
+ */
+export function assembleFollowUp(
+  job: JobContextLite,
+  profile: UserProfileLite | undefined,
+  body: string,
+): RenderedEmail {
+  const title = knownOrUndefined(job.title);
+  const subject = title
+    ? `Application for ${title}, submitted ${fmtDate(job.dateApplied)}`
+    : `Application submitted ${fmtDate(job.dateApplied)}`;
+
+  const contactLine = [profile?.phone, profile?.email].filter(Boolean).join(' | ');
+  const signature = [profile?.name, contactLine].filter(Boolean).join('\n');
+
+  const full = `${greetingFor(job)}\n\n${body.trim()}\n\nKind regards,\n${signature}`.trim();
+
+  return { subject, body: full, full: `Subject: ${subject}\n\n${full}` };
+}
+
 /**
  * Render a canonical email template with job + user context substituted.
  * Placeholders that require human judgment are left intact.

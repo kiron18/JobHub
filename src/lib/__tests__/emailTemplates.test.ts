@@ -5,7 +5,7 @@
  * name in the greeting that the job ad did not actually give us.
  */
 import { describe, it, expect } from 'vitest';
-import { renderTemplate, getRawTemplate } from '../emailTemplates';
+import { renderTemplate, getRawTemplate, assembleFollowUp } from '../emailTemplates';
 
 const JOB = {
     title: 'Business Analyst',
@@ -114,5 +114,31 @@ describe('a row saved from an ad that named neither the role nor the employer', 
     it('keeps the script exactly as written when both facts are known', () => {
         const { body } = renderTemplate('application-followup', JOB, PROFILE);
         expect(body).toContain('an application for Business Analyst at Meridian Logistics on 7 Aug 2026');
+    });
+});
+
+describe('assembleFollowUp', () => {
+    const BODY = 'I applied for the Social Media Marketing Coordinator role at Merivale on 7 August.\n\nThe ad puts audience growth ahead of production volume. At Australian Events I built a competitor monitoring tool so the content calendar followed what was actually cutting through, rather than a guess.';
+
+    it('wraps the written body in the greeting and sign-off', () => {
+        const out = assembleFollowUp(JOB, PROFILE, BODY);
+        expect(out.full).toContain('Dear Hiring Manager,');
+        expect(out.full).toContain('competitor monitoring tool');
+        expect(out.full).toContain('Kind regards,\nPriya Nair\n0412 345 678 | priya.nair@example.com');
+    });
+
+    it('greets the named contact when the ad gave one', () => {
+        const out = assembleFollowUp({ ...JOB, description: 'Please contact Sarah Chen.' }, PROFILE, BODY);
+        expect(out.body).toContain('Hi Sarah,');
+    });
+
+    it('keeps the subject line the template uses', () => {
+        expect(assembleFollowUp(JOB, PROFILE, BODY).subject)
+            .toBe('Application for Business Analyst, submitted 7 Aug 2026');
+    });
+
+    it('does not leave a dangling sign-off when the profile is bare', () => {
+        const out = assembleFollowUp(JOB, {}, BODY);
+        expect(out.full.trimEnd().endsWith('Kind regards,')).toBe(true);
     });
 });
