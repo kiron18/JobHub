@@ -13,6 +13,8 @@ interface JobApplicationLite {
   company: string;
   status: 'SAVED' | 'APPLIED' | 'INTERVIEW' | 'REJECTED' | 'OFFER';
   dateApplied: string | null;
+  /** The pasted job ad, which the follow-up reads to find who to greet. */
+  description?: string | null;
 }
 
 const STALE_DAYS = 7;

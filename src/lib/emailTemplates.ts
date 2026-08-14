@@ -1,3 +1,5 @@
+import { contactNameFromJobDescription } from './outreachFill';
+
 export type EmailTemplateId =
   | 'application-followup'
   | 'interview-thankyou';
@@ -16,6 +18,8 @@ export interface JobContextLite {
   title: string;
   company: string;
   dateApplied: string | null;
+  /** The job ad as pasted at apply time. Often names who to contact. */
+  description?: string | null;
 }
 
 /**
@@ -101,10 +105,21 @@ export function renderTemplate(
   const raw = RAW_TEMPLATES[id];
   if (!raw) throw new Error(`Unknown email template id: ${id}`);
 
+  // The job ad was pasted at apply time and is stored on the row, so when it
+  // named someone to contact we already have the one thing this email used to
+  // ask the candidate for. When it named nobody we greet "there" rather than
+  // leave a bracket in an email that is otherwise ready to send: a follow-up
+  // going out with "[Hiring Manager Name]" still in it is the worst outcome
+  // available here, and it happens the moment someone copies without reading.
+  const contact = job.description
+    ? contactNameFromJobDescription(job.description, job.company)
+    : null;
+
   const subs: Record<string, string | undefined> = {
     '[Job Title]': job.title,
     '[Company]': job.company,
     '[date]': fmtDate(job.dateApplied),
+    '[Hiring Manager Name]': contact ?? 'there',
     '[Your Name]': profile?.name ?? undefined,
     '[Phone]': profile?.phone ?? undefined,
     '[Email]': profile?.email ?? undefined,
