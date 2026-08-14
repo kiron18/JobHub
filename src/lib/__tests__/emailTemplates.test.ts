@@ -88,3 +88,31 @@ describe('application follow-up', () => {
         expect(getRawTemplate('application-followup').body).toContain('[Hiring Manager Name]');
     });
 });
+
+describe('a row saved from an ad that named neither the role nor the employer', () => {
+    // The tracker stores these sentinels because the columns are required. They
+    // must never reach the employer inside a sentence.
+    const UNKNOWN = { title: 'Untitled role', company: 'Unknown company', dateApplied: '2026-08-07T02:00:00.000Z' };
+
+    it('does not send the tracker placeholders to the employer', () => {
+        const { full } = renderTemplate('application-followup', UNKNOWN, PROFILE);
+        expect(full).not.toContain('Untitled role');
+        expect(full).not.toContain('Unknown company');
+        expect(full).toContain('a role you advertised');
+    });
+
+    it('drops the employer clause when only the role is known', () => {
+        const { body } = renderTemplate(
+            'application-followup',
+            { ...UNKNOWN, title: 'Social Media Marketing Coordinator' },
+            PROFILE,
+        );
+        expect(body).toContain('an application for Social Media Marketing Coordinator on 7 Aug 2026');
+        expect(body).not.toContain('Unknown company');
+    });
+
+    it('keeps the script exactly as written when both facts are known', () => {
+        const { body } = renderTemplate('application-followup', JOB, PROFILE);
+        expect(body).toContain('an application for Business Analyst at Meridian Logistics on 7 Aug 2026');
+    });
+});

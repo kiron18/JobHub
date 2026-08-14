@@ -24,6 +24,7 @@ import { FirstApplicationCelebration } from '../components/FirstApplicationCeleb
 import type { JobFeedItem } from '../components/jobs/JobCard';
 import { DailyProgressBar } from '../components/jobs/DailyProgressBar';
 import { warm } from '../lib/theme/warmTokens';
+import { extractJobFacts } from '../lib/extractJobFacts';
 
 /** Detect whether a job description mentions selection criteria. */
 export const jdMentionsSelectionCriteria = (jd: string): boolean =>
@@ -458,19 +459,13 @@ function AnalysisHeroCard() {
     const tooShort = trimmed.length > 0 && trimmed.length < 100;
     const canSubmit = trimmed.length >= 50 && !analysing;
 
-    // Extract company/role from JD text when not from feed (simplified extraction)
+    // The feed knows the role and employer for certain. A pasted ad does not,
+    // so it goes through the extractor, which returns undefined rather than a
+    // guess. See extractJobFacts: these two strings name the tracker row, the
+    // export filenames and the emails that go to the employer.
     const extractFromJD = (jd: string): { company?: string; role?: string } => {
         if (pickedFeedItem) return { company: pickedFeedItem.company, role: pickedFeedItem.title };
-        // Try to extract from first few lines - look for common patterns
-        const lines = jd.split('\n').slice(0, 10).filter(l => l.trim().length > 0);
-        // Look for "at Company" pattern
-        const atMatch = jd.match(/\bat\s+([A-Z][A-Za-z0-9\s&]+?)(?:\s*[\n\r,]|\s+[-–]|\s+\()/i);
-        const company = atMatch ? atMatch[1].trim() : undefined;
-        // Role often has keywords like "engineer", "manager", etc.
-        const roleKeywords = /\b(engineer|developer|manager|analyst|designer|director|coordinator|specialist|lead|head of|VP|chief)\b/i;
-        const roleLine = lines.find(l => roleKeywords.test(l));
-        const role = roleLine ? roleLine.replace(/[\n\r]/g, '').slice(0, 80) : undefined;
-        return { company, role };
+        return extractJobFacts(jd);
     };
 
     const handleAnalyse = async () => {

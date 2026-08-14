@@ -1,4 +1,4 @@
-import { contactNameFromJobDescription } from './outreachFill';
+import { contactNameFromJobDescription, knownOrUndefined } from './outreachFill';
 
 export type EmailTemplateId =
   | 'application-followup'
@@ -127,6 +127,23 @@ export function renderTemplate(
 
   let subject = raw.subject;
   let body = raw.body;
+
+  // A row saved from an ad that never stated the role or employer carries the
+  // tracker's own placeholder text, which is fine in a list and not fine in a
+  // sentence sent to the employer. Kiron's script is left exactly as written
+  // whenever both facts are known, and only the clause that would read as
+  // "for Untitled role at Unknown company" is rewritten.
+  const title = knownOrUndefined(job.title);
+  const employer = knownOrUndefined(job.company);
+  if (!title || !employer) {
+    const clause = title
+      ? title
+      : employer
+        ? `a role at ${employer}`
+        : 'a role you advertised';
+    body = body.replaceAll('[Job Title] at [Company]', clause);
+    subject = title ? subject : 'Application submitted [date]';
+  }
 
   for (const [placeholder, value] of Object.entries(subs)) {
     if (value && value.trim().length > 0) {

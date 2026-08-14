@@ -273,9 +273,41 @@ const PITCH_PARAGRAPH_BLANK =
     '[Two sentences of your own here: the specific thing the job ad asks for, and the ' +
     'concrete evidence from your experience that meets it, with a real number if you have one.]';
 
+/**
+ * Sentinels the tracker writes when the pasted ad never stated a role or an
+ * employer. They are fine as a row label in a list; they are not fine in a
+ * sentence addressed to the employer.
+ */
+const UNKNOWN_VALUES = new Set(['untitled role', 'unknown company', '[role]', '[company]']);
+
+export function knownOrUndefined(value?: string | null): string | undefined {
+    const trimmed = value?.trim();
+    if (!trimmed || UNKNOWN_VALUES.has(trimmed.toLowerCase())) return undefined;
+    return trimmed;
+}
+
+/**
+ * Name the application in a sentence, using only the facts we actually have.
+ *
+ * The old templates interpolated the role and employer unconditionally, so a
+ * failed extraction went out as "I applied for the [role] role at venues".
+ * A missing fact should cost the reader nothing: the employer knows which role
+ * they advertised, and dropping the clause reads as normal writing rather than
+ * as a broken mail merge.
+ */
+export function describeApplication(role?: string | null, company?: string | null): string {
+    const r = knownOrUndefined(role);
+    const c = knownOrUndefined(company);
+    if (r && c) return `the ${r} role at ${c}`;
+    if (r) return `the ${r} role`;
+    if (c) return `a role at ${c}`;
+    return 'the role you advertised';
+}
+
 export function buildOutreachMessages(input: OutreachInput): OutreachMessages {
-    const role = input.role || '[role]';
-    const company = input.company || '[company]';
+    const role = knownOrUndefined(input.role);
+    const company = knownOrUndefined(input.company);
+    const applicationFor = describeApplication(role, company);
 
     const letter = input.coverLetter ? splitCoverLetter(input.coverLetter) : null;
 
@@ -292,7 +324,7 @@ export function buildOutreachMessages(input: OutreachInput): OutreachMessages {
     // The LinkedIn note carries no signature. A connection request already shows
     // the sender's name and headline, so signing it spends characters we do not
     // have on information the recipient is already looking at.
-    const opener = `Hi ${greeting}, I've just applied for the ${role} role at ${company}`;
+    const opener = `Hi ${greeting}, I've just applied for ${applicationFor}`;
     const full = (pitch: string) => `${opener}. ${pitch}Thought I'd introduce myself here too.`;
 
     const pitchLine = letter
@@ -313,14 +345,16 @@ export function buildOutreachMessages(input: OutreachInput): OutreachMessages {
 
     const email =
         `Hi ${greeting},\n\n` +
-        `I applied for the ${role} role at ${company} on ${applied} and wanted to introduce myself directly.\n\n` +
+        `I applied for ${applicationFor} on ${applied} and wanted to introduce myself directly.\n\n` +
         `${pitchParagraph ?? PITCH_PARAGRAPH_BLANK}\n\n` +
         `If you're not the right person for this one, I'd be grateful for a pointer to who is.\n\n` +
         `Best regards,\n${signature}`;
 
     return {
         linkedIn,
-        subject: `Application for ${role}, ${signature}`,
+        subject: role
+            ? `Application for ${role}, ${signature}`
+            : `Application, ${signature}`,
         email,
         linkedInNeedsPitch: linkedIn.includes(PITCH_LINE_BLANK),
         emailNeedsPitch: pitchParagraph === null,
