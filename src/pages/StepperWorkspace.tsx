@@ -1728,24 +1728,35 @@ function TrackStep({
     const candidateName = (profile?.name && String(profile.name).trim()) || 'Application';
 
     // Auto-save the application on mount. One-shot per workspaceKey using a
-    // local flag so revisiting the step doesn't duplicate the row.
+    // local flag so revisiting the step doesn't duplicate the row. The flag
+    // holds the date it saved rather than a bare '1', because the outreach
+    // email below states when the application went in and coming back to this
+    // step a week later must not rewrite that to today. Older installs stored
+    // '1', which reads as "saved, date unknown".
+    const [savedAt, setSavedAt] = useState<string | undefined>(() => {
+        const stored = localStorage.getItem(`jobhub_tracker_saved_${workspaceKey}`);
+        return stored && stored !== '1' ? stored : undefined;
+    });
+
     useEffect(() => {
         const flag = `jobhub_tracker_saved_${workspaceKey}`;
-        if (localStorage.getItem(flag) === '1') return;
+        if (localStorage.getItem(flag)) return;
         let cancelled = false;
         (async () => {
+            const appliedAt = new Date().toISOString();
             try {
                 await api.post('/jobs', {
                     title: role ?? 'Untitled role',
                     company: company ?? 'Unknown company',
                     description: jobDescription,
                     status: 'APPLIED',
-                    dateApplied: new Date().toISOString(),
+                    dateApplied: appliedAt,
                 });
                 if (!cancelled) {
-                    localStorage.setItem(flag, '1');
+                    localStorage.setItem(flag, appliedAt);
+                    setSavedAt(appliedAt);
                     // Notify dashboard to show goal-counter onboarding if first ever
-                    localStorage.setItem('jobhub_last_apply_at', new Date().toISOString());
+                    localStorage.setItem('jobhub_last_apply_at', appliedAt);
                 }
             } catch {
                 if (!cancelled) setAutoSaveError(true);
@@ -1897,7 +1908,14 @@ function TrackStep({
                 application is in. Sits above the navigation deliberately — it is
                 the next useful thing to do, but the buttons below stay live so it
                 never becomes a toll gate on the way to the next application. */}
-            <PostApplyOutreach jobTitle={role} company={company} />
+            <PostApplyOutreach
+                jobTitle={role}
+                company={company}
+                coverLetter={coverDraft?.content}
+                jobDescription={jobDescription}
+                candidateName={profile?.name ? String(profile.name).trim() : undefined}
+                dateApplied={savedAt}
+            />
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 4 }}>
                 <button onClick={onBack} style={ghostButtonStyle(false)}>

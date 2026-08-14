@@ -11,23 +11,24 @@
  * moves the needle, so this must not become a toll gate on the way to the next
  * one.
  *
- * The messages are fixed templates rather than generated text. Three reasons:
- * a template cannot fail or stall the way a model call can, it costs nothing,
- * and the blanks are the point — the sentence the candidate writes themselves
- * is what separates them from everyone else sending a template.
+ * The messages are assembled here rather than generated: a model call cannot
+ * fail or stall the way this cannot, and it costs nothing. What fills them is
+ * work already done. The cover letter on the previous step was written against
+ * this exact ad from this exact resume, so the argument the outreach needs has
+ * already been made and only has to be carried across.
+ *
+ * This card used to leave those lines blank on the reasoning that the sentence
+ * a candidate writes themselves is what separates them from everyone sending a
+ * template. That held when the alternative was generic filler. It does not now:
+ * the line we carry over is the candidate's own evidence, quantified, and the
+ * fields stay editable so anyone who wants to rewrite it still can. What we
+ * will not do is invent a name for the person being greeted. See outreachFill.
  */
 import { useState } from 'react';
 import { Check, ChevronDown, ChevronUp, Copy, Linkedin, Mail, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { warm } from '../../lib/theme/warmTokens';
-
-/**
- * LinkedIn caps connection notes at 200 characters on a free account and 300 on
- * Premium. Most of this audience is on free, so 200 is the limit we hold people
- * to: a note written to 200 sends for everyone, a note written to 300 silently
- * fails for the majority.
- */
-const LINKEDIN_NOTE_LIMIT = 200;
+import { LINKEDIN_NOTE_LIMIT, buildOutreachMessages } from '../../lib/outreachFill';
 
 /**
  * Placeholders are written in [brackets] so they survive a copy to plain text.
@@ -45,7 +46,7 @@ const TARGETS = [
     },
     {
         title: 'Someone already on the team',
-        detail: 'The one almost nobody thinks of, and the second most likely to answer. Look for something you genuinely share — the same university, the same home country, a previous employer in common. That is what turns a cold message into a warm one.',
+        detail: 'The one almost nobody thinks of, and the second most likely to answer. Look for something you genuinely share: the same university, the same home country, a previous employer in common. That is what turns a cold message into a warm one.',
     },
     {
         title: 'The hiring manager',
@@ -53,25 +54,7 @@ const TARGETS = [
     },
 ];
 
-function templates(company: string, role: string) {
-    return {
-        linkedIn:
-            `Hi [their name], I've just applied for the ${role} role at ${company}. ` +
-            `[One line on why this role fits you.] ` +
-            `Thought I'd introduce myself here too — happy to be a familiar name if my application reaches you. [Your name]`,
-
-        subject: `Application for ${role} — [Your name]`,
-
-        email:
-            `Hi [their name],\n\n` +
-            `I applied for the ${role} role at ${company} on [date] and wanted to introduce myself directly.\n\n` +
-            `[Two sentences of your own here: the specific thing the job ad asks for, and the concrete evidence from your experience that meets it — with a real number if you have one.]\n\n` +
-            `If you're not the right person for this one, I'd be grateful for a pointer to who is.\n\n` +
-            `Best regards,\n[Your name]`,
-    };
-}
-
-/** Render a template with its blanks visibly marked. */
+/** Render a template with any remaining blanks visibly marked. */
 function TemplateBody({ text }: { text: string }) {
     return (
         <>
@@ -102,11 +85,14 @@ function TemplateCard({
     icon,
     text,
     charLimit,
+    needsEdit,
 }: {
     label: string;
     icon: React.ReactNode;
     text: string;
     charLimit?: number;
+    /** True while the message still has a blank the candidate has to fill. */
+    needsEdit?: boolean;
 }) {
     const [copied, setCopied] = useState(false);
     const overLimit = charLimit ? text.length > charLimit : false;
@@ -114,7 +100,9 @@ function TemplateCard({
     const handleCopy = async () => {
         await navigator.clipboard.writeText(text);
         setCopied(true);
-        toast.success('Copied — fill in the highlighted bits before you send');
+        toast.success(needsEdit
+            ? 'Copied. Fill in the highlighted bits before you send'
+            : 'Copied. Give it a read before you send');
         setTimeout(() => setCopied(false), 1800);
     };
 
@@ -180,12 +168,30 @@ function TemplateCard({
 export function PostApplyOutreach({
     jobTitle,
     company,
+    coverLetter,
+    jobDescription,
+    candidateName,
+    dateApplied,
 }: {
     jobTitle?: string;
     company?: string;
+    /** The cover letter generated on the previous step, if they got that far. */
+    coverLetter?: string;
+    jobDescription?: string;
+    candidateName?: string;
+    /** ISO date the application was logged to the tracker. */
+    dateApplied?: string;
 }) {
     const [open, setOpen] = useState(false);
-    const t = templates(company || '[company]', jobTitle || '[role]');
+    const t = buildOutreachMessages({
+        role: jobTitle || '',
+        company: company || '',
+        coverLetter,
+        jobDescription,
+        candidateName,
+        dateApplied,
+    });
+    const hasBlanks = t.linkedInNeedsPitch || t.emailNeedsPitch;
 
     return (
         <div style={{
@@ -215,13 +221,16 @@ export function PostApplyOutreach({
                         letterSpacing: '0.14em', textTransform: 'uppercase',
                         color: warm.colors.accentGold, marginBottom: 3,
                     }}>
-                        Optional — two minutes
+                        Optional, two minutes
                     </span>
                     <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: warm.colors.textPrimary }}>
                         Message someone at {company || 'the company'}
                     </span>
                     <span style={{ display: 'block', fontSize: 12.5, color: warm.colors.textSecondary, marginTop: 2 }}>
-                        A short note to a real person is the one part of this you still control. Templates ready inside.
+                        A short note to a real person is the one part of this you still control.{' '}
+                        {hasBlanks
+                            ? 'Templates ready inside.'
+                            : 'Written for you already, ready to copy.'}
                     </span>
                 </span>
                 <span style={{
@@ -242,7 +251,7 @@ export function PostApplyOutreach({
                     padding: '4px 18px 18px',
                 }}>
                     <p style={{ margin: 0, fontSize: 12.5, color: warm.colors.textSecondary, lineHeight: 1.6 }}>
-                        Be realistic about the odds — most of these get no reply. It is still worth the
+                        Be realistic about the odds. Most of these get no reply, and it is still worth the
                         two minutes, because the ones that do land are the ones that tend to turn into
                         interviews.
                     </p>
@@ -276,7 +285,7 @@ export function PostApplyOutreach({
                         <p style={{ margin: 0, fontSize: 12.5, color: warm.colors.textSecondary, lineHeight: 1.6 }}>
                             <strong style={{ color: warm.colors.textPrimary }}>Email second.</strong> Use
                             Hunter.io, RocketReach or Apollo to find the company's address{' '}
-                            <em>pattern</em> — usually firstname.lastname@company.com — then apply that
+                            <em>pattern</em>, usually firstname.lastname@company.com, then apply that
                             pattern to the name you found on LinkedIn. Looking the pattern up once spares
                             you burning a free lookup on every person you contact.
                         </p>
@@ -289,10 +298,20 @@ export function PostApplyOutreach({
                         padding: '10px 14px',
                     }}>
                         <p style={{ margin: 0, fontSize: 12.5, color: warm.colors.textPrimary, lineHeight: 1.6 }}>
-                            Replace every highlighted blank before you send. The one that matters most is
-                            the couple of sentences in your own words — a recruiter can spot an untouched
-                            template instantly, and writing that bit yourself is exactly what separates
-                            you from everyone else who sent one.
+                            {hasBlanks ? (
+                                <>
+                                    Replace every highlighted blank before you send. The one that matters
+                                    most is the couple of sentences in your own words: a recruiter can spot
+                                    an untouched template instantly, and writing that bit yourself is
+                                    exactly what separates you from everyone else who sent one.
+                                </>
+                            ) : (
+                                <>
+                                    These are filled in from your cover letter, so they are ready to send
+                                    as they are. Read them once first. If the evidence we carried across
+                                    is not the part you would have led with for this person, change it.
+                                </>
+                            )}
                         </p>
                     </div>
 
@@ -301,6 +320,7 @@ export function PostApplyOutreach({
                         icon={<Linkedin size={12} />}
                         text={t.linkedIn}
                         charLimit={LINKEDIN_NOTE_LIMIT}
+                        needsEdit={t.linkedInNeedsPitch}
                     />
 
                     <TemplateCard
@@ -313,6 +333,7 @@ export function PostApplyOutreach({
                         label="Email body"
                         icon={<Mail size={12} />}
                         text={t.email}
+                        needsEdit={t.emailNeedsPitch}
                     />
 
                     <p style={{ margin: 0, fontSize: 12, color: warm.colors.textMuted, lineHeight: 1.6 }}>
