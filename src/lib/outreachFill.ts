@@ -317,7 +317,11 @@ export function buildOutreachMessages(input: OutreachInput): OutreachMessages {
             ? contactNameFromJobDescription(input.jobDescription, input.company)
             : null);
 
+    // A LinkedIn note is a DM and "Hi there," is right for it. An email about a
+    // live application is not, so it takes the formal address from the
+    // salutation rules when the ad named nobody.
     const greeting = contactName ?? 'there';
+    const emailGreeting = contactName ? `Hi ${contactName},` : 'Dear Hiring Manager,';
     const signature = input.candidateName?.trim() || '[Your name]';
     const applied = formatApplied(input.dateApplied) ?? '[date]';
 
@@ -344,7 +348,7 @@ export function buildOutreachMessages(input: OutreachInput): OutreachMessages {
     const pitchParagraph = letter ? evidenceParagraph(letter.body) : null;
 
     const email =
-        `Hi ${greeting},\n\n` +
+        `${emailGreeting}\n\n` +
         `I applied for ${applicationFor} on ${applied} and wanted to introduce myself directly.\n\n` +
         `${pitchParagraph ?? PITCH_PARAGRAPH_BLANK}\n\n` +
         `If you're not the right person for this one, I'd be grateful for a pointer to who is.\n\n` +

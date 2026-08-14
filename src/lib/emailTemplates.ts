@@ -119,7 +119,7 @@ export function renderTemplate(
     '[Job Title]': job.title,
     '[Company]': job.company,
     '[date]': fmtDate(job.dateApplied),
-    '[Hiring Manager Name]': contact ?? 'there',
+    '[Hiring Manager Name]': contact ?? undefined,
     '[Your Name]': profile?.name ?? undefined,
     '[Phone]': profile?.phone ?? undefined,
     '[Email]': profile?.email ?? undefined,
@@ -143,6 +143,15 @@ export function renderTemplate(
         : 'a role you advertised';
     body = body.replaceAll('[Job Title] at [Company]', clause);
     subject = title ? subject : 'Application submitted [date]';
+  }
+
+  // No name means the formal address, not a casual one. This follows the
+  // salutation rule in server/rules/cover_letter_rules.md: a named greeting
+  // when we have the name, "Dear Hiring Manager," when we do not, and never
+  // "To Whom It May Concern". "Hi there," is a DM opening, not the way to
+  // start a follow-up to an employer about a live application.
+  if (!contact) {
+    body = body.replace('Hi [Hiring Manager Name],', 'Dear Hiring Manager,');
   }
 
   for (const [placeholder, value] of Object.entries(subs)) {

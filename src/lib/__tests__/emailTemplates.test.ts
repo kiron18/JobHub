@@ -38,13 +38,13 @@ describe('application follow-up', () => {
         expect(body).toContain('Hi Sarah,');
     });
 
-    it('greets "there" when the ad named nobody, rather than leaving a bracket', () => {
+    it('uses the formal address when the ad named nobody, never a bracket', () => {
         const { body } = renderTemplate(
             'application-followup',
             { ...JOB, description: 'We are hiring a Business Analyst in Melbourne.' },
             PROFILE,
         );
-        expect(body).toContain('Hi there,');
+        expect(body).toContain('Dear Hiring Manager,');
         expect(body).not.toContain('[Hiring Manager Name]');
     });
 
@@ -55,13 +55,13 @@ describe('application follow-up', () => {
             'Contact: Recruitment Team',
         ]) {
             const { body } = renderTemplate('application-followup', { ...JOB, description: ad }, PROFILE);
-            expect(body).toContain('Hi there,');
+            expect(body).toContain('Dear Hiring Manager,');
         }
     });
 
-    it('still greets "there" on an older row saved before the ad was kept', () => {
+    it('still addresses an older row saved before the ad was kept', () => {
         const { body } = renderTemplate('application-followup', JOB, PROFILE);
-        expect(body).toContain('Hi there,');
+        expect(body).toContain('Dear Hiring Manager,');
         expect(body).not.toContain('[Hiring Manager Name]');
     });
 

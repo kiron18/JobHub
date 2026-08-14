@@ -268,4 +268,60 @@ Return ONLY valid JSON with 2-4 actions. If no actionable items exist, return { 
     }
 });
 
+/**
+ * POST /job-facts — the role title and employer, read out of a pasted job ad.
+ *
+ * These two strings name the tracker row, get stamped on exported filenames,
+ * and are written into the follow-up and outreach emails that go to the
+ * employer. They were previously guessed with a regex, which produced a real
+ * email reading "I applied for the [role] role at venues": the pattern matched
+ * "experience working at venues" and took the noun as the company.
+ *
+ * A model reads an ad the way a person does, which is what this needs. It is a
+ * small, cheap, temperature-zero call and the client keeps its own instant
+ * fallback, so a failure here costs accuracy and never blocks the application.
+ */
+router.post('/job-facts', async (req: any, res: any) => {
+    try {
+        const { jobDescription } = req.body as { jobDescription?: string };
+        if (!jobDescription || jobDescription.trim().length < 50) {
+            return res.status(400).json({ error: 'Job description required.' });
+        }
+
+        const prompt = `Read this job advertisement and return the role title and the employer.
+
+Rules:
+- Use ONLY what the advertisement actually says. Never infer, complete or guess a name.
+- "title" is the advertised role, exactly as written, with no seniority or department invented.
+- "company" is the ORGANISATION HIRING. It is not the recruitment agency posting on their behalf, not a location, not a venue, not a client the role serves, and not a generic noun that happened to follow the word "at".
+- Many ads genuinely do not name the employer, for example when a recruiter lists it confidentially. That is normal and expected. Return null for company in that case.
+- Return null for anything the ad does not state. A null is correct and useful; a plausible guess is worse than nothing because it will be sent to that employer in an email.
+
+Return JSON only:
+{ "title": "<the role, or null>", "company": "<the hiring organisation, or null>" }
+
+JOB ADVERTISEMENT:
+"""
+${jobDescription.slice(0, 12000)}
+"""`;
+
+        const raw = await callLLM(prompt, true);
+        const result = parseLLMJson(raw);
+
+        const clean = (value: unknown): string | null => {
+            if (typeof value !== 'string') return null;
+            const trimmed = value.trim();
+            if (!trimmed || trimmed.length > 120) return null;
+            // Models reach for these when asked to return null in prose form.
+            if (/^(null|none|n\/a|not (stated|specified|provided|listed)|unknown|confidential)$/i.test(trimmed)) return null;
+            return trimmed;
+        };
+
+        return res.json({ title: clean(result.title), company: clean(result.company) });
+    } catch (err: any) {
+        console.error('[Job Facts] Error:', err.message);
+        res.status(500).json({ error: 'Failed to read the job ad.' });
+    }
+});
+
 export default router;

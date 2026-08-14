@@ -194,14 +194,15 @@ describe('buildOutreachMessages', () => {
         expect(m.linkedIn).toContain('Commonwealth Scientific');
     });
 
-    it('greets "there" rather than inventing a name', () => {
+    it('addresses the role rather than inventing a name', () => {
         const m = buildOutreachMessages({
             ...base,
             coverLetter: COVER_LETTER.replace('Dear Ms Williams,', 'Dear Hiring Manager,'),
             jobDescription: 'Business Analyst wanted. Contact our Talent team.',
         });
         expect(m.contactName).toBeNull();
-        expect(m.email).toContain('Hi there,');
+        // The email is formal, the connection note is a DM.
+        expect(m.email).toContain('Dear Hiring Manager,');
         expect(m.linkedIn).toContain('Hi there,');
     });
 
@@ -216,7 +217,7 @@ describe('buildOutreachMessages', () => {
 
     it('still produces a usable message when there is no cover letter yet', () => {
         const m = buildOutreachMessages({ role: 'Business Analyst', company: 'Meridian Logistics' });
-        expect(m.email).toContain('Hi there,');
+        expect(m.email).toContain('Dear Hiring Manager,');
         expect(m.emailNeedsPitch).toBe(true);
         expect(m.email).toContain('[Two sentences of your own here');
         expect(m.linkedIn).toContain('[One line on why this role fits you.]');

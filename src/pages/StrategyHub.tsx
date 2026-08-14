@@ -459,19 +459,38 @@ function AnalysisHeroCard() {
     const tooShort = trimmed.length > 0 && trimmed.length < 100;
     const canSubmit = trimmed.length >= 50 && !analysing;
 
-    // The feed knows the role and employer for certain. A pasted ad does not,
-    // so it goes through the extractor, which returns undefined rather than a
-    // guess. See extractJobFacts: these two strings name the tracker row, the
-    // export filenames and the emails that go to the employer.
-    const extractFromJD = (jd: string): { company?: string; role?: string } => {
+    /**
+     * The role title and employer for this application.
+     *
+     * The feed already knows both for certain, so it never asks. A pasted ad
+     * goes to the model, which reads it the way a person does. These two strings
+     * name the tracker row, get stamped on exported filenames, and are written
+     * into the follow-up and outreach emails that reach the employer, so they
+     * are worth one short call to get right.
+     *
+     * The local extractor stays as the fallback. If the call fails or is slow to
+     * the point of being useless, the application still starts: never block
+     * someone from applying over a subject line.
+     */
+    const resolveJobFacts = async (jd: string): Promise<{ company?: string; role?: string }> => {
         if (pickedFeedItem) return { company: pickedFeedItem.company, role: pickedFeedItem.title };
-        return extractJobFacts(jd);
+
+        const local = extractJobFacts(jd);
+        try {
+            const { data } = await api.post('/analyze/job-facts', { jobDescription: jd });
+            return {
+                role: data?.title ?? local.role,
+                company: data?.company ?? local.company,
+            };
+        } catch {
+            return local;
+        }
     };
 
     const handleAnalyse = async () => {
         if (!canSubmit) return;
         setAnalysing(true);
-        const { company, role } = extractFromJD(trimmed);
+        const { company, role } = await resolveJobFacts(trimmed);
         try {
             // Navigate directly to apply - generation will handle access control
             navigate('/apply', {
