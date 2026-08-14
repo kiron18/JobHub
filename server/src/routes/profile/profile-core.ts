@@ -6,6 +6,7 @@ import { EXEMPT_EMAILS } from '../stripe';
 import { generateBaselineResume } from '../../services/baselineResume';
 import { derivePositioningStatement, type PositioningStatement } from '../../services/positioningStatement';
 import { runCoherenceCheck } from '../../services/coherenceCheck';
+import { normalisePersonName } from '../../lib/personName';
 
 const router = Router();
 
@@ -237,7 +238,7 @@ router.post('/profile', authenticate, async (req, res) => {
                     data: {
                         userId,
                         email: profile.email || authEmail || null,
-                        name: profile.name,
+                        name: normalisePersonName(profile.name),
                         professionalSummary: profile.professionalSummary,
                         skills: skills ? (typeof skills === 'string' ? skills : JSON.stringify(skills)) : '{}',
                         location: profile.location,
@@ -292,7 +293,7 @@ router.post('/profile', authenticate, async (req, res) => {
                 // Profile editing feature removed. Users update their data by re-uploading their resume.
                 // Only scalar fields are updated here for onboarding completion.
                 const scalarUpdate: Record<string, any> = {};
-                if (profile.name)                 scalarUpdate.name                = profile.name;
+                if (profile.name)                 scalarUpdate.name                = normalisePersonName(profile.name);
                 if (profile.email)                scalarUpdate.email               = profile.email;
                 else if (!existingProfile.email && authEmail) scalarUpdate.email   = authEmail;
                 if (profile.professionalSummary)  scalarUpdate.professionalSummary = profile.professionalSummary;

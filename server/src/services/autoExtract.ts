@@ -6,6 +6,7 @@
 import { callClaude } from './llm';
 import { STAGE_1_PROMPT, STAGE_2_PROMPT } from './prompts';
 import { prisma } from '../db';
+import { normalisePersonName } from '../lib/personName';
 import { parseLLMJson } from '../utils/parseLLMResponse';
 import { deriveIdentityCards } from './identityDerivation';
 import { resolveYearsOfExperience } from '../lib/profileMath';
@@ -122,7 +123,7 @@ export async function persistExtracted(userId: string, parsed: ParsedResume, opt
 
       // Save extracted scalar profile fields — only non-null, never overwrite onboarding fields
       const scalarUpdate: Record<string, any> = {};
-      if (profile.name)                scalarUpdate.name                = profile.name;
+      if (profile.name)                scalarUpdate.name                = normalisePersonName(profile.name);
       // email intentionally excluded — already captured; writing it risks a P2002
       if (profile.location)            scalarUpdate.location            = profile.location;
       if (profile.phone)               scalarUpdate.phone               = profile.phone;
