@@ -1,4 +1,4 @@
-import { contactNameFromJobDescription, knownOrUndefined } from './outreachFill';
+import { contactNameFromJobDescription, formatPersonName, knownOrUndefined } from './outreachFill';
 
 export type EmailTemplateId =
   | 'application-followup'
@@ -120,7 +120,7 @@ export function assembleFollowUp(
     : `Application submitted ${fmtDate(job.dateApplied)}`;
 
   const contactLine = [profile?.phone, profile?.email].filter(Boolean).join(' | ');
-  const signature = [profile?.name, contactLine].filter(Boolean).join('\n');
+  const signature = [formatPersonName(profile?.name), contactLine].filter(Boolean).join('\n');
 
   const full = `${greetingFor(job)}\n\n${body.trim()}\n\nKind regards,\n${signature}`.trim();
 
@@ -154,7 +154,7 @@ export function renderTemplate(
     '[Company]': job.company,
     '[date]': fmtDate(job.dateApplied),
     '[Hiring Manager Name]': contact ?? undefined,
-    '[Your Name]': profile?.name ?? undefined,
+    '[Your Name]': formatPersonName(profile?.name),
     '[Phone]': profile?.phone ?? undefined,
     '[Email]': profile?.email ?? undefined,
   };

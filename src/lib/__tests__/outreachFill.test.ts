@@ -19,6 +19,8 @@ import {
     contactNameFromSalutation,
     evidenceParagraph,
     shortPitchLine,
+    formatPersonName,
+    condenseToClause,
     splitCoverLetter,
 } from '../outreachFill';
 
@@ -226,5 +228,44 @@ describe('buildOutreachMessages', () => {
     it('carries no em dashes', () => {
         const m = buildOutreachMessages(base);
         expect(`${m.linkedIn}${m.subject}${m.email}`).not.toMatch(/[—–]/);
+    });
+});
+
+describe('formatPersonName', () => {
+    it('fixes a name stored in capitals, as resume headers often are', () => {
+        expect(formatPersonName('KIRON KURIAN JOHN')).toBe('Kiron Kurian John');
+    });
+
+    it('leaves a name alone once it has any lowercase, so McDonald survives', () => {
+        expect(formatPersonName('Ronan McDonald')).toBe('Ronan McDonald');
+        expect(formatPersonName('Maria de Silva')).toBe('Maria de Silva');
+    });
+
+    it('capitalises after hyphens and apostrophes', () => {
+        expect(formatPersonName("ANNE-MARIE O'BRIEN")).toBe("Anne-Marie O'Brien");
+    });
+
+    it('has nothing to say about a missing name', () => {
+        expect(formatPersonName(undefined)).toBeUndefined();
+        expect(formatPersonName('   ')).toBeUndefined();
+    });
+});
+
+describe('condenseToClause', () => {
+    const SENTENCE = 'At Australian Events, I took content output from 50 to more than 150 assets per campaign by building AI-assisted workflows that let me produce far more without flattening the message.';
+
+    it('cuts a long sentence back to a grammatical claim that fits', () => {
+        const out = condenseToClause(SENTENCE, 95)!;
+        expect(out).toBe('At Australian Events, I took content output from 50 to more than 150 assets per campaign.');
+        expect(out.length).toBeLessThanOrEqual(95);
+    });
+
+    it('keeps the figure, since that is why the sentence was worth quoting', () => {
+        expect(condenseToClause(SENTENCE, 30)).toBeNull();
+    });
+
+    it('does not leave a dangling conjunction where it cut', () => {
+        const out = condenseToClause('I cut costs by 40%, and then I left.', 60);
+        expect(out).not.toMatch(/\b(and|but|which|so)\.$/);
     });
 });

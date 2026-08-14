@@ -34,6 +34,14 @@ export const LINKEDIN_NOTE_LIMIT = 200;
  */
 const MIN_PITCH_LINE = 40;
 
+/**
+ * A condensed clause is allowed to be shorter than a whole sentence. "I cut
+ * costs by 40%." is nineteen characters and is a perfectly good line; the
+ * forty-character floor exists to stop a whole sentence being a fragment, and
+ * does not apply to something deliberately cut down.
+ */
+const MIN_CONDENSED_LINE = 18;
+
 /** Keeps the pitch paragraph from turning a short email into a wall of text. */
 const MAX_PITCH_PARAGRAPH = 480;
 
@@ -82,6 +90,75 @@ export function cleanProse(text: string): string {
         .replace(/^#+\s+/gm, '')
         .replace(/\s{2,}/g, ' ')
         .trim();
+}
+
+/**
+ * Present a name the way it should appear in a signature.
+ *
+ * Resume headers are frequently set in capitals, and the extractor stores what
+ * it reads, so a profile can legitimately hold "KIRON KURIAN JOHN". That is a
+ * typographic choice on a document, not how anyone writes their own name at the
+ * bottom of an email, and shouting it at a hiring manager reads badly.
+ *
+ * Only all-caps names are touched, so "McDonald" and "de Silva" are left alone:
+ * a name with any lowercase in it is already the form its owner chose.
+ */
+export function formatPersonName(name?: string | null): string | undefined {
+    const trimmed = name?.trim();
+    if (!trimmed) return undefined;
+    if (/[a-z]/.test(trimmed)) return trimmed;
+
+    return trimmed
+        .toLowerCase()
+        .replace(/(^|[\s'’-])(\p{L})/gu, (_m, sep: string, ch: string) => sep + ch.toUpperCase());
+}
+
+/**
+ * Trim a sentence down to a budget by dropping trailing clauses.
+ *
+ * A cover letter sentence runs to 180 characters and a LinkedIn note has room
+ * for 90, so requiring a whole sentence to fit meant the note almost never got
+ * a line at all. Cutting at a comma keeps a grammatical, self-contained claim,
+ * where cutting at the budget would leave a fragment mid-word.
+ *
+ * The kept text has to still carry the figure, because the number is the reason
+ * the sentence was worth quoting. Without it this would happily return "At
+ * Australian Events", which fits and says nothing.
+ */
+export function condenseToClause(sentence: string, budget: number): string | null {
+    const text = sentence.replace(/[.!?]+$/, '').trim();
+
+    // Where a clause can be severed. Commas are the obvious ones, but the
+    // sentence that prompted this had only one comma and ran on through "by
+    // building ... that let me ...", so the subordinating connectives have to
+    // count as boundaries too or there is nothing to cut.
+    const boundary = /,|\s+(?:by|which|that|because|while|although|whilst|with|and then|so that)\s+/g;
+
+    const cuts: number[] = [];
+    for (const m of text.matchAll(boundary)) cuts.push(m.index!);
+    cuts.push(text.length);
+
+    // Longest prefix that fits, so we keep as much of the claim as the budget
+    // allows rather than the first thing that happens to be short enough.
+    for (const cut of [...cuts].reverse()) {
+        const candidate = `${text
+            .slice(0, cut)
+            .replace(/[\s,]+$/, '')
+            .replace(/\s+(?:and|but|or|which|that|so|because|while|with|by)$/i, '')
+            .trim()}.`;
+
+        // The figure is why the sentence was worth quoting at all. Without this
+        // check the first boundary wins and the note reads "At Australian
+        // Events.", which fits the budget and says nothing.
+        if (
+            candidate.length <= budget &&
+            candidate.length >= MIN_CONDENSED_LINE &&
+            /[\d%$]/.test(candidate)
+        ) {
+            return candidate;
+        }
+    }
+    return null;
 }
 
 /** Split prose into sentences, keeping their terminating punctuation. */
@@ -141,15 +218,29 @@ export function shortPitchLine(body: string[], budget: number): string | null {
         .flatMap(sentences)
         .filter((s) => s.length >= MIN_PITCH_LINE && s.length <= budget);
 
-    if (candidates.length === 0) return null;
-
     // Digits, percentages and dollar figures only. Spelled-out numbers were
     // tempting, but "one" and "half" appear in ordinary prose often enough that
     // matching them would mark nearly every sentence as quantified and the
     // preference would stop meaning anything.
-    const quantified = candidates.filter((s) => /[\d%$]/.test(s));
-    const pool = quantified.length > 0 ? quantified : candidates;
-    return pool.reduce((best, s) => (s.length > best.length ? s : best));
+    const hasFigure = (s: string) => /[\d%$]/.test(s);
+    const longest = (pool: string[]) => pool.reduce((best, s) => (s.length > best.length ? s : best));
+
+    // 1. A quantified sentence that fits as written.
+    const quantified = candidates.filter(hasFigure);
+    if (quantified.length > 0) return longest(quantified);
+
+    // 2. A quantified sentence cut back until it fits. This outranks an intact
+    //    unquantified sentence: a claim with a number in it earns the space,
+    //    and cover letter sentences run to twice this budget so the quantified
+    //    one almost never fits whole.
+    const all = body.slice(0, 2).map(cleanProse).flatMap(sentences);
+    for (const sentence of all.filter(hasFigure)) {
+        const condensed = condenseToClause(sentence, budget);
+        if (condensed) return condensed;
+    }
+
+    // 3. Anything that fits, which is better than leaving the blank.
+    return candidates.length > 0 ? longest(candidates) : null;
 }
 
 // ── Contact name ────────────────────────────────────────────────────────────
@@ -322,14 +413,18 @@ export function buildOutreachMessages(input: OutreachInput): OutreachMessages {
     // salutation rules when the ad named nobody.
     const greeting = contactName ?? 'there';
     const emailGreeting = contactName ? `Hi ${contactName},` : 'Dear Hiring Manager,';
-    const signature = input.candidateName?.trim() || '[Your name]';
+    const signature = formatPersonName(input.candidateName) ?? '[Your name]';
     const applied = formatApplied(input.dateApplied) ?? '[date]';
 
     // The LinkedIn note carries no signature. A connection request already shows
     // the sender's name and headline, so signing it spends characters we do not
     // have on information the recipient is already looking at.
+    // The note used to close on "Thought I'd introduce myself here too." That
+    // sentence cost 39 of 200 characters to say what a connection request from
+    // a stranger already says by existing, and it was the reason there was no
+    // room left for the one line that actually argues for the candidate.
     const opener = `Hi ${greeting}, I've just applied for ${applicationFor}`;
-    const full = (pitch: string) => `${opener}. ${pitch}Thought I'd introduce myself here too.`;
+    const full = (pitch: string) => `${opener}. ${pitch}`.trimEnd();
 
     const pitchLine = letter
         ? shortPitchLine(letter.body, LINKEDIN_NOTE_LIMIT - full('').length - 1)
