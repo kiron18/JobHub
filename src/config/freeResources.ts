@@ -1,13 +1,13 @@
 /* ────────────────────────────────────────────────────────────────────────────
-   The free resource pages — /free/:slug
+   The free resource pages: /free/:slug
 
-   One page, eleven configurations. Every giveaway shares the same layout, the
+   One page, twelve configurations. Every giveaway shares the same layout, the
    same system map and the same questions; the only thing that changes is which
    asset is handed over and which node lights up.
 
-   ⚠️ Do NOT turn this into eleven copies of the page. The copy below the fold
-   gets rewritten often, and eleven duplicates drift apart within a month, at
-   which point the funnel is quietly telling eleven different stories.
+   ⚠️ Do NOT turn this into twelve copies of the page. The copy below the fold
+   gets rewritten often, and twelve duplicates drift apart within a month, at
+   which point the funnel is quietly telling twelve different stories.
 
    Slugs live under /free/ deliberately: `/linkedin`, `/tracker`, `/interview`
    and `/pricing` are already routes in this app, so bare single-word slugs
@@ -48,8 +48,8 @@ export interface FreeResource {
 }
 
 /**
- * Every asset, keyed by slug. Adding a twelfth is one entry here plus the file
- * in /public/free — no new route, no new page.
+ * Every asset, keyed by slug. Adding a thirteenth is one entry here plus the file
+ * in /public/free. No new route, no new page.
  */
 export const FREE_RESOURCES: FreeResource[] = [
   {
@@ -110,6 +110,13 @@ export const FREE_RESOURCES: FreeResource[] = [
     name: 'System Templates',
     promise: 'The documents behind the routine, so the week runs itself instead of restarting every Monday.',
     files: [{ label: 'System Templates (DOCX)', href: '/free/system-templates.docx' }],
+  },
+  {
+    slug: 'sponsors',
+    step: 3,
+    name: 'Accredited Visa Sponsor List',
+    promise: '3,875 companies the government has approved to sponsor, on the priority processing list, grouped by industry.',
+    files: [{ label: 'Accredited Visa Sponsor List (PDF)', href: '/free/accredited-visa-sponsors.pdf' }],
   },
   {
     slug: 'linkedin',

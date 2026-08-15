@@ -1,5 +1,5 @@
 /* ────────────────────────────────────────────────────────────────────────────
-   FreeResourcePage — /free/:slug
+   FreeResourcePage: /free/:slug
 
    The lead magnet page, one per asset, all driven from src/config/freeResources.
 
@@ -13,7 +13,7 @@
    largest ask on the page and it used to be the first thing anyone saw.
 
    The stepper is a MAP, not a wizard. No progress state, no completion. Its only
-   job is to show that the file they just took is one of eleven, so "there is
+   job is to show that the file they just took is one of twelve, so "there is
    more, and it is all free" is something they can see rather than believe.
 
    Palette is local to this page on purpose: white and blue with a single gold
@@ -71,6 +71,9 @@ export default function FreeResourcePage() {
   const [serverError, setServerError] = useState('');
   const [done, setDone] = useState(false);
   const [skoolUrl, setSkoolUrl] = useState('');
+  // Returned by the registration. Rides on the community link so the click that
+  // follows can be stamped against this person on the sales board.
+  const [leadId, setLeadId] = useState('');
   const [whenLabel, setWhenLabel] = useState('');
 
   useEffect(() => {
@@ -136,6 +139,7 @@ export default function FreeResourcePage() {
 
       trackFreeResourceRegistered(resource!.slug, answers.challenge ?? '');
       setSkoolUrl(data?.skoolUrl || '/community');
+      setLeadId(typeof data?.leadId === 'string' ? data.leadId : '');
       setDone(true);
     } catch {
       setServerError('Could not reach the server. Check your connection and try again.');
@@ -173,7 +177,10 @@ export default function FreeResourcePage() {
 
   // ── The payoff ─────────────────────────────────────────────────────────────
   if (done) {
-    const href = `${skoolUrl || '/community'}${(skoolUrl || '').includes('?') ? '&' : '?'}src=confirm`;
+    const base = skoolUrl || '/community';
+    const href =
+      `${base}${base.includes('?') ? '&' : '?'}src=confirm` +
+      (leadId ? `&lead=${encodeURIComponent(leadId)}` : '');
     return (
       <div style={page}>
         <div style={{ ...shell, maxWidth: 620 }}>
