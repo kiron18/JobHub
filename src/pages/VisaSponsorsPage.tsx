@@ -11,10 +11,11 @@ import { trackSponsorDirectoryViewed, trackSponsorSearchPerformed, trackSponsorE
 interface SponsorData {
   id: string;
   cleanName: string;
-  industry: string;
+  industry: string | null;
   locations: string[];
-  hiringProfile: string;
-  confidence: string;
+  hiringProfile: string | null;
+  tier: 'accredited' | 'standard';
+  state: string | null;
   website: string | null;
   careersUrl: string | null;
   careersSearchUrl: string | null;
@@ -29,7 +30,7 @@ export function VisaSponsorsPage() {
   const [query, setQuery] = useState('');
   const [industry, setIndustry] = useState('');
   const [location, setLocation] = useState('');
-  const [highConfidence, setHighConfidence] = useState(false);
+  const [accreditedOnly, setAccreditedOnly] = useState(false);
 
   const [industries, setIndustries] = useState<string[]>([]);
   const [locations, setLocations] = useState<string[]>([]);
@@ -40,16 +41,16 @@ export function VisaSponsorsPage() {
 
   const pageSize = 20;
 
-  const fetchResults = useCallback(async (q: string, ind: string, loc: string, hc: boolean, p: number, append: boolean) => {
+  const fetchResults = useCallback(async (q: string, ind: string, loc: string, acc: boolean, p: number, append: boolean, sizeOverride?: number) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (q.trim()) params.set('q', q.trim());
       if (ind) params.set('industry', ind);
       if (loc) params.set('location', loc);
-      if (hc) params.set('highConfidence', 'true');
+      if (acc) params.set('accreditedOnly', 'true');
       params.set('page', String(p));
-      params.set('pageSize', String(pageSize));
+      params.set('pageSize', String(sizeOverride ?? pageSize));
 
       const { data } = await api.get(`/sponsors/search?${params.toString()}`);
       if (append) {
@@ -95,32 +96,32 @@ export function VisaSponsorsPage() {
   function handleSearch(q: string) {
     setQuery(q);
     setPage(1);
-    fetchResults(q, industry, location, highConfidence, 1, false).then(() => {
-      trackSponsorSearchPerformed(q, { industry, location, highConfidence: String(highConfidence) }, total);
+    fetchResults(q, industry, location, accreditedOnly, 1, false).then(() => {
+      trackSponsorSearchPerformed(q, { industry, location, accreditedOnly: String(accreditedOnly) }, total);
     });
   }
 
   function handleIndustryChange(ind: string) {
     setIndustry(ind);
     setPage(1);
-    fetchResults(query, ind, location, highConfidence, 1, false);
+    fetchResults(query, ind, location, accreditedOnly, 1, false);
   }
 
   function handleLocationChange(loc: string) {
     setLocation(loc);
     setPage(1);
-    fetchResults(query, industry, loc, highConfidence, 1, false);
+    fetchResults(query, industry, loc, accreditedOnly, 1, false);
   }
 
-  function handleConfidenceToggle() {
-    const next = !highConfidence;
-    setHighConfidence(next);
+  function handleAccreditedToggle() {
+    const next = !accreditedOnly;
+    setAccreditedOnly(next);
     setPage(1);
     fetchResults(query, industry, location, next, 1, false);
   }
 
   function handleLoadMore() {
-    fetchResults(query, industry, location, highConfidence, page + 1, true);
+    fetchResults(query, industry, location, accreditedOnly, page + 1, true);
   }
 
   function handleLockedClick() {
@@ -128,14 +129,22 @@ export function VisaSponsorsPage() {
     setShowModal(true);
   }
 
-  function handleUnlock(unlockedResults: SponsorData[]) {
+  function handleUnlock() {
     setUnlocked(true);
-    setResults(unlockedResults.slice(0, page * pageSize));
+    // The unlock cookie is already set, so re-running the current search returns the
+    // same cards with their contact links filled in. Ask for everything the visitor
+    // had scrolled to so the page does not collapse back to the first 20. The server
+    // caps pageSize at 100, so clamp here too and re-derive which page we are on;
+    // otherwise "Load more" would resume from the wrong offset and skip results.
+    const size = Math.min(page * pageSize, 100);
+    const resumeFrom = Math.ceil(size / pageSize);
+    fetchResults(query, industry, location, accreditedOnly, 1, false, size)
+      .then(() => setPage(resumeFrom));
   }
 
   return (
     <div style={{ minHeight: '100vh', background: colors.bgCanvas }}>
-      <SponsorHero onSearch={handleSearch} searchValue={query} />
+      <SponsorHero onSearch={handleSearch} searchValue={query} total={total} />
 
       <div style={{ padding: `0 24px ${spacing.sectionDesktop}` }}>
         <div style={{ maxWidth: spacing.containerMax, margin: '0 auto' }}>
@@ -144,10 +153,10 @@ export function VisaSponsorsPage() {
             locations={locations}
             selectedIndustry={industry}
             selectedLocation={location}
-            highConfidenceOnly={highConfidence}
+            accreditedOnly={accreditedOnly}
             onIndustryChange={handleIndustryChange}
             onLocationChange={handleLocationChange}
-            onConfidenceToggle={handleConfidenceToggle}
+            onAccreditedToggle={handleAccreditedToggle}
           />
 
           <div style={{ marginTop: 32 }}>
@@ -170,6 +179,7 @@ export function VisaSponsorsPage() {
         <SponsorEmailModal
           onClose={() => setShowModal(false)}
           onUnlock={handleUnlock}
+          total={total}
         />
       )}
     </div>

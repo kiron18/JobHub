@@ -69,3 +69,13 @@ dist-ssr
 # marketing capture output
 marketing/
 .capture-profile/
+
+# sponsor registry source documents (re-downloadable, see sponsor-source/README.md)
+server/data/sponsor-source/*.pdf
+server/data/sponsor-source/*.zip
+# intermediates, all regenerable for free by re-running the pipeline
+server/data/sponsor-source/abr_matches.json
+server/data/sponsor-source/sponsors_merged.json
+server/data/sponsor-source/sponsor_table_backup_*.json
+# sponsor_registry.json IS committed: it carries the paid classification pass, so
+# regenerating it costs money rather than just time.

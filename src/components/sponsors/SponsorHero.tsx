@@ -4,9 +4,15 @@ import { SponsorSearchBar } from './SponsorSearchBar';
 interface Props {
   onSearch: (q: string) => void;
   searchValue?: string;
+  /** Live row count. 0 until the first search resolves. */
+  total?: number;
 }
 
-export function SponsorHero({ onSearch, searchValue }: Props) {
+export function SponsorHero({ onSearch, searchValue, total = 0 }: Props) {
+  // Round down to a clean thousand so the headline claim stays true between reseeds.
+  const count = total > 1000
+    ? `${Math.floor(total / 1000).toLocaleString()},000+ businesses`
+    : 'every business';
   return (
     <section style={{
       textAlign: 'center',
@@ -32,7 +38,7 @@ export function SponsorHero({ onSearch, searchValue }: Props) {
         maxWidth: spacing.containerReadable,
         lineHeight: 1.5,
       }}>
-        Search 4,058+ verified sponsors. Find companies actively hiring skilled migrants — no guesswork.
+        Search {count} business approved by Home Affairs to sponsor a work visa, straight from the government's own list.
       </p>
       <SponsorSearchBar onSearch={onSearch} defaultValue={searchValue} />
 

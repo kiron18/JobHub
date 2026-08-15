@@ -2,16 +2,33 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+// Shape of sponsor_registry.json, produced by data/sponsor-source/build_registry.py.
 interface SponsorSeed {
-  rawName: string;
-  cleanName: string;
+  name: string;
+  tier: 'accredited' | 'standard';
+  industry: string | null;
   website: string | null;
   careersUrl: string | null;
-  careersSearchUrl: string | null;
-  industry: string;
-  locations: string[];
-  hiringProfile: string;
-  confidence: 'high' | 'medium' | 'low';
+  abn: string | null;
+  state: string | null;
+  postcode: string | null;
+  // Present only on rows carried over from the older enriched dataset.
+  rawName?: string;
+  locations?: string[];
+  hiringProfile?: string | null;
+  careersSearchUrl?: string | null;
+}
+
+/**
+ * Every sponsor needs at least one working link behind the email gate.
+ *
+ * Only the ~3.9k enriched rows have a real website or careers page; the other 33k are
+ * a company name and nothing else. Without this the gate would take a visitor's email
+ * and then reveal an empty card, which is worse than not asking. A prepared Google
+ * search is honest about what it is and actually gets them to the careers page.
+ */
+function careersSearch(name: string): string {
+  return `https://www.google.com/search?q=${encodeURIComponent(`${name} careers Australia`)}`;
 }
 
 async function seed() {
@@ -25,15 +42,19 @@ async function seed() {
     require('fs').readFileSync(dataPath, 'utf-8')
   );
 
-  // Deduplicate by cleanName (take last occurrence, which is the enriched version)
+  // Deduplicate by name (take last occurrence, which is the enriched version)
   const deduped = new Map<string, SponsorSeed>();
   for (const r of records) {
-    const key = r.cleanName.trim();
+    const key = r.name.trim();
     if (key) deduped.set(key, r);
   }
   const unique = Array.from(deduped.values());
 
-  console.log(`Loaded ${records.length} records, ${unique.length} unique by cleanName`);
+  const accredited = unique.filter((r) => r.tier === 'accredited').length;
+  console.log(
+    `Loaded ${records.length} records, ${unique.length} unique ` +
+    `(${accredited} accredited, ${unique.length - accredited} standard)`
+  );
 
   // Batch insert — createMany is much faster than one-at-a-time upsert.
   // For re-runs, delete existing rows first.
@@ -49,15 +70,20 @@ async function seed() {
     const batch = unique.slice(i, i + BATCH);
     await prisma.sponsor.createMany({
       data: batch.map(r => ({
-        cleanName: r.cleanName,
-        rawName: r.rawName,
+        cleanName: r.name,
+        rawName: r.rawName ?? r.name,
         website: r.website,
         careersUrl: r.careersUrl,
-        careersSearchUrl: r.careersSearchUrl,
+        careersSearchUrl: r.careersSearchUrl ?? careersSearch(r.name),
         industry: r.industry,
-        locations: r.locations,
-        hiringProfile: r.hiringProfile,
-        confidence: r.confidence as any,
+        // Fall back to the ABR's registered state so unenriched rows are still
+        // findable through the location filter.
+        locations: r.locations ?? (r.state ? [r.state] : []),
+        hiringProfile: r.hiringProfile ?? null,
+        tier: r.tier as any,
+        abn: r.abn,
+        state: r.state,
+        postcode: r.postcode,
       })),
       skipDuplicates: true,
     });

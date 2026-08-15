@@ -4,10 +4,11 @@ import { SponsorCard } from './SponsorCard';
 interface SponsorCardData {
   id: string;
   cleanName: string;
-  industry: string;
+  industry: string | null;
   locations: string[];
-  hiringProfile: string;
-  confidence: string;
+  hiringProfile: string | null;
+  tier: 'accredited' | 'standard';
+  state: string | null;
   website: string | null;
   careersUrl: string | null;
   careersSearchUrl: string | null;

@@ -6,10 +6,11 @@ import { trackSponsorEmailCaptured, trackSponsorLinksUnlocked } from '../../lib/
 
 interface Props {
   onClose: () => void;
-  onUnlock: (unlockedResults: any[]) => void;
+  onUnlock: () => void;
+  total: number;
 }
 
-export function SponsorEmailModal({ onClose, onUnlock }: Props) {
+export function SponsorEmailModal({ onClose, onUnlock, total }: Props) {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -32,7 +33,7 @@ export function SponsorEmailModal({ onClose, onUnlock }: Props) {
         toast.success("Unlocked. Every sponsor's links are live now — happy hunting.");
         // Brief pause so user sees confirmation, then close + unlock
         setTimeout(() => {
-          onUnlock(data.unlockedResults);
+          onUnlock();
           onClose();
         }, 800);
       }
@@ -131,7 +132,7 @@ export function SponsorEmailModal({ onClose, onUnlock }: Props) {
                 opacity: loading ? 0.7 : 1,
               }}
             >
-              {loading ? 'Unlocking...' : 'Unlock all 4,058 sponsors →'}
+              {loading ? 'Unlocking...' : `Unlock all ${total.toLocaleString()} sponsors →`}
             </button>
 
             <p style={{

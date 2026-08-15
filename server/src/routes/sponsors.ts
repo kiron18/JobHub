@@ -28,7 +28,8 @@ export async function loadFilterCache() {
       prisma.sponsor.findMany({ select: { locations: true } }),
       prisma.sponsor.count(),
     ]);
-    cachedIndustries = industries.map((r) => r.industry);
+    // Unenriched sponsors have a null industry; it is not a filter option.
+    cachedIndustries = industries.map((r) => r.industry).filter((i): i is string => !!i);
     cachedLocations = [...new Set(locations.flatMap((r) => r.locations))].sort();
     cachedTotal = total;
     cacheLoaded = true;
@@ -77,7 +78,7 @@ router.get('/search', async (req: any, res: any) => {
       q = '',
       industry = '',
       location = '',
-      highConfidence = '',
+      accreditedOnly = '',
       page = '1',
       pageSize = '20',
     } = req.query;
@@ -89,7 +90,7 @@ router.get('/search', async (req: any, res: any) => {
     const filterConds: Prisma.SponsorWhereInput[] = [];
     if (industry.trim()) filterConds.push({ industry: { equals: industry.trim(), mode: 'insensitive' } });
     if (location.trim()) filterConds.push({ locations: { has: location.trim() } });
-    if (highConfidence === 'true') filterConds.push({ confidence: 'high' });
+    if (accreditedOnly === 'true') filterConds.push({ tier: 'accredited' });
 
     const term = q.trim();
     let pageResults: any[];
@@ -117,13 +118,16 @@ router.get('/search', async (req: any, res: any) => {
 
       const lc = term.toLowerCase();
       const isLiteral = (r: any) =>
-        r.cleanName.toLowerCase().includes(lc) || r.hiringProfile.toLowerCase().includes(lc);
+        r.cleanName.toLowerCase().includes(lc) ||
+        (r.hiringProfile?.toLowerCase().includes(lc) ?? false);
       candidates.sort((a, b) => {
-        // Literal matches first, then by semantic score, then confidence, then name.
+        // Literal matches first, then by semantic score, then accredited, then name.
         const la = isLiteral(a) ? 1 : 0, lb = isLiteral(b) ? 1 : 0;
         if (la !== lb) return lb - la;
         const sa = scoreMap.get(a.id) ?? 0, sb = scoreMap.get(b.id) ?? 0;
         if (sb !== sa) return sb - sa;
+        const ta = a.tier === 'accredited' ? 1 : 0, tb = b.tier === 'accredited' ? 1 : 0;
+        if (ta !== tb) return tb - ta;
         return a.cleanName.localeCompare(b.cleanName);
       });
 
@@ -133,12 +137,12 @@ router.get('/search', async (req: any, res: any) => {
       hasMore = start + size < candidates.length;
     } else {
       // ── No query: filtered/unfiltered list with DB-level pagination ──
-      // confidence enum is declared high → medium → low, so ascending puts
-      // high-confidence (best data) first. cleanName breaks ties.
+      // tier enum is declared accredited → standard, so ascending puts the
+      // priority-processing employers first. cleanName breaks ties.
       const whereClause = filterConds.length > 0 ? { AND: filterConds } : {};
       const rawResults = await prisma.sponsor.findMany({
         where: whereClause,
-        orderBy: [{ confidence: 'asc' }, { cleanName: 'asc' }],
+        orderBy: [{ tier: 'asc' }, { cleanName: 'asc' }],
         skip: (pageNum - 1) * size,
         take: size + 1,
       });
@@ -160,7 +164,8 @@ router.get('/search', async (req: any, res: any) => {
         industry: r.industry,
         locations: r.locations,
         hiringProfile: r.hiringProfile,
-        confidence: r.confidence,
+        tier: r.tier,
+        state: r.state,
       };
       if (unlocked) {
         base.website = r.website;
@@ -226,12 +231,10 @@ router.post('/unlock', async (req: any, res: any) => {
       secure: process.env.NODE_ENV === 'production',
     });
 
-    // Re-fetch all records with full fields for in-place unlock
-    const allSponsors = await prisma.sponsor.findMany({
-      orderBy: [{ confidence: 'asc' }, { cleanName: 'asc' }],
-    });
-
-    res.json({ success: true, unlockedResults: allSponsors });
+    // The cookie is what unlocks the data, so the client just re-runs its current
+    // search. This used to return the entire Sponsor table for the client to slice
+    // down to one page; at 37k rows that is a multi-megabyte response for ~20 cards.
+    res.json({ success: true });
   } catch (err) {
     console.error('[sponsors/unlock]', err);
     res.status(500).json({ error: 'Unlock failed' });

@@ -14,10 +14,15 @@ import { indexSponsor } from '../services/vector';
 const prisma = new PrismaClient();
 
 async function main() {
+  // Only enriched rows are worth embedding. A standard-tier sponsor is a bare
+  // company name with no industry or hiring profile, so its vector would carry no
+  // meaning to match against — and there are ~33k of them, which at one embedding
+  // call apiece is a large bill for nothing. They stay findable by literal search.
   const sponsors = await prisma.sponsor.findMany({
+    where: { hiringProfile: { not: null } },
     select: { id: true, cleanName: true, industry: true, hiringProfile: true },
   });
-  console.log(`[reindex-sponsors] ${sponsors.length} sponsors to index`);
+  console.log(`[reindex-sponsors] ${sponsors.length} enriched sponsors to index`);
 
   let ok = 0;
   let failed = 0;

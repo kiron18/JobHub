@@ -4,10 +4,13 @@ import { colors, type, spacing } from '../landing/tokens';
 interface SponsorCardData {
   id: string;
   cleanName: string;
-  industry: string;
+  // Null for the ~33k standard-tier sponsors, which come off the Home Affairs list
+  // as a bare company name and have not been through the enrichment pass yet.
+  industry: string | null;
   locations: string[];
-  hiringProfile: string;
-  confidence: string;
+  hiringProfile: string | null;
+  tier: 'accredited' | 'standard';
+  state: string | null;
   website: string | null;
   careersUrl: string | null;
   careersSearchUrl: string | null;
@@ -21,6 +24,12 @@ interface Props {
 
 export function SponsorCard({ sponsor, unlocked, onLockedClick }: Props) {
   const careersTarget = sponsor.careersUrl || sponsor.careersSearchUrl;
+  const isAccredited = sponsor.tier === 'accredited';
+  // Enriched sponsors carry a full location list; the rest have the ABR's
+  // registered state, which is still enough to filter a job hunt by.
+  const where = sponsor.locations.length > 0
+    ? sponsor.locations.join(', ')
+    : sponsor.state;
 
   const linkStyle: React.CSSProperties = {
     fontSize: 13,
@@ -71,42 +80,69 @@ export function SponsorCard({ sponsor, unlocked, onLockedClick }: Props) {
         {sponsor.cleanName}
       </h3>
 
-      {/* Industry tag */}
-      <span style={{
-        display: 'inline-block',
-        fontSize: 11,
-        fontWeight: 600,
-        color: colors.accentPetrol,
-        background: 'rgba(45, 90, 110, 0.08)',
-        padding: '2px 10px',
-        borderRadius: 10,
-        width: 'fit-content',
-        textTransform: 'uppercase',
-        letterSpacing: '0.3px',
-      }}>
-        {sponsor.industry}
-      </span>
+      {/* Tags: accreditation status, then industry where we know it */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {isAccredited && (
+          <span
+            title="Accredited by Home Affairs. Their visa nominations get priority processing."
+            style={{
+              display: 'inline-block',
+              fontSize: 11,
+              fontWeight: 700,
+              color: colors.textOnDeep,
+              background: colors.accentGold,
+              padding: '2px 10px',
+              borderRadius: 10,
+              width: 'fit-content',
+              textTransform: 'uppercase',
+              letterSpacing: '0.3px',
+            }}
+          >
+            ★ Accredited
+          </span>
+        )}
+        {sponsor.industry && (
+          <span style={{
+            display: 'inline-block',
+            fontSize: 11,
+            fontWeight: 600,
+            color: colors.accentPetrol,
+            background: 'rgba(45, 90, 110, 0.08)',
+            padding: '2px 10px',
+            borderRadius: 10,
+            width: 'fit-content',
+            textTransform: 'uppercase',
+            letterSpacing: '0.3px',
+          }}>
+            {sponsor.industry}
+          </span>
+        )}
+      </div>
 
-      {/* Locations */}
-      <p style={{
-        margin: 0,
-        fontSize: 13,
-        color: colors.textSecondary,
-        fontFamily: type.body,
-      }}>
-        {sponsor.locations.join(', ')}
-      </p>
+      {/* Where they are */}
+      {where && (
+        <p style={{
+          margin: 0,
+          fontSize: 13,
+          color: colors.textSecondary,
+          fontFamily: type.body,
+        }}>
+          {where}
+        </p>
+      )}
 
       {/* Hiring profile */}
-      <p style={{
-        margin: 0,
-        fontSize: 14,
-        color: colors.textMuted,
-        fontFamily: type.body,
-        lineHeight: 1.4,
-      }}>
-        {sponsor.hiringProfile}
-      </p>
+      {sponsor.hiringProfile && (
+        <p style={{
+          margin: 0,
+          fontSize: 14,
+          color: colors.textMuted,
+          fontFamily: type.body,
+          lineHeight: 1.4,
+        }}>
+          {sponsor.hiringProfile}
+        </p>
+      )}
 
       {/* Action links */}
       <div style={{

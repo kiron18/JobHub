@@ -445,10 +445,12 @@ enum DiagnosticStatus {
   FAILED
 }
 
-enum SponsorConfidence {
-  high
-  medium
-  low
+// Which Home Affairs list a sponsor appears on. Accredited sponsors get priority
+// visa processing, so this is the strongest "apply here first" signal we can show.
+// Declared accredited-first so `orderBy tier asc` floats them to the top.
+enum SponsorTier {
+  accredited
+  standard
 }
 
 model FridayBrief {
@@ -467,15 +469,24 @@ model Sponsor {
   website          String?
   careersUrl       String?
   careersSearchUrl String?
-  industry         String
+  // Nullable: the ~33k standard-tier sponsors arrive as a bare company name off the
+  // Home Affairs list. Null means "not enriched yet", which the UI hides. Storing ''
+  // instead would render as an empty chip and read as "no industry".
+  industry         String?
   locations        String[]
-  hiringProfile    String
-  confidence       SponsorConfidence
+  hiringProfile    String?
+  tier             SponsorTier        @default(standard)
+  // From the ABN Bulk Extract (ABR, free). Null where the sponsor's name on the
+  // Home Affairs list could not be matched to an ABR entity.
+  abn              String?
+  state            String?
+  postcode         String?
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
 
   @@index([industry])
-  @@index([confidence])
+  @@index([tier])
+  @@index([state])
   @@index([cleanName])
 }
 
@@ -1000,6 +1011,16 @@ model SalesLead {
   attendedAt   DateTime?
   reportSentAt DateTime?
   paidAt       DateTime?
+
+  /// When they clicked through to the Skool group, from any surface carrying
+  /// their lead id.
+  ///
+  /// ⚠️ A CLICK, NOT A JOIN. Skool has no API, so nothing here can tell you
+  /// whether they actually signed up on the other side. Treat it as intent.
+  /// The only proof of membership is Skool's own member list, matched on email
+  /// by hand. Do not rename this to skoolJoinedAt and do not derive a stage
+  /// from it: a board that claims a join it cannot see is worse than a blank.
+  skoolClickedAt DateTime?
 
   /// True when a resume is on file, wherever it came from.
   hasResume Boolean @default(false)

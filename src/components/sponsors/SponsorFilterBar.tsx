@@ -6,17 +6,17 @@ interface Props {
   locations: string[];
   selectedIndustry: string;
   selectedLocation: string;
-  highConfidenceOnly: boolean;
+  accreditedOnly: boolean;
   onIndustryChange: (v: string) => void;
   onLocationChange: (v: string) => void;
-  onConfidenceToggle: () => void;
+  onAccreditedToggle: () => void;
 }
 
 export function SponsorFilterBar({
   industries, locations,
   selectedIndustry, selectedLocation,
-  highConfidenceOnly,
-  onIndustryChange, onLocationChange, onConfidenceToggle,
+  accreditedOnly,
+  onIndustryChange, onLocationChange, onAccreditedToggle,
 }: Props) {
   const selectStyle: React.CSSProperties = {
     padding: '8px 14px',
@@ -82,10 +82,11 @@ export function SponsorFilterBar({
       </select>
 
       <button
-        onClick={onConfidenceToggle}
-        style={highConfidenceOnly ? chipActive : chipInactive}
+        onClick={onAccreditedToggle}
+        style={accreditedOnly ? chipActive : chipInactive}
+        title="Accredited sponsors get priority visa processing from Home Affairs"
       >
-        {highConfidenceOnly ? '✓ High confidence only' : 'High confidence only'}
+        {accreditedOnly ? '✓ Accredited sponsors only' : 'Accredited sponsors only'}
       </button>
     </div>
   );
