@@ -163,15 +163,28 @@ Rules:
 - If the name does not clearly indicate an industry, answer 0. A wrong guess is worse than 0. Names that are just a person's name, an acronym, initials, or a holding/trust vehicle should almost always be 0.
 - "Pty Ltd", "Pty. Ltd.", "Proprietary" are Australian legal suffixes and carry no industry meaning. Neither do "Group", "Holdings", "Enterprises", "Australia", "The Trustee for".
 - Some lines carry "[was labelled: X]" from an earlier pass. Treat it as a strong hint and map it onto the closest division, but override it if the company name plainly contradicts it.
+- Where a line shows "[registered as: ...]", the leading name is the trading name and is the one that tells you what the business does. Classify on it. The registered name is usually a trust or holding vehicle and should be ignored.
 - Reply with one "line:code" pair per company, space separated, in order, and nothing else.
 - Example for three companies: 1:8 2:5 3:0`;
 
 const PAIR = /(\d+)\s*:\s*(\d+)/g;
 
-/** One line per company: its name, plus the old free-text label where we had one. */
+/**
+ * One line per company: the most informative name we hold, plus any prior label.
+ *
+ * For a business held in a trust the registered name is 'THE TRUSTEE FOR <X> TRUST',
+ * which describes an ownership structure and not an industry. Where the ABR also
+ * gave us the name it trades under, that goes first, because that is the one that
+ * says what the business actually does.
+ */
 function describe(row: Row, i: number): string {
+  const trading = typeof row.tradingName === 'string' ? row.tradingName.trim() : '';
   const hint = typeof row.industryHint === 'string' ? row.industryHint.trim() : '';
-  return hint ? `${i + 1}. ${row.name} [was labelled: ${hint}]` : `${i + 1}. ${row.name}`;
+
+  let line = `${i + 1}. ${trading || row.name}`;
+  if (trading) line += ` [registered as: ${row.name}]`;
+  if (hint) line += ` [was labelled: ${hint}]`;
+  return line;
 }
 
 async function classifyBatch(rows: Row[], model: string): Promise<(string | null)[]> {

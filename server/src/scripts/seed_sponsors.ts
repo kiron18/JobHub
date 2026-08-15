@@ -12,6 +12,7 @@ interface SponsorSeed {
   abn: string | null;
   state: string | null;
   postcode: string | null;
+  tradingName?: string | null;
   // Present only on rows carried over from the older enriched dataset.
   rawName?: string;
   locations?: string[];
@@ -84,6 +85,7 @@ async function seed() {
         abn: r.abn,
         state: r.state,
         postcode: r.postcode,
+        tradingName: r.tradingName ?? null,
       })),
       skipDuplicates: true,
     });

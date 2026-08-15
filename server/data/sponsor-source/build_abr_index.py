@@ -17,7 +17,8 @@ Matching is two-tier:
          than guessed at, so we never staple the wrong ABN to a sponsor.
 
 Output: abr_matches.json  { sponsor_name_key: {abn, state, postcode, entityType,
-                                               abnActive, gst, matched, abrName} }
+                                               abnActive, gst, matched, abrName,
+                                               tradingNames} }
 
 Usage: python build_abr_index.py <dir-with-the-two-zips>
 """
@@ -107,11 +108,17 @@ def read_record(abr) -> tuple[list[str], dict] | None:
         "gst": gst_el is not None and gst_el.get("status") == "ACT",
     }
 
-    names = [primary]
+    # Trading and business names, which is the whole point for trust-held businesses:
+    # 'THE TRUSTEE FOR 19TH EDGE UNIT TRUST' says nothing about what they do, but the
+    # name on their door does. Kept in registration order; the first is usually the
+    # one in current use.
+    trading: list[str] = []
     for other in abr.findall("OtherEntity/NonIndividualName/NonIndividualNameText"):
-        if other.text:
-            names.append(other.text.strip())
-    return names, record
+        if other.text and other.text.strip():
+            trading.append(other.text.strip())
+    record["tradingNames"] = trading
+
+    return [primary, *trading], record
 
 
 def main() -> None:

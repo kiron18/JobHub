@@ -481,6 +481,11 @@ model Sponsor {
   abn              String?
   state            String?
   postcode         String?
+  // The name the business trades under, where the ABR holds one and it differs from
+  // the registered name. For the ~3.4k sponsors registered as a trust this is the
+  // only human-meaningful name we have: 'THE TRUSTEE FOR A & J GANDHI FAMILY TRUST'
+  // is really 'BOMBAY BY NIGHT'.
+  tradingName      String?
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
 

@@ -80,8 +80,44 @@ def clean_industry(value: str | None) -> str | None:
     return None if not v or v.lower() == "unknown" else v
 
 
+def pick_trading_name(legal: str, trading: list[str]) -> str | None:
+    """
+    The name the business actually trades under, when it differs from the legal one.
+
+    Matters for the ~3.4k sponsors registered as 'THE TRUSTEE FOR <X> TRUST' or as a
+    family partnership. Those legal names say nothing about what the business does, so
+    the industry classifier can only answer Unknown. The ABR usually also holds the
+    name on their door, which is the one worth classifying.
+
+    Returns None when the trading name adds nothing (same as the legal name, or junk).
+    """
+    legal_key = norm(legal)
+    for name in trading:
+        if is_junk(name):
+            continue
+        key = norm(name)
+        if not key or key == legal_key:
+            continue
+        # A trading name that is just the legal name minus 'THE TRUSTEE FOR' is no
+        # more informative than what we started with.
+        if key in legal_key or legal_key in key:
+            continue
+        return name
+    return None
+
+
 def main() -> None:
     abr = json.loads(MATCHES.read_text(encoding="utf-8"))
+
+    # Carry over industries from a previous run. Classification costs money, so a
+    # rebuild must never silently throw away a pass that has already been paid for.
+    previous: dict[str, str] = {}
+    if OUT.exists():
+        for r in json.loads(OUT.read_text(encoding="utf-8")):
+            if r.get("industry"):
+                previous[norm(r["name"])] = r["industry"]
+        print(f"carrying over {len(previous):,} industries from the existing registry")
+
     rows: dict[str, dict] = {}
 
     # Standard tier first, accredited second, so accredited wins any collision.
@@ -124,6 +160,7 @@ def main() -> None:
     out = []
     for key, row in rows.items():
         hit = abr.get(key)
+        trading = pick_trading_name(row["name"], (hit or {}).get("tradingNames") or [])
         row.update(
             {
                 "abn": hit["abn"] if hit else None,
@@ -133,8 +170,15 @@ def main() -> None:
                 "abnActive": hit["abnActive"] if hit else None,
                 "gst": hit["gst"] if hit else None,
                 "abrMatch": hit["matched"] if hit else "none",
+                "tradingName": trading,
             }
         )
+        if row["industry"] is None:
+            row["industry"] = previous.get(key)
+        if trading:
+            stats["has_trading_name"] += 1
+            if not row["industry"]:
+                stats["unclassified_with_trading_name"] += 1
         stats[row["abrMatch"]] += 1
         stats[row["tier"]] += 1
         if hit and hit["state"]:
@@ -151,6 +195,11 @@ def main() -> None:
     print(f"  accredited {stats['accredited']:,} | standard {stats['standard']:,}")
     print(f"  ABR matched: {matched:,} ({matched / total:.0%}) "
           f"[exact {stats['exact']:,} | loose {stats['loose']:,} | none {stats['none']:,}]")
+    classified = sum(1 for r in out if r["industry"])
+    print(f"  industry set on {classified:,}; {total - classified:,} still blank")
+    print(f"  trading name found for {stats['has_trading_name']:,}, "
+          f"of which {stats['unclassified_with_trading_name']:,} are still unclassified "
+          f"(these are what the next classify pass can recover)")
     print("  by state:")
     for st, n in sorted(
         ((k.split(":", 1)[1], v) for k, v in stats.items() if k.startswith("state:")),
