@@ -74,20 +74,30 @@ Loose matching (identical once PTY/LTD/GROUP/AUSTRALIA are stripped) is accepted
 when it resolves to a single ABN. Ambiguous stems are dropped rather than guessed, so
 a sponsor never gets the wrong company's ABN attached.
 
-## Known improvement: trading names for trusts
+## Trading names (done, 2026-08-15)
 
 Roughly one in six standard-tier sponsors is registered as `THE TRUSTEE FOR <X> TRUST`
-or as a family partnership (`F GOLINO & T GOLINO`). Those names carry no industry
-signal, so `classify_sponsor_industries.ts` correctly returns Unknown for them, and
-they end up with no industry facet.
+or as a family partnership (`F GOLINO & T GOLINO`). Those names describe an ownership
+structure, not a business, so the classifier could only answer Unknown. They were a
+third of everything left blank.
 
-The ABR usually *does* hold a trading or business name for those ABNs, under
-`OtherEntity/NonIndividualName`. Feeding that name to the classifier instead of the
-trust name would likely recover a few thousand rows. `build_abr_index.py` already
-reads those names for matching but only keeps the entity's primary name in its
-output, so this needs one extra field and a re-scan.
+The ABR holds the name those businesses trade under, against the same ABN, under
+`OtherEntity/NonIndividualName`. `build_abr_index.py` was already reading them in
+order to match on them and then throwing them away; it now keeps them, and the
+classifier reads the trading name in preference to the registered one.
 
-Worth doing before paying for a wider Home Affairs cut, since it is free.
+```
+THE TRUSTEE FOR 19TH EDGE UNIT TRUST      -> GROW EARLY EDUCATION DALBY
+THE TRUSTEE FOR A & A PRACTICE TRUST      -> Pascoe Vale Rd Family Clinic
+THE TRUSTEE FOR A & J GANDHI FAMILY TRUST -> BOMBAY BY NIGHT
+```
+
+Result: 7,995 more rows classified for $0.35, industry coverage 58% → 80%.
+
+Trading names are stored on `Sponsor.tradingName`. **The directory still displays the
+registered name.** Showing `BOMBAY BY NIGHT` instead of the trust name is the obvious
+next step, since that is the name a job seeker would recognise and search for, but it
+is a product call rather than a data one.
 
 ## The `confidence` field is gone
 
