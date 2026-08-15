@@ -23,14 +23,18 @@ let cacheLoaded = false;
 
 export async function loadFilterCache() {
   try {
-    const [industries, locations, total] = await Promise.all([
+    const [industries, states, total] = await Promise.all([
       prisma.sponsor.findMany({ select: { industry: true }, distinct: ['industry'], orderBy: { industry: 'asc' } }),
-      prisma.sponsor.findMany({ select: { locations: true } }),
+      prisma.sponsor.findMany({ select: { state: true }, distinct: ['state'], orderBy: { state: 'asc' } }),
       prisma.sponsor.count(),
     ]);
     // Unenriched sponsors have a null industry; it is not a filter option.
     cachedIndustries = industries.map((r) => r.industry).filter((i): i is string => !!i);
-    cachedLocations = [...new Set(locations.flatMap((r) => r.locations))].sort();
+    // The location filter runs on the ABR's `state`, which is exactly the eight
+    // states and territories. It used to flatten the free-text `locations` array,
+    // which produced a 742-entry dropdown listing 'Adelaide', 'Adelaide SA',
+    // 'Adelaide, S.A.' and 'Adelaide, South Australia' as four separate choices.
+    cachedLocations = states.map((r) => r.state).filter((s): s is string => !!s);
     cachedTotal = total;
     cacheLoaded = true;
     console.log(`[sponsors] Filter cache loaded: ${cachedIndustries.length} industries, ${cachedLocations.length} locations, ${total} total`);
@@ -86,10 +90,17 @@ router.get('/search', async (req: any, res: any) => {
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const size = Math.min(100, Math.max(1, parseInt(pageSize, 10) || 20));
 
+    // Warm the cache before anything reads cachedTotal. This used to sit at the end
+    // of the handler, so the first request after every restart reported a total of
+    // 0 and the page rendered "0 sponsors found" until someone reloaded.
+    if (!cacheLoaded) {
+      await loadFilterCache();
+    }
+
     // Non-text filters always AND together.
     const filterConds: Prisma.SponsorWhereInput[] = [];
     if (industry.trim()) filterConds.push({ industry: { equals: industry.trim(), mode: 'insensitive' } });
-    if (location.trim()) filterConds.push({ locations: { has: location.trim() } });
+    if (location.trim()) filterConds.push({ state: { equals: location.trim(), mode: 'insensitive' } });
     if (accreditedOnly === 'true') filterConds.push({ tier: 'accredited' });
 
     const term = q.trim();
@@ -178,11 +189,6 @@ router.get('/search', async (req: any, res: any) => {
       }
       return base;
     });
-
-      // Use cached filter options (computed once at startup)
-      if (!cacheLoaded) {
-        await loadFilterCache();
-      }
 
       res.json({
         page: pageNum,
