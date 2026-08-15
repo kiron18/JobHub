@@ -167,7 +167,7 @@ export function SponsorCard({ sponsor, unlocked, onLockedClick }: Props) {
           </>
         ) : (
           <button onClick={onLockedClick} style={lockedLinkStyle}>
-            🔒 Contact links — unlock free
+            🔒 Unlock contact links, free
           </button>
         )}
       </div>

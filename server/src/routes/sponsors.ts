@@ -223,7 +223,7 @@ router.post('/unlock', async (req: any, res: any) => {
       });
     } catch (err) {
       // Non-fatal: the unlock cookie is still set so the user gets their links.
-      // But surface it — a swallowed failure here means we're silently losing leads.
+      // But surface it, because a swallowed failure here means we silently lose leads.
       console.warn('[sponsors/unlock] lead capture failed:', err instanceof Error ? err.message : err);
     }
 

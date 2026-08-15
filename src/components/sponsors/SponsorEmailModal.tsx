@@ -30,7 +30,7 @@ export function SponsorEmailModal({ onClose, onUnlock, total }: Props) {
         setSuccess(true);
         trackSponsorEmailCaptured();
         trackSponsorLinksUnlocked();
-        toast.success("Unlocked. Every sponsor's links are live now — happy hunting.");
+        toast.success("Unlocked. Every sponsor's links are live now. Happy hunting.");
         // Brief pause so user sees confirmation, then close + unlock
         setTimeout(() => {
           onUnlock();
@@ -73,7 +73,7 @@ export function SponsorEmailModal({ onClose, onUnlock, total }: Props) {
               ✓ Unlocked
             </h3>
             <p style={{ color: colors.textSecondary, fontSize: 14, margin: 0, lineHeight: 1.5 }}>
-              Every sponsor's links are live now — happy hunting.
+              Every sponsor's links are live now. Happy hunting.
             </p>
           </>
         ) : (
@@ -84,7 +84,7 @@ export function SponsorEmailModal({ onClose, onUnlock, total }: Props) {
               color: colors.textPrimary,
               margin: '0 0 6px',
             }}>
-              See the full list — free.
+              See the full list, free.
             </h3>
             <p style={{
               color: colors.textSecondary,
@@ -92,7 +92,7 @@ export function SponsorEmailModal({ onClose, onUnlock, total }: Props) {
               margin: '0 0 24px',
               lineHeight: 1.5,
             }}>
-              Drop your email and every sponsor's contact links unlock instantly. No trial, no card — just the directory.
+              Drop your email and every sponsor's contact links unlock instantly. No trial, no card, just the directory.
             </p>
 
             <input

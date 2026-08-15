@@ -14,7 +14,7 @@ export function SponsorSearchBar({ onSearch, defaultValue = '' }: Props) {
   const onSearchRef = useRef(onSearch);
   useEffect(() => { onSearchRef.current = onSearch; });
 
-  // Live search — fire as the user types, debounced so results feel instant
+  // Live search: fires as the user types, debounced so results feel instant
   // without hammering the API. Skip the very first run (initial mount already
   // loads the unfiltered list).
   const firstRun = useRef(true);

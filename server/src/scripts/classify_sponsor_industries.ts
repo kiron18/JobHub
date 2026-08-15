@@ -48,7 +48,7 @@ import dotenv from 'dotenv';
 
 dotenv.config({ path: path.join(__dirname, '..', '..', '.env') });
 
-// Deliberately not services/llm.ts::callLLM — that helper hardcodes the model to
+// Deliberately not services/llm.ts::callLLM. That helper hardcodes the model to
 // $FAST_MODEL for the whole app and takes no system message. This job wants a
 // specific cheap model for itself without changing what every other caller gets.
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';

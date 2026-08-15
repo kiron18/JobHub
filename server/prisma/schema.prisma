@@ -345,7 +345,7 @@ model Document {
   qualitySignals   Json?
   // Fingerprint of the advert this document was generated against. Generation
   // and the tracker row are created by two separate calls, so without this
-  // there is nothing to join them on and the document stays orphaned — which
+  // there is nothing to join them on and the document stays orphaned, which
   // is why 97% of them had no application attached.
   jobDescriptionHash String?
   createdAt        DateTime           @default(now())
@@ -858,8 +858,8 @@ model NudgeLog {
   @@unique([userId, kind, periodKey])
 }
 
-// One anonymous run through /welcome. The entire resume rebuild — analysis,
-// questions, answers, the finished clean resume — happens BEFORE we ask for an
+// One anonymous run through /welcome. The entire resume rebuild (analysis,
+// questions, answers, the finished clean resume) happens BEFORE we ask for an
 // email, so it cannot live in an in-memory map: a Railway redeploy mid-flow
 // would throw away work the visitor spent ten minutes on. Rows are claimed at
 // /welcome/finish and swept after 7 days.

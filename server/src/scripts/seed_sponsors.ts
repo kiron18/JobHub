@@ -57,7 +57,7 @@ async function seed() {
     `(${accredited} accredited, ${unique.length - accredited} standard)`
   );
 
-  // Batch insert — createMany is much faster than one-at-a-time upsert.
+  // Batch insert: createMany is much faster than one-at-a-time upsert.
   // For re-runs, delete existing rows first.
   const existing = await prisma.sponsor.count();
   if (existing > 0) {

@@ -38,7 +38,7 @@ export function SponsorHero({ onSearch, searchValue, total = 0 }: Props) {
         maxWidth: spacing.containerReadable,
         lineHeight: 1.5,
       }}>
-        Search {count} business approved by Home Affairs to sponsor a work visa, straight from the government's own list.
+        Search {count} the Australian Government has approved to sponsor a work visa. Taken straight from the Department of Home Affairs list.
       </p>
       <SponsorSearchBar onSearch={onSearch} defaultValue={searchValue} />
 

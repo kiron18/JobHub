@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { colors, spacing } from '../components/landing/tokens';
 import { SponsorHero } from '../components/sponsors/SponsorHero';
 import { SponsorFilterBar } from '../components/sponsors/SponsorFilterBar';
+import { SponsorExplainer } from '../components/sponsors/SponsorExplainer';
 import { SponsorResultsGrid } from '../components/sponsors/SponsorResultsGrid';
 import { SponsorEmailModal } from '../components/sponsors/SponsorEmailModal';
 import { LandingFooter } from '../components/landing/LandingFooter';
@@ -148,6 +149,10 @@ export function VisaSponsorsPage() {
 
       <div style={{ padding: `0 24px ${spacing.sectionDesktop}` }}>
         <div style={{ maxWidth: spacing.containerMax, margin: '0 auto' }}>
+          <div style={{ marginBottom: 28 }}>
+            <SponsorExplainer />
+          </div>
+
           <SponsorFilterBar
             industries={industries}
             locations={locations}
