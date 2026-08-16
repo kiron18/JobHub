@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "AGC Form Assistant",
+  "version": "0.2.0",
+  "description": "Reads the questions on a job application and answers them from your own answer bank. It never submits anything.",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "action": { "default_title": "Answer the questions on this form" },
+  "options_ui": { "page": "options.html", "open_in_tab": true }
+}

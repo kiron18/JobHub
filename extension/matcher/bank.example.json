@@ -1,0 +1,200 @@
+{
+  "_comment": "Example bank for one entry-level candidate. `raw` is the source of truth in their own words and is NEVER overwritten. `variants` are derived copies cut to length; if a variant drops something important we recut from raw. One story carries several themes, which is why 8 stories cover most of the question grid.",
+
+  "profile": {
+    "name": "Priya Nair",
+    "email": "priya.nair@example.com",
+    "phone": "0412 345 678",
+    "location": "Melbourne, VIC",
+    "workRights": "Temporary Graduate visa (subclass 485), full working rights until March 2028",
+    "hasWorkRights": true,
+    "requiresSponsorship": false,
+    "driversLicence": "Full Victorian licence, own car",
+    "noticePeriod": "1 week",
+    "salaryExpectation": "70,000 - 78,000 AUD",
+    "industry": "finance"
+  },
+
+  "stories": [
+    {
+      "id": "s1",
+      "title": "Stocktake discrepancy nobody had picked up",
+      "context": "Part-time retail assistant, 2024",
+      "themes": ["detail", "initiative", "pressure"],
+      "keywords": ["stocktake", "inventory", "retail", "discrepanc"],
+      "raw": "During a quarterly stocktake I noticed the count for one product line was out by about 40 units every month. Nobody had flagged it because the report was long and everyone skimmed it. I went back through three months of delivery dockets on my own time and found the supplier was shipping cartons of 10 but our system was set to 12. I showed my manager the docket photos and the system setting. She had it corrected and we recovered about $2,000 of credit from the supplier.",
+      "variants": {
+        "headline": "Found a recurring stocktake error worth about $2,000 that three months of reports had missed.",
+        "short": "During a stocktake I noticed one product line was out by roughly 40 units a month. I went back through three months of delivery dockets and found the supplier shipped cartons of 10 while our system expected 12. I showed my manager the evidence, she corrected the setting, and we recovered around $2,000 in supplier credit.",
+        "medium": "During a quarterly stocktake I noticed the count for one product line was consistently out by about 40 units. Nobody had picked it up because the variance report was long and most people skimmed it. I pulled three months of delivery dockets and compared them line by line against what the system expected, and found the supplier was shipping cartons of 10 while our system was configured for 12. I photographed the dockets, showed my manager the mismatch alongside the system setting, and she escalated it to the supplier. We recovered roughly $2,000 in credit and the setting was fixed so it stopped recurring.",
+        "full": "During a quarterly stocktake at the store I was working at part time, I noticed the count for one product line was out by about 40 units, and when I looked back it had been out by a similar amount the previous month too. Nobody had flagged it because the variance report ran to several pages and most people skimmed the totals rather than the line items. I decided to check it properly. Over two shifts I pulled three months of delivery dockets and compared them line by line against what the system expected to receive. I found the supplier had changed their carton size from 12 to 10 units, but our receiving system had never been updated, so every delivery was silently recording two extra units. I photographed the dockets, put together a one-page summary showing the mismatch next to the system configuration, and took it to my manager. She escalated it to the supplier that week. We recovered around $2,000 in credit and the configuration was corrected so the error stopped recurring. What I took from it is that a number being slightly wrong every month is easier to ignore than a number being badly wrong once, and those are usually the ones worth checking."
+      }
+    },
+    {
+      "id": "s2",
+      "title": "Group member who stopped contributing",
+      "context": "Final year university group project, 2025",
+      "themes": ["conflict", "teamwork", "leadership"],
+      "keywords": ["group project", "university", "assignment", "classmate"],
+      "raw": "In my final year group project one of the four of us stopped replying about three weeks before submission. The others wanted to report him to the tutor straight away. I asked to speak to him first. It turned out his mother was unwell and he had fallen badly behind. We split his section into two smaller pieces, gave him the part he could still realistically finish, and I took the rest. We submitted on time and got a distinction.",
+      "variants": {
+        "headline": "Handled a group member who went silent before a deadline by talking to him first rather than escalating.",
+        "short": "Three weeks before a group submission one member stopped replying. The others wanted to report him immediately. I asked to speak with him first and found he had a family illness and had fallen behind. We split his section, left him the part he could finish, and I absorbed the rest. We submitted on time and got a distinction.",
+        "medium": "In my final year group project, one of our four members stopped replying to messages about three weeks out from submission. The other two wanted to report him to the tutor straight away. I suggested we find out what was going on first, and offered to call him. It turned out his mother was unwell and he had fallen a long way behind and was avoiding the group out of embarrassment. Rather than remove him, we broke his section into two smaller pieces, left him the part he could realistically still finish, and I took on the rest alongside my own. He delivered his piece, we submitted on time, and the project earned a distinction. He also thanked me afterwards, which mattered more than the mark.",
+        "full": "In my final year group project we had four members and a fairly heavy report due at the end of semester. About three weeks before submission, one member stopped replying to messages entirely. The other two were frustrated and wanted to report him to the tutor immediately so he would lose his share of the marks. I understood the frustration, but I did not think we had enough information yet, so I asked them to hold off for two days and I called him directly. It turned out his mother had been admitted to hospital, he had fallen a long way behind in every subject, and he had been avoiding the group because he was embarrassed rather than because he did not care. Once I knew that, the problem changed shape. Removing him would have cost us his section entirely with three weeks to go. Instead we broke his part into two smaller pieces, left him the one he could realistically still finish around what was happening at home, and I absorbed the other piece alongside my own section. I also set up a shared checklist so everyone could see progress without anyone having to chase. He delivered his piece on time, we submitted on time, and the project earned a distinction. What I took from it is that when someone goes quiet the assumption is usually that they have checked out, and it is worth spending one conversation finding out before you act on that assumption."
+      }
+    },
+    {
+      "id": "s3",
+      "title": "Missed a deadline by misjudging the workload",
+      "context": "Second year university, 2023",
+      "themes": ["failure", "pressure", "learning"],
+      "keywords": ["deadline", "assignment", "extension", "underestimat"],
+      "raw": "I badly underestimated a data analysis assignment because I assumed the dataset would be clean. It was not. I lost two days to cleaning it and submitted late with a penalty. After that I started scoping the messy part of any task first and building a buffer.",
+      "variants": {
+        "headline": "Missed an assignment deadline by assuming the data would be clean, and changed how I scope work because of it.",
+        "short": "I misjudged a data analysis assignment because I assumed the dataset would be clean. It was not, and I lost two days to cleaning before I could start the actual analysis. I submitted a day late and took the penalty. Since then I check the messiest part of a task first and build a buffer around it, and I have not missed a deadline since.",
+        "medium": "In second year I had a data analysis assignment and I planned my time around the analysis itself, assuming the provided dataset would be usable. When I opened it properly, three days out, it had inconsistent date formats, duplicate records and missing values across two key columns. Cleaning it took nearly two full days I had not allowed for. I submitted a day late and lost ten percent. I did not ask for an extension because the misjudgement was mine. What changed afterwards is that I now open and inspect the messiest input first, before I plan anything else, and I build a buffer against it. In my internship the following year that habit meant I flagged a data quality problem in week one rather than week three.",
+        "full": "In second year I had a data analysis assignment worth a large share of the subject mark. I planned my time carefully, but I planned it entirely around the analysis and the write-up, because I assumed the dataset we were given would be broadly usable. I did not actually open it properly until about three days before it was due. When I did, it had inconsistent date formats across two years of records, several hundred duplicate rows, and missing values in two of the columns the analysis depended on. Cleaning it properly took the better part of two days that I had not allowed for anywhere in my plan. I finished the analysis but submitted about a day late and lost ten percent. I chose not to ask for an extension, because the misjudgement was mine rather than anything outside my control, and I did not think it was fair to ask for one. The lasting change was in how I scope work. I now open and inspect the messiest or least known input first, before I commit to a plan, because that is where the time actually goes. During my internship the following year I applied that directly: I spent the first two days of a reporting project profiling the source data, found a duplication issue in the extract, and raised it in week one instead of discovering it in week three. My supervisor specifically mentioned it in my final review."
+      }
+    },
+    {
+      "id": "s4",
+      "title": "Customer who had been given the wrong information twice",
+      "context": "Casual cafe and counter service, 2024",
+      "themes": ["customer", "conflict", "pressure"],
+      "keywords": ["customer", "complaint", "cafe", "refund", "angry"],
+      "raw": "A customer came in angry because two different staff had told her two different things about a catering order. I did not argue about who said what. I apologised, wrote down exactly what she had been promised, checked what was actually possible, and gave her one clear answer plus a discount. She kept ordering with us.",
+      "variants": {
+        "headline": "Turned around an angry catering customer by giving her one clear answer instead of defending the mix-up.",
+        "short": "A customer arrived angry because two staff had given her conflicting information about a catering order. I did not try to work out who was at fault in front of her. I apologised, wrote down exactly what she had been promised, checked what we could actually deliver, and came back with one clear answer and a discount for the confusion. She stayed a regular customer.",
+        "medium": "A regular catering customer came in visibly angry because two different staff members had given her two different delivery times and two different prices. My instinct was to explain how the mix-up had happened, but that would have been about defending us rather than helping her. Instead I apologised for the confusion without qualifying it, wrote down exactly what she believed she had been promised, and asked her to give me five minutes. I checked the order system and spoke to the supervisor about what we could genuinely deliver, then came back with one clear answer, in writing, plus a discount for the inconvenience. She accepted it and kept ordering from us. Afterwards I raised it with my manager and we started writing catering confirmations down rather than taking them verbally.",
+        "full": "A regular catering customer came into the cafe visibly angry. She had placed a large order for an office event, and two different staff members had given her two different delivery times and two different prices, so she had no idea what was actually happening the following morning. My first instinct was to explain how the confusion had arisen, but I realised quickly that any explanation would sound like I was defending us rather than solving her problem, and it would not change anything about her morning. So I apologised for the confusion plainly, without adding a qualifier, and I asked her to tell me exactly what she had been promised while I wrote it down in front of her. That alone visibly lowered the temperature, because she could see I was recording it rather than disputing it. I then asked for five minutes, checked the order in the system, and spoke to the supervisor about what we could genuinely deliver by that time. I came back with one clear answer in writing, confirmed the price, and offered a discount for the inconvenience. She accepted, and she kept ordering from us afterwards. I also raised it with my manager the same week, and we changed the process so catering orders were confirmed in writing rather than agreed verbally at the counter, because the real fault was the process rather than either staff member."
+      }
+    },
+    {
+      "id": "s5",
+      "title": "Taught myself Power BI in a week for an internship task",
+      "context": "Finance internship, 2025",
+      "themes": ["learning", "initiative"],
+      "keywords": ["power bi", "excel", "dashboard", "software", "self taught"],
+      "raw": "My supervisor mentioned the monthly reporting pack took two days in Excel. I had never used Power BI but I taught myself over about a week using free tutorials in the evenings and rebuilt the pack as a dashboard. It cut the job to about two hours.",
+      "variants": {
+        "headline": "Taught myself Power BI in a week and cut a two-day monthly reporting job down to about two hours.",
+        "short": "My supervisor mentioned the monthly reporting pack took nearly two days to assemble in Excel. I had never used Power BI, but I worked through free tutorials in the evenings for about a week and rebuilt the pack as a refreshable dashboard. It brought the job down to around two hours, and the team still uses it.",
+        "medium": "During my internship my supervisor mentioned in passing that the monthly reporting pack took nearly two days to put together in Excel, mostly copying and reformatting the same tables. I had never used Power BI but I knew it was the right tool for that shape of problem. I worked through free tutorials in the evenings for about a week, then rebuilt the pack as a dashboard connected directly to the source extract so it refreshed rather than being rebuilt. The first version was rough and my supervisor found two calculations that did not match the old pack, which I fixed. Once it was right it cut the monthly job from around two days to about two hours, and the team was still using it after my internship ended.",
+        "full": "During my finance internship my supervisor mentioned in passing that the monthly reporting pack took nearly two full days to assemble, and most of that was copying the same tables out of the source system into Excel and reformatting them by hand. Nobody had asked me to fix it, but it seemed like exactly the kind of problem a proper reporting tool solves. I had never used Power BI. I asked whether the company had a licence, which it did, and whether anyone would object to me trying, which they did not. I then worked through free tutorials in the evenings for about a week until I could connect to a source, build a data model and lay out visuals. I rebuilt the reporting pack as a dashboard connected directly to the source extract so it refreshed on demand instead of being rebuilt from scratch. The first version was rough. My supervisor reviewed it and found two calculations that did not reconcile against the old pack, one of which was a filter I had applied at the wrong level. I fixed both and we ran the two versions side by side for a month to be sure the numbers matched before anyone relied on it. Once it was confirmed, it brought the monthly job down from around two days to roughly two hours. The team was still using it when my internship finished, and I wrote a one-page handover so it would not depend on me."
+      }
+    },
+    {
+      "id": "s6",
+      "title": "Covered two roles through a staff shortage",
+      "context": "Part-time retail, 2024",
+      "themes": ["priorities", "pressure", "change"],
+      "keywords": ["roster", "shift", "short staffed", "busy"],
+      "raw": "Two people called in sick on a public holiday weekend. I ended up covering the register and the floor at the same time. I worked out what actually could not slip, which was the queue, and let the lower priority things wait until the rush passed.",
+      "variants": {
+        "headline": "Covered register and floor alone through a public holiday rush by deciding what was allowed to slip.",
+        "short": "Two staff called in sick on a public holiday weekend and I ended up covering both the register and the shop floor. I decided the queue was the only thing that genuinely could not slip, so I prioritised it, told customers honestly that restocking would be a few minutes behind, and caught up on everything else once the rush eased.",
+        "medium": "Two people called in sick on the Saturday of a public holiday weekend, which left me covering both the register and the shop floor during our busiest trading period of the month. Trying to do both equally would have meant doing both badly, so I decided what actually could not slip. That was the queue, because a long wait loses sales and creates complaints, and anything safety related. Restocking, facing up shelves and the returns pile could all wait an hour. I told customers honestly when something would take a few minutes rather than pretending it would not, which people were fine with. Once the rush eased around three, I worked back through the lower priority tasks. My manager checked the takings against the previous year and we were slightly up.",
+        "full": "Two staff called in sick on the Saturday of a public holiday long weekend, which is the busiest trading period we had, and there was no one available to cover at short notice. That left me running the register and the shop floor at the same time. My first reaction was to try to keep everything moving at once, and within about twenty minutes it was obvious that trying to do both jobs equally well meant doing both badly, because I was abandoning the register mid-transaction to answer floor questions. So I stopped and worked out what genuinely could not slip. The queue could not slip, because a long wait costs sales directly and generates complaints that outlast the day. Anything safety related could not slip. Everything else, restocking, facing up the shelves, the returns pile, could wait an hour or two without any real consequence. Once I had decided that, it got much easier. I stayed on the register as the default, and I was honest with customers on the floor that I would be with them in a few minutes rather than promising I would be right there, which people accepted without complaint. Between transactions I did the highest value floor tasks only. When the rush eased around three I worked back through everything I had deliberately let slide. My manager compared the day's takings against the same weekend the previous year and we were slightly up, which I was pleased with given we were two people down."
+      }
+    },
+    {
+      "id": "s7",
+      "title": "Led a team into a case competition final",
+      "context": "University case competition, 2025",
+      "themes": ["leadership", "teamwork", "pressure"],
+      "keywords": ["case competition", "presentation", "pitch"],
+      "raw": "I put together a team of four for a case competition and ended up leading it. We had 48 hours. I split the work by strength rather than evenly, and made everyone present their section out loud a day early so we found the weak parts in time. We made the final.",
+      "variants": {
+        "headline": "Led a four person case competition team to the final in 48 hours by rehearsing a full day early.",
+        "short": "I formed and led a team of four for a 48 hour case competition. Rather than splitting the work evenly, I split it by strength, and I insisted we present the whole thing out loud a full day before the deadline. That rehearsal exposed two weak arguments while there was still time to fix them. We made the final out of about thirty teams.",
+        "medium": "I put together a team of four for a 48 hour case competition and ended up leading it, mostly because I was the one who called the first meeting. Two decisions mattered. First, I split the work by strength rather than evenly: our strongest modeller took the financials even though it was the largest section, and the person least comfortable with numbers took research and slide design. Second, I insisted we run the full presentation out loud a day before the deadline, when everyone wanted to keep polishing instead. That rehearsal exposed two arguments that sounded convincing written down and fell apart when spoken, and we had time to rebuild them. We made the final out of roughly thirty teams. The rehearsal is the part I would repeat.",
+        "full": "I put together a team of four for a case competition with a 48 hour turnaround, and I ended up leading it largely because I was the one who called the first meeting and set an agenda. Two decisions made the difference. The first was splitting work by strength rather than evenly. It would have been fairer to give everyone a quarter each, but our strongest modeller was much faster at the financials than anyone else, so he took that section even though it was the biggest, and the member least comfortable with numbers took the market research and the slide design, which played to what she was actually good at. Nobody argued with it because the reasoning was about the outcome rather than about anyone's ability. The second decision was insisting we present the entire thing out loud a full day before the deadline. Everyone resisted this, because the deck was not finished and it felt like wasted time when we could still be polishing. I pushed for it anyway. That rehearsal exposed two arguments that read convincingly on a slide and completely fell apart when someone had to say them and defend a question, including our central recommendation, which had no cost estimate behind it. We had a full day to rebuild both, which we would not have had if we had rehearsed the night before like everyone wanted. We made the final out of roughly thirty teams. The rehearsing early is the part I have repeated ever since, because the failure mode of a deadline is polishing something that is wrong."
+      }
+    },
+    {
+      "id": "s8",
+      "title": "Raised a safety hazard nobody wanted to own",
+      "context": "Part-time retail stockroom, 2024",
+      "themes": ["safety", "initiative", "procedure"],
+      "keywords": ["hazard", "stockroom", "shelving", "incident"],
+      "raw": "The top shelf in the stockroom was overloaded and the bracket was visibly bending. Everyone knew but nobody logged it because it would have meant a half day of restacking. I logged it in the hazard register and told the duty manager. It was fixed that week.",
+      "variants": {
+        "headline": "Logged an overloaded stockroom shelf that everyone had noticed and nobody had reported.",
+        "short": "The top shelf in our stockroom was overloaded and one bracket was visibly bending. Everyone had noticed it and nobody had logged it, because logging it meant half a day of restacking during a busy period. I logged it in the hazard register anyway and told the duty manager directly. It was reinforced and restacked that week.",
+        "medium": "In the stockroom, the top shelf held cartons well above what the racking was rated for, and one of the brackets had visibly started to bend. Several of us had noticed. Nobody had logged it, because logging it meant taking half a day to unload and restack during our busiest month, and there was an unspoken sense that whoever raised it would create that work for everyone. I logged it in the hazard register and told the duty manager the same shift, including the fact that the bend had got worse over a few weeks. He was not thrilled about the timing but he agreed immediately once he looked at it. The shelf was unloaded, the bracket replaced and the load limit signposted within the week. Nobody was hurt, which is the whole point.",
+        "full": "In the stockroom where I worked part time, the top shelf of one racking bay was carrying cartons well above what the racking was rated for, and one of the support brackets had visibly started to bend outward. Several of us had noticed it, and it had been mentioned in passing more than once. Nobody had logged it formally. The reason was not that people did not care, it was that logging it meant the bay had to be unloaded and restacked, which was most of a day's work, during the busiest month of the year, and there was an unspoken sense that whoever raised it would be creating that work for everyone else. I thought about that for a shift or two, and concluded that the calculation everyone was quietly making was the wrong one, because it weighed a day of inconvenience against something falling on a person. I logged it in the hazard register with a photograph, and I told the duty manager directly on the same shift rather than leaving it sitting in a register nobody reads, and I pointed out that the bend had got noticeably worse over the previous few weeks. He was not thrilled about the timing, and said so, but he looked at it and agreed straight away that it could not wait. The bay was unloaded over the following two days, the damaged bracket was replaced, and a load limit was signposted on the racking. Nobody was hurt, which is the entire point, and I would raise it the same way again."
+      }
+    }
+  ],
+
+  "statements": [
+    {
+      "id": "st1",
+      "title": "About me",
+      "answers": ["self_description"],
+      "themes": [],
+      "keywords": ["about yourself", "introduce", "tell us about you", "describe yourself"],
+      "raw": "Finance graduate, moved to Melbourne in 2023, worked retail and hospitality while studying, did a finance internship where I rebuilt the reporting pack in Power BI.",
+      "variants": {
+        "headline": "Finance graduate in Melbourne, with an internship background in reporting and analysis.",
+        "short": "I finished my finance degree in Melbourne last year. Alongside study I worked in retail and hospitality, which taught me more about handling people under pressure than any subject did. My internship was in finance reporting, where I taught myself Power BI and rebuilt the monthly pack as a dashboard. I am looking for a graduate analyst role where I can keep working with data and stakeholders together.",
+        "medium": "I moved to Melbourne in 2023 to finish my finance degree, and I worked retail and hospitality through most of it, which is where I learned to handle people under pressure and to prioritise when there is more to do than time to do it. Academically I gravitated toward the data side, and in my internship at a finance team I taught myself Power BI in about a week and rebuilt their monthly reporting pack as a refreshable dashboard, which cut it from two days to two hours. What I am looking for now is a graduate analyst role where the work sits between the data and the people who use it, because the part I enjoy most is turning a messy question into something someone can actually act on."
+      }
+    },
+    {
+      "id": "st2",
+      "title": "Strengths",
+      "answers": ["self_description"],
+      "themes": ["detail", "initiative"],
+      "keywords": ["strength", "best qualit", "good at", "bring to", "top skill"],
+      "raw": "Noticing things that are slightly off and following them up. Teaching myself tools rather than waiting to be trained.",
+      "variants": {
+        "headline": "Noticing small inconsistencies and following them up, and picking up new tools quickly on my own.",
+        "short": "Two things. The first is that I notice when a number is slightly off and I follow it up rather than assuming someone else has, which is how I found a recurring stocktake error worth about two thousand dollars. The second is that I teach myself tools rather than waiting to be trained on them, which is how I picked up Power BI in a week during my internship.",
+        "medium": "The strength I would point to first is that I notice when something is slightly inconsistent and I actually follow it up. Things that are badly wrong get caught by everyone; things that are quietly wrong every month get skimmed past. During a stocktake I noticed a product line was out by a similar amount each month, traced it back through three months of dockets, and found a carton size mismatch that had cost us about two thousand dollars in supplier credit. The second is that I would rather teach myself a tool than wait to be trained on it. My supervisor mentioned in passing that the monthly reporting pack took two days, so I learned Power BI in the evenings over a week and rebuilt it as a dashboard that took two hours."
+      }
+    },
+    {
+      "id": "st3",
+      "title": "Weakness",
+      "answers": ["self_description"],
+      "themes": ["failure", "learning"],
+      "keywords": ["weakness", "improve", "development area", "work on"],
+      "raw": "I used to underestimate how long the messy part of a task takes. Fixed it by scoping the worst input first.",
+      "variants": {
+        "headline": "I used to underestimate the messy part of a task; I now scope the worst input first.",
+        "short": "I used to underestimate how long the unglamorous part of a task takes, and it cost me a late submission at university when I assumed a dataset would be clean and lost two days to cleaning it. I changed how I plan: I now open and inspect the least known input before I commit to any timeline. In my internship that meant catching a data quality issue in week one rather than week three."
+      }
+    },
+    {
+      "id": "st4",
+      "title": "Why this field",
+      "answers": ["motivation"],
+      "themes": [],
+      "keywords": ["why did you choose", "career goal", "this field", "this industry", "where do you see yourself"],
+      "raw": "I like the part where a messy question becomes a number someone can act on. Retail work showed me decisions get made on bad information constantly.",
+      "variants": {
+        "headline": "I like turning a messy question into something someone can actually make a decision on.",
+        "short": "Working retail while I studied, I watched decisions get made on bad information constantly, including a stock error that ran for months because the report was too long to read. Analysis appeals to me because it is the part where a messy question becomes something someone can act on. That is also the part I enjoyed most in my internship."
+      }
+    },
+    {
+      "id": "st5",
+      "title": "Why this company and why me",
+      "answers": ["motivation"],
+      "themes": [],
+      "keywords": ["why do you want to work", "why us", "this company", "why should we hire", "best person", "best fit", "what makes you", "why this role"],
+      "raw": "TEMPLATE. Needs the company-specific line filled in each time. The evidence half stays constant.",
+      "variants": {
+        "headline": "I want to work at {{company}} because of {{company}}, and I bring the habit of following up what others skim past.",
+        "short": "What draws me to {{role}} at {{company}} is that it sits between the data and the people who use it, which is the part of my internship I enjoyed most. What I would bring is a habit of following up the things other people skim past. In a retail role I traced a recurring stock variance back through three months of dockets and found an error worth about two thousand dollars that had been in the reports the whole time.",
+        "medium": "What draws me to {{role}} at {{company}} is that the work sits between the data and the people who have to act on it, which is the part of my internship I enjoyed most and the part I am strongest at. I taught myself Power BI in a week there to rebuild a reporting pack that took two days into a dashboard that took two hours, not because I was asked to but because it was obviously the right tool. What I would bring beyond that is the habit of following up things other people skim past. During a stocktake I noticed a product line was quietly out by a similar amount every month, traced it through three months of delivery dockets, and found a carton size mismatch that had cost around two thousand dollars in unclaimed supplier credit. Nobody had caught it because it was never dramatic enough to stand out."
+      }
+    }
+  ],
+
+  "learned": {}
+}
