@@ -19,7 +19,7 @@ import multer from 'multer';
 import { extractTextFromBuffer } from '../services/pdf';
 import { sendWorkshopConfirmationEmail } from '../services/email';
 import { prisma } from '../index';
-import { recordLeadSignal } from '../services/salesLead';
+import { recordLeadSignal, recordSkoolClick } from '../services/salesLead';
 import { timingSafeEqual } from 'crypto';
 import {
   currentSessionKey,
@@ -52,6 +52,36 @@ router.get('/next', (_req: Request, res: Response) => {
     timeZone: WORKSHOP_TZ,
     title: WORKSHOP_TITLE,
   });
+});
+
+/**
+ * POST /skool-click?lead=<id> — they clicked through to the group.
+ *
+ * Public and unauthenticated, because the person clicking has no account and
+ * never will: that is the entire point of the free funnel.
+ *
+ * The id arrives in the QUERY STRING rather than the body on purpose. This is
+ * called with `navigator.sendBeacon` from a page that is redirecting away, and
+ * a beacon sends `text/plain`, which the JSON body parser drops on the floor.
+ * A body is read too, for the fetch fallback.
+ *
+ * Always 204, even for an unknown or missing id. The caller is a page on its
+ * way out the door and cannot act on a failure, and the redirect must never be
+ * held up by our bookkeeping.
+ */
+router.post('/skool-click', async (req: Request, res: Response) => {
+  const fromQuery = typeof req.query.lead === 'string' ? req.query.lead : '';
+  const fromBody = typeof (req.body as any)?.leadId === 'string' ? (req.body as any).leadId : '';
+  const leadId = (fromQuery || fromBody).trim().slice(0, 64);
+
+  res.status(204).end();
+
+  if (!leadId) return;
+  try {
+    await recordSkoolClick(leadId);
+  } catch (err) {
+    console.error('[session-signup] skool click stamp failed', err);
+  }
 });
 
 // ── Upload ───────────────────────────────────────────────────────────────────
@@ -227,7 +257,7 @@ router.post('/register', handleUpload, async (req: Request, res: Response) => {
     // Everyone who comes through the funnel lands on the sales board, whichever
     // door they used. Never allowed to fail the registration: a board row is
     // worth less than the registration itself.
-    await recordLeadSignal({
+    const leadId = await recordLeadSignal({
       email,
       name,
       phone,
@@ -235,7 +265,10 @@ router.post('/register', handleUpload, async (req: Request, res: Response) => {
       sourceAsset: (answers as any)?.source_asset ?? null,
       hasResume: !!resumeText,
       signals: { registeredAt: new Date() },
-    }).catch((err) => console.error('[session-signup] sales board sync failed', err));
+    }).catch((err) => {
+      console.error('[session-signup] sales board sync failed', err);
+      return null;
+    });
 
     // Whether this is a first registration decides if we send the confirmation.
     // Someone re-submitting to fix an answer already has the link, and a second
@@ -276,7 +309,10 @@ router.post('/register', handleUpload, async (req: Request, res: Response) => {
     // The Skool URL rides along for the same reason it lives in config: the
     // confirmation screen and the confirmation email must never disagree about
     // where the group is.
-    res.json({ ok: true, meetLink: MEET_LINK, skoolUrl: SKOOL_URL });
+    // `leadId` rides along so the confirmation screen can stamp its own Skool
+    // click against this person. Null when the board sync failed, and every
+    // consumer has to treat it as optional: the link must still work.
+    res.json({ ok: true, meetLink: MEET_LINK, skoolUrl: SKOOL_URL, leadId });
   } catch (err) {
     console.error('[session-signup] register failed', err);
     res.status(500).json({ error: 'Something went wrong on our end. Please try again.' });

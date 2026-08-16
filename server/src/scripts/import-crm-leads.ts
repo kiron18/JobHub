@@ -230,4 +230,8 @@ async function main() {
 
 main()
   .catch((err) => { console.error(err); process.exit(1); })
-  .finally(() => prisma.$disconnect());
+  // Importing salesLead pulls in ../index, which is the Express app, so loading
+  // this script silently starts a listening server and a cron. Without an
+  // explicit exit the process hangs forever after the work is done, looking to
+  // anyone watching like an import that never finishes.
+  .finally(async () => { await prisma.$disconnect(); process.exit(0); });

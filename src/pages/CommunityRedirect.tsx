@@ -9,6 +9,8 @@
         email template or a printed link.
      2. The click is attributable. `?src=` says which moment produced the
         member: the confirmation screen, the Meet chat, a follow-up email, a DM.
+        `?lead=` says WHO, when the link was built somewhere that knew, and that
+        one lands on the sales board rather than in analytics.
         Nothing else in this funnel has ever been attributable.
      3. It reads as ours in a chat window, which matters when it is pasted into
         a room of people deciding whether to trust us.
@@ -23,6 +25,8 @@ import { trackCommunityClick } from '../lib/analytics';
 const SKOOL_URL =
   import.meta.env.VITE_SKOOL_GROUP_URL || 'https://www.skool.com/touch-grass-5787/about';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+
 /** Where the click came from. Unknown is a real answer worth counting. */
 const KNOWN_SOURCES = ['confirm', 'chat', 'email', 'dm', 'post', 'profile', 'app', 'receipts'];
 
@@ -33,6 +37,30 @@ export default function CommunityRedirect() {
     const src = KNOWN_SOURCES.includes(raw) ? raw : raw ? 'other' : 'none';
 
     trackCommunityClick(src, raw || null);
+
+    // ── The same click, stamped against the person ──────────────────────────
+    // PostHog answers "how many clicked". This answers "which fourteen people",
+    // which is the only version of the question the sales board can act on.
+    //
+    // `lead` is present only when the link was built somewhere that knew who
+    // they were: the confirmation screen, mostly. A bare /community visit is
+    // still counted above, just anonymously, and that is fine.
+    //
+    // sendBeacon rather than fetch: this page is about to unload, and a beacon
+    // is the one request the browser guarantees to finish anyway. Falls back to
+    // a keepalive fetch where it is missing, and gives up silently if both fail
+    // — a lost stamp must never cost them the redirect.
+    const leadId = (params.get('lead') || '').trim();
+    if (leadId) {
+      const url = `${API_BASE}/session-signup/skool-click?lead=${encodeURIComponent(leadId)}`;
+      try {
+        if (!navigator.sendBeacon?.(url)) {
+          void fetch(url, { method: 'POST', keepalive: true }).catch(() => {});
+        }
+      } catch {
+        void fetch(url, { method: 'POST', keepalive: true }).catch(() => {});
+      }
+    }
 
     // A beat, so the capture has a chance to leave the page before it unloads.
     // PostHog batches, and a synchronous redirect drops the event often enough

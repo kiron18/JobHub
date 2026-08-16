@@ -57,9 +57,9 @@ export async function recordLeadSignal(params: {
   sourceAsset?: string | null;
   hasResume?: boolean;
   signals: LeadSignals;
-}): Promise<void> {
+}): Promise<string | null> {
   const email = params.email.trim().toLowerCase();
-  if (!email) return;
+  if (!email) return null;
 
   const existing = await prisma.salesLead.findUnique({ where: { email } });
 
@@ -86,7 +86,10 @@ export async function recordLeadSignal(params: {
     ...(params.hasResume || merged.registeredAt ? { archived: false } : {}),
   };
 
-  await prisma.salesLead.upsert({
+  // The id is returned so a caller can hand it to the browser and have a later
+  // click come back attributable. It is a cuid, not a sequence, so it is safe
+  // enough to put in a URL: knowing one tells you nothing about any other.
+  const lead = await prisma.salesLead.upsert({
     where: { email },
     create: {
       email,
@@ -95,6 +98,30 @@ export async function recordLeadSignal(params: {
       ...data,
     },
     update: data,
+    select: { id: true },
+  });
+
+  return lead.id;
+}
+
+/**
+ * They clicked through to the Skool group.
+ *
+ * ⚠️ Intent, not membership. See the schema note on `skoolClickedAt`.
+ *
+ * First click wins, in line with every other signal here: these are facts that
+ * happened, and a later one must not overwrite the moment it first became true.
+ * Silently does nothing for an unknown id, because the caller is a public
+ * endpoint being handed an id by a browser and a stale link is not an error
+ * worth showing anyone.
+ */
+export async function recordSkoolClick(leadId: string): Promise<void> {
+  const id = leadId.trim();
+  if (!id) return;
+
+  await prisma.salesLead.updateMany({
+    where: { id, skoolClickedAt: null },
+    data: { skoolClickedAt: new Date() },
   });
 }
 

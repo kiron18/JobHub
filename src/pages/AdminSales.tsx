@@ -45,6 +45,8 @@ interface Lead {
   sourceAsset: string | null;
   archived: boolean;
   registeredAt: string | null;
+  /** A click through to the group, never a confirmed join. Skool has no API. */
+  skoolClickedAt: string | null;
   attendedAt: string | null;
   reportSentAt: string | null;
   paidAt: string | null;
@@ -211,30 +213,47 @@ export default function AdminSales() {
                         </span>
                       </td>
 
-                      {/* The four facts, in funnel order. Filled means it happened,
-                          which is the whole progress bar. */}
+                      {/* The facts, in funnel order. Filled means it happened,
+                          which is the whole progress bar.
+
+                          "Group" is deliberately a different colour, because it
+                          is a different kind of claim: they clicked through to
+                          Skool, which is intent, not membership. Skool has no
+                          API to confirm the join. Filling it green next to
+                          "Paid" would quietly turn a maybe into a fact. */}
                       <td style={cell}>
                         <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
                           {([
-                            ['Registered', l.registeredAt],
-                            ['Attended', l.attendedAt],
-                            ['Report sent', l.reportSentAt],
-                            ['Paid', l.paidAt],
-                          ] as const).map(([label, at]) => (
-                            <span
-                              key={label}
-                              title={at ? `${label}: ${new Date(at).toLocaleDateString()}` : `Not ${label.toLowerCase()}`}
-                              style={{
-                                fontSize: 10.5, fontWeight: 700, padding: '3px 8px', borderRadius: 5,
-                                background: at ? '#1E7A56' : C.alt,
-                                color: at ? '#fff' : C.ink3,
-                                border: `1px solid ${at ? '#1E7A56' : C.line}`,
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              {label}
-                            </span>
-                          ))}
+                            ['Registered', l.registeredAt, false],
+                            ['Group', l.skoolClickedAt, true],
+                            ['Attended', l.attendedAt, false],
+                            ['Report sent', l.reportSentAt, false],
+                            ['Paid', l.paidAt, false],
+                          ] as const).map(([label, at, soft]) => {
+                            const on = soft ? '#2D5A6E' : '#1E7A56';
+                            const hit = at
+                              ? soft
+                                ? `Clicked through to the group on ${new Date(at).toLocaleDateString()}. A click, not a confirmed join.`
+                                : `${label}: ${new Date(at).toLocaleDateString()}`
+                              : soft
+                                ? 'Has not clicked through to the group'
+                                : `Not ${label.toLowerCase()}`;
+                            return (
+                              <span
+                                key={label}
+                                title={hit}
+                                style={{
+                                  fontSize: 10.5, fontWeight: 700, padding: '3px 8px', borderRadius: 5,
+                                  background: at ? (soft ? 'transparent' : on) : C.alt,
+                                  color: at ? (soft ? on : '#fff') : C.ink3,
+                                  border: `1px solid ${at ? on : C.line}`,
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                {label}
+                              </span>
+                            );
+                          })}
                         </div>
                       </td>
 

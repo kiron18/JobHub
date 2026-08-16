@@ -257,6 +257,9 @@ export default function SessionSignupPage() {
   // each link, shared with the confirmation email.
   const [meetLink, setMeetLink] = useState('');
   const [skoolUrl, setSkoolUrl] = useState('');
+  // Returned by the registration. Rides on the community link so the click that
+  // follows can be stamped against this person on the sales board.
+  const [leadId, setLeadId] = useState('');
 
   /**
    * The real date of the next workshop, asked for on load.
@@ -409,6 +412,7 @@ export default function SessionSignupPage() {
       if (!res.ok) throw new Error(data.error || 'Something went wrong. Please try again.');
       if (data.meetLink) setMeetLink(data.meetLink);
       if (data.skoolUrl) setSkoolUrl(data.skoolUrl);
+      if (typeof data.leadId === 'string') setLeadId(data.leadId);
       setDone(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
@@ -521,7 +525,10 @@ export default function SessionSignupPage() {
 
           {/* The door. One button, and it is the only button on this screen. */}
           <a
-            href={`${community}${community.includes('?') ? '&' : '?'}src=confirm`}
+            href={
+              `${community}${community.includes('?') ? '&' : '?'}src=confirm` +
+              (leadId ? `&lead=${encodeURIComponent(leadId)}` : '')
+            }
             target="_blank"
             rel="noopener noreferrer"
             style={{
