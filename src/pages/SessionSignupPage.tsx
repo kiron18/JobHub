@@ -83,6 +83,62 @@ const inputStyle: React.CSSProperties = {
   boxSizing: 'border-box',
 };
 
+const eyebrowStyle: React.CSSProperties = {
+  fontSize: '0.8125rem', fontWeight: 700, letterSpacing: '0.14em',
+  textTransform: 'uppercase', margin: 0,
+};
+
+/**
+ * The dark banner that says when.
+ *
+ * Shared by both screens on purpose: the date is the single fact everyone who
+ * lands here is looking for, so it should not appear in one weight before they
+ * register and another weight after. The confirmation screen passes the join
+ * link in as children; the invite screen passes nothing, because there is no
+ * link to give until they have registered.
+ *
+ * The date is the display-size line and the countdown is the small badge, not
+ * the other way around. A countdown answers "how long", but people are trying
+ * to answer "can I be there", and that needs the actual day and time.
+ */
+function WhenBanner({ whenLabel, untilLabel, children }: {
+  whenLabel: string; untilLabel: string; children?: React.ReactNode;
+}) {
+  return (
+    <div style={{
+      padding: '26px 24px', borderRadius: 16,
+      background: colors.bgDeep, color: colors.textOnDeep,
+      boxShadow: '0 1px 2px rgba(26,24,20,0.06), 0 10px 30px rgba(26,24,20,0.14)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10 }}>
+        <Video size={17} color={colors.accentGold} style={{ flex: '0 0 auto' }} />
+        <span style={{ ...eyebrowStyle, color: colors.accentGold }}>Live workshop</span>
+      </div>
+
+      <p style={{
+        fontFamily: typeTokens.display, fontWeight: 500,
+        fontSize: 'clamp(1.5rem, 5.5vw, 2.125rem)',
+        lineHeight: 1.2, letterSpacing: '-0.015em', margin: 0,
+      }}>
+        {whenLabel}
+      </p>
+
+      {untilLabel && (
+        <span style={{
+          display: 'inline-block', marginTop: 14,
+          padding: '6px 13px', borderRadius: 999,
+          background: 'rgba(197,160,89,0.16)', border: '1px solid rgba(197,160,89,0.34)',
+          color: colors.accentGold, fontSize: '0.875rem', fontWeight: 600,
+        }}>
+          {untilLabel}
+        </span>
+      )}
+
+      {children}
+    </div>
+  );
+}
+
 function Field({ children, label, help, error }: {
   children: React.ReactNode; label: string; help?: string; error?: boolean;
 }) {
@@ -185,6 +241,19 @@ export default function SessionSignupPage() {
   }, [startsAt]);
 
   /**
+   * "before Tuesday", or just "before then" when we have no date yet.
+   *
+   * Never hardcode the weekday. WORKSHOP_DAY is an environment variable, so a
+   * literal "Tuesday" in the copy would be a lie the day Kiron moves the
+   * session and nobody would think to grep a page for it.
+   */
+  const beforeLabel = useMemo(() => {
+    if (!startsAt) return 'before then';
+    if (startsAt.toDateString() === new Date().toDateString()) return 'before we start';
+    return `before ${startsAt.toLocaleDateString(undefined, { weekday: 'long' })}`;
+  }, [startsAt]);
+
+  /**
    * Read the resume the moment it is picked, and pre-fill whatever it gives us.
    * Never overwrite something they typed themselves, and never block on this:
    * the file is already held in state, so a slow or failed parse costs them
@@ -275,10 +344,7 @@ export default function SessionSignupPage() {
     boxSizing: 'border-box',
   };
   const shell: React.CSSProperties = { maxWidth: spacing.containerReadable, margin: '0 auto' };
-  const eyebrow: React.CSSProperties = {
-    fontSize: '0.8125rem', fontWeight: 700, letterSpacing: '0.14em',
-    textTransform: 'uppercase', color: colors.accentPetrol, margin: 0,
-  };
+  const eyebrow: React.CSSProperties = { ...eyebrowStyle, color: colors.accentPetrol };
 
   // ── Confirmed. The link, then the group. ────────────────────────────────────
   if (done) {
@@ -307,31 +373,12 @@ export default function SessionSignupPage() {
 
           {/* The link. First thing on the screen, because it is the only thing
               they were promised and the only reason they filled anything in. */}
-          <div style={{
-            padding: '26px 24px', borderRadius: 16,
-            background: colors.bgDeep, color: colors.textOnDeep,
-            boxShadow: '0 1px 2px rgba(26,24,20,0.06), 0 10px 30px rgba(26,24,20,0.14)',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 14 }}>
-              <Video size={18} color={colors.accentGold} style={{ flex: '0 0 auto' }} />
-              <span style={{ ...eyebrow, color: colors.accentGold }}>{whenLabel}</span>
-            </div>
-
-            {untilLabel && (
-              <p style={{
-                fontFamily: typeTokens.display, fontWeight: 500,
-                fontSize: 'clamp(1.375rem, 5vw, 1.75rem)', margin: '0 0 20px',
-                letterSpacing: '-0.01em',
-              }}>
-                {untilLabel}
-              </p>
-            )}
-
+          <WhenBanner whenLabel={whenLabel} untilLabel={untilLabel}>
             {meetLink ? (
               <>
                 <div style={{
                   display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10,
-                  padding: '14px 16px', borderRadius: 12,
+                  marginTop: 20, padding: '14px 16px', borderRadius: 12,
                   background: 'rgba(250,247,242,0.08)', border: '1px solid rgba(250,247,242,0.16)',
                 }}>
                   <a
@@ -371,11 +418,14 @@ export default function SessionSignupPage() {
                 </p>
               </>
             ) : (
-              <p style={{ fontSize: '1rem', color: 'rgba(250,247,242,0.80)', lineHeight: 1.6, margin: 0 }}>
+              <p style={{
+                fontSize: '1rem', color: 'rgba(250,247,242,0.80)',
+                lineHeight: 1.6, margin: '20px 0 0',
+              }}>
                 Your seat is saved. The join link is on its way to {email.trim()}.
               </p>
             )}
-          </div>
+          </WhenBanner>
 
           {/* The group. After the link, never in front of it. The reason to go
               is true and is in their own interest, which is the only reason
@@ -387,35 +437,45 @@ export default function SessionSignupPage() {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
               <MessageCircle size={19} color={colors.accentPetrol} style={{ flex: '0 0 auto' }} />
-              <p style={eyebrow}>One thing before then</p>
+              <p style={eyebrow}>Do this {beforeLabel}</p>
             </div>
             <h2 style={{
               fontFamily: typeTokens.display, fontWeight: 500, fontSize: '1.5rem',
               color: colors.textPrimary, margin: '0 0 10px', letterSpacing: '-0.01em',
             }}>
-              Post your question in the group
+              Get into the group and make a start
             </h2>
+            {/* The resources are named rather than counted. "Twelve free
+                resources" is a number; "the selection criteria worksheet" is a
+                thing they know they need, and naming four of them is what makes
+                the group worth opening tonight instead of on Tuesday. */}
             <p style={{ fontSize: '1.0625rem', color: colors.textSecondary, lineHeight: 1.6, margin: '0 0 18px' }}>
-              I build the running order from that thread. What you post is what the session
-              becomes, so the people who post are the people who get their own problem solved
-              on the call.
+              Everything I have built is in there and all of it is free: the Australian resume
+              template with an annotated before and after, the interview scripts and question
+              bank, the selection criteria worksheet, the accredited visa sponsor list, and the
+              rest of the pack. Nothing is cut down and nothing asks for a card.
             </p>
 
             <ol style={{
               margin: '0 0 22px', paddingLeft: 20, fontSize: '0.9375rem',
               color: colors.textSecondary, lineHeight: 1.7,
             }}>
-              <li style={{ marginBottom: 8 }}>
-                <strong style={{ color: colors.textPrimary }}>Post the one thing that is actually stopping you.</strong>{' '}
-                One paragraph is plenty. Be specific, because specific is what gets answered.
+              <li style={{ marginBottom: 10 }}>
+                <strong style={{ color: colors.textPrimary }}>Start on the resources now, not after the call.</strong>{' '}
+                An hour with the resume template and the sponsor list is what turns the session
+                from something you watch into something you use. You will also know what to ask,
+                which is most of the value of being in the room.
               </li>
-              <li style={{ marginBottom: 8 }}>
-                <strong style={{ color: colors.textPrimary }}>Like the ones you recognise.</strong>{' '}
-                If somebody has written your problem better than you could, add your detail
-                underneath theirs instead of starting a new one.
+              <li style={{ marginBottom: 10 }}>
+                <strong style={{ color: colors.textPrimary }}>Then post the one thing that is actually stopping you.</strong>{' '}
+                One paragraph is plenty. Be specific, because specific is what gets answered.
+                I build the running order from that thread, so what you post is what the
+                session becomes.
               </li>
               <li>
-                <strong style={{ color: colors.textPrimary }}>The most liked get answered live.</strong>
+                <strong style={{ color: colors.textPrimary }}>Like the ones you recognise.</strong>{' '}
+                If somebody has written your problem better than you could, add your detail
+                underneath theirs instead of starting a new one. The most liked get answered live.
               </li>
             </ol>
 
@@ -433,7 +493,7 @@ export default function SessionSignupPage() {
                 boxShadow: '0 1px 2px rgba(26,24,20,0.06), 0 6px 20px rgba(45,90,110,0.22)',
               }}
             >
-              Open the group and post your question
+              Open the group and get the pack
               <ArrowRight size={20} />
             </a>
             <p style={{ ...helpStyle, textAlign: 'center', marginTop: 12 }}>
@@ -449,6 +509,14 @@ export default function SessionSignupPage() {
   return (
     <div style={page}>
       <div style={shell}>
+        {/* The date, before anything else. They were told there is a workshop,
+            so the first question in their head is "when", and it should not
+            take a different shape here than it does on the screen after this
+            one. Same banner, minus the link they have not earned yet. */}
+        <div style={{ marginBottom: 30 }}>
+          <WhenBanner whenLabel={whenLabel} untilLabel={untilLabel} />
+        </div>
+
         {/* Header. Portrait sits beside the copy on desktop and drops above it
             on narrow screens, which is why this wraps rather than using a grid. */}
         <div style={{
@@ -458,13 +526,10 @@ export default function SessionSignupPage() {
           gap: 28, alignItems: 'flex-end',
         }}>
           <div style={{ flex: '1 1 320px', minWidth: 0 }}>
-            {/* The date is the loudest thing on the page. They were told there
-                is a workshop; the first question in their head is "when". */}
-            <p style={eyebrow}>{whenLabel}</p>
             <h1 style={{
               fontFamily: typeTokens.display, fontWeight: 500,
               fontSize: 'clamp(1.875rem, 6vw, 2.375rem)',
-              color: colors.textPrimary, letterSpacing: '-0.015em', margin: '10px 0 14px',
+              color: colors.textPrimary, letterSpacing: '-0.015em', margin: '0 0 14px',
               fontVariationSettings: "'SOFT' 50, 'WONK' 1",
             }}>
               {SESSION.title}
