@@ -198,9 +198,12 @@ export default function FreeResourcePage() {
               {whenLabel
                 ? `Your seat is saved for ${whenLabel}.`
                 : 'Your seat is saved.'}{' '}
-              The other {TOTAL_RESOURCES - 1} resources are waiting in the group. Join for free and
-              download them from the classroom section. The videos tell you how to use each one and
-              why it exists.
+              {TOTAL_RESOURCES - (resource.covers ?? 1) > 0
+                ? `The other ${TOTAL_RESOURCES - (resource.covers ?? 1)} resources are waiting in the group. Join for free and
+                   download them from the classroom section. The videos tell you how to use each one and
+                   why it exists.`
+                : `You have all ${TOTAL_RESOURCES}. The videos that go with them are in the group,
+                   free: they tell you how to use each one and why it exists.`}
             </p>
           </div>
 

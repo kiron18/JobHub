@@ -37,7 +37,7 @@ export const SYSTEM_STEPS: SystemStep[] = [
 
 export interface FreeResource {
   slug: string;
-  /** Which of the five steps this asset belongs to. */
+  /** Which of the five steps this asset belongs to. 0 = spans all of them. */
   step: number;
   /** Shown in the stepper under its step, and as the page's headline asset. */
   name: string;
@@ -45,6 +45,12 @@ export interface FreeResource {
   promise: string;
   /** Files handed over. More than one when the asset is genuinely a pair. */
   files: { label: string; href: string }[];
+  /**
+   * How many of the twelve this page hands over. Almost always 1, including the
+   * resume pair, which is two files but one resource. The bundle sets it to all
+   * of them, which is what stops the page promising the rest are still to come.
+   */
+  covers?: number;
 }
 
 /**
@@ -143,9 +149,28 @@ export const FREE_RESOURCES: FreeResource[] = [
 
 export const TOTAL_RESOURCES = FREE_RESOURCES.length;
 
+/**
+ * /free/all — every resource on one page.
+ *
+ * This exists because Instagram's RESOURCE gate promises "all 12 free resources
+ * in one go" and there was nowhere to send anyone who commented it. It is
+ * deliberately NOT a member of FREE_RESOURCES: adding it there would make
+ * TOTAL_RESOURCES read 13 and put a "download everything" tile inside one step
+ * of the stepper, which is the one place it does not belong.
+ */
+export const RESOURCE_BUNDLE: FreeResource = {
+  slug: 'all',
+  step: 0,
+  name: 'Every free resource',
+  promise: 'All twelve, no email, no account. The whole search covered end to end, in the order you need them.',
+  files: FREE_RESOURCES.flatMap((r) => r.files),
+  covers: FREE_RESOURCES.length,
+};
+
 export function findResource(slug: string | undefined): FreeResource | null {
   if (!slug) return null;
   const wanted = slug.trim().toLowerCase();
+  if (wanted === RESOURCE_BUNDLE.slug) return RESOURCE_BUNDLE;
   return FREE_RESOURCES.find((r) => r.slug === wanted) ?? null;
 }
 
