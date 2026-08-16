@@ -1,27 +1,35 @@
 /* ────────────────────────────────────────────────────────────────────────────
-   SessionSignupPage — registration + qualifying questions for the live group call
-   Route: /session  (public)
+   SessionSignupPage — registration for the live group workshop
+   Route: /session, /webinar, /register  (public)
 
-   ⚠️ TO CHANGE THE QUESTIONS: edit the QUESTIONS array below. That is the only
-   place they live. The backend stores answers as a blob keyed by question `id`,
-   so adding, removing or rewording a question needs no server change and no
-   migration. Keep the ids stable if you want answers to line up across sessions.
+   THE ONE RULE FOR THIS PAGE: the people who land here were sent a link and
+   told there is a workshop. They arrive wanting the join link and nothing else.
+   So the page asks for the least it can (email, and a name to say it with),
+   hands the link over immediately, and only then asks for anything more.
 
-   ⚠️ TO CHANGE WHAT THEY UNLOCK: edit the PACK array. It is the payoff screen
-   and nothing else reads it.
+   ⚠️ This page does NOT give away the free resource pack, and must not start.
+   That is what /free/:slug and /free/all are for. A page that tries to be a
+   registration and a lead magnet at once is worse at both: the pack turns the
+   registration into a transaction, and the questions people will answer for a
+   pack are questions they will not answer for a link they were already promised.
 
-   The shape of this page is deliberate:
-     resume first  → so the email can be pre-filled from it rather than asked for
-     progress bar  → the gift is promised up front and the bar keeps it in view
-     payoff screen → the group is the single door to the pack, the schedule and
-                     the room, and the first thing they do inside it is post
+   ⚠️ The resume is OPTIONAL and stays optional. It is the only personalisation
+   input left on the page, and the ask is worth more when it costs nothing to
+   refuse. There is no skip-reason interrogation any more.
 
-   Pull the answers before the workshop:
-     /api/session-signup/export?key=…            the pre-call read (counts + quotes)
+   The trip to the Skool group is deliberately AFTER the link, never in front of
+   it. It is framed as the thing to do while waiting, with a reason that is true
+   and is in their own interest: the running order comes from that thread.
+
+   Pull the roster before the workshop:
+     /api/session-signup/export?key=…            counts
      /api/session-signup/export?key=…&format=csv the spreadsheet
+   Note that with the qualifying questions removed, the export is now a roster
+   rather than a pre-call read. The reading material is the Skool thread and the
+   resumes people chose to upload.
    ──────────────────────────────────────────────────────────────────────────── */
 import { useEffect, useMemo, useState } from 'react';
-import { Upload, Check, X, Loader2, Gift, ArrowRight, MessageCircle } from 'lucide-react';
+import { Upload, Check, X, Loader2, ArrowRight, MessageCircle, Copy, Video } from 'lucide-react';
 import { colors, type as typeTokens, spacing } from '../components/landing/tokens';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
@@ -33,140 +41,21 @@ const SESSION = {
   // follows the weekly schedule instead of going stale the day after it is set.
   portrait: '/Assets/kiron-workshop.png',
   // Deliberately no em dashes anywhere in this copy.
-  blurb: [
-    'Hi, thanks for showing interest in the workshop.',
-    'I want you to leave knowing exactly where your gaps are, and with actionable steps you can take to bridge them. Generic advice is plentiful online, so to make sure you get a good return on your time, I have prepared a short list of questions that lets me personalise the workshop to your specific needs.',
+  blurb:
+    'One hour, live, and small enough that you can talk. I go through what is actually stopping international graduates from getting interviews here, and you leave knowing which one of those things is yours and what to do about it this week.',
+  // Three lines, because "what happens on the call" is the only thing anyone
+  // weighing an hour of their evening actually wants to know.
+  agenda: [
+    'The three ways people genuinely land roles here, and why applying online is the weakest of them',
+    'What Australian employers read your resume for, which is not what you were told back home',
+    'Live questions, taken from the group thread, answered in front of everyone',
   ],
 };
-
-/**
- * What they unlock. Shown twice: as a promise above the form, and itemised on
- * the payoff screen.
- *
- * The values are anchors, not invoices. Keep them defensible. This audience is
- * being sold trust before anything else, and an inflated number is the fastest
- * way to lose it.
- */
-const PACK: { item: string; value: number }[] = [
-  { item: 'Australian resume template, pre-filled, plus an annotated before and after', value: 120 },
-  { item: 'Interview scripts and the question bank', value: 140 },
-  { item: 'Cover letter template with a worked example', value: 80 },
-  { item: 'Selection criteria and STAR worksheet', value: 80 },
-  { item: 'LinkedIn outreach templates', value: 60 },
-  { item: 'Networking pack', value: 60 },
-  { item: 'Application tracker, built for the 25 a week cadence', value: 60 },
-  { item: 'Follow-up email swipe file', value: 40 },
-  { item: 'Australian market rules cheat sheet', value: 40 },
-  { item: 'Starter kit and the system templates', value: 100 },
-];
-const SEAT_VALUE = 250;
-const PACK_TOTAL = PACK.reduce((n, p) => n + p.value, 0) + SEAT_VALUE;
-
-/**
- * Require the resume to submit. Set to false to let people through without one.
- * Even when true, the form offers a deliberate escape (they must type a reason),
- * because a registration with a reason is worth more than a bounce.
- */
-const RESUME_REQUIRED = true;
-
-// ── The questions ─────────────────────────────────────────────────────────────
-type Question =
-  | { id: string; type: 'choice'; label: string; help?: string; options: string[]; required?: boolean }
-  | { id: string; type: 'multi'; label: string; help?: string; options: string[]; required?: boolean }
-  | { id: string; type: 'text'; label: string; help?: string; placeholder?: string; long?: boolean; required?: boolean };
-
-const QUESTIONS: Question[] = [
-  {
-    id: 'stage',
-    type: 'choice',
-    label: 'What stage of the job application process are you currently at?',
-    options: [
-      'I am studying in Australia',
-      'I have graduated and looking for my first Australian job',
-      'I am currently working but looking for a better role',
-      'I am outside Australia and planning my move',
-      'Other',
-    ],
-    required: true,
-  },
-  {
-    id: 'challenge',
-    type: 'choice',
-    label: 'What is your biggest challenge right now in getting a job in Australia?',
-    options: [
-      'No interviews',
-      'Resume not working',
-      'Don’t know how to network',
-      'Getting rejected',
-      'Don’t understand Australian job market',
-      'All of the above',
-    ],
-    required: true,
-  },
-  {
-    id: 'timeline',
-    type: 'choice',
-    label: 'How soon are you hoping to secure a job?',
-    options: ['Within 1 month', 'Within 3 months', 'Within 6 months', 'Just exploring'],
-    required: true,
-  },
-  {
-    id: 'hours_per_week',
-    type: 'choice',
-    label: 'How much time are you currently spending each week searching/applying for jobs?',
-    options: ['Less than 5 hours', '5–10 hours', '10+ hours'],
-    required: true,
-  },
-  {
-    id: 'willing_to_invest',
-    type: 'choice',
-    label:
-      'If you knew exactly what was stopping you from getting interviews, would you be willing to invest time and effort into fixing it?',
-    options: ['Yes', 'Maybe', 'No'],
-    required: true,
-  },
-  {
-    id: 'wants_info',
-    type: 'choice',
-    label:
-      'Would you like me to share information about how I personally help people implement this strategy after the workshop?',
-    options: ['Yes, I’d like to learn more', 'Maybe', 'No, I’m only attending for the information'],
-    required: true,
-  },
-  // ── Added, not in the original list. Optional on purpose: every other question
-  // is multiple choice, so without this the 4pm pull is six bar charts and
-  // nothing you can read out loud. Delete this block if you don't want it.
-  {
-    id: 'one_answer',
-    type: 'text',
-    label: 'If you get one thing answered in this workshop, what is it?',
-    help: 'Optional, but this is the one I read out. Ask the real question.',
-    placeholder: 'e.g. is my visa actually the reason I’m getting rejected?',
-    long: true,
-  },
-];
-
-/**
- * What the progress bar counts. Everything that stands between them and the
- * pack, in the order they meet it. The optional question is left out on
- * purpose: a bar that cannot reach 100% is worse than no bar.
- */
-const REQUIRED_QUESTIONS = QUESTIONS.filter((q) => q.required);
-const TOTAL_STEPS = REQUIRED_QUESTIONS.length + (RESUME_REQUIRED ? 1 : 0) + 2; // + name + email
-
-/** Nudges keyed to how far along they are. Index by band, not by exact count. */
-function encouragementFor(pct: number): string {
-  if (pct === 0) return 'Two minutes, and everything below is yours at the end.';
-  if (pct < 34) return 'Good start. Keep going.';
-  if (pct < 67) return 'Over halfway. Nearly there.';
-  if (pct < 100) return 'Almost done. One more push and the pack unlocks.';
-  return 'That’s everything. Hit the button and I’ll open it up.';
-}
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const labelStyle: React.CSSProperties = {
   fontFamily: typeTokens.body,
-  fontSize: '1.0625rem',
+  fontSize: '1rem',
   fontWeight: 600,
   color: colors.textPrimary,
   lineHeight: 1.4,
@@ -177,13 +66,13 @@ const helpStyle: React.CSSProperties = {
   fontFamily: typeTokens.body,
   fontSize: '0.875rem',
   color: colors.textMuted,
-  lineHeight: 1.5,
+  lineHeight: 1.55,
   marginTop: 4,
 };
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
-  padding: '12px 14px',
+  padding: '13px 14px',
   borderRadius: 10,
   border: `1px solid ${colors.borderDefined}`,
   background: colors.bgSurface,
@@ -198,10 +87,10 @@ function Field({ children, label, help, error }: {
   children: React.ReactNode; label: string; help?: string; error?: boolean;
 }) {
   return (
-    <div style={{ marginBottom: 32 }}>
+    <div style={{ marginBottom: 22 }}>
       <label style={labelStyle}>{label}</label>
       {help && <p style={helpStyle}>{help}</p>}
-      <div style={{ marginTop: 12 }}>{children}</div>
+      <div style={{ marginTop: 10 }}>{children}</div>
       {error && (
         <p style={{ ...helpStyle, color: '#B4432F', marginTop: 8 }}>This one’s needed.</p>
       )}
@@ -209,40 +98,11 @@ function Field({ children, label, help, error }: {
   );
 }
 
-function Chip({ selected, onClick, children }: {
-  selected: boolean; onClick: () => void; children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        padding: '10px 16px',
-        borderRadius: 999,
-        border: `1px solid ${selected ? colors.accentPetrol : colors.borderDefined}`,
-        background: selected ? colors.accentPetrol : colors.bgSurface,
-        color: selected ? colors.textOnDeep : colors.textSecondary,
-        fontFamily: typeTokens.body,
-        fontSize: '0.9375rem',
-        fontWeight: selected ? 600 : 500,
-        cursor: 'pointer',
-        transition: 'all 160ms cubic-bezier(0.25, 1, 0.5, 1)',
-        textAlign: 'left',
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function SessionSignupPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [file, setFile] = useState<File | null>(null);
-  const [skipOpen, setSkipOpen] = useState(false);
-  const [skipReason, setSkipReason] = useState('');
 
   // Set when the email came off the resume rather than out of their keyboard,
   // so the field can ask them to confirm it instead of silently trusting a regex.
@@ -253,6 +113,8 @@ export default function SessionSignupPage() {
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState('');
   const [done, setDone] = useState(false);
+  const [copied, setCopied] = useState(false);
+
   // Both come back from the register call so there is one source of truth for
   // each link, shared with the confirmation email.
   const [meetLink, setMeetLink] = useState('');
@@ -264,10 +126,9 @@ export default function SessionSignupPage() {
   /**
    * The real date of the next workshop, asked for on load.
    *
-   * This is fetched rather than written into the page because the schedule now
-   * rolls itself weekly on the server. A date typed in here would be right once
-   * and quietly wrong every week after, which is the failure this whole change
-   * exists to remove.
+   * Fetched rather than written into the page because the schedule rolls itself
+   * weekly on the server. A date typed in here would be right once and quietly
+   * wrong every week after.
    */
   const [startsAt, setStartsAt] = useState<Date | null>(null);
 
@@ -280,7 +141,7 @@ export default function SessionSignupPage() {
         const parsed = new Date(d.startsAt);
         if (!Number.isNaN(parsed.getTime())) setStartsAt(parsed);
       })
-      // A missing date costs the eyebrow its specificity and nothing else. The
+      // A missing date costs the header its specificity and nothing else. The
       // form still works, so this must never surface as an error.
       .catch(() => {});
     return () => { cancelled = true; };
@@ -294,46 +155,34 @@ export default function SessionSignupPage() {
    * browser converts it and names the zone it converted to.
    */
   const whenLabel = useMemo(() => {
-    if (!startsAt) return 'Live workshop';
+    if (!startsAt) return 'Live workshop, weekly';
     const now = new Date();
-    const sameDay = startsAt.toDateString() === now.toDateString();
     const time = startsAt.toLocaleTimeString(undefined, {
       hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
     });
-    if (sameDay) return `Today, ${time}`;
-    const day = startsAt.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+    if (startsAt.toDateString() === now.toDateString()) return `Today, ${time}`;
+    const day = startsAt.toLocaleDateString(undefined, {
+      weekday: 'long', day: 'numeric', month: 'long',
+    });
     return `${day}, ${time}`;
   }, [startsAt]);
 
-  const setAnswer = (id: string, value: string | string[]) => {
-    setAnswers((prev) => ({ ...prev, [id]: value }));
-    setErrors((prev) => {
-      if (!prev.has(id)) return prev;
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-  };
-
-  const toggleMulti = (id: string, option: string) => {
-    const current = (answers[id] as string[]) || [];
-    setAnswer(id, current.includes(option) ? current.filter((o) => o !== option) : [...current, option]);
-  };
-
-  const resumeSatisfied = !!file || (skipOpen && skipReason.trim().length > 2);
-
-  const progress = useMemo(() => {
-    let done = 0;
-    if (name.trim()) done += 1;
-    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) done += 1;
-    if (RESUME_REQUIRED && resumeSatisfied) done += 1;
-    for (const q of REQUIRED_QUESTIONS) {
-      const v = answers[q.id];
-      const empty = Array.isArray(v) ? v.length === 0 : !v || !String(v).trim();
-      if (!empty) done += 1;
-    }
-    return Math.round((done / TOTAL_STEPS) * 100);
-  }, [name, email, resumeSatisfied, answers]);
+  /**
+   * "Starts in 3 days". The wait is the point: these people were promised a
+   * link and they now have one, so the only thing left to give them is a sense
+   * that something is coming. A date alone does not do that, a countdown does.
+   */
+  const untilLabel = useMemo(() => {
+    if (!startsAt) return '';
+    const ms = startsAt.getTime() - Date.now();
+    if (ms <= 0) return 'Happening now';
+    const mins = Math.round(ms / 60000);
+    if (mins < 60) return `Starts in ${mins} minute${mins === 1 ? '' : 's'}`;
+    const hrs = Math.round(mins / 60);
+    if (hrs < 24) return `Starts in ${hrs} hour${hrs === 1 ? '' : 's'}`;
+    const days = Math.round(hrs / 24);
+    return `Starts in ${days} day${days === 1 ? '' : 's'}`;
+  }, [startsAt]);
 
   /**
    * Read the resume the moment it is picked, and pre-fill whatever it gives us.
@@ -369,13 +218,6 @@ export default function SessionSignupPage() {
     const bad = new Set<string>();
     if (!name.trim()) bad.add('name');
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) bad.add('email');
-    for (const q of QUESTIONS) {
-      if (!q.required) continue;
-      const v = answers[q.id];
-      const empty = Array.isArray(v) ? v.length === 0 : !v || !String(v).trim();
-      if (empty) bad.add(q.id);
-    }
-    if (RESUME_REQUIRED && !resumeSatisfied) bad.add('resume');
     setErrors(bad);
     return bad.size === 0;
   };
@@ -383,7 +225,6 @@ export default function SessionSignupPage() {
   const submit = async () => {
     setServerError('');
     if (!validate()) {
-      // Send them to the first thing they missed rather than making them hunt.
       const first = document.querySelector('[data-error="true"]');
       first?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
@@ -394,18 +235,7 @@ export default function SessionSignupPage() {
       const fd = new FormData();
       fd.append('name', name.trim());
       fd.append('email', email.trim());
-      fd.append('answers', JSON.stringify(answers));
-      // Sent so the export can label and aggregate the answers correctly without
-      // having to infer a question's type from the answers it received.
-      // An ordered array, not an object: Postgres jsonb does not preserve object
-      // key order, so an object here makes the export list the questions in an
-      // order that doesn't match this form.
-      fd.append(
-        'questionSchema',
-        JSON.stringify(QUESTIONS.map((q) => ({ id: q.id, label: q.label, type: q.type }))),
-      );
       if (file) fd.append('resume', file);
-      else if (skipReason.trim()) fd.append('resumeSkipReason', skipReason.trim());
 
       const res = await fetch(`${API_BASE}/session-signup/register`, { method: 'POST', body: fd });
       const data = await res.json().catch(() => ({}));
@@ -422,6 +252,17 @@ export default function SessionSignupPage() {
     }
   };
 
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(meetLink);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard is blocked in some embedded browsers. The link is visible and
+      // selectable right next to the button, so there is nothing to recover.
+    }
+  };
+
   // index.css sets `body { overflow: hidden }` and pins #root to 100vh, so the
   // app is a fixed-viewport shell and every public page has to own its own
   // scroll container. minHeight alone silently makes the page unscrollable.
@@ -434,137 +275,134 @@ export default function SessionSignupPage() {
     boxSizing: 'border-box',
   };
   const shell: React.CSSProperties = { maxWidth: spacing.containerReadable, margin: '0 auto' };
+  const eyebrow: React.CSSProperties = {
+    fontSize: '0.8125rem', fontWeight: 700, letterSpacing: '0.14em',
+    textTransform: 'uppercase', color: colors.accentPetrol, margin: 0,
+  };
 
-  // ── The payoff ──────────────────────────────────────────────────────────────
+  // ── Confirmed. The link, then the group. ────────────────────────────────────
   if (done) {
     const community = skoolUrl || 'https://www.aussiegradcareers.com.au/community';
+    const communityHref =
+      `${community}${community.includes('?') ? '&' : '?'}src=confirm` +
+      (leadId ? `&lead=${encodeURIComponent(leadId)}` : '');
+
     return (
       <div style={page}>
         <div style={shell}>
-          <div style={{ textAlign: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
             <div style={{
-              width: 56, height: 56, borderRadius: '50%', background: colors.success,
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24,
+              width: 40, height: 40, borderRadius: '50%', background: colors.success,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto',
             }}>
-              <Check size={28} color="#fff" strokeWidth={2.5} />
+              <Check size={22} color="#fff" strokeWidth={2.5} />
             </div>
             <h1 style={{
-              fontFamily: typeTokens.display, fontWeight: 500, fontSize: '2rem',
-              color: colors.textPrimary, letterSpacing: '-0.015em', margin: '0 0 12px',
+              fontFamily: typeTokens.display, fontWeight: 500, fontSize: 'clamp(1.5rem, 5vw, 2rem)',
+              color: colors.textPrimary, letterSpacing: '-0.015em', margin: 0,
             }}>
               You’re in{name.trim() ? `, ${name.trim().split(/\s+/)[0]}` : ''}.
             </h1>
-            <p style={{ fontSize: '1.0625rem', color: colors.textSecondary, lineHeight: 1.6, margin: '0 auto', maxWidth: 560 }}>
-              Your seat is saved and I have your resume. Now the part I promised you.
-            </p>
           </div>
 
-          {/* The stack. Itemised because "a resource pack" is a shrug and a list
-              of ten things with numbers against them is not. */}
+          {/* The link. First thing on the screen, because it is the only thing
+              they were promised and the only reason they filled anything in. */}
           <div style={{
-            marginTop: 32, padding: '28px 26px', borderRadius: 16,
+            padding: '26px 24px', borderRadius: 16,
+            background: colors.bgDeep, color: colors.textOnDeep,
+            boxShadow: '0 1px 2px rgba(26,24,20,0.06), 0 10px 30px rgba(26,24,20,0.14)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 14 }}>
+              <Video size={18} color={colors.accentGold} style={{ flex: '0 0 auto' }} />
+              <span style={{ ...eyebrow, color: colors.accentGold }}>{whenLabel}</span>
+            </div>
+
+            {untilLabel && (
+              <p style={{
+                fontFamily: typeTokens.display, fontWeight: 500,
+                fontSize: 'clamp(1.375rem, 5vw, 1.75rem)', margin: '0 0 20px',
+                letterSpacing: '-0.01em',
+              }}>
+                {untilLabel}
+              </p>
+            )}
+
+            {meetLink ? (
+              <>
+                <div style={{
+                  display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10,
+                  padding: '14px 16px', borderRadius: 12,
+                  background: 'rgba(250,247,242,0.08)', border: '1px solid rgba(250,247,242,0.16)',
+                }}>
+                  <a
+                    href={meetLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      flex: '1 1 240px', minWidth: 0, fontSize: '1rem', fontWeight: 600,
+                      color: colors.textOnDeep, wordBreak: 'break-all', textDecoration: 'none',
+                    }}
+                  >
+                    {meetLink}
+                  </a>
+                  <button
+                    type="button"
+                    onClick={copyLink}
+                    style={{
+                      flex: '0 0 auto', display: 'inline-flex', alignItems: 'center', gap: 7,
+                      padding: '9px 14px', borderRadius: 8, cursor: 'pointer',
+                      background: copied ? colors.success : colors.textOnDeep,
+                      color: copied ? '#fff' : colors.bgDeep,
+                      border: 'none', fontFamily: typeTokens.body,
+                      fontSize: '0.875rem', fontWeight: 600,
+                      transition: 'background 180ms cubic-bezier(0.25, 1, 0.5, 1)',
+                    }}
+                  >
+                    {copied ? <Check size={15} /> : <Copy size={15} />}
+                    {copied ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+                <p style={{
+                  fontSize: '0.875rem', color: 'rgba(250,247,242,0.62)',
+                  lineHeight: 1.55, margin: '12px 0 0',
+                }}>
+                  Sent to {email.trim()} as well, along with a reminder before we start.
+                  If it is not there in a few minutes, check spam.
+                </p>
+              </>
+            ) : (
+              <p style={{ fontSize: '1rem', color: 'rgba(250,247,242,0.80)', lineHeight: 1.6, margin: 0 }}>
+                Your seat is saved. The join link is on its way to {email.trim()}.
+              </p>
+            )}
+          </div>
+
+          {/* The group. After the link, never in front of it. The reason to go
+              is true and is in their own interest, which is the only reason
+              anyone does a second thing on a confirmation page. */}
+          <div style={{
+            marginTop: 32, padding: '26px 24px', borderRadius: 16,
             background: colors.bgSurface, border: `1px solid ${colors.borderWhisper}`,
             boxShadow: '0 1px 2px rgba(26,24,20,0.04), 0 8px 28px rgba(26,24,20,0.05)',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-              <Gift size={20} color={colors.accentPetrol} />
-              <h2 style={{
-                fontFamily: typeTokens.display, fontWeight: 500, fontSize: '1.375rem',
-                color: colors.textPrimary, margin: 0, letterSpacing: '-0.01em',
-              }}>
-                What you just unlocked
-              </h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              <MessageCircle size={19} color={colors.accentPetrol} style={{ flex: '0 0 auto' }} />
+              <p style={eyebrow}>One thing before then</p>
             </div>
-            <p style={{ ...helpStyle, marginTop: 0, marginBottom: 20 }}>
-              All of it free, all of it in one place, none of it cut down.
+            <h2 style={{
+              fontFamily: typeTokens.display, fontWeight: 500, fontSize: '1.5rem',
+              color: colors.textPrimary, margin: '0 0 10px', letterSpacing: '-0.01em',
+            }}>
+              Post your question in the group
+            </h2>
+            <p style={{ fontSize: '1.0625rem', color: colors.textSecondary, lineHeight: 1.6, margin: '0 0 18px' }}>
+              I build the running order from that thread. What you post is what the session
+              becomes, so the people who post are the people who get their own problem solved
+              on the call.
             </p>
 
-            {PACK.map((p) => (
-              <div
-                key={p.item}
-                style={{
-                  display: 'flex', alignItems: 'baseline', gap: 12,
-                  padding: '9px 0', borderBottom: `1px solid ${colors.borderWhisper}`,
-                }}
-              >
-                <Check size={15} color={colors.success} style={{ flex: '0 0 auto', transform: 'translateY(2px)' }} />
-                <span style={{ flex: 1, fontSize: '0.9375rem', color: colors.textPrimary, lineHeight: 1.5 }}>
-                  {p.item}
-                </span>
-                <span style={{ fontSize: '0.875rem', color: colors.textMuted, whiteSpace: 'nowrap' }}>
-                  ${p.value}
-                </span>
-              </div>
-            ))}
-
-            <div style={{
-              display: 'flex', alignItems: 'baseline', gap: 12,
-              padding: '9px 0', borderBottom: `1px solid ${colors.borderWhisper}`,
-            }}>
-              <Check size={15} color={colors.success} style={{ flex: '0 0 auto', transform: 'translateY(2px)' }} />
-              <span style={{ flex: 1, fontSize: '0.9375rem', color: colors.textPrimary, lineHeight: 1.5, fontWeight: 600 }}>
-                Your seat at the live workshop, where I go through all of it with you
-              </span>
-              <span style={{ fontSize: '0.875rem', color: colors.textMuted, whiteSpace: 'nowrap' }}>
-                ${SEAT_VALUE}
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, paddingTop: 16 }}>
-              <span style={{ flex: 1, fontSize: '1rem', fontWeight: 600, color: colors.textPrimary }}>
-                Yours today
-              </span>
-              <span style={{ fontSize: '0.9375rem', color: colors.textMuted, textDecoration: 'line-through' }}>
-                ${PACK_TOTAL}
-              </span>
-              <span style={{ fontSize: '1.125rem', fontWeight: 700, color: colors.accentPetrol }}>
-                $0
-              </span>
-            </div>
-          </div>
-
-          {/* The door. One button, and it is the only button on this screen. */}
-          <a
-            href={
-              `${community}${community.includes('?') ? '&' : '?'}src=confirm` +
-              (leadId ? `&lead=${encodeURIComponent(leadId)}` : '')
-            }
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              marginTop: 24, width: '100%', boxSizing: 'border-box',
-              background: colors.accentPetrol, color: colors.textOnDeep,
-              padding: '18px 32px', borderRadius: 12, border: 'none',
-              fontWeight: 600, fontSize: '1.125rem', fontFamily: typeTokens.body,
-              cursor: 'pointer', textDecoration: 'none',
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-              boxShadow: '0 1px 2px rgba(26,24,20,0.06), 0 6px 20px rgba(45,90,110,0.22)',
-            }}
-          >
-            Open the group and get everything
-            <ArrowRight size={20} />
-          </a>
-          <p style={{ ...helpStyle, textAlign: 'center', marginTop: 12 }}>
-            The pack, the workshop times and the community all live in there. Takes 20 seconds to join.
-          </p>
-
-          {/* The first action. This is what turns a member into a participant,
-              and it is also how the workshop gets its running order. */}
-          <div style={{
-            marginTop: 28, padding: '24px 24px', borderRadius: 16,
-            background: colors.bgAlt, border: `1px solid ${colors.borderWhisper}`,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-              <MessageCircle size={19} color={colors.accentPetrol} />
-              <h3 style={{
-                fontFamily: typeTokens.display, fontWeight: 500, fontSize: '1.1875rem',
-                color: colors.textPrimary, margin: 0,
-              }}>
-                Do this the moment you’re in
-              </h3>
-            </div>
             <ol style={{
-              margin: 0, paddingLeft: 20, fontSize: '0.9375rem',
+              margin: '0 0 22px', paddingLeft: 20, fontSize: '0.9375rem',
               color: colors.textSecondary, lineHeight: 1.7,
             }}>
               <li style={{ marginBottom: 8 }}>
@@ -572,43 +410,42 @@ export default function SessionSignupPage() {
                 One paragraph is plenty. Be specific, because specific is what gets answered.
               </li>
               <li style={{ marginBottom: 8 }}>
-                <strong style={{ color: colors.textPrimary }}>Read the others and like the ones you recognise.</strong>{' '}
-                If somebody has written your problem better than you could, add your detail underneath it instead of starting a new one.
+                <strong style={{ color: colors.textPrimary }}>Like the ones you recognise.</strong>{' '}
+                If somebody has written your problem better than you could, add your detail
+                underneath theirs instead of starting a new one.
               </li>
               <li>
-                <strong style={{ color: colors.textPrimary }}>The most liked problems get answered live.</strong>{' '}
-                I build the running order from that thread, so what you post is what the session becomes.
+                <strong style={{ color: colors.textPrimary }}>The most liked get answered live.</strong>
               </li>
             </ol>
-          </div>
 
-          {meetLink && (
-            <div style={{
-              marginTop: 24, padding: '18px 20px', borderRadius: 14,
-              background: colors.bgSurface, border: `1px solid ${colors.borderWhisper}`,
-            }}>
-              <p style={{ ...helpStyle, marginTop: 0, marginBottom: 8 }}>
-                Your join link is on its way to your inbox. Here it is as well, in case it lands in spam:
-              </p>
-              <a
-                href={meetLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  fontSize: '1rem', fontWeight: 600, color: colors.accentPetrol,
-                  wordBreak: 'break-all', textDecoration: 'none',
-                }}
-              >
-                {meetLink}
-              </a>
-            </div>
-          )}
+            <a
+              href={communityHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                width: '100%', boxSizing: 'border-box',
+                background: colors.accentPetrol, color: colors.textOnDeep,
+                padding: '17px 32px', borderRadius: 12, border: 'none',
+                fontWeight: 600, fontSize: '1.0625rem', fontFamily: typeTokens.body,
+                cursor: 'pointer', textDecoration: 'none',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                boxShadow: '0 1px 2px rgba(26,24,20,0.06), 0 6px 20px rgba(45,90,110,0.22)',
+              }}
+            >
+              Open the group and post your question
+              <ArrowRight size={20} />
+            </a>
+            <p style={{ ...helpStyle, textAlign: 'center', marginTop: 12 }}>
+              Free to join, takes about 20 seconds.
+            </p>
+          </div>
         </div>
       </div>
     );
   }
 
-  // ── The form ────────────────────────────────────────────────────────────────
+  // ── The invite ──────────────────────────────────────────────────────────────
   return (
     <div style={page}>
       <div style={shell}>
@@ -621,27 +458,22 @@ export default function SessionSignupPage() {
           gap: 28, alignItems: 'flex-end',
         }}>
           <div style={{ flex: '1 1 320px', minWidth: 0 }}>
-            <span style={{
-              fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.18em',
-              textTransform: 'uppercase', color: colors.textMuted,
-            }}>
-              {whenLabel}
-            </span>
+            {/* The date is the loudest thing on the page. They were told there
+                is a workshop; the first question in their head is "when". */}
+            <p style={eyebrow}>{whenLabel}</p>
             <h1 style={{
-              fontFamily: typeTokens.display, fontWeight: 500, fontSize: '2.25rem',
+              fontFamily: typeTokens.display, fontWeight: 500,
+              fontSize: 'clamp(1.875rem, 6vw, 2.375rem)',
               color: colors.textPrimary, letterSpacing: '-0.015em', margin: '10px 0 14px',
               fontVariationSettings: "'SOFT' 50, 'WONK' 1",
             }}>
               {SESSION.title}
             </h1>
-            {SESSION.blurb.map((para, i) => (
-              <p key={i} style={{
-                fontSize: '1.0625rem', color: colors.textSecondary, lineHeight: 1.6,
-                margin: '0 0 12px',
-              }}>
-                {para}
-              </p>
-            ))}
+            <p style={{
+              fontSize: '1.0625rem', color: colors.textSecondary, lineHeight: 1.6, margin: 0,
+            }}>
+              {SESSION.blurb}
+            </p>
           </div>
 
           <img
@@ -662,161 +494,27 @@ export default function SessionSignupPage() {
           />
         </div>
 
-        {/* The promise, made before the first question rather than after the
-            last one. The bar below is the only thing that keeps it credible. */}
-        <div style={{
-          marginBottom: 20, padding: '18px 20px', borderRadius: 14,
-          background: colors.bgAlt, border: `1px solid ${colors.borderWhisper}`,
-          display: 'flex', gap: 14, alignItems: 'flex-start',
+        {/* What actually happens in the hour. The only thing worth saying to
+            someone deciding whether to spend an evening on this. */}
+        <ul style={{
+          listStyle: 'none', margin: '0 0 28px', padding: 0,
+          display: 'flex', flexDirection: 'column', gap: 10,
         }}>
-          <Gift size={20} color={colors.accentPetrol} style={{ flex: '0 0 auto', marginTop: 2 }} />
-          <div style={{ minWidth: 0 }}>
-            <p style={{
-              margin: 0, fontSize: '1rem', fontWeight: 600, color: colors.textPrimary, lineHeight: 1.45,
-            }}>
-              There is a gift waiting at the end of this form
-            </p>
-            <p style={{ ...helpStyle, marginTop: 6 }}>
-              Ten resources worth about ${PACK_TOTAL}, yours free the second you finish. I know forms are
-              tedious, so I have kept this one to about two minutes.
-            </p>
-          </div>
-        </div>
-
-        {/* Progress. Sticky so it stays with them on a long scroll, which is the
-            only reason a bar beats a plain counter. */}
-        <div style={{
-          position: 'sticky', top: 0, zIndex: 5,
-          background: colors.bgCanvas, paddingBottom: 12, marginBottom: 8,
-        }}>
-          <div style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-            marginBottom: 8, gap: 12,
-          }}>
-            <span style={{ fontSize: '0.875rem', color: colors.textSecondary, fontWeight: 500 }}>
-              {encouragementFor(progress)}
-            </span>
-            <span style={{
-              fontSize: '0.875rem', fontWeight: 700,
-              color: progress === 100 ? colors.success : colors.accentPetrol,
-              whiteSpace: 'nowrap',
-            }}>
-              {progress}%
-            </span>
-          </div>
-          <div style={{
-            height: 8, borderRadius: 999, background: colors.borderWhisper, overflow: 'hidden',
-          }}>
-            <div style={{
-              width: `${progress}%`, height: '100%', borderRadius: 999,
-              background: progress === 100 ? colors.success : colors.accentPetrol,
-              transition: 'width 320ms cubic-bezier(0.25, 1, 0.5, 1), background 200ms',
-            }} />
-          </div>
-        </div>
+          {SESSION.agenda.map((line) => (
+            <li key={line} style={{ display: 'flex', gap: 11, alignItems: 'flex-start' }}>
+              <Check size={17} color={colors.success} style={{ flex: '0 0 auto', transform: 'translateY(3px)' }} />
+              <span style={{ fontSize: '1rem', color: colors.textSecondary, lineHeight: 1.55 }}>
+                {line}
+              </span>
+            </li>
+          ))}
+        </ul>
 
         <div style={{
-          background: colors.bgSurface, borderRadius: 16, padding: '32px 28px',
+          background: colors.bgSurface, borderRadius: 16, padding: '30px 28px',
           border: `1px solid ${colors.borderWhisper}`,
           boxShadow: '0 1px 2px rgba(26,24,20,0.04), 0 8px 28px rgba(26,24,20,0.05)',
         }}>
-          {/* Resume first. It is the heaviest ask, so it goes where motivation is
-              highest, and it is what lets the two fields below fill themselves in. */}
-          <div data-error={errors.has('resume')}>
-            <Field
-              label="Start with your resume"
-              help="This is the part that makes the workshop about you rather than about people in general. I read them beforehand and the examples I use come out of them. It also saves you filling in the rest of this by hand."
-              error={errors.has('resume')}
-            >
-              {file ? (
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px',
-                  borderRadius: 10, background: colors.bgAlt, border: `1px solid ${colors.borderWhisper}`,
-                }}>
-                  {parsing
-                    ? <Loader2 size={18} className="animate-spin" color={colors.textMuted} />
-                    : <Check size={18} color={colors.success} />}
-                  <span style={{ flex: 1, fontSize: '0.9375rem', color: colors.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {parsing ? 'Reading it…' : file.name}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => { setFile(null); setEmailFromResume(false); }}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex' }}
-                    aria-label="Remove file"
-                  >
-                    <X size={16} color={colors.textMuted} />
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <label style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                    padding: '20px', borderRadius: 10, cursor: 'pointer',
-                    border: `1.5px dashed ${errors.has('resume') ? '#B4432F' : colors.borderDefined}`,
-                    background: colors.bgCanvas, color: colors.textSecondary, fontSize: '0.9375rem', fontWeight: 500,
-                  }}>
-                    <Upload size={18} />
-                    Upload your resume (PDF, DOCX or TXT)
-                    <input
-                      type="file"
-                      accept=".pdf,.docx,.doc,.txt"
-                      style={{ display: 'none' }}
-                      onChange={(e) => {
-                        const f = e.target.files?.[0] || null;
-                        setFile(f);
-                        if (f) {
-                          setSkipOpen(false);
-                          setSkipReason('');
-                          setErrors((p) => { const n = new Set(p); n.delete('resume'); return n; });
-                          void parseResume(f);
-                        }
-                      }}
-                    />
-                  </label>
-
-                  {/* The escape. Deliberately small, and it costs a sentence —
-                      a reason is itself a qualifying signal, and a registration
-                      with a reason beats a bounce. */}
-                  {!skipOpen ? (
-                    <button
-                      type="button"
-                      onClick={() => setSkipOpen(true)}
-                      style={{
-                        background: 'none', border: 'none', padding: '10px 0 0', cursor: 'pointer',
-                        fontFamily: typeTokens.body, fontSize: '0.8125rem', color: colors.textMuted,
-                        textDecoration: 'underline', textUnderlineOffset: 3,
-                      }}
-                    >
-                      I can’t upload it right now
-                    </button>
-                  ) : (
-                    <div style={{ marginTop: 12 }}>
-                      <p style={{ ...helpStyle, marginTop: 0, marginBottom: 8 }}>
-                        No problem, tell me why in one line and I’ll still take the registration.
-                      </p>
-                      <input
-                        style={inputStyle}
-                        value={skipReason}
-                        onChange={(e) => {
-                          setSkipReason(e.target.value);
-                          setErrors((p) => { const n = new Set(p); n.delete('resume'); return n; });
-                        }}
-                        placeholder="e.g. it’s on my laptop and I’m on my phone"
-                        autoFocus
-                      />
-                    </div>
-                  )}
-                </>
-              )}
-            </Field>
-          </div>
-
-          <hr style={{ border: 'none', borderTop: `1px solid ${colors.borderWhisper}`, margin: '8px 0 32px' }} />
-
-          {/* Identity. Pre-filled from the resume where we could read it, but
-              never trusted silently: the email is the key everything else joins
-              on, so it gets confirmed by a human before it is stored. */}
           <div data-error={errors.has('name')}>
             <Field label="Your name" error={errors.has('name')}>
               <input
@@ -834,8 +532,8 @@ export default function SessionSignupPage() {
               label="Email"
               help={
                 emailFromResume
-                  ? 'I found this on your resume. If it is not the inbox you actually check, change it now, because this is where the pack and the link go.'
-                  : 'Where the workshop link goes. Use the one you actually check.'
+                  ? 'I found this on your resume. If it is not the inbox you actually check, change it now, because this is where the link goes.'
+                  : 'The join link goes here, and a reminder before we start.'
               }
               error={errors.has('email')}
             >
@@ -857,53 +555,64 @@ export default function SessionSignupPage() {
             </Field>
           </div>
 
-          <hr style={{ border: 'none', borderTop: `1px solid ${colors.borderWhisper}`, margin: '8px 0 32px' }} />
-
-          {/* Questions */}
-          {QUESTIONS.map((q) => (
-            <div key={q.id} data-error={errors.has(q.id)}>
-              <Field label={q.label} help={q.help} error={errors.has(q.id)}>
-                {q.type === 'text' ? (
-                  q.long ? (
-                    <textarea
-                      style={{ ...inputStyle, minHeight: 88, resize: 'vertical', lineHeight: 1.5 }}
-                      value={(answers[q.id] as string) || ''}
-                      onChange={(e) => setAnswer(q.id, e.target.value)}
-                      placeholder={q.placeholder}
-                    />
-                  ) : (
-                    <input
-                      style={inputStyle}
-                      value={(answers[q.id] as string) || ''}
-                      onChange={(e) => setAnswer(q.id, e.target.value)}
-                      placeholder={q.placeholder}
-                    />
-                  )
-                ) : (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {q.options.map((opt) => (
-                      <Chip
-                        key={opt}
-                        selected={
-                          q.type === 'multi'
-                            ? ((answers[q.id] as string[]) || []).includes(opt)
-                            : answers[q.id] === opt
-                        }
-                        onClick={() => (q.type === 'multi' ? toggleMulti(q.id, opt) : setAnswer(q.id, opt))}
-                      >
-                        {opt}
-                      </Chip>
-                    ))}
-                  </div>
-                )}
-              </Field>
-            </div>
-          ))}
+          {/* Optional, and it says so in the label rather than in small print
+              underneath. An optional ask that looks required is just a required
+              ask that people resent. */}
+          <Field
+            label="Your resume, optional"
+            help="I read these before the session and the examples I use on the call come out of them. If yours is here, some of the hour is about you. Skip it and nothing bad happens."
+          >
+            {file ? (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px',
+                borderRadius: 10, background: colors.bgAlt, border: `1px solid ${colors.borderWhisper}`,
+              }}>
+                {parsing
+                  ? <Loader2 size={18} className="animate-spin" color={colors.textMuted} />
+                  : <Check size={18} color={colors.success} />}
+                <span style={{
+                  flex: 1, fontSize: '0.9375rem', color: colors.textPrimary,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
+                  {parsing ? 'Reading it…' : file.name}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => { setFile(null); setEmailFromResume(false); }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex' }}
+                  aria-label="Remove file"
+                >
+                  <X size={16} color={colors.textMuted} />
+                </button>
+              </div>
+            ) : (
+              <label style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                padding: '18px', borderRadius: 10, cursor: 'pointer',
+                border: `1.5px dashed ${colors.borderDefined}`,
+                background: colors.bgCanvas, color: colors.textSecondary,
+                fontSize: '0.9375rem', fontWeight: 500,
+              }}>
+                <Upload size={18} />
+                Upload it (PDF, DOCX or TXT)
+                <input
+                  type="file"
+                  accept=".pdf,.docx,.doc,.txt"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] || null;
+                    setFile(f);
+                    if (f) void parseResume(f);
+                  }}
+                />
+              </label>
+            )}
+          </Field>
 
           {serverError && (
             <p style={{
               fontSize: '0.9375rem', color: '#B4432F', background: 'rgba(180,67,47,0.07)',
-              padding: '12px 14px', borderRadius: 10, margin: '0 0 20px',
+              padding: '12px 14px', borderRadius: 10, margin: '0 0 18px',
             }}>
               {serverError}
             </p>
@@ -915,7 +624,7 @@ export default function SessionSignupPage() {
             disabled={submitting}
             style={{
               width: '100%', background: colors.accentPetrol, color: colors.textOnDeep,
-              padding: '16px 32px', borderRadius: 10, border: 'none',
+              padding: '17px 32px', borderRadius: 10, border: 'none',
               fontWeight: 600, fontSize: '1.0625rem', fontFamily: typeTokens.body,
               cursor: submitting ? 'wait' : 'pointer', opacity: submitting ? 0.7 : 1,
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 9,
@@ -923,11 +632,11 @@ export default function SessionSignupPage() {
             }}
           >
             {submitting && <Loader2 size={18} className="animate-spin" />}
-            {submitting ? 'Saving…' : progress === 100 ? 'Save my spot and unlock the pack' : 'Save my spot'}
+            {submitting ? 'Saving your seat…' : 'Send me the link'}
           </button>
 
-          <p style={{ ...helpStyle, textAlign: 'center', marginTop: 14 }}>
-            Your resume isn’t shared with anyone.
+          <p style={{ ...helpStyle, textAlign: 'center', marginTop: 13 }}>
+            No account needed. Your resume isn’t shared with anyone.
           </p>
         </div>
       </div>

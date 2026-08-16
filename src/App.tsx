@@ -454,13 +454,21 @@ function App() {
                   <BookCallPage />
                 </React.Suspense>
               } />
-              {/* Group-session registration. /webinar is an alias so either link works. */}
+              {/* Group-session registration. /webinar and /register are aliases so
+                  any of the three links people have been sent still works. Without
+                  /register here it fell through to the catch-all, which sends a
+                  logged-in visitor to the dashboard and everyone else to sign-up. */}
               <Route path="/session" element={
                 <React.Suspense fallback={null}>
                   <SessionSignupPage />
                 </React.Suspense>
               } />
               <Route path="/webinar" element={
+                <React.Suspense fallback={null}>
+                  <SessionSignupPage />
+                </React.Suspense>
+              } />
+              <Route path="/register" element={
                 <React.Suspense fallback={null}>
                   <SessionSignupPage />
                 </React.Suspense>

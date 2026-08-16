@@ -277,7 +277,11 @@ export async function sendWorkshopConfirmationEmail(params: {
       '',
       'The full resource pack and every past session live in there too.',
       '',
-      'I read every set of answers before we go live, so what we cover will be shaped by what you told me.',
+      // The form no longer asks qualifying questions, so the running order now
+      // comes from the group thread instead. This line and the confirmation
+      // screen have to keep saying the same thing.
+      'While you are in there, post the one thing that is actually stopping you.',
+      'I build the running order from that thread, and the most liked ones get answered live.',
       '',
       'See you there,',
       'Kiron',
