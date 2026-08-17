@@ -27,10 +27,11 @@
    introduced in a full sentence before any claim is made about it. Do not
    collapse either back into prose to save vertical space.
 
-   ⚠️ The locked PLATFORM grid sits inside a section about things that cost
-   nothing, so it carries three separate anti-bait-and-switch signals: locks
-   rather than ticks, "the paid side" in the heading, and the price visible.
-   Removing any one of them turns the whole block into a switch.
+   ⚠️ The locked PLATFORM block sits inside a section about things that cost
+   nothing, so it has to keep saying so: locks rather than ticks, and "None of
+   it gates the twelve above" as the first line inside it. It is also folded
+   shut by default, because a list of what you do not have is a poor last
+   impression on a page whose whole job is to leave someone feeling equipped.
 
    Pull the roster before the workshop:
      /api/session-signup/export?key=…            counts
@@ -40,7 +41,9 @@
    resumes people chose to upload.
    ──────────────────────────────────────────────────────────────────────────── */
 import { useEffect, useMemo, useState } from 'react';
-import { Upload, Check, X, Loader2, ArrowRight, MessageCircle, Copy, Video, Lock } from 'lucide-react';
+import {
+  Upload, Check, X, Loader2, ArrowRight, MessageCircle, Copy, Video, Lock, ChevronDown,
+} from 'lucide-react';
 import { colors, type as typeTokens, spacing } from '../components/landing/tokens';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
@@ -93,28 +96,31 @@ const PACK = [
 ];
 
 /**
- * The paid platform, shown locked directly under the free grid.
+ * The member platform, folded away under a summary line and opened on request.
  *
- * This is deliberately NOT a bait and switch, and the markup has to keep it
- * that way: locks instead of ticks, a heading that says it is the paid side,
- * and the price in plain sight. Nothing here gates anything in PACK above.
+ * Collapsed by default and on purpose. Open, sitting under a grid of twelve
+ * things they are getting, it reads as a list of things they are NOT getting,
+ * and a page whose job is to make someone feel equipped should not end by
+ * making them feel short-changed. Closed, it is an invitation to look.
  *
- * It sits next to the free grid rather than after the button because the point
- * is the sweep of the eye down two slabs at once. That is what makes the group
- * feel like a large thing to walk into rather than a newsletter.
+ * ⚠️ It still must not read as a gate on the pack, and losing the price line
+ * cost it one of its three honesty signals. The two that remain are load
+ * bearing: locks instead of ticks, and "None of it gates the twelve above"
+ * as the first line inside. Do not remove either.
  *
  * ⚠️ Every line here must be a feature that actually ships. This list is read
- * by people who will buy on the strength of it.
+ * by people who will buy on the strength of it, so nothing aspirational.
  */
 const PLATFORM = [
+  'Weekly calls to look at where you are and plan the week ahead',
   'Your resume rewritten for each job you apply to',
   'Cover letters written for the specific role',
-  'Match scoring and a gap report on any job ad',
-  'A daily job feed picked for your profile',
   'Pre-written answers to the open application questions',
   'LinkedIn outreach drafts, including the referral follow-up',
   'Follow-up emails written from the job ad itself',
   'Interview prep built from the role you are up for',
+  'A tracker that runs itself, so you can see what is actually working',
+  'First access to whatever is being built next',
 ];
 
 /**
@@ -286,6 +292,10 @@ export default function SessionSignupPage() {
   const [done, setDone] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // The member platform block. Shut until they ask, so the page does not end on
+  // a list of things they are not getting. See the note on PLATFORM.
+  const [showPlatform, setShowPlatform] = useState(false);
+
   // Both come back from the register call so there is one source of truth for
   // each link, shared with the confirmation email.
   const [meetLink, setMeetLink] = useState('');
@@ -366,21 +376,6 @@ export default function SessionSignupPage() {
     if (!startsAt) return 'before then';
     if (startsAt.toDateString() === new Date().toDateString()) return 'before we start';
     return `before ${startsAt.toLocaleDateString(undefined, { weekday: 'long' })}`;
-  }, [startsAt]);
-
-  /**
-   * "Tuesday", for the sentences that need the day as a noun rather than as a
-   * deadline: "walk into Tuesday ahead of…", "not needed for Tuesday".
-   *
-   * Deriving these by stripping "before " off beforeLabel looks tempting and is
-   * wrong: the two fallbacks are "before then" and "before we start", which
-   * strip down to "then" and "we start" and produce broken English on exactly
-   * the days that matter most, session day and any day the date fetch fails.
-   */
-  const dayLabel = useMemo(() => {
-    if (!startsAt) return 'the session';
-    if (startsAt.toDateString() === new Date().toDateString()) return 'tonight';
-    return startsAt.toLocaleDateString(undefined, { weekday: 'long' });
   }, [startsAt]);
 
   /**
@@ -587,7 +582,7 @@ export default function SessionSignupPage() {
             </h2>
             <p style={{ fontSize: '1.0625rem', color: colors.textSecondary, lineHeight: 1.6, margin: '0 0 20px' }}>
               All of it is already sitting in the group, free and without a card. Take it now and
-              walk into {dayLabel} ahead of the people you are up against.
+              give yourself a head start.
             </p>
 
             <div className="sess-grid" style={{ marginBottom: 14 }}>
@@ -599,31 +594,59 @@ export default function SessionSignupPage() {
               sponsors, and every live call recorded.
             </p>
 
-            {/* The paid platform, locked, directly under the free grid.
-                It is here and not after the button so the eye takes both slabs
-                in one sweep, which is the whole reason the pack became a grid.
-                It must never read as a gate on anything above it, so: locks
-                instead of ticks, muted text, the word "paid" in the heading and
-                the price in plain sight. */}
+            {/* The member platform, folded shut. Open by default it turns the
+                page's last impression into a list of things they do not have,
+                which is the opposite of what the twelve ticks above just did.
+                Shut, it is a door they can choose to open, and the ones who
+                open it are telling us something worth knowing. */}
             <div style={{
-              padding: '18px 20px', borderRadius: 12, marginBottom: 26,
+              borderRadius: 12, marginBottom: 26, overflow: 'hidden',
               background: colors.bgAlt, border: `1px solid ${colors.borderWhisper}`,
             }}>
-              <p style={{
-                fontSize: '0.9375rem', fontWeight: 600, color: colors.textPrimary,
-                margin: '0 0 4px',
-              }}>
-                And this is the paid side, so you know what is there
-              </p>
-              <p style={{ ...helpStyle, marginTop: 0, marginBottom: 14 }}>
-                None of it gates the twelve above. It is the same method with the work done for you.
-              </p>
-              <div className="sess-paid">
-                {PLATFORM.map((item) => <GridItem key={item} label={item} locked />)}
-              </div>
-              <p style={{ ...helpStyle, marginTop: 14, marginBottom: 0 }}>
-                $197 for 90 days. Not needed for {dayLabel}.
-              </p>
+              <button
+                type="button"
+                onClick={() => setShowPlatform((v) => !v)}
+                aria-expanded={showPlatform}
+                style={{
+                  width: '100%', boxSizing: 'border-box',
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '15px 20px', background: 'none', border: 'none',
+                  cursor: 'pointer', textAlign: 'left',
+                  fontFamily: typeTokens.body, fontSize: '0.9375rem',
+                  fontWeight: 600, color: colors.textPrimary,
+                }}
+              >
+                <ChevronDown
+                  size={17}
+                  color={colors.accentPetrol}
+                  style={{
+                    flex: '0 0 auto',
+                    transform: showPlatform ? 'rotate(180deg)' : 'none',
+                    transition: 'transform 180ms cubic-bezier(0.25, 1, 0.5, 1)',
+                  }}
+                />
+                See what our premium members have access to
+              </button>
+
+              {showPlatform && (
+                <div style={{ padding: '0 20px 18px' }}>
+                  {/* First line inside, always. Without the price line this is
+                      the only thing left saying the twelve above are not gated. */}
+                  <p style={{ ...helpStyle, marginTop: 0, marginBottom: 14 }}>
+                    None of it gates the twelve above. It is the same method with the work done for you.
+                  </p>
+                  <div className="sess-paid">
+                    {PLATFORM.map((item) => <GridItem key={item} label={item} locked />)}
+                  </div>
+                  {/* What it is worth, not what it costs. The price belongs on
+                      the pricing page, where someone has gone looking for it. */}
+                  <p style={{ ...helpStyle, marginTop: 14, marginBottom: 0 }}>
+                    What it really buys you is the end of the guessing. Your week turns into a
+                    short, repeatable list you can work through every day, without wondering
+                    whether you are doing the right thing.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* What the group is, introduced rather than walked into mid-thought.
