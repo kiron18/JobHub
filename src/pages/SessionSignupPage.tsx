@@ -42,7 +42,7 @@
    ──────────────────────────────────────────────────────────────────────────── */
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Upload, Check, X, Loader2, ArrowRight, MessageCircle, Copy, Video, Lock, ChevronDown,
+  Upload, Check, X, Loader2, ArrowRight, MessageCircle, Copy, Video, Lock, ChevronRight,
 } from 'lucide-react';
 import { colors, type as typeTokens, spacing } from '../components/landing/tokens';
 
@@ -120,7 +120,7 @@ const PLATFORM = [
   'Follow-up emails written from the job ad itself',
   'Interview prep built from the role you are up for',
   'A tracker that runs itself, so you can see what is actually working',
-  'First access to whatever is being built next',
+  'Exclusive access to new tools as they land',
 ];
 
 /**
@@ -616,12 +616,15 @@ export default function SessionSignupPage() {
                   fontWeight: 600, color: colors.textPrimary,
                 }}
               >
-                <ChevronDown
+                {/* Points RIGHT when shut, down when open. A chevron already
+                    pointing down on a closed block reads as an open one that
+                    failed to render its contents. */}
+                <ChevronRight
                   size={17}
                   color={colors.accentPetrol}
                   style={{
                     flex: '0 0 auto',
-                    transform: showPlatform ? 'rotate(180deg)' : 'none',
+                    transform: showPlatform ? 'rotate(90deg)' : 'none',
                     transition: 'transform 180ms cubic-bezier(0.25, 1, 0.5, 1)',
                   }}
                 />
