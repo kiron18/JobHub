@@ -21,6 +21,17 @@
    it. It is framed as the thing to do while waiting, with a reason that is true
    and is in their own interest: the running order comes from that thread.
 
+   ⚠️ The confirmation screen assumes the reader has never heard of Skool and
+   does not know what a "group" is. That is why the pack is a grid of twelve
+   ticks rather than a sentence naming four of them, and why the group gets
+   introduced in a full sentence before any claim is made about it. Do not
+   collapse either back into prose to save vertical space.
+
+   ⚠️ The locked PLATFORM grid sits inside a section about things that cost
+   nothing, so it carries three separate anti-bait-and-switch signals: locks
+   rather than ticks, "the paid side" in the heading, and the price visible.
+   Removing any one of them turns the whole block into a switch.
+
    Pull the roster before the workshop:
      /api/session-signup/export?key=…            counts
      /api/session-signup/export?key=…&format=csv the spreadsheet
@@ -29,7 +40,7 @@
    resumes people chose to upload.
    ──────────────────────────────────────────────────────────────────────────── */
 import { useEffect, useMemo, useState } from 'react';
-import { Upload, Check, X, Loader2, ArrowRight, MessageCircle, Copy, Video } from 'lucide-react';
+import { Upload, Check, X, Loader2, ArrowRight, MessageCircle, Copy, Video, Lock } from 'lucide-react';
 import { colors, type as typeTokens, spacing } from '../components/landing/tokens';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
@@ -51,6 +62,110 @@ const SESSION = {
     'Live questions, taken from the group thread, answered in front of everyone',
   ],
 };
+
+/**
+ * The pack, shown as a grid rather than named in a sentence.
+ *
+ * The old copy named four resources in prose and left the rest as "the rest of
+ * the pack", which asks the reader to take the size of it on faith. People who
+ * have never seen a Skool group do not know what they are being invited into,
+ * so the volume has to be visible in one glance instead of described.
+ *
+ * ⚠️ Keep this list in step with FREE_RESOURCES in src/config/freeResources.ts.
+ * There are twelve, TOTAL_RESOURCES is twelve, and the heading above says
+ * twelve. Adding a thirteenth resource means editing three places, not one.
+ * Names are shortened for grid density but must stay recognisably the same
+ * asset, because this is the list they will go looking for once inside.
+ */
+const PACK = [
+  'Starter Kit',
+  'Market Rules Cheat Sheet',
+  'Resume Template + Before and After',
+  'Cover Letter Template',
+  'Selection Criteria Worksheet',
+  'Application Tracker',
+  'Follow-up Email Swipe File',
+  'System Templates',
+  'Accredited Visa Sponsor List (3,875 companies)',
+  'LinkedIn Outreach Templates',
+  'Networking Pack',
+  'Interview Scripts and Question Bank',
+];
+
+/**
+ * The paid platform, shown locked directly under the free grid.
+ *
+ * This is deliberately NOT a bait and switch, and the markup has to keep it
+ * that way: locks instead of ticks, a heading that says it is the paid side,
+ * and the price in plain sight. Nothing here gates anything in PACK above.
+ *
+ * It sits next to the free grid rather than after the button because the point
+ * is the sweep of the eye down two slabs at once. That is what makes the group
+ * feel like a large thing to walk into rather than a newsletter.
+ *
+ * ⚠️ Every line here must be a feature that actually ships. This list is read
+ * by people who will buy on the strength of it.
+ */
+const PLATFORM = [
+  'Your resume rewritten for each job you apply to',
+  'Cover letters written for the specific role',
+  'Match scoring and a gap report on any job ad',
+  'A daily job feed picked for your profile',
+  'Pre-written answers to the open application questions',
+  'LinkedIn outreach drafts, including the referral follow-up',
+  'Follow-up emails written from the job ad itself',
+  'Interview prep built from the role you are up for',
+];
+
+/**
+ * The four lines someone can post instead of composing a question.
+ *
+ * The ask used to be "post the one thing stopping you", which quietly requires
+ * a self-diagnosis first. Most people at this stage do not have one and will
+ * not admit it, so they post nothing. Four blanks with a permitted "not sure"
+ * turns an essay into a form, and the shape of the answers is diagnostic on
+ * its own, which is what the line under the box promises.
+ */
+const POST_FORMAT: [string, string][] = [
+  ['Looking since', 'March'],
+  ['Applications', 'around 60'],
+  ['Interviews so far', '1'],
+  ['What I think is wrong', 'not sure'],
+];
+
+/**
+ * Grid breakpoints, as a stylesheet because inline styles cannot hold a media
+ * query and the whole point of these two blocks is that they reflow.
+ *
+ * Two columns on mobile, never one. A single column turns the pack into a long
+ * scrolling list, which reads as a to-do rather than as an amount of stuff, and
+ * loses the only thing the grid was built to do.
+ */
+const GRID_CSS = `
+.sess-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 11px 18px; }
+.sess-paid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px 18px; }
+@media (max-width: 620px) {
+  .sess-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; }
+  .sess-paid { grid-template-columns: 1fr; gap: 9px; }
+}
+`;
+
+/** One line of either grid. Tick when it is theirs already, lock when it is not. */
+function GridItem({ label, locked }: { label: string; locked?: boolean }) {
+  return (
+    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+      {locked
+        ? <Lock size={13} color={colors.accentGold} style={{ flex: '0 0 auto', transform: 'translateY(4px)' }} />
+        : <Check size={15} color={colors.success} strokeWidth={2.5} style={{ flex: '0 0 auto', transform: 'translateY(3px)' }} />}
+      <span style={{
+        fontSize: '0.875rem', lineHeight: 1.45,
+        color: locked ? colors.textMuted : colors.textSecondary,
+      }}>
+        {label}
+      </span>
+    </div>
+  );
+}
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const labelStyle: React.CSSProperties = {
@@ -254,6 +369,21 @@ export default function SessionSignupPage() {
   }, [startsAt]);
 
   /**
+   * "Tuesday", for the sentences that need the day as a noun rather than as a
+   * deadline: "walk into Tuesday ahead of…", "not needed for Tuesday".
+   *
+   * Deriving these by stripping "before " off beforeLabel looks tempting and is
+   * wrong: the two fallbacks are "before then" and "before we start", which
+   * strip down to "then" and "we start" and produce broken English on exactly
+   * the days that matter most, session day and any day the date fetch fails.
+   */
+  const dayLabel = useMemo(() => {
+    if (!startsAt) return 'the session';
+    if (startsAt.toDateString() === new Date().toDateString()) return 'tonight';
+    return startsAt.toLocaleDateString(undefined, { weekday: 'long' });
+  }, [startsAt]);
+
+  /**
    * Read the resume the moment it is picked, and pre-fill whatever it gives us.
    * Never overwrite something they typed themselves, and never block on this:
    * the file is already held in state, so a slow or failed parse costs them
@@ -435,49 +565,131 @@ export default function SessionSignupPage() {
             background: colors.bgSurface, border: `1px solid ${colors.borderWhisper}`,
             boxShadow: '0 1px 2px rgba(26,24,20,0.04), 0 8px 28px rgba(26,24,20,0.05)',
           }}>
+            <style>{GRID_CSS}</style>
+
+            {/* "Step 2 of 2" rather than "do this before Tuesday". A deadline on
+                a chore reads as an obligation; a half-finished progress marker
+                reads as something they started and want to close. */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
               <MessageCircle size={19} color={colors.accentPetrol} style={{ flex: '0 0 auto' }} />
-              <p style={eyebrow}>Do this {beforeLabel}</p>
+              <p style={eyebrow}>Step 2 of 2</p>
             </div>
+
+            {/* The question leads, because the pack is a promise anyone can
+                make and airtime on a live call is not. The grid underneath does
+                the convincing, because wanting the pack takes no self-knowledge
+                and knowing your own question does. */}
             <h2 style={{
               fontFamily: typeTokens.display, fontWeight: 500, fontSize: '1.5rem',
               color: colors.textPrimary, margin: '0 0 10px', letterSpacing: '-0.01em',
             }}>
-              Get into the group and make a start
+              Get your question answered, plus all 12 resources up front
             </h2>
-            {/* The resources are named rather than counted. "Twelve free
-                resources" is a number; "the selection criteria worksheet" is a
-                thing they know they need, and naming four of them is what makes
-                the group worth opening tonight instead of on Tuesday. */}
-            <p style={{ fontSize: '1.0625rem', color: colors.textSecondary, lineHeight: 1.6, margin: '0 0 18px' }}>
-              Everything I have built is in there and all of it is free: the Australian resume
-              template with an annotated before and after, the interview scripts and question
-              bank, the selection criteria worksheet, the accredited visa sponsor list, and the
-              rest of the pack. Nothing is cut down and nothing asks for a card.
+            <p style={{ fontSize: '1.0625rem', color: colors.textSecondary, lineHeight: 1.6, margin: '0 0 20px' }}>
+              All of it is already sitting in the group, free and without a card. Take it now and
+              walk into {dayLabel} ahead of the people you are up against.
             </p>
 
-            <ol style={{
-              margin: '0 0 22px', paddingLeft: 20, fontSize: '0.9375rem',
-              color: colors.textSecondary, lineHeight: 1.7,
+            <div className="sess-grid" style={{ marginBottom: 14 }}>
+              {PACK.map((item) => <GridItem key={item} label={item} />)}
+            </div>
+
+            <p style={{ ...helpStyle, marginTop: 0, marginBottom: 24 }}>
+              Plus the 9 training modules, the searchable register of all 36,644 approved
+              sponsors, and every live call recorded.
+            </p>
+
+            {/* The paid platform, locked, directly under the free grid.
+                It is here and not after the button so the eye takes both slabs
+                in one sweep, which is the whole reason the pack became a grid.
+                It must never read as a gate on anything above it, so: locks
+                instead of ticks, muted text, the word "paid" in the heading and
+                the price in plain sight. */}
+            <div style={{
+              padding: '18px 20px', borderRadius: 12, marginBottom: 26,
+              background: colors.bgAlt, border: `1px solid ${colors.borderWhisper}`,
             }}>
-              <li style={{ marginBottom: 10 }}>
-                <strong style={{ color: colors.textPrimary }}>Start on the resources now, not after the call.</strong>{' '}
-                An hour with the resume template and the sponsor list is what turns the session
-                from something you watch into something you use. You will also know what to ask,
-                which is most of the value of being in the room.
-              </li>
-              <li style={{ marginBottom: 10 }}>
-                <strong style={{ color: colors.textPrimary }}>Then post the one thing that is actually stopping you.</strong>{' '}
-                One paragraph is plenty. Be specific, because specific is what gets answered.
-                I build the running order from that thread, so what you post is what the
-                session becomes.
-              </li>
-              <li>
-                <strong style={{ color: colors.textPrimary }}>Like the ones you recognise.</strong>{' '}
-                If somebody has written your problem better than you could, add your detail
-                underneath theirs instead of starting a new one. The most liked get answered live.
-              </li>
-            </ol>
+              <p style={{
+                fontSize: '0.9375rem', fontWeight: 600, color: colors.textPrimary,
+                margin: '0 0 4px',
+              }}>
+                And this is the paid side, so you know what is there
+              </p>
+              <p style={{ ...helpStyle, marginTop: 0, marginBottom: 14 }}>
+                None of it gates the twelve above. It is the same method with the work done for you.
+              </p>
+              <div className="sess-paid">
+                {PLATFORM.map((item) => <GridItem key={item} label={item} locked />)}
+              </div>
+              <p style={{ ...helpStyle, marginTop: 14, marginBottom: 0 }}>
+                $197 for 90 days. Not needed for {dayLabel}.
+              </p>
+            </div>
+
+            {/* What the group is, introduced rather than walked into mid-thought.
+                No "cheapest way to reach me" here: pricing your own access down
+                in your own copy is a discount you never stop paying for. */}
+            <p style={{ fontSize: '1rem', color: colors.textSecondary, lineHeight: 1.65, margin: '0 0 14px' }}>
+              The group is the simplest way to get everything I have built, whenever you want it,
+              alongside other people working through the same thing at the same time.
+            </p>
+            <p style={{ fontSize: '1rem', color: colors.textSecondary, lineHeight: 1.65, margin: '0 0 14px' }}>
+              New resources land there first. I build something most weeks and it goes up the day
+              it is finished. The training sits in there too, nine modules, in order, nothing held
+              back. And anything I open up goes to the group before it goes anywhere else.
+            </p>
+
+            {/* The instruction half. Ruled off in gold so it stops reading as
+                more selling and starts reading as a thing to actually do. */}
+            <div style={{
+              borderLeft: `2px solid ${colors.accentGold}`,
+              paddingLeft: 18, margin: '26px 0 24px',
+            }}>
+              <p style={{
+                fontFamily: typeTokens.display, fontWeight: 500, fontSize: '1.1875rem',
+                color: colors.textPrimary, margin: '0 0 10px', letterSpacing: '-0.01em',
+              }}>
+                Test it {beforeLabel}.
+              </p>
+              <p style={{ fontSize: '0.9375rem', color: colors.textSecondary, lineHeight: 1.65, margin: '0 0 14px' }}>
+                Post the one thing that is actually stopping you in the Webinar Questions thread.
+                I build the running order from that thread before we go live, so what gets posted
+                is what the session becomes.
+              </p>
+
+              {/* Four blanks instead of a blank page. The example values are
+                  muted so this reads as a template to copy rather than as
+                  somebody else's post to compare yourself against. */}
+              <div style={{
+                padding: '14px 16px', borderRadius: 10,
+                background: colors.bgCanvas, border: `1px solid ${colors.borderWhisper}`,
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+                fontSize: '0.8125rem', lineHeight: 1.9,
+              }}>
+                {POST_FORMAT.map(([k, v]) => (
+                  <div key={k} style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <span style={{ color: colors.textPrimary, fontWeight: 600 }}>{k}:</span>
+                    <span style={{ color: colors.textMuted }}>{v}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* The line that gets the quiet ones to post. Not knowing your own
+                  problem is reframed as itself diagnostic, which is true, and
+                  which flatters instead of exposing. */}
+              <p style={{ ...helpStyle, marginTop: 12 }}>
+                No question yet? Post those four lines and leave the last one blank. That pattern
+                on its own tells me where it is breaking, and it is almost never where people expect.
+              </p>
+
+              {/* Ranking is stated only alongside the guarantee. On its own,
+                  "most liked goes first" tells a shy person they will lose. */}
+              <p style={{ fontSize: '0.9375rem', color: colors.textSecondary, lineHeight: 1.65, margin: '14px 0 0' }}>
+                Everyone gets answered. The most liked go first, so if somebody has already
+                written your problem better than you could, like theirs and add your detail
+                underneath instead of starting a new one.
+              </p>
+            </div>
 
             <a
               href={communityHref}
@@ -493,11 +705,11 @@ export default function SessionSignupPage() {
                 boxShadow: '0 1px 2px rgba(26,24,20,0.06), 0 6px 20px rgba(45,90,110,0.22)',
               }}
             >
-              Open the group and get the pack
+              Open the group and post my question
               <ArrowRight size={20} />
             </a>
             <p style={{ ...helpStyle, textAlign: 'center', marginTop: 12 }}>
-              Free to join, takes about 20 seconds.
+              Takes about 20 seconds. No card, ever.
             </p>
           </div>
         </div>
