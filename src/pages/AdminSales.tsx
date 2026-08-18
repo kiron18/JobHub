@@ -30,7 +30,7 @@
    ──────────────────────────────────────────────────────────────────────────── */
 import { Fragment, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, FileText, ExternalLink, Loader2, ChevronDown, Archive, Trash2, X } from 'lucide-react';
+import { Search, FileText, ExternalLink, Loader2, ChevronDown, Archive, Trash2, X, Upload } from 'lucide-react';
 import api from '../lib/api';
 
 const STAGES = ['Lead', 'Registered', 'Attended', 'Pitched', 'Client', 'Dead'] as const;
@@ -72,6 +72,14 @@ const C = {
   ink: '#0F1E2B', ink2: '#4A5A68', ink3: '#8496A4', blue: '#1857A0', danger: '#B4432F',
 };
 
+/**
+ * The session key on a registration that exists only to hold a hand-uploaded
+ * resume. Mirrors `MANUAL_UPLOAD_SESSION` on the server. Such a row is not a
+ * registration for anything, so it must never be offered as a session to
+ * filter by and must never render as a date.
+ */
+const MANUAL_UPLOAD_SESSION = 'manual-upload';
+
 /** `2026-08-18` as `18 Aug`. Split by hand: `new Date('2026-08-18')` is parsed
  *  as UTC midnight and renders as the 17th for anyone west of Greenwich. */
 function sessionLabel(key: string): string {
@@ -90,10 +98,25 @@ export default function AdminSales() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  const { data, isLoading } = useQuery({
+  /**
+   * Polled, not pushed. The board is a page that sits open on a second screen
+   * while people are registering, and a signup that does not appear until a
+   * manual reload is a signup you find out about after the call. Twenty seconds
+   * against a query that is one SELECT of at most 500 rows is cheap; a
+   * websocket for a single admin screen is not worth the connection to keep
+   * alive. `refetchOnWindowFocus` is the one that actually gets used: coming
+   * back to the tab shows you the truth immediately rather than up to 20s late.
+   */
+  const { data, isLoading, isFetching, dataUpdatedAt } = useQuery({
     queryKey: ['admin-sales', search, showArchived],
     queryFn: () =>
       api.get('/admin/sales', { params: { search, archived: showArchived } }).then((r) => r.data),
+    refetchInterval: 20_000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    // Keeps the table on screen through a refetch instead of dropping back to
+    // the loading line every twenty seconds.
+    placeholderData: (prev) => prev,
   });
 
   const patch = useMutation({
@@ -117,6 +140,32 @@ export default function AdminSales() {
     },
   });
 
+  /**
+   * A resume that arrived by email rather than through the form. Reports the
+   * character count back, because a scanned PDF uploads perfectly and yields
+   * nothing, and the hour before a call is the wrong time to discover that.
+   */
+  const uploadResume = useMutation({
+    mutationFn: async (v: { id: string; file: File }) => {
+      const fd = new FormData();
+      fd.append('resume', v.file);
+      const r = await api.post(`/admin/sales/${v.id}/resume`, fd);
+      return r.data as { filename: string; chars: number };
+    },
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ['admin-sales'] });
+      if (!r.chars) {
+        window.alert(
+          `${r.filename} is saved, but no text came out of it. It is almost certainly a scan or an image. ` +
+          'You can still open the file, but the diagnostic has nothing to read.',
+        );
+      }
+    },
+    onError: (err: any) => {
+      window.alert(err?.response?.data?.error ?? 'The upload failed. Try again.');
+    },
+  });
+
   const leads: Lead[] = data?.leads ?? [];
   const nextSessionKey: string | null = data?.nextSessionKey ?? null;
 
@@ -124,7 +173,10 @@ export default function AdminSales() {
    *  the upcoming one even when nobody has signed up for it yet. */
   const sessions = useMemo(() => {
     const seen = new Map<string, number>();
-    for (const l of leads) if (l.sessionKey) seen.set(l.sessionKey, (seen.get(l.sessionKey) ?? 0) + 1);
+    for (const l of leads) {
+      if (!l.sessionKey || l.sessionKey === MANUAL_UPLOAD_SESSION) continue;
+      seen.set(l.sessionKey, (seen.get(l.sessionKey) ?? 0) + 1);
+    }
     if (nextSessionKey && !seen.has(nextSessionKey)) seen.set(nextSessionKey, 0);
     return [...seen.entries()].sort((a, b) => b[0].localeCompare(a[0]));
   }, [leads, nextSessionKey]);
@@ -136,7 +188,10 @@ export default function AdminSales() {
     () =>
       sessionFilter === 'All'
         ? leads
-        : leads.filter((l) => (sessionFilter === 'none' ? !l.sessionKey : l.sessionKey === sessionFilter)),
+        : leads.filter((l) => {
+            const real = l.sessionKey && l.sessionKey !== MANUAL_UPLOAD_SESSION ? l.sessionKey : null;
+            return sessionFilter === 'none' ? !real : real === sessionFilter;
+          }),
     [leads, sessionFilter],
   );
 
@@ -192,6 +247,20 @@ export default function AdminSales() {
           <span style={{ fontSize: 13, color: C.ink3 }}>
             {leads.length} on the board
             {data?.archivedCount ? ` · ${data.archivedCount} archived` : ''}
+          </span>
+          {/* Says out loud that the board refreshes itself. Without it the only
+              way to know a twenty-second-old number is current is to reload,
+              which is the habit this is meant to remove. */}
+          <span
+            title={dataUpdatedAt ? `Last checked ${new Date(dataUpdatedAt).toLocaleTimeString()}` : undefined}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.ink3 }}
+          >
+            <span style={{
+              width: 7, height: 7, borderRadius: '50%',
+              background: isFetching ? C.blue : '#1E7A56',
+              transition: 'background .2s',
+            }} />
+            {isFetching ? 'Checking…' : 'Live'}
           </span>
         </div>
 
@@ -396,7 +465,7 @@ export default function AdminSales() {
                           never expires, "is this person coming tonight" is the
                           question the Registered tab cannot answer on its own. */}
                       <td style={{ ...cell, fontSize: 12.5 }}>
-                        {l.sessionKey ? (
+                        {l.sessionKey && l.sessionKey !== MANUAL_UPLOAD_SESSION ? (
                           <span
                             title={`Registered for the ${l.sessionKey} workshop`}
                             style={{
@@ -407,7 +476,14 @@ export default function AdminSales() {
                             {sessionLabel(l.sessionKey)}
                           </span>
                         ) : (
-                          <span title="No workshop registration on file" style={{ color: C.ink3 }}>—</span>
+                          <span
+                            title={l.sessionKey === MANUAL_UPLOAD_SESSION
+                              ? 'No workshop registration. This row exists only to hold a resume that was uploaded by hand.'
+                              : 'No workshop registration on file'}
+                            style={{ color: C.ink3 }}
+                          >
+                            —
+                          </span>
                         )}
                       </td>
 
@@ -465,9 +541,9 @@ export default function AdminSales() {
                                    question now gets posted in the Skool thread
                                    and pasted into /admin/workshop. */
                                 <p style={{ fontSize: 13, color: C.ink3, margin: 0, lineHeight: 1.55 }}>
-                                  {l.sessionKey
+                                  {l.sessionKey && l.sessionKey !== MANUAL_UPLOAD_SESSION
                                     ? 'The signup form no longer asks anything beyond name, email and resume. Their question lives in the Skool thread, so paste that thread into Workshop prep.'
-                                    : 'Nothing on file. They came from the LinkedIn import, not the funnel.'}
+                                    : 'Nothing on file. They never came through the signup form.'}
                                 </p>
                               )}
                             </div>
@@ -490,6 +566,47 @@ export default function AdminSales() {
                                   Report failed: {l.reportError}
                                 </p>
                               )}
+
+                              {/* For the resume that arrives by email instead of
+                                  through the form, which is most of them for
+                                  anyone who did not come in through the funnel.
+                                  A label wrapping a hidden input rather than a
+                                  button, so it is one click and the native file
+                                  picker does the rest. */}
+                              <div>
+                                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.ink3, margin: '0 0 6px' }}>
+                                  Resume
+                                </p>
+                                <label style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: 7,
+                                  padding: '7px 13px', borderRadius: 8, fontSize: 12.5, fontWeight: 600,
+                                  cursor: uploadResume.isPending ? 'wait' : 'pointer',
+                                  border: `1.5px solid ${C.lineStrong}`, background: C.bg, color: C.ink2,
+                                }}>
+                                  {uploadResume.isPending && uploadResume.variables?.id === l.id
+                                    ? <Loader2 size={13} className="animate-spin" />
+                                    : <Upload size={13} />}
+                                  {l.hasResumeText ? 'Replace resume' : 'Upload resume'}
+                                  <input
+                                    type="file"
+                                    accept=".pdf,.docx,.doc,.txt"
+                                    disabled={uploadResume.isPending}
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      // Cleared so picking the same file twice
+                                      // after a failure still fires a change.
+                                      e.target.value = '';
+                                      if (file) uploadResume.mutate({ id: l.id, file });
+                                    }}
+                                    style={{ display: 'none' }}
+                                  />
+                                </label>
+                                {l.resumeFilename && (
+                                  <p style={{ fontSize: 12, color: C.ink3, margin: '7px 0 0', wordBreak: 'break-all' }}>
+                                    {l.resumeFilename}
+                                  </p>
+                                )}
+                              </div>
 
                               <div>
                                 <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.ink3, margin: '0 0 6px' }}>

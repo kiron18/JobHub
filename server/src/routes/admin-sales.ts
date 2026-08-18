@@ -9,11 +9,13 @@
  * four funnel signals onto SalesLead was the point of that table existing.
  */
 import { Router, Response, NextFunction } from 'express';
+import multer from 'multer';
 import { prisma } from '../index';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { EXEMPT_EMAILS } from './stripe';
 import { STAGES, type Stage } from '../services/salesLead';
 import { currentSessionKey } from '../config/workshop';
+import { attachResumeToLead } from '../services/leadResume';
 
 const router = Router();
 
@@ -175,6 +177,72 @@ router.post('/delete', authenticate, requireAdmin, async (req: AuthRequest, res:
     registrationsDeleted,
     names: leads.map((l) => l.name),
   });
+});
+
+// ── Resume upload ────────────────────────────────────────────────────────────
+
+/** Same limits the public signup form uses, so a file that works there works
+ *  here. Memory storage because the bytes go straight into Postgres. */
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const ext = file.originalname.toLowerCase();
+    cb(null, ext.endsWith('.pdf') || ext.endsWith('.docx') || ext.endsWith('.doc') || ext.endsWith('.txt'));
+  },
+});
+
+/**
+ * Put a resume against someone by hand.
+ *
+ * For the resume that arrives by email or gets handed over on a call, which is
+ * most of them for anyone who did not come through the signup form. Needs an
+ * email on the lead, because email is what the registration is keyed on and
+ * there is nowhere else to hang the file.
+ *
+ * Reports the character count back rather than a bare success: a scanned PDF
+ * uploads perfectly and yields nothing, and finding that out an hour before a
+ * call is worse than being told now.
+ */
+router.post('/:id/resume', authenticate, requireAdmin, (req: AuthRequest, res: Response, next: NextFunction) => {
+  upload.single('resume')(req, res, (err) => {
+    if (err) {
+      const message = err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE'
+        ? 'That file is over 5MB. Try exporting it as a PDF.'
+        : 'We could not read that file. PDF, DOCX or TXT works best.';
+      return res.status(400).json({ error: message });
+    }
+    next();
+  });
+}, async (req: AuthRequest, res: Response) => {
+  const file = req.file;
+  if (!file) return res.status(400).json({ error: 'No file came through. PDF, DOCX or TXT.' });
+
+  const lead = await prisma.salesLead.findUnique({
+    where: { id: String(req.params.id) },
+    select: { name: true, email: true },
+  });
+  if (!lead) return res.status(404).json({ error: 'That person is not on the board any more.' });
+  if (!lead.email) {
+    return res.status(400).json({
+      error: `${lead.name} has no email on file, and the resume is filed against the email. Add one first.`,
+    });
+  }
+
+  try {
+    const result = await attachResumeToLead({
+      email: lead.email,
+      fallbackName: lead.name,
+      buffer: file.buffer,
+      mimetype: file.mimetype,
+      originalname: file.originalname,
+    });
+    console.log(`[admin-sales] resume attached to ${lead.email}: ${result.filename} (${result.chars} chars)`);
+    res.json(result);
+  } catch (err) {
+    console.error('[admin-sales] resume upload failed', err);
+    res.status(500).json({ error: 'The upload failed on our side. Try again.' });
+  }
 });
 
 /** The original resume file, so a card can hand back the real document. */
