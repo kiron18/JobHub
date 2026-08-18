@@ -13,24 +13,28 @@
    And the scoring is gone. Star ratings, pulse and the rest were a second
    opinion layered on top of facts, and the facts turned out to be better: what
    someone told you, whether they turned up, and whether they paid.
+
+   ⚠️ THERE IS NO STAGE COLUMN, ON PURPOSE. There used to be, and it printed the
+   word "Registered" in a row that already had a green "Registered" chip beside
+   it, inside a tab called "Registered" — the same fact three times, which read
+   like three different facts. The stage is derived from the chips, so the chips
+   are the stage: Registered, Attended, Report sent (Pitched) and Paid (Client)
+   in order. Dead is the one stage no chip can carry, so it rides next to the
+   name. Do not put the badge back.
+
+   ⚠️ SESSION IS A COLUMN BECAUSE THE STAGE DOES NOT EXPIRE. Someone who
+   registered for a workshop two months ago and never turned up is still at
+   stage Registered today, sitting in the same tab as tonight's sign-ups with
+   nothing to tell them apart. The column, and the filter next to the search
+   box, are what stop "25 registered" being read as "25 people coming tonight".
    ──────────────────────────────────────────────────────────────────────────── */
-import { useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, FileText, ExternalLink, Loader2, ChevronDown, Archive } from 'lucide-react';
+import { Search, FileText, ExternalLink, Loader2, ChevronDown, Archive, Trash2, X } from 'lucide-react';
 import api from '../lib/api';
 
 const STAGES = ['Lead', 'Registered', 'Attended', 'Pitched', 'Client', 'Dead'] as const;
 type Stage = (typeof STAGES)[number];
-
-/** Colour carries stage, so a row's position in the funnel reads without text. */
-const STAGE_COLOR: Record<Stage, { bg: string; fg: string }> = {
-  Lead: { bg: '#EEF1F4', fg: '#5A6874' },
-  Registered: { bg: '#E7F0F8', fg: '#1A5C93' },
-  Attended: { bg: '#E6F1EC', fg: '#1E7A56' },
-  Pitched: { bg: '#FBF0DC', fg: '#8A6420' },
-  Client: { bg: '#1E7A56', fg: '#FFFFFF' },
-  Dead: { bg: '#F3F0EE', fg: '#9A8F86' },
-};
 
 interface Lead {
   id: string;
@@ -57,6 +61,8 @@ interface Lead {
   questionSchema: { id: string; label: string; type: string }[] | null;
   resumeFilename: string | null;
   hasResumeText: boolean;
+  /** Which workshop their registration is for. Null when they never registered. */
+  sessionKey: string | null;
   reportToken: string | null;
   reportError: string | null;
 }
@@ -66,12 +72,23 @@ const C = {
   ink: '#0F1E2B', ink2: '#4A5A68', ink3: '#8496A4', blue: '#1857A0', danger: '#B4432F',
 };
 
+/** `2026-08-18` as `18 Aug`. Split by hand: `new Date('2026-08-18')` is parsed
+ *  as UTC midnight and renders as the 17th for anyone west of Greenwich. */
+function sessionLabel(key: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
+  if (!m) return key;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}
+
 export default function AdminSales() {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [stageFilter, setStageFilter] = useState<Stage | 'All'>('All');
+  const [sessionFilter, setSessionFilter] = useState<string>('All');
   const [showArchived, setShowArchived] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-sales', search, showArchived],
@@ -84,11 +101,80 @@ export default function AdminSales() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-sales'] }),
   });
 
+  /** Selection is cleared on success rather than optimistically: a half-failed
+   *  delete that left the checkboxes cleared would look like it worked. */
+  const remove = useMutation({
+    mutationFn: (ids: string[]) => api.post('/admin/sales/delete', { ids }).then((r) => r.data),
+    onSuccess: () => {
+      setSelected(new Set());
+      setOpenId(null);
+      qc.invalidateQueries({ queryKey: ['admin-sales'] });
+    },
+    // Loud, because the alternative is a board that silently still has them on
+    // it and a second click that deletes twice as much next time.
+    onError: (err: any) => {
+      window.alert(`Nothing was deleted. ${err?.response?.data?.error ?? err?.message ?? 'The server refused it.'}`);
+    },
+  });
+
   const leads: Lead[] = data?.leads ?? [];
-  const counts: Record<string, number> = data?.counts ?? {};
-  const shown = stageFilter === 'All' ? leads : leads.filter((l) => l.stage === stageFilter);
+  const nextSessionKey: string | null = data?.nextSessionKey ?? null;
+
+  /** Every session anyone on the board is registered for, newest first, plus
+   *  the upcoming one even when nobody has signed up for it yet. */
+  const sessions = useMemo(() => {
+    const seen = new Map<string, number>();
+    for (const l of leads) if (l.sessionKey) seen.set(l.sessionKey, (seen.get(l.sessionKey) ?? 0) + 1);
+    if (nextSessionKey && !seen.has(nextSessionKey)) seen.set(nextSessionKey, 0);
+    return [...seen.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+  }, [leads, nextSessionKey]);
+
+  /** Session narrows first, so the stage counts on the tabs describe the same
+   *  set of people the table is about to show. Counted here rather than taken
+   *  from the server's, which cannot know about this filter. */
+  const inSession = useMemo(
+    () =>
+      sessionFilter === 'All'
+        ? leads
+        : leads.filter((l) => (sessionFilter === 'none' ? !l.sessionKey : l.sessionKey === sessionFilter)),
+    [leads, sessionFilter],
+  );
+
+  const counts = useMemo(() => {
+    const c: Record<string, number> = {};
+    for (const s of STAGES) c[s] = 0;
+    for (const l of inSession) c[l.stage] = (c[l.stage] ?? 0) + 1;
+    return c;
+  }, [inSession]);
+
+  const shown = stageFilter === 'All' ? inSession : inSession.filter((l) => l.stage === stageFilter);
+
+  const shownSelected = shown.filter((l) => selected.has(l.id));
+  const allShownSelected = shown.length > 0 && shownSelected.length === shown.length;
+
+  const toggle = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+
+  /** Confirms by name, because the delete takes the workshop registration and
+   *  the resume with it and there is no undo behind it. */
+  const confirmDelete = (targets: Lead[]) => {
+    if (!targets.length) return;
+    const names = targets.slice(0, 12).map((l) => `  ${l.name}${l.email ? ` (${l.email})` : ''}`).join('\n');
+    const more = targets.length > 12 ? `\n  …and ${targets.length - 12} more` : '';
+    const ok = window.confirm(
+      `Delete ${targets.length === 1 ? 'this person' : `these ${targets.length} people`} for good?\n\n` +
+      `${names}${more}\n\n` +
+      'This also removes their workshop registration and any resume on file. There is no undo.',
+    );
+    if (ok) remove.mutate(targets.map((l) => l.id));
+  };
 
   const cell: React.CSSProperties = { padding: '11px 10px', verticalAlign: 'top' };
+  const checkStyle: React.CSSProperties = { width: 15, height: 15, cursor: 'pointer', accentColor: C.blue };
 
   return (
     <div style={{
@@ -100,6 +186,9 @@ export default function AdminSales() {
 
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, flexWrap: 'wrap', marginBottom: 18 }}>
           <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>Sales</h1>
+          <a href="/admin/workshop" style={{ fontSize: 13, color: C.blue, fontWeight: 600 }}>
+            Workshop prep
+          </a>
           <span style={{ fontSize: 13, color: C.ink3 }}>
             {leads.length} on the board
             {data?.archivedCount ? ` · ${data.archivedCount} archived` : ''}
@@ -111,7 +200,7 @@ export default function AdminSales() {
         <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 14 }}>
           {(['All', ...STAGES] as const).map((s) => {
             const active = stageFilter === s;
-            const n = s === 'All' ? leads.length : (counts[s] ?? 0);
+            const n = s === 'All' ? inSession.length : (counts[s] ?? 0);
             return (
               <button
                 key={s}
@@ -145,6 +234,27 @@ export default function AdminSales() {
               }}
             />
           </div>
+
+          {/* One control rather than a second row of chips: which workshop is a
+              question you ask occasionally, not one to keep on screen. */}
+          <select
+            value={sessionFilter}
+            onChange={(e) => setSessionFilter(e.target.value)}
+            style={{
+              padding: '10px 12px', borderRadius: 9, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              border: `1.5px solid ${sessionFilter === 'All' ? C.line : C.blue}`,
+              background: C.bg, color: sessionFilter === 'All' ? C.ink2 : C.blue,
+            }}
+          >
+            <option value="All">Every session</option>
+            {sessions.map(([key, n]) => (
+              <option key={key} value={key}>
+                {sessionLabel(key)}{key === nextSessionKey ? ' (next)' : ''} · {n}
+              </option>
+            ))}
+            <option value="none">Never registered</option>
+          </select>
+
           <button
             onClick={() => setShowArchived((v) => !v)}
             style={{
@@ -169,9 +279,25 @@ export default function AdminSales() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
               <tr style={{ textAlign: 'left', borderBottom: `2px solid ${C.line}`, color: C.ink3, fontSize: 12 }}>
+                <th style={{ ...cell, width: 30, paddingRight: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={allShownSelected}
+                    onChange={() =>
+                      setSelected((prev) => {
+                        const next = new Set(prev);
+                        if (allShownSelected) shown.forEach((l) => next.delete(l.id));
+                        else shown.forEach((l) => next.add(l.id));
+                        return next;
+                      })
+                    }
+                    title={allShownSelected ? 'Clear these' : 'Select everyone shown'}
+                    style={checkStyle}
+                  />
+                </th>
                 <th style={{ ...cell, width: '26%' }}>Who</th>
-                <th style={{ ...cell, width: 108 }}>Stage</th>
                 <th style={{ ...cell }}>Progress</th>
+                <th style={{ ...cell, width: 104 }}>Session</th>
                 <th style={{ ...cell, width: 130 }}>Came from</th>
                 <th style={{ ...cell, width: 90 }}>Resume</th>
               </tr>
@@ -179,18 +305,21 @@ export default function AdminSales() {
             <tbody>
               {shown.map((l) => {
                 const open = openId === l.id;
-                const sc = STAGE_COLOR[l.stage] ?? STAGE_COLOR.Lead;
+                const isSelected = selected.has(l.id);
                 return (
-                  <>
+                  <Fragment key={l.id}>
                     <tr
-                      key={l.id}
                       onClick={() => setOpenId(open ? null : l.id)}
                       style={{
                         borderBottom: `1px solid ${C.line}`, cursor: 'pointer',
-                        background: open ? C.alt : undefined,
+                        background: isSelected ? '#EEF4FA' : open ? C.alt : undefined,
                         opacity: l.archived ? 0.55 : 1,
                       }}
                     >
+                      <td style={{ ...cell, paddingRight: 0 }} onClick={(e) => e.stopPropagation()}>
+                        <input type="checkbox" checked={isSelected} onChange={() => toggle(l.id)} style={checkStyle} />
+                      </td>
+
                       <td style={cell}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontWeight: 600 }}>
                           <ChevronDown
@@ -198,23 +327,25 @@ export default function AdminSales() {
                             style={{ color: C.ink3, transform: open ? 'none' : 'rotate(-90deg)', flex: '0 0 auto' }}
                           />
                           {l.name}
+                          {/* The one stage no chip below can carry, because it is
+                              a judgement rather than something that happened. */}
+                          {l.stage === 'Dead' && (
+                            <span style={{
+                              fontSize: 10.5, fontWeight: 700, padding: '2px 7px', borderRadius: 5,
+                              background: '#F3F0EE', color: '#9A8F86',
+                            }}>
+                              Dead
+                            </span>
+                          )}
                         </div>
                         <div style={{ fontSize: 12.5, color: C.ink3, marginTop: 3, paddingLeft: 21 }}>
                           {l.email || <span style={{ fontStyle: 'italic' }}>no email</span>}
                         </div>
                       </td>
 
-                      <td style={cell}>
-                        <span style={{
-                          display: 'inline-block', padding: '4px 10px', borderRadius: 999,
-                          fontSize: 11.5, fontWeight: 700, background: sc.bg, color: sc.fg,
-                        }}>
-                          {l.stage}
-                        </span>
-                      </td>
-
                       {/* The facts, in funnel order. Filled means it happened,
-                          which is the whole progress bar.
+                          which is the whole progress bar — and, read left to
+                          right, it is also the stage.
 
                           "Group" is deliberately a different colour, because it
                           is a different kind of claim: they clicked through to
@@ -257,6 +388,26 @@ export default function AdminSales() {
                         </div>
                       </td>
 
+                      {/* Which workshop, not when they signed up. The upcoming
+                          one is called out because on a board where the stage
+                          never expires, "is this person coming tonight" is the
+                          question the Registered tab cannot answer on its own. */}
+                      <td style={{ ...cell, fontSize: 12.5 }}>
+                        {l.sessionKey ? (
+                          <span
+                            title={`Registered for the ${l.sessionKey} workshop`}
+                            style={{
+                              fontWeight: l.sessionKey === nextSessionKey ? 700 : 500,
+                              color: l.sessionKey === nextSessionKey ? C.blue : C.ink2,
+                            }}
+                          >
+                            {sessionLabel(l.sessionKey)}
+                          </span>
+                        ) : (
+                          <span title="No workshop registration on file" style={{ color: C.ink3 }}>—</span>
+                        )}
+                      </td>
+
                       <td style={{ ...cell, fontSize: 12.5, color: C.ink2 }}>
                         {l.sourceAsset ? `/free/${l.sourceAsset}` : l.source}
                       </td>
@@ -277,8 +428,8 @@ export default function AdminSales() {
                     </tr>
 
                     {open && (
-                      <tr key={`${l.id}-open`} style={{ background: C.alt, borderBottom: `1px solid ${C.line}` }}>
-                        <td colSpan={5} style={{ padding: '4px 14px 20px 31px' }}>
+                      <tr style={{ background: C.alt, borderBottom: `1px solid ${C.line}` }}>
+                        <td colSpan={6} style={{ padding: '4px 14px 20px 51px' }}>
                           <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
 
                             {/* What they told us. The reason this board exists:
@@ -303,8 +454,17 @@ export default function AdminSales() {
                                   })}
                                 </dl>
                               ) : (
-                                <p style={{ fontSize: 13, color: C.ink3, margin: 0 }}>
-                                  Nothing on file. They came from the LinkedIn import, not the funnel.
+                                /* Two different silences, and telling them apart
+                                   matters. One is a lead who never came through
+                                   the funnel. The other is the funnel working as
+                                   designed: the qualifying questions were taken
+                                   off the signup form on purpose, and the
+                                   question now gets posted in the Skool thread
+                                   and pasted into /admin/workshop. */
+                                <p style={{ fontSize: 13, color: C.ink3, margin: 0, lineHeight: 1.55 }}>
+                                  {l.sessionKey
+                                    ? 'The signup form no longer asks anything beyond name, email and resume. Their question lives in the Skool thread, so paste that thread into Workshop prep.'
+                                    : 'Nothing on file. They came from the LinkedIn import, not the funnel.'}
                                 </p>
                               )}
                             </div>
@@ -369,19 +529,74 @@ export default function AdminSales() {
                                 >
                                   {l.archived ? 'Unarchive' : 'Archive'}
                                 </button>
+                                {/* Kept in the drawer rather than on the row, so
+                                    the one destructive action costs a deliberate
+                                    click to reach. The bulk bar is for clearing
+                                    out test rows, which is the other real use. */}
+                                <button
+                                  onClick={() => confirmDelete([l])}
+                                  disabled={remove.isPending}
+                                  style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                                    padding: '7px 13px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
+                                    border: `1.5px solid ${C.line}`, background: C.bg, color: C.danger,
+                                  }}
+                                >
+                                  <Trash2 size={13} /> Delete
+                                </button>
                               </div>
                             </div>
                           </div>
                         </td>
                       </tr>
                     )}
-                  </>
+                  </Fragment>
                 );
               })}
             </tbody>
           </table>
         )}
       </div>
+
+      {/* Floats rather than sitting in the toolbar, so nothing on the page moves
+          when a box is ticked and the board keeps its shape while you work down
+          it. Absent entirely at zero selected: the minimal board was the point. */}
+      {selected.size > 0 && (
+        <div style={{
+          position: 'fixed', left: '50%', bottom: 22, transform: 'translateX(-50%)',
+          display: 'flex', alignItems: 'center', gap: 14, zIndex: 20,
+          padding: '10px 12px 10px 18px', borderRadius: 12,
+          background: C.ink, color: '#fff',
+          boxShadow: '0 10px 30px rgba(15,30,43,.28)',
+        }}>
+          <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' }}>
+            {selected.size} selected
+          </span>
+          <button
+            onClick={() => confirmDelete(leads.filter((l) => selected.has(l.id)))}
+            disabled={remove.isPending}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 7,
+              padding: '7px 13px', borderRadius: 8, fontSize: 13, fontWeight: 700,
+              cursor: remove.isPending ? 'wait' : 'pointer',
+              border: 'none', background: C.danger, color: '#fff',
+            }}
+          >
+            {remove.isPending ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+            Delete
+          </button>
+          <button
+            onClick={() => setSelected(new Set())}
+            title="Clear selection"
+            style={{
+              display: 'inline-flex', padding: 6, borderRadius: 8, cursor: 'pointer',
+              border: 'none', background: 'transparent', color: '#A9BAC7',
+            }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -13,6 +13,7 @@ import { prisma } from '../index';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { EXEMPT_EMAILS } from './stripe';
 import { STAGES, type Stage } from '../services/salesLead';
+import { currentSessionKey } from '../config/workshop';
 
 const router = Router();
 
@@ -79,6 +80,10 @@ router.get('/', authenticate, requireAdmin, async (req: AuthRequest, res: Respon
   res.json({
     counts,
     archivedCount,
+    // Which session the board should read as "the next one". Sent rather than
+    // worked out in the browser, because the schedule and its timezone live on
+    // the server and a client-side guess drifts across the DST switch.
+    nextSessionKey: currentSessionKey(),
     leads: leads.map((l) => {
       const reg = l.email ? byEmail.get(l.email) : undefined;
       return {
@@ -116,6 +121,60 @@ router.patch('/:id', authenticate, requireAdmin, async (req: AuthRequest, res: R
     },
   });
   res.json({ lead });
+});
+
+/**
+ * Delete people outright.
+ *
+ * Archive hides; this removes. It exists because the board accumulates two
+ * kinds of row that hiding does not really deal with: test signups made while
+ * building the funnel, and imported names that were never real leads. Leaving
+ * those archived still leaves them in every count you take later.
+ *
+ * ⚠️ THE REGISTRATION GOES WITH THEM. A lead with a SessionRegistration still
+ * behind it is not gone: they stay on the workshop roster, they still get the
+ * reminder email, and the next funnel signal rebuilds the lead row from the
+ * registration's email. So a delete that only removed the lead would be a
+ * delete that quietly did not work. That also means it takes the resume on
+ * file with it, which is why the caller is expected to confirm by name.
+ *
+ * Takes a list because the realistic clean-up is ten test rows at once, and one
+ * request that either happens or does not beats ten that can half-happen.
+ */
+router.post('/delete', authenticate, requireAdmin, async (req: AuthRequest, res: Response) => {
+  const raw: unknown[] = Array.isArray(req.body?.ids) ? req.body.ids : [];
+  const cleaned = raw.map((v) => String(v).trim()).filter((v) => v.length > 0);
+  const ids = [...new Set(cleaned)].slice(0, 200);
+  if (!ids.length) return res.status(400).json({ error: 'No leads given to delete.' });
+
+  // Read first, so the response can name what actually went and so a stale id
+  // in the list is a no-op rather than an error.
+  const leads = await prisma.salesLead.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, name: true, email: true },
+  });
+  if (!leads.length) return res.json({ deleted: 0, registrationsDeleted: 0, names: [] });
+
+  const emails = leads.map((l) => l.email).filter((e): e is string => !!e);
+
+  const registrationsDeleted = await prisma.$transaction(async (tx) => {
+    const gone = emails.length
+      ? await tx.sessionRegistration.deleteMany({ where: { email: { in: emails } } })
+      : { count: 0 };
+    await tx.salesLead.deleteMany({ where: { id: { in: leads.map((l) => l.id) } } });
+    return gone.count;
+  });
+
+  console.log(
+    `[admin-sales] deleted ${leads.length} lead(s) and ${registrationsDeleted} registration(s): ` +
+    leads.map((l) => l.email ?? l.name).join(', '),
+  );
+
+  res.json({
+    deleted: leads.length,
+    registrationsDeleted,
+    names: leads.map((l) => l.name),
+  });
 });
 
 /** The original resume file, so a card can hand back the real document. */
