@@ -347,16 +347,19 @@ export default function AdminSales() {
                           which is the whole progress bar — and, read left to
                           right, it is also the stage.
 
-                          "Group" is deliberately a different colour, because it
-                          is a different kind of claim: they clicked through to
-                          Skool, which is intent, not membership. Skool has no
-                          API to confirm the join. Filling it green next to
-                          "Paid" would quietly turn a maybe into a fact. */}
+                          "Skool click" is deliberately outlined rather than
+                          filled, because it is a different kind of claim: they
+                          clicked the link, which is intent, not membership.
+                          Skool has no API to confirm a join. Filling it solid
+                          green next to "Paid" would quietly turn a maybe into a
+                          fact. It is also spelled out rather than shortened to
+                          "Group", which read as though it meant they were in
+                          one. Do not shorten it again. */}
                       <td style={cell}>
                         <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
                           {([
                             ['Registered', l.registeredAt, false],
-                            ['Group', l.skoolClickedAt, true],
+                            ['Skool click', l.skoolClickedAt, true],
                             ['Attended', l.attendedAt, false],
                             ['Report sent', l.reportSentAt, false],
                             ['Paid', l.paidAt, false],
@@ -364,7 +367,7 @@ export default function AdminSales() {
                             const on = soft ? '#2D5A6E' : '#1E7A56';
                             const hit = at
                               ? soft
-                                ? `Clicked through to the group on ${new Date(at).toLocaleDateString()}. A click, not a confirmed join.`
+                                ? `Opened the Skool group link on ${new Date(at).toLocaleDateString()}. They clicked it. Whether they actually joined is not something we can see: Skool has no API. Check Skool's own member list to confirm.`
                                 : `${label}: ${new Date(at).toLocaleDateString()}`
                               : soft
                                 ? 'Has not clicked through to the group'
