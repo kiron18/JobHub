@@ -28,6 +28,31 @@ const PRICE_IDS: Record<string, string> = {
   three_month: process.env.STRIPE_THREE_MONTH_PRICE_ID!,
 };
 
+/**
+ * Pull the subscription id off an invoice.
+ *
+ * `invoice.subscription` was removed in Stripe API 2025-08-27 and this account
+ * runs 2026-03-25.dahlia, so the old field reads `undefined` on every live
+ * invoice. Both invoice handlers below opened with `if (!subId) break;`, which
+ * meant a failed payment never marked anyone past_due and — worse — a
+ * successful payment never restored anyone's access. Silent on both sides.
+ *
+ * The old field is kept as a fallback so historical events replayed from before
+ * the version bump still resolve.
+ */
+export function subscriptionIdFromInvoice(invoice: any): string | null {
+  const fromParent = invoice?.parent?.subscription_details?.subscription;
+  const raw = fromParent ?? invoice?.subscription ?? null;
+  if (!raw) return null;
+  return typeof raw === 'string' ? raw : (raw.id ?? null);
+}
+
+// Whether a failed installment should pause the client's access automatically.
+// Off by default: whether a bounced payment costs someone their access is a
+// coaching call, not a billing one, so it stays an explicit switch rather than
+// a rule baked into the webhook.
+const HOLD_ON_PAYMENT_FAILURE = process.env.BILLING_HOLD_ON_FAILURE === 'true';
+
 // ── Webhook handler — raw body, registered before express.json() ──────────────
 
 export async function stripeWebhookHandler(req: Request, res: Response): Promise<void> {
@@ -233,15 +258,23 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
         let trialEndDate: Date | undefined;
         if (sub.trial_end) trialEndDate = new Date(sub.trial_end * 1000);
 
+        // Second path out of a billing hold. invoice.payment_succeeded is the
+        // primary one, but a subscription returning to `active` means Stripe
+        // considers them paid up, and a client should never stay locked out
+        // because one of two events went missing.
         await prisma.candidateProfile.update({
           where: { id: profile.id },
           data: {
             planStatus: sub.status,
             trialEndDate: trialEndDate ?? null,
             dashboardAccess: isActive || isTrialing,
+            ...(isActive ? { billingHoldAt: null, billingHoldInvoiceUrl: null } : {}),
           },
         });
-        console.log(`[stripe/webhook] Subscription ${sub.id} → status=${sub.status}`);
+        console.log(
+          `[stripe/webhook] Subscription ${sub.id} → status=${sub.status}`
+          + (isActive && profile.billingHoldAt ? ' (billing hold lifted)' : ''),
+        );
         break;
       }
 
@@ -265,7 +298,7 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
 
       case 'invoice.payment_failed': {
         const invoice = event.data.object;
-        const subId: string | null = invoice.subscription ?? null;
+        const subId = subscriptionIdFromInvoice(invoice);
         if (!subId) break;
         const profile = await prisma.candidateProfile.findFirst({
           where: { stripeSubscriptionId: subId },
@@ -285,9 +318,20 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
         } else {
           await prisma.candidateProfile.update({
             where: { id: profile.id },
-            data: { planStatus: 'past_due' },
+            data: {
+              planStatus: 'past_due',
+              ...(HOLD_ON_PAYMENT_FAILURE && !profile.billingHoldAt
+                ? {
+                    billingHoldAt: new Date(),
+                    billingHoldInvoiceUrl: invoice.hosted_invoice_url ?? null,
+                  }
+                : {}),
+            },
           });
-          console.log(`[stripe/webhook] Payment failed for ${subId} — marked past_due`);
+          console.log(
+            `[stripe/webhook] Payment failed for ${subId} — marked past_due`
+            + (HOLD_ON_PAYMENT_FAILURE ? ' and access held' : ''),
+          );
         }
         sendAdminPaymentAlert({
           event: 'payment_failed',
@@ -300,17 +344,28 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
 
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object;
-        const subId: string | null = invoice.subscription ?? null;
+        const subId = subscriptionIdFromInvoice(invoice);
         if (!subId) break;
         const profile = await prisma.candidateProfile.findFirst({
           where: { stripeSubscriptionId: subId },
         });
         if (!profile) break;
+        // Clearing the hold here is what makes "paused until you pay" safe to
+        // use: the client pays, Stripe tells us, access comes back on its own.
+        // Nobody has to remember to lift it by hand.
         await prisma.candidateProfile.update({
           where: { id: profile.id },
-          data: { planStatus: 'active', dashboardAccess: true },
+          data: {
+            planStatus: 'active',
+            dashboardAccess: true,
+            billingHoldAt: null,
+            billingHoldInvoiceUrl: null,
+          },
         });
-        console.log(`[stripe/webhook] Payment succeeded for ${subId} — plan active`);
+        console.log(
+          `[stripe/webhook] Payment succeeded for ${subId} — plan active`
+          + (profile.billingHoldAt ? ', billing hold lifted' : ''),
+        );
         sendAdminPaymentAlert({
           event: 'payment_succeeded',
           userEmail: invoice.customer_email ?? profile.email ?? 'unknown',

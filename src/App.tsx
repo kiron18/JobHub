@@ -30,6 +30,9 @@ const AdminUserUsage = React.lazy(() =>
 const AdminSales = React.lazy(() =>
   import('./pages/AdminSales').then(m => ({ default: m.default }))
 );
+const AdminWorkshop = React.lazy(() =>
+  import('./pages/AdminWorkshop').then(m => ({ default: m.default }))
+);
 const AdminContacts = React.lazy(() =>
   import('./pages/AdminContacts').then(m => ({ default: m.default }))
 );
@@ -69,6 +72,7 @@ const StepperWorkspace = React.lazy(() =>
 const InterviewPrepWorkspace = React.lazy(() =>
   import('./pages/InterviewPrepWorkspace').then(m => ({ default: m.InterviewPrepWorkspace }))
 );
+const AnswerBankIntakePage = React.lazy(() => import('./pages/AnswerBankIntakePage'));
 const VisaSponsorsPage = React.lazy(() =>
   import('./pages/VisaSponsorsPage').then(m => ({ default: m.VisaSponsorsPage }))
 );
@@ -197,9 +201,72 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 // PAYMENTS PAUSED: Banner components removed during pricing rework
 // Original code preserved in git history - restore when payments resume
 
+/**
+ * Shown when a client's access is paused over an unpaid installment.
+ *
+ * Deliberately not dismissible and deliberately not apologetic. The person
+ * seeing this is a paying client whose card bounced, so it names the problem in
+ * one line and gives them the one button that fixes it.
+ *
+ * The button asks the server for a FRESH billing portal session rather than
+ * using the invoice link stored on the profile. Stripe mints a new signed token
+ * every time hosted_invoice_url is read and the old ones stop resolving, so a
+ * link captured at hold time is stale by the time anyone clicks it. The stored
+ * link is kept only as a last-resort fallback.
+ *
+ * The portal is also the right destination for the commonest version of this
+ * problem: a client on a saved wallet who does not know which card is being
+ * charged and needs to change it.
+ */
+function BillingHoldBanner({ payUrl }: { payUrl?: string | null }) {
+  const [opening, setOpening] = useState(false);
+
+  const openBilling = async () => {
+    setOpening(true);
+    try {
+      const { data } = await api.post('/stripe/portal');
+      if (data?.url) { window.location.href = data.url; return; }
+      if (payUrl) window.open(payUrl, '_blank', 'noopener');
+    } catch {
+      if (payUrl) window.open(payUrl, '_blank', 'noopener');
+    } finally {
+      setOpening(false);
+    }
+  };
+
+  return (
+    <div
+      role="status"
+      style={{
+        background: '#7f1d1d', color: '#fff', padding: '12px 20px',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        gap: 16, flexWrap: 'wrap', fontSize: 14, lineHeight: 1.4,
+      }}
+    >
+      <span>
+        <strong>Your access is paused.</strong> This month's payment did not go through.
+      </span>
+      <button
+        onClick={openBilling}
+        disabled={opening}
+        style={{
+          background: '#fff', color: '#7f1d1d', padding: '6px 14px',
+          borderRadius: 6, fontWeight: 600, border: 'none',
+          cursor: opening ? 'default' : 'pointer', whiteSpace: 'nowrap',
+        }}
+      >
+        {opening ? 'Opening...' : 'Pay now'}
+      </button>
+      <span style={{ opacity: 0.85 }}>
+        Access returns automatically once it clears.
+      </span>
+    </div>
+  );
+}
+
 function DashboardGate({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
-  const { data: _profile, isLoading } = useQuery({
+  const { data: profile, isLoading } = useQuery({
     queryKey: ['profile'],
     queryFn: async () => { const { data } = await api.get('/profile'); return data; },
     staleTime: 5 * 60 * 1000,
@@ -255,6 +322,9 @@ function DashboardGate({ children }: { children: React.ReactNode }) {
       {isLapsed && <LapsedBanner />}
       {isTrialing && profile?.trialEndDate && <TrialBanner trialEndDate={profile.trialEndDate} />}
       */}
+      {/* A billing hold is NOT part of the paused-payments rework — it is an
+          explicit, per-client pause and stays live while the rest is off. */}
+      {profile?.billingHoldAt && <BillingHoldBanner payUrl={profile.billingHoldInvoiceUrl} />}
       {children}
     </>
   );
@@ -383,6 +453,7 @@ function ReportOrDashboard() {
                 <Route path="/leaderboard" element={<LeaderboardPage />} />
                 <Route path="/apply" element={<StepperWorkspace />} />
                 <Route path="/interview/:jobId" element={<InterviewPrepWorkspace />} />
+                <Route path="/answer-bank" element={<AnswerBankIntakePage />} />
                 <Route path="/workspace" element={<Workspace />} />
                 <Route path="/documents" element={<DocumentLibrary />} />
                 <Route path="/email-templates" element={<EmailTemplatesLibrary />} />
@@ -397,6 +468,9 @@ function ReportOrDashboard() {
                 <Route path="/admin/funnel" element={<AdminFunnel />} />
                 {/* The sales board, replacing the local Python CRM. */}
                 <Route path="/admin/sales" element={<AdminSales />} />
+                {/* The prep console for one live session: roster, questions,
+                    fact sheets and the run sheet. */}
+                <Route path="/admin/workshop" element={<AdminWorkshop />} />
                 <Route path="/admin/quality" element={<AdminQuality />} />
                 <Route path="/admin/users" element={<AdminUserUsage />} />
                 <Route path="/admin/friday-brief" element={<FridayBriefPage />} />

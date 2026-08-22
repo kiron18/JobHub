@@ -2,6 +2,7 @@ import { Resend } from 'resend';
 import type { CvGapResult, RoadmapStep } from './cvGapScan';
 import { PUBLIC_APP_URL } from '../lib/appUrl';
 import { skoolMemberSearchUrl, skoolMemberSearchByName } from '../lib/skoolLinks';
+import { unmatchedAlertMode } from '../config/alerts';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -570,6 +571,13 @@ export async function sendAdminPaymentAlert(params: {
   // email that matches no profile). Needs manual reconciliation — the
   // customer has paid but won't have access until granted.
   if (event === 'payment_unmatched') {
+    // Silent by default — see config/alerts.ts. The caller has already logged
+    // and recorded the payer, so this only decides whether mail goes out.
+    if (unmatchedAlertMode() === 'off') {
+      console.warn(`[email] unmatched payer ${userEmail} (${plan}) — alert mail suppressed by UNMATCHED_PAYMENT_ALERTS=off`);
+      return;
+    }
+
     const outstandingDays = firstSeenAt
       ? Math.max(0, Math.floor((Date.now() - firstSeenAt.getTime()) / 86400000))
       : null;

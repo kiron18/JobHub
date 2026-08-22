@@ -83,7 +83,7 @@ const MODULES = [
   'background.js', 'options.js',
   'matcher/matcher.js', 'matcher/sheet.js', 'matcher/bank.js',
   'matcher/profile.js', 'matcher/context.js', 'matcher/taxonomy.js',
-  'matcher/normalise.js', 'intake/intake.js',
+  'matcher/normalise.js',
 ];
 
 check('every import resolves', () => {

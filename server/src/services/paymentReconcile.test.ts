@@ -1,8 +1,9 @@
 /**
  * The nightly sweep used to email an admin alert for every unmatched payer on
  * every run, so one unresolved customer produced one email a day forever.
- * These tests pin the alerting rule: once on first sight, then weekly, then
- * silence once they have an account.
+ * Then it was once-then-weekly, which still piled up for payers who will never
+ * have an account. These tests pin what is left: recording is unconditional,
+ * mailing is UNMATCHED_PAYMENT_ALERTS' call and off unless asked for.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -46,6 +47,8 @@ function stripeHasOneOffPayer(email = 'payer@example.com') {
 beforeEach(() => {
   vi.clearAllMocks();
   process.env.STRIPE_SECRET_KEY = 'sk_test_dummy';
+  // Most cases here are about the re-nag rule, so they opt into the loud mode.
+  process.env.UNMATCHED_PAYMENT_ALERTS = 'weekly';
   // Default: nobody has a profile, and no prior unmatched record.
   prismaMock.candidateProfile.findFirst.mockResolvedValue(null);
   prismaMock.unmatchedPayment.findUnique.mockResolvedValue(null);
@@ -56,6 +59,39 @@ beforeEach(() => {
 });
 
 describe('unmatched payer alerting', () => {
+  it('sends nothing by default, but still records the payer', async () => {
+    delete process.env.UNMATCHED_PAYMENT_ALERTS;
+    stripeHasOneOffPayer();
+
+    const r = await reconcileStripePayments({ write: true });
+
+    expect(r.unmatched).toEqual(['payer@example.com']); // still reported + logged
+    expect(r.toAlert).toHaveLength(0);                  // but no mail
+    expect(prismaMock.unmatchedPayment.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ create: expect.objectContaining({ alertedAt: null, alertCount: 0 }) }),
+    );
+  });
+
+  it('in once mode, alerts on first sight and never again', async () => {
+    process.env.UNMATCHED_PAYMENT_ALERTS = 'once';
+    stripeHasOneOffPayer();
+
+    const first = await reconcileStripePayments({ write: true });
+    expect(first.toAlert).toHaveLength(1);
+
+    // Same payer, alerted long ago and still unresolved: weekly would re-nag.
+    prismaMock.unmatchedPayment.findUnique.mockResolvedValue({
+      email: 'payer@example.com',
+      firstSeenAt: new Date(Date.now() - 90 * DAY),
+      alertedAt: new Date(Date.now() - 90 * DAY),
+      alertCount: 1,
+      resolvedAt: null,
+    });
+
+    const later = await reconcileStripePayments({ write: true });
+    expect(later.toAlert).toHaveLength(0);
+  });
+
   it('alerts the first time a payer is seen', async () => {
     stripeHasOneOffPayer();
     const r = await reconcileStripePayments({ write: true });

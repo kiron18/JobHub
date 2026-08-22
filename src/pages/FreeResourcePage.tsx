@@ -3,14 +3,26 @@
 
    The lead magnet page, one per asset, all driven from src/config/freeResources.
 
-   The order of this page is the whole idea. The asset is handed over FIRST, with
-   nothing asked for it: no email, no account, no form. Only after they have
-   received something does the page show them the map, and only after the map
-   does it ask anything at all.
+   The order of this page is the whole idea. ONE field stands in front of the
+   asset: an email, and nothing else. No name, no questions, no account. The
+   file is released the instant it is given, on this same screen, and the person
+   is on the sales board from that moment.
 
-   Everything below is arranged so that every ask is smaller than the give that
-   preceded it. The resume upload sits last, after four taps, because it is the
-   largest ask on the page and it used to be the first thing anyone saw.
+   ⚠️ The page used to hand the file over with nothing asked for it. That read
+   generously and cost us the person: they took the PDF and left with no trace
+   anyone could follow up. Every client to date came from someone reachable, so
+   the gate buys the only thing that has ever converted. Do not remove it
+   without replacing what it captures.
+
+   What the gate is NOT is a wall. It asks for the one thing people already
+   expect to trade for a download, it never withholds the file behind a
+   confirmation email, and the screen it releases onto immediately says: this is
+   one of twelve, the rest is free too, and so is the room and the live call.
+
+   Everything after the unlock is arranged so that every ask is smaller than the
+   give that preceded it. The resume upload sits last, after four taps, because
+   it is the largest ask on the page and it used to be the first thing anyone
+   saw.
 
    The stepper is a MAP, not a wizard. No progress state, no completion. Its only
    job is to show that the file they just took is one of twelve, so "there is
@@ -27,9 +39,23 @@ import {
   SYSTEM_STEPS, FREE_QUESTIONS, TOTAL_RESOURCES, CHALLENGE_TO_STEPS,
   findResource, resourcesForStep,
 } from '../config/freeResources';
-import { trackFreeResourceDownloaded, trackFreeResourceRegistered } from '../lib/analytics';
+import {
+  trackFreeResourceUnlocked, trackFreeResourceDownloaded, trackFreeResourceRegistered,
+} from '../lib/analytics';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+
+/**
+ * Where a completed unlock is remembered, so someone who comes back for the
+ * file a week later is not asked to pay for it twice. It holds the email they
+ * already gave, which also pre-fills the registration underneath.
+ *
+ * One key for the whole site rather than one per slug: the trade is "I have
+ * given Kiron my email", and having made it once it would be obnoxious to
+ * re-ask on the next asset. Losing it (cleared storage, another device) costs
+ * one re-typed email, so nothing here is load-bearing.
+ */
+const UNLOCK_KEY = 'agc.free.email';
 
 /** White and blue, one gold accent. Scoped here, not shared with the landing. */
 const C = {
@@ -70,6 +96,15 @@ export default function FreeResourcePage() {
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState('');
   const [done, setDone] = useState(false);
+
+  // The gate. `unlocked` releases the file and everything under it; until then
+  // this page is a headline, a promise and one input.
+  const [unlocked, setUnlocked] = useState(false);
+  const [unlocking, setUnlocking] = useState(false);
+  const [gateError, setGateError] = useState('');
+  // Once unlocked the address is settled, so it is shown back rather than left
+  // as a field to re-read. This flips it back to an input on request.
+  const [editingEmail, setEditingEmail] = useState(false);
   const [skoolUrl, setSkoolUrl] = useState('');
   // Returned by the registration. Rides on the community link so the click that
   // follows can be stamped against this person on the sales board.
@@ -90,6 +125,21 @@ export default function FreeResourcePage() {
       .catch(() => {});
   }, []);
 
+  // Someone who has already traded their email, on this asset or another one.
+  // Restored before first paint of the gate so they never see a wall they have
+  // already paid at.
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(UNLOCK_KEY);
+      if (saved && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(saved)) {
+        setEmail(saved);
+        setUnlocked(true);
+      }
+    } catch {
+      // Private browsing, or storage disabled. They see the gate, which works.
+    }
+  }, []);
+
   // A mistyped or stale slug. Send them somewhere real rather than a dead end.
   if (!resource) return <Navigate to="/session" replace />;
 
@@ -102,6 +152,44 @@ export default function FreeResourcePage() {
       if (!prev.has(id)) return prev;
       const next = new Set(prev); next.delete(id); return next;
     });
+  }
+
+  /**
+   * The trade. One field, then the file.
+   *
+   * A failed board write must not withhold the asset: they have done their half
+   * and the endpoint returns ok either way, so the only thing that can stop the
+   * unlock here is an unreachable server. Even then the email is remembered, so
+   * a refresh releases it rather than asking again.
+   */
+  async function unlock() {
+    const clean = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) {
+      setGateError('That email address does not look right.');
+      return;
+    }
+
+    setUnlocking(true);
+    setGateError('');
+    try {
+      const res = await fetch(`${API_BASE}/session-signup/unlock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: clean, sourceAsset: resource!.slug }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setGateError(data?.error || 'Something went wrong. Please try again.'); return; }
+
+      setEmail(clean);
+      setLeadId(typeof data?.leadId === 'string' ? data.leadId : '');
+      try { localStorage.setItem(UNLOCK_KEY, clean); } catch { /* storage off */ }
+      trackFreeResourceUnlocked(resource!.slug);
+      setUnlocked(true);
+    } catch {
+      setGateError('Could not reach the server. Check your connection and try again.');
+    } finally {
+      setUnlocking(false);
+    }
   }
 
   async function submit() {
@@ -268,13 +356,15 @@ export default function FreeResourcePage() {
 
       <div style={shell}>
 
-        {/* ── 1. The asset, handed over before anything is asked ──────────── */}
+        {/* ── 1. The trade: one field, then the asset ─────────────────────── */}
         <section style={{
           background: C.deep, color: C.onDeep, borderRadius: 18,
           padding: 'clamp(26px, 5vw, 44px)', display: 'flex', flexDirection: 'column', gap: 20,
           boxShadow: '0 2px 6px rgba(15,36,56,0.16), 0 22px 60px rgba(15,36,56,0.20)',
         }}>
-          <p style={{ ...eyebrow, color: 'rgba(242,247,251,0.55)' }}>Yours, free, right now</p>
+          <p style={{ ...eyebrow, color: 'rgba(242,247,251,0.55)' }}>
+            {unlocked ? 'Yours. Downloads below.' : 'Free. One email, no account.'}
+          </p>
           <h1 style={{
             fontFamily: DISPLAY, fontWeight: 600, margin: 0,
             fontSize: 'clamp(1.875rem, 6vw, 2.75rem)', lineHeight: 1.1,
@@ -286,35 +376,95 @@ export default function FreeResourcePage() {
             {resource.promise}
           </p>
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 11 }}>
-            {resource.files.map((f) => (
-              <a
-                key={f.href}
-                href={f.href}
-                download
-                onClick={() => trackFreeResourceDownloaded(resource.slug, f.label)}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 10,
-                  background: C.gold, color: '#20180A',
-                  padding: '15px 24px', borderRadius: 10, textDecoration: 'none',
-                  fontWeight: 700, fontSize: '1rem',
-                }}
-              >
-                <Download size={18} />
-                {f.label}
-              </a>
-            ))}
-          </div>
+          {unlocked ? (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 11 }}>
+              {resource.files.map((f) => (
+                <a
+                  key={f.href}
+                  href={f.href}
+                  download
+                  onClick={() => trackFreeResourceDownloaded(resource.slug, f.label)}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 10,
+                    background: C.gold, color: '#20180A',
+                    padding: '15px 24px', borderRadius: 10, textDecoration: 'none',
+                    fontWeight: 700, fontSize: '1rem',
+                  }}
+                >
+                  <Download size={18} />
+                  {f.label}
+                </a>
+              ))}
+            </div>
+          ) : (
+            /* Native form, so Enter submits. On a phone this is the difference
+               between one tap on the keyboard's Go key and hunting for a
+               button below the fold. */
+            <form
+              onSubmit={(e) => { e.preventDefault(); void unlock(); }}
+              style={{ display: 'flex', flexDirection: 'column', gap: 11, maxWidth: '30rem' }}
+            >
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                <input
+                  type="email"
+                  autoComplete="email"
+                  inputMode="email"
+                  aria-label="Your email"
+                  value={email}
+                  onChange={(e) => { setEmail(e.target.value); setGateError(''); }}
+                  placeholder="you@email.com"
+                  style={{
+                    flex: '1 1 15rem', minWidth: 0, boxSizing: 'border-box',
+                    fontFamily: BODY, fontSize: '1rem', padding: '15px 16px', borderRadius: 10,
+                    border: `1.5px solid ${gateError ? '#E2725B' : 'rgba(242,247,251,0.30)'}`,
+                    background: 'rgba(242,247,251,0.07)', color: C.onDeep,
+                  }}
+                />
+                <button
+                  type="submit"
+                  disabled={unlocking}
+                  style={{
+                    flex: '0 0 auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 9,
+                    background: C.gold, color: '#20180A', border: 'none',
+                    padding: '15px 26px', borderRadius: 10, fontFamily: BODY,
+                    fontWeight: 700, fontSize: '1rem',
+                    cursor: unlocking ? 'wait' : 'pointer', opacity: unlocking ? 0.7 : 1,
+                  }}
+                >
+                  {unlocking ? <Loader2 size={17} className="animate-spin" /> : <Download size={17} />}
+                  {unlocking ? 'Opening…' : 'Send it to me'}
+                </button>
+              </div>
+
+              {gateError
+                ? <p style={{ fontSize: '0.875rem', color: '#F2A493', margin: 0, lineHeight: 1.5 }}>{gateError}</p>
+                : (
+                  <p style={{ fontSize: '0.875rem', color: 'rgba(242,247,251,0.62)', margin: 0, lineHeight: 1.55 }}>
+                    The download opens on this page, straight away. No waiting on an email,
+                    no password, and I do not pass your address to anyone.
+                  </p>
+                )}
+            </form>
+          )}
 
           <p style={{
             fontSize: '0.9375rem', lineHeight: 1.65, margin: 0, color: 'rgba(242,247,251,0.76)',
             paddingTop: 18, borderTop: '1px solid rgba(242,247,251,0.18)',
           }}>
-            Having the right resume helps, but it is one piece of a much larger puzzle.
-            Download all the assets and get the foolproof system to land your first job
-            in Australia.
+            {unlocked
+              ? `That is 1 of ${TOTAL_RESOURCES}, and it is one piece of a much larger puzzle. The rest
+                 of the system is below, and all of it is free.`
+              : `Having the right resume helps, but it is one piece of a much larger puzzle. There are
+                 ${TOTAL_RESOURCES} resources, a group and a live call behind this, and every one of
+                 them is free too.`}
           </p>
         </section>
+
+        {/* Everything below is the second half of the trade, and it only exists
+            once the first half is done. Before the unlock the page is a single
+            promise and a single field: a map and a form underneath an unmet ask
+            reads as a wall with homework behind it. */}
+        {unlocked && (<>
 
         {/* ── 2. The map ──────────────────────────────────────────────────── */}
         <section style={{ display: 'flex', flexDirection: 'column', gap: 26, textAlign: 'center' }}>
@@ -543,16 +693,50 @@ export default function FreeResourcePage() {
             />
           </div>
 
+          {/* Already given at the gate, so it is shown back rather than asked
+              for twice. Editable on request only: a typo caught here is the
+              difference between getting the call link and not, and it is also
+              the join key across the CRM, JobHub and Stripe. */}
           <div data-error={errors.has('email')} style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
             <label style={{ fontSize: '1rem', fontWeight: 650, color: C.ink }}>Email</label>
-            <input
-              style={inputStyle(errors.has('email'))}
-              value={email}
-              onChange={(e) => { setEmail(e.target.value); setErrors((p) => { const n = new Set(p); n.delete('email'); return n; }); }}
-              placeholder="you@email.com"
-              type="email"
-              autoComplete="email"
-            />
+            {editingEmail ? (
+              <input
+                style={inputStyle(errors.has('email'))}
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); setErrors((p) => { const n = new Set(p); n.delete('email'); return n; }); }}
+                placeholder="you@email.com"
+                type="email"
+                autoComplete="email"
+                autoFocus
+              />
+            ) : (
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                gap: 12, flexWrap: 'wrap',
+                padding: '13px 15px', borderRadius: 9,
+                border: `1.5px solid ${errors.has('email') ? C.danger : C.line}`,
+                background: C.bg,
+              }}>
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 9,
+                  fontSize: '1rem', color: C.ink, minWidth: 0, overflowWrap: 'anywhere',
+                }}>
+                  <Check size={16} color={C.good} strokeWidth={2.5} />
+                  {email}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setEditingEmail(true)}
+                  style={{
+                    background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                    fontFamily: BODY, fontSize: '0.875rem', fontWeight: 600,
+                    color: C.blue, textDecoration: 'underline', whiteSpace: 'nowrap',
+                  }}
+                >
+                  Use a different one
+                </button>
+              </div>
+            )}
             <p style={{ fontSize: '0.8125rem', color: C.ink3, margin: 0, lineHeight: 1.5 }}>
               Where the call link goes. Use the one you actually check.
             </p>
@@ -581,9 +765,11 @@ export default function FreeResourcePage() {
             }}
           >
             {submitting && <Loader2 size={18} className="animate-spin" />}
-            {submitting ? 'Saving…' : 'I want access to the system + free webinar'}
+            {submitting ? 'Saving…' : 'Save my seat for the live session'}
           </button>
         </section>
+
+        </>)}
 
       </div>
     </div>

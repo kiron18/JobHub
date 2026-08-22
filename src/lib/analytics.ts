@@ -223,11 +223,17 @@ export function trackSponsorTrialCtaClicked() {
 }
 
 // ── Free resource pages (/free/:slug) ────────────────────────────────────────
-// Each giveaway has its own URL, so these two events answer the only question
-// that matters about them: which asset pulls traffic, and which asset's traffic
-// actually converts into a registration. The download fires with no gate in
-// front of it, which is the whole point of the page, so this event is the only
-// record that the visit happened at all.
+// Each giveaway has its own URL, so these three events answer the only question
+// that matters about them: which asset pulls traffic, which asset's traffic
+// hands over an email, and which converts into a registration.
+//
+// The unlock is the one to watch. It is the step that turns an anonymous visit
+// into a person on the sales board, so a slug with plenty of views and a poor
+// unlock rate is a promise problem, not a traffic problem.
+
+export function trackFreeResourceUnlocked(slug: string) {
+  posthog.capture('free_resource_unlocked', { slug });
+}
 
 export function trackFreeResourceDownloaded(slug: string, fileLabel: string) {
   posthog.capture('free_resource_downloaded', { slug, file: fileLabel });

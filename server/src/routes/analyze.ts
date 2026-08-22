@@ -48,14 +48,10 @@ router.post('/job', async (req: any, res: any) => {
 
         // ── Access control ────────────────────────────────────────────────────────
         const userEmail = ((req as any).user?.email ?? '').toLowerCase();
-        const { checkAccess } = await import('../middleware/accessControl');
+        const { checkAccess, denyPayload } = await import('../middleware/accessControl');
         const access = await checkAccess(userId, 'analysis', userEmail);
         if (!access.allowed) {
-          return res.status(402).json({
-            error: 'Analysis limit reached',
-            upgradeRequired: true,
-            remaining: 0,
-          });
+          return res.status(402).json(denyPayload(access, 'Analysis'));
         }
         // ─────────────────────────────────────────────────────────────────────────
 

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../index';
 import { authenticate } from '../middleware/auth';
-import { checkAccess } from '../middleware/accessControl';
+import { checkAccess, denyPayload } from '../middleware/accessControl';
 import { callLLMWithRetry } from '../utils/callLLMWithRetry';
 import { callClaude, PREMIUM_MODEL } from '../services/llm';
 import { DOCUMENT_GENERATION_PROMPT_WITH_BLUEPRINT, DOCUMENT_GENERATION_PROMPT, buildSearchContextBlock } from '../services/prompts';
@@ -138,11 +138,7 @@ router.post('/:type', authenticate, async (req, res, next) => {
         const userEmail = ((req as any).user?.email ?? '').toLowerCase();
         const access = await checkAccess(userId, 'generation', userEmail);
         if (!access.allowed) {
-            return res.status(402).json({
-                error: 'Generation limit reached',
-                upgradeRequired: true,
-                remaining: 0,
-            });
+            return res.status(402).json(denyPayload(access, 'Generation'));
         }
 
         const profile = await prisma.candidateProfile.findUnique({
@@ -589,11 +585,7 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
         const userEmail = ((req as any).user?.email ?? '').toLowerCase();
         const access = await checkAccess(userId, 'generation', userEmail);
         if (!access.allowed) {
-            return res.status(402).json({
-                error: 'Generation limit reached',
-                upgradeRequired: true,
-                remaining: 0,
-            });
+            return res.status(402).json(denyPayload(access, 'Generation'));
         }
 
         // Load profile: scalars only, no includes
@@ -850,11 +842,7 @@ router.post('/cover-letter-structured', authenticate, async (req: any, res: any)
         const userEmail = ((req as any).user?.email ?? '').toLowerCase();
         const access = await checkAccess(userId, 'generation', userEmail);
         if (!access.allowed) {
-            return res.status(402).json({
-                error: 'Generation limit reached',
-                upgradeRequired: true,
-                remaining: 0,
-            });
+            return res.status(402).json(denyPayload(access, 'Generation'));
         }
 
         // Load profile: scalars only, no includes
@@ -1060,7 +1048,7 @@ router.post('/selection-criteria-structured', authenticate, async (req: any, res
         const userEmail = ((req as any).user?.email ?? '').toLowerCase();
         const access = await checkAccess(userId, 'generation', userEmail);
         if (!access.allowed) {
-            return res.status(402).json({ error: 'Generation limit reached', upgradeRequired: true, remaining: 0 });
+            return res.status(402).json(denyPayload(access, 'Generation'));
         }
 
         const profile = await prisma.candidateProfile.findUnique({

@@ -84,6 +84,51 @@ router.post('/skool-click', async (req: Request, res: Response) => {
   }
 });
 
+// ── Unlock ───────────────────────────────────────────────────────────────────
+
+/**
+ * POST /unlock — an email in exchange for the file, and nothing else.
+ *
+ * The free pages used to hand the asset over with no ask at all, which meant
+ * someone could take the PDF and leave without ever becoming a person we could
+ * reach. Every paying client so far came from someone reachable, so the trade
+ * is worth making: a single field costs some downloads and buys a name on the
+ * board for the ones who stay.
+ *
+ * Deliberately does NOT create a SessionRegistration. Handing over an email for
+ * a file is not registering for the live session, and a row here would both
+ * overstate the funnel and suppress the confirmation email that /register sends
+ * only to people it has not seen before. They land on the board at stage `Lead`
+ * with the asset that brought them in, and become `Registered` if and when they
+ * fill in the form underneath.
+ *
+ * A board write that fails must never cost them the file: they have already
+ * done their half of the trade. So the sync is best-effort and the response is
+ * the same either way.
+ */
+router.post('/unlock', async (req: Request, res: Response) => {
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: 'That email address does not look right.' });
+  }
+
+  const sourceAsset = String(req.body?.sourceAsset || '').trim().slice(0, 64) || null;
+
+  const leadId = await recordLeadSignal({
+    email,
+    source: 'free-resource',
+    sourceAsset,
+    // No signals: taking a file is not a funnel stage. `Lead` is the honest
+    // answer and `deriveStage` returns it for an empty set.
+    signals: {},
+  }).catch((err) => {
+    console.error('[session-signup] unlock board sync failed', err);
+    return null;
+  });
+
+  res.json({ ok: true, leadId, skoolUrl: SKOOL_URL });
+});
+
 // ── Upload ───────────────────────────────────────────────────────────────────
 const upload = multer({
   storage: multer.memoryStorage(),

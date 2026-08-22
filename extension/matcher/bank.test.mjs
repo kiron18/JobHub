@@ -4,7 +4,6 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { validateBank, bankCoverage, withLearned, emptyBank } from './bank.js';
-import { planIntake, buildScaffold } from '../intake/intake.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const bank = JSON.parse(readFileSync(join(here, 'bank.example.json'), 'utf8'));
@@ -117,17 +116,39 @@ check('withLearned does not mutate the bank', () => {
 
 // ----------------------------------------------------------------- scaffold
 
+// The intake that produces a scaffold now lives in the JobHub server, which is
+// the only place a resume exists. What the extension still has to guarantee is
+// the other half of that contract: an unfilled scaffold must be REFUSED. A bank
+// that loads with empty answers fills forms with nothing and looks like it worked.
+const SCAFFOLD = {
+  profile: { name: '', email: '' },
+  stories: [
+    { id: 's1', title: 'failure: (name the story once you have told it)', context: '', themes: ['failure'],
+      keywords: [], prompt: 'At Harborline, think of a shift that went badly.',
+      raw: '', variants: { headline: '', short: '', medium: '', full: '' } },
+    { id: 's2', title: 'teamwork', context: '', themes: ['teamwork'],
+      keywords: [], prompt: 'Tell me about a time you relied on other people.',
+      raw: '', variants: { headline: '', short: '', medium: '', full: '' } },
+  ],
+  statements: [],
+  learned: {},
+};
+
 check('a fresh scaffold deliberately does NOT validate', () => {
-  const plan = planIntake(readFileSync(join(here, '../intake/resume.example.txt'), 'utf8'));
-  const scaffold = buildScaffold(plan);
-  const r = validateBank(scaffold);
+  const r = validateBank(SCAFFOLD);
   return r.ok === false && r.errors.every((e) => /no answer text/.test(e));
 });
 
-check('a scaffold carries a prompt for every slot', () => {
-  const plan = planIntake(readFileSync(join(here, '../intake/resume.example.txt'), 'utf8'));
-  const scaffold = buildScaffold(plan);
-  return scaffold.stories.length > 0 && scaffold.stories.every((s) => !!s.prompt);
+check('a scaffold with one story filled in still refuses the empty one', () => {
+  const half = structuredClone(SCAFFOLD);
+  half.stories[0].raw = 'A real story, told properly, with enough words in it to be usable on a form.';
+  half.stories[0].variants = {
+    headline: 'A real story.', short: 'A real story, told properly.',
+    medium: 'A real story, told properly, with enough words in it.',
+    full: 'A real story, told properly, with enough words in it to be usable on a form.',
+  };
+  const r = validateBank(half);
+  return r.ok === false && r.errors.length === 1;
 });
 
 console.log(results.join('\n'));

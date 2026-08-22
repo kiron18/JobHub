@@ -21,6 +21,7 @@
 import StripeLib from 'stripe';
 import { prisma } from '../index';
 import { onboardPaidCustomer } from './onboarding';
+import { unmatchedAlertMode } from '../config/alerts';
 
 const THREE_MONTH_DAYS = 90;
 
@@ -37,7 +38,8 @@ export interface ReconcileResult {
   errors: string[];
 }
 
-/** How long an unresolved payer stays quiet between admin reminders. */
+/** How long an unresolved payer stays quiet between admin reminders, in
+ *  'weekly' mode. See config/alerts.ts — the default mode is 'off'. */
 const RENAG_DAYS = 7;
 
 function stripeClient(): InstanceType<typeof StripeLib> | null {
@@ -49,9 +51,11 @@ function stripeClient(): InstanceType<typeof StripeLib> | null {
 /**
  * Record a payer we could not match, and decide whether it is worth an email.
  *
- * The rule: alert the first time we ever see them, then at most once every
- * RENAG_DAYS while they stay unresolved. Before this table existed the sweep
- * had no memory and re-sent the same alert every night.
+ * Whether it is worth an email is UNMATCHED_PAYMENT_ALERTS' call, and it says
+ * no by default: a payer who will never have a JobHub account (a workshop
+ * ticket bought through a payment link) stays unmatched forever, so any
+ * repeating nag becomes standing mail with no action behind it. The row is
+ * written either way, so turning alerts back on loses nothing in the meantime.
  */
 async function noteUnmatched(
   result: ReconcileResult,
@@ -64,7 +68,12 @@ async function noteUnmatched(
   // A row that was resolved before but is unmatched again is a fresh problem.
   const reopened = existing?.resolvedAt != null;
   const lastAlert = reopened ? null : existing?.alertedAt ?? null;
-  const due = !lastAlert || now.getTime() - lastAlert.getTime() >= RENAG_DAYS * 86400000;
+  const mode = unmatchedAlertMode();
+  const due = mode === 'off'
+    ? false
+    : mode === 'once'
+      ? !lastAlert
+      : !lastAlert || now.getTime() - lastAlert.getTime() >= RENAG_DAYS * 86400000;
 
   const record = await prisma.unmatchedPayment.upsert({
     where: { email },

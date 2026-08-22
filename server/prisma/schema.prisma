@@ -10,6 +10,7 @@ datasource db {
 
 model CandidateProfile {
   id                           String            @id @default(uuid())
+  answerBankIntake             AnswerBankIntake?
   userId                       String            @unique
   name                         String?
   email                        String?           @unique
@@ -60,6 +61,15 @@ model CandidateProfile {
   planStatus             String    @default("active")
   trialEndDate           DateTime?
   accessExpiresAt        DateTime?
+  /// Set when an installment has failed and this client's access is held until
+  /// they pay. Deliberately separate from planStatus: past_due describes what
+  /// Stripe thinks, this describes what we decided to do about it, and the two
+  /// are not always the same call.
+  billingHoldAt          DateTime?
+  /// The Stripe hosted invoice link the held client is sent to. Stored so the
+  /// banner and the 402 body can both point at the exact unpaid invoice rather
+  /// than dumping them in a generic billing portal.
+  billingHoldInvoiceUrl  String?
   freeGenerationsUsed    Int       @default(0)
   freeAnalysesUsed       Int       @default(0)
   freeJobSearchesUsed    Int       @default(0)
@@ -933,6 +943,22 @@ model SessionRegistration {
   /// record. Nothing else tells us who actually turned up.
   attendedAt DateTime?
 
+  /// What this person actually wants answered, verbatim.
+  ///
+  /// Not collected by the signup form any more: the qualifying questions were
+  /// removed from it, and the question now lives in the Skool thread. Skool has
+  /// no API, so the thread is pasted into /admin/workshop and matched to the
+  /// roster by name. Kept word for word rather than summarised, because the
+  /// point of holding it is being able to read it back to them as they wrote it.
+  question String?
+
+  /// The generated fact sheet read while the room is live. Six short lines; see
+  /// `services/coachBrief.ts`. Stored whole and never regenerated on read, for
+  /// the same reason as `report`: a re-run would show something different from
+  /// what was read five minutes earlier.
+  coachBrief   Json?
+  coachBriefAt DateTime?
+
   /// The generated diagnostic, stored whole. The report page reads this rather
   /// than re-running the scan: a re-run costs two more LLM calls and would show
   /// them something different from what they were emailed.
@@ -950,6 +976,27 @@ model SessionRegistration {
 
   @@index([sessionKey, createdAt])
   @@index([attendedAt, reportGeneratedAt])
+}
+
+/// A question from the pasted Skool thread that belongs to nobody on the roster.
+///
+/// The thread is public and the roster is not, so people who never registered
+/// post in it, and a name can be spelled two ways between Skool and the signup
+/// form. Dropping those questions would quietly lose the most interesting part
+/// of the thread, so they survive here and get answered to the room rather than
+/// to a person.
+///
+/// Keyed by sessionKey, because what these rows lack is a person. Re-pasting a
+/// thread replaces the whole set for that session rather than merging, so there
+/// is deliberately no unique constraint: two people may ask the same thing.
+model SessionFloorQuestion {
+  id         String   @id @default(cuid())
+  sessionKey String
+  poster     String?
+  question   String
+  createdAt  DateTime @default(now())
+
+  @@index([sessionKey])
 }
 
 /// A Stripe payment the reconciliation sweep could not tie to a JobHub
@@ -1038,4 +1085,75 @@ model SalesLead {
 
   @@index([archived, stage])
   @@index([updatedAt])
+}
+
+/// A story intake: the interview that builds somebody's answer bank.
+///
+/// One per candidate, resumable. The intake runs to eighteen questions and
+/// nobody finishes that in one sitting, so every answer is committed on its own
+/// (see AnswerBankEntry) and this row only holds the plan and the place marker.
+///
+/// `plan` is the generated question set, stored whole and never regenerated on
+/// read. Regenerating would quietly renumber the questions underneath answers
+/// already given, which is how an answer ends up filed against the wrong
+/// question. The resume it was built from is snapshotted here for the same
+/// reason: the candidate can edit their resume mid-intake, and the questions
+/// must not move when they do.
+model AnswerBankIntake {
+  id                 String             @id @default(cuid())
+  userId             String             @unique
+  candidateProfileId String             @unique
+  /// The resume text as it was when the plan was built. Never updated in place.
+  resumeSnapshot     String
+  /// Turns on the industry-specific themes (lab, health, trades, finance, education).
+  industry           String?
+  /// The full Plan from services/answerBank/intake: seeds, gaps and questions.
+  plan               Json
+  /// Index into plan.script.questions. Where they pick up when they come back.
+  cursor             Int                @default(0)
+  startedAt          DateTime           @default(now())
+  completedAt        DateTime?
+  updatedAt          DateTime           @updatedAt
+  candidateProfile   CandidateProfile   @relation(fields: [candidateProfileId], references: [id], onDelete: Cascade)
+  entries            AnswerBankEntry[]
+}
+
+/// One question, and what the candidate said in answer to it.
+///
+/// The three texts are kept side by side on purpose and none of them is ever
+/// overwritten by another:
+///   `spoken`   - the transcript, joined across the follow-ups. Source of truth.
+///   `cleaned`  - fillers and false starts removed, checked to be subtractive.
+///   `approved` - what the candidate confirmed after editing. Only this is used.
+///
+/// Keeping `spoken` forever is the whole safety net. If a clean or a variant is
+/// ever found to have drifted, the words the person actually said are still
+/// there to recut from, which is exactly what was missing when structured
+/// extraction dropped a client's publication.
+model AnswerBankEntry {
+  id           String           @id @default(cuid())
+  intakeId     String
+  /// The question id from plan.script.questions, so an answer cannot drift onto another question.
+  questionId   String
+  /// The question as asked, copied here so the entry reads on its own.
+  questionText String
+  themes       String[]
+  /// Every turn of the exchange: what was asked, what was said, why it was asked again.
+  turns        Json             @default("[]")
+  spoken       String?
+  cleaned      String?
+  approved     String?
+  /// headline / short / medium / full, each cut from `approved` and confirmed.
+  variants     Json?
+  /// Set when the candidate has confirmed the text. Nothing unapproved is ever exported.
+  approvedAt   DateTime?
+  /// Why the intake stopped probing: 'accept', 'give_up', or 'skipped'.
+  outcome      String?
+  followUps    Int              @default(0)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  intake       AnswerBankIntake @relation(fields: [intakeId], references: [id], onDelete: Cascade)
+
+  @@unique([intakeId, questionId])
+  @@index([intakeId])
 }

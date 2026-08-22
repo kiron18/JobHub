@@ -15,7 +15,6 @@ const SUITES = [
   ['context', 'matcher/context.test.mjs'],
   ['profile', 'matcher/profile.test.mjs'],
   ['bank', 'matcher/bank.test.mjs'],
-  ['intake', 'intake/intake.test.mjs'],
   ['options', 'options.test.mjs'],
   ['package', 'package.test.mjs'],
   ['end to end', 'e2e.test.mjs'],

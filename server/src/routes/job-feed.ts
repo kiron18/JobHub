@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import { prisma } from '../index';
 import { authenticate } from '../middleware/auth';
 import { analyzeRateLimit } from '../middleware/analyzeRateLimit';
-import { checkAccess, hasActiveAccess, isPaidOrExempt } from '../middleware/accessControl';
+import { checkAccess, denyPayload, hasActiveAccess, isOnBillingHold, isPaidOrExempt } from '../middleware/accessControl';
 import { DAILY_APPLICATION_CAP, countTodaysApplications } from '../services/applicationCap';
 import {
   findAddressee,
@@ -141,9 +141,25 @@ router.use(authenticate);
 async function requirePremium(userId: string, res: Response): Promise<boolean> {
   const profile = await prisma.candidateProfile.findUnique({
     where: { userId },
-    select: { plan: true, planStatus: true, accessExpiresAt: true, dashboardAccess: true, trialEndDate: true },
+    select: {
+      plan: true, planStatus: true, accessExpiresAt: true, dashboardAccess: true,
+      trialEndDate: true, billingHoldAt: true, billingHoldInvoiceUrl: true,
+    },
   });
-  if (!profile || !hasActiveAccess(profile)) {
+  if (!profile) {
+    res.status(403).json({ error: 'Subscription required' });
+    return false;
+  }
+  // Held clients get the billing sentence, not "subscription required" — they
+  // have a subscription, that is the whole reason they are being stopped.
+  if (isOnBillingHold(profile)) {
+    res.status(402).json(denyPayload(
+      { allowed: false, reason: 'BILLING_HOLD', payUrl: profile.billingHoldInvoiceUrl },
+      'Job feed',
+    ));
+    return false;
+  }
+  if (!hasActiveAccess(profile)) {
     res.status(403).json({ error: 'Subscription required' });
     return false;
   }
@@ -247,7 +263,7 @@ router.get('/feed', async (req: any, res: any) => {
         // Gate the BUILD (not the read) — free tier gets 1 lifetime feed build
         const access = await checkAccess(userId, 'job_search', userEmail);
         if (!access.allowed) {
-          return res.status(402).json({ error: 'Job search limit reached', upgradeRequired: true, remaining: 0 });
+          return res.status(402).json(denyPayload(access, 'Job search'));
         }
         buildingNow.add(userId);
         buildDailyFeedMultiSource(userId)
@@ -328,7 +344,7 @@ router.post('/:id/score', analyzeRateLimit, async (req: any, res: any) => {
   try {
     const access = await checkAccess(userId, 'match_score', userEmail);
     if (!access.allowed) {
-      return res.status(402).json({ error: 'Match score limit reached', upgradeRequired: true, remaining: 0 });
+      return res.status(402).json(denyPayload(access, 'Match score'));
     }
     const item = await prisma.jobFeedItem.findUnique({ where: { id } });
     if (!item || item.userId !== userId) return res.status(404).json({ error: 'Not found' });
