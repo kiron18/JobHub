@@ -25,6 +25,7 @@ import type { JobFeedItem } from '../components/jobs/JobCard';
 import { DailyProgressBar } from '../components/jobs/DailyProgressBar';
 import { warm } from '../lib/theme/warmTokens';
 import { extractJobFacts } from '../lib/extractJobFacts';
+import { classifyPaste, isSubmittable, pasteHint } from '../lib/seekLink';
 
 /** Detect whether a job description mentions selection criteria. */
 export const jdMentionsSelectionCriteria = (jd: string): boolean =>
@@ -456,8 +457,13 @@ function AnalysisHeroCard() {
     }, [jd]);
 
     const trimmed = jd.trim();
-    const tooShort = trimmed.length > 0 && trimmed.length < 100;
-    const canSubmit = trimmed.length >= 50 && !analysing;
+    // A Seek link is ~35 characters, well under the old 50-character floor, so
+    // the floor itself is what kept links out of this box. Both shapes are now
+    // judged by what they are rather than how long they are.
+    const pasted = classifyPaste(trimmed);
+    const isLink = pasted.kind === 'seek-url';
+    const hint = pasteHint(trimmed);
+    const canSubmit = isSubmittable(trimmed) && !analysing;
 
     /**
      * The role title and employer for this application.
@@ -493,6 +499,39 @@ function AnalysisHeroCard() {
     const handleAnalyse = async () => {
         if (!canSubmit) return;
         setAnalysing(true);
+
+        // A link is resolved server-side first, because that is the only path
+        // that sees the advertiser name: Seek prints it in the page header,
+        // outside the block anyone copies. Everything after this point is the
+        // same for a link and a paste.
+        if (pasted.kind === 'seek-url') {
+            try {
+                const { data } = await api.post('/extract/from-url', { url: pasted.url });
+                const job = data?.job;
+                if (!job?.description) throw new Error('no job');
+                navigate('/apply', {
+                    state: {
+                        jobDescription: job.description,
+                        sc: jdMentionsSelectionCriteria(job.description),
+                        company: job.company ?? undefined,
+                        role: job.title ?? undefined,
+                        location: job.location ?? undefined,
+                        sourceUrl: job.sourceUrl,
+                        sourcePlatform: 'seek',
+                    },
+                });
+            } catch (err: any) {
+                // 422 means the link was understood and is not usable. That
+                // message is written for the candidate, so show it as-is.
+                const msg = err?.response?.status === 422
+                    ? err.response.data?.error
+                    : 'Could not read that link. Try again, or paste the job description instead.';
+                toast.error(msg);
+            } finally {
+                setAnalysing(false);
+            }
+            return;
+        }
 
         const { company, role, agency } = await resolveJobFacts(trimmed);
         try {
@@ -626,7 +665,7 @@ function AnalysisHeroCard() {
                     }
                     setJd(next);
                 }}
-                placeholder="Paste the job description here…"
+                placeholder="Paste the job description here, or a Seek link…"
                 rows={6}
                 style={{
                     width: '100%',
@@ -647,9 +686,15 @@ function AnalysisHeroCard() {
                 onBlur={(e) => (e.currentTarget.style.borderColor = warmT.inputBorder)}
             />
 
-            {tooShort && (
+            {hint && (
                 <p style={{ margin: '8px 0 0', fontSize: 12, color: warmT.textFaint, lineHeight: 1.5 }}>
-                    Paste the full job description. The more text, the sharper the analysis.
+                    {hint}
+                </p>
+            )}
+
+            {isLink && (
+                <p style={{ margin: '8px 0 0', fontSize: 12, color: warmT.textFaint, lineHeight: 1.5 }}>
+                    We will open that ad and read the employer, title and full description off the page.
                 </p>
             )}
 
@@ -690,7 +735,7 @@ function AnalysisHeroCard() {
                     {analysing ? (
                         <>
                             <Loader2 size={16} className="animate-spin" />
-                            Applying…
+                            {isLink ? 'Reading the ad…' : 'Applying…'}
                         </>
                     ) : (
                         <>
