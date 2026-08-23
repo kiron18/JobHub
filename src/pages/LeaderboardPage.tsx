@@ -30,11 +30,17 @@ export const LeaderboardPage: React.FC = () => {
     const [period, setPeriod] = useState<'week' | 'all'>('week');
     const [search, setSearch] = useState('');
 
-    const { data, isLoading } = useQuery({
+    const { data, isLoading, error } = useQuery({
         queryKey: ['leaderboard', period],
         queryFn: async () => (await api.get(`/leaderboard?period=${period}`)).data as LeaderboardData,
         staleTime: 60_000,
+        retry: false,
     });
+
+    // The board is closed to clients while the streak logic is reviewed. Anyone
+    // who reaches the URL gets a plain explanation rather than a broken table
+    // or a raw 403.
+    const closed = (error as { response?: { status?: number } } | null)?.response?.status === 403;
 
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -131,7 +137,22 @@ export const LeaderboardPage: React.FC = () => {
             </div>
 
             {/* Board */}
-            {isLoading ? (
+            {closed ? (
+                <div
+                    style={{
+                        padding: '40px 32px', textAlign: 'center', borderRadius: 14,
+                        border: `1px solid ${warm.colors.borderWhisper}`, background: warm.colors.bgSurface,
+                    }}
+                >
+                    <p style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 700, color: warm.colors.textPrimary }}>
+                        The leaderboard is paused
+                    </p>
+                    <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6, color: warm.colors.textSecondary, maxWidth: '46ch', marginInline: 'auto' }}>
+                        We are fixing how streaks are counted. Your applications and outreach are still being
+                        recorded as normal, and nothing you have done is lost.
+                    </p>
+                </div>
+            ) : isLoading ? (
                 <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}>
                     <Loader2 size={22} className="animate-spin" style={{ color: warm.colors.accentPetrol }} />
                 </div>

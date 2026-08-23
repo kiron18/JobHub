@@ -1,6 +1,7 @@
-import { Router } from 'express';
+import { Router, type Response, type NextFunction } from 'express';
 import { prisma } from '../index';
-import { authenticate } from '../middleware/auth';
+import { authenticate, type AuthRequest } from '../middleware/auth';
+import { EXEMPT_EMAILS } from './stripe';
 import { getRealUserIds } from './admin';
 import { countDistinctJobs, SENT_APPLICATION_FILTER } from '../services/tracker/metricHelpers';
 import {
@@ -14,7 +15,28 @@ import {
 } from '../services/tracker/goals';
 
 const router = Router();
-router.use(authenticate);
+
+/**
+ * Closed to clients while the streak logic is being reviewed.
+ *
+ * Every entry currently reports streak 0 and nobody has ever earned the weekly
+ * bonus, because a streak needs 20 applications AND 20 outreach in one week and
+ * no client has ever logged 20 outreach (44 rows exist across all users, all
+ * time). A board showing a permanently dead column reads as broken, so it is
+ * off for clients until the target or the logging is fixed.
+ *
+ * Gated server-side rather than by hiding the link: the board carries other
+ * clients' names and figures, and a hidden link is not access control.
+ */
+function leaderboardOpenTo(req: AuthRequest, res: Response, next: NextFunction) {
+    const email = (req.user?.email ?? '').toLowerCase();
+    if (!EXEMPT_EMAILS.includes(email)) {
+        return res.status(403).json({ error: 'The leaderboard is temporarily unavailable.', code: 'leaderboard_closed' });
+    }
+    next();
+}
+
+router.use(authenticate, leaderboardOpenTo);
 
 /**
  * Leaderboard scoring. Applications and outreach are volume; interviews and

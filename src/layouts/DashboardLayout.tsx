@@ -16,6 +16,7 @@ import {
     Trophy, MessagesSquare } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
+import { isAdminEmail } from '../lib/adminEmails';
 import api from '../lib/api';
 import { warm } from '../lib/theme/warmTokens';
 
@@ -123,7 +124,11 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
     }> = [
         { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
         { to: '/tracker', icon: Briefcase, label: 'Applications' },
-        { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
+        // Closed to clients while the streak logic is reviewed: a streak needs
+        // 20 outreach in a week and nobody has ever logged that, so the column
+        // is permanently zero and the board reads as broken. Gated server-side
+        // too; this only decides whether to draw the link.
+        ...(isAdminEmail(user?.email) ? [{ to: '/leaderboard', icon: Trophy, label: 'Leaderboard' }] : []),
         { to: '/documents', icon: Library, label: 'Documents' },
         { to: '/workspace', icon: FileText, label: 'Profile' },
         { to: '/answer-bank', icon: MessagesSquare, label: 'Answer Bank' },
