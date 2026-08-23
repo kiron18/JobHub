@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../../index';
-import { authenticate } from '../../middleware/auth';
+import { authenticate, mintExtensionToken, hashExtensionToken } from '../../middleware/auth';
 import { sendStatusEmail } from '../../services/email';
 import { isSentStatus } from '../../services/tracker/metricHelpers';
 import { linkDocumentsToApplication } from '../../services/qc/linkDocuments';
@@ -253,5 +253,120 @@ router.delete('/jobs/:id', authenticate, async (req, res) => {
 });
 
 
+/**
+ * POST /api/jobs/batch — the browser extension's drop-off point.
+ *
+ * The extension reads a Seek job page the candidate is already looking at and
+ * posts what the page says: title, advertiser, the ad body, and the canonical
+ * URL. That last pair is the whole reason this exists. 36% of the tracker had
+ * no employer because a pasted description never contains one: Seek renders
+ * the advertiser name in the page header, outside the block people select.
+ * Reading it in the page, at the moment of capture, is the only place that
+ * information is free.
+ *
+ * Capped at MAX_BATCH. The cap is not a rate limit, it is a shape check: a
+ * caller sending 500 rows is not a person who ticked some jobs.
+ */
+const MAX_BATCH = 10;
+
+router.post('/jobs/batch', authenticate, async (req, res) => {
+    const userId = (req as any).user.id;
+    const { jobs } = req.body as { jobs?: unknown };
+
+    if (!Array.isArray(jobs) || jobs.length === 0) {
+        return res.status(400).json({ error: 'Send a non-empty "jobs" array.' });
+    }
+    if (jobs.length > MAX_BATCH) {
+        return res.status(400).json({ error: `At most ${MAX_BATCH} jobs per request.` });
+    }
+
+    const clean = (v: unknown, max = 300): string | null => {
+        if (typeof v !== 'string') return null;
+        const t = v.trim();
+        if (!t) return null;
+        if (/^(unknown|unknown company|n\/a|null|undefined)$/i.test(t)) return null;
+        return t.slice(0, max);
+    };
+
+    try {
+        const profile = await prisma.candidateProfile.findUnique({
+            where: { userId }, select: { id: true },
+        });
+        if (!profile) return res.status(404).json({ error: 'Profile not found.' });
+
+        const saved: Array<{ id: string; title: string; company: string | null }> = [];
+        const skipped: Array<{ title: string; reason: string }> = [];
+
+        for (const raw of jobs as any[]) {
+            const title = clean(raw?.title);
+            const description = typeof raw?.description === 'string' ? raw.description.trim() : '';
+            const sourceUrl = clean(raw?.sourceUrl, 500);
+
+            if (!title) { skipped.push({ title: '(untitled)', reason: 'no title' }); continue; }
+            if (description.length < 400) {
+                skipped.push({ title, reason: 'the ad body was too short to be a job ad' });
+                continue;
+            }
+
+            // Same ad twice is the common case: a candidate ticks a job, comes
+            // back, ticks it again. The URL is the identity, so match on it.
+            if (sourceUrl) {
+                const existing = await prisma.jobApplication.findFirst({
+                    where: { candidateProfileId: profile.id, sourceUrl },
+                    select: { id: true },
+                });
+                if (existing) { skipped.push({ title, reason: 'already in your tracker' }); continue; }
+            }
+
+            const job = await prisma.jobApplication.create({
+                data: {
+                    userId,
+                    candidateProfileId: profile.id,
+                    title,
+                    company: clean(raw?.company),
+                    agency: clean(raw?.agency),
+                    description,
+                    sourceUrl,
+                    // Saved, not applied. Ticking a job on a search page is
+                    // interest, and stamping it APPLIED would corrupt both the
+                    // 25-a-week count and the 7-day follow-up window.
+                    status: 'SAVED',
+                },
+                select: { id: true, title: true, company: true },
+            });
+            saved.push(job);
+        }
+
+        res.json({ saved, skipped, savedCount: saved.length, skippedCount: skipped.length });
+    } catch (error) {
+        console.error('Batch Job Create Error:', error);
+        res.status(500).json({ error: 'Failed to save those jobs.' });
+    }
+});
+
+/**
+ * POST /api/jobs/extension-token — mint (or re-mint) this candidate's extension
+ * token. Returned in plaintext exactly once; only its hash is stored. Calling
+ * again invalidates the previous one, which is also how you revoke.
+ */
+router.post('/jobs/extension-token', authenticate, async (req, res) => {
+    const userId = (req as any).user.id;
+    try {
+        const profile = await prisma.candidateProfile.findUnique({
+            where: { userId }, select: { id: true },
+        });
+        if (!profile) return res.status(404).json({ error: 'Profile not found.' });
+
+        const token = mintExtensionToken();
+        await prisma.candidateProfile.update({
+            where: { id: profile.id },
+            data: { extensionTokenHash: hashExtensionToken(token), extensionTokenCreatedAt: new Date() },
+        });
+        res.json({ token });
+    } catch (error) {
+        console.error('Extension Token Error:', error);
+        res.status(500).json({ error: 'Could not create an extension token.' });
+    }
+});
 
 export default router;

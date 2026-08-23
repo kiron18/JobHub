@@ -1,10 +1,21 @@
 {
   "manifest_version": 3,
-  "name": "AGC Form Assistant",
-  "version": "0.2.0",
-  "description": "Reads the questions on a job application and answers them from your own answer bank. It never submits anything.",
+  "name": "AGC Job Assistant",
+  "version": "0.3.0",
+  "description": "Save Seek job ads straight to your JobHub tracker, and answer application questions from your own answer bank.",
   "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": [
+    "https://au.seek.com/*",
+    "https://jobhub-production-f138.up.railway.app/*"
+  ],
   "background": { "service_worker": "background.js", "type": "module" },
+  "content_scripts": [
+    {
+      "matches": ["https://au.seek.com/*"],
+      "js": ["seek/collect.js"],
+      "run_at": "document_idle"
+    }
+  ],
   "action": { "default_title": "Answer the questions on this form" },
   "options_ui": { "page": "options.html", "open_in_tab": true }
 }

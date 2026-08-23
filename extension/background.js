@@ -11,11 +11,20 @@
 // looks at the top document finds an empty page and reports nothing.
 
 import { buildSheet } from './matcher/sheet.js';
+import { buildRecord, addToBasket, toPayload, MAX_BASKET } from './seek/record.js';
 import { pageContext, mergeContexts } from './matcher/context.js';
 import { normalise } from './matcher/normalise.js';
 import { validateBank } from './matcher/bank.js';
 
-const STORE_KEYS = { bank: 'agcBank', learned: 'agcLearned' };
+const STORE_KEYS = {
+  bank: 'agcBank',
+  learned: 'agcLearned',
+  basket: 'agcSeekBasket',
+  token: 'agcApiToken',
+  apiBase: 'agcApiBase',
+};
+
+const DEFAULT_API_BASE = 'https://jobhub-production-f138.up.railway.app';
 
 /** @type {Map<number, {frames: Array<object>}>} */
 const store = new Map();
@@ -124,6 +133,89 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         sendResponse({ ok: false, error: String(err && err.message ? err.message : err) });
       }
     })();
+    return true;
+  }
+});
+
+
+// ------------------------------------------------------------ seek collector
+//
+// The page half (seek/collect.js) reads the DOM and hands the raw strings over.
+// Everything that decides whether those strings are a job, and everything that
+// touches the network, happens here — the same split the form assistant uses.
+
+async function getBasket() {
+  const got = await chrome.storage.local.get(STORE_KEYS.basket);
+  return Array.isArray(got[STORE_KEYS.basket]) ? got[STORE_KEYS.basket] : [];
+}
+
+async function setBasket(basket) {
+  await chrome.storage.local.set({ [STORE_KEYS.basket]: basket });
+  // The badge is the only thing that survives navigating away from Seek, so it
+  // is where "you have four jobs waiting" actually lives.
+  await chrome.action.setBadgeText({ text: basket.length ? String(basket.length) : '' });
+  await chrome.action.setBadgeBackgroundColor({ color: '#38bdf8' });
+}
+
+async function sendBasket() {
+  const basket = await getBasket();
+  if (!basket.length) return { ok: false, reason: 'Nothing to send' };
+
+  const got = await chrome.storage.local.get([STORE_KEYS.token, STORE_KEYS.apiBase]);
+  const token = got[STORE_KEYS.token];
+  if (!token) {
+    return { ok: false, reason: 'Add your JobHub key in the extension options first' };
+  }
+  const base = (got[STORE_KEYS.apiBase] || DEFAULT_API_BASE).replace(/\/+$/, '');
+
+  let res;
+  try {
+    res = await fetch(`${base}/api/jobs/batch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ jobs: toPayload(basket) }),
+    });
+  } catch {
+    // Keep the basket. A dropped connection must not cost someone ten jobs.
+    return { ok: false, reason: 'Could not reach JobHub. Your jobs are still saved here.' };
+  }
+
+  if (res.status === 401) return { ok: false, reason: 'That JobHub key was rejected. Re-copy it from your dashboard.' };
+  if (!res.ok) return { ok: false, reason: `JobHub said no (${res.status}). Your jobs are still saved here.` };
+
+  const body = await res.json().catch(() => ({}));
+  await setBasket([]);
+  return { ok: true, savedCount: body.savedCount ?? 0, skippedCount: body.skippedCount ?? 0 };
+}
+
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg.type === 'AGC_SEEK_COUNT') {
+    getBasket().then((b) => sendResponse({ ok: true, count: b.length }));
+    return true;
+  }
+
+  if (msg.type === 'AGC_SEEK_ADD') {
+    (async () => {
+      const built = buildRecord({ read: (name) => msg.fields?.[name] ?? null, url: msg.url });
+      if (!built.ok) {
+        sendResponse({ ok: false, reason: built.reason });
+        return;
+      }
+      const basket = await getBasket();
+      const out = addToBasket(basket, built.record);
+      if (out.added) await setBasket(out.basket);
+      sendResponse({ ok: true, added: out.added, reason: out.reason, count: out.basket.length, max: MAX_BASKET });
+    })();
+    return true;
+  }
+
+  if (msg.type === 'AGC_SEEK_SEND') {
+    sendBasket().then(sendResponse);
+    return true;
+  }
+
+  if (msg.type === 'AGC_SEEK_CLEAR') {
+    setBasket([]).then(() => sendResponse({ ok: true, count: 0 }));
     return true;
   }
 });

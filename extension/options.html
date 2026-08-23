@@ -74,6 +74,23 @@
     <p class="hint">Built from a story intake, not from a resume. Do the intake in JobHub under <strong>Answer bank</strong>, then download it and load the file here.</p>
     <div id="messages"></div>
   </section>
+
+  <h2>Saving jobs to JobHub</h2>
+  <section>
+    <p style="margin:0 0 12px;color:#94a3b8;">
+      On a Seek job ad you get a <b>Save job</b> button in the bottom-right corner. Save up to
+      ten, then send them all to your tracker at once. Paste your key from
+      <b>JobHub &rsaquo; Settings &rsaquo; Browser extension</b> to connect it.
+    </p>
+    <div class="row">
+      <input type="password" id="token" placeholder="agc_..." autocomplete="off"
+             style="flex:1;min-width:240px;padding:8px 12px;font:inherit;background:#020617;
+                    color:#cbd5e1;border:1px solid #334155;border-radius:7px;">
+      <button class="primary" id="saveToken">Connect</button>
+      <button id="clearToken">Disconnect</button>
+    </div>
+    <div id="tokenState" style="margin-top:10px;font-size:13px;color:#94a3b8;"></div>
+  </section>
 </main>
 <script type="module" src="options.js"></script>
 </body>

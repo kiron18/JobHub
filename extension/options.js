@@ -167,3 +167,37 @@ read().then(({ bank, learned }) => {
   renderStatus({ bank, learned });
   if (bank) $('editor').value = JSON.stringify(withLearned(bank, learned), null, 2);
 });
+
+
+// ---------------------------------------------------------------- JobHub key
+//
+// A long-lived `agc_` token, not a login. It is stored on this machine only and
+// is the one thing the extension ever sends anywhere.
+
+const TOKEN_KEY = 'agcApiToken';
+
+async function paintToken() {
+  const got = await chrome.storage.local.get(TOKEN_KEY);
+  const t = got[TOKEN_KEY];
+  $('tokenState').textContent = t
+    ? `Connected. Key ending ${String(t).slice(-6)}.`
+    : 'Not connected. Saved jobs will stay on this computer until you add a key.';
+}
+
+$('saveToken').addEventListener('click', async () => {
+  const value = $('token').value.trim();
+  if (!value.startsWith('agc_')) {
+    $('tokenState').textContent = 'That does not look like a JobHub key. It starts with agc_.';
+    return;
+  }
+  await chrome.storage.local.set({ [TOKEN_KEY]: value });
+  $('token').value = '';
+  await paintToken();
+});
+
+$('clearToken').addEventListener('click', async () => {
+  await chrome.storage.local.remove(TOKEN_KEY);
+  await paintToken();
+});
+
+paintToken();

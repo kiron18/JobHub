@@ -12,6 +12,14 @@ import { dirname, join, resolve } from 'node:path';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const read = (p) => readFileSync(join(here, p), 'utf8');
+
+/**
+ * Source with comments removed. The network check below scans for the word
+ * `fetch`, and a file that merely *mentions* fetching in a comment is not a
+ * file that fetches. Reading prose as code made this fail on a doc comment.
+ */
+const readCode = (p) =>
+  read(p).replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/.*$/gm, '$1');
 const manifest = JSON.parse(read('manifest.json'));
 
 let passed = 0, failed = 0;
@@ -45,6 +53,9 @@ check('every file the manifest names exists', () => {
 check('the content script the worker injects exists', () =>
   existsSync(join(here, 'reader/capture.js')));
 
+check('every declared content script exists', () =>
+  (manifest.content_scripts || []).every((cs) => cs.js.every((f) => existsSync(join(here, f)))));
+
 // A second manifest deeper in the tree is a folder someone can load by mistake,
 // and they would get whichever older version of the extension it describes.
 check('there is exactly one manifest to load', () =>
@@ -55,8 +66,41 @@ check('permissions stay minimal', () => {
   return manifest.permissions.length === wanted.size && manifest.permissions.every((p) => wanted.has(p));
 });
 
-check('no host permissions, so it can see nothing until it is clicked', () =>
-  manifest.host_permissions === undefined);
+// Host permissions are the single biggest thing a Chrome Web Store reviewer
+// weighs, and the difference between a review measured in days and one measured
+// in weeks. Two exact hosts, no wildcards in the domain, nothing speculative.
+check('host permissions name exact hosts and never a wildcard domain', () => {
+  const hosts = manifest.host_permissions || [];
+  const allowed = new Set([
+    'https://au.seek.com/*',
+    'https://jobhub-production-f138.up.railway.app/*',
+  ]);
+  const bad = hosts.filter((h) => !allowed.has(h));
+  return bad.length ? bad : hosts.length === allowed.size;
+});
+
+check('never asks for <all_urls> or a bare wildcard', () =>
+  !(manifest.host_permissions || []).some((h) => /^\*|<all_urls>|:\/\/\*\//.test(h)));
+
+check('no sensitive permissions that would slow a store review', () => {
+  const sensitive = ['cookies', 'history', 'webRequest', 'downloads', 'tabs', 'management', 'debugger'];
+  const found = (manifest.permissions || []).filter((x) => sensitive.includes(x));
+  return found.length ? found : true;
+});
+
+// The collector reads a page the candidate already has open. It must never
+// write to it, and above all never press Apply on their behalf.
+const collect = read('seek/collect.js');
+
+check('the seek collector is a classic script, not a module', () =>
+  !/^\s*(import|export)\s/m.test(collect));
+
+check('the seek collector never clicks or submits anything on the page', () =>
+  !/\.submit\s*\(/.test(collect) &&
+  !/document\.querySelector\([^)]*\)\.click\s*\(/.test(collect));
+
+check('the seek collector itself never touches the network', () =>
+  !/(fetch|XMLHttpRequest|WebSocket|sendBeacon)/.test(readCode('seek/collect.js')));
 
 // ----------------------------------------------------------- content script
 
@@ -80,7 +124,7 @@ function importsOf(file) {
 }
 
 const MODULES = [
-  'background.js', 'options.js',
+  'background.js', 'options.js', 'seek/record.js',
   'matcher/matcher.js', 'matcher/sheet.js', 'matcher/bank.js',
   'matcher/profile.js', 'matcher/context.js', 'matcher/taxonomy.js',
   'matcher/normalise.js',
@@ -97,10 +141,14 @@ check('every import resolves', () => {
   return missing.length ? missing : true;
 });
 
-check('nothing in the extension reaches the network', () => {
+// The service worker is now the ONLY file allowed to reach the network, and
+// only to JobHub. Keeping that true in one file is what makes the data-use
+// declaration on the store listing checkable rather than a promise.
+check('only the service worker reaches the network', () => {
   const offenders = [];
-  for (const file of [...MODULES, 'reader/capture.js']) {
-    const src = read(file);
+  for (const file of [...MODULES, 'reader/capture.js', 'seek/collect.js']) {
+    if (file === 'background.js') continue;
+    const src = readCode(file);
     // options.js fetches the bundled example bank through the extension's own
     // URL, which never leaves the machine.
     const network = src.match(/\b(fetch|XMLHttpRequest|WebSocket|sendBeacon)\b/g) || [];
@@ -109,6 +157,17 @@ check('nothing in the extension reaches the network', () => {
   }
   return offenders.length ? offenders : true;
 });
+
+
+check('the service worker only ever posts to the JobHub API', () => {
+  const src = read('background.js');
+  const urls = [...src.matchAll(/fetch\(`?([^`)'",\s]+)/g)].map((m) => m[1]);
+  const bad = urls.filter((u) => !u.includes('${base}') && !u.startsWith('chrome'));
+  return bad.length ? bad : true;
+});
+
+check('no secret is baked into the extension; the candidate pastes their own key', () =>
+  !/agc_[A-Za-z0-9_-]{20,}/.test(read('background.js') + read('options.js')));
 
 // -------------------------------------------------------------- options page
 

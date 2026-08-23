@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import { supabase } from '../lib/supabase';
+import { prisma } from '../index';
 import fs from 'fs';
 import path from 'path';
 
@@ -43,6 +44,37 @@ function verifyJWT(token: string, secret: string): { sub: string; email?: string
   return { sub: payload.sub, email: payload.email };
 }
 
+/**
+ * Extension tokens.
+ *
+ * The browser extension cannot hold a Supabase JWT: those expire, and an
+ * extension sitting in a toolbar has no way to refresh one. So it carries a
+ * long-lived opaque token instead, prefixed `agc_` so it is distinguishable
+ * from a JWT at a glance and in a log.
+ *
+ * Only the hash is ever stored. A leak of the database must not hand anyone a
+ * working token.
+ */
+export const EXTENSION_TOKEN_PREFIX = 'agc_';
+
+export function hashExtensionToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+export function mintExtensionToken(): string {
+  return EXTENSION_TOKEN_PREFIX + crypto.randomBytes(32).toString('base64url');
+}
+
+/** Resolve an `agc_` token to its owner, or null. */
+async function userFromExtensionToken(token: string): Promise<{ id: string; email?: string } | null> {
+  const profile = await prisma.candidateProfile.findUnique({
+    where: { extensionTokenHash: hashExtensionToken(token) },
+    select: { userId: true, email: true },
+  });
+  if (!profile?.userId) return null;
+  return { id: profile.userId, email: profile.email ?? undefined };
+}
+
 export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
   if (req.method === 'OPTIONS') return next();
 
@@ -59,6 +91,23 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
   const token = authHeader.split(' ')[1];
   if (!token) {
     return res.status(401).json({ error: 'No bearer token' });
+  }
+
+  // Extension token before JWT: it is a different shape entirely, and running
+  // it through verifyJWT would only produce a confusing "malformed" log line.
+  if (token.startsWith(EXTENSION_TOKEN_PREFIX)) {
+    try {
+      const user = await userFromExtensionToken(token);
+      if (!user) {
+        log('Extension token not recognised');
+        return res.status(401).json({ error: 'Invalid extension token' });
+      }
+      req.user = user;
+      return next();
+    } catch (e: any) {
+      log(`Extension token lookup failed: ${e.message}`);
+      return res.status(500).json({ error: 'Internal server error during authentication' });
+    }
   }
 
   const jwtSecret = process.env.SUPABASE_JWT_SECRET;

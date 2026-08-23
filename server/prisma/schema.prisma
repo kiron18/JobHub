@@ -9,6 +9,10 @@ datasource db {
 }
 
 model CandidateProfile {
+  // Browser-extension auth. Long-lived and revocable, because a Supabase JWT
+  // expires and an extension cannot re-authenticate on its own. Hash only.
+  extensionTokenHash      String?   @unique
+  extensionTokenCreatedAt DateTime?
   id                           String            @id @default(uuid())
   answerBankIntake             AnswerBankIntake?
   userId                       String            @unique
