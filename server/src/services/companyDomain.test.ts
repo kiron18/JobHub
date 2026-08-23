@@ -126,6 +126,26 @@ describe('the .gov.au bonus only applies to actual government', () => {
         expect(pick.domain).toBe('banyule.vic.gov.au');
     });
 
+    it('a council beats a lookalike programme site that shares more words', () => {
+        // launcestoncitydeal.com.au contains BOTH "launceston" and "city", while
+        // the council's own domain contains only "launceston". Word count alone
+        // picks the wrong one; being a .gov.au for a government body settles it.
+        const pick = pickCompanyDomain(
+            results('launcestoncitydeal.com.au', 'launceston.tas.gov.au', 'tomorrowtogetherlaunceston.com.au'),
+            'City of Launceston',
+        );
+        expect(pick.domain).toBe('launceston.tas.gov.au');
+    });
+
+    it('the government boost cannot invent a match', () => {
+        // vic.gov.au bears no part of the council's name, so it stays out.
+        const pick = pickCompanyDomain(
+            results('vic.gov.au', 'brimbank.vic.gov.au'),
+            'Brimbank City Council',
+        );
+        expect(pick.domain).toBe('brimbank.vic.gov.au');
+    });
+
     it('a university keeps its edu.au domain', () => {
         const pick = pickCompanyDomain(
             results('westernsydney.edu.au', 'uac.edu.au'),

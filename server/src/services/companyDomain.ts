@@ -143,6 +143,21 @@ export function nameMatchStrength(host: string, company: string): number {
 }
 
 /**
+ * A government body's own site is a `.gov.au` bearing its name, near enough to
+ * always. Without this, "City of Launceston" resolves to launcestoncitydeal.com.au,
+ * a joint funding programme, because that host happens to contain two of the
+ * three words while launceston.tas.gov.au contains only one.
+ *
+ * So a matching `.gov.au` is worth a tier to a government employer. It cannot
+ * conjure a match out of nothing: a host still has to bear the name first.
+ */
+function govBoost(host: string, company: string, strength: number): number {
+    if (strength < 1) return 0;
+    if (!/\.gov\.au$/.test(host.toLowerCase())) return 0;
+    return looksGovernment(company) ? 1 : 0;
+}
+
+/**
  * An Australian TLD is only evidence when it fits the employer. A `.gov.au` for
  * a truck manufacturer means a government page mentioned them, not that they
  * run the site.
@@ -179,20 +194,23 @@ export interface DomainPick {
  * name at all, which keeps the previous behaviour for the cases it got right.
  */
 export function pickCompanyDomain(candidates: DomainCandidate[], company: string): DomainPick {
-    const seen = new Map<string, { host: string; score: number; strength: number; position: number }>();
+    const seen = new Map<string, { host: string; score: number; base: number; position: number }>();
 
     for (const c of candidates) {
         const host = (c.host || '').toLowerCase().replace(/^www\./, '');
         if (!host || isBlacklisted(host)) continue;
 
-        const strength = nameMatchStrength(host, company);
+        const base = nameMatchStrength(host, company);
+        const strength = base + govBoost(host, company, base);
         const score =
             strength * 1000 +
             tldBonus(host, company) * 10 +
             Math.max(0, 20 - c.position);
 
         const prev = seen.get(host);
-        if (!prev || score > prev.score) seen.set(host, { host, score, strength, position: c.position });
+        // `base` is the unboosted match, so the reported reason describes why
+        // the host looks like the company rather than how it was tie-broken.
+        if (!prev || score > prev.score) seen.set(host, { host, score, base, position: c.position });
     }
 
     const ranked = [...seen.values()].sort((a, b) =>
@@ -206,6 +224,6 @@ export function pickCompanyDomain(candidates: DomainCandidate[], company: string
         domain: top.host,
         isAu: /\.au$/.test(top.host),
         alternatives: ranked.slice(1, 4).map((r) => r.host),
-        reason: top.strength === 5 ? 'acronym' : top.strength > 0 ? 'name-match' : 'position',
+        reason: top.base === 5 ? 'acronym' : top.base > 0 ? 'name-match' : 'position',
     };
 }
