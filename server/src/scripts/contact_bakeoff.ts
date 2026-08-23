@@ -27,6 +27,7 @@ import { PrismaClient } from '@prisma/client';
 import { type SerperResult } from '../services/serper';
 import { callLLMWithRetry } from '../utils/callLLMWithRetry';
 import { parseLLMJson } from '../utils/parseLLMResponse';
+import { pickCompanyDomain, type DomainCandidate } from '../services/companyDomain';
 
 const prisma = new PrismaClient();
 
@@ -121,18 +122,12 @@ function classify(company: string): OrgType {
   return 'corporate';
 }
 
-// ── S1: company name → Australian domain ─────────────────────────────────────
-
-const DOMAIN_BLACKLIST = [
-  'seek.com.au', 'linkedin.com', 'indeed.com', 'glassdoor.com', 'jora.com',
-  'adzuna.com.au', 'facebook.com', 'wikipedia.org', 'abr.business.gov.au',
-  'youtube.com', 'twitter.com', 'x.com', 'instagram.com', 'crunchbase.com',
-  'bloomberg.com', 'zoominfo.com', 'apollo.io', 'rocketreach.co', 'careerone.com.au',
-  'ethicaljobs.com.au', 'jobactive.gov.au', 'workforceaustralia.gov.au', 'gumtree.com.au',
-  'yellowpages.com.au', 'truelocal.com.au', 'localsearch.com.au', 'jobsearch.gov.au',
-  'probonoaustralia.com.au', 'applynow.net.au', 'livehire.com', 'pageuppeople.com',
-  'smartrecruiters.com', 'workday.com', 'greenhouse.io', 'lever.co', 'reddit.com',
-];
+// ── S1: company name → the company's own website ─────────────────────────────
+//
+// The ranking used to be `(N - position) * auRank`, where auRank handed
+// `.gov.au` the top weight. That is what put Scania on vehiclerecalls.gov.au
+// and Hudson on finance.gov.au. It now lives in services/companyDomain.ts,
+// which is tested against those exact failures.
 
 function hostOf(url: string): string | null {
   try {
@@ -142,40 +137,21 @@ function hostOf(url: string): string | null {
   }
 }
 
-function isBlacklisted(host: string): boolean {
-  return DOMAIN_BLACKLIST.some(b => host === b || host.endsWith('.' + b));
-}
-
-/** Australian TLDs, most specific first. A .gov.au beats a .com beats nothing. */
-function auRank(host: string): number {
-  if (/\.gov\.au$/.test(host)) return 5;
-  if (/\.edu\.au$/.test(host)) return 5;
-  if (/\.org\.au$/.test(host)) return 4;
-  if (/\.com\.au$/.test(host)) return 4;
-  if (/\.net\.au$/.test(host)) return 3;
-  if (/\.au$/.test(host)) return 3;
-  return 1;
-}
-
 interface DomainResult {
   domain: string | null;
   isAu: boolean;
   alternatives: string[];
+  reason: string;
 }
 
 async function resolveDomain(company: string): Promise<DomainResult> {
   const results = await search(`"${company}" Australia official website`, 8);
-  const scored = new Map<string, number>();
-  results.forEach((r, i) => {
-    const h = hostOf(r.link);
-    if (!h || isBlacklisted(h)) return;
-    // Earlier results weigh more; Australian TLDs weigh more again.
-    const score = (8 - i) * auRank(h);
-    scored.set(h, (scored.get(h) ?? 0) + score);
+  const candidates: DomainCandidate[] = [];
+  results.forEach((r, position) => {
+    const host = hostOf(r.link);
+    if (host) candidates.push({ host, position });
   });
-  const ranked = [...scored.entries()].sort((a, b) => b[1] - a[1]).map(([h]) => h);
-  const top = ranked[0] ?? null;
-  return { domain: top, isAu: top ? /\.au$/.test(top) : false, alternatives: ranked.slice(1, 4) };
+  return pickCompanyDomain(candidates, company);
 }
 
 // ── S2: contact discovery (mirrors routes/research.ts) ───────────────────────
@@ -400,6 +376,7 @@ interface Row {
   jdLen: number;
   domain: string | null;
   domainIsAu: boolean;
+  domainReason: string;
   domainAlts: string[];
   jdContact: string | null;
   aNames: string[];
@@ -442,6 +419,7 @@ async function processJob(job: { company: string; title: string; description: st
     jdLen: description.length,
     domain: domainRes.domain,
     domainIsAu: domainRes.isAu,
+    domainReason: domainRes.reason,
     domainAlts: domainRes.alternatives,
     jdContact: jdHit?.name ?? null,
     aNames: aHits.map(c => `${c.name}${c.location ? ` [${c.location}]` : ''}`),
@@ -654,7 +632,7 @@ function report(rows: Row[], corpus?: { totalWithCompany: number; unknownCount: 
   p('='.repeat(78));
   for (const r of rows) {
     p(`\n[${r.orgType}] ${r.company} - ${r.title}`);
-    p(`  domain: ${r.domain ?? 'NONE'}${r.domainIsAu ? ' (.au)' : r.domain ? ' (NOT .au)' : ''}${r.domainAlts.length ? `   alts: ${r.domainAlts.join(', ')}` : ''}`);
+    p(`  domain: ${r.domain ?? 'NONE'} [${r.domainReason}]${r.domainIsAu ? ' (.au)' : r.domain ? ' (NOT .au)' : ''}${r.domainAlts.length ? `   alts: ${r.domainAlts.join(', ')}` : ''}`);
     p(`  A (no geo): ${r.aNames.length ? r.aNames.join(' | ') : 'none'}`);
     p(`  B (geo):    ${r.bNames.length ? r.bNames.join(' | ') : 'none'}${r.recruiterUsed ? '  [recruiter fallback]' : ''}`);
     if (r.jdContact) p(`  JD names:   ${r.jdContact}`);
