@@ -94,8 +94,9 @@ router.post('/tracker/finalize', authenticate, async (req, res) => {
         const jobApp = await prisma.jobApplication.create({
             data: {
                 candidateProfileId: profile.id,
-                title: role || 'Unknown Role',
-                company: company || 'Unknown Company',
+                title: role || 'Untitled role',
+                // Absent employer stays absent. See JobApplication.company.
+                company: (typeof company === 'string' && company.trim()) ? company.trim() : null,
                 description: jobDescription,
                 status: 'SAVED',
                 userId

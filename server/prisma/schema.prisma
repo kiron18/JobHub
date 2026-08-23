@@ -210,7 +210,17 @@ model JobApplication {
   userId              String
   candidateProfileId  String
   title               String
-  company             String
+  // Nullable on purpose. A great many Australian ads never name the hiring
+  // employer (agency listings, "The Company is a well-established..."), and the
+  // extractor is built to return null rather than guess. Storing a placeholder
+  // string here laundered that honest null into something downstream read as a
+  // real name, which is how a follow-up email came to be addressed to
+  // "Unknown company". Null means we do not know; it is never a name.
+  company             String?
+  // The recruitment agency that posted the ad, when the ad names one but not
+  // the employer behind it. For those listings the agency recruiter IS the
+  // right person to follow up with, so this is a contact, not a consolation.
+  agency              String?
   description         String
   sourceUrl           String?
   dateApplied         DateTime?

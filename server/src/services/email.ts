@@ -412,14 +412,17 @@ export async function sendStatusEmail(params: {
   to: string;
   status: 'APPLIED' | 'REJECTED';
   jobTitle: string;
-  company: string;
+  /** Null when the ad never named the employer, which is common. */
+  company: string | null;
 }): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
     console.warn('[email] RESEND_API_KEY not set — skipping status email');
     return;
   }
   const { to, status, jobTitle, company } = params;
-  const role = `${jobTitle} at ${company}`;
+  // "Business Analyst at null" is how a placeholder leaks into a real inbox.
+  // With no employer the role title stands on its own.
+  const role = company ? `${jobTitle} at ${company}` : jobTitle;
 
   const applied = {
     subject: `Following up on your ${jobTitle} application — a reminder`,
@@ -457,10 +460,19 @@ export async function sendStatusEmail(params: {
   });
 }
 
+/**
+ * "<role> at <employer>", or just "<role>" when the ad never named one.
+ * Many Australian listings are posted anonymously or through an agency, so a
+ * missing employer is the normal case, not an error to paper over.
+ */
+function describeJob(job: { title: string; company: string | null }): string {
+  return job.company ? `${job.title} at ${job.company}` : job.title;
+}
+
 export async function sendFollowUpReminderEmail(params: {
   to: string;
   firstName?: string;
-  jobs: { title: string; company: string }[];
+  jobs: { title: string; company: string | null }[];
   totalCount: number;
 }): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
@@ -482,13 +494,15 @@ export async function sendFollowUpReminderEmail(params: {
   // frames the batch.
   const subject =
     totalCount === 1
-      ? `Time to follow up — ${jobs[0].title} at ${jobs[0].company}`
+      ? `Time to follow up — ${describeJob(jobs[0])}`
       : `${countLabel} worth a follow-up — here's exactly how`;
 
   const jobListItems = jobs
     .map(
       j =>
-        `<li style="margin: 0 0 4px;"><strong style="color: #1a1814;">${j.title}</strong> <span style="color: #6b6559;">at ${j.company}</span></li>`,
+        `<li style="margin: 0 0 4px;"><strong style="color: #1a1814;">${j.title}</strong>` +
+        (j.company ? ` <span style="color: #6b6559;">at ${j.company}</span>` : '') +
+        `</li>`,
     )
     .join('');
   const moreLine =

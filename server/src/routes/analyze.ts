@@ -158,8 +158,18 @@ router.post('/job', async (req: any, res: any) => {
 
         const hasSufficientEvidence = finalRanked.filter((a: any) => a.tier === 'STRONG').length >= 3;
 
-        const company = analysis.extractedMetadata?.company || analysis.company || 'Unknown Company';
-        const role = analysis.extractedMetadata?.role || analysis.role || 'Unknown Position';
+        // Null, never a placeholder. An unnamed employer is the normal case for
+        // agency and confidential listings; writing 'Unknown Company' here made
+        // the tracker unable to tell "we don't know" from a real name, and put
+        // that string into follow-up emails.
+        const nameOrNull = (v: unknown): string | null => {
+            if (typeof v !== 'string') return null;
+            const t = v.trim();
+            if (!t || /^(unknown|unknown company|unknown position|n\/a|null|confidential|not specified)$/i.test(t)) return null;
+            return t;
+        };
+        const company = nameOrNull(analysis.extractedMetadata?.company ?? analysis.company);
+        const role = nameOrNull(analysis.extractedMetadata?.role ?? analysis.role);
 
         let jobApplication;
         try {
@@ -167,7 +177,7 @@ router.post('/job', async (req: any, res: any) => {
                 data: {
                     userId,
                     candidateProfileId: profile.id,
-                    title: role,
+                    title: role ?? 'Untitled role',
                     company,
                     description: jobDescription,
                     dimensions: dimensions as any ?? undefined,

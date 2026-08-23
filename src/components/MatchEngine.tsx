@@ -236,7 +236,15 @@ export const MatchEngine: React.FC = () => {
             return;
         }
         navigate('/apply', {
-            state: { jobDescription }
+            // The analysis already read the employer and role out of the ad.
+            // This used to pass the description alone, which is why every
+            // application started here landed in the tracker as
+            // "Untitled role" at no employer.
+            state: {
+                jobDescription,
+                company: result.extractedMetadata?.company ?? undefined,
+                role: result.extractedMetadata?.role ?? undefined,
+            },
         });
     };
 
@@ -244,7 +252,11 @@ export const MatchEngine: React.FC = () => {
         setShowLowMatchWarning(false);
         if (pendingNavType) {
             navigate('/apply', {
-                state: { jobDescription }
+                state: {
+                    jobDescription,
+                    company: result?.extractedMetadata?.company ?? undefined,
+                    role: result?.extractedMetadata?.role ?? undefined,
+                },
             });
         }
         setPendingNavType(null);

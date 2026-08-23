@@ -46,11 +46,16 @@ const TITLE_OVERLAP_MIN = 0.5;
 
 export async function findDuplicateApplication(params: {
     userId: string;
-    company: string;
+    /** Null when the ad never named the employer. No company, no verdict. */
+    company: string | null;
     role: string;
 }): Promise<DuplicateMatch | null> {
     const { userId, company, role } = params;
-    if (!company || !role || company === 'Unknown Company' || role === 'Unknown Position') {
+    // Duplicate detection is a claim made to the candidate's face ("you already
+    // applied here"), so it has to be right. Both sides need a real employer
+    // name: two anonymous "Business Analyst" ads are usually two different
+    // employers, and calling them the same one costs a real application.
+    if (!company || !role || role === 'Unknown Position') {
         return null;
     }
 
@@ -77,6 +82,7 @@ export async function findDuplicateApplication(params: {
     const targetTitle = tokenise(role);
 
     for (const candidate of candidates) {
+        if (!candidate.company) continue; // unknown employer, cannot be matched
         const cCompany = tokenise(candidate.company);
         const cTitle = tokenise(candidate.title);
         if (overlap(targetCompany, cCompany) >= COMPANY_OVERLAP_MIN

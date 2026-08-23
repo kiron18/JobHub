@@ -472,7 +472,7 @@ function AnalysisHeroCard() {
      * the point of being useless, the application still starts: never block
      * someone from applying over a subject line.
      */
-    const resolveJobFacts = async (jd: string): Promise<{ company?: string; role?: string }> => {
+    const resolveJobFacts = async (jd: string): Promise<{ company?: string; role?: string; agency?: string }> => {
         if (pickedFeedItem) return { company: pickedFeedItem.company, role: pickedFeedItem.title };
 
         const local = extractJobFacts(jd);
@@ -481,6 +481,9 @@ function AnalysisHeroCard() {
             return {
                 role: data?.title ?? local.role,
                 company: data?.company ?? local.company,
+                // Named when the ad hides the employer behind a recruiter. That
+                // recruiter is the person to follow up with, so it is kept.
+                agency: data?.agency ?? undefined,
             };
         } catch {
             return local;
@@ -490,7 +493,8 @@ function AnalysisHeroCard() {
     const handleAnalyse = async () => {
         if (!canSubmit) return;
         setAnalysing(true);
-        const { company, role } = await resolveJobFacts(trimmed);
+
+        const { company, role, agency } = await resolveJobFacts(trimmed);
         try {
             // Navigate directly to apply - generation will handle access control
             navigate('/apply', {
@@ -499,6 +503,7 @@ function AnalysisHeroCard() {
                     sc: jdMentionsSelectionCriteria(trimmed),
                     company,
                     role,
+                    agency,
                     feedItemId: pickedFeedItem?.id,
                     sourceUrl: pickedFeedItem?.sourceUrl,
                     sourcePlatform: pickedFeedItem?.sourcePlatform,

@@ -295,10 +295,11 @@ Rules:
 - "title" is the advertised role, exactly as written, with no seniority or department invented.
 - "company" is the ORGANISATION HIRING. It is not the recruitment agency posting on their behalf, not a location, not a venue, not a client the role serves, and not a generic noun that happened to follow the word "at".
 - Many ads genuinely do not name the employer, for example when a recruiter lists it confidentially. That is normal and expected. Return null for company in that case.
+- "agency" is the recruitment agency or consultancy that posted the ad, when the ad names one. Most ads have none, and an ad posted by the employer directly has none. If the ad names the agency but hides the employer, that is exactly the case this field exists for. Return null when no agency is named.
 - Return null for anything the ad does not state. A null is correct and useful; a plausible guess is worse than nothing because it will be sent to that employer in an email.
 
 Return JSON only:
-{ "title": "<the role, or null>", "company": "<the hiring organisation, or null>" }
+{ "title": "<the role, or null>", "company": "<the hiring organisation, or null>", "agency": "<the recruitment agency that posted it, or null>" }
 
 JOB ADVERTISEMENT:
 """
@@ -317,7 +318,11 @@ ${jobDescription.slice(0, 12000)}
             return trimmed;
         };
 
-        return res.json({ title: clean(result.title), company: clean(result.company) });
+        return res.json({
+            title: clean(result.title),
+            company: clean(result.company),
+            agency: clean(result.agency),
+        });
     } catch (err: any) {
         console.error('[Job Facts] Error:', err.message);
         res.status(500).json({ error: 'Failed to read the job ad.' });

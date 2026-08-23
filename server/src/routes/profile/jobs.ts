@@ -81,11 +81,25 @@ router.get('/jobs/:id', authenticate, async (req, res) => {
 // POST /api/jobs
 router.post('/jobs', authenticate, async (req, res) => {
     const userId = (req as any).user.id;
-    const { title, company, description, status, dateApplied, notes, closingDate } = req.body;
+    const { title, company, agency, description, status, dateApplied, notes, closingDate, sourceUrl } = req.body;
 
-    if (!title || !company) {
-        return res.status(400).json({ error: 'Title and company are required.' });
+    // Company is deliberately NOT required. A large share of Australian ads
+    // never name the hiring employer, and rejecting those applications (or
+    // worse, letting the client invent a name to get past the check) is how the
+    // tracker filled up with 'Unknown company'. Title is the one thing an ad
+    // always has.
+    if (!title) {
+        return res.status(400).json({ error: 'Title is required.' });
     }
+
+    /** '' and 'Unknown company' are absence, not names. Normalise both to null. */
+    const cleanName = (v: unknown): string | null => {
+        if (typeof v !== 'string') return null;
+        const t = v.trim();
+        if (!t) return null;
+        if (/^(unknown|unknown company|unknown position|n\/a|null|undefined)$/i.test(t)) return null;
+        return t;
+    };
 
     try {
         const profile = await prisma.candidateProfile.findUnique({
@@ -97,8 +111,10 @@ router.post('/jobs', authenticate, async (req, res) => {
         const job = await prisma.jobApplication.create({
             data: {
                 title: title.trim(),
-                company: company.trim(),
-                description: description || `${title} at ${company}`,
+                company: cleanName(company),
+                agency: cleanName(agency),
+                sourceUrl: cleanName(sourceUrl),
+                description: description || `${title}${company ? ` at ${company}` : ''}`,
                 status: status || 'SAVED',
                 // Jobs created already at INTERVIEW/OFFER still get milestone stamps.
                 ...(status === 'INTERVIEW' || status === 'OFFER' ? { interviewReachedAt: new Date() } : {}),
@@ -235,5 +251,7 @@ router.delete('/jobs/:id', authenticate, async (req, res) => {
         res.status(500).json({ error: 'Failed to delete job application' });
     }
 });
+
+
 
 export default router;

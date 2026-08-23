@@ -260,6 +260,7 @@ export function StepperWorkspace() {
         jobDescription?: string;
         sc?: boolean;
         company?: string;
+        agency?: string;
         role?: string;
         location?: string;
         feedItemId?: string;
@@ -481,6 +482,7 @@ export function StepperWorkspace() {
                         jobDescription={jobDescription}
                         wantsSC={wantsSC}
                         company={state.company}
+                        agency={state.agency}
                         role={state.role}
                         workspaceKey={workspaceKey}
                         onBack={() => setCurrentIndex(currentIndex - 1)}
@@ -1690,6 +1692,7 @@ function TrackStep({
     jobDescription,
     wantsSC,
     company,
+    agency,
     role,
     workspaceKey,
     onBack,
@@ -1700,6 +1703,7 @@ function TrackStep({
     jobDescription: string;
     wantsSC: boolean;
     company?: string;
+    agency?: string;
     role?: string;
     workspaceKey: string;
     onBack: () => void;
@@ -1747,7 +1751,18 @@ function TrackStep({
             try {
                 await api.post('/jobs', {
                     title: role ?? 'Untitled role',
-                    company: company ?? 'Unknown company',
+                    // No placeholder. Most Australian ads never name the hiring
+                    // employer, and writing 'Unknown company' here made the
+                    // tracker treat "we don't know" as a name, then post it into
+                    // follow-up emails. Undefined is stored as null.
+                    company: company || undefined,
+                    // When the ad hid the employer behind a recruiter, the
+                    // recruiter is who the candidate follows up with.
+                    agency: agency || undefined,
+                    // Already in hand and previously dropped on the floor. It is
+                    // what lets us recover the advertiser name later even when
+                    // the pasted body is anonymous.
+                    sourceUrl: sourceUrl || undefined,
                     description: jobDescription,
                     status: 'APPLIED',
                     dateApplied: appliedAt,
@@ -1763,7 +1778,7 @@ function TrackStep({
             }
         })();
         return () => { cancelled = true; };
-    }, [workspaceKey, jobDescription, role, company]);
+    }, [workspaceKey, jobDescription, role, company, agency, sourceUrl]);
 
     return (
         <div style={{

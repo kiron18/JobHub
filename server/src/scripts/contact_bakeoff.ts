@@ -495,13 +495,16 @@ async function main() {
 
   // ── sample ────────────────────────────────────────────────────────────────
   const totalWithCompany = await prisma.jobApplication.count();
-  const unknownCount = await prisma.jobApplication.count({
-    where: { company: { in: ['Unknown company', 'Unknown', ''] } },
+  // Unknown is now a real null rather than a magic string, so this is a fact
+  // about the data instead of a list of placeholder spellings to keep in sync.
+  const unknownCount = await prisma.jobApplication.count({ where: { company: null } });
+  const agencyOnlyCount = await prisma.jobApplication.count({
+    where: { company: null, agency: { not: null } },
   });
 
   const pool = await prisma.jobApplication.findMany({
     where: {
-      company: { notIn: ['Unknown company', 'Unknown', ''] },
+      company: { not: null },
       description: { not: '' },
     },
     orderBy: { createdAt: 'desc' },
@@ -512,7 +515,7 @@ async function main() {
   // One job per company, so the sample measures companies not duplicates.
   const seen = new Set<string>();
   const unique = pool.filter(j => {
-    const k = j.company.toLowerCase().trim();
+    const k = (j.company ?? '').toLowerCase().trim();
     if (seen.has(k)) return false;
     seen.add(k);
     return j.description.length > 500;
@@ -521,7 +524,7 @@ async function main() {
   // Stratify so government and health are not drowned out by corporate.
   const byType = new Map<OrgType, typeof unique>();
   for (const j of unique) {
-    const t = classify(j.company);
+    const t = classify(j.company ?? '');
     if (!byType.has(t)) byType.set(t, []);
     byType.get(t)!.push(j);
   }
@@ -548,14 +551,15 @@ async function main() {
   console.log(`Hunter key: ${process.env.HUNTER_API_KEY ? 'present' : 'ABSENT (stage 4 skipped)'}`);
   console.log('\nRunning...');
 
-  const rows = await mapLimit(sample, CONCURRENCY, processJob);
+  const named = sample.map(j => ({ ...j, company: j.company as string }));
+  const rows = await mapLimit(named, CONCURRENCY, processJob);
   console.log('\n');
 
   fs.writeFileSync(CACHE_PATH, JSON.stringify(rows, null, 2));
-  report(rows, { totalWithCompany, unknownCount });
+  report(rows, { totalWithCompany, unknownCount, agencyOnlyCount });
 }
 
-function report(rows: Row[], corpus?: { totalWithCompany: number; unknownCount: number }) {
+function report(rows: Row[], corpus?: { totalWithCompany: number; unknownCount: number; agencyOnlyCount?: number }) {
   const n = rows.length;
   const lines: string[] = [];
   const p = (s: string) => { console.log(s); lines.push(s); };
@@ -565,7 +569,10 @@ function report(rows: Row[], corpus?: { totalWithCompany: number; unknownCount: 
   p('='.repeat(78));
   if (corpus) {
     p(`Corpus: ${corpus.totalWithCompany} real applications`);
-    p(`Company name missing entirely: ${corpus.unknownCount} (${pct(corpus.unknownCount, corpus.totalWithCompany)})`);
+    p(`No employer named: ${corpus.unknownCount} (${pct(corpus.unknownCount, corpus.totalWithCompany)})`);
+    if (corpus.agencyOnlyCount !== undefined) {
+      p(`  ... but an agency IS named: ${corpus.agencyOnlyCount} (${pct(corpus.agencyOnlyCount, corpus.unknownCount)} of those)`);
+    }
   }
   p(`Sample: ${n} unique companies`);
   p('');
