@@ -26,6 +26,7 @@ import { DailyProgressBar } from '../components/jobs/DailyProgressBar';
 import { warm } from '../lib/theme/warmTokens';
 import { extractJobFacts } from '../lib/extractJobFacts';
 import { classifyPaste, isSubmittable, pasteHint } from '../lib/seekLink';
+import { HowToCopyJobAd } from '../components/strategy/HowToCopyJobAd';
 
 /** Detect whether a job description mentions selection criteria. */
 export const jdMentionsSelectionCriteria = (jd: string): boolean =>
@@ -496,6 +497,34 @@ function AnalysisHeroCard() {
         }
     };
 
+    /**
+     * The failsafe.
+     *
+     * When neither an employer nor an agency can be found, the paste almost
+     * always started below the header, where Seek prints the advertiser. Saying
+     * nothing is what produced 341 tracker rows with no employer and follow-up
+     * emails addressed to nobody.
+     *
+     * It asks, it never blocks: "Skip" is always right there. Nothing is worth
+     * standing between someone and an application.
+     */
+    const [missingEmployer, setMissingEmployer] = useState<null | {
+        role?: string;
+        typed: string;
+    }>(null);
+
+    const goToApply = (opts: { company?: string; role?: string; agency?: string }) => {
+        navigate('/apply', {
+            state: {
+                jobDescription: trimmed,
+                sc: jdMentionsSelectionCriteria(trimmed),
+                company: opts.company,
+                role: opts.role,
+                agency: opts.agency,
+            },
+        });
+    };
+
     const handleAnalyse = async () => {
         if (!canSubmit) return;
         setAnalysing(true);
@@ -534,6 +563,15 @@ function AnalysisHeroCard() {
         }
 
         const { company, role, agency } = await resolveJobFacts(trimmed);
+
+        // Neither an employer nor an agency: ask before this becomes another
+        // untraceable row. The ad is kept exactly as pasted either way.
+        if (!company && !agency) {
+            setMissingEmployer({ role, typed: '' });
+            setAnalysing(false);
+            return;
+        }
+
         try {
             // Navigate directly to apply - generation will handle access control
             navigate('/apply', {
@@ -697,6 +735,71 @@ function AnalysisHeroCard() {
                     We will open that ad and read the employer, title and full description off the page.
                 </p>
             )}
+
+            {missingEmployer && (
+                <div
+                    style={{
+                        marginTop: 14, padding: '14px 16px', borderRadius: 12,
+                        background: warm.colors.bgAlt,
+                        border: `1px solid ${warm.colors.accentGold}`,
+                    }}
+                >
+                    <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 700, color: warmT.text }}>
+                        Who is the employer?
+                    </p>
+                    <p style={{ margin: '0 0 12px', fontSize: 12.5, lineHeight: 1.55, color: warmT.textMuted }}>
+                        We could not find a company name in that ad. It is usually because the copy started below
+                        the heading. Type it in, or re-copy starting at the job title.
+                    </p>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <input
+                            autoFocus
+                            value={missingEmployer.typed}
+                            onChange={(e) => setMissingEmployer({ ...missingEmployer, typed: e.target.value })}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && missingEmployer.typed.trim()) {
+                                    goToApply({ company: missingEmployer.typed.trim(), role: missingEmployer.role });
+                                }
+                            }}
+                            placeholder="Company name"
+                            style={{
+                                flex: '1 1 200px', padding: '9px 12px', fontSize: 13, fontFamily: 'inherit',
+                                color: warmT.inputText, background: warmT.inputBg,
+                                border: `1px solid ${warmT.inputBorder}`, borderRadius: 9, outline: 'none',
+                            }}
+                        />
+                        <button
+                            onClick={() => goToApply({
+                                company: missingEmployer.typed.trim() || undefined,
+                                role: missingEmployer.role,
+                            })}
+                            disabled={!missingEmployer.typed.trim()}
+                            style={{
+                                padding: '9px 16px', fontSize: 13, fontWeight: 700, fontFamily: 'inherit',
+                                color: warmT.btnText, background: warmT.btnBg, border: 'none', borderRadius: 9,
+                                cursor: missingEmployer.typed.trim() ? 'pointer' : 'not-allowed',
+                                opacity: missingEmployer.typed.trim() ? 1 : 0.5,
+                            }}
+                        >
+                            Continue
+                        </button>
+                        <button
+                            onClick={() => goToApply({ role: missingEmployer.role })}
+                            style={{
+                                padding: '9px 14px', fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
+                                color: warmT.textMuted, background: 'none',
+                                border: `1px solid ${warmT.inputBorder}`, borderRadius: 9, cursor: 'pointer',
+                            }}
+                        >
+                            Skip
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Only worth showing to someone typing a description. A link
+                already carries the employer, so the lesson does not apply. */}
+            {!isLink && <HowToCopyJobAd />}
 
             <div
                 style={{

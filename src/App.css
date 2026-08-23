@@ -40,3 +40,10 @@
 .read-the-docs {
   color: #888;
 }
+
+/* The Seek-ad tutorial drives a real browser Selection so the highlight hugs
+   the text rather than being a rectangle drawn over it. This is the one bit
+   that cannot be an inline style, because ::selection is a pseudo-element. */
+.agc-seek-mock ::selection {
+  background: rgba(0, 106, 255, 0.28);
+}
