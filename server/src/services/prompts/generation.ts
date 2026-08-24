@@ -207,7 +207,8 @@ export const DOCUMENT_GENERATION_PROMPT_WITH_BLUEPRINT = (
     perCriterionAchievements?: CriterionAchievementMap[] | null,
     employerFramework?: string | null,
     routeType?: string | null,
-    employerQuestions?: string[]
+    employerQuestions?: string[],
+    interviewContextBlock?: string | null
 ): string => {
     const isAcademicDoc = routeType === 'teaching-philosophy' || routeType === 'research-statement' || routeType === 'offer-negotiation' || routeType === 'linkedin-profile' || routeType === 'cold-outreach' || routeType === 'rejection-response';
     // Derived facts the LLM cannot compute without help (no current date in prompt,
@@ -327,7 +328,23 @@ ${profile.coverLetterRawText.slice(0, 600)}
 ` : ''}
 JOB DESCRIPTION:
 ${jd}
+${interviewContextBlock ? `
+${interviewContextBlock}` : ''}
+${type === 'INTERVIEW_PREP' ? `
+==============================================================
+LENGTH BUDGET — CHECK EVERY BLOCK AGAINST THIS BEFORE YOU WRITE IT
+==============================================================
+This is a page somebody reads while a recruiter is talking. Long is the same as
+unusable. The rules above give the budget; these are the three that get broken:
 
+1. Every SAY: script is 40 to 70 words. Count them. The opening script included.
+   If yours is longer, cut the second example, not the number.
+2. Every WHY: and TACTIC: is one sentence. Two at the absolute outside.
+3. One number per script. Never two, never three.
+
+A script at 110 words is a failure even if every word is true, because nobody
+says it and nobody finds it on the page in time.
+` : ''}
 ==============================================================
 TASK: GENERATE THE ${type}
 ==============================================================
@@ -526,7 +543,8 @@ export const DOCUMENT_GENERATION_PROMPT = (
     perCriterionAchievements?: CriterionAchievementMap[] | null,
     employerFramework?: string | null,
     routeType?: string | null,
-    employerQuestions?: string[]
+    employerQuestions?: string[],
+    interviewContextBlock?: string | null
 ) => {
     const isAcademicDoc = routeType === 'teaching-philosophy' || routeType === 'research-statement' || routeType === 'offer-negotiation' || routeType === 'linkedin-profile' || routeType === 'cold-outreach' || routeType === 'rejection-response';
     const todayDate = todayIso();
@@ -649,7 +667,9 @@ questions; weave the answers into the narrative.
 
 ${employerQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}
 ` : ''}
-
+${interviewContextBlock ? `
+${interviewContextBlock}
+` : ''}
 CONSTRAINTS:
 - Do NOT use bold ** within bullet points unless highlighting a metric.
 - Do NOT include any meta-talk or pleasantries (e.g., "Here is your resume...").

@@ -216,7 +216,8 @@ async function ensureColumns() {
         ADD COLUMN IF NOT EXISTS "matchedIdentityCard" TEXT,
         ADD COLUMN IF NOT EXISTS "overallGrade" TEXT,
         ADD COLUMN IF NOT EXISTS "followUpSentAt" TIMESTAMP(3),
-        ADD COLUMN IF NOT EXISTS "companyIntel" JSONB;
+        ADD COLUMN IF NOT EXISTS "companyIntel" JSONB,
+        ADD COLUMN IF NOT EXISTS "interviewStage" TEXT;
     `);
     await prisma.$executeRawUnsafe(`
       ALTER TABLE "Document"
@@ -252,6 +253,9 @@ async function ensureColumns() {
         ADD COLUMN IF NOT EXISTS "marketingConsent" BOOLEAN NOT NULL DEFAULT false,
         ADD COLUMN IF NOT EXISTS "marketingEmailSent" BOOLEAN NOT NULL DEFAULT false,
         ADD COLUMN IF NOT EXISTS "visaStatus" TEXT,
+        ADD COLUMN IF NOT EXISTS "visaExpiry" TEXT,
+        ADD COLUMN IF NOT EXISTS "salaryExpectation" TEXT,
+        ADD COLUMN IF NOT EXISTS "availability" TEXT,
         ADD COLUMN IF NOT EXISTS "positioningStatement" JSONB,
         ADD COLUMN IF NOT EXISTS "coachingAlerts" JSONB,
         ADD COLUMN IF NOT EXISTS "dashboardAccess" BOOLEAN NOT NULL DEFAULT false,

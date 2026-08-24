@@ -4,6 +4,8 @@ import { ChevronDown, ChevronRight, Eye, EyeOff, Lightbulb } from 'lucide-react'
 import { MindsetAnchors } from './interview/MindsetAnchors';
 import { OnTheDay } from './interview/OnTheDay';
 import { FinalChecklist } from './interview/FinalChecklist';
+import { CheatSheet } from './interview/CheatSheet';
+import { isCheatSheet, parseCheatSheet } from './interview/parseCheatSheet';
 
 interface StoryCard {
     title: string;
@@ -398,9 +400,24 @@ function ProveItPanel({ qt, company, role }: { qt: QuestionType; company: string
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
-export function InterviewPrepView({ doc, company, role }: { doc: string; company: string; role: string }) {
-    const data = parseInterviewDoc(doc);
+export function InterviewPrepView({ doc, company, role, stageLabel = null }: {
+    doc: string;
+    company: string;
+    role: string;
+    /** Which round this prep was written for, when one was chosen. */
+    stageLabel?: string | null;
+}) {
     const [showContrast, setShowContrast] = useState(false);
+
+    // Preps generated from the cheat-sheet rules render as the call companion.
+    // Anything older keeps the previous layout rather than showing an empty
+    // page, since a client with a prep already built should never lose it to a
+    // format change they did not ask for.
+    if (isCheatSheet(doc)) {
+        return <CheatSheet sheet={parseCheatSheet(doc)} company={company} role={role} stageLabel={stageLabel} />;
+    }
+
+    const data = parseInterviewDoc(doc);
 
     const hasKnow = data.companyIntelligence.length > 0 || data.lookingFor || data.watchOuts.length > 0;
     const hasStories = data.storyBank.length > 0;

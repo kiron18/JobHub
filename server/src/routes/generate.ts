@@ -246,6 +246,43 @@ router.post('/:type', authenticate, async (req, res, next) => {
         // ── JD parser — detect Seek-style employer questions ─────────────────
         const parsedJD = parseJD(jobDescription);
 
+        // ── Interview prep context ──────────────────────────────────────────
+        // Two things a coach always has and generation never did: the candidate's
+        // own spoken words, and which round this actually is. A cover letter wants
+        // neither, so both are interview-prep only.
+        let interviewContextBlock: string | null = null;
+        if (type === 'interview-prep') {
+            try {
+                const {
+                    buildAnswerBankBlock, buildInterviewContextBlock, isInterviewStage,
+                } = await import('../services/interviewPrepContext');
+
+                // The stage sent with the request wins, so choosing a different
+                // round and regenerating works without a separate save first.
+                const stage = isInterviewStage(req.body.interviewStage)
+                    ? req.body.interviewStage
+                    : null;
+
+                const contextBlock = buildInterviewContextBlock(stage, profile as any);
+                const bank = await buildAnswerBankBlock(userId);
+                interviewContextBlock = [contextBlock, bank].filter(Boolean).join('\n');
+                console.log(`[Generation] Interview prep context: stage=${stage ?? 'unset'}, answerBank=${bank ? 'yes' : 'no'}`);
+
+                // Remember the round on the application so reopening the page
+                // shows what this prep was written for.
+                if (stage && sanitizedJobAppId) {
+                    prisma.jobApplication.update({
+                        where: { id: sanitizedJobAppId },
+                        data: { interviewStage: stage },
+                    }).catch(err => console.error('[Generation] Failed to persist interview stage:', err));
+                }
+            } catch (abErr: any) {
+                // Prep still builds from achievements alone, so never let the
+                // extra context take the generation down.
+                console.warn('[Generation] Interview prep context unavailable:', abErr.message);
+            }
+        }
+
         const prompt = blueprintResult
             ? DOCUMENT_GENERATION_PROMPT_WITH_BLUEPRINT(
                 docType,
@@ -260,7 +297,8 @@ router.post('/:type', authenticate, async (req, res, next) => {
                 perCriterionAchievements,
                 employerFramework,
                 type,
-                parsedJD.employerQuestions.length > 0 ? parsedJD.employerQuestions : undefined
+                parsedJD.employerQuestions.length > 0 ? parsedJD.employerQuestions : undefined,
+                interviewContextBlock
             )
             : DOCUMENT_GENERATION_PROMPT(
                 docType,
@@ -274,7 +312,8 @@ router.post('/:type', authenticate, async (req, res, next) => {
                 perCriterionAchievements,
                 employerFramework,
                 type,
-                parsedJD.employerQuestions.length > 0 ? parsedJD.employerQuestions : undefined
+                parsedJD.employerQuestions.length > 0 ? parsedJD.employerQuestions : undefined,
+                interviewContextBlock
             );
 
         // ── STRUCTURED RESUME PATH ────────────────────────────────────────────
@@ -461,6 +500,16 @@ router.post('/:type', authenticate, async (req, res, next) => {
                 if (removed.length > 0) {
                     console.log(`[Generation] AI-tell scrubber: ${removed.length} phrase(s) removed from STAR_RESPONSE`);
                 }
+            }
+
+            // ── Em dashes (interview prep) ──────────────────────────────────────
+            // The rules forbid them and the model still emits about one per
+            // document. A deterministic substitution is the fix, not a third ask.
+            if (docType === 'INTERVIEW_PREP') {
+                const { stripEmDashes } = await import('../services/interviewPrepContext');
+                const before = finalContent;
+                finalContent = stripEmDashes(finalContent);
+                if (before !== finalContent) console.log('[Generation] Em dashes removed from interview prep');
             }
 
             // ── Banned-phrases scrubber (resumes only) ──────────────────────────

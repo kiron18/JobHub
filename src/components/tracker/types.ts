@@ -30,6 +30,11 @@ export interface JobApplication {
     createdAt: string;
     matchScore?: number;     // 0–100 weighted composite from 10-dimension scoring
     overallGrade?: string;   // "A" | "B" | "C" | "D" | "F"
+    /**
+     * Which round the interview prep was written for: recruiter_screen,
+     * hiring_manager, panel, technical or final. Null until one is chosen.
+     */
+    interviewStage?: string | null;
 }
 
 export const PRIORITY_CONFIG: Record<NonNullable<JobPriority>, { label: string; dot: string; border: string; bg: string; text: string }> = {

@@ -54,6 +54,13 @@ model CandidateProfile {
   marketingEmail               String?
   marketingEmailSent           Boolean           @default(false)
   visaStatus                   String?
+  /// The three facts a coach always knows before an interview and JobHub never
+  /// stored. Free text on purpose: "485 expiring March 2027" carries more than
+  /// a date column, and an interviewer asks for the sentence, not the field.
+  /// Asked once on the first interview prep, then reused for every one after.
+  visaExpiry                   String?
+  salaryExpectation            String?
+  availability                 String?
   dashboardAccess              Boolean           @default(false)
   dashboardAccessRequested     Boolean           @default(false)
   skoolJoined                  Boolean           @default(false)
@@ -244,6 +251,11 @@ model JobApplication {
   interviewReachedAt  DateTime?
   offerReachedAt      DateTime?
   companyIntel        Json?
+  /// Which round this prep is for: recruiter_screen, hiring_manager, panel,
+  /// technical, final. A screening call and a final panel are different
+  /// conversations, and generating one document for both is what made the old
+  /// prep generic. Null means it has not been chosen yet.
+  interviewStage      String?
   documents           Document[]
   candidateProfile    CandidateProfile  @relation(fields: [candidateProfileId], references: [id])
 
