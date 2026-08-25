@@ -79,9 +79,6 @@ const VisaSponsorsPage = React.lazy(() =>
 const SkippedJobsPage = React.lazy(() =>
   import('./pages/SkippedJobsPage').then(m => ({ default: m.SkippedJobsPage }))
 );
-const MockLandingPage = React.lazy(() =>
-  import('./pages/MockLandingPage').then(m => ({ default: m.MockLandingPage }))
-);
 const SessionSignupPage = React.lazy(() => import('./pages/SessionSignupPage'));
 const ClaimPage = React.lazy(() => import('./pages/ClaimPage'));
 const FreeResourcePage = React.lazy(() => import('./pages/FreeResourcePage'));
@@ -339,9 +336,11 @@ type ReportFlowStage = 'loading' | 'diagnostic' | 'from-scratch' | 'dashboard';
 function LandingPageOrExisting() {
   const { user, loading } = useAuth();
   if (loading) return null;
-  // Signed out, the site IS the scan. There is one way in and it collects the
+  // Signed out, the site IS the intake. There is one way in and it collects the
   // resume and creates the account in the same pass, so an account without a
-  // resume can't exist. The old marketing page is still at /mock-landing.
+  // resume can't exist. The separate cv-scan funnel and its marketing page were
+  // removed in Aug 2026: two resume readers meant two prompts, two qualities,
+  // and two writers racing to build the same achievement bank.
   if (!user) return <WelcomePage />;
   // Authenticated — render the existing protected route content
   return (
@@ -516,11 +515,6 @@ function App() {
               <Route path="/anim-test" element={
                 <React.Suspense fallback={null}>
                   <AnimationTest />
-                </React.Suspense>
-              } />
-              <Route path="/mock-landing" element={
-                <React.Suspense fallback={null}>
-                  <MockLandingPage />
                 </React.Suspense>
               } />
               <Route path="/book-a-call" element={

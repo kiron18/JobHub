@@ -28,6 +28,7 @@ import { randomUUID } from 'crypto';
 import { extractTextFromBuffer } from '../services/pdf';
 import { prisma } from '../index';
 import { authenticate, optionalAuthenticate, AuthRequest } from '../middleware/auth';
+import { ipRateLimit } from '../middleware/ipRateLimit';
 import { autoExtractAchievements } from '../services/autoExtract';
 import { reconcileProfileEmail } from '../services/onboarding';
 import { sendWelcomeResumeEmail } from '../services/email';
@@ -38,10 +39,13 @@ import {
   buildCleanResume,
   BlankLeakError,
   ContentLossError,
+  UngroundedFigureError,
   IntakeAnswer,
   IntakeAnswerStatus,
 } from '../services/buildCleanResume';
 import { MustKeep, describeRetention } from '../services/retentionGate';
+import { targetRoleSeed } from '../lib/targetRoleSeed';
+import { assertResumeSource, ResumeSourceError } from '../lib/resumeSourceGate';
 
 const router = Router();
 
@@ -122,7 +126,7 @@ async function loadSession(token: unknown) {
 // ── POST /api/welcome/brief ──────────────────────────────────────────────────
 // Upload the resume. Returns the prose read plus the question list. Anonymous:
 // optionalAuthenticate so a signed-in client can also re-run this.
-router.post('/brief', optionalAuthenticate, handleUpload, async (req: Request, res: Response) => {
+router.post('/brief', ipRateLimit, optionalAuthenticate, handleUpload, async (req: Request, res: Response) => {
   try {
     const file = (req.files as any)?.resume?.[0];
     if (!file) { res.status(400).json({ error: 'Resume file is required' }); return; }
@@ -180,6 +184,9 @@ router.post('/brief', optionalAuthenticate, handleUpload, async (req: Request, r
       resumeEmail: emailFromResume(text),
       firstName: analysis.firstName,
       currentRole: analysis.currentRole,
+      // What to AIM at, which is not the same as what they hold now. The box on
+      // the client is seeded from this, never from currentRole. See targetRoleSeed.
+      suggestedTargetRole: targetRoleSeed(analysis.currentRole),
       brief: analysis.brief,
       findings: analysis.findings,
       strengths: analysis.strengths,
@@ -273,6 +280,11 @@ router.post('/build', async (req: Request, res: Response) => {
       res.status(502).json({ error: 'We could not rebuild your resume without leaving something out. Please try again.' });
       return;
     }
+    if (err instanceof UngroundedFigureError) {
+      console.error('[welcome/build] unsourced figures, refused to save:', err.message);
+      res.status(502).json({ error: 'We could not rebuild your resume without adding a figure we cannot verify. Please try again.' });
+      return;
+    }
     if (err instanceof BlankLeakError) {
       // Never persist this. Better to ask them to retry than to poison every
       // future generation with "[how many]" sitting in their resume text.
@@ -313,6 +325,21 @@ router.post('/finish', authenticate, async (req: AuthRequest, res: Response) => 
       res.status(409).json({ error: 'Your resume has not been built yet.' });
       return;
     }
+
+    // The gate on resumeRawText. This is the one write where a model authored
+    // the text, so an ungrounded figure is a fabrication and must never land:
+    // once it is in this field, checkGrounding treats it as truth forever and
+    // will defend it in every future application rather than catch it.
+    // Grounded against the original upload plus what the candidate told us.
+    const answered = ((session.answers as unknown as IntakeAnswer[] | null) ?? [])
+      .filter((a) => a.status === 'answered')
+      .map((a) => a.value);
+    assertResumeSource(
+      session.resumeCleanText,
+      [session.resumeOriginalText, ...answered],
+      'authored',
+      'welcome/finish',
+    );
 
     const loc = String(targetCity || '').trim() || null;
 
@@ -368,6 +395,14 @@ router.post('/finish', authenticate, async (req: AuthRequest, res: Response) => 
 
     res.json({ ok: true });
   } catch (err) {
+    if (err instanceof ResumeSourceError) {
+      // The rebuild retries on this three times, so reaching here means it kept
+      // producing figures with no source. Never persist it: this field is what
+      // every future application is built from and graded against.
+      console.error('[welcome/finish] resumeRawText gate refused the write:', err.message);
+      res.status(502).json({ error: 'We could not verify every figure on your resume. Please rebuild it and try again.' });
+      return;
+    }
     console.error('[welcome/finish]', err instanceof Error ? `${err.name}: ${err.message}` : String(err));
     res.status(502).json({ error: 'Could not complete setup, please try again.' });
   }

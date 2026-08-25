@@ -1,5 +1,10 @@
 /**
- * Per-IP sliding-window rate limiter for the public /api/cv-scan endpoint.
+ * Per-IP sliding-window rate limiter for the public resume upload.
+ *
+ * Written for /api/cv-scan; it moved to /api/welcome/brief when the cv-scan
+ * funnel was removed in Aug 2026 and the intake became the only front door.
+ * That endpoint is anonymous and each call costs a premium LLM request with the
+ * document attached, so it is the most expensive thing a stranger can trigger.
  *
  * Limits: 8 requests per IP per 15 minutes.
  * Stored in-memory — resets on server restart, which is acceptable since

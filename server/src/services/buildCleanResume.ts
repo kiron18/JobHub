@@ -20,7 +20,9 @@ import fs from 'fs';
 import path from 'path';
 import { callLLMWithRetry } from '../utils/callLLMWithRetry';
 import { EVIDENCE_RULE } from './intakeEvidenceRule';
+import { todayBlock } from './promptDate';
 import { DocumentSignals, describeSignals } from './documentSignals';
+import { findUngroundedFigures } from '../lib/groundingGate';
 import {
   MustKeep,
   RetentionResult,
@@ -66,6 +68,8 @@ const PROMPT = (
   targetRole: string | null,
   signals: string,
 ): string => `You are a professional Australian resume writer producing the definitive clean version of a candidate's resume. This single document becomes the source every future job application of theirs is built from, so it must be accurate, complete, and free of anything invented.
+
+${todayBlock()}
 
 ${EVIDENCE_RULE}
 ${signals ? `
@@ -152,6 +156,14 @@ export class ContentLossError extends Error {
   }
 }
 
+/** Raised when the rebuild keeps introducing figures that are in no source. */
+export class UngroundedFigureError extends Error {
+  constructor(public readonly figures: string[]) {
+    super(`Rebuilt resume introduced ${figures.length} unsourced figure(s): ${figures.slice(0, 5).join(', ')}`);
+    this.name = 'UngroundedFigureError';
+  }
+}
+
 export class BlankLeakError extends Error {
   constructor(public readonly blanks: string[]) {
     super(`Clean resume contained ${blanks.length} placeholder blank(s): ${blanks.slice(0, 5).join(', ')}`);
@@ -204,6 +216,7 @@ export async function buildCleanResume({
   // wrong. Naming the fault fixes it the overwhelming majority of the time,
   // which keeps the candidate out of it entirely.
   let lastBlanks: string[] = [];
+  let lastUngrounded: string[] = [];
   let lastRetention: RetentionResult | null = null;
   let correction = '';
 
@@ -217,6 +230,20 @@ export async function buildCleanResume({
     if (lastBlanks.length > 0) {
       console.warn(`[buildCleanResume] attempt ${attempt}: ${lastBlanks.length} blank(s)`);
       correction = `YOUR PREVIOUS ATTEMPT WAS REJECTED. It contained these forbidden square-bracket placeholders: ${lastBlanks.join(', ')}. Rewrite the resume with those lines carrying no figure and no brackets at all.`;
+      continue;
+    }
+
+    // No figure may appear that is not in the original or in something they told
+    // us. This is the check that keeps the base TRUE, as opposed to complete:
+    // retention below proves nothing was lost, and nothing else proves nothing
+    // was added. An invented number here becomes permanent, because from this
+    // point on it IS the source every generation is graded against.
+    const answerText = answers.filter((a) => a.status === 'answered').map((a) => a.value);
+    const ungrounded = findUngroundedFigures(content, [resumeText, ...answerText]);
+    lastUngrounded = ungrounded;
+    if (ungrounded.length > 0) {
+      console.warn(`[buildCleanResume] attempt ${attempt}: ${ungrounded.length} ungrounded figure(s): ${ungrounded.join(', ')}`);
+      correction = `YOUR PREVIOUS ATTEMPT WAS REJECTED. It contained these figures, which appear nowhere in the candidate's original resume and nowhere in what they told you: ${ungrounded.join(', ')}. You may not introduce a number. Rewrite those lines using only figures the original already contains, or with no figure at all.`;
       continue;
     }
 
@@ -236,5 +263,6 @@ export async function buildCleanResume({
   }
 
   if (lastBlanks.length > 0) throw new BlankLeakError(lastBlanks);
+  if (lastUngrounded.length > 0) throw new UngroundedFigureError(lastUngrounded);
   throw new ContentLossError(lastRetention?.missing ?? []);
 }

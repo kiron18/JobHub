@@ -6,6 +6,7 @@ import { extractTextFromBuffer } from '../services/pdf';
 import { generateDiagnosticReport, DiagnosticReportInput } from '../services/diagnosticReport';
 import { sendWelcomeEmail } from '../services/email';
 import { autoExtractAchievements } from '../services/autoExtract';
+import { assertResumeSource } from '../lib/resumeSourceGate';
 import { buildDailyFeed } from '../services/jobFeed';
 import { generateBaselineResume } from '../services/baselineResume';
 
@@ -91,6 +92,12 @@ router.post(
       const coverLetterText2 = cl2File
         ? await extractTextFromBuffer(cl2File.buffer, cl2File.mimetype, cl2File.originalname)
         : undefined;
+
+      // The gate on resumeRawText. Here the text IS the upload, so it grounds
+      // against itself and only the structural checks can fire, but this path
+      // still goes through the gate: a failed extraction that produced a few
+      // bytes must not become the source every generation is built from.
+      assertResumeSource(resumeText, [resumeText], 'human', 'onboarding/upload');
 
       // Upsert — new users have no profile row yet; create it on first onboarding.
       // NOTE: hasCompletedOnboarding is INTENTIONALLY not set here. It is only

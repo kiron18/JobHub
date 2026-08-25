@@ -1,5 +1,6 @@
 import { StrategyBlueprint } from './strategy';
 import { computeYearsOfExperience, todayIso } from '../../lib/profileMath';
+import { todayBlock } from '../promptDate';
 
 // =============================================================================
 // HYBRID ARCHITECTURE — STAGE 3 (Claude Sonnet quality gate)
@@ -305,7 +306,7 @@ CANDIDATE DATA
 ==============================================================
 IMPORTANT: If a section below is marked "(none — omit this section)" you MUST omit that entire section from the output. Do not write a heading, do not write placeholder text, do not say "Not provided". Simply leave it out.
 
-TODAY'S DATE: ${todayDate}${yearsOfExperience !== null ? `
+${todayBlock()}${yearsOfExperience !== null ? `
 TOTAL YEARS OF EXPERIENCE (pre-computed from work history — use verbatim, do NOT emit [VERIFY:] for this): ${yearsOfExperience}` : ''}
 
 Name: ${profile.name}
@@ -547,7 +548,6 @@ export const DOCUMENT_GENERATION_PROMPT = (
     interviewContextBlock?: string | null
 ) => {
     const isAcademicDoc = routeType === 'teaching-philosophy' || routeType === 'research-statement' || routeType === 'offer-negotiation' || routeType === 'linkedin-profile' || routeType === 'cold-outreach' || routeType === 'rejection-response';
-    const todayDate = todayIso();
     const yearsOfExperience = computeYearsOfExperience(profile?.experience);
     return `
 You are a career coach generating a ${type}.
@@ -564,7 +564,7 @@ ${analysisContext?.competencies?.map(c => `- ${c}`).join('\n') || "Map candidate
 CANDIDATE DATA:
 IMPORTANT: If a section below is marked "(none — omit this section)" you MUST omit that entire section from the output. Do not write a heading, do not write placeholder text, do not say "Not provided". Simply leave it out.
 
-TODAY'S DATE: ${todayDate}${yearsOfExperience !== null ? `
+${todayBlock()}${yearsOfExperience !== null ? `
 TOTAL YEARS OF EXPERIENCE (pre-computed from work history — use verbatim, do NOT emit [VERIFY:] for this): ${yearsOfExperience}` : ''}
 
 Name: ${profile.name}

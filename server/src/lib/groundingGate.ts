@@ -23,7 +23,7 @@ function extractNumbers(text: string): string[] {
 function normalizeNumber(num: string): string {
   return num
     .replace(/[.,]+$/, '')  // Strip trailing periods/commas (end of sentence)
-    .replace(/[$,+%\s]/g, '')
+    .replace(/[$,+%\s.]/g, '')  // '.' too: the source side has already had its punctuation stripped
     .toLowerCase();
 }
 
@@ -109,6 +109,40 @@ function normalizePhone(phone: string): string {
 }
 
 /**
+ * Every figure in `output` that appears in none of `sources`.
+ *
+ * Exported because two gates need exactly this question answered and must not
+ * answer it differently. The generation gate checks a generated document against
+ * resumeRawText; the resumeRawText gate (lib/resumeSourceGate.ts) checks
+ * resumeRawText itself against the original upload plus whatever the candidate
+ * told us. One definition of "grounded", or a figure rejected on the way out of
+ * generation is one that was waved into the source of truth on the way in.
+ *
+ * Years and figures sitting on date lines are exempt: they are structure, not
+ * claims about what the candidate did.
+ */
+export function findUngroundedFigures(output: string, sources: string[]): string[] {
+  // normalizeForMatch turns punctuation into spaces, so the source side has its
+  // whitespace stripped too and both sides compare as bare digit runs.
+  const haystack = sources
+    .filter(Boolean)
+    .map(s => normalizeForMatch(s).replace(/\s/g, ''))
+    .join(' ');
+
+  const lines = output.split('\n');
+  const ungrounded: string[] = [];
+
+  for (const num of extractNumbers(output)) {
+    if (isExemptYear(num)) continue;
+    const numLine = lines.find(line => line.includes(num));
+    if (numLine && isDateLine(numLine)) continue;
+    if (!haystack.includes(normalizeNumber(num))) ungrounded.push(num);
+  }
+
+  return [...new Set(ungrounded)];
+}
+
+/**
  * Checks if generated output is grounded in the source resume and job description.
  *
  * Checks performed:
@@ -128,29 +162,8 @@ export function checkGrounding(
   const combinedSource = normalizedResume + ' ' + normalizedJobDesc;
 
   // 1. Numbers check
-  const numbers = extractNumbers(output);
-  for (const num of numbers) {
-    // Skip exempt years
-    if (isExemptYear(num)) continue;
-
-    // Skip numbers in date lines
-    const lines = output.split('\n');
-    const numLine = lines.find(line => line.includes(num));
-    if (numLine && isDateLine(numLine)) continue;
-
-    const normalized = normalizeNumber(num);
-    // normalizeForMatch replaces punctuation with spaces, so we need to check
-    // if the normalized number (with spaces between digit groups) exists in the source
-    // Also create a space-stripped version for matching
-    const normalizedResumeForMatch = normalizeForMatch(resumeText).replace(/\s/g, '');
-    const normalizedJobDescForMatch = normalizeForMatch(jobDescription).replace(/\s/g, '');
-
-    const inResume = normalizedResumeForMatch.includes(normalized);
-    const inJobDesc = normalizedJobDescForMatch.includes(normalized);
-
-    if (!inResume && !inJobDesc) {
-      violations.push(`Number "${num}" does not appear in the resume or job description`);
-    }
+  for (const num of findUngroundedFigures(output, [resumeText, jobDescription])) {
+    violations.push(`Number "${num}" does not appear in the resume or job description`);
   }
 
   // 2. Employers check - check ### Role | Company headings

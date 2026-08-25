@@ -193,7 +193,11 @@ export const WelcomePage: React.FC = () => {
       setFindings(Array.isArray(data.findings) ? data.findings : []);
       setStrengths(Array.isArray(data.strengths) ? data.strengths : []);
       setQuestions(Array.isArray(data.questions) ? data.questions : []);
-      if (data.currentRole) setRoles([data.currentRole]);
+      // Seeded from suggestedTargetRole, not currentRole: the target is where
+      // they are going, and a current title like "Data Analyst (Intern)" would
+      // otherwise aim the whole rebuild at another internship.
+      const seed = data.suggestedTargetRole || data.currentRole;
+      if (seed) setRoles([seed]);
       setStep('brief');
     } catch (err: any) {
       trackWelcomeFailed('loading', 'brief_failed');

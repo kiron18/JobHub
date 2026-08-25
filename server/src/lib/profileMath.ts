@@ -5,6 +5,7 @@
  * without help. Compute these figures server-side, inject them as facts,
  * and exempt them from the quality gate's "fabricated metric" check.
  */
+import { sydneyToday } from '../services/promptDate';
 
 const MONTH_NAMES: Record<string, number> = {
     jan: 0, january: 0,
@@ -181,7 +182,11 @@ export function extractContactEmail(text: string | null | undefined): string | n
 
 /**
  * ISO yyyy-mm-dd for today, suitable for prompt injection.
+ *
+ * Sydney, not UTC. Every candidate and employer here is on Australian time, and
+ * a prompt that quotes today twice must never quote two different days, which
+ * is what a UTC date does for ten hours out of every twenty-four.
  */
 export function todayIso(): string {
-    return new Date().toISOString().slice(0, 10);
+    return sydneyToday().iso;
 }

@@ -18,6 +18,7 @@ import { authenticate, AuthRequest } from '../../middleware/auth';
 import {
   replaceLine, insertLine, removeLine, replaceDocument, describeEdit, BankEditResult,
 } from '../../services/bankEdit';
+import { assertResumeSource, ResumeSourceCheck } from '../../lib/resumeSourceGate';
 
 const router = Router();
 
@@ -27,7 +28,7 @@ const MAX_VERSIONS = 20;
 async function loadBank(userId: string) {
   return prisma.candidateProfile.findUnique({
     where: { userId },
-    select: { id: true, resumeRawText: true },
+    select: { id: true, resumeRawText: true, resumeOriginalText: true },
   });
 }
 
@@ -42,7 +43,21 @@ async function commit(
   previous: string,
   next: string,
   label: string,
-) {
+  sources: (string | null)[] = [],
+): Promise<ResumeSourceCheck> {
+  // The gate on resumeRawText, human mode. A candidate may legitimately add a
+  // real figure the original document never mentioned, so this never blocks the
+  // edit; it returns the figures we could not find a source for, so the UI can
+  // ask them to confirm rather than letting an unverifiable claim become the
+  // truth every future application is graded against. Length and placeholders
+  // still throw: those are defects, not claims.
+  const check = assertResumeSource(
+    next,
+    [previous, ...sources.filter((x): x is string => !!x)],
+    'human',
+    'bank/edit',
+  );
+
   await prisma.$transaction(async (tx) => {
     await tx.resumeVersion.create({
       data: { userId, candidateProfileId: profileId, label, rawText: previous },
@@ -63,6 +78,8 @@ async function commit(
       await tx.resumeVersion.deleteMany({ where: { id: { in: stale.map((s) => s.id) } } });
     }
   });
+
+  return check;
 }
 
 /** Shared handling so every edit route behaves identically on failure. */
@@ -89,12 +106,17 @@ async function applyEdit(
     return;
   }
 
-  await commit(userId, profile.id, previous, result.text, label);
+  const check = await commit(
+    userId, profile.id, previous, result.text, label, [profile.resumeOriginalText],
+  );
 
   res.json({
     ok: true,
     text: result.text,
     summary: describeEdit(previous, result.text),
+    // Figures we could not trace to their original resume. Not an error: the
+    // client asks them to confirm each one before it is relied on.
+    unverifiedFigures: check.ungroundedFigures,
   });
 }
 
@@ -143,7 +165,10 @@ router.put('/profile/bank', authenticate, async (req: AuthRequest, res: Response
       return;
     }
 
-    await commit(userId, profile.id, previous, result.text, 'Before editing your bank');
+    const check = await commit(
+      userId, profile.id, previous, result.text, 'Before editing your bank',
+      [profile.resumeOriginalText],
+    );
 
     const c = result.change!;
     const parts: string[] = [];
@@ -155,6 +180,7 @@ router.put('/profile/bank', authenticate, async (req: AuthRequest, res: Response
       text: result.text,
       summary: parts.length ? `Saved. ${parts.join(', ')}.` : 'Saved.',
       warning: c.warning ?? null,
+      unverifiedFigures: check.ungroundedFigures,
     });
   } catch (err) {
     console.error('[profile/bank] save failed:', err);
@@ -232,7 +258,12 @@ router.post('/profile/bank/undo', authenticate, async (req: AuthRequest, res: Re
       return;
     }
 
-    await commit(userId, profile.id, profile.resumeRawText ?? '', last.rawText, 'Before undo');
+    // An undo restores a document that already passed the gate on its way in,
+    // so it is grounded against itself and can only trip the structural checks.
+    await commit(
+      userId, profile.id, profile.resumeRawText ?? '', last.rawText, 'Before undo',
+      [last.rawText, profile.resumeOriginalText],
+    );
     await prisma.resumeVersion.delete({ where: { id: last.id } });
 
     res.json({ ok: true, text: last.rawText, summary: 'Undone.' });

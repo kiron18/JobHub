@@ -39,6 +39,21 @@ function countEmDashes(text: string): number {
 }
 
 /**
+ * Replace em dashes with the spaced hyphen the prompt asks for.
+ *
+ * This is the deterministic half of the em dash rule. The rule below still
+ * stands and still fires - this just stops us paying for a full LLM retry to
+ * perform a one-character substitution. The em dash usually is not even the
+ * model's invention: it arrives in the job ad's own title line, gets copied
+ * into the header correctly, and then trips the gate.
+ */
+export function normalizeEmDashes(text: string): string {
+  return text
+    .replace(/\s*—\s*/g, ' - ')
+    .replace(/ +$/gm, '');
+}
+
+/**
  * Check for banned phrases (case-insensitive).
  */
 function checkBannedPhrases(text: string): StyleViolation[] {

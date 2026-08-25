@@ -1,4 +1,5 @@
 import { callClaude, PREMIUM_MODEL } from './llm';
+import { todayBlock } from './promptDate';
 import type { AtsStructure } from '../lib/atsStructure';
 
 // ── Exported types (frozen — do not change shape) ────────────────────────────
@@ -166,11 +167,15 @@ function computeSignals(resumeText: string): DeterministicSignals {
 
 // ── Step 2 – LLM call ────────────────────────────────────────────────────────
 
-// The instruction block is byte-for-byte identical on every scan, so it is sent
-// as a cacheable system prefix (see callClaude's `cachedSystem`). Keep it free of
-// any per-resume data — the moment a resume leaks in here, the cache stops hitting.
+// The instruction block is identical on every scan, so it is sent as a cacheable
+// system prefix (see callClaude's `cachedSystem`). Keep it free of any per-resume
+// data — the moment a resume leaks in here, the cache stops hitting. The current
+// date is fine here: it is per-DAY, not per-resume, so every scan in a day shares
+// the same prefix and the cache TTL never sees the rollover.
 function buildScanInstructions(): string {
   return `You are a senior Australian recruiter doing a fast first-scan of a CV.
+
+${todayBlock()}
 
 PUNCTUATION RULE (absolute): NEVER use an em dash (—) or en dash (–) anywhere in any string you output. They are banned. Use a comma, a full stop, a colon, or the word "and" instead. This applies to every field without exception.
 
