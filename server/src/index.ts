@@ -26,6 +26,7 @@ import linkedinRouter from './routes/linkedin';
 import webhooksRouter from './routes/webhooks';
 import skoolRouter from './routes/skool';
 import jobFeedRouter from './routes/job-feed';
+import fitRouter from './routes/fit';
 import trackerRouter, { localExperienceRouter } from './routes/tracker';
 import leaderboardRouter from './routes/leaderboard';
 import coachRouter from './routes/coach';
@@ -62,6 +63,7 @@ import emailContactRouter from './email/admin/contactRoutes';
 import emailTagRouter from './email/admin/tagRoutes';
 import emailBroadcastRouter from './email/admin/broadcastRoutes';
 import emailAnalyticsRouter from './email/admin/analyticsRoutes';
+import { runWithRequestContext } from './lib/requestContext';
 
 dotenv.config();
 
@@ -151,6 +153,10 @@ app.use((req, res, next) => {
     next();
 });
 
+// Per-request context. Must be mounted before the routes so the auth middleware
+// (which runs per-route) has a store to write the user id into.
+app.use((_req, _res, next) => runWithRequestContext(() => next()));
+
 // Routes
 app.use('/api/health', healthRouter);
 app.use('/api/auth', authRouter);
@@ -169,6 +175,7 @@ app.use('/api/linkedin', linkedinRouter);
 app.use('/api/webhooks', webhooksRouter);
 app.use('/api/skool', skoolRouter);
 app.use('/api/job-feed', jobFeedRouter);
+app.use('/api/fit', fitRouter);
 app.use('/api/tracker', trackerRouter);
 app.use('/api/tracker', localExperienceRouter);
 app.use('/api/leaderboard', leaderboardRouter);

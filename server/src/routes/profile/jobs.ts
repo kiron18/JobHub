@@ -166,7 +166,7 @@ router.patch('/jobs/:id', authenticate, async (req, res) => {
         // Fetch current status before update so we can detect a genuine transition.
         const existing = await prisma.jobApplication.findFirst({
             where: { id, candidateProfile: { userId } },
-            select: { status: true, title: true, company: true, interviewReachedAt: true, offerReachedAt: true, dateApplied: true },
+            select: { status: true, title: true, company: true, description: true, interviewReachedAt: true, offerReachedAt: true, dateApplied: true },
         });
 
         // Milestone timestamps power the leaderboard: stamp the first time a job
@@ -211,7 +211,6 @@ router.patch('/jobs/:id', authenticate, async (req, res) => {
             include: { documents: true }
         });
 
-        // Fire status-triggered email — best-effort, never blocks the response.
         const statusChanged = status && existing && status !== existing.status;
         if (statusChanged && (status === 'APPLIED' || status === 'REJECTED')) {
             // Resolve the user's email from their auth record.
@@ -225,6 +224,31 @@ router.patch('/jobs/:id', authenticate, async (req, res) => {
                 }).catch((err: any) => {
                     console.error('[jobs] Status email failed (non-fatal):', err?.message ?? err);
                 });
+            }
+        }
+
+        // Attach the documents written for this advert.
+        //
+        // Creating a job links them; updating one never did, because a tracker
+        // row used to be created at the end of the workspace. It is now created
+        // at the start, by the fit check, and only moved to APPLIED here, so
+        // without this the documents for every application made through the
+        // front door would sit unlinked. Runs after the email, because a linked
+        // document must never cost someone their status email. Idempotent, and
+        // never fatal: the status change is already saved.
+        if (statusChanged && isSentStatus(status) && existing?.description) {
+            try {
+                const linked = await linkDocumentsToApplication(userId, id, existing.description);
+                if (linked > 0) {
+                    console.log(`[jobs] linked ${linked} document(s) to application ${id} on status change`);
+                    const withDocs = await prisma.jobApplication.findUnique({
+                        where: { id },
+                        include: { documents: true },
+                    });
+                    if (withDocs) return res.json(withDocs);
+                }
+            } catch (err: any) {
+                console.error('[jobs] document linking failed (non-fatal):', err?.message ?? err);
             }
         }
 

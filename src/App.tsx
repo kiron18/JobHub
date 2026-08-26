@@ -10,6 +10,7 @@ import { OnboardingGate } from './components/OnboardingGate';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 const ApplicationTracker   = React.lazy(() => import('./components/ApplicationTracker').then(m => ({ default: m.ApplicationTracker })));
+const FitCheckPage         = React.lazy(() => import('./pages/FitCheckPage'));
 const ProfileBank          = React.lazy(() => import('./components/ProfileBank').then(m => ({ default: m.ProfileBank })));
 const DocumentLibrary      = React.lazy(() => import('./components/DocumentLibrary').then(m => ({ default: m.DocumentLibrary })));
 const EmailTemplatesLibrary = React.lazy(() => import('./components/EmailTemplatesLibrary').then(m => ({ default: m.EmailTemplatesLibrary })));
@@ -450,6 +451,7 @@ function ReportOrDashboard() {
                 <Route path="/" element={<StrategyHub />} />
                 <Route path="/tracker" element={<ApplicationTracker />} />
                 <Route path="/leaderboard" element={<LeaderboardPage />} />
+                <Route path="/check" element={<FitCheckPage />} />
                 <Route path="/apply" element={<StepperWorkspace />} />
                 <Route path="/interview/:jobId" element={<InterviewPrepWorkspace />} />
                 <Route path="/answer-bank" element={<AnswerBankIntakePage />} />

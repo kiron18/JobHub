@@ -1,0 +1,22 @@
+Data Engineer
+Canva | Sydney, NSW (Hybrid)
+
+About the role:
+Join our Data Platform team building the pipelines that move billions of events a day into the warehouse our analysts and ML teams depend on.
+
+Key responsibilities:
+- Build and maintain batch and streaming data pipelines
+- Work with Kafka and a stream processing framework such as Flink or Spark Streaming
+- Model data for downstream analytics consumption in Parquet and Avro
+- Optimise SQL and warehouse performance, including partitioning and indexing
+- Own ETL jobs end to end, including monitoring, alerting and data quality checks
+- Maintain metadata and lineage so the platform stays auditable
+
+Requirements:
+- 2+ years in a data engineering role
+- Strong SQL and Python
+- Hands on experience with Kafka
+- Experience with Spark or Flink
+- Cloud data platform experience (GCP, AWS or Azure)
+- Comfortable with CI/CD and code review
+- Degree in Computer Science, Engineering or a related field

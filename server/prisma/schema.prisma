@@ -256,6 +256,15 @@ model JobApplication {
   /// conversations, and generating one document for both is what made the old
   /// prep generic. Null means it has not been chosen yet.
   interviewStage      String?
+  /// The free tier's fit check: the whole FitReport object as returned, so the
+  /// result screen can be reopened without paying for the call twice.
+  /// Deliberately separate from `dimensions`/`overallGrade`, which are the
+  /// paid MatchEngine's output and answer a different question.
+  fitReport           Json?
+  /// The report's headline number, lifted out so a job list can sort and show
+  /// it without deserialising every row's JSON.
+  fitScore            Int?
+  fitCheckedAt        DateTime?
   documents           Document[]
   candidateProfile    CandidateProfile  @relation(fields: [candidateProfileId], references: [id])
 

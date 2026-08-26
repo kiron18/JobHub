@@ -1,0 +1,21 @@
+Senior .NET Developer
+Westpac | Sydney, NSW (Hybrid)
+
+About the role:
+We are hiring a senior developer to lead work on our core banking integration services.
+
+Key responsibilities:
+- Design and build services in C# and .NET
+- Design and consume RESTful APIs across internal and partner systems
+- Write and tune SQL Server queries and stored procedures
+- Lead a small team of developers and run code reviews
+- Work with architects on system design and technical documentation
+- Support and improve CI/CD pipelines
+
+Requirements:
+- 8+ years of professional software engineering experience
+- Deep .NET and C# expertise
+- Strong SQL Server skills
+- API design and integration experience
+- Experience leading a technical team or acting as technical lead
+- Experience in banking, finance or another regulated industry preferred

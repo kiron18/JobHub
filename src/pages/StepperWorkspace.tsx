@@ -49,6 +49,7 @@ import { toast } from 'sonner';
 import api from '../lib/api';
 import { warm } from '../lib/theme/warmTokens';
 import { GenerationProgress } from '../components/shared/GenerationProgress';
+import { FollowUpCard } from '../components/fit/FollowUpCard';
 import { applyWorkspaceCopy } from './applyWorkspaceCopy';
 import { extractReactText } from '../lib/extractReactText';
 
@@ -266,6 +267,8 @@ export function StepperWorkspace() {
         feedItemId?: string;
         sourceUrl?: string;
         sourcePlatform?: string;
+        /** The tracker row the fit check already created for this ad. */
+        fitJobId?: string;
     };
     const APPLY_CTX_KEY = 'apply:context';
     const state = useMemo<ApplyState>(() => {
@@ -302,14 +305,17 @@ export function StepperWorkspace() {
             { id: 'resume',        label: 'Resume',          icon: <FileText size={14} /> },
             { id: 'cover-letter',  label: 'Cover Letter',    icon: <Mail size={14} /> },
         ];
-        // SC step is always present but always opt-in: it never sits in the
-        // default forward flow (cover letter advances straight to Track/Apply).
-        // Most jobs have no selection criteria, so the user reaches it only via
-        // the discreet manual link near the step chips when they actually need it.
+        // Selection criteria is a step inside this application, not a separate
+        // job. When the ad asks for criteria it sits in the forward flow right
+        // after the cover letter, so nobody has to hunt for it and nobody gets
+        // sent back to the start to finish a cover letter they already wrote.
+        // When the ad says nothing, it stays off the path and is reachable only
+        // through the discreet link by the step chips, because most jobs never
+        // want one.
         base.push({
             id: 'selection-criteria', label: 'Selection Criteria',
             icon: <ListChecks size={14} />, optional: true,
-            manualOnly: true,
+            manualOnly: !wantsSC,
         });
         base.push({ id: 'track', label: 'Track', icon: <Briefcase size={14} /> });
         return base;
@@ -489,6 +495,7 @@ export function StepperWorkspace() {
                         feedItemId={state.feedItemId}
                         sourceUrl={state.sourceUrl}
                         sourcePlatform={state.sourcePlatform}
+                        fitJobId={state.fitJobId}
                     />
                 ) : (
                     <DocumentStep
@@ -1623,6 +1630,22 @@ function DocumentStep({
                             Regenerate
                         </button>
                     )}
+                    {/*
+                        The criteria usually live in a separate position
+                        description, often behind a login the candidate cannot
+                        get through. Without a way past this screen that is a
+                        dead end, which is the trap this rebuild exists to
+                        remove. Quiet, but a real button, not a grey hint.
+                    */}
+                    {!hasDraft && isSC && !generating && (
+                        <button
+                            onClick={onContinue}
+                            style={ghostButtonStyle(false)}
+                            title="Carry on without a criteria response. You can come back to this from your tracker."
+                        >
+                            Skip for now
+                        </button>
+                    )}
                     {!hasDraft && isSC && (
                         <button
                             onClick={() => generate(false)}
@@ -1699,6 +1722,7 @@ function TrackStep({
     feedItemId,
     sourceUrl,
     sourcePlatform,
+    fitJobId,
 }: {
     jobDescription: string;
     wantsSC: boolean;
@@ -1710,6 +1734,7 @@ function TrackStep({
     feedItemId?: string;
     sourceUrl?: string;
     sourcePlatform?: string;
+    fitJobId?: string;
 }) {
     const navigate = useNavigate();
     const [autoSaveError, setAutoSaveError] = useState(false);
@@ -1749,6 +1774,19 @@ function TrackStep({
         (async () => {
             const appliedAt = new Date().toISOString();
             try {
+                // Every application now starts at the fit check, which already
+                // wrote this ad into the tracker as SAVED. Moving that row to
+                // APPLIED is the whole job here. Creating a second one would
+                // double every applied count in the product.
+                if (fitJobId) {
+                    await api.patch(`/jobs/${fitJobId}`, { status: 'APPLIED', dateApplied: appliedAt });
+                    if (!cancelled) {
+                        localStorage.setItem(flag, appliedAt);
+                        setSavedAt(appliedAt);
+                        localStorage.setItem('jobhub_last_apply_at', appliedAt);
+                    }
+                    return;
+                }
                 await api.post('/jobs', {
                     title: role ?? 'Untitled role',
                     // No placeholder. Most Australian ads never name the hiring
@@ -1778,7 +1816,41 @@ function TrackStep({
             }
         })();
         return () => { cancelled = true; };
-    }, [workspaceKey, jobDescription, role, company, agency, sourceUrl]);
+    }, [workspaceKey, jobDescription, role, company, agency, sourceUrl, fitJobId]);
+
+    /**
+     * Every document this application actually produced. Built from what is on
+     * disk rather than from what the flow expected, so a skipped criteria step
+     * simply is not in the list.
+     */
+    const readyDrafts = useMemo(
+        () => ([
+            { step: 'resume' as const, label: 'Resume', draft: resumeDraft },
+            { step: 'cover-letter' as const, label: 'Cover letter', draft: coverDraft },
+            { step: 'selection-criteria' as const, label: 'Selection criteria', draft: loadDraft(workspaceKey, 'selection-criteria') },
+        ].filter((d): d is { step: GenerateType; label: string; draft: PersistedDraft } => d.draft !== null)),
+        [workspaceKey, resumeDraft, coverDraft],
+    );
+
+    const [downloadingAll, setDownloadingAll] = useState(false);
+
+    const downloadAll = async () => {
+        if (downloadingAll) return;
+        setDownloadingAll(true);
+        try {
+            const { exportDocx } = await import('../lib/exportDocx');
+            for (const d of readyDrafts) {
+                await exportDocx(d.draft.content, d.step, candidateName, role, company);
+                // Browsers throttle back-to-back saves from one gesture. A short
+                // gap is the difference between three files and one.
+                await new Promise((r) => setTimeout(r, 400));
+            }
+        } catch {
+            toast.error('Could not download them all. Try one at a time from each step.');
+        } finally {
+            setDownloadingAll(false);
+        }
+    };
 
     return (
         <div style={{
@@ -1809,6 +1881,42 @@ function TrackStep({
                 <DraftRow label="Cover letter" ready={drafted.cover} />
                 {wantsSC && <DraftRow label="Selection criteria" ready={drafted.sc} />}
             </div>
+
+            {/*
+                One button for the lot. Downloading each document from its own
+                step works, but it means going back through three screens at the
+                exact moment someone is ready to leave and apply.
+            */}
+            {readyDrafts.length > 0 && (
+                <div>
+                    <button
+                        onClick={downloadAll}
+                        disabled={downloadingAll}
+                        style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 8,
+                            padding: '11px 18px', fontSize: 13.5, fontWeight: 700,
+                            fontFamily: 'inherit', color: warm.colors.textOnDeep,
+                            background: warm.colors.accentPetrol, border: 'none',
+                            borderRadius: 10, cursor: downloadingAll ? 'wait' : 'pointer',
+                            opacity: downloadingAll ? 0.7 : 1,
+                        }}
+                    >
+                        {downloadingAll
+                            ? (<><Loader2 size={14} className="animate-spin" /> Downloading…</>)
+                            : (<><Download size={14} /> Download all {readyDrafts.length} documents</>)}
+                    </button>
+                    <p style={{ margin: '8px 0 0', fontSize: 11.5, color: warm.colors.textMuted }}>
+                        Word format. Your browser may ask permission to save more than one file.
+                    </p>
+                </div>
+            )}
+
+            {/*
+                The tracker earning its keep, at the only moment it can. They
+                have just done the work; the follow-up is the one thing left,
+                and it is the thing almost nobody does.
+            */}
+            <FollowUpCard variant="armed" />
 
             {/* Compact tracker chip with hover tooltip. The full explanation
                 lives in the tooltip, not the layout, so the Track screen reads
@@ -2064,6 +2172,38 @@ function CriteriaPanel({
                                 <p style={{ margin: '0 0 10px', fontSize: 12.5, color: warm.colors.textMuted, lineHeight: 1.55, fontStyle: 'italic', padding: '8px 12px', border: `1px solid ${warm.colors.borderWhisper}`, borderRadius: 8, background: warm.colors.bgCanvas }}>
                                     We didn't find a selection criteria requirement in this job. If the role asks for one, paste it below. Otherwise you're done — focus on getting your application in.
                                 </p>
+                            )}
+                            {/*
+                                Where to find them, on screen and staying there.
+                                This used to live only in the placeholder, which
+                                disappears the moment anyone types, so the person
+                                who most needed it lost it at the first keystroke.
+                                The criteria are almost never in the ad itself.
+                            */}
+                            {jobHasSC && !hasCriteria && (
+                                <div style={{
+                                    margin: '0 0 12px', padding: '12px 14px',
+                                    border: `1px solid ${warm.colors.borderWhisper}`,
+                                    borderRadius: 10, background: warm.colors.bgCanvas,
+                                }}>
+                                    <p style={{ margin: '0 0 8px', fontSize: 12.5, fontWeight: 700, color: warm.colors.textPrimary }}>
+                                        This ad asks you to address selection criteria. Here is where they hide.
+                                    </p>
+                                    <ol style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                        <li style={{ fontSize: 12.5, lineHeight: 1.55, color: warm.colors.textSecondary }}>
+                                            Open the ad and look for a Position Description, Information Pack or Candidate Pack. It is usually a PDF link near the bottom.
+                                        </li>
+                                        <li style={{ fontSize: 12.5, lineHeight: 1.55, color: warm.colors.textSecondary }}>
+                                            Inside it, find the heading "Selection Criteria", "Key Selection Criteria" or "Capabilities". They are numbered.
+                                        </li>
+                                        <li style={{ fontSize: 12.5, lineHeight: 1.55, color: warm.colors.textSecondary }}>
+                                            Copy all of them together and paste them below. They are not the same as the bullet list in the ad.
+                                        </li>
+                                    </ol>
+                                    <p style={{ margin: '10px 0 0', fontSize: 12, lineHeight: 1.55, color: warm.colors.textMuted }}>
+                                        Cannot get to the document? Skip for now and come back to this from your tracker.
+                                    </p>
+                                </div>
                             )}
                             <textarea
                                 value={buffer}

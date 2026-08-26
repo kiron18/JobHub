@@ -24,13 +24,15 @@ import { FirstApplicationCelebration } from '../components/FirstApplicationCeleb
 import type { JobFeedItem } from '../components/jobs/JobCard';
 import { DailyProgressBar } from '../components/jobs/DailyProgressBar';
 import { warm } from '../lib/theme/warmTokens';
+import { jdMentionsSelectionCriteria } from '../lib/selectionCriteria';
 import { extractJobFacts } from '../lib/extractJobFacts';
 import { classifyPaste, isSubmittable, pasteHint } from '../lib/seekLink';
 import { HowToCopyJobAd } from '../components/strategy/HowToCopyJobAd';
 
 /** Detect whether a job description mentions selection criteria. */
-export const jdMentionsSelectionCriteria = (jd: string): boolean =>
-  /selection criteria|key selection criteria|statement of claims|address the following criteria|capability statement/i.test(jd || '');
+// Lives in its own module so the dashboard, the fit check and the stepper all
+// read an ad the same way. Re-exported here for existing importers.
+export { jdMentionsSelectionCriteria };
 
 // Hidden on the dashboard per founder request (kept wired for easy restore).
 const SHOW_DASHBOARD_INSIGHTS = false;
@@ -418,7 +420,9 @@ function AnalysisHeroCard() {
             toast.error('Could not start that application. Please try again.');
             return;
         }
-        navigate('/apply', {
+        // One door. Every application starts with the fit check, feed jobs
+        // included, so nobody spends an hour on a job they cannot win.
+        navigate('/check', {
             state: {
                 jobDescription,
                 company: job.company,
@@ -514,7 +518,7 @@ function AnalysisHeroCard() {
     }>(null);
 
     const goToApply = (opts: { company?: string; role?: string; agency?: string }) => {
-        navigate('/apply', {
+        navigate('/check', {
             state: {
                 jobDescription: trimmed,
                 sc: jdMentionsSelectionCriteria(trimmed),
@@ -538,7 +542,7 @@ function AnalysisHeroCard() {
                 const { data } = await api.post('/extract/from-url', { url: pasted.url });
                 const job = data?.job;
                 if (!job?.description) throw new Error('no job');
-                navigate('/apply', {
+                navigate('/check', {
                     state: {
                         jobDescription: job.description,
                         sc: jdMentionsSelectionCriteria(job.description),
@@ -573,8 +577,9 @@ function AnalysisHeroCard() {
         }
 
         try {
-            // Navigate directly to apply - generation will handle access control
-            navigate('/apply', {
+            // Into the check, not straight into generation. The report is where
+            // the decision gets made, and where the resume button now lives.
+            navigate('/check', {
                 state: {
                     jobDescription: trimmed,
                     sc: jdMentionsSelectionCriteria(trimmed),
@@ -619,6 +624,13 @@ function AnalysisHeroCard() {
 
             <JobStream onApply={handleStreamApply} applyingId={applyingId} appliedId={appliedFeedItemId} />
 
+            {/*
+                One door. There used to be a second button here for selection
+                criteria, which made the dashboard a menu and left people picking
+                a lane before they knew which lane they were in. Selection
+                criteria is now a step inside the application, offered when the
+                ad actually asks for it.
+            */}
             <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
                 <button
                     onClick={() => setShowPaste(v => !v)}
@@ -629,16 +641,6 @@ function AnalysisHeroCard() {
                     }}
                 >
                     Paste your own job
-                </button>
-                <button
-                    onClick={() => { setShowPaste(true); }}
-                    style={{
-                        flex: 1, padding: '12px 16px', borderRadius: 12,
-                        border: `1px solid ${warm.colors.borderDefined}`, background: 'transparent',
-                        color: warm.colors.textSecondary, fontSize: 13.5, fontWeight: 600, cursor: 'pointer',
-                    }}
-                >
-                    Selection criteria
                 </button>
             </div>
 
@@ -838,11 +840,11 @@ function AnalysisHeroCard() {
                     {analysing ? (
                         <>
                             <Loader2 size={16} className="animate-spin" />
-                            {isLink ? 'Reading the ad…' : 'Applying…'}
+                            Reading the ad…
                         </>
                     ) : (
                         <>
-                            Apply
+                            Check this job
                             <ChevronRight size={16} />
                         </>
                     )}
