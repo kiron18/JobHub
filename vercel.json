@@ -5,6 +5,7 @@
   "rewrites": [
     { "source": "/assets/(.*)", "destination": "/assets/$1" },
     { "source": "/free/(.*\\..*)", "destination": "/free/$1" },
+    { "source": "/offer", "destination": "/offer.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

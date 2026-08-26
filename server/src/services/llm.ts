@@ -1,5 +1,6 @@
 import axios from 'axios';
 import dotenv from 'dotenv';
+import { getContextUserId } from '../lib/requestContext';
 
 dotenv.config();
 
@@ -46,6 +47,9 @@ export async function callLLM(
                 model: process.env.FAST_MODEL || 'anthropic/claude-sonnet-4-5',
                 temperature,
                 max_tokens: maxTokens,
+                // Attributes this call to a person in the OpenRouter activity
+                // export. Omitted for anonymous/background work.
+                ...(getContextUserId() ? { user: getContextUserId() } : {}),
                 messages: [
                     {
                         role: 'system',
@@ -130,6 +134,7 @@ export async function callClaude(
                 model: modelSlug,
                 ...(supportsTemperature ? { temperature: 0 } : {}),
                 max_tokens: 8192,
+                ...(getContextUserId() ? { user: getContextUserId() } : {}),
                 messages: [
                     systemMessage,
                     {

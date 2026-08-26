@@ -637,10 +637,17 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
             return res.status(402).json(denyPayload(access, 'Generation'));
         }
 
-        // Load profile: scalars only, no includes
+        // Education and certifications come along because they may be rendered
+        // deterministically instead of written (see buildProfileSections).
         const profile = await prisma.candidateProfile.findUnique({
             where: { userId },
-            select: { id: true, name: true, resumeRawText: true },
+            select: {
+                id: true,
+                name: true,
+                resumeRawText: true,
+                education: true,
+                certifications: true,
+            },
         });
 
         if (!profile) {
@@ -657,9 +664,23 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
         // Build prompt and generate
         const { RESUME_V2_PROMPT } = await import('../services/prompts/generationV2');
         const { checkGrounding } = await import('../lib/groundingGate');
-        const { checkStyle, formatStyleViolationsForRetry } = await import('../lib/styleLint');
+        const { checkStyle, formatStyleViolationsForRetry, normalizeEmDashes } = await import('../lib/styleLint');
+        const { buildProfileSections, spliceProfileSections } = await import('../lib/profileSections');
+        const { groundSkillsSection } = await import('../lib/groundSkills');
 
-        const prompt = RESUME_V2_PROMPT(profile.resumeRawText, jobDescription);
+        // ── Sections we can render ourselves ────────────────────────────────
+        // Only the ones the stored data covers completely. An incomplete
+        // education record renders nothing and the model writes that section as
+        // it always has, so a thin profile never produces a thinner resume.
+        const profileSections = buildProfileSections(profile);
+        const suppliedNames = profileSections.map(
+            (s) => s.heading.replace('## ', '') as 'Education' | 'Certifications' | 'Referees',
+        );
+        if (suppliedNames.length) {
+            console.log(`[ResumeStructured] Supplying deterministically: ${suppliedNames.join(', ')}`);
+        }
+
+        const prompt = RESUME_V2_PROMPT(profile.resumeRawText, jobDescription, suppliedNames);
 
         console.log('[ResumeStructured] Generating resume (V2 single pass)...');
         const { content: rawOutput, usage } = await callClaude(prompt, false, undefined, PREMIUM_MODEL);
@@ -679,13 +700,18 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
         }
 
         // Shape check: must contain required sections in order
+        // A section we are going to supply ourselves is guaranteed to be in the
+        // finished document whether or not the model left room for it, so it
+        // must not be able to fail the shape check and force a regeneration.
+        const suppliedEducation = profileSections.some((s) => s.key === 'education');
+
         function passesShapeCheck(text: string): boolean {
             const checks = [
                 text.includes('# '),
                 text.includes('## Professional Summary'),
                 text.includes('## Work Experience'),
                 text.includes('### '),
-                text.includes('## Education'),
+                suppliedEducation || text.includes('## Education'),
                 text.includes('## Skills'),
             ];
             return checks.every(Boolean);
@@ -718,6 +744,10 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
             }
         }
 
+        // Em dashes are fixed here, not by burning a second full-price LLM call
+        // on a character substitution. The style rule below still runs.
+        finalContent = normalizeEmDashes(finalContent);
+
         // Grounding gate check + Style lint check (Phase 2)
         let groundingWarnings: string[] = [];
         const groundingResult = checkGrounding(finalContent, profile.resumeRawText, jobDescription);
@@ -749,6 +779,9 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
                 if (lines[lines.length - 1].startsWith('```')) lines.pop();
                 retryContent = lines.join('\n').trim();
             }
+
+            // Same deterministic dash fix on the repair before it is re-scored.
+            retryContent = normalizeEmDashes(retryContent);
 
             // The retry must still hold the required structure; if it broke the
             // shape, keep the original shape-valid content and warn on it instead.
@@ -799,6 +832,23 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
         const { boldMetricsInMarkdown, capEmphasisInMarkdown } = await import('../lib/boldEmphasis');
         const { verifyEmphasisPass } = await import('../lib/emphasisPass');
 
+        // ── Deterministic assembly ──────────────────────────────────────────
+        // Before emphasis, so the emphasis pass reads a finished document and
+        // never has to round-trip a placeholder it might not return verbatim.
+        // The gate has already run: it judges the model's own words, and a
+        // spliced fact must never be able to trigger a regeneration.
+        const splice = spliceProfileSections(finalContent, profileSections);
+        finalContent = splice.content;
+        if (splice.applied.length) {
+            console.log(`[ResumeStructured] Spliced: ${splice.applied.join(', ')}`);
+        }
+        if (splice.appended.length) {
+            console.warn(`[ResumeStructured] No heading found, appended: ${splice.appended.join(', ')}`);
+        }
+        if (splice.orphanedMarkers > 0) {
+            console.warn(`[ResumeStructured] Stripped ${splice.orphanedMarkers} unmatched placeholder(s)`);
+        }
+
         let emphasisApplied = false;
         try {
             const { EMPHASIS_PASS_PROMPT } = await import('../services/prompts/emphasisPass');
@@ -828,6 +878,31 @@ router.post('/resume-structured', authenticate, async (req: any, res: any) => {
         if (!emphasisApplied) {
             finalContent = boldMetricsInMarkdown(finalContent);
         }
+
+        // Re-splice, so a supplied section is byte-for-byte what the profile
+        // holds no matter what the emphasis pass did to it. The verifier already
+        // forbids changing a non-bullet line, but a certification renders AS a
+        // bullet, and a bolded qualification is exactly the keyword-stuffed look
+        // the emphasis rules exist to prevent. Idempotent, so this costs nothing
+        // when the pass behaved.
+        finalContent = spliceProfileSections(finalContent, profileSections).content;
+
+        // The grounding gate has never looked at the Skills section, which is
+        // exactly where a model lifts a tool out of the job ad and hands the
+        // candidate something they cannot answer for. Only named tools are ever
+        // removed; a described competency is the writer doing their job.
+        const skillCheck = groundSkillsSection(finalContent, profile.resumeRawText);
+        finalContent = skillCheck.content;
+        if (skillCheck.dropped.length) {
+            console.warn(`[ResumeStructured] Removed unsupported skills: ${skillCheck.dropped.join(', ')}`);
+        }
+        if (skillCheck.abstained) {
+            console.warn('[ResumeStructured] Skills filter abstained: too much of the section would have gone');
+        }
+
+        // Spliced content came from the database, not the model, so it has not
+        // been through the style normalisation the generated text has.
+        finalContent = normalizeEmDashes(finalContent);
 
         // Estimate pages: ~45 non-empty lines per A4 page at standard margins.
         const nonEmptyLines = finalContent.split('\n').filter(l => l.trim().length > 0).length;
@@ -925,7 +1000,7 @@ router.post('/cover-letter-structured', authenticate, async (req: any, res: any)
         // Build prompt and generate
         const { COVER_LETTER_V2_PROMPT } = await import('../services/prompts/generationV2');
         const { checkGrounding } = await import('../lib/groundingGate');
-        const { checkStyle, formatStyleViolationsForRetry } = await import('../lib/styleLint');
+        const { checkStyle, formatStyleViolationsForRetry, normalizeEmDashes } = await import('../lib/styleLint');
 
         const prompt = COVER_LETTER_V2_PROMPT(profile.resumeRawText, jobDescription, generatedResume);
 
@@ -973,6 +1048,9 @@ router.post('/cover-letter-structured', authenticate, async (req: any, res: any)
                 retryContent = lines.join('\n').trim();
             }
 
+            // Same deterministic dash fix on the repair before it is re-scored.
+            retryContent = normalizeEmDashes(retryContent);
+
             shapePassed = passesShapeCheck(retryContent);
             if (!shapePassed) {
                 console.error('[CoverLetterStructured] Shape check failed after retry');
@@ -980,6 +1058,10 @@ router.post('/cover-letter-structured', authenticate, async (req: any, res: any)
             }
             finalContent = retryContent;
         }
+
+        // Em dashes are fixed here, not by burning a second full-price LLM call
+        // on a character substitution. The style rule below still runs.
+        finalContent = normalizeEmDashes(finalContent);
 
         // Grounding gate check + Style lint check (Phase 2)
         let groundingWarnings: string[] = [];
@@ -1012,6 +1094,9 @@ router.post('/cover-letter-structured', authenticate, async (req: any, res: any)
                 if (lines[lines.length - 1].startsWith('```')) lines.pop();
                 retryContent = lines.join('\n').trim();
             }
+
+            // Same deterministic dash fix on the repair before it is re-scored.
+            retryContent = normalizeEmDashes(retryContent);
 
             // The retry must still hold the letter shape; if it broke it, keep the
             // original shape-valid letter and warn on it instead.

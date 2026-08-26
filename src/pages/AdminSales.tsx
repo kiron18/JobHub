@@ -30,7 +30,7 @@
    ──────────────────────────────────────────────────────────────────────────── */
 import { Fragment, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, FileText, ExternalLink, Loader2, ChevronDown, Archive, Trash2, X, Upload } from 'lucide-react';
+import { Search, FileText, ExternalLink, Loader2, ChevronDown, Archive, Trash2, X, Upload, Copy, Check, Video } from 'lucide-react';
 import api from '../lib/api';
 
 const STAGES = ['Lead', 'Registered', 'Attended', 'Pitched', 'Client', 'Dead'] as const;
@@ -71,6 +71,51 @@ const C = {
   bg: '#FFFFFF', alt: '#F7FAFC', line: '#E3EAF0', lineStrong: '#CBD7E1',
   ink: '#0F1E2B', ink2: '#4A5A68', ink3: '#8496A4', blue: '#1857A0', danger: '#B4432F',
 };
+
+/**
+ * The Meet room the signup and reminder emails are pointing at.
+ *
+ * It sits on the sales board rather than only on /admin/workshop because this
+ * is the page that is already open while a session fills up, and because the
+ * failure it guards against is silent: the link is only wrong in a way anyone
+ * notices once people are already sitting in the wrong room. Showing the room
+ * itself, not just a "copy" button, is the point — the code is readable at a
+ * glance and can be checked against the room actually open in the other tab.
+ */
+function MeetRoom({ url }: { url: string }) {
+  const [copied, setCopied] = useState(false);
+  const code = url.replace(/^https?:\/\/meet\.google\.com\//, '');
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12.5 }}>
+      <Video size={13} style={{ color: C.ink3 }} />
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={`Emails are sending people to ${url}`}
+        style={{ color: C.ink2, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}
+      >
+        {code}
+      </a>
+      <button
+        onClick={() => {
+          navigator.clipboard.writeText(url).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1600);
+          });
+        }}
+        title="Copy the join link"
+        style={{
+          display: 'inline-flex', alignItems: 'center', cursor: 'pointer',
+          padding: 3, borderRadius: 5, border: 'none', background: 'transparent',
+          color: copied ? '#1E7A56' : C.ink3,
+        }}
+      >
+        {copied ? <Check size={12} /> : <Copy size={12} />}
+      </button>
+    </span>
+  );
+}
 
 /**
  * The session key on a registration that exists only to hold a hand-uploaded
@@ -248,6 +293,7 @@ export default function AdminSales() {
             {leads.length} on the board
             {data?.archivedCount ? ` · ${data.archivedCount} archived` : ''}
           </span>
+          {data?.meetLink && <MeetRoom url={data.meetLink} />}
           {/* Says out loud that the board refreshes itself. Without it the only
               way to know a twenty-second-old number is current is to reload,
               which is the habit this is meant to remove. */}

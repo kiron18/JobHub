@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import { supabase } from '../lib/supabase';
 import { prisma } from '../index';
+import { setContextUserId } from '../lib/requestContext';
 import fs from 'fs';
 import path from 'path';
 
@@ -80,6 +81,7 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
 
   if (process.env.NODE_ENV !== 'production' && process.env.DEV_BYPASS_AUTH === 'true') {
     req.user = { id: DEV_BYPASS_USER_ID, email: DEV_BYPASS_EMAIL };
+    setContextUserId(req.user.id);
     return next();
   }
 
@@ -103,6 +105,7 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
         return res.status(401).json({ error: 'Invalid extension token' });
       }
       req.user = user;
+      setContextUserId(req.user.id);
       return next();
     } catch (e: any) {
       log(`Extension token lookup failed: ${e.message}`);
@@ -117,6 +120,7 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
     try {
       const { sub, email } = verifyJWT(token, jwtSecret);
       req.user = { id: sub, email };
+      setContextUserId(req.user.id);
       return next();
     } catch (e: any) {
       log(`JWT verification failed: ${e.message}`);
@@ -134,6 +138,7 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
       return res.status(401).json({ error: 'Invalid or expired token', details: error?.message });
     }
     req.user = { id: user.id, email: user.email };
+    setContextUserId(req.user.id);
     return next();
   } catch (error) {
     log(`Auth error: ${error instanceof Error ? error.message : String(error)}`);
@@ -150,6 +155,7 @@ export const optionalAuthenticate = async (req: AuthRequest, _res: Response, nex
 
   if (process.env.NODE_ENV !== 'production' && process.env.DEV_BYPASS_AUTH === 'true') {
     req.user = { id: DEV_BYPASS_USER_ID, email: DEV_BYPASS_EMAIL };
+    setContextUserId(req.user.id);
     return next();
   }
 
@@ -161,6 +167,7 @@ export const optionalAuthenticate = async (req: AuthRequest, _res: Response, nex
     try {
       const { sub, email } = verifyJWT(token, jwtSecret);
       req.user = { id: sub, email };
+      setContextUserId(req.user.id);
     } catch (e: any) {
       log(`Optional JWT verification failed (continuing anonymous): ${e.message}`);
     }
@@ -169,7 +176,10 @@ export const optionalAuthenticate = async (req: AuthRequest, _res: Response, nex
 
   try {
     const { data: { user } } = await supabase.auth.getUser(token);
-    if (user) req.user = { id: user.id, email: user.email };
+    if (user) {
+      req.user = { id: user.id, email: user.email };
+      setContextUserId(req.user.id);
+    }
   } catch (error) {
     log(`Optional auth error (continuing anonymous): ${error instanceof Error ? error.message : String(error)}`);
   }

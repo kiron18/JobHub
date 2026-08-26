@@ -14,7 +14,7 @@ import { prisma } from '../index';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { EXEMPT_EMAILS } from './stripe';
 import { STAGES, type Stage } from '../services/salesLead';
-import { currentSessionKey } from '../config/workshop';
+import { currentSessionKey, MEET_LINK } from '../config/workshop';
 import { attachResumeToLead } from '../services/leadResume';
 
 const router = Router();
@@ -86,6 +86,12 @@ router.get('/', authenticate, requireAdmin, async (req: AuthRequest, res: Respon
     // worked out in the browser, because the schedule and its timezone live on
     // the server and a client-side guess drifts across the DST switch.
     nextSessionKey: currentSessionKey(),
+    // The room the confirmation and reminder emails are sending people to,
+    // read from the same constant those emails use. It is here so the board
+    // shows the link that actually went out rather than the one you think
+    // went out: on 25 Aug the two were different and nobody found out until
+    // the session had already started.
+    meetLink: MEET_LINK,
     leads: leads.map((l) => {
       const reg = l.email ? byEmail.get(l.email) : undefined;
       return {

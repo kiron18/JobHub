@@ -219,8 +219,18 @@ export function workshopSlotLabel(): string {
 
 // ── The rest ─────────────────────────────────────────────────────────────────
 
-/** Where the workshop actually happens. */
-export const MEET_LINK = process.env.WORKSHOP_MEET_LINK || 'https://meet.google.com/mjm-domw-oyv';
+/**
+ * Where the workshop actually happens.
+ *
+ * ⚠️ This default is the room people are actually sent to. On 25 Aug 2026 it
+ * still held the 6 Aug room (`mjm-domw-oyv`) while the session ran somewhere
+ * else, so the confirmation and reminder emails both pointed at an empty room:
+ * two of the three attendees sat in a waiting room for twelve minutes and one
+ * of them dropped out entirely. Whenever the room changes, change it here, and
+ * check `WORKSHOP_MEET_LINK` in the Railway environment, because a value set
+ * there silently wins over this line.
+ */
+export const MEET_LINK = process.env.WORKSHOP_MEET_LINK || 'https://meet.google.com/zgj-shhk-xus';
 
 /** Used in the subject line and body of both emails, and in the calendar entry. */
 export const WORKSHOP_TITLE = process.env.WORKSHOP_TITLE || '"Your first Aussie Job" Workshop';

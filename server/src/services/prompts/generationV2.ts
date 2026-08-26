@@ -1,4 +1,61 @@
-export const RESUME_V2_PROMPT = (resumeText: string, jobDescription: string) => `
+/**
+ * Sections that can be filled in deterministically from the candidate's stored
+ * profile after generation. Passing one here means the model writes the heading
+ * and a placeholder instead of the content: fewer output tokens, and no chance
+ * of inventing a qualification.
+ *
+ * Pass nothing and the prompt is byte-for-byte what it has always been. That
+ * matters, because most profiles do not yet hold data complete enough to splice
+ * and those generations must not change at all.
+ */
+export type SuppliedSection = 'Education' | 'Certifications' | 'Referees';
+
+export const RESUME_V2_PROMPT = (
+  resumeText: string,
+  jobDescription: string,
+  suppliedSections: SuppliedSection[] = [],
+) => {
+  const supplied = [...new Set(suppliedSections)];
+  const has = (s: SuppliedSection) => supplied.includes(s);
+
+  // The completeness rule forbids dropping a section. A supplied section is not
+  // dropped - its heading is still written - so this says so outright rather
+  // than leaving the model to reconcile two rules that look opposed.
+  const completenessNote = supplied.length
+    ? `
+- A SUPPLIED section (see below) still counts as present: you write its heading and
+  its content is filled in afterwards. That satisfies this rule.`
+    : '';
+
+  const suppliedBlock = supplied.length
+    ? `
+== SUPPLIED SECTIONS (do not write their content) ==
+These sections are filled in from the candidate's verified profile after you
+finish: ${supplied.join(', ')}.
+- Write the "## {Section name}" heading in the position the source resume gives
+  it, then one line containing exactly [[SUPPLIED]] and nothing else.
+- Do not write entries, dates or institutions under these headings. Anything
+  written there is discarded, so it only costs the candidate length.
+- These facts are still true and still yours to use everywhere else: refer to a
+  qualification in the professional summary or a bullet whenever it helps.
+`
+    : '';
+
+  const educationConvention = has('Education')
+    ? `"## Education" (heading plus the [[SUPPLIED]] line)`
+    : `"## Education" (each entry as "**{Degree}**  ·  {Year}" with the
+  institution on the next line)`;
+
+  const refereesConvention = has('Referees')
+    ? `- End with "## Referees" followed by the [[SUPPLIED]] line.`
+    : `- End with "## Referees" containing "Available upon request." unless the resume lists
+  referees.`;
+
+  const emphasisConvention = has('Education')
+    ? `- Leave the "**{Label}:**" convention above exactly as specified.`
+    : `- Leave the "**{Degree}**" and "**{Label}:**" conventions above exactly as specified.`;
+
+  return `
 You are an expert Australian resume writer. You write the way a top human career coach
 writes: specific, honest, outcome-first, and tailored to one job.
 
@@ -16,6 +73,9 @@ You will receive:
 - Never state a years-of-experience figure unless the resume's own dates clearly support it.
 - Never import facts from the job description into the candidate's history, and never use
   your own outside knowledge about any company. If it is not in the resume, it does not exist.
+- The Skills section is held to this rule exactly like the rest. Never list a tool,
+  language, platform or certification the resume does not show. A skill named in the job
+  description is not evidence that the candidate has it.
 
 == COMPLETENESS RULES (equal priority to honesty) ==
 - Every category of content in the source resume must appear in your output. If the resume
@@ -27,8 +87,8 @@ You will receive:
   entry. Never fit the budget by deleting an entry or a section.
 - Contact line: reproduce every contact channel present in the resume (email, phone,
   LinkedIn, GitHub, portfolio, location). Omit any item that is a placeholder or
-  note-to-self (e.g. "04XX XXX XXX", "add correct number", "TBD").
-
+  note-to-self (e.g. "04XX XXX XXX", "add correct number", "TBD").${completenessNote}
+${suppliedBlock}
 == TAILORING RULES ==
 - Reframe, do not rewrite history. Keep the sections and the entries in the order the source
   resume already has them; that order is the candidate's own and it is usually deliberate.
@@ -57,14 +117,12 @@ Required conventions (the renderer depends on these):
 - Then the contact line, items separated by " | ".
 - "## Professional Summary" is the first section, "## Work Experience" (with each role as
   "### {Role} | {Company}" followed by "*{Mmm YYYY - Mmm YYYY or Present}*" on its own line
-  and "- " bullets), "## Education" (each entry as "**{Degree}**  ·  {Year}" with the
-  institution on the next line), and "## Skills & Competencies" (2 or 3 "**{Label}:**"
+  and "- " bullets), ${educationConvention}, and "## Skills & Competencies" (2 or 3 "**{Label}:**"
   lines) must all exist.
 - All other sections mirror the source resume's own content, as "## {Section name}"
   headings, placed in the order that best serves this application. Projects use the same
   "### {name}" + date-line + bullets convention as roles.
-- End with "## Referees" containing "Available upon request." unless the resume lists
-  referees.
+${refereesConvention}
 
 == EMPHASIS ==
 A recruiter scans this page for about thirty seconds. Bold the result in a bullet so
@@ -77,9 +135,9 @@ their eye lands on it.
 - NEVER bold a skill, tool, company, job title or date. That reads as keyword stuffing
   and is the fastest way to make a resume look machine-written.
 - Bold ONLY inside the text of a "- " bullet. Never bold a whole line, a heading, the
-  summary, or a date line — the renderer reads those positions structurally and emphasis
+  summary, or a date line  -  the renderer reads those positions structurally and emphasis
   there changes how the line is interpreted.
-- Leave the "**{Degree}**" and "**{Label}:**" conventions above exactly as specified.
+${emphasisConvention}
 If you are unsure whether something deserves emphasis, leave it plain.
 
 == THE CANDIDATE'S RESUME ==
@@ -92,6 +150,7 @@ ${resumeText}
 ${jobDescription}
 """
 `;
+};
 
 export const COVER_LETTER_V2_PROMPT = (
   resumeText: string,

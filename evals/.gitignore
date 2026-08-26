@@ -1,3 +1,14 @@
 results/
 .promptfoo/
 *.cache
+
+# Anything generated from a real client's resume stays local.
+#
+# evals/fixtures/resumes/ is already ignored at the repo root because it holds
+# real people's CVs. These directories hold documents and verdicts generated
+# from those same CVs, named after the clients, so committing them would put
+# the data back in the repo through the side door.
+bakeoff-results/
+fit-report-results/
+splice-smoke/
+results-*.json

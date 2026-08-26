@@ -31,3 +31,18 @@ env.*
 # Misc
 *.local
 .DS_Store
+
+# Local tooling scratch. None of this is part of the build, and together it was
+# 21,800 of the 22,027 files Vercel was asked to upload, which is over its
+# 15,000 file limit.
+.capture-profile/
+.open-design/
+.open-design-temp/
+.claude/
+.worktrees/
+.superpowers/
+.firecrawl/
+carousels/
+screenshots/
+marketing/
+evals/

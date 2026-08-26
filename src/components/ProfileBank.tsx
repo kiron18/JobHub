@@ -10,7 +10,6 @@ import {
 import { toast } from 'sonner';
 import api from '../lib/api';
 import { warm } from '../lib/theme/warmTokens';
-import { SectionIntroBanner } from './processStrip';
 import { ProfileExplainerModal, hasSeenProfileExplainer } from './ProfileExplainerModal';
 import { AchievementVideoModal } from './AchievementVideoModal';
 import { trackAchievementAdded } from '../lib/analytics';
@@ -1726,6 +1725,8 @@ const VolunteeringIsland: React.FC<{ volunteering: Volunteering[] }> = ({ volunt
 
 // ── ProfileBank (main export) ─────────────────────────────────────────────────
 
+type TabKey = 'resume' | 'under-the-hood';
+
 export const ProfileBank: React.FC = () => {
   const { data: profile, isLoading, isError } = useQuery<ProfileData>({
     queryKey: ['profile'],
@@ -1736,6 +1737,7 @@ export const ProfileBank: React.FC = () => {
     staleTime: 60_000,
   });
 
+  const [activeTab, setActiveTab] = useState<TabKey>('resume');
   const queryClient = useQueryClient();
   const [regenerating, setRegenerating] = useState(false);
   const [explainerOpen, setExplainerOpen] = useState(() => !hasSeenProfileExplainer());
@@ -1775,16 +1777,13 @@ export const ProfileBank: React.FC = () => {
 
   return (
     <div style={{ background: pageBg, minHeight: '100%', padding: '24px 0', color: textMain, fontFamily: 'system-ui, sans-serif' }}>
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px' }}>
-        <SectionIntroBanner sectionId="profile">
-          Your master profile. Update it once and every future application pulls from here — no more rewriting your story.
-        </SectionIntroBanner>
+      <div style={{ maxWidth: 720, margin: '0 auto', padding: '0 24px' }}>
         {/* Page header */}
         <div style={{ marginBottom: 28 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <h2 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.02em', color: textMain, margin: 0 }}>
-                Profile Bank
+                Your Profile
               </h2>
               <button
                 onClick={() => setExplainerOpen(true)}
@@ -1806,129 +1805,212 @@ export const ProfileBank: React.FC = () => {
             </div>
           </div>
           <p style={{ fontSize: 14, color: '#6b7280', marginTop: 4 }}>
-            Your achievement bank, the source of truth for every resume and cover letter JobHub generates. Complete it once, use it forever.
+            Your resume is the source of truth for every application.
           </p>
         </div>
 
         <ProfileExplainerModal open={explainerOpen} onClose={() => setExplainerOpen(false)} />
 
-        {/* Single-column layout */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 24, alignItems: 'start' }}>
-          {/* Main column */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {/* Identity Cards */}
-            {Array.isArray((profile as any)?.identityCards) && (profile as any).identityCards.length > 0 && (
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <h3 style={{
-                    fontSize: 11,
-                    fontWeight: 900,
-                    letterSpacing: '0.14em',
-                    textTransform: 'uppercase',
-                    color: warm.colors.textSecondary,
-                    margin: 0,
-                  }}>
-                    Roles You Should Target
-                  </h3>
-                  <button
-                    onClick={handleRegenerateIdentity}
-                    disabled={regenerating}
-                    style={{
-                      fontSize: 10,
-                      fontWeight: 700,
-                      color: warm.colors.textMuted,
-                      background: 'transparent',
-                      border: 'none',
-                      cursor: regenerating ? 'not-allowed' : 'pointer',
-                      opacity: regenerating ? 0.4 : 1,
-                      padding: 0,
-                    }}
-                  >
-                    {regenerating ? 'Regenerating...' : 'Regenerate'}
-                  </button>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {(profile as any).identityCards.map((card: any, i: number) => (
-                    <div
-                      key={`${card.label ?? ''}-${i}`}
+        {/* Tab navigation */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: `1px solid ${warm.colors.borderWhisper}` }}>
+          <TabButton active={activeTab === 'resume'} onClick={() => setActiveTab('resume')}>
+            Your Resume
+          </TabButton>
+          <TabButton active={activeTab === 'under-the-hood'} onClick={() => setActiveTab('under-the-hood')}>
+            Under the hood
+          </TabButton>
+        </div>
+
+        {/* Tab content */}
+        <AnimatePresence mode="wait">
+          {activeTab === 'resume' ? (
+            <motion.div
+              key="resume"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+            >
+              <SourceDocumentsIsland profile={profile} />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="under-the-hood"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+            >
+              {/* Warning banner */}
+              <UnderTheHoodWarning />
+
+              {/* Identity Cards */}
+              {Array.isArray((profile as any)?.identityCards) && (profile as any).identityCards.length > 0 && (
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <h3 style={{
+                      fontSize: 11,
+                      fontWeight: 900,
+                      letterSpacing: '0.14em',
+                      textTransform: 'uppercase',
+                      color: warm.colors.textSecondary,
+                      margin: 0,
+                    }}>
+                      Roles You Should Target
+                    </h3>
+                    <button
+                      onClick={handleRegenerateIdentity}
+                      disabled={regenerating}
                       style={{
-                        border: `1px solid ${warm.colors.borderWhisper}`,
-                        borderRadius: 12,
-                        background: warm.colors.bgSurface,
-                        padding: 18,
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: warm.colors.textMuted,
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: regenerating ? 'not-allowed' : 'pointer',
+                        opacity: regenerating ? 0.4 : 1,
+                        padding: 0,
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
-                        <h4 style={{
-                          margin: 0,
-                          fontSize: 14,
-                          fontWeight: 700,
-                          color: warm.colors.textPrimary,
-                        }}>
-                          {card.label}
-                        </h4>
-                        {card.evidenceBasis === 'limited' && (
-                          <span style={{
-                            fontSize: 9,
+                      {regenerating ? 'Regenerating...' : 'Regenerate'}
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {(profile as any).identityCards.map((card: any, i: number) => (
+                      <div
+                        key={`${card.label ?? ''}-${i}`}
+                        style={{
+                          border: `1px solid ${warm.colors.borderWhisper}`,
+                          borderRadius: 12,
+                          background: warm.colors.bgSurface,
+                          padding: 18,
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
+                          <h4 style={{
+                            margin: 0,
+                            fontSize: 14,
                             fontWeight: 700,
-                            color: warm.colors.accentGold,
-                            background: 'rgba(197,160,89,0.10)',
-                            padding: '2px 8px',
-                            borderRadius: 999,
-                            marginLeft: 8,
-                            flexShrink: 0,
-                            lineHeight: '16px',
+                            color: warm.colors.textPrimary,
                           }}>
-                            Limited data
-                          </span>
+                            {card.label}
+                          </h4>
+                          {card.evidenceBasis === 'limited' && (
+                            <span style={{
+                              fontSize: 9,
+                              fontWeight: 700,
+                              color: warm.colors.accentGold,
+                              background: 'rgba(197,160,89,0.10)',
+                              padding: '2px 8px',
+                              borderRadius: 999,
+                              marginLeft: 8,
+                              flexShrink: 0,
+                              lineHeight: '16px',
+                            }}>
+                              Limited data
+                            </span>
+                          )}
+                        </div>
+                        <p style={{
+                          margin: '0 0 10px',
+                          fontSize: 12.5,
+                          color: warm.colors.textSecondary,
+                          lineHeight: 1.6,
+                        }}>
+                          {card.summary}
+                        </p>
+                        {Array.isArray(card.keyStrengths) && card.keyStrengths.length > 0 && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                            {card.keyStrengths.map((s: string) => (
+                              <span
+                                key={s}
+                                style={{
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  color: warm.colors.textSecondary,
+                                  background: warm.colors.bgAlt,
+                                  padding: '2px 8px',
+                                  borderRadius: 999,
+                                  lineHeight: '18px',
+                                }}
+                              >
+                                {s}
+                              </span>
+                            ))}
+                          </div>
                         )}
                       </div>
-                      <p style={{
-                        margin: '0 0 10px',
-                        fontSize: 12.5,
-                        color: warm.colors.textSecondary,
-                        lineHeight: 1.6,
-                      }}>
-                        {card.summary}
-                      </p>
-                      {Array.isArray(card.keyStrengths) && card.keyStrengths.length > 0 && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                          {card.keyStrengths.map((s: string) => (
-                            <span
-                              key={s}
-                              style={{
-                                fontSize: 10,
-                                fontWeight: 700,
-                                color: warm.colors.textSecondary,
-                                background: warm.colors.bgAlt,
-                                padding: '2px 8px',
-                                borderRadius: 999,
-                                lineHeight: '18px',
-                              }}
-                            >
-                              {s}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-            <BankIsland />
-            <SourceDocumentsIsland profile={profile} />
-            <PersonalDetailsIsland profile={profile} />
-            <ExperienceIsland experience={profile.experience} achievements={profile.achievements} />
-            <ProjectsIsland experience={profile.experience} achievements={profile.achievements} />
-            <EducationIsland education={profile.education} />
-            <SkillsIsland skills={profile.skills} />
-            <CertificationsIsland certifications={profile.certifications} />
-            <VolunteeringIsland volunteering={profile.volunteering} />
-          </div>
-
-        </div>
+              )}
+              <BankIsland />
+              <PersonalDetailsIsland profile={profile} />
+              <ExperienceIsland experience={profile.experience} achievements={profile.achievements} />
+              <ProjectsIsland experience={profile.experience} achievements={profile.achievements} />
+              <EducationIsland education={profile.education} />
+              <SkillsIsland skills={profile.skills} />
+              <CertificationsIsland certifications={profile.certifications} />
+              <VolunteeringIsland volunteering={profile.volunteering} />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
 };
+
+// ── TabButton component ───────────────────────────────────────────────────────
+
+interface TabButtonProps {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}
+
+const TabButton: React.FC<TabButtonProps> = ({ active, onClick, children }) => (
+  <button
+    onClick={onClick}
+    style={{
+      padding: '10px 16px',
+      fontSize: 13,
+      fontWeight: active ? 700 : 600,
+      color: active ? '#111827' : '#6b7280',
+      background: 'transparent',
+      border: 'none',
+      borderBottom: `2px solid ${active ? '#6366f1' : 'transparent'}`,
+      cursor: 'pointer',
+      transition: 'all 0.15s ease',
+      marginBottom: -1,
+    }}
+  >
+    {children}
+  </button>
+);
+
+// ── UnderTheHoodWarning component ─────────────────────────────────────────────
+
+const UnderTheHoodWarning: React.FC = () => (
+  <div style={{
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 12,
+    padding: '14px 16px',
+    borderRadius: 10,
+    background: 'rgba(217,119,6,0.08)',
+    border: '1px solid rgba(217,119,6,0.25)',
+    marginBottom: 8,
+  }}>
+    <AlertTriangle size={18} style={{ color: '#d97706', flexShrink: 0, marginTop: 1 }} />
+    <div>
+      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#92400e', lineHeight: 1.5 }}>
+        Changes here affect everything
+      </p>
+      <p style={{ margin: '4px 0 0', fontSize: 12, color: '#a16207', lineHeight: 1.5 }}>
+        Editing sections under the hood changes the raw data that powers your resume and cover letters.
+        Only change things here if you know what you are doing — or if Kiron has told you to.
+      </p>
+    </div>
+  </div>
+);
