@@ -6,11 +6,10 @@
  * telling them it was not lands as good news rather than as a correction, which
  * is why it interrupts instead of sitting on the page as a card.
  *
- * The animation carries the instruction, not the copy. "Copy the job ad" is a
- * sentence people agree with and then get wrong, because the real question is
- * how much of the ad, and no wording answers that as fast as watching a
- * selection sweep the whole thing. Six seconds, looping, four beats: select,
- * copy, paste, answer.
+ * One instruction, one picture, one button. It carried a six-second animation
+ * of the whole select-copy-paste-answer mechanic, which taught that well and
+ * took the eye off the sentence that has to land. The mechanic is learned in
+ * five seconds on the screen behind this anyway.
  *
  * No claim about outcomes is made anywhere here. We cannot measure "increases
  * your chances of getting hired", so it says what the tool actually does, which
@@ -21,33 +20,13 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { X, ArrowRight, Check, Clipboard } from 'lucide-react';
+import { X, ArrowRight } from 'lucide-react';
 import api from '../lib/api';
 import { warm } from '../lib/theme/warmTokens';
-import { SeekMock } from './strategy/HowToCopyJobAd';
+import { type as landingType } from './landing/tokens';
 
 const C = warm.colors;
 const EASE = [0.25, 1, 0.5, 1] as const;
-
-/**
- * Four beats to six seconds exactly. Selecting is the beat that teaches, so it
- * gets the most room; the answer holds longest because it is the payoff and a
- * card that flicks away before it is read teaches nothing.
- */
-const BEATS = [2200, 900, 1400, 1500] as const;
-
-/**
- * Tall enough to hold the ad's title, employer and details, which is the whole
- * lesson, and short enough that the modal still fits a laptop. The rest of the
- * mock runs on below the fold behind a fade.
- */
-const STAGE_H = 218;
-const CAPTIONS = [
-  'Start at the title, not the description',
-  'Copy it',
-  'Paste it here',
-  'Get a straight answer',
-] as const;
 
 export function EligibilityIntroModal() {
   const location = useLocation();
@@ -172,28 +151,19 @@ export function EligibilityIntroModal() {
               <X size={16} />
             </button>
 
-            <p style={{
-              margin: '0 0 10px', fontSize: 11, fontWeight: 800,
-              letterSpacing: '0.16em', textTransform: 'uppercase', color: C.accentPetrol,
-            }}>
-              One last thing
-            </p>
-
             <h2 style={{
-              margin: '0 0 10px', fontSize: 'clamp(21px, 4.2vw, 27px)', fontWeight: 800,
-              letterSpacing: '-0.02em', lineHeight: 1.22, color: C.textPrimary,
+              margin: '0 0 10px', fontFamily: landingType.display, fontSize: 'clamp(23px, 4.4vw, 30px)',
+              fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.2, color: C.textPrimary,
             }}>
-              Your resume is no longer what is holding you back
+              Almost there
             </h2>
 
-            <p style={{ margin: '0 0 12px', fontSize: 15, lineHeight: 1.6, color: C.textSecondary }}>
-              But applying for jobs you are not eligible for will lead to certain rejection.
-            </p>
             <p style={{ margin: '0 0 22px', fontSize: 15, lineHeight: 1.6, color: C.textSecondary }}>
-              Paste any job into the text box to check your eligibility, free.
+              Copy and paste any job in the box and see how your profile matches it. Apply for
+              roles that match your profile and get more call backs.
             </p>
 
-            <HowItWorks />
+            <JourneyTrack />
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 24, flexWrap: 'wrap' }}>
               <button
@@ -219,228 +189,31 @@ export function EligibilityIntroModal() {
   );
 }
 
-/* ─── The six-second loop ─────────────────────────────────────────────────── */
+/* ─── What the next screen looks like ─────────────────────────────────────── */
 
 /**
- * Four beats to six seconds: select, copy, paste, answer.
+ * A still, not a loop.
  *
- * The select and copy beats are the tutorial's own SeekMock, imported rather
- * than reimplemented. It draws a real browser Selection over a real Seek
- * imitation, which is why the highlight hugs each line and ends ragged where
- * the line ends, and it already carries the lesson that matters: start at the
- * job title, because the employer's name sits under it and a selection that
- * begins at the description leaves it behind. A second, worse mock of the same
- * thing would drift from this one the first time either changed.
+ * This used to be a six-second four-beat animation: select the ad, copy, paste,
+ * answer. It taught the mechanic well and cost the reader the point of the
+ * modal, because a moving picture is where the eye goes and the sentence above
+ * it is the thing that actually has to land. The instruction is one line of copy
+ * now, and the picture only has to say where this sits in the journey.
  *
- * The mock is taller than a modal should be, so it sits in a clipped window
- * with the fold faded out. What stays on show is the part being taught.
+ * Same artwork as the resume screen, one step further along: four of five.
  */
-function HowItWorks() {
-  const reduced = usePrefersReducedMotion();
-  const [beat, setBeat] = useState(0);
-
-  useEffect(() => {
-    if (reduced) { setBeat(3); return; }
-    const id = window.setTimeout(() => setBeat((b) => (b + 1) % BEATS.length), BEATS[beat]);
-    return () => window.clearTimeout(id);
-  }, [beat, reduced]);
-
-  const onAd = beat < 2;
-
+function JourneyTrack() {
   return (
     <div style={{
-      border: `1px solid ${C.borderWhisper}`, borderRadius: warm.radius.card,
-      background: C.bgAlt, padding: '14px 14px 11px',
+      borderRadius: warm.radius.card, overflow: 'hidden',
+      background: '#fff', border: `1px solid ${C.borderWhisper}`,
+      aspectRatio: '1920 / 820',
     }}>
-      <div style={{ position: 'relative', height: STAGE_H, borderRadius: 8, overflow: 'hidden' }}>
-        {/* Mounted across beats 0 and 1 together, so changing beat does not
-            restart the drag. It unmounts on the paste beat, which is what makes
-            it begin again from the title on the next time round. */}
-        {onAd ? (
-          <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-            <SeekMock dragMs={BEATS[0]} holdMs={BEATS[1] + 400} resetMs={200} />
-            <div style={{
-              position: 'absolute', left: 0, right: 0, bottom: 0, height: 52,
-              background: `linear-gradient(to bottom, rgba(245,247,250,0), ${C.bgAlt})`,
-              pointerEvents: 'none',
-            }} />
-          </div>
-        ) : (
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={beat}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.26, ease: EASE }}
-              style={{ position: 'absolute', inset: 0 }}
-            >
-              {beat === 2 ? <PasteStage /> : <ResultStage />}
-            </motion.div>
-          </AnimatePresence>
-        )}
-
-        {/* The two overlays, centred on the stage. They mark the two moments the
-            viewer has to perform themselves, so they belong in the middle of
-            what is being looked at rather than tucked into a corner. */}
-        <AnimatePresence>
-          {(beat === 1 || beat === 2) && (
-            <motion.div
-              key={beat === 1 ? 'copied' : 'pasted'}
-              initial={{ opacity: 0, scale: 0.88 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              transition={{ duration: 0.24, ease: EASE, delay: beat === 2 ? 0.45 : 0 }}
-              style={{
-                position: 'absolute', inset: 0, display: 'grid', placeItems: 'center',
-                pointerEvents: 'none',
-              }}
-            >
-              <span style={{
-                display: 'inline-flex', alignItems: 'center', gap: 8,
-                padding: '10px 18px', borderRadius: 999,
-                background: C.bgDeep, color: C.textOnDeep,
-                fontSize: 13.5, fontWeight: 700,
-                boxShadow: '0 6px 22px rgba(15,32,56,0.28)',
-              }}>
-                <Clipboard size={14} /> {beat === 1 ? 'Copied' : 'Pasted'}
-              </span>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 11 }}>
-        <div style={{ display: 'flex', gap: 5 }}>
-          {BEATS.map((_, i) => (
-            <span key={i} style={{
-              width: i === beat ? 16 : 5, height: 5, borderRadius: 999,
-              background: i === beat ? C.accentPetrol : C.borderDefined,
-              transition: 'width 220ms ease, background 220ms ease',
-            }} />
-          ))}
-        </div>
-        <AnimatePresence mode="wait">
-          <motion.span
-            key={beat}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
-            style={{ fontSize: 12.5, fontWeight: 600, color: C.textSecondary }}
-          >
-            {CAPTIONS[beat]}
-          </motion.span>
-        </AnimatePresence>
-      </div>
+      <img
+        src="/Assets/journey/step-4-of-5.png"
+        alt="Your progress: four of five steps done, on the way to hired"
+        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 38%', display: 'block' }}
+      />
     </div>
   );
-}
-
-/**
- * Beat 3: the paste box, with the ad actually in it.
- *
- * The text is the SeekMock's own copy, so what lands in the box is visibly the
- * same thing that was just selected, title and employer included. It arrives in
- * one go rather than typing itself in, because that is what pasting looks like.
- */
-function PasteStage() {
-  return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <div style={{
-        flex: 1, minHeight: 0, background: C.bgSurface,
-        border: `1.5px solid ${C.accentPetrol}`, borderRadius: 10,
-        padding: '11px 12px', overflow: 'hidden',
-      }}>
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.16, delay: 0.3 }}
-          style={{ fontSize: 10, lineHeight: 1.55, color: C.textSecondary }}
-        >
-          <p style={{ margin: '0 0 5px', fontWeight: 800, color: C.textPrimary, textTransform: 'uppercase' }}>
-            Job Title
-          </p>
-          <p style={{ margin: '0 0 5px' }}>Company Name</p>
-          <p style={{ margin: '0 0 5px' }}>Suburb, City STATE · Work Type · $00,000 - $00,000 per year</p>
-          <p style={{ margin: 0 }}>
-            This is the first paragraph of the job description. It explains what the role is
-            and who the employer is looking for. This is the second paragraph. It describes
-            the team, who you would report to, and what a typical week looks like.
-          </p>
-        </motion.div>
-      </div>
-      <div style={{
-        alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 7,
-        padding: '8px 15px', borderRadius: warm.radius.button,
-        background: C.accentPetrol, color: C.textOnDeep, fontSize: 12.5, fontWeight: 700,
-      }}>
-        Find out <ArrowRight size={13} />
-      </div>
-    </div>
-  );
-}
-
-/** Beat 4: the answer, in the shape the real report gives it. */
-function ResultStage() {
-  return (
-    <div style={{
-      height: '100%', background: C.bgSurface, border: `1px solid ${C.borderWhisper}`,
-      borderRadius: 10, padding: '13px 14px', display: 'flex', flexDirection: 'column', gap: 10,
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap' }}>
-        <span style={{
-          display: 'inline-flex', alignItems: 'center', gap: 5,
-          padding: '4px 10px', borderRadius: 999,
-          background: 'rgba(18,128,92,0.10)', color: C.success,
-          fontSize: 11, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase',
-        }}>
-          <Check size={11} strokeWidth={3} /> Worth applying
-        </span>
-        <span style={{ fontSize: 11.5, color: C.textMuted }}>Job Title, Company Name</span>
-      </div>
-
-      <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5, color: C.textPrimary }}>
-        You cover the experience and the credential they ask for. One gap, and it is one
-        you can answer in the cover letter.
-      </p>
-
-      <div style={{ display: 'flex', gap: 12, marginTop: 'auto' }}>
-        <Column heading="You have" tone={C.success} items={['Four years in the field', 'The licence the ad names']} />
-        <Column heading="Missing" tone={C.accentGold} items={['One software package they list']} />
-      </div>
-    </div>
-  );
-}
-
-function Column({ heading, tone, items }: { heading: string; tone: string; items: string[] }) {
-  return (
-    <div style={{ flex: 1, minWidth: 0 }}>
-      <p style={{
-        margin: '0 0 5px', fontSize: 9.5, fontWeight: 800,
-        letterSpacing: '0.1em', textTransform: 'uppercase', color: tone,
-      }}>
-        {heading}
-      </p>
-      {items.map((it, i) => (
-        <p key={i} style={{ margin: '0 0 3px', fontSize: 11, lineHeight: 1.4, color: C.textSecondary }}>
-          {it}
-        </p>
-      ))}
-    </div>
-  );
-}
-
-/** Honours the OS "reduce motion" setting, and keeps honouring it if it changes. */
-function usePrefersReducedMotion() {
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return;
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setReduced(mq.matches);
-    const onChange = (e: MediaQueryListEvent) => setReduced(e.matches);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
-  return reduced;
 }

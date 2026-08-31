@@ -187,6 +187,7 @@ export default function FitCheckPage() {
               onTailor={tailorThisJob}
               onCheckAnother={checkAnother}
               targetCity={profile?.targetCity}
+              targetRole={profile?.targetRole}
               saved
             />
             {employerAsk !== null && (
@@ -201,7 +202,14 @@ export default function FitCheckPage() {
         ) : checking && incoming ? (
           // Handed a job and already reading it. No paste box: there is nothing
           // for them to do here but wait.
-          <div style={{ textAlign: 'center', padding: '80px 0' }}>
+          // Centred as a column, not by text-align: the spinner is an SVG, and
+          // whether an inline SVG honours the parent's text-align depends on the
+          // reset in play. It was landing hard against the left edge with the
+          // copy underneath it centred, which reads as a broken page.
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            textAlign: 'center', padding: '80px 0',
+          }}>
             <Loader2 size={28} className="animate-spin" style={{ color: C.accentPetrol }} />
             <p style={{ margin: '18px 0 0', fontSize: 16, fontWeight: 700, color: C.textPrimary }}>
               Reading the ad

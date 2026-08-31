@@ -686,70 +686,45 @@ export const WelcomePage: React.FC = () => {
     return (
       <Shell wide>
         <style>{RESUME_PAPER_CSS}</style>
-        <Eyebrow>Your rebuilt resume</Eyebrow>
-        <Display>{firstName ? `${firstName}, here is your new and improved resume.` : 'Here is your new and improved resume.'}</Display>
-
-        <div style={{ margin: '0 0 26px' }}>
-          <p style={bankLine}>It's yours to keep, for free, no strings attached.</p>
-          <p style={{ ...bankLine, color: colors.textPrimary, fontWeight: 600 }}>
-            Click the button to have it sent to your email address.
-          </p>
-        </div>
-
         {/*
-          Length, stated before they scroll.
+          One heading, then the document.
 
-          Two pages is the Australian norm and the single thing people most often
-          get wrong, so the number is worth more than the space it takes. It is
-          the real count off the same renderer that produces the emailed PDF, not
-          a guess from character count, which is wrong the moment somebody has a
-          long education section.
+          This screen used to say the same thing four times over: a pill reading
+          "your rebuilt resume", a headline saying the same, a line promising it
+          was free, another telling them to press the button, and a third further
+          down repeating that we would email it. The document is the point, so
+          everything that is not the document waits until after they have read it.
         */}
-        {pageCount !== null && (
-          <div style={{
-            display: 'flex', gap: 10, alignItems: 'flex-start', padding: '13px 16px', marginBottom: 14,
-            borderRadius: 12, background: colors.bgAlt, border: `1px solid ${colors.borderDefined}`,
-          }}>
-            <span style={{ color: colors.accentPetrol, flexShrink: 0, marginTop: 1 }}><FileText size={16} /></span>
-            <span style={{ fontFamily: T.body, fontSize: 14, lineHeight: 1.55, color: colors.textSecondary }}>
-              <strong style={{ color: colors.textPrimary, fontWeight: 700 }}>
-                {pageCount} page{pageCount === 1 ? '' : 's'}
-              </strong>
-              {pageCount <= 2
-                ? '. That is the length Australian employers expect.'
-                : '. Australian employers expect one or two. Answering the questions you skipped lets us tighten it.'}
-            </span>
-          </div>
-        )}
-
-        {/*
-          The one place in the flow where the argument for the paid product is
-          made, and it is made as a fact about the market rather than a pitch.
-
-          It has to sit AFTER the gift, never before it. Said earlier it reads
-          as "your resume is not enough", which devalues the thing that just
-          earned their trust. Said here, with the document in front of them and
-          the length already confirmed, it reads as what comes next.
-
-          It also never names the product. The conclusion, that they need each
-          application written for its ad, is one they reach on their own, which
-          is the only version of it they believe.
-        */}
-        <div style={{
-          padding: '16px 18px', margin: '0 0 22px',
-          borderRadius: 12, background: colors.bgAlt, border: `1px solid ${colors.borderDefined}`,
-        }}>
-          <p style={{ fontFamily: T.body, fontSize: 15.5, lineHeight: 1.6, color: colors.textPrimary, margin: 0, fontWeight: 600 }}>
-            This is your new baseline, and it's bloody good.
-          </p>
-          <p style={{ fontFamily: T.body, fontSize: 15, lineHeight: 1.6, color: colors.textSecondary, margin: '7px 0 0' }}>
-            What separates good from the best is personalisation to the role, at scale. Send out
-            hundreds of personalised applications to the jobs that match your profile.
-          </p>
-        </div>
+        <Display>
+          {firstName
+            ? `Hey ${firstName}, check out your new and improved resume!`
+            : 'Check out your new and improved resume!'}
+        </Display>
 
         {/* Rendered as a page, not a text box — people trust what looks like a document. */}
-        <div className="bank-paper">
+        <div className="bank-paper" style={{ position: 'relative' }}>
+          {/*
+            The length, on the document rather than in a card above it.
+
+            Two pages is the Australian norm and the single thing people most
+            often get wrong, so the number earns its place. It is the real count
+            off the same renderer that produces the emailed PDF, not a guess from
+            character count, which is wrong the moment somebody has a long
+            education section. Sitting on the page corner it reads as a property
+            of the document, which is what it is.
+          */}
+          {pageCount !== null && (
+            <span style={{
+              position: 'absolute', top: 14, right: 14,
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '4px 11px', borderRadius: 99,
+              background: colors.bgAlt, border: `1px solid ${colors.borderDefined}`,
+              fontFamily: T.body, fontSize: 11.5, fontWeight: 700,
+              letterSpacing: '0.04em', color: colors.textSecondary, whiteSpace: 'nowrap',
+            }}>
+              <FileText size={12} /> {pageCount} page{pageCount === 1 ? '' : 's'}
+            </span>
+          )}
           <ReactMarkdown>{cleanResume}</ReactMarkdown>
         </div>
 
@@ -791,18 +766,28 @@ export const WelcomePage: React.FC = () => {
           </div>
         )}
 
-        <div style={{ marginTop: 24 }}>
-          <PrimaryBtn label="Send me my resume" onClick={onSaveResume} />
-        </div>
-        {!user && (
-          // One button, one promise. This line used to say only that the resume
-          // would be waiting; it now also names where they are going, because
-          // the paragraph above just told them applying at volume is the game
-          // and this is the sentence that says the next screen is how.
-          <p style={{ fontFamily: T.body, fontSize: 13.5, color: colors.textMuted, margin: '14px 0 0' }}>
-            We'll ask for your email next. Then you can start checking which jobs actually match you.
-          </p>
-        )}
+        {/*
+          Where they are on the way to hired, then the one thing to do next.
+
+          The argument for what comes after used to be a paragraph about
+          personalisation at scale, made before they had finished reading. The
+          diagram makes the same case without a sentence: five steps, three of
+          them behind them, and the offer letter at the end.
+        */}
+        <JourneyTrack src="/Assets/journey/step-3-of-5.png" />
+
+        <p style={{
+          fontFamily: T.display, fontWeight: 600, letterSpacing: '-0.015em',
+          fontSize: 'clamp(20px, 3vw, 25px)', lineHeight: 1.25,
+          color: colors.textPrimary, margin: '22px 0 18px',
+        }}>
+          You're two steps away from landing your dream job in Australia.
+        </p>
+
+        <PrimaryBtn label="See my next steps" onClick={onSaveResume} />
+        <p style={{ fontFamily: T.body, fontSize: 13.5, color: colors.textMuted, margin: '14px 0 0' }}>
+          Your resume will be sent as a PDF to your email address.
+        </p>
       </Shell>
     );
   }
@@ -820,10 +805,11 @@ export const WelcomePage: React.FC = () => {
   if (step === 'email') {
     return (
       <Shell>
-        <Eyebrow>Last step</Eyebrow>
-        <Display>Where should we send it?</Display>
+        {/* No step pill. The heading says what this screen is for, and the line
+            under it says what they get, which is the part worth the sentence. */}
+        <Display>Claim your resume</Display>
         <p style={{ ...bodyText, marginBottom: 22 }}>
-          We'll email your rewritten resume here, and it's how you get back in.
+          and see which jobs you have the best chance to get hired for.
         </p>
 
         <input
@@ -864,11 +850,11 @@ export const WelcomePage: React.FC = () => {
             was the reason they came; the jobs are the reason they stay, and
             this is the only place in the flow where that hand-off gets named. */}
         <p style={{ fontFamily: T.body, fontSize: 14, lineHeight: 1.55, color: colors.textSecondary, margin: '10px 0 0' }}>
-          <strong style={{ fontWeight: 700, color: colors.textPrimary }}>Next:</strong> Find and save jobs you are most likely to get hired for.
+          <strong style={{ fontWeight: 700, color: colors.textPrimary }}>Next:</strong> See which jobs match my profile.
         </p>
 
         <div style={{ marginTop: 24, display: 'flex', justifyContent: 'center' }}>
-          <PrimaryBtn label={sending ? '' : 'Send my resume'} onClick={() => void submitPassword()} loading={sending} />
+          <PrimaryBtn label={sending ? '' : 'Next'} onClick={() => void submitPassword()} loading={sending} />
         </div>
 
         {/* The code path is no longer offered up front — it was a second door on
@@ -1768,6 +1754,35 @@ function Shell({ children, wide, onWash }: { children: React.ReactNode; wide?: b
         style={{ width: '100%', maxWidth: wide ? 720 : 520, margin: 'auto' }}>
         {children}
       </motion.div>
+    </div>
+  );
+}
+
+/**
+ * The five-step "you are here" track, on a white card.
+ *
+ * The source PNGs are 16:9 with the drawing sitting in the top two thirds, so
+ * shown whole they come with a band of empty white underneath that reads as a
+ * layout bug. The wrapper crops to the drawing instead of the artboard, which is
+ * why the aspect ratio and the object-position are what they are: the window
+ * keeps everything from the thought-bubble down to the "Searching" and "HIRED!"
+ * captions, and throws away the blank half.
+ *
+ * If the artwork is ever re-exported tighter, drop the wrapper and render the
+ * image directly rather than tuning these numbers again.
+ */
+function JourneyTrack({ src }: { src: string }) {
+  return (
+    <div style={{
+      marginTop: 26, borderRadius: 14, overflow: 'hidden',
+      background: '#fff', border: `1px solid ${colors.borderDefined}`,
+      aspectRatio: '1920 / 820',
+    }}>
+      <img
+        src={src}
+        alt="Your progress: three of five steps done, on the way to hired"
+        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 38%', display: 'block' }}
+      />
     </div>
   );
 }

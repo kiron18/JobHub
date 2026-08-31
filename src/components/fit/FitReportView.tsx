@@ -54,6 +54,15 @@ interface Props {
   onCheckAnother: () => void;
   /** Used to keep a job search local to where they actually want to work. */
   targetCity?: string | null;
+  /**
+   * Their own target role, as the fallback for the Seek search.
+   *
+   * On a mismatch the model usually names two or three titles they could win
+   * today, and those make the better search. But it returns an empty list often
+   * enough that the screen could end on "look somewhere else" with nowhere to
+   * go, which is the one dead end this page must never have.
+   */
+  targetRole?: string | null;
   /** True once the job has been written to their tracker, which the check does. */
   saved?: boolean;
 }
@@ -242,7 +251,7 @@ function Notice({ children }: { children: React.ReactNode }) {
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
-export function FitReportView({ report, onTailor, onCheckAnother, targetCity, saved }: Props) {
+export function FitReportView({ report, onTailor, onCheckAnother, targetCity, targetRole, saved }: Props) {
   const verdict = VERDICT[report.band];
   const applying = report.outcome === 'apply';
 
@@ -437,10 +446,36 @@ export function FitReportView({ report, onTailor, onCheckAnother, targetCity, sa
               </div>
             )}
 
+            {/*
+              Two ways out, and neither leaves the page.
+
+              Search opens Seek in a new tab, so the report they just read is
+              still here when they come back with an ad worth checking. Check
+              another clears this screen back to the empty paste box in place.
+            */}
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
               <PrimaryButton onClick={onCheckAnother}>
                 Check another job <ArrowRight size={17} />
               </PrimaryButton>
+
+              {(report.searchRoles[0] ?? targetRole) && (
+                <a
+                  href={seekSearchUrl((report.searchRoles[0] ?? targetRole)!, targetCity)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    padding: '12px 20px',
+                    background: C.bgSurface,
+                    border: `1px solid ${C.borderDefined}`,
+                    borderRadius: warm.radius.button,
+                    fontSize: 15, fontWeight: 700, color: C.textPrimary,
+                    textDecoration: 'none', fontFamily: 'inherit',
+                  }}
+                >
+                  <Search size={16} /> Search jobs on Seek
+                </a>
+              )}
             </div>
           </>
         )}
