@@ -25,6 +25,7 @@ import { warm } from '../lib/theme/warmTokens';
 import { classifyPaste } from '../lib/seekLink';
 import { jdMentionsSelectionCriteria } from '../lib/selectionCriteria';
 import { FitReportView, type FitReport } from '../components/fit/FitReportView';
+import { ApplyPreviewGate } from '../components/fit/ApplyPreviewGate';
 
 const C = warm.colors;
 
@@ -58,6 +59,8 @@ export default function FitCheckPage() {
   const incoming = (location.state ?? null) as IncomingJob | null;
 
   const [jd, setJd] = useState(incoming?.jobDescription ?? '');
+  /** True once a free account has asked us to write the application. */
+  const [gating, setGating] = useState(false);
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState<CheckResponse | null>(null);
   /**
@@ -135,8 +138,23 @@ export default function FitCheckPage() {
    * employer are what get carried forward, with anything the caller knew for
    * certain (a feed job knows both) winning over what the model read.
    */
+  /**
+   * Free accounts do not reach the workspace.
+   *
+   * They get the build sequence and then the offer, over their own resume. The
+   * check they just ran was the free tier's whole promise and it was kept; this
+   * is the door, and it is the first place in the flow where money is mentioned.
+   *
+   * `plan` is the signal, and an admin account is treated as paid so the real
+   * workspace stays reachable for testing. A profile that has not loaded yet is
+   * treated as PAID, deliberately: showing the offer to somebody who has already
+   * bought, because a query was slow, is the one failure here that costs money.
+   */
+  const isFree = profile ? (profile.plan ?? 'free') === 'free' && !profile.isAdmin : false;
+
   const goToApply = (companyOverride?: string) => {
     if (!result) return;
+    if (isFree) { setGating(true); return; }
     // What the server read, not what sits in the box: pasting a Seek link
     // would otherwise send the generator a URL instead of a job advert.
     const jobDescription = result.jobDescription || trimmed || incoming?.jobDescription || '';
@@ -176,6 +194,15 @@ export default function FitCheckPage() {
       fontFamily: warm.type.fontBody,
       display: 'flex', flexDirection: 'column',
     }}>
+      {gating && (
+        <ApplyPreviewGate
+          resumeMarkdown={profile?.resumeRawText || profile?.resumeOriginalText || ''}
+          role={result?.report.jobTitle}
+          company={result?.report.company}
+          onClose={() => setGating(false)}
+        />
+      )}
+
       <div style={{
         width: '100%', maxWidth: 680, margin: 'auto',
         padding: '48px 24px 64px',
@@ -187,7 +214,6 @@ export default function FitCheckPage() {
               onTailor={tailorThisJob}
               onCheckAnother={checkAnother}
               targetCity={profile?.targetCity}
-              targetRole={profile?.targetRole}
               saved
             />
             {employerAsk !== null && (

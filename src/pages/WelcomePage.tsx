@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Loader2, UploadCloud, ArrowRight, Plus, X, Search, Check, ChevronDown, AlertTriangle, ListChecks, PencilLine, Sparkles, FileText } from 'lucide-react';
+import { Loader2, UploadCloud, ArrowRight, Plus, X, Check, ChevronDown, AlertTriangle, ListChecks, PencilLine, Sparkles, FileText } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
@@ -135,8 +135,6 @@ export const WelcomePage: React.FC = () => {
   const [inlineDraft, setInlineDraft] = useState('');
 
   const [cleanResume, setCleanResume] = useState('');
-  const [retention, setRetention] = useState<{ checked: number; summary: string; repaired: boolean } | null>(null);
-  const [outstanding, setOutstanding] = useState(0);
   /** Real page count of the rendered PDF, from the server. Null if it could not render. */
   const [pageCount, setPageCount] = useState<number | null>(null);
 
@@ -258,9 +256,11 @@ export const WelcomePage: React.FC = () => {
         targetRole: cleanRoles()[0] ?? null,
       }, { timeout: 240000 });
       setCleanResume(data.resume || '');
-      setRetention(data.retention ?? null);
+      // The response also carries `retention` and `outstanding`. The screen no
+      // longer shows either: they were two more paragraphs on a page whose job
+      // is to hand over the document. The server keeps sending them, so putting
+      // them back is a render, not a round trip.
       setPageCount(typeof data.pageCount === 'number' ? data.pageCount : null);
-      setOutstanding(Array.isArray(data.outstanding) ? data.outstanding.length : 0);
       setStep('resume');
     } catch (err: any) {
       trackWelcomeFailed('building', 'build_failed');
@@ -695,11 +695,13 @@ export const WelcomePage: React.FC = () => {
           down repeating that we would email it. The document is the point, so
           everything that is not the document waits until after they have read it.
         */}
-        <Display>
-          {firstName
-            ? `Hey ${firstName}, check out your new and improved resume!`
-            : 'Check out your new and improved resume!'}
-        </Display>
+        <div style={{ marginBottom: 30 }}>
+          <Display>
+            {firstName
+              ? `Hey ${firstName}, check out your new and improved resume!`
+              : 'Check out your new and improved resume!'}
+          </Display>
+        </div>
 
         {/* Rendered as a page, not a text box — people trust what looks like a document. */}
         <div className="bank-paper" style={{ position: 'relative' }}>
@@ -729,62 +731,26 @@ export const WelcomePage: React.FC = () => {
         </div>
 
         {/*
-          What we checked, and what is still open — read AFTER the document.
+          The claim, then the picture of it, then the one thing to do next.
 
-          Both of these ask the candidate to do something with the resume: check
-          our work, and notice the gaps they can still close. Above the page they
-          were instructions given before there was anything to look at, and the
-          "have a read" landed before the read. Underneath, they are the two
-          things to think about having just finished reading, in the order that
-          matters: nothing was lost, and here is what would make it stronger.
+          The line is sized to hold on one line down to a 520px shell, which is
+          why the clamp tops out where it does: broken across two lines it reads
+          as two half-thoughts, and this one only works said in a single breath.
         */}
-        {retention && retention.checked > 0 && (
-          <div style={{
-            display: 'flex', gap: 10, alignItems: 'flex-start', padding: '13px 16px', marginTop: 22,
-            borderRadius: 12, background: 'rgba(45,90,110,0.07)', border: `1px solid rgba(45,90,110,0.20)`,
-          }}>
-            <span style={{ color: colors.accentPetrol, flexShrink: 0, marginTop: 1 }}><Check size={16} strokeWidth={3} /></span>
-            <span style={{ fontFamily: T.body, fontSize: 14, lineHeight: 1.55, color: colors.textSecondary }}>
-              {retention.summary}
-              {retention.repaired && ' One thing nearly slipped out and we put it back.'}
-              {' '}Have a read, and tell us if we missed anything.
-            </span>
-          </div>
-        )}
-
-        {outstanding > 0 && (
-          <div style={{
-            display: 'flex', gap: 10, alignItems: 'flex-start', padding: '13px 16px', marginTop: 12,
-            borderRadius: 12, background: colors.bgAlt, border: `1px solid ${colors.borderDefined}`,
-          }}>
-            <span style={{ color: colors.accentPetrol, flexShrink: 0, marginTop: 1 }}><Search size={16} /></span>
-            <span style={{ fontFamily: T.body, fontSize: 14, lineHeight: 1.55, color: colors.textSecondary }}>
-              {outstanding === 1 ? 'One question is' : `${outstanding} questions are`} still open. You can add{' '}
-              {outstanding === 1 ? 'it' : 'them'} later by uploading an updated resume, and every application we build
-              gets stronger when you do.
-            </span>
-          </div>
-        )}
-
-        {/*
-          Where they are on the way to hired, then the one thing to do next.
-
-          The argument for what comes after used to be a paragraph about
-          personalisation at scale, made before they had finished reading. The
-          diagram makes the same case without a sentence: five steps, three of
-          them behind them, and the offer letter at the end.
-        */}
-        <JourneyTrack src="/Assets/journey/step-3-of-5.png" />
-
         <p style={{
           fontFamily: T.display, fontWeight: 600, letterSpacing: '-0.015em',
-          fontSize: 'clamp(20px, 3vw, 25px)', lineHeight: 1.25,
-          color: colors.textPrimary, margin: '22px 0 18px',
+          fontSize: 'clamp(15px, 2.35vw, 21px)', lineHeight: 1.3,
+          color: colors.textPrimary, margin: '34px 0 0',
+          textAlign: 'center', whiteSpace: 'nowrap',
         }}>
           You're two steps away from landing your dream job in Australia.
         </p>
 
-        <PrimaryBtn label="See my next steps" onClick={onSaveResume} />
+        <JourneyTrack src="/Assets/journey/step-3-of-5.png" />
+
+        <div style={{ marginTop: 22 }}>
+          <PrimaryBtn label="See my next steps" onClick={onSaveResume} />
+        </div>
         <p style={{ fontFamily: T.body, fontSize: 13.5, color: colors.textMuted, margin: '14px 0 0' }}>
           Your resume will be sent as a PDF to your email address.
         </p>
@@ -1769,9 +1735,9 @@ function Shell({ children, wide, onWash }: { children: React.ReactNode; wide?: b
 function JourneyTrack({ src }: { src: string }) {
   return (
     <div style={{
-      marginTop: 26, borderRadius: 14, overflow: 'hidden',
+      marginTop: 14, borderRadius: 14, overflow: 'hidden',
       background: '#fff', border: `1px solid ${colors.borderDefined}`,
-      aspectRatio: '1920 / 820',
+      aspectRatio: '1920 / 820', maxWidth: 460, marginLeft: 'auto', marginRight: 'auto',
     }}>
       <img
         src={src}

@@ -60,7 +60,7 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
 
   const isAuthenticated = !!user && !(user as any).is_anonymous;
 
-  const { data: profile, isLoading, isError, error } = useQuery({
+  const { data: profile, isLoading, isFetching, isError, error } = useQuery({
     queryKey: ['profile'],
     queryFn: async () => {
       console.log('[OnboardingGate] fetching profile...');
@@ -195,7 +195,23 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
   // Supabase has not yet resolved the session, nothing here was true and the gate
   // fell through to "no profile, show onboarding". Someone walking out of the
   // welcome flow, already onboarded, got "Complete your profile" for a beat.
-  if (authLoading || isLoading || claimPending || (isAuthenticated && !profile?.hasCompletedOnboarding && reportStatus === 'checking')) {
+  /*
+   * A refetch in flight is not an answer either.
+   *
+   * The claim POST is followed by a profile refetch, and react-query serves the
+   * PREVIOUS result while that runs: isLoading is false, and for a brand new
+   * signup the previous result is the empty profile fetched moments before the
+   * claim wrote anything. So the gate had a real window where it held a stale
+   * "no profile" and rendered the intake form over it. Coming out of the welcome
+   * flow, that put "Complete your profile" in front of someone who had just
+   * completed it, for the couple of seconds the refetch took.
+   *
+   * While a fetch is open and nothing we hold says they are done, we do not know
+   * yet, and the spinner is the honest answer.
+   */
+  const answerPending = isAuthenticated && isFetching && !profile?.hasCompletedOnboarding;
+
+  if (authLoading || isLoading || claimPending || answerPending || (isAuthenticated && !profile?.hasCompletedOnboarding && reportStatus === 'checking')) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAF7F2' }}>
         <div className="w-12 h-12 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(45,90,110,0.2)', borderTopColor: '#2D5A6E' }} />
