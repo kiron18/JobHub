@@ -676,10 +676,7 @@ export const WelcomePage: React.FC = () => {
         <Eyebrow>Almost there</Eyebrow>
         <Display>Building your resume.</Display>
         <p style={bodyText}>Cleaning the formatting, leading with your outcomes, and working in everything you just told us. This takes up to a minute.</p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: colors.textSecondary, fontFamily: T.body, fontSize: 15 }}>
-          <Loader2 size={20} className="animate-spin" style={{ color: colors.accentPetrol }} />
-          Writing it now...
-        </div>
+        <CyclingStatus lines={BUILDING_LINES} />
       </Shell>
     );
   }
@@ -698,37 +695,6 @@ export const WelcomePage: React.FC = () => {
             Click the button to have it sent to your email address.
           </p>
         </div>
-
-        {/* The candidate signs off on a document they know was checked. We do the
-            work; showing it gives them a real part in it without depending on
-            them to catch anything. */}
-        {retention && retention.checked > 0 && (
-          <div style={{
-            display: 'flex', gap: 10, alignItems: 'flex-start', padding: '13px 16px', marginBottom: 14,
-            borderRadius: 12, background: 'rgba(45,90,110,0.07)', border: `1px solid rgba(45,90,110,0.20)`,
-          }}>
-            <span style={{ color: colors.accentPetrol, flexShrink: 0, marginTop: 1 }}><Check size={16} strokeWidth={3} /></span>
-            <span style={{ fontFamily: T.body, fontSize: 14, lineHeight: 1.55, color: colors.textSecondary }}>
-              {retention.summary}
-              {retention.repaired && ' One thing nearly slipped out and we put it back.'}
-              {' '}Have a read, and tell us if we missed anything.
-            </span>
-          </div>
-        )}
-
-        {outstanding > 0 && (
-          <div style={{
-            display: 'flex', gap: 10, alignItems: 'flex-start', padding: '13px 16px', marginBottom: 22,
-            borderRadius: 12, background: colors.bgAlt, border: `1px solid ${colors.borderDefined}`,
-          }}>
-            <span style={{ color: colors.accentPetrol, flexShrink: 0, marginTop: 1 }}><Search size={16} /></span>
-            <span style={{ fontFamily: T.body, fontSize: 14, lineHeight: 1.55, color: colors.textSecondary }}>
-              {outstanding === 1 ? 'One question is' : `${outstanding} questions are`} still open. You can add{' '}
-              {outstanding === 1 ? 'it' : 'them'} later by uploading an updated resume, and every application we build
-              gets stronger when you do.
-            </span>
-          </div>
-        )}
 
         {/*
           Length, stated before they scroll.
@@ -786,6 +752,44 @@ export const WelcomePage: React.FC = () => {
         <div className="bank-paper">
           <ReactMarkdown>{cleanResume}</ReactMarkdown>
         </div>
+
+        {/*
+          What we checked, and what is still open — read AFTER the document.
+
+          Both of these ask the candidate to do something with the resume: check
+          our work, and notice the gaps they can still close. Above the page they
+          were instructions given before there was anything to look at, and the
+          "have a read" landed before the read. Underneath, they are the two
+          things to think about having just finished reading, in the order that
+          matters: nothing was lost, and here is what would make it stronger.
+        */}
+        {retention && retention.checked > 0 && (
+          <div style={{
+            display: 'flex', gap: 10, alignItems: 'flex-start', padding: '13px 16px', marginTop: 22,
+            borderRadius: 12, background: 'rgba(45,90,110,0.07)', border: `1px solid rgba(45,90,110,0.20)`,
+          }}>
+            <span style={{ color: colors.accentPetrol, flexShrink: 0, marginTop: 1 }}><Check size={16} strokeWidth={3} /></span>
+            <span style={{ fontFamily: T.body, fontSize: 14, lineHeight: 1.55, color: colors.textSecondary }}>
+              {retention.summary}
+              {retention.repaired && ' One thing nearly slipped out and we put it back.'}
+              {' '}Have a read, and tell us if we missed anything.
+            </span>
+          </div>
+        )}
+
+        {outstanding > 0 && (
+          <div style={{
+            display: 'flex', gap: 10, alignItems: 'flex-start', padding: '13px 16px', marginTop: 12,
+            borderRadius: 12, background: colors.bgAlt, border: `1px solid ${colors.borderDefined}`,
+          }}>
+            <span style={{ color: colors.accentPetrol, flexShrink: 0, marginTop: 1 }}><Search size={16} /></span>
+            <span style={{ fontFamily: T.body, fontSize: 14, lineHeight: 1.55, color: colors.textSecondary }}>
+              {outstanding === 1 ? 'One question is' : `${outstanding} questions are`} still open. You can add{' '}
+              {outstanding === 1 ? 'it' : 'them'} later by uploading an updated resume, and every application we build
+              gets stronger when you do.
+            </span>
+          </div>
+        )}
 
         <div style={{ marginTop: 24 }}>
           <PrimaryBtn label="Send me my resume" onClick={onSaveResume} />
@@ -957,9 +961,8 @@ export const WelcomePage: React.FC = () => {
       <AnimatePresence mode="wait">
         {step === 'loading' ? (
           <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 8, color: colors.textSecondary, fontFamily: T.body, fontSize: 15 }}>
-            <Loader2 size={20} className="animate-spin" style={{ color: colors.accentPetrol }} />
-            Reading your resume...
+            style={{ marginTop: 8 }}>
+            <CyclingStatus lines={READING_LINES} align="center" />
           </motion.div>
         ) : (
           <motion.div key="drop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -1074,6 +1077,93 @@ const bankLine: React.CSSProperties = {
  * resume needs a second colour to be legible.
  */
 const RESUME_INK = '#24211C';
+
+/**
+ * The two waits, narrated.
+ *
+ * A single frozen "Reading your resume..." for twenty or forty seconds reads as
+ * a hung page, and the person sitting in front of it has nothing to do but
+ * wonder whether it broke. These lists give the wait a shape: each line names
+ * something that is genuinely happening on the server, in the order it happens,
+ * so the time passes as progress rather than as delay.
+ *
+ * Fixed lists, walked once. Nothing repeats and nothing loops back to the top,
+ * because a line you have already read coming round again is the clearest
+ * possible signal that the thing is stuck. The last line simply holds until the
+ * step ends, so a slow run trails off on a sentence that is still true rather
+ * than on a promise the next line would have broken.
+ *
+ * Keep every line honest to what the backend actually does. If a stage is ever
+ * removed from the pipeline, take its line out of the list with it.
+ */
+const READING_LINES = [
+  'Reading your resume.',
+  'Pulling out your roles, dates and education.',
+  'Looking for the outcomes buried in your duties.',
+  'Checking what a recruiter sees in the first six seconds.',
+  'Measuring it against what employers ask for.',
+  'Working out what is costing you interviews.',
+] as const;
+
+const BUILDING_LINES = [
+  'Cleaning up the formatting.',
+  'Keeping every role and date exactly as you had them.',
+  'Rewriting your duties as outcomes.',
+  'Working in the answers you just gave us.',
+  'Putting numbers to the results you named.',
+  'Setting it in a layout that survives an automated screen.',
+  'Checking nothing from your original resume was dropped.',
+  'Almost there. Putting it on the page.',
+] as const;
+
+/**
+ * How long each line holds. Long enough to read a sentence twice without
+ * hurrying, short enough that the screen never looks frozen.
+ */
+const STATUS_LINE_MS = 4200;
+
+/**
+ * One line at a time out of a fixed list, with the spinner beside it.
+ *
+ * The reserved height matters: without it the panel jumps every time a line of
+ * a different length swaps in, and a jumping page looks broken in exactly the
+ * moment we are trying to look busy.
+ */
+function CyclingStatus({ lines, align = 'left', intervalMs = STATUS_LINE_MS }: {
+  lines: readonly string[];
+  align?: 'left' | 'center';
+  intervalMs?: number;
+}) {
+  const [i, setI] = useState(0);
+
+  useEffect(() => {
+    // The last line holds. Nothing to schedule once we are on it.
+    if (i >= lines.length - 1) return;
+    const id = window.setTimeout(() => setI((n) => n + 1), intervalMs);
+    return () => window.clearTimeout(id);
+  }, [i, lines.length, intervalMs]);
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 12, minHeight: 24,
+      justifyContent: align === 'center' ? 'center' : 'flex-start',
+      color: colors.textSecondary, fontFamily: T.body, fontSize: 15,
+    }}>
+      <Loader2 size={20} className="animate-spin" style={{ color: colors.accentPetrol, flexShrink: 0 }} />
+      <AnimatePresence mode="wait">
+        <motion.span
+          key={i}
+          initial={{ opacity: 0, y: 5 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -5 }}
+          transition={{ duration: 0.3, ease: EASE }}
+        >
+          {lines[i]}
+        </motion.span>
+      </AnimatePresence>
+    </div>
+  );
+}
 
 const RESUME_PAPER_CSS = `
 .bank-paper {
@@ -1577,6 +1667,17 @@ const WASH_OPACITY = 0.62;
 const COPIES_PER_HALF = 2;
 
 /**
+ * How long one row takes to travel a full half of its strip, in seconds.
+ *
+ * Slower than it was (68s + 9 per row). The wall is texture behind the upload
+ * box, and anything quick enough to track with your eye competes with the one
+ * thing on the page you are meant to read. Each row is a little slower than the
+ * one above it so the three never lock into a single moving block.
+ */
+const MARQUEE_SECONDS = 84;
+const MARQUEE_ROW_STEP = 11;
+
+/**
  * Two rows of testimonials crawling in opposite directions behind the page.
  *
  * The loop works by rendering each row's cards twice and sliding the strip
@@ -1616,7 +1717,7 @@ function TestimonialWash() {
     <div aria-hidden style={{ position: 'fixed', inset: 0, zIndex: 0, overflow: 'hidden', pointerEvents: 'none', background: colors.bgCanvas }}>
       <div style={{ position: 'absolute', top: -40, left: 0, right: 0, display: 'flex', flexDirection: 'column', gap: 18 }}>
         {rows.map((row, r) => (
-          <div key={r} style={{ display: 'flex', width: 'max-content', gap: 18, marginLeft: r * -84, animation: `agcMarquee${r % 2 === 0 ? 'L' : 'R'} ${68 + r * 9}s linear infinite` }} className="agc-marquee-row">
+          <div key={r} style={{ display: 'flex', width: 'max-content', gap: 18, marginLeft: r * -84, animation: `agcMarquee${r % 2 === 0 ? 'L' : 'R'} ${MARQUEE_SECONDS + r * MARQUEE_ROW_STEP}s linear infinite` }} className="agc-marquee-row">
             {row.map((src, i) => (
               <img key={`${r}-${i}`} src={src} alt="" loading="lazy" draggable={false}
                 style={{ width: 168, height: 342, objectFit: 'cover', borderRadius: 12, flexShrink: 0, boxShadow: '0 8px 24px -14px rgba(26,24,20,0.35)' }} />

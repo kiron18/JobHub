@@ -10,6 +10,11 @@ import { renderResumePdf, resumeFilename } from './resumePdf';
  *
  * So every parse in this file retries. Without it these tests fail on the
  * parser's mood rather than on anything they are meant to be checking.
+ *
+ * Six attempts, not three. The state it carries is cumulative: parsing a
+ * near-empty document poisons the next two or three reads outright, which was
+ * enough to exhaust three retries once this file grew more parses. Raise this
+ * again rather than deleting a test if it ever starts flaking.
  */
 let rawParse: (b: Buffer) => Promise<{ text: string; numpages: number }>;
 
@@ -20,7 +25,7 @@ beforeAll(async () => {
 
 async function parse(buf: Buffer): Promise<{ text: string; numpages: number }> {
   let last: unknown;
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 6; i++) {
     try { return await rawParse(buf); } catch (err) { last = err; }
   }
   throw last;
@@ -92,6 +97,45 @@ describe('renderResumePdf', () => {
   it('can still be asked for the footer, for a coach or sample copy', async () => {
     expect(await pdfText((await renderResumePdf(RESUME, { brand: true })).buffer))
       .toContain('Prepared with Aussie Grad Careers');
+  });
+
+  const LONG = () => `${RESUME}
+
+## More
+
+${'- A further bullet of real content that takes up room\n'.repeat(70)}`;
+
+  it('numbers the pages once there is more than one', async () => {
+    // A second page that is printed and dropped on a desk has to be able to say
+    // where it belongs.
+    const { buffer, pages } = await renderResumePdf(LONG());
+    const text = await pdfText(buffer);
+    expect(pages).toBeGreaterThan(1);
+    expect(text).toContain(`Page 1 of ${pages}`);
+    expect(text).toContain(`Page ${pages} of ${pages}`);
+  });
+
+  it('does not number a one-page resume', async () => {
+    // "Page 1 of 1" says nothing the reader cannot see, and reads as automated.
+    expect(await pdfText((await renderResumePdf(RESUME)).buffer)).not.toContain('Page 1 of 1');
+  });
+
+  it('can be asked to leave the numbers off', async () => {
+    expect(await pdfText((await renderResumePdf(LONG(), { pageNumbers: false })).buffer))
+      .not.toContain('Page 1 of');
+  });
+
+  it('numbering does not inflate the page count', async () => {
+    // Same trap the brand footer fell into: text written past the bottom margin
+    // spills onto a new page, and every added page adds another footer.
+    const { buffer, pages } = await renderResumePdf(LONG());
+    expect(pages).toBe((await parse(buffer)).numpages);
+  });
+
+  it('keeps both marks apart when the branded copy is numbered', async () => {
+    const text = await pdfText((await renderResumePdf(LONG(), { brand: true })).buffer);
+    expect(text).toContain('Prepared with Aussie Grad Careers');
+    expect(text).toContain('Page 1 of');
   });
 
   it('loses nothing: every bullet survives into the document', async () => {

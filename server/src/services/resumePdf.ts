@@ -47,6 +47,21 @@ export interface RenderOptions {
    * because a coach-facing or sample copy is a legitimate reason to want it.
    */
   brand?: boolean;
+
+  /**
+   * "Page 1 of 2" in the bottom margin, ON by default.
+   *
+   * A resume that runs to a second page gets printed, stapled, dropped on a
+   * desk and picked up in the wrong order, and a page with no number is the one
+   * that goes missing without anyone noticing. Unlike the brand line this is
+   * part of the document rather than a mark on it, which is why the defaults
+   * differ.
+   *
+   * A one-page resume is never numbered: "Page 1 of 1" tells the reader nothing
+   * they cannot see, and it is the sort of detail that makes a document look
+   * automated.
+   */
+  pageNumbers?: boolean;
 }
 
 /**
@@ -93,7 +108,8 @@ function writeRich(doc: PDFKit.PDFDocument, text: string, size: number, colour: 
  * to prevent, and it must not be reintroduced here at the last step.
  */
 export function renderResumePdf(markdown: string, opts: RenderOptions = {}): Promise<RenderedResume> {
-  const { brand = false } = opts;
+  const { brand = false, pageNumbers = true } = opts;
+  const wantsFooter = brand || pageNumbers;
 
   return new Promise((resolve, reject) => {
     // bufferPages only where it earns its place: it holds every page open so the
@@ -102,7 +118,7 @@ export function renderResumePdf(markdown: string, opts: RenderOptions = {}): Pro
     // The page count is taken from pageAdded rather than from the buffer, so it
     // is correct in both modes. The constructor's own first page fires before
     // this listener exists, so the count starts at one and this counts the rest.
-    const doc = new PDFDocument({ ...PAGE, bufferPages: brand });
+    const doc = new PDFDocument({ ...PAGE, bufferPages: wantsFooter });
     const chunks: Buffer[] = [];
     let pages = 1;
     doc.on('pageAdded', () => { pages++; });
@@ -188,29 +204,43 @@ export function renderResumePdf(markdown: string, opts: RenderOptions = {}): Pro
      * somebody's application. That is the whole difference between branding that
      * adds to the candidate's credibility and branding that spends it.
      */
-    if (brand) {
+    if (wantsFooter) {
       const range = doc.bufferedPageRange();
-      for (let i = range.start; i < range.start + range.count; i++) {
-        doc.switchToPage(i);
-        // The footer sits BELOW the bottom margin, and pdfkit treats anything
-        // past that margin as overflow and starts a new page for it — which
-        // silently doubled a two-page resume to four. Dropping the margin for
-        // the width of this one line, and restoring it, keeps the text where it
-        // belongs and the page count honest.
-        const bottom = doc.page.margins.bottom;
-        doc.page.margins.bottom = 0;
-        doc.font('Helvetica').fontSize(7.5).fillColor(FOOTER)
-          .text(
-            'Prepared with Aussie Grad Careers  ·  aussiegradcareers.com.au',
-            doc.page.margins.left,
-            doc.page.height - bottom + 20,
-            {
-              width: doc.page.width - doc.page.margins.left - doc.page.margins.right,
-              align: 'center',
-              lineBreak: false,
-            },
-          );
-        doc.page.margins.bottom = bottom;
+      // One page needs no number; see the pageNumbers option.
+      const numbering = pageNumbers && range.count > 1;
+
+      if (brand || numbering) {
+        for (let i = range.start; i < range.start + range.count; i++) {
+          doc.switchToPage(i);
+          // The footer sits BELOW the bottom margin, and pdfkit treats anything
+          // past that margin as overflow and starts a new page for it — which
+          // silently doubled a two-page resume to four. Dropping the margin for
+          // the width of this one line, and restoring it, keeps the text where it
+          // belongs and the page count honest.
+          const bottom = doc.page.margins.bottom;
+          doc.page.margins.bottom = 0;
+          const y = doc.page.height - bottom + 20;
+          const width = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+          doc.font('Helvetica').fontSize(7.5).fillColor(FOOTER);
+
+          if (brand) {
+            doc.text(
+              'Prepared with Aussie Grad Careers  ·  aussiegradcareers.com.au',
+              doc.page.margins.left, y,
+              { width, align: 'center', lineBreak: false },
+            );
+          }
+          if (numbering) {
+            // Centred when it is the only thing down here, pushed to the right
+            // when the brand line already owns the middle.
+            doc.text(
+              `Page ${i - range.start + 1} of ${range.count}`,
+              doc.page.margins.left, y,
+              { width, align: brand ? 'right' : 'center', lineBreak: false },
+            );
+          }
+          doc.page.margins.bottom = bottom;
+        }
       }
     }
 
