@@ -1043,11 +1043,6 @@ const PANEL_BORDER = 'rgba(26, 24, 20, 0.28)';
 
 const bodyText: React.CSSProperties = { fontFamily: T.body, fontSize: 15.5, lineHeight: 1.65, color: colors.textSecondary, margin: '0 0 24px' };
 
-/** One short sentence per line, so the bank idea builds instead of being asserted. */
-const bankLine: React.CSSProperties = {
-  fontFamily: T.body, fontSize: 16, lineHeight: 1.5, color: colors.textSecondary, margin: '0 0 7px',
-};
-
 /**
  * The bank renders as a page, not a text dump. Markdown lists need explicit
  * styling because the app's CSS reset strips list markers, which is why the
