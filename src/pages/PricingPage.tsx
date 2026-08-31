@@ -1,134 +1,247 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Zap, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Check, ChevronDown, ChevronUp, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../lib/api';
-import { warm } from '../lib/theme/warmTokens';
+import { colors, type as typeTokens, spacing } from '../components/landing/tokens';
+import { Eyebrow } from '../components/landing/shared/Eyebrow';
+import { PrimaryCTA } from '../components/landing/shared/PrimaryCTA';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+/* ── The offer ────────────────────────────────────────────────────────────────
+   One plan, one price, one promise. The page sells the outcome and the
+   guarantee; the tool is only ever named as the mechanism that delivers them.
 
-type Plan = 'monthly' | 'three_month' | 'annual';
+   $100/mo maps to the live Stripe price "Job Hub System monthly". The 7 free
+   days are configured on the subscription in server/src/routes/stripe.ts, not
+   here, so this copy and that trial have to move together.                    */
 
-interface PlanDef {
-  id: Plan;
-  name: string;
-  price: string;
-  weekly: string;
-  billing: string;
-  trial: string | null;
-  cta: string;
-  recommended?: boolean;
-  features: string[];
-  savings?: string;
-}
+const PRICE = '$100';
+const TRIAL_DAYS = 7;
 
-// ─── Plan definitions ──────────────────────────────────────────────────────────
+const CTA_LABEL = 'Start my 5 interviews in 30 days →';
 
-const PLANS: PlanDef[] = [
+const LEVERS = [
   {
-    id: 'three_month',
-    name: '3-Month Access',
-    price: '$197 AUD',
-    weekly: 'Full access for your job hunt',
-    billing: 'one payment · 90 days access',
-    trial: null,
-    cta: 'Get 3-Month Access',
-    recommended: true,
-    features: [
-      'Unlimited document generations',
-      'Unlimited job analyses & match scoring',
-      'Daily AI job feed',
-      'Pay once, full access for 90 days',
-      'Lifetime access to your documents',
-    ],
-    savings: 'One payment of $197 for three months. That\'s about $65 a month.\nAfterpay and Zip both work at checkout.',
+    stat: '150',
+    unit: 'applications',
+    label: 'Volume',
+    body: 'Hiring at graduate level is a numbers game before it is anything else. Most people lose it at the first number.',
+  },
+  {
+    stat: '30',
+    unit: 'minutes a day',
+    label: 'Speed',
+    body: 'You paste a job ad. Everything downstream of that is already written by the time you have read it.',
+  },
+  {
+    stat: '0',
+    unit: 'words written',
+    label: 'Effort',
+    body: 'No cover letters. No selection criteria from scratch. No rewriting the same resume for the ninth time.',
   },
 ];
 
-// ─── FAQ data ──────────────────────────────────────────────────────────────────
+const BELT = [
+  { n: 1, t: 'Paste the ad', d: 'That is the whole input. No forms, no profile to maintain.' },
+  { n: 2, t: 'It reads the ad against your real history', d: 'Not a template. Your actual roles, projects and numbers.' },
+  { n: 3, t: 'Resume rewritten to that specific ad', d: 'Phrased the way the filter is matching, in about 40 seconds.' },
+  { n: 4, t: 'Selection criteria drafted in STAR', d: 'The part government and grad programs actually score, and the part nearly everyone skips.' },
+  { n: 5, t: 'Logged, tracked, and chased', d: 'It tells you who to follow up and what to send on day five, which is where most applications are quietly lost.' },
+];
+
+const OBJECTIONS = [
+  {
+    q: '"I don\'t need coaching. I need volume."',
+    a: 'Correct, and that is the point. This is not a coaching program with software attached. Coaches talk to you about applying. This applies.',
+  },
+  {
+    q: '"Won\'t 150 applications all look the same?"',
+    a: 'They would if a human wrote them tired at midnight. Each one is built against its own ad, which is precisely the thing volume normally costs you.',
+  },
+  {
+    q: '"I have applied to hundreds of jobs already."',
+    a: 'Almost certainly with one resume, no selection criteria, and no follow-up. That is three separate reasons to be filtered out before a person ever reads your name.',
+  },
+  {
+    q: '"What if it does not work for me?"',
+    a: 'Then it costs you nothing and it costs me my time. See the guarantee below. That is the whole risk transfer.',
+  },
+];
+
+const STACK = [
+  'Unlimited tailored resumes, one per job ad',
+  'Unlimited cover letters and selection criteria in STAR format',
+  'Interview prep built from the specific ad you applied to',
+  'Application tracker with day-five follow-up prompts',
+  'Daily job feed matched to your visa and your field',
+  'Every document stays yours, forever, job or no job',
+];
 
 const FAQS = [
   {
-    q: 'Is this a subscription?',
-    a: "No. It's a single payment of $197 for 90 days of full access. No recurring charge, nothing to cancel.",
+    q: `Is the first ${TRIAL_DAYS} days really free?`,
+    a: `Yes. You start a ${TRIAL_DAYS}-day trial with full access and nothing is charged until it ends. Cancel inside the trial and you pay nothing at all.`,
   },
   {
-    q: 'What happens when I get a job?',
-    a: "Congratulations, that's exactly what this is for. You keep every document you've created, and there's no subscription to cancel. We don't lock anything away.",
+    q: 'Can I cancel?',
+    a: 'Any time, in one click, from your account. It is a monthly subscription, not a lock-in. If you land a role in week three, you cancel in week three.',
   },
   {
-    q: 'Why 3 months?',
-    a: "Most job searches take 6 to 12 weeks. Full access for 90 days is built to match a focused job hunt: pay once, no ongoing commitment.",
+    q: 'How does the guarantee actually work?',
+    a: 'Run 150 applications through the system inside 30 days. If that does not produce 5 interview callbacks, I personally audit and rewrite your entire profile and run your applications myself, free, until it does. The only condition is the 150, because I cannot fix a volume problem you did not have.',
   },
   {
-    q: 'Is my card charged immediately?',
-    a: "Yes. It's a single one-time payment charged at checkout. No trial, no recurring billing.",
+    q: 'What happens when I get the job?',
+    a: 'You cancel, and you keep every document you generated. Nothing gets locked away. That is the intended ending.',
   },
   {
-    q: 'Can I use Afterpay or Zip?',
-    a: 'Yes. Both are supported at checkout. Afterpay splits $197 into four fortnightly payments. No interest, no ongoing commitment.',
+    q: 'Do I have to pay to try it?',
+    a: 'No. There is a free tier with 5 document generations and 5 job analyses, no card required. Use that first if you would rather see it work before you decide.',
   },
 ];
 
-// ─── Sub-components ────────────────────────────────────────────────────────────
+/* ── Sub-components ──────────────────────────────────────────────────────── */
 
-function PlanCard({ plan, onSelect, loading }: { plan: PlanDef; onSelect: () => void; loading: boolean }) {
+function Section({
+  children,
+  alt,
+  id,
+}: {
+  children: React.ReactNode;
+  alt?: boolean;
+  id?: string;
+}) {
+  return (
+    <section id={id} style={{ background: alt ? colors.bgAlt : colors.bgSurface }}>
+      <div style={{ maxWidth: spacing.containerMax, margin: '0 auto', padding: '88px 24px' }}>
+        {children}
+      </div>
+    </section>
+  );
+}
+
+function H2({ children }: { children: React.ReactNode }) {
+  return (
+    <h2
+      style={{
+        fontFamily: typeTokens.display,
+        fontSize: 'clamp(1.5rem, 3.4vw, 2rem)',
+        fontWeight: 500,
+        lineHeight: 1.2,
+        letterSpacing: '-0.015em',
+        color: colors.textPrimary,
+        margin: '0 0 16px',
+        fontVariationSettings: "'SOFT' 50, 'WONK' 1",
+      }}
+    >
+      {children}
+    </h2>
+  );
+}
+
+/* The hero's proof. Not a product screenshot and not a testimonial, because
+   there are no case studies yet to show honestly. It shows the one number the
+   offer turns on: same three hours, two very different amounts of work. */
+function ThreeHours() {
+  const rows = [
+    { label: 'Writing them by hand', n: 12, pct: 8, tone: colors.textMuted },
+    { label: 'Through the belt', n: 150, pct: 100, tone: colors.accentPetrol },
+  ];
   return (
     <div
       style={{
-        position: 'relative',
-        display: 'flex',
-        flexDirection: 'column',
-        borderRadius: 20,
-        padding: '28px 24px',
-        border: `1px solid ${plan.recommended ? `${warm.colors.accentPetrol}50` : warm.colors.borderWhisper}`,
-        background: warm.colors.bgSurface,
+        background: colors.bgSurface,
+        border: `1px solid ${colors.borderDefined}`,
+        borderRadius: 14,
+        padding: 'clamp(20px, 4vw, 32px)',
+        boxShadow: '0 1px 2px rgba(26,24,20,0.04), 0 12px 32px rgba(26,24,20,0.06)',
       }}
     >
-      <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 900, letterSpacing: '0.12em', textTransform: 'uppercase', color: warm.colors.textMuted }}>{plan.name}</p>
-      <p style={{ margin: '0 0 2px', fontSize: 32, fontWeight: 900, color: warm.colors.textPrimary, lineHeight: 1 }}>{plan.price}</p>
-      <p style={{ margin: '0 0 4px', fontSize: 11, color: warm.colors.textMuted }}>{plan.billing}</p>
-      <p style={{ margin: '0 0 20px', fontSize: 13, fontWeight: 700, color: warm.colors.accentPetrol }}>{plan.weekly}</p>
-
-      {plan.trial && (
-        <p style={{ margin: '0 0 16px', fontSize: 11, color: warm.colors.textMuted, fontStyle: 'italic' }}>{plan.trial} — no charge until day 8</p>
-      )}
-      {plan.savings && (
-        <p style={{ margin: '0 0 16px', fontSize: 11, color: warm.colors.accentPetrol, lineHeight: 1.5, whiteSpace: 'pre-line' }}>{plan.savings}</p>
-      )}
-
-      <ul style={{ margin: '0 0 24px', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {plan.features.map(f => (
-          <li key={f} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-            <Check size={13} style={{ color: warm.colors.accentPetrol, flexShrink: 0, marginTop: 1 }} />
-            <span style={{ fontSize: 13, color: warm.colors.textSecondary }}>{f}</span>
-          </li>
-        ))}
-      </ul>
-
-      <button
-        onClick={onSelect}
-        disabled={loading}
+      <div
         style={{
-          marginTop: 'auto',
-          width: '100%',
-          padding: '13px 0',
-          borderRadius: 12,
-          fontSize: 12,
-          fontWeight: 900,
-          letterSpacing: '0.08em',
+          fontFamily: typeTokens.body,
+          fontSize: '0.75rem',
+          fontWeight: 600,
+          letterSpacing: '0.18em',
           textTransform: 'uppercase',
-          cursor: loading ? 'wait' : 'pointer',
-          opacity: loading ? 0.6 : 1,
-          transition: 'opacity 0.2s',
-          background: plan.recommended ? warm.colors.accentPetrol : warm.colors.bgAlt,
-          color: plan.recommended ? warm.colors.textOnDeep : warm.colors.textSecondary,
-          border: plan.recommended ? 'none' : `1px solid ${warm.colors.borderWhisper}`,
+          color: colors.textMuted,
+          marginBottom: 24,
         }}
       >
-        {loading ? '...' : plan.cta}
-      </button>
+        Three hours on a Sunday
+      </div>
+
+      {rows.map(r => (
+        <div key={r.label} style={{ marginBottom: 20 }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'baseline',
+              marginBottom: 8,
+              gap: 12,
+            }}
+          >
+            <span
+              style={{
+                fontFamily: typeTokens.body,
+                fontSize: '0.9375rem',
+                color: colors.textSecondary,
+              }}
+            >
+              {r.label}
+            </span>
+            <span
+              style={{
+                fontFamily: typeTokens.display,
+                fontSize: 'clamp(1.5rem, 4vw, 2rem)',
+                fontWeight: 600,
+                color: r.tone,
+                lineHeight: 1,
+                fontVariationSettings: "'SOFT' 50, 'WONK' 1",
+              }}
+            >
+              {r.n}
+            </span>
+          </div>
+          <div
+            style={{
+              height: 10,
+              borderRadius: 99,
+              background: colors.bgAlt,
+              overflow: 'hidden',
+            }}
+          >
+            <motion.div
+              initial={{ width: 0 }}
+              whileInView={{ width: `${r.pct}%` }}
+              viewport={{ once: true, amount: 0.4 }}
+              transition={{ duration: 0.9, ease: [0.25, 1, 0.5, 1] }}
+              style={{
+                height: '100%',
+                borderRadius: 99,
+                background: r.tone === colors.accentPetrol ? colors.accentPetrol : colors.borderDefined,
+              }}
+            />
+          </div>
+        </div>
+      ))}
+
+      <p
+        style={{
+          fontFamily: typeTokens.body,
+          fontSize: '0.875rem',
+          color: colors.textSecondary,
+          margin: '20px 0 0',
+          lineHeight: 1.6,
+        }}
+      >
+        Same three hours. The difference is not effort, and it was never talent.
+        It is that one of these is a conveyor belt and the other is a craft
+        project.
+      </p>
     </div>
   );
 }
@@ -136,41 +249,61 @@ function PlanCard({ plan, onSelect, loading }: { plan: PlanDef; onSelect: () => 
 function FaqItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <div style={{ borderBottom: `1px solid ${warm.colors.borderWhisper}`, paddingBottom: 20 }}>
+    <div style={{ borderBottom: `1px solid ${colors.borderWhisper}` }}>
       <button
-        onClick={() => setOpen(v => !v)}
+        onClick={() => setOpen(o => !o)}
         style={{
           width: '100%',
+          background: 'none',
+          border: 'none',
+          padding: '20px 0',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: 16,
-          background: 'none',
-          border: 'none',
-          padding: '20px 0 0',
           cursor: 'pointer',
           textAlign: 'left',
+          fontFamily: typeTokens.body,
+          fontSize: '1rem',
+          fontWeight: 600,
+          color: colors.textPrimary,
         }}
+        aria-expanded={open}
       >
-        <span style={{ fontSize: 15, fontWeight: 700, color: warm.colors.textPrimary }}>{q}</span>
-        {open
-          ? <ChevronUp size={16} style={{ color: warm.colors.textMuted, flexShrink: 0 }} />
-          : <ChevronDown size={16} style={{ color: warm.colors.textMuted, flexShrink: 0 }} />}
+        {q}
+        {open ? (
+          <ChevronUp size={18} style={{ color: colors.textMuted, flexShrink: 0 }} />
+        ) : (
+          <ChevronDown size={18} style={{ color: colors.textMuted, flexShrink: 0 }} />
+        )}
       </button>
       {open && (
-        <p style={{ margin: '12px 0 0', fontSize: 14, color: warm.colors.textSecondary, lineHeight: 1.7 }}>{a}</p>
+        <p
+          style={{
+            fontFamily: typeTokens.body,
+            fontSize: '0.9375rem',
+            color: colors.textSecondary,
+            lineHeight: 1.65,
+            margin: '0 0 20px',
+            maxWidth: spacing.containerReadable,
+          }}
+        >
+          {a}
+        </p>
       )}
     </div>
   );
 }
 
-// ─── Main component ────────────────────────────────────────────────────────────
+/* ── Page ────────────────────────────────────────────────────────────────── */
 
 export function PricingPage() {
-  const { user } = useAuth();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState<Plan | null>(null);
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
 
+  // Body is overflow:hidden app-wide, so a full-page public view has to own its
+  // own scroll container or it simply cannot be scrolled.
   useEffect(() => {
     document.body.style.overflow = 'auto';
     document.documentElement.style.overflow = 'auto';
@@ -180,20 +313,22 @@ export function PricingPage() {
     };
   }, []);
 
-  async function handleSelect(plan: Plan) {
+  async function startTrial() {
     if (!user) {
-      navigate('/auth');
+      navigate('/auth?next=/pricing');
       return;
     }
-    setLoading(plan);
+    setLoading(true);
     try {
-      const { data } = await api.post('/stripe/checkout', { plan });
+      const { data } = await api.post('/stripe/checkout', { plan: 'monthly' });
       window.location.href = data.url;
     } catch (err: any) {
-      setLoading(null);
-      const msg = err?.response?.data?.error ?? '';
+      setLoading(false);
+      const msg = String(err?.response?.data?.error ?? '');
       if (msg.toLowerCase().includes('complimentary')) {
-        toast.success('Your account already has full access - no payment needed.');
+        toast.success('This account already has full access, nothing to pay.');
+      } else if (err?.response?.status === 410) {
+        toast.error('Checkout is temporarily unavailable. Email kiron@aussiegradcareers.com.au and I will sort you out.');
       } else {
         toast.error('Could not start checkout. Please try again.');
       }
@@ -201,123 +336,395 @@ export function PricingPage() {
   }
 
   return (
-    <div style={{ height: '100vh', overflowY: 'auto', background: warm.colors.bgCanvas, color: warm.colors.textPrimary }}>
-      {/* Nav bar */}
-      <div style={{ borderBottom: `1px solid ${warm.colors.borderWhisper}`, padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <div
+      style={{
+        height: '100dvh',
+        overflowY: 'auto',
+        background: colors.bgCanvas,
+        color: colors.textPrimary,
+        fontFamily: typeTokens.body,
+      }}
+    >
+      {/* Nav */}
+      <div
+        style={{
+          borderBottom: `1px solid ${colors.borderWhisper}`,
+          background: colors.bgCanvas,
+          padding: '16px 24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          position: 'sticky',
+          top: 0,
+          zIndex: 10,
+        }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Zap size={18} style={{ color: warm.colors.accentPetrol }} />
-          <span style={{ fontSize: 14, fontWeight: 900, letterSpacing: '0.05em', color: warm.colors.textPrimary }}>Aussie Grad Careers</span>
+          <Zap size={18} style={{ color: colors.accentPetrol }} />
+          <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: '0.04em' }}>
+            Aussie Grad Careers
+          </span>
         </div>
         <button
           onClick={() => navigate('/auth')}
           style={{
-            background: warm.colors.bgAlt,
-            border: `1px solid ${warm.colors.borderWhisper}`,
+            background: 'transparent',
+            border: `1px solid ${colors.borderDefined}`,
             borderRadius: 8,
             padding: '8px 16px',
-            fontSize: 12,
-            fontWeight: 700,
-            color: warm.colors.textSecondary,
+            fontSize: 13,
+            fontWeight: 600,
+            color: colors.textSecondary,
             cursor: 'pointer',
+            fontFamily: typeTokens.body,
           }}
         >
           {user ? 'Go to dashboard →' : 'Log in →'}
         </button>
       </div>
 
-      <div style={{ maxWidth: 860, margin: '0 auto', padding: '72px 24px 96px' }}>
-        {/* Hero */}
-        <div style={{ textAlign: 'center', marginBottom: 64 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: `${warm.colors.accentPetrol}10`, border: `1px solid ${warm.colors.accentPetrol}28`, borderRadius: 99, padding: '6px 14px', marginBottom: 24 }}>
-            <Zap size={12} style={{ color: warm.colors.accentPetrol }} />
-            <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '0.12em', textTransform: 'uppercase', color: warm.colors.accentPetrol }}>Simple Pricing</span>
-          </div>
-          <h1 style={{ fontSize: 44, fontWeight: 600, lineHeight: 1.1, margin: '0 0 16px', color: warm.colors.textPrimary }}>
-            Get the job. Stop paying.
-          </h1>
-          <p style={{ fontSize: 17, color: warm.colors.textSecondary, maxWidth: 480, margin: '0 auto', lineHeight: 1.6 }}>
-            The average Australian graduate earns $1,200+ per week in their first role.
-            This is how you get there.
-          </p>
-        </div>
+      {/* 1 + 2 + 3 — headline, sub-headline, proof */}
+      <section style={{ background: colors.bgCanvas }}>
+        <div
+          style={{
+            maxWidth: spacing.containerMax,
+            margin: '0 auto',
+            padding: 'clamp(56px, 9vw, 96px) 24px',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: 'clamp(32px, 6vw, 64px)',
+            alignItems: 'center',
+          }}
+        >
+          <div>
+            <Eyebrow>FOR INTERNATIONAL GRADS IN AUSTRALIA</Eyebrow>
 
-        {/* Plan */}
-        <div style={{ maxWidth: 380, margin: '0 auto 80px' }}>
-          {PLANS.map(plan => (
-            <PlanCard
-              key={plan.id}
-              plan={plan}
-              onSelect={() => handleSelect(plan.id)}
-              loading={loading === plan.id}
-            />
+            <h1
+              style={{
+                fontFamily: typeTokens.display,
+                fontSize: 'clamp(2.1rem, 5.4vw, 3.25rem)',
+                fontWeight: 500,
+                lineHeight: 1.05,
+                letterSpacing: '-0.025em',
+                margin: '0 0 20px',
+                fontVariationSettings: "'SOFT' 50, 'WONK' 1",
+              }}
+            >
+              Get 5 interviews in 30 days.
+              <br />
+              <span
+                style={{
+                  background: colors.highlight,
+                  boxDecorationBreak: 'clone',
+                  WebkitBoxDecorationBreak: 'clone',
+                  padding: '0 6px',
+                }}
+              >
+                Or I work for free until you do.
+              </span>
+            </h1>
+
+            <p
+              style={{
+                fontSize: 'clamp(1.0625rem, 2vw, 1.1875rem)',
+                color: colors.textSecondary,
+                lineHeight: 1.6,
+                margin: '0 0 32px',
+                maxWidth: 460,
+              }}
+            >
+              Send 150 optimised applications in the time it takes to write 5 by
+              hand.
+            </p>
+
+            <PrimaryCTA label={loading ? 'Opening checkout…' : CTA_LABEL} onClick={startTrial} />
+
+            <p style={{ fontSize: '0.875rem', color: colors.textMuted, margin: '16px 0 0' }}>
+              {TRIAL_DAYS} days free, then {PRICE}/month. Cancel any time, in one click.
+            </p>
+          </div>
+
+          <ThreeHours />
+        </div>
+      </section>
+
+      {/* 4a — the value levers */}
+      <Section>
+        <Eyebrow>WHY IT WORKS</Eyebrow>
+        <H2>Three levers, and only one of them is effort.</H2>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+            gap: 24,
+            marginTop: 40,
+          }}
+        >
+          {LEVERS.map(l => (
+            <div
+              key={l.label}
+              style={{
+                background: colors.bgAlt,
+                border: `1px solid ${colors.borderWhisper}`,
+                borderRadius: 12,
+                padding: 24,
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: typeTokens.display,
+                  fontSize: '2.5rem',
+                  fontWeight: 600,
+                  lineHeight: 1,
+                  color: colors.accentPetrol,
+                  fontVariationSettings: "'SOFT' 50, 'WONK' 1",
+                }}
+              >
+                {l.stat}
+              </div>
+              <div
+                style={{
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                  color: colors.textMuted,
+                  margin: '6px 0 14px',
+                }}
+              >
+                {l.unit}
+              </div>
+              <p style={{ fontSize: '0.9375rem', color: colors.textSecondary, lineHeight: 1.6, margin: 0 }}>
+                {l.body}
+              </p>
+            </div>
           ))}
         </div>
+      </Section>
 
-        {/* Free tier note */}
-        <p style={{ textAlign: 'center', fontSize: 13, color: warm.colors.textMuted, marginBottom: 80 }}>
-          Not ready? Start free — 5 document generations, 5 job analyses, 1 job feed search included on the free tier.
+      {/* 4b — the mechanism */}
+      <Section alt>
+        <Eyebrow>THE MECHANISM</Eyebrow>
+        <H2>The conveyor belt, start to finish.</H2>
+        <p
+          style={{
+            fontSize: '1rem',
+            color: colors.textSecondary,
+            lineHeight: 1.65,
+            maxWidth: spacing.containerReadable,
+            margin: '0 0 40px',
+          }}
+        >
+          Every competitor in this market coaches you on how to apply. This does
+          the applying. That is the entire difference, and it is why the number
+          at the top of this page can be a promise instead of a hope.
         </p>
 
-        {/* FAQ */}
-        <div style={{ maxWidth: 620, margin: '0 auto' }}>
-          <h2 style={{ fontSize: 24, fontWeight: 600, marginBottom: 8, color: warm.colors.textPrimary }}>Questions</h2>
-          <p style={{ fontSize: 14, color: warm.colors.textSecondary, marginBottom: 8 }}>Everything you need to know before signing up.</p>
-          <div>
-            {FAQS.map(faq => (
-              <FaqItem key={faq.q} q={faq.q} a={faq.a} />
+        <div style={{ maxWidth: spacing.containerReadable }}>
+          {BELT.map(s => (
+            <div
+              key={s.n}
+              style={{
+                display: 'flex',
+                gap: 20,
+                padding: '20px 0',
+                borderBottom: `1px solid ${colors.borderWhisper}`,
+              }}
+            >
+              <div
+                style={{
+                  flexShrink: 0,
+                  width: 32,
+                  height: 32,
+                  borderRadius: 99,
+                  background: colors.accentPetrol,
+                  color: colors.textOnDeep,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.875rem',
+                  fontWeight: 700,
+                }}
+              >
+                {s.n}
+              </div>
+              <div>
+                <div style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 4 }}>{s.t}</div>
+                <p style={{ fontSize: '0.9375rem', color: colors.textSecondary, lineHeight: 1.6, margin: 0 }}>
+                  {s.d}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      {/* 4c — objections */}
+      <Section>
+        <Eyebrow>WHAT YOU ARE PROBABLY THINKING</Eyebrow>
+        <H2>The four objections, answered plainly.</H2>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gap: 24,
+            marginTop: 40,
+          }}
+        >
+          {OBJECTIONS.map(o => (
+            <div key={o.q}>
+              <div
+                style={{
+                  fontFamily: typeTokens.display,
+                  fontSize: '1.125rem',
+                  fontWeight: 500,
+                  color: colors.textPrimary,
+                  marginBottom: 10,
+                  fontVariationSettings: "'SOFT' 50, 'WONK' 1",
+                }}
+              >
+                {o.q}
+              </div>
+              <p style={{ fontSize: '0.9375rem', color: colors.textSecondary, lineHeight: 1.65, margin: 0 }}>
+                {o.a}
+              </p>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      {/* 6 — the offer stack and the guarantee */}
+      <Section alt id="offer">
+        <div style={{ maxWidth: 560, margin: '0 auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <Eyebrow>THE OFFER</Eyebrow>
+          </div>
+
+          <div
+            style={{
+              background: colors.bgSurface,
+              border: `1px solid ${colors.borderDefined}`,
+              borderRadius: 16,
+              padding: 'clamp(24px, 5vw, 36px)',
+              boxShadow: '0 1px 2px rgba(26,24,20,0.04), 0 16px 40px rgba(26,24,20,0.07)',
+            }}
+          >
+            <div style={{ textAlign: 'center', marginBottom: 28 }}>
+              <div
+                style={{
+                  fontFamily: typeTokens.display,
+                  fontSize: '3rem',
+                  fontWeight: 600,
+                  lineHeight: 1,
+                  fontVariationSettings: "'SOFT' 50, 'WONK' 1",
+                }}
+              >
+                {PRICE}
+                <span style={{ fontSize: '1.125rem', color: colors.textMuted, fontWeight: 500 }}>
+                  {' '}
+                  /month
+                </span>
+              </div>
+              <div style={{ fontSize: '0.875rem', color: colors.textMuted, marginTop: 8 }}>
+                First {TRIAL_DAYS} days free. Cancel any time.
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 28 }}>
+              {STACK.map(s => (
+                <div key={s} style={{ display: 'flex', gap: 12, padding: '9px 0', alignItems: 'flex-start' }}>
+                  <Check size={17} style={{ color: colors.success, flexShrink: 0, marginTop: 2 }} />
+                  <span style={{ fontSize: '0.9375rem', color: colors.textSecondary, lineHeight: 1.5 }}>
+                    {s}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* The guarantee is the conversion lever, so it is the loudest thing
+                in the card, not a footnote under the price. */}
+            <div
+              style={{
+                background: colors.highlight,
+                borderRadius: 12,
+                padding: 20,
+                marginBottom: 28,
+              }}
+            >
+              <div
+                style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.16em',
+                  textTransform: 'uppercase',
+                  color: colors.textPrimary,
+                  marginBottom: 10,
+                }}
+              >
+                The guarantee
+              </div>
+              <p
+                style={{
+                  fontSize: '1rem',
+                  color: colors.textPrimary,
+                  lineHeight: 1.6,
+                  margin: 0,
+                  fontWeight: 500,
+                }}
+              >
+                Run 150 applications in your first 30 days. If that does not
+                produce 5 interview callbacks, I personally audit and rewrite
+                your entire profile and run your applications myself, free,
+                until it does.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <PrimaryCTA label={loading ? 'Opening checkout…' : CTA_LABEL} onClick={startTrial} />
+            </div>
+
+            <p
+              style={{
+                textAlign: 'center',
+                fontSize: '0.8125rem',
+                color: colors.textMuted,
+                margin: '16px 0 0',
+              }}
+            >
+              Not ready to decide? The free tier gives you 5 documents and 5 job
+              analyses with no card at all.
+            </p>
+          </div>
+        </div>
+      </Section>
+
+      {/* FAQ */}
+      <Section>
+        <div style={{ maxWidth: spacing.containerReadable, margin: '0 auto' }}>
+          <H2>Questions</H2>
+          <div style={{ marginTop: 24 }}>
+            {FAQS.map(f => (
+              <FaqItem key={f.q} q={f.q} a={f.a} />
             ))}
           </div>
         </div>
+      </Section>
 
-        {/* Bottom CTA */}
-        <div style={{ textAlign: 'center', marginTop: 80 }}>
-          <p style={{ fontSize: 14, color: warm.colors.textSecondary, marginBottom: 20 }}>
-            Questions? Reach us at{' '}
-            <span style={{ color: warm.colors.accentPetrol }}>support@aussiegradcareers.com.au</span>
-          </p>
-          <button
-            onClick={() => navigate('/auth')}
-            style={{
-              background: warm.colors.accentPetrol,
-              color: warm.colors.textOnDeep,
-              border: 'none',
-              borderRadius: 12,
-              padding: '14px 32px',
-              fontSize: 13,
-              fontWeight: 900,
-              letterSpacing: '0.06em',
-              textTransform: 'uppercase',
-              cursor: 'pointer',
-            }}
-          >
-            {user ? 'Go to dashboard →' : 'Get started free →'}
-          </button>
-        </div>
-
-        {/* Legal footer */}
-        <div style={{
-          marginTop: 48,
-          paddingTop: 24,
-          borderTop: `1px solid ${warm.colors.borderWhisper}`,
-          display: 'flex',
-          justifyContent: 'center',
-          flexWrap: 'wrap',
-          gap: '8px 24px',
-        }}>
-          {[
-            { to: '/legal/terms',        label: 'Terms of Service' },
-            { to: '/legal/privacy',      label: 'Privacy Policy' },
-            { to: '/legal/refunds',      label: 'Refund Policy' },
-            { to: '/legal/cancellation', label: 'Cancellation Policy' },
-            { to: '/legal/trial',        label: 'Free Trial Terms' },
-            { to: '/legal/disclaimer',   label: 'Disclaimer' },
-          ].map(({ to, label }) => (
-            <Link key={to} to={to} style={{ fontSize: 12, color: warm.colors.textMuted, textDecoration: 'none' }}>
-              {label}
-            </Link>
-          ))}
-        </div>
+      {/* Footer */}
+      <div
+        style={{
+          borderTop: `1px solid ${colors.borderWhisper}`,
+          padding: '32px 24px 48px',
+          textAlign: 'center',
+          background: colors.bgCanvas,
+        }}
+      >
+        <p style={{ fontSize: '0.875rem', color: colors.textMuted, margin: 0 }}>
+          Questions before you start? kiron@aussiegradcareers.com.au
+        </p>
       </div>
     </div>
   );
 }
+
+export default PricingPage;

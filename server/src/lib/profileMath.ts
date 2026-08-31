@@ -158,15 +158,45 @@ export function statedYearsOfExperience(...texts: (string | null | undefined)[])
 }
 
 /**
- * Resolve years of experience: prefer the figure the candidate explicitly states
- * in their resume; fall back to the computed career span only when none is stated.
- * Covers both scenarios — a resume that declares "9+ years" and one that doesn't.
+ * How far a figure found in the body of a resume may sit from the computed one
+ * before we stop believing it. Wide on purpose: the two are measuring the same
+ * thing by different routes and a year or two of disagreement is normal. What
+ * this catches is the figure that is not about the candidate at all.
+ */
+const STATED_AGREEMENT_YEARS = 3;
+
+/**
+ * Resolve years of experience.
+ *
+ * The candidate's own declaration wins, but only where a declaration actually
+ * lives. The first source is the professional summary, which is where someone
+ * states their own total, and it is taken at face value.
+ *
+ * Anything after that is loose resume text, and there the regex has no way to
+ * tell whose years it found. "Trained 12 staff with 3 years experience" is a
+ * sentence about somebody else, and first-match-wins turned a sixteen-year
+ * engineer into a three-year one. So a figure from the body is only believed
+ * when the computed total agrees with it. When they disagree, the arithmetic
+ * over the actual dates is the better witness.
+ *
+ * With no structured experience to compute from there is nothing to check
+ * against, so a stated figure is all we have and is used as before.
  */
 export function resolveYearsOfExperience(
     statedSources: (string | null | undefined)[],
     experience: ExperienceEntry[] | null | undefined,
 ): number | null {
-    return statedYearsOfExperience(...statedSources) ?? computeYearsOfExperience(experience);
+    const [declared, ...body] = statedSources;
+
+    const fromDeclaration = statedYearsOfExperience(declared);
+    if (fromDeclaration !== null) return fromDeclaration;
+
+    const computed = computeYearsOfExperience(experience);
+    const fromBody = statedYearsOfExperience(...body);
+    if (fromBody === null) return computed;
+    if (computed === null) return fromBody;
+
+    return Math.abs(fromBody - computed) <= STATED_AGREEMENT_YEARS ? fromBody : computed;
 }
 
 /**

@@ -11,22 +11,24 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, NavLink, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, Loader2, Target, X, Check } from 'lucide-react';
+import { ChevronRight, ExternalLink, Loader2, Target, X, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../lib/api';
 import { DimRegion, DimTarget, DimPeer } from '../components/Dim';
 import { pickInsights } from '../data/strategicInsights';
 import { StrategicIntelligenceCard } from '../components/StrategicIntelligenceCard';
-import { ApplyFeedStrip } from '../components/strategy/ApplyFeedStrip';
 import { JobStream } from '../components/strategy/JobStream';
 import { StaleApplicationsCard } from '../components/strategy/StaleApplicationsCard';
 import { FirstApplicationCelebration } from '../components/FirstApplicationCelebration';
+import { EligibilityIntroModal } from '../components/EligibilityIntroModal';
 import type { JobFeedItem } from '../components/jobs/JobCard';
 import { DailyProgressBar } from '../components/jobs/DailyProgressBar';
+import { WeekStrip } from '../components/jobs/WeekStrip';
 import { warm } from '../lib/theme/warmTokens';
 import { jdMentionsSelectionCriteria } from '../lib/selectionCriteria';
 import { extractJobFacts } from '../lib/extractJobFacts';
 import { classifyPaste, isSubmittable, pasteHint } from '../lib/seekLink';
+import { buildSeekSearchUrl } from '../lib/seekSearchUrl';
 import { HowToCopyJobAd } from '../components/strategy/HowToCopyJobAd';
 
 /** Detect whether a job description mentions selection criteria. */
@@ -64,7 +66,7 @@ interface ProfileLite {
     seniority?: string;
 }
 
-function HubHeader({ profile, jobs }: { profile?: ProfileLite; jobs: JobLite[] }) {
+function HubHeader({ profile }: { profile?: ProfileLite }) {
     const role = profile?.targetRole?.trim();
     const city = profile?.targetCity?.trim();
     const identityLine = [role, city].filter(Boolean).join(' · ');
@@ -88,7 +90,6 @@ function HubHeader({ profile, jobs }: { profile?: ProfileLite; jobs: JobLite[] }
                         </p>
                     )}
                 </div>
-                <GoalChip jobs={jobs} />
             </div>
         </header>
     );
@@ -398,7 +399,6 @@ function AnalysisHeroCard() {
     const [jd, setJd] = useState('');
     const [analysing, setAnalysing] = useState(false);
     const [pickedFeedItem, setPickedFeedItem] = useState<JobFeedItem | null>(null);
-    const [showPaste, setShowPaste] = useState(false);
     const [applyingId, setApplyingId] = useState<string | null>(null);
     const [capMessage, setCapMessage] = useState(false);
 
@@ -435,11 +435,6 @@ function AnalysisHeroCard() {
         });
     };
 
-    const handleFeedPick = (description: string, item: JobFeedItem) => {
-        setJd(description);
-        setPickedFeedItem(item);
-    };
-
     // Preload the freshly-scraped job (stashed by the get-started flow) into the
     // paste box so the user can apply immediately on their first visit.
     const prefilledRef = useRef(false);
@@ -460,6 +455,16 @@ function AnalysisHeroCard() {
             localStorage.removeItem('jobhub_preload_jd');
         } catch { /* ignore malformed cache */ }
     }, [jd]);
+
+    // Where "Browse jobs" points. Their own target role and city if we have
+    // them, a bare Seek search if we do not.
+    const { data: profileLite } = useQuery<{ targetRole?: string; targetCity?: string }>({
+        queryKey: ['profile'],
+        queryFn: async () => (await api.get('/profile')).data,
+        staleTime: 30_000,
+    });
+    const seekUrl = buildSeekSearchUrl(profileLite?.targetRole, profileLite?.targetCity);
+    const roleLabel = profileLite?.targetRole?.trim() || 'more';
 
     const trimmed = jd.trim();
     // A Seek link is ~35 characters, well under the old 50-character floor, so
@@ -624,42 +629,13 @@ function AnalysisHeroCard() {
 
             <JobStream onApply={handleStreamApply} applyingId={applyingId} appliedId={appliedFeedItemId} />
 
-            {/*
-                One door. There used to be a second button here for selection
-                criteria, which made the dashboard a menu and left people picking
-                a lane before they knew which lane they were in. Selection
-                criteria is now a step inside the application, offered when the
-                ad actually asks for it.
-            */}
-            <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
-                <button
-                    onClick={() => setShowPaste(v => !v)}
-                    style={{
-                        flex: 1, padding: '12px 16px', borderRadius: 12,
-                        border: `1px solid ${warm.colors.borderDefined}`, background: 'transparent',
-                        color: warm.colors.textSecondary, fontSize: 13.5, fontWeight: 600, cursor: 'pointer',
-                    }}
-                >
-                    Paste your own job
-                </button>
+            {/* The lesson goes ABOVE the box, because it is only useful before
+                the paste. Underneath it was an explanation of a mistake someone
+                had already made. Only worth showing to someone typing a
+                description — a link already carries the employer. */}
+            <div style={{ marginBottom: 14 }}>
+                {!isLink && <HowToCopyJobAd />}
             </div>
-
-            {showPaste && (
-            <>
-            <p
-                style={{
-                    margin: '16px 0 16px',
-                    fontSize: 11,
-                    fontWeight: 700,
-                    letterSpacing: '0.14em',
-                    textTransform: 'uppercase',
-                    color: warmT.textMuted,
-                }}
-            >
-                Analyse a role
-            </p>
-
-            <ApplyFeedStrip onPick={handleFeedPick} />
 
             {pickedFeedItem && (
                 <div style={{
@@ -799,20 +775,51 @@ function AnalysisHeroCard() {
                 </div>
             )}
 
-            {/* Only worth showing to someone typing a description. A link
-                already carries the employer, so the lesson does not apply. */}
-            {!isLink && <HowToCopyJobAd />}
-
+            {/* Two ways forward, side by side and centred under the box: go find
+                an ad, or check the one already in it. The check is not "apply" —
+                applying is what happens after it comes back good — so the label
+                names what the button actually does. */}
             <div
                 style={{
                     marginTop: 20,
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 16,
+                    justifyContent: 'center',
+                    gap: 12,
                     flexWrap: 'wrap',
                 }}
             >
+                <a
+                    href={seekUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '12px 22px',
+                        fontSize: 14,
+                        fontWeight: 600,
+                        letterSpacing: '-0.01em',
+                        color: warmT.text,
+                        background: 'transparent',
+                        border: `1px solid ${warm.colors.borderDefined}`,
+                        borderRadius: 12,
+                        textDecoration: 'none',
+                        transition: 'border-color 200ms, background 200ms',
+                    }}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = warm.colors.accentPetrol;
+                        e.currentTarget.style.background = warm.colors.bgAlt;
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = warm.colors.borderDefined;
+                        e.currentTarget.style.background = 'transparent';
+                    }}
+                >
+                    Browse {roleLabel} jobs
+                    <ExternalLink size={14} style={{ color: warmT.textFaint, flexShrink: 0 }} />
+                </a>
 
                 <button
                     data-process-step="analyse"
@@ -834,7 +841,6 @@ function AnalysisHeroCard() {
                         opacity: canSubmit ? 1 : 0.6,
                         boxShadow: canSubmit ? warmT.btnShadow : 'none',
                         transition: 'opacity 200ms, background 200ms',
-                        marginLeft: 'auto',
                     }}
                 >
                     {analysing ? (
@@ -844,14 +850,12 @@ function AnalysisHeroCard() {
                         </>
                     ) : (
                         <>
-                            Check this job
+                            Check eligibility
                             <ChevronRight size={16} />
                         </>
                     )}
                 </button>
             </div>
-            </>
-            )}
         </div>
     );
 }
@@ -986,13 +990,30 @@ export function StrategyHub() {
         <div style={{ maxWidth: 720, margin: '0 auto' }}>
             {/* Fires once when sent-count crosses 0 -> >=1. Self-managed via localStorage. */}
             <FirstApplicationCelebration />
+            {/* Fires once per account, off the profile's eligibilityIntroSeenAt
+                column. Self-managed: it reads the same ['profile'] query. */}
+            <EligibilityIntroModal />
             <DimRegion>
-                <HubHeader profile={profile} jobs={jobs ?? []} />
+                <HubHeader profile={profile} />
 
-                {/* Daily application target — kept; it used to live inside the
-                    (now removed) suggested-jobs card. */}
+                {/*
+                    One centred status line: how today is going, the goal, and
+                    the week behind it. The bar used to run the full width of the
+                    column, which made a five-application target look like a
+                    progress meter on a file download. Short and centred, with
+                    the week beside it, it reads as a scoreboard instead.
+                */}
                 <DimPeer style={{ marginBottom: 32 }}>
-                    <DailyProgressBar />
+                    <div style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        gap: 20, flexWrap: 'wrap',
+                    }}>
+                        <div style={{ flex: '0 1 240px', minWidth: 180 }}>
+                            <DailyProgressBar />
+                        </div>
+                        <GoalChip jobs={jobs ?? []} />
+                        <WeekStrip />
+                    </div>
                 </DimPeer>
 
                 {/* Paste/Apply section — the only way a job enters the flow */}

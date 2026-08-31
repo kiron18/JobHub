@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, UploadCloud, ArrowRight, Plus, X, Search, Check } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { Loader2, UploadCloud, ArrowRight, Plus, X, Search, Check, ChevronDown, AlertTriangle, ListChecks, PencilLine, Sparkles, FileText } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
 import api from '../lib/api';
@@ -10,49 +12,23 @@ import { useAuth } from '../contexts/AuthContext';
 import { trackWelcomeStep, trackWelcomeFailed, trackWelcomeCompleted } from '../lib/analytics';
 import { colors, type as T } from '../components/landing/tokens';
 
-// Subtle film grain over a solid, for the "brief" screen. Self-contained SVG.
-const GRAIN =
-  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E\")";
-
 // The resume is built BEFORE we ask for an email — they see the finished thing,
 // then decide to save it. Email/code only appear if they aren't already signed in.
 type Step =
   | 'upload' | 'loading' | 'brief' | 'roles'
-  | 'questions' | 'building' | 'resume'
+  | 'building' | 'resume'
   | 'email' | 'code' | 'finishing';
 
 const EASE = [0.25, 1, 0.5, 1] as const;
 
 /**
- * The checklist groups by WHO ACTS, not by severity. Severity ranks pain but
- * says nothing about what happens next, and a section headed "minor" just gets
- * skipped. Grouping by owner carries the reassurance structurally: the biggest
- * group is the one we handle, already ticked, so the candidate can see at a
- * glance that they are not being handed a to-do list.
+ * Where "See how" and the front door's "Find out how" both go. NOT BUILT YET:
+ * this route does not exist, so both links open in a new tab deliberately: a
+ * 404 must not take someone out of a half-finished onboarding they cannot get
+ * back into. Point this at the real page when it lands, and drop the
+ * target="_blank" if you would rather it navigate in place.
  */
-const GROUPS: Array<{
-  owner: FindingOwner; heading: string; note: string; ticked: boolean; collapsible?: boolean;
-}> = [
-  {
-    owner: 'we_fix',
-    heading: 'We fix these for you',
-    note: 'Already handled. You do not need to do anything with these.',
-    ticked: true,
-    collapsible: true,
-  },
-  {
-    owner: 'needs_you',
-    heading: 'We need one thing from you',
-    note: 'Only you know these. We ask you on the next screen. It takes a minute.',
-    ticked: false,
-  },
-  {
-    owner: 'worth_knowing',
-    heading: 'Worth knowing',
-    note: 'Not a job for today. Just so you know it is there.',
-    ticked: false,
-  },
-];
+const POSITIONING_EXPLAINER_URL = '/how-it-works';
 
 const ROLE_PLACEHOLDERS = ['e.g. Marketing Coordinator', 'e.g. Business Analyst', 'e.g. Registered Nurse', 'e.g. Software Engineer', 'e.g. Project Manager', 'e.g. Graphic Designer'];
 
@@ -121,6 +97,7 @@ type Answers = Record<string, { status: AnswerStatus; value: string }>;
 
 export const WelcomePage: React.FC = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
 
   const [step, setStep] = useState<Step>('upload');
@@ -145,30 +122,32 @@ export const WelcomePage: React.FC = () => {
 
   const [findings, setFindings] = useState<IntakeFinding[]>([]);
   const [strengths, setStrengths] = useState<string[]>([]);
-  // The "we fix these" group is collapsed by default. It is the longest group
-  // and the one the candidate least needs to read — leaving it open buries the
-  // handful of items that actually need them under ten they can ignore.
-  const [showFixed, setShowFixed] = useState(false);
+  // Which diagnosis card is expanded. One at a time, and the row arrives
+  // closed: three shut tiles read as a short menu, where one already-open panel
+  // reads as a wall of text with two afterthoughts beside it.
+  const [openCard, setOpenCard] = useState<DiagnosisCardId | null>(null);
   const [questions, setQuestions] = useState<IntakeQuestion[]>([]);
-  const [qIndex, setQIndex] = useState(0);
   const [answers, setAnswers] = useState<Answers>({});
-  const [draft, setDraft] = useState('');
-  // Questions where they've said "I don't know" once and we've shown the help.
-  // We push exactly once, then accept whatever they give us.
-  const [pushed, setPushed] = useState<Record<string, boolean>>({});
+  // Which question is open for answering on the diagnosis screen, and what has
+  // been typed into it. Answers land in the same `answers` map the one-at-a-time
+  // step writes to, so the two ways of answering are interchangeable.
+  const [openQ, setOpenQ] = useState<string | null>(null);
+  const [inlineDraft, setInlineDraft] = useState('');
 
   const [cleanResume, setCleanResume] = useState('');
   const [retention, setRetention] = useState<{ checked: number; summary: string; repaired: boolean } | null>(null);
   const [outstanding, setOutstanding] = useState(0);
+  /** Real page count of the rendered PDF, from the server. Null if it could not render. */
+  const [pageCount, setPageCount] = useState<number | null>(null);
 
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [sending, setSending] = useState(false);
+  // Set only when a password submit proves the address already has an account.
+  // Until then the code link stays off the screen.
+  const [needsCode, setNeedsCode] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const current = questions[qIndex];
-  const isPushed = current ? !!pushed[current.id] : false;
 
   function cleanRoles() {
     return roles.map(r => r.trim()).filter(Boolean).slice(0, 3);
@@ -206,14 +185,61 @@ export const WelcomePage: React.FC = () => {
     }
   }
 
-  // The brief ends with "I need a few facts from you before I rewrite it", so
-  // the questions must be the very next thing. Sending them to a target-role
-  // form here reads as a broken promise.
+  /** The first question with no answer yet, or -1 when they are all done. */
+  function nextUnanswered(from: number, given: Answers): number {
+    for (let i = from; i < questions.length; i++) {
+      if (!given[questions[i].id]) return i;
+    }
+    return -1;
+  }
+
+  /**
+   * "Fix all of this" opens the questions where they already are, with the
+   * first unanswered one expanded and ready to type into.
+   *
+   * It used to push them into a separate screen that asked one question at a
+   * time. That screen had to exist because the panel was a table of contents,
+   * but the panel now holds the real questions, so the wizard was a second copy
+   * of the same list with the list hidden. Everything is on one screen and
+   * nobody is walked through it.
+   */
   function startQuestions() {
-    if (questions.length === 0) { setStep('roles'); return; }
-    setQIndex(0);
-    setDraft('');
-    setStep('questions');
+    const first = nextUnanswered(0, answers);
+    if (first === -1) { setStep('roles'); return; }
+    const q = questions[first];
+    setOpenCard('need');
+    setOpenQ(q.id);
+    setInlineDraft(answers[q.id]?.value ?? '');
+    // The panel opens below the tiles, so bring it into view rather than
+    // leaving them looking at a button that appeared to do nothing.
+    window.setTimeout(() => {
+      document.getElementById('welcome-questions')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 60);
+  }
+
+  /**
+   * Skip one question and move to the next unanswered one.
+   *
+   * Recorded as 'unknown' rather than left blank, so it counts as dealt with and
+   * the rebuild is told to write that line with no figure at all rather than
+   * inventing one or deleting the line.
+   */
+  function skipInline(q: IntakeQuestion) {
+    const next: Answers = { ...answers, [q.id]: { status: 'unknown', value: '' } };
+    setAnswers(next);
+    setInlineDraft('');
+    const following = questions.find(x => !next[x.id]);
+    setOpenQ(following?.id ?? null);
+    if (following) setInlineDraft(next[following.id]?.value ?? '');
+  }
+
+  /** Save an answer given on the diagnosis screen, without leaving it. */
+  function saveInline(q: IntakeQuestion, value: string) {
+    const v = value.trim();
+    if (!v) return;
+    setAnswers(prev => ({ ...prev, [q.id]: { status: 'answered', value: v } }));
+    setOpenQ(null);
+    setInlineDraft('');
   }
 
   // Roles are asked after the questions, immediately before the rebuild, because
@@ -221,28 +247,6 @@ export const WelcomePage: React.FC = () => {
   function onRolesContinue() {
     if (cleanRoles().length === 0) { toast.error('Add at least one target role.'); return; }
     void buildResume(answers);
-  }
-
-  function commitAnswer(status: AnswerStatus, value: string) {
-    if (!current) return;
-    const next: Answers = { ...answers, [current.id]: { status, value } };
-    setAnswers(next);
-    setDraft('');
-
-    if (qIndex + 1 < questions.length) {
-      setQIndex(qIndex + 1);
-    } else {
-      setStep('roles');
-    }
-  }
-
-  // "I don't know" is not accepted the first time. We show them where to look and
-  // offer coarse ranges, because an honest estimate beats a blank bullet. Only
-  // after that push do we let it go.
-  function onDontKnow() {
-    if (!current) return;
-    if (!isPushed) { setPushed(prev => ({ ...prev, [current.id]: true })); return; }
-    commitAnswer('unknown', '');
   }
 
   async function buildResume(finalAnswers: Answers) {
@@ -255,6 +259,7 @@ export const WelcomePage: React.FC = () => {
       }, { timeout: 240000 });
       setCleanResume(data.resume || '');
       setRetention(data.retention ?? null);
+      setPageCount(typeof data.pageCount === 'number' ? data.pageCount : null);
       setOutstanding(Array.isArray(data.outstanding) ? data.outstanding.length : 0);
       setStep('resume');
     } catch (err: any) {
@@ -304,8 +309,10 @@ export const WelcomePage: React.FC = () => {
       const signUp = await supabase.auth.signUp({ email: addr, password });
 
       if (signUp.error) {
-        const msg = /registered|already/i.test(signUp.error.message)
-          ? 'That email already has an account and the password did not match. Try again, or use "Email me a code instead".'
+        const known = /registered|already/i.test(signUp.error.message);
+        if (known) setNeedsCode(true);
+        const msg = known
+          ? 'That email already has an account and the password did not match. Try again, or have us email you a code.'
           : signUp.error.message;
         trackWelcomeFailed('email', 'signup_rejected');
         toast.error(msg);
@@ -374,6 +381,25 @@ export const WelcomePage: React.FC = () => {
       await api.post('/welcome/finish', { token, targetRoles: clean, targetCity: city.trim() || null });
       // Terminal success: from here they have an account AND a resume on file.
       trackWelcomeCompleted(!user);
+
+      // Refetch the profile BEFORE leaving, and wait for it.
+      //
+      // The dashboard sits behind OnboardingGate, which renders the "Complete
+      // your profile" intake whenever profile.hasCompletedOnboarding is falsy.
+      // Both readers of ['profile'] cache it (the gate for 30s, ReportOrDashboard
+      // for 5 minutes) and nothing invalidated it after this write, so anyone who
+      // had already loaded the dashboard in this browser still had their
+      // pre-onboarding profile in the cache and got sent through onboarding a
+      // second time on data the server had already superseded.
+      //
+      // refetchQueries, not invalidateQueries: invalidate only marks it dirty,
+      // and the gate can still mount and read the old value first.
+      await queryClient.refetchQueries({ queryKey: ['profile'] });
+
+      // No flag is carried across. The dashboard's eligibility intro fires off
+      // the profile's own eligibilityIntroSeenAt column, so it belongs to the
+      // signup rather than to this navigation, and it survives the refresh that
+      // used to eat it.
       navigate('/', { replace: true });
     } catch (err: any) {
       trackWelcomeFailed('finishing', 'finish_failed');
@@ -385,173 +411,210 @@ export const WelcomePage: React.FC = () => {
 
   // ── Step: brief (the grained solid) ──────────────────────────────────────────
   if (step === 'brief') {
+    // Everything below is presentation only. `brief`, `findings` and `strengths`
+    // arrive from the intake endpoint already shaped; nothing here reorders or
+    // rewrites them. The tiles are containers for that same payload, so the
+    // diagnosis can be re-styled without touching how it is generated.
+    //
+    // The split is by WHO ACTS, not by severity. Severity ranks pain but says
+    // nothing about what happens next, and a section headed "minor" just gets
+    // skipped. Splitting by owner carries the reassurance structurally: the
+    // biggest pile is the one we handle, already ticked, so the candidate can
+    // see at a glance that they are not being handed a to-do list.
+    const forUs = findings.filter(f => f.owner === 'we_fix');
+    const worthKnowing = findings.filter(f => f.owner === 'worth_knowing');
+    // The tile counts what is still owed, so it goes down as they answer.
+    const outstandingQs = questions.filter(q => !answers[q.id]).length;
+
+    const tiles: Array<{ id: DiagnosisCardId; title: string; blurb: string; count?: number; tone: DiagnosisTone }> = [
+      { id: 'gap', title: 'Your biggest gap', blurb: 'The one thing holding this resume back.', tone: 'alert' },
+      { id: 'found', title: 'Everything we found', blurb: 'Read line by line. Not yours to fix.', count: findings.length, tone: 'neutral' },
+      { id: 'need', title: 'What we need to fix', blurb: outstandingQs > 0 ? 'Only you can tell us these.' : 'All answered. Nothing waiting on you.', count: outstandingQs, tone: 'action' },
+    ];
+
     return (
-      <div style={{ height: '100dvh', overflowY: 'auto', background: colors.bgDeep, backgroundImage: GRAIN, display: 'flex', padding: '48px 24px', boxSizing: 'border-box' }}>
-        <motion.div
-          initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: EASE }}
-          style={{ width: '100%', maxWidth: 660, textAlign: 'left', margin: 'auto', paddingBottom: 8 }}
-        >
-          <span style={{ fontFamily: T.body, fontSize: 12, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: colors.accentGold }}>
-            {firstName ? `${firstName}, here is where we start` : 'Here is where we start'}
-          </span>
-          <div style={{ height: 1, background: 'rgba(232,215,176,0.35)', margin: '20px 0 28px', maxWidth: 80 }} />
-          <p style={{ fontFamily: T.display, fontSize: 'clamp(21px, 3vw, 27px)', lineHeight: 1.5, color: colors.textOnDeep, margin: 0, whiteSpace: 'pre-line' }}>
-            {brief}
-          </p>
-          {/* Everything found, grouped by who acts on it. */}
-          {findings.length > 0 && (
-            <div style={{ marginTop: 36, borderTop: '1px solid rgba(232,215,176,0.22)', paddingTop: 26 }}>
-              <span style={{ fontFamily: T.body, fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: colors.accentGold }}>
-                Everything we found
-              </span>
-              <p style={{ fontFamily: T.body, fontSize: 15.5, lineHeight: 1.55, color: 'rgba(250,247,242,0.78)', margin: '12px 0 0' }}>
-                We read your resume line by line. We found {findings.length}{' '}
-                {findings.length === 1 ? 'thing' : 'things'}.
-              </p>
-              <p style={{ fontFamily: T.body, fontSize: 15.5, lineHeight: 1.55, color: colors.textOnDeep, margin: '4px 0 0', fontWeight: 600 }}>
-                You do not have to fix any of it. That is our job.
-              </p>
+      <Shell wide>
+        <Eyebrow>{firstName ? `${firstName}, here is where we start` : 'Here is where we start'}</Eyebrow>
 
-              {GROUPS.map(g => {
-                const items = findings.filter(f => f.owner === g.owner);
-                if (!items.length) return null;
+        {/* Three tiles, not one scroll. Someone landing here has just been told
+            their resume has problems; meeting that with a wall of findings is
+            how you lose them. Each tile answers one question, and only the one
+            they pick opens, in a single panel underneath the row. */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 14, marginTop: 4 }}>
+          {tiles.map(t => (
+            <DiagnosisTile
+              key={t.id}
+              {...t}
+              open={openCard === t.id}
+              onToggle={setOpenCard}
+            />
+          ))}
+        </div>
 
-                // Collapsed: one satisfying line that says it is already done,
-                // rather than ten rows the candidate has no action on.
-                if (g.collapsible && !showFixed) {
-                  const big = items.filter(f => f.severity === 'critical').length;
-                  return (
-                    <button
-                      key={g.owner}
-                      onClick={() => setShowFixed(true)}
-                      style={{
-                        marginTop: 30, width: '100%', textAlign: 'left', cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', gap: 14, padding: '16px 18px',
-                        borderRadius: 14, background: 'rgba(232,215,176,0.09)',
-                        border: '1px solid rgba(232,215,176,0.22)',
-                      }}
-                    >
-                      <span style={{
-                        flexShrink: 0, width: 30, height: 30, borderRadius: 9,
-                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                        background: colors.accentGold, color: colors.bgDeep,
+        <AnimatePresence initial={false}>
+          {openCard && (
+            <motion.div
+              key={openCard}
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ height: { duration: 0.34, ease: EASE }, opacity: { duration: 0.22 } }}
+              style={{ overflow: 'hidden' }}
+            >
+              <div style={{ marginTop: 14, padding: '22px 24px', borderRadius: 16, background: colors.bgSurface, border: `1px solid ${colors.borderDefined}`, boxShadow: '0 10px 30px -18px rgba(26,24,20,0.30)' }}>
+                {openCard === 'gap' && <BriefProse text={brief} />}
+
+                {openCard === 'found' && (
+                  <>
+                    {forUs.length > 0 && (
+                      <FindingGroup
+                        heading="We fix these for you"
+                        note="Already handled. You do not need to do anything with these."
+                        items={forUs}
+                        ticked
+                      />
+                    )}
+                    {worthKnowing.length > 0 && (
+                      <FindingGroup
+                        heading="Worth knowing"
+                        note="Not a job for today. Just so you know it is there."
+                        items={worthKnowing}
+                      />
+                    )}
+                    {strengths.length > 0 && (
+                      <div style={{ marginTop: 24, padding: '18px 20px', borderRadius: 12, background: 'rgba(42,157,111,0.06)', border: '1px solid rgba(42,157,111,0.20)' }}>
+                        <span style={{ ...labelStyle, color: colors.success, marginBottom: 10 }}>What already works</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+                          {strengths.map((str, i) => (
+                            <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                              <span style={{ color: colors.success, flexShrink: 0, marginTop: 3 }}><Check size={14} strokeWidth={3} /></span>
+                              <span style={{ fontFamily: T.body, fontSize: 14.5, lineHeight: 1.55, color: colors.textSecondary }}>{str}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/*
+                  Every question, here, now. They used to be listed as findings
+                  with a promise that we would ask on the next screen, which made
+                  this panel a table of contents for homework. The questions are
+                  the homework, so they are the list, and each one can be
+                  answered where it is read.
+                */}
+                {openCard === 'need' && (
+                  questions.length > 0 ? (
+                    <div id="welcome-questions" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <p style={{ fontFamily: T.body, fontSize: 16, lineHeight: 1.55, color: colors.textPrimary, margin: '0 0 10px' }}>
+                        Your current resume lacks clarity. Answer what you can below and we fix the
+                        gaps that are costing you interviews.
+                      </p>
+
+                      {/*
+                        The reason answering is worth the five minutes: these are
+                        not answers for one application. They go into the base
+                        resume every future application is written from, so the
+                        work is done once and reused, which is the opposite of
+                        what anyone expects from a form on a signup screen.
+                      */}
+                      <p style={{
+                        display: 'flex', gap: 9, alignItems: 'flex-start',
+                        fontFamily: T.body, fontSize: 14, lineHeight: 1.5,
+                        color: colors.textSecondary, margin: '0 0 14px',
+                        padding: '11px 13px', borderRadius: 10,
+                        background: 'rgba(197,160,89,0.09)',
+                        border: `1px solid rgba(197,160,89,0.28)`,
                       }}>
-                        <Check size={18} strokeWidth={3.5} />
-                      </span>
-                      <span style={{ minWidth: 0, flex: 1 }}>
-                        <span style={{ display: 'block', fontFamily: T.body, fontSize: 15.5, fontWeight: 600, color: colors.textOnDeep, lineHeight: 1.4 }}>
-                          {items.length} {items.length === 1 ? 'thing' : 'things'} we fix for you
-                          {big > 0 && `, including ${big} big ${big === 1 ? 'one' : 'ones'}`}
+                        <Sparkles size={15} style={{ flexShrink: 0, marginTop: 2, color: colors.accentGold }} />
+                        <span>
+                          Fix it once and our system intelligently positions it for every job after that.{' '}
+                          <a
+                            href={POSITIONING_EXPLAINER_URL}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{ color: colors.accentPetrol, fontWeight: 700, textUnderlineOffset: 3 }}
+                          >
+                            See how
+                          </a>
                         </span>
-                        <span style={{ display: 'block', fontFamily: T.body, fontSize: 13.5, color: 'rgba(250,247,242,0.55)', marginTop: 2 }}>
-                          All handled. Nothing for you to do here.
-                        </span>
-                      </span>
-                      <span style={{ flexShrink: 0, fontFamily: T.body, fontSize: 13.5, fontWeight: 700, color: colors.accentGold }}>
-                        Show them
-                      </span>
-                    </button>
-                  );
-                }
+                      </p>
+                      {questions.map(q => (
+                        <QuestionRow
+                          key={q.id}
+                          question={q}
+                          answer={answers[q.id]}
+                          open={openQ === q.id}
+                          draft={inlineDraft}
+                          onDraft={setInlineDraft}
+                          onToggle={() => {
+                            const next = openQ === q.id ? null : q.id;
+                            setOpenQ(next);
+                            setInlineDraft(next ? (answers[q.id]?.value ?? '') : '');
+                          }}
+                          onSave={value => saveInline(q, value)}
+                          onSkip={() => skipInline(q)}
+                        />
+                      ))}
 
-                return (
-                  <div key={g.owner} style={{ marginTop: 30 }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-                      <span style={{ fontFamily: T.display, fontSize: 19, fontWeight: 600, color: colors.textOnDeep }}>
-                        {g.heading}
-                      </span>
-                      <span style={{ fontFamily: T.body, fontSize: 13, fontWeight: 700, color: colors.accentGold }}>
-                        {items.length}
-                      </span>
-                      {g.collapsible && (
+                      {/*
+                        The way out, at the end of the questions rather than at
+                        the foot of the page. Below the main button it was under
+                        the whole list and nobody ever scrolled to it, which is
+                        the same as not offering it.
+                      */}
+                      {outstandingQs > 0 && (
                         <button
-                          onClick={() => setShowFixed(false)}
-                          style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, marginLeft: 'auto', fontFamily: T.body, fontSize: 13.5, fontWeight: 700, color: 'rgba(250,247,242,0.55)' }}
+                          type="button"
+                          onClick={() => setStep('roles')}
+                          style={{
+                            alignSelf: 'center', marginTop: 4,
+                            fontFamily: T.body, fontSize: 13.5, color: colors.textMuted,
+                            background: 'none', border: 'none', padding: '6px 4px',
+                            textDecoration: 'underline', textUnderlineOffset: 3, cursor: 'pointer',
+                          }}
                         >
-                          Hide
+                          Skip these and rebuild it anyway
                         </button>
                       )}
                     </div>
-                    <p style={{ fontFamily: T.body, fontSize: 14, lineHeight: 1.5, color: 'rgba(250,247,242,0.55)', margin: '3px 0 14px' }}>
-                      {g.note}
+                  ) : (
+                    <p style={{ fontFamily: T.body, fontSize: 15, lineHeight: 1.6, color: colors.textSecondary, margin: 0 }}>
+                      Everything we found is ours to handle. Nothing is waiting on you.
                     </p>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
-                      {items.map((f, i) => (
-                        <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                          {/*
-                            Pre-ticked for anything we handle. A checkbox the user
-                            must click would be theatre, since we fix these either
-                            way - a tick that is already done says the same thing
-                            honestly.
-                          */}
-                          <span style={{
-                            flexShrink: 0, marginTop: 1, width: 20, height: 20, borderRadius: 6,
-                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                            background: g.ticked ? colors.accentGold : 'transparent',
-                            border: g.ticked ? 'none' : '1.5px solid rgba(250,247,242,0.28)',
-                            color: colors.bgDeep,
-                          }}>
-                            {g.ticked && <Check size={13} strokeWidth={3.5} />}
-                          </span>
-                          <span style={{ minWidth: 0 }}>
-                            <span style={{ display: 'block', fontFamily: T.body, fontSize: 15, fontWeight: 600, color: colors.textOnDeep, lineHeight: 1.4 }}>
-                              {f.title}
-                              {f.severity === 'critical' && (
-                                <span style={{ fontFamily: T.body, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#FFD9D2', background: 'rgba(196,72,48,0.32)', padding: '2px 6px', borderRadius: 4, marginLeft: 8, verticalAlign: 'middle' }}>
-                                  Biggest
-                                </span>
-                              )}
-                            </span>
-                            {f.detail && (
-                              <span style={{ display: 'block', fontFamily: T.body, fontSize: 14, lineHeight: 1.55, color: 'rgba(250,247,242,0.6)', marginTop: 2 }}>
-                                {f.detail}
-                              </span>
-                            )}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Said last, once the value has landed - at the top it would deflate
-              the thing they just did before they had any reason to trust it. */}
-          {strengths.length > 0 && (
-            <div style={{ marginTop: 32, padding: '20px 22px', borderRadius: 14, background: 'rgba(232,215,176,0.07)', border: '1px solid rgba(232,215,176,0.18)' }}>
-              <span style={{ fontFamily: T.body, fontSize: 12, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: colors.accentGold }}>
-                What already works
-              </span>
-              <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 9 }}>
-                {strengths.map((str, i) => (
-                  <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                    <span style={{ color: colors.accentGold, flexShrink: 0, marginTop: 3 }}><Check size={14} strokeWidth={3} /></span>
-                    <span style={{ fontFamily: T.body, fontSize: 14.5, lineHeight: 1.55, color: 'rgba(250,247,242,0.82)' }}>{str}</span>
-                  </div>
-                ))}
+                  )
+                )}
               </div>
-            </div>
+            </motion.div>
           )}
+        </AnimatePresence>
 
-          <div style={{ marginTop: 40, display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
-            <motion.button
-              onClick={() => startQuestions()}
-              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-              style={{ fontFamily: T.body, fontSize: 16, fontWeight: 700, cursor: 'pointer', padding: '15px 28px', borderRadius: 14, border: 'none', background: colors.accentGold, color: colors.bgDeep, display: 'inline-flex', alignItems: 'center', gap: 8 }}
-            >
-              Fix all of this <ArrowRight size={18} />
-            </motion.button>
-            <span style={{ fontFamily: T.body, fontSize: 13.5, color: 'rgba(250,247,242,0.6)' }}>
-              {questions.length > 0
-                ? `Next: ${questions.length} quick ${questions.length === 1 ? 'question' : 'questions'}, then we rebuild it.`
-                : 'Next: your target roles.'}
-            </span>
-          </div>
-        </motion.div>
-      </div>
+        <div style={{ marginTop: 32, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, textAlign: 'center' }}>
+          <motion.button
+            className="agc-cta-pulse"
+            onClick={() => startQuestions()}
+            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+            style={{ fontFamily: T.body, fontSize: 16.5, fontWeight: 700, cursor: 'pointer', padding: '16px 30px', borderRadius: 14, border: 'none', background: colors.accentPetrol, color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 8 }}
+          >
+            Fix all of this <ArrowRight size={18} />
+          </motion.button>
+          <span style={{ fontFamily: T.body, fontSize: 13.5, color: colors.textMuted }}>
+            {outstandingQs > 0
+              ? `${outstandingQs} quick ${outstandingQs === 1 ? 'question' : 'questions'}, then we rebuild it.`
+              : 'Next: your target roles.'}
+          </span>
+        </div>
+
+        <style>{`
+          @keyframes agcCtaPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(45,90,110,0.34); }
+            50%      { box-shadow: 0 0 0 13px rgba(45,90,110,0); }
+          }
+          .agc-cta-pulse { animation: agcCtaPulse 2.6s ease-in-out infinite; }
+          @media (prefers-reduced-motion: reduce) { .agc-cta-pulse { animation: none !important; } }
+        `}</style>
+      </Shell>
     );
   }
 
@@ -560,8 +623,8 @@ export const WelcomePage: React.FC = () => {
     return (
       <Shell>
         <Eyebrow>Last thing before we rebuild it</Eyebrow>
-        <Display>Where are we aiming?</Display>
-        <p style={bodyText}>Tell us the roles you want to land. This points your feed, your matches and everything we build with you.</p>
+        <Display>What roles are you targeting?</Display>
+        <p style={bodyText}>Applying to the jobs you are most likely to get hired for is half the challenge. Set your target role and location and we set you up with high quality applications that get you hired.</p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
           {roles.map((r, i) => (
@@ -601,117 +664,10 @@ export const WelcomePage: React.FC = () => {
     );
   }
 
-  // ── Step: questions ──────────────────────────────────────────────────────────
-  if (step === 'questions' && current) {
-    const canSubmit = draft.trim().length > 0;
-    return (
-      <Shell>
-        <Eyebrow>Question {qIndex + 1} of {questions.length}</Eyebrow>
-
-        {/* Progress bar — people answer more when they can see the end. */}
-        <div style={{ height: 4, borderRadius: 99, background: colors.borderDefined, marginBottom: 22, overflow: 'hidden' }}>
-          <motion.div
-            animate={{ width: `${(qIndex / questions.length) * 100}%` }}
-            transition={{ duration: 0.4, ease: EASE }}
-            style={{ height: '100%', background: colors.accentPetrol }}
-          />
-        </div>
-
-        {qIndex === 0 && (
-          <p style={{ ...bodyText, marginBottom: 18 }}>
-            This is the only time we ask. Every number you give here makes every application we build after this stronger.
-          </p>
-        )}
-
-        {current.anchor && (
-          <div style={{ borderLeft: `3px solid ${colors.borderDefined}`, padding: '2px 0 2px 14px', margin: '0 0 18px' }}>
-            <span style={{ ...labelStyle, marginBottom: 4 }}>From your resume</span>
-            <span style={{ fontFamily: T.body, fontSize: 14.5, lineHeight: 1.5, color: colors.textSecondary, fontStyle: 'italic' }}>
-              {current.anchor}
-            </span>
-          </div>
-        )}
-
-        <h1 style={{ fontFamily: T.display, fontWeight: 600, letterSpacing: '-0.01em', lineHeight: 1.25, color: colors.textPrimary, fontSize: 'clamp(21px, 3vw, 27px)', margin: '0 0 10px' }}>
-          {current.question}
-        </h1>
-        {current.why && (
-          <p style={{ fontFamily: T.body, fontSize: 14, lineHeight: 1.6, color: colors.textMuted, margin: '0 0 20px' }}>
-            {current.why}
-          </p>
-        )}
-
-        <input
-          value={draft}
-          autoFocus
-          inputMode={current.kind === 'number' ? 'numeric' : 'text'}
-          onChange={e => setDraft(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter' && canSubmit) commitAnswer('answered', draft.trim()); }}
-          placeholder={current.example || 'Your answer'}
-          style={inputStyle}
-        />
-
-        <div style={{ marginTop: 22, display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
-          <PrimaryBtn
-            label={qIndex + 1 === questions.length ? 'Done' : 'Next'}
-            onClick={() => canSubmit && commitAnswer('answered', draft.trim())}
-            dim={!canSubmit}
-          />
-          <button onClick={onDontKnow}
-            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: colors.textMuted, fontFamily: T.body, fontSize: 13.5, fontWeight: 700, padding: 0 }}>
-            I don't know
-          </button>
-        </div>
-
-        {/* The push. Shown once, after the first "I don't know". */}
-        <AnimatePresence>
-          {isPushed && (
-            <motion.div
-              initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-              transition={{ duration: 0.3, ease: EASE }}
-              style={{ marginTop: 24, padding: 18, borderRadius: 14, background: colors.bgAlt, border: `1px solid ${colors.borderDefined}` }}
-            >
-              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                <span style={{ color: colors.accentPetrol, flexShrink: 0, marginTop: 2 }}><Search size={17} /></span>
-                <div style={{ minWidth: 0 }}>
-                  <p style={{ fontFamily: T.body, fontSize: 14.5, fontWeight: 600, color: colors.textPrimary, margin: '0 0 6px' }}>
-                    You don't need the exact figure.
-                  </p>
-                  <p style={{ fontFamily: T.body, fontSize: 14, lineHeight: 1.6, color: colors.textSecondary, margin: 0 }}>
-                    {current.hint
-                      ? `An honest estimate is a real answer and it beats leaving this line bare. ${current.hint}`
-                      : 'An honest estimate is a real answer and it beats leaving this line bare. Think about a normal week and round.'}
-                  </p>
-                </div>
-              </div>
-
-              {current.ranges.length > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 16 }}>
-                  {current.ranges.map(r => (
-                    <button key={r} onClick={() => commitAnswer('answered', r)}
-                      style={{ fontFamily: T.body, fontSize: 13.5, fontWeight: 600, cursor: 'pointer', padding: '9px 15px', borderRadius: 99, border: `1px solid ${colors.accentPetrol}`, background: 'transparent', color: colors.accentPetrol }}>
-                      {r}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              <div style={{ display: 'flex', gap: 20, marginTop: 18, flexWrap: 'wrap' }}>
-                <button onClick={() => commitAnswer('later', '')}
-                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: colors.accentPetrol, fontFamily: T.body, fontSize: 13.5, fontWeight: 700, padding: 0 }}>
-                  I'll find out and add it later
-                </button>
-                <button onClick={() => commitAnswer('unknown', '')}
-                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: colors.textMuted, fontFamily: T.body, fontSize: 13.5, fontWeight: 700, padding: 0 }}>
-                  Leave this one out
-                </button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </Shell>
-    );
-  }
+  // The one-question-at-a-time wizard used to live here. It was a second copy
+  // of the list that is now on the diagnosis screen, shown with the list
+  // hidden, so answering meant being walked through questions you had already
+  // read. Everything is answered in place now; 'questions' is no longer a step.
 
   // ── Step: building ───────────────────────────────────────────────────────────
   if (step === 'building') {
@@ -733,26 +689,13 @@ export const WelcomePage: React.FC = () => {
     return (
       <Shell wide>
         <style>{RESUME_PAPER_CSS}</style>
-        <Eyebrow>Your achievement bank</Eyebrow>
-        <Display>{firstName ? `${firstName}, this is your bank.` : 'This is your bank.'}</Display>
+        <Eyebrow>Your rebuilt resume</Eyebrow>
+        <Display>{firstName ? `${firstName}, here is your new and improved resume.` : 'Here is your new and improved resume.'}</Display>
 
-        {/*
-          The single most important idea in the whole flow, and the one people get
-          wrong: this is NOT the document they send. It is the store we draw from.
-          Short stacked sentences, one idea each, so the conclusion lands on its own
-          rather than being asserted at them.
-        */}
         <div style={{ margin: '0 0 26px' }}>
-          <p style={bankLine}>This is <strong style={{ color: colors.textPrimary }}>not</strong> the resume you send out.</p>
-          <p style={bankLine}>It is a bank of everything you have done.</p>
-          <p style={bankLine}>Every job ad asks for something different.</p>
-          <p style={bankLine}>So every resume you send should be different too.</p>
-          <p style={bankLine}>Your achievements do not change. They sit safely in here.</p>
+          <p style={bankLine}>It's yours to keep, for free, no strings attached.</p>
           <p style={{ ...bankLine, color: colors.textPrimary, fontWeight: 600 }}>
-            When you apply for a job, we pick the ones that match that job, and build you a fresh resume for it.
-          </p>
-          <p style={{ ...bankLine, marginTop: 14, color: colors.textMuted, fontSize: 14.5 }}>
-            One bank. A new resume every time.
+            Click the button to have it sent to your email address.
           </p>
         </div>
 
@@ -787,17 +730,73 @@ export const WelcomePage: React.FC = () => {
           </div>
         )}
 
+        {/*
+          Length, stated before they scroll.
+
+          Two pages is the Australian norm and the single thing people most often
+          get wrong, so the number is worth more than the space it takes. It is
+          the real count off the same renderer that produces the emailed PDF, not
+          a guess from character count, which is wrong the moment somebody has a
+          long education section.
+        */}
+        {pageCount !== null && (
+          <div style={{
+            display: 'flex', gap: 10, alignItems: 'flex-start', padding: '13px 16px', marginBottom: 14,
+            borderRadius: 12, background: colors.bgAlt, border: `1px solid ${colors.borderDefined}`,
+          }}>
+            <span style={{ color: colors.accentPetrol, flexShrink: 0, marginTop: 1 }}><FileText size={16} /></span>
+            <span style={{ fontFamily: T.body, fontSize: 14, lineHeight: 1.55, color: colors.textSecondary }}>
+              <strong style={{ color: colors.textPrimary, fontWeight: 700 }}>
+                {pageCount} page{pageCount === 1 ? '' : 's'}
+              </strong>
+              {pageCount <= 2
+                ? '. That is the length Australian employers expect.'
+                : '. Australian employers expect one or two. Answering the questions you skipped lets us tighten it.'}
+            </span>
+          </div>
+        )}
+
+        {/*
+          The one place in the flow where the argument for the paid product is
+          made, and it is made as a fact about the market rather than a pitch.
+
+          It has to sit AFTER the gift, never before it. Said earlier it reads
+          as "your resume is not enough", which devalues the thing that just
+          earned their trust. Said here, with the document in front of them and
+          the length already confirmed, it reads as what comes next.
+
+          It also never names the product. The conclusion, that they need each
+          application written for its ad, is one they reach on their own, which
+          is the only version of it they believe.
+        */}
+        <div style={{
+          padding: '16px 18px', margin: '0 0 22px',
+          borderRadius: 12, background: colors.bgAlt, border: `1px solid ${colors.borderDefined}`,
+        }}>
+          <p style={{ fontFamily: T.body, fontSize: 15.5, lineHeight: 1.6, color: colors.textPrimary, margin: 0, fontWeight: 600 }}>
+            This is your new baseline, and it's bloody good.
+          </p>
+          <p style={{ fontFamily: T.body, fontSize: 15, lineHeight: 1.6, color: colors.textSecondary, margin: '7px 0 0' }}>
+            What separates good from the best is personalisation to the role, at scale. Send out
+            hundreds of personalised applications to the jobs that match your profile.
+          </p>
+        </div>
+
         {/* Rendered as a page, not a text box — people trust what looks like a document. */}
         <div className="bank-paper">
           <ReactMarkdown>{cleanResume}</ReactMarkdown>
         </div>
 
         <div style={{ marginTop: 24 }}>
-          <PrimaryBtn label={user ? 'Save my bank' : 'Save my bank'} onClick={onSaveResume} />
+          <PrimaryBtn label="Send me my resume" onClick={onSaveResume} />
         </div>
         {!user && (
+          // One button, one promise. This line used to say only that the resume
+          // would be waiting; it now also names where they are going, because
+          // the paragraph above just told them applying at volume is the game
+          // and this is the sentence that says the next screen is how.
           <p style={{ fontFamily: T.body, fontSize: 13.5, color: colors.textMuted, margin: '14px 0 0' }}>
-            We'll ask for your email next, so your bank is here waiting whenever you log back in.
+            We'll ask for your email next. Then you can start checking which jobs actually match you.
           </p>
         )}
       </Shell>
@@ -817,13 +816,10 @@ export const WelcomePage: React.FC = () => {
   if (step === 'email') {
     return (
       <Shell>
-        <Eyebrow>Last step · save your resume</Eyebrow>
+        <Eyebrow>Last step</Eyebrow>
         <Display>Where should we send it?</Display>
-        <p style={{ ...bodyText, marginBottom: 10 }}>
-          We'll email your rewritten resume here so you always have a copy, and it's how you get back in.
-        </p>
-        <p style={{ ...bodyText, marginBottom: 24 }}>
-          Worth knowing before you go: <strong style={{ color: colors.textPrimary, fontWeight: 700 }}>the resume is the ticket, not the job.</strong> There are three other things deciding whether you hear back, and they're waiting inside.
+        <p style={{ ...bodyText, marginBottom: 22 }}>
+          We'll email your rewritten resume here, and it's how you get back in.
         </p>
 
         <input
@@ -858,18 +854,30 @@ export const WelcomePage: React.FC = () => {
           placeholder="Create a password"
           style={{ ...inputStyle, marginTop: 12 }}
         />
-        <p style={{ ...bodyText, fontSize: 13, marginTop: 8 }}>At least {PASSWORD_MIN} characters.</p>
+        <p style={{ ...bodyText, fontSize: 13, margin: '8px 0 0' }}>At least {PASSWORD_MIN} characters.</p>
 
-        <div style={{ marginTop: 22 }}>
-          <PrimaryBtn label={sending ? '' : 'Save my resume'} onClick={() => void submitPassword()} loading={sending} />
+        {/* What happens after the send, said before they press it. The resume
+            was the reason they came; the jobs are the reason they stay, and
+            this is the only place in the flow where that hand-off gets named. */}
+        <p style={{ fontFamily: T.body, fontSize: 14, lineHeight: 1.55, color: colors.textSecondary, margin: '10px 0 0' }}>
+          <strong style={{ fontWeight: 700, color: colors.textPrimary }}>Next:</strong> Find and save jobs you are most likely to get hired for.
+        </p>
+
+        <div style={{ marginTop: 24, display: 'flex', justifyContent: 'center' }}>
+          <PrimaryBtn label={sending ? '' : 'Send my resume'} onClick={() => void submitPassword()} loading={sending} />
         </div>
 
-        <div style={{ marginTop: 18 }}>
-          <button onClick={sendCode} disabled={sending}
-            style={{ background: 'transparent', border: 'none', cursor: sending ? 'default' : 'pointer', color: colors.textMuted, fontFamily: T.body, fontSize: 13.5, fontWeight: 700, padding: 0 }}>
-            Email me a code instead
-          </button>
-        </div>
+        {/* The code path is no longer offered up front — it was a second door on
+            a screen that only needs one. It appears the moment it is the actual
+            answer: a real account whose password did not match. */}
+        {needsCode && (
+          <div style={{ marginTop: 18, textAlign: 'center' }}>
+            <button onClick={sendCode} disabled={sending}
+              style={{ background: 'transparent', border: 'none', cursor: sending ? 'default' : 'pointer', color: colors.accentPetrol, fontFamily: T.body, fontSize: 13.5, fontWeight: 700, padding: 0 }}>
+              Email me a code instead
+            </button>
+          </div>
+        )}
       </Shell>
     );
   }
@@ -926,12 +934,24 @@ export const WelcomePage: React.FC = () => {
   // aussiegradcareers.com.au land here, so the promise and the dropzone are the
   // whole screen: one headline, one target, nothing else to decide.
   return (
-    <Shell wide>
+    <>
+      <TestimonialWash />
+      <Shell wide onWash>
+      {/* A panel with an edge, not a glow. The testimonials behind used to be
+          hidden under a radial white bloom, which left the content floating in
+          a soft-edged smear with nothing to say where the page began. A solid
+          card with a thin stroke does the same job of lifting the copy off the
+          marquee, and it has a boundary you can actually see. */}
+      <div style={{
+        background: colors.bgSurface,
+        border: `1px solid ${PANEL_BORDER}`,
+        borderRadius: 22,
+        padding: 'clamp(28px, 5vh, 44px) clamp(22px, 4vw, 40px)',
+        boxShadow: '0 1px 2px rgba(26,24,20,0.05), 0 26px 60px -34px rgba(26,24,20,0.45)',
+      }}>
       <div style={{ textAlign: 'center' }}>
+        <BrandLockup />
         <Display>Find out what's costing you interviews.</Display>
-        <p style={{ ...bodyText, maxWidth: 560, margin: '0 auto 32px' }}>
-          Upload your resume. We read it, show you plainly where it stands, ask the few things only you can tell us, then rebuild it properly. No account needed to start.
-        </p>
       </div>
 
       <AnimatePresence mode="wait">
@@ -944,6 +964,7 @@ export const WelcomePage: React.FC = () => {
         ) : (
           <motion.div key="drop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <button
+              className="agc-dropzone"
               onClick={() => inputRef.current?.click()}
               onDragOver={e => { e.preventDefault(); if (!dragging) setDragging(true); }}
               onDragLeave={e => { e.preventDefault(); setDragging(false); }}
@@ -955,15 +976,21 @@ export const WelcomePage: React.FC = () => {
               }}
               style={{
                 width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center',
-                justifyContent: 'center', gap: 16, textAlign: 'center',
-                padding: 'clamp(40px, 9vh, 76px) 28px', borderRadius: 20, cursor: 'pointer',
-                border: `2px dashed ${dragging || file ? colors.accentPetrol : colors.borderDefined}`,
+                justifyContent: 'center', gap: 13, textAlign: 'center',
+                /* Smaller than it was. The box was tall enough that the label
+                   sat marooned in the middle of it; at this height the words
+                   have room without the target becoming the whole screen. */
+                padding: 'clamp(26px, 5.5vh, 46px) 26px', borderRadius: 16, cursor: 'pointer',
+                /* One thin solid stroke. Dashed plus a pulsing glow read as an
+                   unfinished placeholder, which is the opposite of what the
+                   only thing to click on the page should look like. */
+                border: `1px solid ${dragging || file ? colors.accentPetrol : PANEL_BORDER}`,
                 background: dragging || file ? 'rgba(45,90,110,0.06)' : colors.bgAlt,
                 transition: 'border-color .15s ease, background .15s ease',
               }}
             >
               <span style={{ color: dragging || file ? colors.accentPetrol : colors.textMuted }}>
-                <UploadCloud size={52} strokeWidth={1.5} />
+                <UploadCloud size={42} strokeWidth={1.5} />
               </span>
               <span style={{ minWidth: 0, maxWidth: '100%' }}>
                 <span style={{ display: 'block', fontFamily: T.display, fontSize: 'clamp(19px, 2.4vw, 24px)', fontWeight: 600, color: colors.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -979,11 +1006,51 @@ export const WelcomePage: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
-    </Shell>
+
+      {/* Said after the box, not before it. The headline names the problem and
+          the box is the thing to do about it; this is the promise they carry
+          away once they have already acted.
+
+          The promise stays a promise here and does not argue for itself. An
+          earlier draft made the case on this screen ("a good resume is only the
+          baseline") and that is the wrong screen for it: it devalues the thing
+          they are about to be given, before they have been given it. The
+          argument now lives where it costs nothing, on the rebuilt resume and
+          the fit check. */}
+      <p style={{ fontFamily: T.display, fontStyle: 'italic', textAlign: 'center', fontSize: 'clamp(15px, 1.9vw, 17.5px)', lineHeight: 1.5, color: colors.accentPetrol, maxWidth: 560, margin: '22px auto 0' }}>
+        High quality applications consistently personalised to every job.
+      </p>
+      {/* Deliberately quieter than the promise above it, and a new tab. This is
+          the only screen whose whole job is getting the file into the box, so a
+          second thing to click must not compete with the dropzone and must not
+          navigate them away from it. */}
+      <p style={{ textAlign: 'center', margin: '10px 0 0' }}>
+        <a
+          href={POSITIONING_EXPLAINER_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            fontFamily: T.body, fontSize: 13.5, color: colors.textMuted,
+            textDecoration: 'underline', textUnderlineOffset: 3,
+          }}
+        >
+          Find out how
+        </a>
+      </p>
+      </div>
+      </Shell>
+    </>
   );
 };
 
 // ── Small shared building blocks (kept local to this page) ─────────────────────
+
+/**
+ * The stroke on the front door's panel and dropzone. A step darker than
+ * `borderDefined` because both of these sit over the testimonial marquee, where
+ * the site's usual whisper of an edge disappears against a photo.
+ */
+const PANEL_BORDER = 'rgba(26, 24, 20, 0.28)';
 
 const bodyText: React.CSSProperties = { fontFamily: T.body, fontSize: 15.5, lineHeight: 1.65, color: colors.textSecondary, margin: '0 0 24px' };
 
@@ -997,9 +1064,19 @@ const bankLine: React.CSSProperties = {
  * styling because the app's CSS reset strips list markers, which is why the
  * bullets were coming out as flat lines.
  */
+/**
+ * The one accent on the rendered page.
+ *
+ * Section headings used to be the petrol blue the rest of the site runs on,
+ * and blue section headings are the single most recognisable tell of a resume
+ * that came out of a generator — every free AI builder ships that same trick.
+ * A deep graphite reads as typeset rather than templated, and nothing about a
+ * resume needs a second colour to be legible.
+ */
+const RESUME_INK = '#24211C';
+
 const RESUME_PAPER_CSS = `
 .bank-paper {
-  max-height: 62vh; overflow-y: auto;
   padding: 40px 44px;
   border-radius: 14px;
   background: #fff;
@@ -1015,7 +1092,7 @@ const RESUME_PAPER_CSS = `
 }
 .bank-paper h2 {
   font-family: ${T.body}; font-size: 11.5px; font-weight: 700;
-  letter-spacing: .13em; text-transform: uppercase; color: ${colors.accentPetrol};
+  letter-spacing: .13em; text-transform: uppercase; color: ${RESUME_INK};
   margin: 26px 0 10px; padding-bottom: 6px;
   border-bottom: 1px solid ${colors.borderDefined};
 }
@@ -1027,9 +1104,9 @@ const RESUME_PAPER_CSS = `
 .bank-paper ul { list-style: disc; }
 .bank-paper ol { list-style: decimal; }
 .bank-paper li { margin: 0 0 7px; font-size: 14.5px; line-height: 1.6; padding-left: 3px; }
-.bank-paper li::marker { color: ${colors.accentPetrol}; }
+.bank-paper li::marker { color: ${RESUME_INK}; }
 .bank-paper hr { border: 0; border-top: 1px solid ${colors.borderDefined}; margin: 20px 0; }
-.bank-paper a { color: ${colors.accentPetrol}; text-decoration: none; }
+.bank-paper a { color: ${RESUME_INK}; text-decoration: none; }
 @media (max-width: 640px) { .bank-paper { padding: 24px 20px; max-height: 56vh; } }
 `;
 const inputStyle: React.CSSProperties = {
@@ -1046,9 +1123,546 @@ const typoNudgeStyle: React.CSSProperties = {
   fontFamily: T.body, fontSize: 13.5, color: colors.accentPetrol, fontWeight: 600,
 };
 
-function Shell({ children, wide }: { children: React.ReactNode; wide?: boolean }) {
+type DiagnosisCardId = 'gap' | 'found' | 'need';
+type DiagnosisTone = 'alert' | 'action' | 'neutral';
+
+/**
+ * Placeholder icons, one per tile. Swap the component here when the real
+ * artwork arrives — nothing else needs to change.
+ */
+const DIAGNOSIS_ICONS: Record<DiagnosisCardId, LucideIcon> = {
+  gap: AlertTriangle,
+  found: ListChecks,
+  need: PencilLine,
+};
+
+/**
+ * One square tile in the diagnosis row.
+ *
+ * The face of the tile always says enough to stand alone — icon, title, a short
+ * blurb and a count — so a candidate who never opens one still leaves knowing
+ * what we found and who is doing what about it. Opening is for detail, not for
+ * the point.
+ */
+function DiagnosisTile({
+  id, title, blurb, count, tone, open, onToggle,
+}: {
+  id: DiagnosisCardId;
+  title: string;
+  blurb: string;
+  count?: number;
+  tone: DiagnosisTone;
+  open: boolean;
+  onToggle: (id: DiagnosisCardId | null) => void;
+}) {
+  const accent = tone === 'alert' ? colors.accentGold : tone === 'action' ? colors.accentPetrol : colors.textMuted;
+  const Icon = DIAGNOSIS_ICONS[id];
+
   return (
-    <div style={{ height: '100dvh', overflowY: 'auto', background: colors.bgCanvas, display: 'flex', padding: '48px 24px', boxSizing: 'border-box' }}>
+    <motion.button
+      onClick={() => onToggle(open ? null : id)}
+      aria-expanded={open}
+      whileHover={{ y: -2 }}
+      transition={{ duration: 0.18, ease: EASE }}
+      style={{
+        /* Square-ish, and the same height across the row whatever the blurb
+           does, so the three read as one set rather than three panels. */
+        position: 'relative',
+        aspectRatio: '1 / 1', minHeight: 180,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
+        gap: 8, padding: '22px 18px 20px', cursor: 'pointer', borderRadius: 18,
+        background: colors.bgSurface,
+        border: `1px solid ${open ? accent : colors.borderDefined}`,
+        boxShadow: open ? '0 10px 30px -18px rgba(26,24,20,0.32)' : 'none',
+        transition: 'border-color .2s ease, box-shadow .2s ease',
+      }}
+    >
+      {/* Out of the flow entirely. It used to share a justify-between row with
+          the icon, which is what stopped the icon from being centred, and it
+          cannot sit beside the title either: a title long enough to wrap pushes
+          it onto a line of its own where it reads as a stray number. */}
+      {typeof count === 'number' && count > 0 && (
+        <span style={{
+          position: 'absolute', top: 14, right: 14,
+          fontFamily: T.body, fontSize: 12.5, fontWeight: 700, color: colors.textSecondary,
+          background: colors.bgAlt, borderRadius: 99, padding: '3px 10px',
+        }}>
+          {count}
+        </span>
+      )}
+
+      <span style={{
+        width: 56, height: 56, borderRadius: 16, flexShrink: 0,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        background: open ? accent : colors.bgAlt,
+        color: open ? '#fff' : accent,
+        transition: 'background .2s ease, color .2s ease',
+      }}>
+        <Icon size={28} strokeWidth={2} />
+      </span>
+
+      {/*
+        The title follows the icon directly. It used to carry `marginTop: auto`,
+        which pushed it down by however much room the blurb left over, so the
+        tile with the one-line blurb sat its heading lower than the other two and
+        the row looked broken. The spacer now lives on the row below, where a
+        difference in blurb length belongs.
+      */}
+      <span style={{ fontFamily: T.display, fontSize: 'clamp(16px, 2vw, 18.5px)', fontWeight: 600, color: colors.textPrimary, lineHeight: 1.25, marginTop: 6 }}>
+        {title}
+      </span>
+
+      <span style={{ fontFamily: T.body, fontSize: 13.5, lineHeight: 1.5, color: colors.textMuted }}>
+        {blurb}
+      </span>
+
+      <span style={{ marginTop: 'auto', display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: T.body, fontSize: 13, fontWeight: 700, color: accent }}>
+        {open ? 'Hide' : 'Show me'}
+        <motion.span animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.25, ease: EASE }} style={{ display: 'inline-flex' }}>
+          <ChevronDown size={15} />
+        </motion.span>
+      </span>
+    </motion.button>
+  );
+}
+/**
+ * One question on the diagnosis screen, answerable where it is read.
+ *
+ * Closed, it is a line of a checklist. Open, it is the same question the
+ * one-at-a-time step would have asked, with the same ranges, example and hint,
+ * writing to the same answers map. Someone who fills all of them in here walks
+ * straight past that step; someone who fills in none of them sees it unchanged.
+ */
+function QuestionRow({ question, answer, open, draft, onDraft, onToggle, onSave, onSkip }: {
+  question: IntakeQuestion;
+  answer?: { status: AnswerStatus; value: string };
+  open: boolean;
+  draft: string;
+  onDraft: (v: string) => void;
+  onToggle: () => void;
+  onSave: (value: string) => void;
+  onSkip: () => void;
+}) {
+  const answered = answer?.status === 'answered';
+  const skipped = !!answer && answer.status !== 'answered';
+
+  return (
+    <div style={{
+      borderRadius: 12,
+      border: `1px solid ${open ? colors.accentPetrol : colors.borderDefined}`,
+      background: colors.bgSurface,
+      transition: 'border-color .2s ease',
+    }}>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '13px 14px' }}>
+        {/*
+          Nothing is drawn until the question is answered. An empty box reads as
+          a control, so people clicked it waiting for something to happen. This
+          is a receipt, not an input: it only ever appears, filled, once the
+          answer is in.
+        */}
+        <span style={{
+          flexShrink: 0, marginTop: 2, width: 22, height: 22, borderRadius: '50%',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          // The slot is always here so the question text does not jump sideways
+          // when an answer lands. Only the circle itself is conditional.
+          background: answered ? colors.success : 'transparent',
+          color: '#fff',
+        }}>
+          {answered && <Check size={13} strokeWidth={3.5} />}
+        </span>
+
+        <span style={{ minWidth: 0, flex: 1 }}>
+          <span style={{ display: 'block', fontFamily: T.body, fontSize: 14.5, fontWeight: 600, color: colors.textPrimary, lineHeight: 1.45 }}>
+            {question.question}
+          </span>
+          {answered ? (
+            <span style={{ display: 'block', marginTop: 3, fontFamily: T.body, fontSize: 13.5, lineHeight: 1.5, color: colors.success, fontWeight: 600 }}>
+              {answer!.value}
+            </span>
+          ) : skipped ? (
+            // Said so plainly, so a skipped question does not look like one they
+            // simply have not reached yet. Edit brings it back.
+            <span style={{ display: 'block', marginTop: 3, fontFamily: T.body, fontSize: 13.5, lineHeight: 1.5, color: colors.textMuted }}>
+              Skipped
+            </span>
+          ) : (
+            question.why && (
+              <span style={{ display: 'block', marginTop: 3, fontFamily: T.body, fontSize: 13, lineHeight: 1.5, color: colors.textMuted }}>
+                {question.why}
+              </span>
+            )
+          )}
+        </span>
+
+        <button
+          onClick={onToggle}
+          style={{
+            flexShrink: 0, cursor: 'pointer',
+            padding: '6px 14px', borderRadius: 99,
+            border: `1px solid ${answered ? colors.borderDefined : colors.accentPetrol}`,
+            background: 'transparent',
+            color: answered ? colors.textSecondary : colors.accentPetrol,
+            fontFamily: T.body, fontSize: 13, fontWeight: 700,
+          }}
+        >
+          {open ? 'Close' : answered ? 'Edit' : 'Fix'}
+        </button>
+      </div>
+
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ height: { duration: 0.26, ease: EASE }, opacity: { duration: 0.18 } }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div style={{ padding: '0 14px 14px 46px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {question.ranges.length > 0 && (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {question.ranges.map(r => (
+                    <button
+                      key={r}
+                      onClick={() => onSave(r)}
+                      style={{
+                        cursor: 'pointer', padding: '7px 13px', borderRadius: 99,
+                        border: `1px solid ${colors.borderDefined}`, background: colors.bgAlt,
+                        fontFamily: T.body, fontSize: 13, fontWeight: 600, color: colors.textSecondary,
+                      }}
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  autoFocus
+                  inputMode={question.kind === 'number' ? 'numeric' : 'text'}
+                  value={draft}
+                  onChange={e => onDraft(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') onSave(draft); }}
+                  placeholder={question.example || 'Your answer'}
+                  style={inputStyle}
+                />
+                <button
+                  onClick={() => onSave(draft)}
+                  disabled={!draft.trim()}
+                  style={{
+                    flexShrink: 0, cursor: draft.trim() ? 'pointer' : 'not-allowed',
+                    padding: '0 18px', borderRadius: 12, border: 'none',
+                    background: colors.accentPetrol, color: colors.textOnDeep,
+                    fontFamily: T.body, fontSize: 14, fontWeight: 700,
+                    opacity: draft.trim() ? 1 : 0.45,
+                  }}
+                >
+                  Save
+                </button>
+              </div>
+
+              {question.hint && (
+                <span style={{ fontFamily: T.body, fontSize: 12.5, lineHeight: 1.5, color: colors.textMuted }}>
+                  {question.hint}
+                </span>
+              )}
+
+              {/*
+                Every question is skippable on its own. A single skip at the foot
+                of the list is all or nothing, and the real case is someone who
+                can answer four of six and is stuck on the fifth. Being stuck on
+                one should never cost us the other four.
+              */}
+              <button
+                type="button"
+                onClick={onSkip}
+                style={{
+                  alignSelf: 'flex-start', marginTop: 2,
+                  fontFamily: T.body, fontSize: 13, color: colors.textMuted,
+                  background: 'none', border: 'none', padding: '4px 2px',
+                  textDecoration: 'underline', textUnderlineOffset: 3, cursor: 'pointer',
+                }}
+              >
+                Skip this one
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/**
+ * The brief, each problem opened by a drop cap carrying its number.
+ *
+ * A drop cap, not a marker in a gutter: the chip floats INSIDE the paragraph
+ * and the prose wraps around it, so the count is part of the reading rather
+ * than a list rail running alongside it. The last paragraph is the closing ask
+ * for facts, not a problem, so it never takes one.
+ *
+ * Nothing here touches the prompt. The number is derived from paragraph
+ * position at render time, is never requested in the JSON and is never stored,
+ * so the model spends no attention on it and a brief that comes back in a
+ * different shape degrades to plain prose instead of breaking.
+ */
+function BriefProse({ text }: { text: string }) {
+  const paras = text.split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
+
+  // The brief always ends by asking for the facts, but nothing forces the model
+  // to give that its own paragraph, and the prompt is deliberately not told to.
+  // Length is the tell: the ask is a couple of sentences, a problem is a
+  // hundred words. When the last paragraph is long it is a third problem with
+  // the ask folded into it, so there is no separate closing to box.
+  const last = paras[paras.length - 1] ?? '';
+  const hasClosing = paras.length >= 2 && last.split(/\s+/).length <= 70;
+
+  const problems = hasClosing ? paras.slice(0, -1) : paras;
+  const closing = hasClosing ? last : null;
+
+  // A count needs something to count. One problem is a legitimate brief, and a
+  // lone chip reading "1" looks like a list that lost its other items.
+  if (problems.length < 2) {
+    return (
+      <p style={{ fontFamily: T.display, fontSize: 'clamp(17px, 2.2vw, 20px)', lineHeight: 1.55, color: colors.textPrimary, margin: 0, whiteSpace: 'pre-line' }}>
+        {text}
+      </p>
+    );
+  }
+
+  const prose: React.CSSProperties = {
+    fontFamily: T.display,
+    fontSize: 'clamp(17px, 2.2vw, 20px)',
+    lineHeight: 1.55,
+    color: colors.textPrimary,
+    margin: 0,
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+      {problems.map((p, i) => (
+        // Each paragraph is a flex item, which establishes its own formatting
+        // context and so contains its own float. Without that a short paragraph
+        // would let the chip hang down into the next problem's text.
+        //
+        // The dotted rule opens each problem rather than separating pairs of
+        // them, so the first one gets it too. Dotted reads lighter than solid at
+        // the same alpha, which is why it can carry borderDefined without
+        // becoming a divider that competes with the chips.
+        <p key={i} style={{ ...prose, borderTop: `1px dotted ${colors.borderDefined}`, paddingTop: 'clamp(18px, 2.4vw, 24px)' }}>
+          <span
+            aria-hidden
+            style={{
+              float: 'left',
+              width: 'clamp(48px, 7vw, 60px)',
+              height: 'clamp(48px, 7vw, 60px)',
+              marginRight: 'clamp(12px, 1.6vw, 16px)',
+              marginBottom: 6,
+              // Optical, not metric: the chip's top edge has to meet the cap
+              // height of the first line, and the line box sits above it.
+              marginTop: 3,
+              borderRadius: 14,
+              background: colors.accentGold,
+              color: '#FFFFFF',
+              fontFamily: T.display,
+              fontSize: 'clamp(27px, 3.8vw, 34px)',
+              fontWeight: 700,
+              lineHeight: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontVariantNumeric: 'lining-nums tabular-nums',
+              userSelect: 'none',
+            }}
+          >
+            {i + 1}
+          </span>
+          {p}
+        </p>
+      ))}
+
+      {/* The closing is not a problem, it is the handover to the questions, so
+          it leaves the numbered run entirely and sits in its own box. No chip,
+          no dotted rule: the count has already closed above it. */}
+      {closing && (
+        <div style={{
+          marginTop: 6,
+          padding: 'clamp(18px, 2.4vw, 22px) clamp(18px, 2.4vw, 24px)',
+          borderRadius: 14,
+          background: colors.bgAlt,
+          border: `1px solid ${colors.borderWhisper}`,
+        }}>
+          <p style={{ ...prose, fontSize: 'clamp(16px, 2vw, 18.5px)', color: colors.textSecondary }}>
+            {closing}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** A run of findings under one heading. Same rows as before, on the light canvas. */
+function FindingGroup({ heading, note, items, ticked }: {
+  heading?: string; note: string; items: IntakeFinding[]; ticked?: boolean;
+}) {
+  return (
+    <div style={{ marginTop: heading ? 20 : 0 }}>
+      {heading && (
+        <span style={{ display: 'block', fontFamily: T.body, fontSize: 15, fontWeight: 700, color: colors.textPrimary }}>
+          {heading}
+        </span>
+      )}
+      <p style={{ fontFamily: T.body, fontSize: 13.5, lineHeight: 1.5, color: colors.textMuted, margin: '3px 0 14px' }}>
+        {note}
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {items.map((f, i) => (
+          <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+            {/*
+              Pre-ticked for anything we handle. A checkbox the user must click
+              would be theatre, since we fix these either way - a tick that is
+              already done says the same thing honestly.
+            */}
+            <span style={{
+              flexShrink: 0, marginTop: 1, width: 20, height: 20, borderRadius: 6,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              background: ticked ? colors.success : 'transparent',
+              border: ticked ? 'none' : `1.5px solid ${colors.borderDefined}`,
+              color: '#fff',
+            }}>
+              {ticked && <Check size={13} strokeWidth={3.5} />}
+            </span>
+            <span style={{ minWidth: 0 }}>
+              <span style={{ display: 'block', fontFamily: T.body, fontSize: 15, fontWeight: 600, color: colors.textPrimary, lineHeight: 1.4 }}>
+                {f.title}
+                {f.severity === 'critical' && (
+                  <span style={{ fontFamily: T.body, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#9B3B22', background: 'rgba(196,72,48,0.12)', padding: '2px 6px', borderRadius: 4, marginLeft: 8, verticalAlign: 'middle' }}>
+                    Biggest
+                  </span>
+                )}
+              </span>
+              {f.detail && (
+                <span style={{ display: 'block', fontFamily: T.body, fontSize: 14, lineHeight: 1.55, color: colors.textSecondary, marginTop: 2 }}>
+                  {f.detail}
+                </span>
+              )}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** The eight testimonial cards, in the order they sit in public/Assets. */
+const TESTIMONIAL_CARDS = Array.from({ length: 8 }, (_, i) => `/Assets/testimonials/card_${i + 1}.jpg`);
+
+/**
+ * How much white sits over the testimonials. They are proof, not the pitch, so
+ * they read as texture behind the upload box rather than something to stop and
+ * read. Turn this down to show more of them, up to hide them further. It went
+ * up when the centre bloom came out: that gradient used to be doing most of
+ * the muting, and without it a bare wash left the cards shouting.
+ */
+const WASH_OPACITY = 0.62;
+
+/**
+ * How many times the eight-card run is repeated inside one half of a marquee
+ * strip. The half has to be at least as wide as the widest screen this opens
+ * on, because the animation slides a full half out of view: eight cards are
+ * 8 x (168 + 18) = 1488px, so two runs give 2976px of cover. Raise it if this
+ * ever has to hold an ultrawide.
+ */
+const COPIES_PER_HALF = 2;
+
+/**
+ * Two rows of testimonials crawling in opposite directions behind the page.
+ *
+ * The loop works by rendering each row's cards twice and sliding the strip
+ * exactly half its width, so the second copy lands where the first began and
+ * the seam never shows. The second row starts from a rotated copy of the same
+ * eight and is nudged half a card sideways, so no card ever sits directly
+ * above its twin.
+ */
+function TestimonialWash() {
+  /*
+    Three rows, not two, and stacked from the top rather than centred.
+    Two rows of 342px came to about 700px, so on any ordinary laptop the
+    marquee floated in the middle of the viewport with bare canvas above and
+    below it. A third row covers the fold on every screen this is opened on,
+    and the rows are anchored to the top so the overflow falls off the bottom
+    edge instead of leaving a gap there.
+
+    Each row starts from a different rotation of the same eight cards so no
+    card ever sits directly above its twin, and each is rendered twice so the
+    strip can slide exactly half its width and land back where it began.
+
+    The half is COPIES_PER_HALF runs wide, not one. Eight cards come to 1488px,
+    so a half of one run left the strip only 1488px of covered ground: a row
+    animating to -50% (or starting there, which the right-moving rows do) ran
+    its tail past the viewport and opened bare canvas on the right, which is
+    exactly the hole that showed in the middle row on a 1920px screen. Two runs
+    per half covers 2976px, so every row stays full edge to edge on any display
+    up to that width, and all three rows are built the same way.
+  */
+  const rows = [0, 3, 6].map((offset) => {
+    const rotated = [...TESTIMONIAL_CARDS.slice(offset), ...TESTIMONIAL_CARDS.slice(0, offset)];
+    const half = Array.from({ length: COPIES_PER_HALF }, () => rotated).flat();
+    return [...half, ...half];
+  });
+
+  return (
+    <div aria-hidden style={{ position: 'fixed', inset: 0, zIndex: 0, overflow: 'hidden', pointerEvents: 'none', background: colors.bgCanvas }}>
+      <div style={{ position: 'absolute', top: -40, left: 0, right: 0, display: 'flex', flexDirection: 'column', gap: 18 }}>
+        {rows.map((row, r) => (
+          <div key={r} style={{ display: 'flex', width: 'max-content', gap: 18, marginLeft: r * -84, animation: `agcMarquee${r % 2 === 0 ? 'L' : 'R'} ${68 + r * 9}s linear infinite` }} className="agc-marquee-row">
+            {row.map((src, i) => (
+              <img key={`${r}-${i}`} src={src} alt="" loading="lazy" draggable={false}
+                style={{ width: 168, height: 342, objectFit: 'cover', borderRadius: 12, flexShrink: 0, boxShadow: '0 8px 24px -14px rgba(26,24,20,0.35)' }} />
+            ))}
+          </div>
+        ))}
+      </div>
+
+      {/* An even wash, and nothing else. The bloom that used to sit on top of
+          this carried the contrast for the headline, and it did it by fading a
+          pool of white out into the cards — which is exactly the feathered edge
+          the panel now replaces. The panel owns the contrast; this only has to
+          keep the marquee quiet. */}
+      <div style={{ position: 'absolute', inset: 0, background: colors.bgSurface, opacity: WASH_OPACITY }} />
+
+      <style>{`
+        @keyframes agcMarqueeL { from { transform: translateX(0); }    to { transform: translateX(-50%); } }
+        @keyframes agcMarqueeR { from { transform: translateX(-50%); } to { transform: translateX(0); } }
+        @media (prefers-reduced-motion: reduce) {
+          .agc-marquee-row { animation: none !important; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+/** Who this is, said once at the top. Branding, not a nav bar. */
+function BrandLockup() {
+  return (
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 11, marginBottom: 28 }}>
+      <img src="/Logo.svg" alt="" width={34} height={34} style={{ borderRadius: 9, objectFit: 'contain' }} />
+      <span style={{ fontFamily: T.body, fontSize: 12.5, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: colors.textSecondary }}>
+        Aussie Grad Careers
+      </span>
+    </div>
+  );
+}
+
+/**
+ * `onWash` lets the page paint its own background behind the shell (the upload
+ * screen puts the testimonial marquee there). Everything else keeps the flat
+ * canvas it has always had.
+ */
+function Shell({ children, wide, onWash }: { children: React.ReactNode; wide?: boolean; onWash?: boolean }) {
+  return (
+    <div style={{ position: 'relative', zIndex: 1, height: '100dvh', overflowY: 'auto', background: onWash ? 'transparent' : colors.bgCanvas, display: 'flex', padding: '48px 24px', boxSizing: 'border-box' }}>
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}
         style={{ width: '100%', maxWidth: wide ? 720 : 520, margin: 'auto' }}>
         {children}

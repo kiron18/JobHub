@@ -380,9 +380,15 @@ export async function persistExtracted(userId: string, parsed: ParsedResume, opt
       [candidateProfile.professionalSummary, candidateProfile.resumeRawText],
       (stage1Data.experience ?? []).filter((e: any) => (e.type ?? 'work') === 'work' && e.isCasual !== true),
     );
+    // Stored as computed, including 1. It used to be nulled below 2 so that no
+    // document would brag about a few months, but that rule already lives where
+    // it belongs: yearsClaimDetector treats anything under 2 as unclaimable, so
+    // a stored 1 still keeps the figure off the resume. Nulling here threw the
+    // fact away as well as the boast, and left "we know they have one year"
+    // indistinguishable from "we never worked it out".
     await prisma.candidateProfile.update({
       where: { userId },
-      data: { yearsOfExperience: computedYears !== null && computedYears >= 2 ? computedYears : null },
+      data: { yearsOfExperience: computedYears },
     }).catch((err: any) => {
       console.warn('[AutoExtract] Failed to persist yearsOfExperience (non-fatal):', err.message);
     });

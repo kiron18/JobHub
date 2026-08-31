@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeYearsOfExperience } from './profileMath';
+import { computeYearsOfExperience, resolveYearsOfExperience } from './profileMath';
 
 describe('computeYearsOfExperience — sums actual time worked, not career span', () => {
   it('returns null for empty or missing experience', () => {
@@ -63,5 +63,49 @@ describe('computeYearsOfExperience — sums actual time worked, not career span'
       { startDate: '2025-11', endDate: '2025-11' },
     ]);
     expect(years).toBe(1); // floored to a minimum of 1
+  });
+});
+
+describe('resolveYearsOfExperience — a stated figure has to survive a cross-check', () => {
+  // Sixteen years of real dates, and a bullet somewhere in the body that is
+  // about the people he trained, not about him. This is the shape that turned
+  // a senior engineer into a junior one.
+  const SIXTEEN_YEARS = [
+    { startDate: '2010-01', endDate: '2018-01' },
+    { startDate: '2018-02', endDate: '2026-02' },
+  ];
+
+  it('takes the professional summary at face value', () => {
+    expect(
+      resolveYearsOfExperience(['Site engineer with 16 years of experience.', 'noise'], SIXTEEN_YEARS),
+    ).toBe(16);
+  });
+
+  it('ignores a figure in the body that the dates contradict', () => {
+    const years = resolveYearsOfExperience(
+      [null, 'Trained 12 staff with 3 years experience across two sites.'],
+      SIXTEEN_YEARS,
+    );
+    expect(years).toBe(16);
+  });
+
+  it('keeps a figure in the body that the dates agree with', () => {
+    const years = resolveYearsOfExperience(
+      [null, 'Brings 15 years of experience in tunnelling.'],
+      SIXTEEN_YEARS,
+    );
+    expect(years).toBe(15);
+  });
+
+  it('falls back to the body figure when there are no dates to check against', () => {
+    expect(resolveYearsOfExperience([null, 'Around 4 years of experience.'], [])).toBe(4);
+  });
+
+  it('returns the computed figure when nothing is stated anywhere', () => {
+    expect(resolveYearsOfExperience([null, 'No figures here.'], SIXTEEN_YEARS)).toBe(16);
+  });
+
+  it('returns null when there is nothing to go on at all', () => {
+    expect(resolveYearsOfExperience([null, null], [])).toBeNull();
   });
 });

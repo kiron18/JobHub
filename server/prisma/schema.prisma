@@ -36,6 +36,12 @@ model CandidateProfile {
   coverLetterRawText           String?
   coverLetterRawText2          String?
   hasCompletedOnboarding       Boolean           @default(false)
+  /// When this account was shown the "check a job before you apply" intro.
+  /// Lives on the profile, not in localStorage: the modal belongs to the SIGNUP,
+  /// so it fires once per account on any browser and never again, and clearing
+  /// this column is what replays it. Backfilled to createdAt for everyone who
+  /// existed before it shipped, so only new signups meet it.
+  eligibilityIntroSeenAt       DateTime?
   industry                     String?
   perceivedBlocker             String?
   responsePattern              String?

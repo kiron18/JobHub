@@ -70,7 +70,7 @@ router.post('/check', async (req: AuthRequest, res: Response) => {
 
   const profile = await prisma.candidateProfile.findUnique({
     where: { userId },
-    select: { id: true, resumeRawText: true, resumeOriginalText: true },
+    select: { id: true, resumeRawText: true, resumeOriginalText: true, yearsOfExperience: true },
   });
 
   if (!profile) {
@@ -83,7 +83,11 @@ router.post('/check', async (req: AuthRequest, res: Response) => {
   const resumeText = profile.resumeRawText || profile.resumeOriginalText;
 
   try {
-    const { report, requirements, flagged, ms } = await runFitReport(resumeText, jobText);
+    const { report, requirements, flagged, ms } = await runFitReport(
+      resumeText,
+      jobText,
+      profile.yearsOfExperience,
+    );
 
     // Checking the same ad twice should update the row, not grow the list. The
     // existing detector needs a company name, so an ad that never named one

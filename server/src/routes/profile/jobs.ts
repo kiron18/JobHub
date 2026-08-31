@@ -37,6 +37,11 @@ router.get('/jobs', authenticate, async (req, res) => {
         });
         res.json(jobs);
     } catch (error) {
+        // Logged because this is the dashboard's first call: when it fails the
+        // client sees an empty tracker and nothing else. On 27 Aug 2026 it
+        // returned 500 for every load because a migration had not been applied,
+        // and the silent catch meant the log showed only the status code.
+        console.error('[jobs] list failed:', error);
         res.status(500).json({ error: 'Failed to fetch jobs' });
     }
 });
@@ -55,6 +60,7 @@ router.get('/jobs/sent-count', authenticate, async (req, res) => {
         });
         res.json({ count });
     } catch (error) {
+        console.error('[jobs] sent-count failed:', error);
         res.status(500).json({ error: 'Failed to fetch sent count' });
     }
 });

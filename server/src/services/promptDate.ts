@@ -41,15 +41,24 @@ export function sydneyToday(now: Date = new Date()): { iso: string; long: string
 /**
  * The block to paste into a prompt.
  *
- * One paragraph, and it is deliberately a FACT rather than a rule. The model was
- * never short of instructions about dates; it was short of knowing the date. The
- * one instruction kept here ("has already happened") exists because the model's
- * wrong year is a confident prior and a bare date loses to it.
+ * One sentence. A fact, and nothing else.
  *
- * Resist growing this. A prompt that lectures about dates makes a model hunt for
- * date faults, which is most of how the original bug did its damage.
+ * This is here because a model has no clock. It has a training cutoff, and
+ * nothing in a request tells it what today is, so it guesses from that cutoff
+ * and guesses low. On 25 Aug 2026 that put a client's current job five months
+ * in the future and led their report with an accusation of carelessness.
+ *
+ * Everything that used to follow the date was scar tissue. It told the model
+ * that a date before today is in the past and that "Present" means still
+ * running, both of which any reader knows, and the second of those is what
+ * produced the 28 Aug 2026 report claiming a Present role had already ended.
+ * Stating the obvious did not make the model more careful; it made it hunt for
+ * date faults and invent one.
+ *
+ * Do not add a rule here. If a prompt needs the date it gets the date.
  */
 export function todayBlock(now: Date = new Date()): string {
   const { iso, long } = sydneyToday(now);
-  return `TODAY'S DATE: ${long} (${iso}), Australia/Sydney time. This is the real current date and it overrides your own sense of what year it is, which is out of date. Anything dated on or before ${iso} has already happened, including a role still marked "Present". Judge recency, duration and gaps from this date.`;
+  return `Today's date is ${long} (${iso}), Australia/Sydney time.`;
 }
+

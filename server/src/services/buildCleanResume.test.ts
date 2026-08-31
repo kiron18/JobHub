@@ -7,7 +7,7 @@ vi.mock('../utils/callLLMWithRetry', () => ({
   callLLMWithRetry: (...args: unknown[]) => callLLMWithRetry(...args),
 }));
 
-import { buildCleanResume, findBlanks, BlankLeakError, ContentLossError, IntakeAnswer } from './buildCleanResume';
+import { buildCleanResume, findBlanks, unwrapSourcedBrackets, BlankLeakError, ContentLossError, MAX_REBUILD_ATTEMPTS, IntakeAnswer } from './buildCleanResume';
 
 const RESUME = `Jane Smith
 jane@example.com
@@ -51,6 +51,39 @@ describe('findBlanks', () => {
     expect(findBlanks('array[0] lookup')).toEqual([]);
     expect(findBlanks('nothing []')).toEqual([]);
   });
+
+  // The 27 Aug 2026 deadlock: LlamaParse keeps a hyperlink's label and drops its
+  // URL, so the model has a link it cannot complete and cannot delete.
+  it('does not call a link label from their own resume a placeholder', () => {
+    const source = 'LinkedIn | Tableau Portfolio | SQL Portfolio';
+    expect(findBlanks('[Tableau Portfolio] | [SQL Portfolio]', [source])).toEqual([]);
+    expect(findBlanks('[Tableau Portfolio](https://invented.example)', [source])).toEqual([]);
+  });
+
+  it('still catches a placeholder when the source is in front of it', () => {
+    const source = 'Served customers at Officeworks';
+    expect(findBlanks('Served [how many] customers', [source])).toEqual(['[how many]']);
+  });
+});
+
+describe('unwrapSourcedBrackets', () => {
+  const source = 'LinkedIn | Tableau Portfolio | SQL Portfolio | github.com/emmanuel';
+
+  it('unwraps a sourced label to plain text and drops an invented target', () => {
+    expect(unwrapSourcedBrackets('[Tableau Portfolio]', [source])).toBe('Tableau Portfolio');
+    expect(unwrapSourcedBrackets('[SQL Portfolio](https://invented.example)', [source]))
+      .toBe('SQL Portfolio');
+  });
+
+  it('leaves a link alone when its target is in the source', () => {
+    expect(unwrapSourcedBrackets('[Tableau Portfolio](github.com/emmanuel)', [source]))
+      .toBe('[Tableau Portfolio](github.com/emmanuel)');
+  });
+
+  it('leaves a real placeholder untouched for findBlanks to catch', () => {
+    expect(unwrapSourcedBrackets('Served [how many] customers', [source]))
+      .toBe('Served [how many] customers');
+  });
 });
 
 describe('buildCleanResume', () => {
@@ -86,9 +119,10 @@ describe('buildCleanResume', () => {
     // A persisted blank would be copied into every future generation, so failing
     // the build is the correct outcome.
     await expect(buildCleanResume({ resumeText: RESUME, answers: [] })).rejects.toThrow(BlankLeakError);
-    // Three attempts now: a blank leak and a content drop are independent
-    // faults, and each gets a corrective retry that names what was wrong.
-    expect(callLLMWithRetry).toHaveBeenCalledTimes(3);
+    // The whole budget is spent: a blank leak, an ungrounded figure and a
+    // content drop are independent faults, and each gets a corrective retry
+    // that names what was wrong.
+    expect(callLLMWithRetry).toHaveBeenCalledTimes(MAX_REBUILD_ATTEMPTS);
   });
 
   it('tells the model to leave withheld figures out entirely', async () => {
@@ -166,7 +200,7 @@ describe('buildCleanResume', () => {
       answers: [],
       mustKeep: { employers: ['Mont Albert Manor'], qualifications: [], contacts: [] },
     })).rejects.toThrow(ContentLossError);
-    expect(callLLMWithRetry).toHaveBeenCalledTimes(3);
+    expect(callLLMWithRetry).toHaveBeenCalledTimes(MAX_REBUILD_ATTEMPTS);
   });
 
   it('reports how many items were verified, for the sign-off line', async () => {

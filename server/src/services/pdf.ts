@@ -1,5 +1,6 @@
 import mammoth from 'mammoth';
 import { parseWithLlamaParse } from './llamaparse';
+import { restorePdfLinks } from './pdfLinks';
 
 async function extractTextFromPDF(buffer: Buffer): Promise<string> {
   try {
@@ -39,19 +40,24 @@ export async function extractTextFromBuffer(
     }
   }
 
-  // PDF path — try LlamaParse, fall back to pdf-parse
+  // PDF path — try LlamaParse, fall back to pdf-parse.
+  //
+  // Both return the words of a hyperlink and drop the address behind it, so the
+  // recovered URLs are put back before the text goes anywhere. Doing it here
+  // rather than at one call site means every consumer of a PDF gets a contact
+  // block with real links in it.
   if (process.env.LLAMA_CLOUD_API_KEY) {
     try {
       const markdown = await parseWithLlamaParse(buffer, originalname);
       console.log('[extractText] LlamaParse succeeded for:', originalname);
-      return markdown.trim();
+      return restorePdfLinks(markdown.trim(), buffer);
     } catch (e) {
       console.warn('[extractText] LlamaParse failed, falling back to pdf-parse:', (e as Error).message);
     }
   }
 
   try {
-    return (await extractTextFromPDF(buffer)).trim();
+    return restorePdfLinks((await extractTextFromPDF(buffer)).trim(), buffer);
   } catch (e) {
     console.error('[extractText] pdf-parse also failed:', e);
     return '';

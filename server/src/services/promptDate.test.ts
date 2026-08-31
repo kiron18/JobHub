@@ -22,25 +22,12 @@ describe('todayBlock', () => {
     expect(block).toContain('2026-08-25');
   });
 
-  it('tells the model its own sense of the year is overridden', () => {
-    expect(todayBlock(ROLLOVER)).toMatch(/overrides your own sense of what year it is/);
-  });
-
-  it('resolves a role still marked Present against the real date', () => {
-    expect(todayBlock(ROLLOVER)).toContain('still marked "Present"');
-  });
-
-  it('stays a single short paragraph, so it cannot become a lecture about dates', () => {
+  // It is one sentence of fact. Everything that ever followed the date was a
+  // rule restating something obvious, and one of those rules is what made the
+  // model claim a role marked "Present" had ended. Nothing may be added here.
+  it('is the date and nothing else', () => {
     const block = todayBlock(ROLLOVER);
-    expect(block.split(String.fromCharCode(10)).filter(Boolean)).toHaveLength(1);
-    expect(block.length).toBeLessThan(400);
-  });
-
-  it('avoids the hedging words the scan prompt bans', () => {
-    const block = todayBlock(ROLLOVER);
-    for (const banned of ['likely', 'may be', 'might', 'possibly', 'probably']) {
-      expect(block.toLowerCase()).not.toContain(banned);
-    }
+    expect(block).toBe("Today's date is 25 August 2026 (2026-08-25), Australia/Sydney time.");
   });
 
   it('is evaluated per call, never frozen at module load', () => {

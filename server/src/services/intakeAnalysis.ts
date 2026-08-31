@@ -16,7 +16,7 @@ import { callLLMWithRetry } from '../utils/callLLMWithRetry';
 import { callLLMWithDocument } from './llm';
 import { parseLLMJson } from '../utils/parseLLMResponse';
 import { EVIDENCE_RULE } from './intakeEvidenceRule';
-import { todayBlock } from './promptDate';
+import { sydneyToday } from './promptDate';
 import { DocumentSignals, describeSignals } from './documentSignals';
 import { DocxStructure, describeDocxStructure } from './docxStructure';
 import { MustKeep } from './retentionGate';
@@ -97,6 +97,22 @@ export interface IntakeAnalysis {
 export const MAX_QUESTIONS = 10;
 
 /**
+ * The brief is a moment, not an audit.
+ *
+ * This used to be uncapped, on the reasoning that anything found should be
+ * reported. What that produced was a wall: twelve items, the real problem
+ * sitting fourth, and the reader skimming all of it. Worse, an uncapped list
+ * has to be filled, and the filler is whatever the model can check cheaply from
+ * flat text, which is why every run drifted to dates and formatting.
+ *
+ * Three is the cap because the point is that they SEE the thing they could not
+ * see themselves. One that lands beats ten that scroll. Everything small still
+ * gets fixed, silently, in buildCleanResume - it just does not get billed to
+ * them as a problem.
+ */
+export const MAX_FINDINGS = 3;
+
+/**
  * One call returns the prose read, the findings, the retention inventory and the
  * anchored questions. The default 8192 truncated the JSON mid-object once the
  * findings list got long, which surfaced as "LLM returned unparseable response".
@@ -137,9 +153,7 @@ const PROMPT = (
   signals: string,
   hasDocument: boolean,
   structure: string,
-): string => `You are an expert Australian career coach. A new client has just sent you their resume. Read it, tell them the truth about it, and ask for the facts you would need before rewriting it.
-
-${todayBlock()}
+): string => `You are an expert Australian career coach. A new client has just sent you their resume. Read it, show them the biggest thing standing between it and an interview, and ask for the facts you would need before rewriting it.
 
 ${EVIDENCE_RULE}
 ${signals ? `
@@ -155,9 +169,11 @@ ${structure}`
     : 'You have plain text only, with all structure and appearance stripped out. Judge the writing, the content and the ordering. Say nothing about photos, tables, layout, fonts, colour or page count, because you cannot see any of it.'}
 
 HOW TO JUDGE
-Work out from the document what job this person is going for, then read it as the person hiring for that job would. Rank everything by what actually costs them interviews. The most serious problem is often not an error but a mismatch between what the document says and what the target job needs.
+Work out from the document what job this person is going for, then read it as the person hiring for that job would. Find the one thing costing them the most interviews. Then the next, and a third only if a third genuinely belongs there. Stop at three. One that lands is worth more than a list.
 
-Say what is actually there. However many findings that is, is the right number. One observation is one finding, never split across employers or bullets to lengthen the list. An invented criticism costs you their trust in everything else you tell them.
+The biggest problem is rarely an error, and almost never a formatting or date detail. It is usually the distance between what this document says about them and what the job they want actually needs: the achievement buried on page two, the seniority the writing hides, the whole story a reader cannot assemble from what is on the page. Look for what they cannot see about their own resume, because that is the only thing worth their attention here.
+
+This is not an audit. Anything small enough that we could fix it without asking them is not a finding, so leave it out. Say only what is actually there: an invented criticism costs you their trust in everything else you tell them. One observation is one finding, never split across employers or bullets to lengthen the list.
 
 Australian English. Never an em dash or en dash. Warm, direct, second person, and never a remark on the person rather than the document. A referees section, or "References available on request", is standard practice here and is never a flaw. Never raise visas or sponsorship. Do not sell or pitch.
 
@@ -165,7 +181,7 @@ Return ONLY this JSON object and nothing else:
 {
   "firstName": "their first name, or an empty string if unclear",
   "currentRole": "their current or most recent job title exactly as the resume gives it, or an empty string if unclear",
-  "brief": "2 or 3 short paragraphs of flowing prose spoken to them, no bullets or headings or scores. The worst problems first, each explained as understanding rather than verdict. End by telling them you need a few facts before you rewrite it. 90 to 140 words. Use \n\n between paragraphs.",
+  "brief": "flowing prose spoken to them, no bullets or headings or scores, 320 to 380 words. Open on the biggest problem and give it real room: what their document currently says, what the person hiring reads into that, and what it has been costing them. Quote their own resume back at them where it makes the point land. They should finish that paragraph seeing something about their own resume they could not see themselves. Then the second problem, then a third only if there is a real third, each shorter than the one before. Explained as understanding, never as verdict. End by telling them you need a few facts before you rewrite it. Use \n\n between paragraphs.",
   "findings": [{
     "title": "short label, at most 6 words",
     "detail": "one plain sentence on what it costs them",
@@ -190,17 +206,20 @@ Return ONLY this JSON object and nothing else:
   }]
 }
 
+At most ${MAX_FINDINGS} findings, biggest first, and they are the same problems the brief talks about. Never pad to reach three.
+
 At most ${MAX_QUESTIONS} questions, best first, and fewer is better. Ask only what they alone can tell you: a missing number, what an unfamiliar employer does, whether a role was casual or full time, the scope they personally owned. Never ask for something the resume already states, never ask their goals or opinions, and never ask for anything you could fix yourself.
 
 The inventory in mustKeep is a record, not a judgement. Do not filter, rank or merge it: a missing entry means a real part of their history can quietly disappear in the rewrite.
 
-RESUME TEXT:
+RESUME TEXT (as received on ${sydneyToday().long}):
 """
 ${resumeText}
 """`;
 
-/** Coerce the findings list into safe values. Deliberately NOT capped — the whole
- *  point is that nothing found goes unreported. */
+/** Coerce the findings list into safe values, capped at MAX_FINDINGS. The cap is
+ *  enforced here as well as asked for in the prompt, because a model that runs
+ *  long turns the moment back into the wall of items this was built to replace. */
 function normaliseFindings(raw: unknown): IntakeFinding[] {
   if (!Array.isArray(raw)) return [];
   const rank = { critical: 0, important: 1, minor: 2 } as const;
@@ -222,7 +241,29 @@ function normaliseFindings(raw: unknown): IntakeFinding[] {
       severity,
     });
   }
-  return out.sort((a, b) => rank[a.severity] - rank[b.severity]);
+  return out.sort((a, b) => rank[a.severity] - rank[b.severity]).slice(0, MAX_FINDINGS);
+}
+
+/**
+ * A contact has to be reachable: a phone number, an email, or a web address.
+ *
+ * When a resume's LinkedIn is a hyperlink, the extractor keeps the words and
+ * drops the address, so the contact line reads "LinkedIn Profile". Recorded
+ * "exactly as written", that phrase entered the inventory and the retention gate
+ * then demanded it back from a rewrite that is explicitly forbidden to write a
+ * bare "LinkedIn" with no URL behind it. Every attempt failed and the build
+ * 502'd, on 29 Aug 2026, repeatedly.
+ *
+ * pdfLinks now recovers the real URL so the phrase should not arise, but a DOCX,
+ * or a PDF whose link was never an annotation, can still produce one. This is the
+ * backstop that makes the deadlock impossible rather than merely unlikely: an
+ * unreachable "contact" is not a contact, it is the debris of a lost link.
+ *
+ * Dropping it is safe in the only direction that matters. The gate's whole
+ * design is that a shorter inventory checks less and can never lose more.
+ */
+function isReachableContact(v: string): boolean {
+  return /\d/.test(v) || v.includes('@') || /[./]/.test(v);
 }
 
 /** Coerce the inventory into clean string lists. Deliberately uncapped - a
@@ -233,10 +274,18 @@ function normaliseMustKeep(raw: unknown): MustKeep {
       ? [...new Set(v.map((x) => String(x ?? '').trim()).filter((x) => x.length > 1))]
       : [];
   const o = (raw ?? {}) as Record<string, unknown>;
+  const contacts = list(o.contacts);
+  const reachable = contacts.filter(isReachableContact);
+  if (reachable.length !== contacts.length) {
+    console.log(
+      '[intakeAnalysis] dropped unreachable contact(s) from the inventory:',
+      contacts.filter((c) => !isReachableContact(c)).join(', '),
+    );
+  }
   return {
     employers: list(o.employers),
     qualifications: list(o.qualifications),
-    contacts: list(o.contacts),
+    contacts: reachable,
   };
 }
 

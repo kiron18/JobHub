@@ -33,6 +33,7 @@ import { callClaude } from './llm';
 import { normalizeEmDashes } from '../lib/styleLint';
 import { scrubInjection } from './scrubInjection';
 import { detectWorkRights } from '../lib/workRights';
+import { detectSeniorityGap } from '../lib/seniorityGap';
 
 /** Validated in the eval. Overridable without a deploy, per house rule. */
 const FIT_MODEL = process.env.FIT_MODEL || undefined;
@@ -64,6 +65,12 @@ export interface FitReport {
    * and never part of the score. Null when the ad does not raise it.
    */
   workRights: string | null;
+  /**
+   * Context on being further along than the ad asks for. Deterministic, never
+   * from the model, never part of the score, and never allowed to change the
+   * verdict or the next step. Null unless the gap is wide and the ad is open.
+   */
+  seniority: string | null;
 }
 
 export interface FitRequirement {
@@ -249,6 +256,7 @@ export function normaliseFitReport(raw: unknown): FitReport {
     // Filled in by runFitReport from the ad itself. Anything the model tried to
     // put here is discarded: this field is a fact about the ad, not a judgement.
     workRights: null,
+    seniority: null,
   };
 }
 
@@ -266,6 +274,11 @@ export interface FitReportResult {
 export async function runFitReport(
   resumeText: string | null | undefined,
   jobText: string,
+  /**
+   * Their years on file, when we hold one. Used only by the seniority notice,
+   * which stays silent without it. Never reaches the model or the score.
+   */
+  candidateYears?: number | null,
 ): Promise<FitReportResult> {
   if (!resumeText || resumeText.trim().length < 200) {
     throw new FitReportError('No resume on file to check against.', 'NO_RESUME');
@@ -296,9 +309,14 @@ export async function runFitReport(
   }
 
   const notice = detectWorkRights(jd);
+  const seniority = detectSeniorityGap(jd, candidateYears ?? null);
 
   return {
-    report: { ...normaliseFitReport(parsed), workRights: notice?.sentence ?? null },
+    report: {
+      ...normaliseFitReport(parsed),
+      workRights: notice?.sentence ?? null,
+      seniority: seniority?.sentence ?? null,
+    },
     requirements,
     flagged,
     ms: Date.now() - t0,

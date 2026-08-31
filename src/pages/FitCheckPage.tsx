@@ -223,8 +223,23 @@ export default function FitCheckPage() {
             }}>
               See how well your resume fits this job
             </h1>
+            {/*
+              Two sentences doing two different jobs. The first states the
+              premise the whole product rests on and is the only place in the
+              app that says it out loud; the second says what this screen does
+              about it. Only the premise is bolded, because bolding both leaves nothing
+              emphasised.
+
+              The ten seconds is the same figure the reading state already
+              claims below, so the two must move together if it is ever retimed.
+            */}
             <p style={{ margin: '0 0 28px', fontSize: 15, lineHeight: 1.6, color: C.textSecondary }}>
-              We read the ad against the resume you gave us and tell you whether it is worth your time.
+              <strong style={{ color: C.textPrimary, fontWeight: 700 }}>
+                The simplest and fastest way to land a job is to send out a high volume of high
+                quality applications
+              </strong>{' '}
+              to jobs that match your profile. We read the ad against the resume you gave us and
+              tell you whether it is worth your time, in about ten seconds.
             </p>
 
             <textarea

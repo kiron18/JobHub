@@ -35,6 +35,17 @@ const RESUME_RULES = fs.readFileSync(
   'utf-8',
 );
 
+/**
+ * How many times the rewrite may be asked again before we give up and 502.
+ *
+ * Four, not three. The budget is shared across all three checks (blanks,
+ * ungrounded figures, retention), so at three a document that trips two of them
+ * can exhaust the loop without either problem ever getting a second look.
+ *
+ * Exported so the tests assert against this rather than a copy of the number.
+ */
+export const MAX_REBUILD_ATTEMPTS = 4;
+
 export type IntakeAnswerStatus = 'answered' | 'later' | 'unknown';
 
 export interface IntakeAnswer {
@@ -144,8 +155,47 @@ function buildAnswersBlock(answers: IntakeAnswer[]): string {
  */
 const BLANK_PATTERN = /\[[^\]\n]*[A-Za-z][^\]\n]*\]/g;
 
-export function findBlanks(content: string): string[] {
-  return [...new Set(content.match(BLANK_PATTERN) ?? [])];
+/** The same shape, capturing the label and any markdown link target after it. */
+const BRACKET_WITH_TARGET = /\[([^\]\n]*[A-Za-z][^\]\n]*)\](?:\(([^)\s]*)\))?/g;
+
+const flatten = (s: string): string => s.toLowerCase().replace(/\s+/g, ' ');
+
+/** Below this a source match is coincidence rather than evidence. */
+const MIN_SOURCED_LENGTH = 3;
+
+function isSourced(fragment: string, haystack: string): boolean {
+  const needle = flatten(fragment).trim();
+  return needle.length >= MIN_SOURCED_LENGTH && haystack.includes(needle);
+}
+
+/**
+ * Repair the one bracket that is not a blank.
+ *
+ * On 27 Aug 2026 every rebuild of one candidate's CV returned 502. LlamaParse
+ * renders a hyperlink as `<u>Tableau Portfolio</u>`, keeping the label and
+ * discarding the URL, so the model was handed a link with no target. It could
+ * not invent a URL (evidence rule) and could not drop the words (retention
+ * rule), so it wrote `[Tableau Portfolio]`, which the blank check read as a
+ * placeholder. Three corrective retries cannot settle a conflict between two
+ * rules that are both right, so the candidate got an error instead of a resume.
+ *
+ * A placeholder invents a slot for a fact nobody supplied. A stripped link label
+ * is text already in their resume. That difference is checkable against the
+ * source, which is why this is not a list of phrases to watch for: a label whose
+ * words are in the source loses its brackets and stays as plain text, a target
+ * that is in the source stays a link, and anything else is still a blank.
+ */
+export function unwrapSourcedBrackets(content: string, sources: string[]): string {
+  const haystack = flatten(sources.join('\n'));
+  return content.replace(BRACKET_WITH_TARGET, (whole: string, label: string, target?: string) => {
+    if (target && isSourced(target, haystack)) return whole;
+    return isSourced(label, haystack) ? label : whole;
+  });
+}
+
+export function findBlanks(content: string, sources: string[] = []): string[] {
+  const scanned = sources.length > 0 ? unwrapSourcedBrackets(content, sources) : content;
+  return [...new Set(scanned.match(BLANK_PATTERN) ?? [])];
 }
 
 /** Raised when a rebuild keeps dropping real content. Never persist past this. */
@@ -218,18 +268,42 @@ export async function buildCleanResume({
   let lastBlanks: string[] = [];
   let lastUngrounded: string[] = [];
   let lastRetention: RetentionResult | null = null;
-  let correction = '';
 
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    const raw = await callLLMWithRetry(correction ? `${prompt}\n\n${correction}` : prompt, false);
-    const content = (typeof raw === 'string' ? raw : String(raw ?? '')).trim();
-    if (!content) throw new Error('buildCleanResume: model returned empty content');
+  /**
+   * One standing correction per check, not one correction at a time.
+   *
+   * These used to share a single string that each failure overwrote. A resume
+   * that tripped more than one check then ping-ponged: told to drop its invented
+   * figures, the model complied and dropped a job along with them, because the
+   * instruction about keeping every role had just been erased. Three attempts
+   * spent undoing each other, then a 502 on a document that was one fix away.
+   *
+   * Keyed by check, so a new failure replaces only its own instruction and every
+   * other one still stands.
+   */
+  const corrections = new Map<'blanks' | 'figures' | 'retention', string>();
+  const correctionBlock = () =>
+    corrections.size === 0 ? '' : `\n\n${[...corrections.values()].join('\n\n')}`;
+
+  for (let attempt = 1; attempt <= MAX_REBUILD_ATTEMPTS; attempt++) {
+    const raw = await callLLMWithRetry(`${prompt}${correctionBlock()}`, false);
+    const rawContent = (typeof raw === 'string' ? raw : String(raw ?? '')).trim();
+    if (!rawContent) throw new Error('buildCleanResume: model returned empty content');
+
+    // Everything this rewrite was allowed to draw on. Both checks below measure
+    // against it, so they have to be looking at the same list.
+    const answerText = answers.filter((a) => a.status === 'answered').map((a) => a.value);
+    const sources = [resumeText, ...answerText];
+
+    // A bracket around words that are already in their resume is a link whose
+    // URL the extractor dropped, not a blank. Unwrap those first.
+    const content = unwrapSourcedBrackets(rawContent, sources);
 
     // Placeholder blanks would be copied into every future application.
     lastBlanks = findBlanks(content);
     if (lastBlanks.length > 0) {
       console.warn(`[buildCleanResume] attempt ${attempt}: ${lastBlanks.length} blank(s)`);
-      correction = `YOUR PREVIOUS ATTEMPT WAS REJECTED. It contained these forbidden square-bracket placeholders: ${lastBlanks.join(', ')}. Rewrite the resume with those lines carrying no figure and no brackets at all.`;
+      corrections.set('blanks', `YOUR PREVIOUS ATTEMPT WAS REJECTED. It contained these forbidden square-bracket placeholders: ${lastBlanks.join(', ')}. Rewrite the resume with those lines carrying no figure and no brackets at all.`);
       continue;
     }
 
@@ -238,12 +312,11 @@ export async function buildCleanResume({
     // retention below proves nothing was lost, and nothing else proves nothing
     // was added. An invented number here becomes permanent, because from this
     // point on it IS the source every generation is graded against.
-    const answerText = answers.filter((a) => a.status === 'answered').map((a) => a.value);
-    const ungrounded = findUngroundedFigures(content, [resumeText, ...answerText]);
+    const ungrounded = findUngroundedFigures(content, sources);
     lastUngrounded = ungrounded;
     if (ungrounded.length > 0) {
       console.warn(`[buildCleanResume] attempt ${attempt}: ${ungrounded.length} ungrounded figure(s): ${ungrounded.join(', ')}`);
-      correction = `YOUR PREVIOUS ATTEMPT WAS REJECTED. It contained these figures, which appear nowhere in the candidate's original resume and nowhere in what they told you: ${ungrounded.join(', ')}. You may not introduce a number. Rewrite those lines using only figures the original already contains, or with no figure at all.`;
+      corrections.set('figures', `YOUR PREVIOUS ATTEMPT WAS REJECTED. It contained these figures, which appear nowhere in the candidate's original resume and nowhere in what they told you: ${ungrounded.join(', ')}. You may not introduce a number. Rewrite those lines using only figures the original already contains, or with no figure at all. Removing a figure never means removing the line it sits on.`);
       continue;
     }
 
@@ -255,7 +328,7 @@ export async function buildCleanResume({
         `[buildCleanResume] attempt ${attempt}: dropped ${retention.missing.length} item(s): `
         + retention.missing.map((m) => m.item).join(', '),
       );
-      correction = retentionRetryInstruction(retention.missing);
+      corrections.set('retention', retentionRetryInstruction(retention.missing));
       continue;
     }
 

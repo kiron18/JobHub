@@ -45,7 +45,6 @@ const seek = {
 const DRAG_MS = 2600;
 const HOLD_MS = 1800;
 const RESET_MS = 600;
-const CYCLE_MS = DRAG_MS + HOLD_MS + RESET_MS;
 
 function prefersReducedMotion(): boolean {
     return typeof window !== 'undefined'
@@ -109,8 +108,16 @@ export function HowToCopyJobAd() {
     );
 }
 
-/** The imitation ad, with a real selection sweeping over it. */
-function SeekMock() {
+/**
+ * The imitation ad, with a real selection sweeping over it.
+ *
+ * Exported because the onboarding modal shows the same lesson and there must
+ * only ever be one of these. The timings are overridable so a caller running to
+ * a fixed budget can shorten the drag; the defaults are the tutorial's own.
+ */
+export function SeekMock({ dragMs = DRAG_MS, holdMs = HOLD_MS, resetMs = RESET_MS }: {
+    dragMs?: number; holdMs?: number; resetMs?: number;
+} = {}) {
     const mockRef = useRef<HTMLDivElement | null>(null);
     const regionRef = useRef<HTMLDivElement | null>(null);
     const startRef = useRef<HTMLHeadingElement | null>(null);
@@ -205,15 +212,16 @@ function SeekMock() {
             return () => clearSelection();
         }
 
+        const cycleMs = dragMs + holdMs + resetMs;
         const t0 = performance.now();
         const tick = (now: number) => {
-            const t = (now - t0) % CYCLE_MS;
-            if (t < DRAG_MS) {
-                const x = t / DRAG_MS;
+            const t = (now - t0) % cycleMs;
+            if (t < dragMs) {
+                const x = t / dragMs;
                 // easeInOutCubic, so the drag starts and settles like a hand
                 const eased = x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
                 selectTo(eased * total);
-            } else if (t < DRAG_MS + HOLD_MS) {
+            } else if (t < dragMs + holdMs) {
                 selectTo(total);
             } else {
                 clearSelection();
@@ -243,7 +251,7 @@ function SeekMock() {
             document.removeEventListener('visibilitychange', onHide);
             stop();
         };
-    }, [clearSelection]);
+    }, [clearSelection, dragMs, holdMs, resetMs]);
 
     const noSelect = { userSelect: 'none' } as const;
 

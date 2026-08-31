@@ -42,7 +42,7 @@ export function clearPendingOnboarding() {
 }
 
 export function OnboardingGate({ children }: OnboardingGateProps) {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const queryClient = useQueryClient();
   const [claiming, setClaiming] = useState(false);
   // Has the returning-user claim attempt finished (or been ruled out)? Until it has,
@@ -60,7 +60,7 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
 
   const isAuthenticated = !!user && !(user as any).is_anonymous;
 
-  const { data: profile, isLoading, isError } = useQuery({
+  const { data: profile, isLoading, isError, error } = useQuery({
     queryKey: ['profile'],
     queryFn: async () => {
       console.log('[OnboardingGate] fetching profile...');
@@ -70,8 +70,12 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
     },
     enabled: isAuthenticated,
     staleTime: 30_000,
-    retry: 1,
-    retryDelay: 1000,
+    // A backend that has just restarted, woken, or cold-started refuses the
+    // first connection as a matter of course. One retry was not enough to ride
+    // that out, and the cost of running out is showing an onboarded client the
+    // onboarding form.
+    retry: 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 4000),
     refetchOnWindowFocus: false,
   });
 
@@ -185,7 +189,13 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
   // resolving (stops the onboarding intake flashing on a fresh userId whose profile
   // hasn't been claimed yet), OR while we're checking report status.
   const claimPending = isAuthenticated && !isError && !profile?.hasCompletedOnboarding && !claimSettled;
-  if (isLoading || claimPending || (isAuthenticated && !profile?.hasCompletedOnboarding && reportStatus === 'checking')) {
+  // authLoading has to be its own condition. Every other guard below is written
+  // `isAuthenticated && ...`, and the profile query is `enabled: isAuthenticated`
+  // — a disabled query reports isLoading false, not true. So in the window where
+  // Supabase has not yet resolved the session, nothing here was true and the gate
+  // fell through to "no profile, show onboarding". Someone walking out of the
+  // welcome flow, already onboarded, got "Complete your profile" for a beat.
+  if (authLoading || isLoading || claimPending || (isAuthenticated && !profile?.hasCompletedOnboarding && reportStatus === 'checking')) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAF7F2' }}>
         <div className="w-12 h-12 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(45,90,110,0.2)', borderTopColor: '#2D5A6E' }} />
@@ -193,10 +203,55 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
     );
   }
 
-  // API error or no profile row yet — show onboarding.
+  /*
+   * A failed request is not evidence about onboarding.
+   *
+   * This used to read `if (isError || !profile?.hasCompletedOnboarding)`, which
+   * treated "we could not reach the server" and "this person has not onboarded"
+   * as the same fact. They are not. Any first-request failure on a page load —
+   * a cold Railway start, a restart, a token being refreshed, a dropped
+   * connection — put a client who onboarded weeks ago in front of "Complete your
+   * profile", and some of them would start filling it in.
+   *
+   * A 401 is different: that is the server answering definitively that there is
+   * no session, which is the genuinely unauthenticated visitor this screen is
+   * for. Every other error means we do not know yet, so we say so and let them
+   * retry rather than inventing an answer.
+   */
+  const status = (isError as boolean)
+    ? ((error as { response?: { status?: number } } | null)?.response?.status ?? 0)
+    : 0;
+  const definitivelySignedOut = status === 401 || status === 403;
+
+  if (isError && !definitivelySignedOut) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAF7F2', padding: 24 }}>
+        <div style={{ textAlign: 'center', maxWidth: 380 }}>
+          <p style={{ margin: '0 0 8px', fontSize: 17, fontWeight: 700, color: '#1A1814' }}>
+            We could not reach your account
+          </p>
+          <p style={{ margin: '0 0 20px', fontSize: 14.5, lineHeight: 1.6, color: '#5C5750' }}>
+            Nothing is lost. This is usually a moment's connection trouble.
+          </p>
+          <button
+            type="button"
+            onClick={() => queryClient.refetchQueries({ queryKey: ['profile'] })}
+            style={{
+              padding: '12px 24px', borderRadius: 10, border: 'none', cursor: 'pointer',
+              background: '#2D5A6E', color: '#FAF7F2', fontSize: 15, fontWeight: 700, fontFamily: 'inherit',
+            }}
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // No profile row yet, or a server that says there is no session — show onboarding.
   // If the user is authenticated AND has pending onboarding data in localStorage
   // (placed there before a Google OAuth redirect), resume mode auto-submits.
-  if (isError || !profile?.hasCompletedOnboarding) {
+  if (definitivelySignedOut || !profile?.hasCompletedOnboarding) {
     const resumeMode = !!user && hasPendingOnboarding();
     // Pass the pre-checked report status so OnboardingIntake doesn't need to re-check.
     // If there's already a processing/failed report, start at step 5 immediately.

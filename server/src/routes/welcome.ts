@@ -32,6 +32,7 @@ import { ipRateLimit } from '../middleware/ipRateLimit';
 import { autoExtractAchievements } from '../services/autoExtract';
 import { reconcileProfileEmail } from '../services/onboarding';
 import { sendWelcomeResumeEmail } from '../services/email';
+import { renderResumePdf } from '../services/resumePdf';
 import { analyseIntakeResume, IntakeQuestion } from '../services/intakeAnalysis';
 import { detectDocumentSignals, DocumentSignals } from '../services/documentSignals';
 import { extractDocxStructure } from '../services/docxStructure';
@@ -260,9 +261,22 @@ router.post('/build', async (req: Request, res: Response) => {
       data: { resumeCleanText: clean },
     });
 
+    // The real page count, off the same renderer that produces the emailed PDF,
+    // rather than a guess from character count. Length estimates are wrong the
+    // moment someone has a long education section, and this is the one number on
+    // that screen an Australian candidate is actually judged on. Never fatal: a
+    // render failure costs the count, not the resume.
+    let pageCount: number | null = null;
+    try {
+      pageCount = (await renderResumePdf(clean)).pages;
+    } catch (err) {
+      console.warn('[welcome/build] page count unavailable:', (err as Error).message);
+    }
+
     const unanswered = resolved.filter((a) => a.status !== 'answered');
     res.json({
       resume: clean,
+      pageCount,
       // Shown to the candidate so they sign off on a document they know was
       // checked, rather than being asked to proofread it themselves.
       retention: {

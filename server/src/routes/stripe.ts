@@ -393,16 +393,20 @@ const router = Router();
 
 // POST /api/stripe/checkout
 /**
- * In-app checkout is switched OFF, not deleted.
+ * In-app checkout is back ON for the monthly plan.
  *
- * Clients are currently signed up through a Stripe payment link, so nothing
- * reaches this route in the normal course. Leaving it live is a hazard: the
- * price IDs here have drifted from the real offer (MONTHLY_PRICE_ID still
- * points at the retired $97/month price), so anyone who found /pricing and
- * completed checkout would lock themselves into the wrong price for the life of
- * their subscription.
+ * It was switched off because MONTHLY_PRICE_ID pointed at the retired $97/month
+ * price, so anyone completing checkout locked themselves into the wrong price
+ * for the life of their subscription. That drift is resolved:
+ * MONTHLY_PRICE_ID now points at the live $100/month AUD price
+ * ("Job Hub System monthly"), which is the offer /pricing advertises.
  *
- * Set CHECKOUT_ENABLED=true to turn it back on — after re-checking the price IDs.
+ * The other two are NOT re-verified. `annual` ($597/yr) and `three_month`
+ * ($197 one-time) are still reachable through this route by anyone posting
+ * that plan value, and neither is advertised anywhere. Re-check them against
+ * the current offer before pointing any UI at them.
+ *
+ * CHECKOUT_ENABLED=false kills the whole route again in one env var.
  */
 const CHECKOUT_ENABLED = process.env.CHECKOUT_ENABLED === 'true';
 

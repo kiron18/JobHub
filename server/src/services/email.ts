@@ -1,3 +1,4 @@
+import { renderResumePdf, resumeFilename } from './resumePdf';
 import { Resend } from 'resend';
 import type { CvGapResult, RoadmapStep } from './cvGapScan';
 import { PUBLIC_APP_URL } from '../lib/appUrl';
@@ -7,6 +8,16 @@ import { unmatchedAlertMode } from '../config/alerts';
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const APP_URL = 'https://aussiegradcareers.com.au';
+
+/**
+ * Where "Find out more" in the welcome resume email goes.
+ *
+ * Points at the app root, not at /how-it-works, because that explainer page is
+ * not built yet and an email cannot be fixed once it is sent. A 404 in the
+ * inbox is a dead lead. Repoint this the day the page ships; it is the same
+ * destination as POSITIONING_EXPLAINER_URL on the front door.
+ */
+const WELCOME_EMAIL_CTA_URL = APP_URL;
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'kiron@aussiegradcareers.com.au';
 const FROM_ADDRESS = `Aussie Grad Careers <kiron@aussiegradcareers.com.au>`;
 
@@ -953,26 +964,46 @@ export async function sendWelcomeResumeEmail(params: {
   const name = (firstName || '').trim();
   const hi = name ? `Hey ${esc(name)},` : 'Hey,';
 
+  // The resume travels as a file, not as text in the body.
+  //
+  // It used to be both, which made the email enormous: two pages of somebody's
+  // career rendered inline, with the one thing we actually want them to read
+  // sitting under all of it. Nobody attaches an email to a job application
+  // either, so the inline copy was never the usable one.
+  //
+  // The inline render survives as the fallback below and only that. If the PDF
+  // fails we still owe them the resume the subject line promises.
+  let attachments: Array<{ filename: string; content: string }> | undefined;
+  try {
+    const { buffer } = await renderResumePdf(resumeMarkdown);
+    attachments = [{
+      filename: resumeFilename(nameFromResumeMarkdown(resumeMarkdown) || name),
+      content: buffer.toString('base64'),
+    }];
+  } catch (err) {
+    console.warn('[email] resume PDF render failed, falling back to inline text:', (err as Error).message);
+  }
+
   const html = [
     `<div style="background:#faf7f2;padding:28px 12px;">`,
     `<table cellpadding="0" cellspacing="0" style="width:100%;max-width:640px;margin:0 auto;">`,
     `<tr><td>`,
 
     `<p style="font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:15px;color:#1a1814;margin:0 0 14px;line-height:1.6;">${hi}</p>`,
-    `<p style="font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:15px;color:#5c5750;margin:0 0 22px;line-height:1.65;">Here is your rewritten resume. Keep this email — it is your copy, and it says what you actually did instead of what you were responsible for.</p>`,
+    `<p style="font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:15px;color:#5c5750;margin:0 0 16px;line-height:1.65;">Here is your new and improved resume. The obvious next step is getting it seen by the people who make hiring decisions.</p>`,
+    `<p style="font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:15px;color:#5c5750;margin:0 0 16px;line-height:1.65;">High quality applications, outreach and follow-ups, sent consistently, in just one hour every day.</p>`,
+    `<p style="font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:15px;color:#1a1814;margin:0 0 22px;line-height:1.65;font-weight:600;">Come see how it all happens.</p>`,
 
-    // The resume itself, on white paper inside the warm canvas.
-    `<div style="background:#ffffff;border:1px solid #dddad2;border-radius:12px;padding:34px 34px 30px;">`,
-    resumeMarkdownToHtml(resumeMarkdown),
-    `</div>`,
+    `<p style="margin:0 0 24px;"><a href="${WELCOME_EMAIL_CTA_URL}" style="display:inline-block;background:#2d5a6e;color:#faf7f2;text-decoration:none;font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:14.5px;font-weight:700;padding:13px 26px;border-radius:8px;">Find out more</a></p>`,
 
-    // The anticipation beat: the resume is the ticket, not the job.
-    `<div style="margin:26px 0 0;padding:22px 24px;background:#ffffff;border:1px solid #dddad2;border-radius:12px;">`,
-    `<p style="font-family:Georgia,'Times New Roman',serif;font-size:19px;font-weight:600;color:#101828;margin:0 0 10px;line-height:1.35;">A resume gets you read. It does not get you hired.</p>`,
-    `<p style="font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:14.5px;color:#5c5750;margin:0 0 14px;line-height:1.65;">This was the part you could see. The reason most people here never hear back is the part they cannot: who you contact before you apply, how the visa question gets read when you do not raise it first, and what happens in the 48 hours after you hit submit.</p>`,
-    `<p style="font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:14.5px;color:#5c5750;margin:0 0 20px;line-height:1.65;">That is all waiting in your dashboard, along with the achievement bank we built with you.</p>`,
-    `<p style="margin:0;"><a href="${APP_URL}" style="display:inline-block;background:#2d5a6e;color:#faf7f2;text-decoration:none;font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:14.5px;font-weight:700;padding:13px 26px;border-radius:8px;">See what else is missing</a></p>`,
-    `</div>`,
+    // Only when there is no file to point at. Reading a resume in an email is a
+    // poor second to holding one, but it beats an email that promises a resume
+    // and carries nothing.
+    ...(attachments ? [] : [
+      `<div style="background:#ffffff;border:1px solid #dddad2;border-radius:12px;padding:34px 34px 30px;margin:0 0 24px;">`,
+      resumeMarkdownToHtml(resumeMarkdown),
+      `</div>`,
+    ]),
 
     `<p style="font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:12.5px;color:#9b9488;margin:22px 0 0;line-height:1.6;">Sent to ${esc(to)} because you created an Aussie Grad Careers account. Kiron.</p>`,
     `</td></tr></table></div>`,
@@ -983,7 +1014,14 @@ export async function sendWelcomeResumeEmail(params: {
     to,
     subject: name ? `${name}, here is your rewritten resume` : 'Here is your rewritten resume',
     html,
+    ...(attachments ? { attachments } : {}),
   });
+}
+
+/** The candidate's full name off the resume's own H1, for the filename. */
+function nameFromResumeMarkdown(markdown: string): string {
+  const m = markdown.match(/^#\s+(.+)$/m);
+  return m ? m[1].replace(/\*\*/g, '').trim() : '';
 }
 
 /**

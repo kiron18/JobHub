@@ -72,7 +72,7 @@ export function checkResumeSource(
 ): ResumeSourceCheck {
   const body = (text ?? '').trim();
   const tooShort = body.length < MIN_RESUME_LENGTH;
-  const placeholders = findBlanks(body);
+  const placeholders = findBlanks(body, sources);
   // A short or placeholder-ridden document is already being rejected; running the
   // figure check on it would just add noise to the error.
   const ungroundedFigures = tooShort ? [] : findUngroundedFigures(body, sources);

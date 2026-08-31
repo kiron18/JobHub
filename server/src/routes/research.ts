@@ -3,6 +3,10 @@ import { authenticate } from '../middleware/auth';
 import { searchSerper, scrapeUrl, snippetsToText, type SerperResult } from '../services/serper';
 import { callLLMWithRetry } from '../utils/callLLMWithRetry';
 import { parseLLMJson } from '../utils/parseLLMResponse';
+import { fillSlots, filterContact, type OutreachRole } from '../services/contactFilter';
+import { fetchDirectoryForRole } from '../services/hunterDirectory';
+import { pickFromDirectory } from '../services/directoryPick';
+import { pickCompanyDomain, type DomainCandidate } from '../services/companyDomain';
 
 const router = Router();
 
@@ -15,6 +19,8 @@ interface Candidate {
     title: string | null;
     confidence: Confidence;
     sourceUrl: string | null;
+    /** "Greater Sydney Area", "Perth, WA". The state gate reads this. */
+    location: string | null;
 }
 
 const CONFIDENCE_RANK: Record<Confidence, number> = { high: 3, medium: 2, low: 1 };
@@ -131,6 +137,7 @@ Return ONLY valid JSON.`;
             title: parsed.title?.trim() ?? null,
             confidence: 'high',
             sourceUrl: null,
+            location: null,
         };
     } catch (err: any) {
         console.warn('[research] JD scan failed:', err.message);
@@ -163,6 +170,7 @@ Return a JSON array of up to 3 plausible hiring managers. For each:
 - name: full name as it appears in the result
 - title: their current title at ${company} (or null if unclear)
 - sourceUrl: the LinkedIn profile URL from the result
+- location: the location shown in the result, verbatim, e.g. "Greater Sydney Area", "Perth, Western Australia" (or null if none is shown)
 
 Exclusion rules:
 - Skip people whose snippet clearly shows them at a different company.
@@ -184,6 +192,7 @@ Return ONLY a JSON array. If no plausible candidates: [].`;
                 title: typeof c.title === 'string' ? c.title.trim() : null,
                 confidence: 'medium' as Confidence,
                 sourceUrl: typeof c.sourceUrl === 'string' ? c.sourceUrl : null,
+                location: typeof c.location === 'string' ? c.location.trim() : null,
             }));
     } catch (err: any) {
         console.warn('[research] discipline-head extraction failed:', err.message);
@@ -213,6 +222,7 @@ Return a JSON array of up to 2 plausible recruiters. For each:
 - name: full name
 - title: their TA/recruiter title at ${company}
 - sourceUrl: LinkedIn profile URL from the result
+- location: the location shown in the result, verbatim (or null if none is shown)
 
 Skip anyone clearly at a different company.
 
@@ -230,6 +240,7 @@ Return ONLY a JSON array. If no plausible candidates: [].`;
                 title: typeof c.title === 'string' ? c.title.trim() : null,
                 confidence: 'low' as Confidence,
                 sourceUrl: typeof c.sourceUrl === 'string' ? c.sourceUrl : null,
+                location: typeof c.location === 'string' ? c.location.trim() : null,
             }));
     } catch (err: any) {
         console.warn('[research] recruiter extraction failed:', err.message);
@@ -237,7 +248,7 @@ Return ONLY a JSON array. If no plausible candidates: [].`;
     }
 }
 
-function salutationFor(candidate: Candidate | undefined): string {
+function salutationFor(candidate: { name?: string | null } | undefined): string {
     if (!candidate?.name) return 'Dear Hiring Manager,';
     const firstName = candidate.name.split(/\s+/)[0];
     return `Dear ${firstName},`;
@@ -269,11 +280,96 @@ function salutationFor(candidate: Candidate | undefined): string {
  *   companySize: string,
  * }
  */
+/**
+ * Is the paid directory path switched on?
+ *
+ * Off by default, and deliberately so. This route is authenticated but
+ * otherwise reachable, and the directory path spends Hunter credits on every
+ * call. While the feature is parked, an accidental caller should cost nothing
+ * rather than quietly draining a month's quota. Off does not disable contact
+ * discovery: the search fallback still runs, exactly as it did before any of
+ * this existed.
+ *
+ * Set COMPANY_RESEARCH_ENABLED=true to turn it on.
+ */
+function directoryEnabled(): boolean {
+    return (process.env.COMPANY_RESEARCH_ENABLED ?? '').toLowerCase() === 'true';
+}
+
+/**
+ * The company's own website, or null when nothing looks convincing enough.
+ *
+ * Returning null is the important half. `pickCompanyDomain` reports WHY it
+ * chose a host, and a reason of 'position' means nothing matched the company's
+ * name and it simply took the highest search result. That is how AC3 became a
+ * procurement marketplace and PeopleConnect became Seek. A directory read off
+ * the wrong domain is a directory of strangers, so an unconvincing domain is
+ * treated as no domain at all.
+ */
+async function resolveCompanyDomain(company: string): Promise<string | null> {
+    const results = await searchSerper(`"${company}" official website Australia`, 8);
+    if (!results.length) return null;
+
+    const candidates: DomainCandidate[] = [];
+    results.forEach((r, position) => {
+        try {
+            candidates.push({ host: new URL(r.link).hostname.replace(/^www\./, '').toLowerCase(), position });
+        } catch {
+            /* a malformed link is simply not a candidate */
+        }
+    });
+
+    const pick = pickCompanyDomain(candidates, company);
+    if (!pick.domain || pick.reason === 'position') return null;
+    return pick.domain;
+}
+
+/** Culture/news facts used downstream in the cover letter. Never blocking. */
+async function companyHighlights(company: string): Promise<{ highlights: string[]; companySize: string }> {
+    const companyResults = await searchSerper(
+        `"${company}" culture OR "tech stack" OR "recent project" OR mission OR "company values" 2024 2025`,
+        5
+    );
+    const companyText = snippetsToText(companyResults);
+    if (!companyText) return { highlights: [], companySize: 'unknown' };
+
+    const prompt = `Extract a few specific, verifiable facts about this company from the search snippets. Do NOT invent anything.
+
+COMPANY: ${company}
+
+SEARCH RESULTS:
+${companyText}
+
+Return JSON:
+{
+  "companySize": "startup" | "sme" | "enterprise" | "government" | "education" | "nfp" | "unknown",
+  "highlights": string[]   // 2 to 4 facts. Each under 20 words.
+}
+
+Return ONLY valid JSON.`;
+
+    try {
+        const raw = await callLLMWithRetry(prompt, true);
+        const parsed = parseLLMJson(raw) as { companySize?: string; highlights?: unknown };
+        return {
+            highlights: Array.isArray(parsed.highlights)
+                ? (parsed.highlights as unknown[]).filter((h): h is string => typeof h === 'string')
+                : [],
+            companySize: typeof parsed.companySize === 'string' ? parsed.companySize : 'unknown',
+        };
+    } catch (err: any) {
+        console.warn('[research] highlights extraction failed:', err.message);
+        return { highlights: [], companySize: 'unknown' };
+    }
+}
+
 router.post('/company', authenticate, async (req, res) => {
-    const { company, role, jdText } = req.body as {
+    const { company, role, jdText, location } = req.body as {
         company?: string;
         role?: string;
         jdText?: string;
+        /** The job's location as the ad gave it. Drives the state gate. */
+        location?: string;
     };
 
     if (!company || company.length < 2) {
@@ -287,66 +383,134 @@ router.post('/company', authenticate, async (req, res) => {
     }
 
     try {
-        const candidates: Candidate[] = [];
+        // ── Ask the employer's own directory first ────────────────────────
+        //
+        // This is the inversion. The search passes below guess at a plausible
+        // name and then guess at an address for it; Hunter's directory reports
+        // people whose addresses it has actually observed, each one arriving
+        // with a department and a title already attached. Where Hunter knows
+        // the employer this is strictly better, cheaper and deterministic. It
+        // is a first choice rather than a replacement because Hunter's
+        // Australian coverage runs out at private hospitals, small not-for-
+        // profits and small agencies, and the search passes still reach those.
+        //
+        // Everything downstream depends on the domain being right, which is why
+        // a domain chosen purely on search position is discarded: that is how
+        // AC3 resolved to a procurement marketplace and PeopleConnect to Seek,
+        // and a directory read off the wrong domain is a directory of strangers.
+        const domain = directoryEnabled() ? await resolveCompanyDomain(company) : null;
+        const directory = domain ? await fetchDirectoryForRole(domain, role || '') : null;
+        const directorySlots = directory ? pickFromDirectory(directory, { role: role || '' }) : null;
+        const directoryFilled = directorySlots
+            ? Object.values(directorySlots).filter(Boolean).length
+            : 0;
 
-        // ── Pass 0 — JD inline scan ───────────────────────────────────────
-        if (jdText && jdText.length >= 100) {
-            const jdCandidate = await scanJdForContact(jdText, company, role || '');
-            if (jdCandidate) candidates.push(jdCandidate);
+        if (directorySlots && directoryFilled > 0) {
+            const { highlights, companySize } = await companyHighlights(company);
+            const lead = directorySlots.hiring_manager ?? directorySlots.talent ?? directorySlots.team_insider;
+            return res.json({
+                source: 'directory',
+                domain,
+                slots: {
+                    talent: directorySlots.talent,
+                    hiringManager: directorySlots.hiring_manager,
+                    teamInsider: directorySlots.team_insider,
+                },
+                rejected: [],
+                candidates: [directorySlots.hiring_manager, directorySlots.talent, directorySlots.team_insider]
+                    .filter(Boolean)
+                    .map(p => ({ name: p!.name, title: p!.position, confidence: 'high', sourceUrl: null, location: null })),
+                hiringManager: lead?.name ?? null,
+                hiringManagerTitle: lead?.position ?? null,
+                salutation: salutationFor(lead ? { name: lead.name } : undefined),
+                highlights,
+                companySize,
+            });
         }
 
-        // ── Pass 1 — discipline-head LinkedIn search ──────────────────────
-        const disciplineHits = await searchDisciplineHead(company, role || '');
-        candidates.push(...disciplineHits);
+        // ── Passes 0, 1 and 2, all at once ────────────────────────────────
+        //
+        // These used to run as a fallback chain, where the recruiter search
+        // only fired if the first two found nothing. That made the recruiter a
+        // consolation prize, when in fact a talent partner is the contact most
+        // likely to reply and belongs in the output regardless of whether we
+        // also found a manager. Running them together also means one slow pass
+        // no longer delays the others, and it costs at most one extra search.
+        const [jdCandidate, disciplineHits, recruiterHits] = await Promise.all([
+            jdText && jdText.length >= 100
+                ? scanJdForContact(jdText, company, role || '')
+                : Promise.resolve(null),
+            searchDisciplineHead(company, role || ''),
+            searchRecruiter(company, role || ''),
+        ]);
 
-        // ── Pass 2 — recruiter fallback (only if 0 + 1 found nothing) ─────
-        if (candidates.length === 0) {
-            const recruiterHits = await searchRecruiter(company, role || '');
-            candidates.push(...recruiterHits);
-        }
+        const candidates: Candidate[] = [
+            ...(jdCandidate ? [jdCandidate] : []),
+            ...disciplineHits,
+            ...recruiterHits,
+        ];
 
         const rankedCandidates = dedupeAndRank(candidates);
-        const top = rankedCandidates[0];
 
-        // ── Company highlights (independent of contact search) ────────────
-        const companyResults = await searchSerper(
-            `"${company}" culture OR "tech stack" OR "recent project" OR mission OR "company values" 2024 2025`,
-            5
-        );
-        const companyText = snippetsToText(companyResults);
+        // ── The gate ──────────────────────────────────────────────────────
+        //
+        // Everything above is discovery, and discovery has never been the
+        // problem: measured over 31 real applications it returned a name every
+        // single time. It returned the WRONG name often enough to matter, and
+        // the step after this one will happily mint a deliverable address for a
+        // wrong person at a catch-all domain, where nothing bounces and nobody
+        // finds out. So nothing leaves this route until it has passed
+        // contactFilter, and a company with no survivors returns none.
+        const target = { company, role: role || '', location: location ?? null };
+        const slots = fillSlots(rankedCandidates, target);
 
-        let highlights: string[] = [];
-        let companySize: string = 'unknown';
+        // Why each discarded name was discarded, so a bad drop is debuggable
+        // and so the UI can eventually show its work.
+        const rejected = rankedCandidates
+            .map(c => ({ candidate: c, verdict: filterContact(c, target) }))
+            .filter(r => !r.verdict.pass)
+            .map(r => ({
+                name: r.candidate.name,
+                title: r.candidate.title,
+                reasons: r.verdict.rejections,
+                notes: r.verdict.notes,
+            }));
 
-        if (companyText) {
-            const highlightsPrompt = `Extract a few specific, verifiable facts about this company from the search snippets. Do NOT invent anything.
+        // The single-contact fields the existing callers read. They now point
+        // at a SURVIVOR rather than at the highest-confidence raw hit, which is
+        // the entire point: the old `top` is what addressed a graduate
+        // application to a Director General in the wrong state.
+        const preferred: OutreachRole[] = ['hiring_manager', 'talent', 'team_insider'];
+        const top = preferred.map(slot => slots[slot]?.candidate).find(Boolean) ?? undefined;
 
-COMPANY: ${company}
-
-SEARCH RESULTS:
-${companyText}
-
-Return JSON:
-{
-  "companySize": "startup" | "sme" | "enterprise" | "government" | "education" | "nfp" | "unknown",
-  "highlights": string[]   // 2 to 4 facts. Each under 20 words. Examples: a recent project, a tech stack signal, a stated value, a recognised award.
-}
-
-Return ONLY valid JSON.`;
-            try {
-                const raw = await callLLMWithRetry(highlightsPrompt, true);
-                const parsed = parseLLMJson(raw) as { companySize?: string; highlights?: unknown };
-                highlights = Array.isArray(parsed.highlights)
-                    ? (parsed.highlights as unknown[]).filter((h): h is string => typeof h === 'string')
-                    : [];
-                companySize = typeof parsed.companySize === 'string' ? parsed.companySize : 'unknown';
-            } catch (err: any) {
-                console.warn('[research] highlights extraction failed:', err.message);
-            }
-        }
+        const { highlights, companySize } = await companyHighlights(company);
 
         return res.json({
-            candidates: rankedCandidates,
+            // Reached only when the directory was empty or the domain was not
+            // convincing enough to trust. Named so the caller can tell a
+            // directory-backed contact from an inferred one.
+            source: 'search',
+            domain,
+            // The three slots PostApplyOutreach shows. Any of them may be null,
+            // and fewer than three is the intended outcome rather than a
+            // degraded one: a missing contact beats a confidently wrong one.
+            slots: {
+                talent: slots.talent
+                    ? { ...slots.talent.candidate, why: slots.talent.notes }
+                    : null,
+                hiringManager: slots.hiring_manager
+                    ? { ...slots.hiring_manager.candidate, why: slots.hiring_manager.notes }
+                    : null,
+                teamInsider: slots.team_insider
+                    ? { ...slots.team_insider.candidate, why: slots.team_insider.notes }
+                    : null,
+            },
+            rejected,
+            // Survivors only. `candidates` used to be every raw hit; anything
+            // reading it was reading unfiltered discovery output.
+            candidates: [slots.hiring_manager, slots.talent, slots.team_insider]
+                .filter(Boolean)
+                .map(s => s!.candidate),
             hiringManager: top?.name ?? null,
             hiringManagerTitle: top?.title ?? null,
             salutation: salutationFor(top),

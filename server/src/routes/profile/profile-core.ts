@@ -136,6 +136,28 @@ router.get('/profile', authenticate, async (req, res) => {
     }
 });
 
+/**
+ * POST /api/profile/eligibility-intro-seen
+ *
+ * The one-time "check a job before you apply" interrupt is per ACCOUNT, not per
+ * browser. The client calls this when the modal is dismissed; from then on the
+ * profile carries the stamp and no device shows it again. Idempotent: the first
+ * stamp wins, so a double-fire or a replayed request cannot move the date.
+ */
+router.post('/profile/eligibility-intro-seen', authenticate, async (req, res) => {
+    const userId = (req as any).user.id;
+    try {
+        const { count } = await prisma.candidateProfile.updateMany({
+            where: { userId, eligibilityIntroSeenAt: null },
+            data: { eligibilityIntroSeenAt: new Date() },
+        });
+        res.json({ success: true, stamped: count > 0 });
+    } catch (error: any) {
+        console.error('[Profile] eligibility-intro-seen failed:', error?.message);
+        res.status(500).json({ error: 'Failed to record intro' });
+    }
+});
+
 // GET /api/profile/resumes
 router.get('/profile/resumes', authenticate, async (req, res) => {
     const userId = (req as any).user.id;

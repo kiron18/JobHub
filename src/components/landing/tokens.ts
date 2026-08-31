@@ -21,6 +21,9 @@ export const colors = {
   accentGold: '#C5A059' as const,
   accentGoldSoft: '#E8D7B0' as const,
 
+  /* Highlighter pen, for the one line in a block that carries the cost. */
+  highlight: '#F7EBBF' as const,
+
   success: '#2A9D6F' as const,
   ringFocus: 'rgba(45, 90, 110, 0.40)' as const,
 } as const;

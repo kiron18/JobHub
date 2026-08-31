@@ -16,4 +16,4 @@ Never state a fact about this candidate that is not present in the material you 
 
 You may sharpen wording. You may not add information. If a line would be stronger with a figure the candidate has not given you, you must either leave the line without the figure or ask them for it — never choose a number yourself. A figure you invented is a claim they cannot defend in an interview, and in a regulated field (health, counselling, social work, finance, engineering) it can amount to a professional misstatement made in their name.
 
-Do not infer a figure by counting, summing, or estimating either. If their resume says "2019-2023" do not write "4 years of experience" unless the resume itself says so. If it lists three projects do not write "delivered 3 projects". Absence of a number is not permission to derive one.`;
+Do not infer a figure by counting, summing, or estimating either. If their resume names the members of a team do not write "led a team of six" unless the resume itself says so. If it lists three projects do not write "delivered 3 projects". Absence of a number is not permission to derive one.`;

@@ -103,8 +103,7 @@ import { AuthPage } from './pages/AuthPage';
 import { SetPasswordPage } from './pages/SetPasswordPage';
 import { WelcomePage } from './pages/WelcomePage';
 import { AuthCallback } from './components/AuthCallback';
-// PAYMENTS PAUSED: pricing page hidden during pricing rework
-// import { PricingPage } from './pages/PricingPage';
+import { PricingPage } from './pages/PricingPage';
 import { LegalPage } from './pages/LegalPage';
 
 // Lib
@@ -504,9 +503,7 @@ function App() {
               <Route path="/set-password" element={<SetPasswordPage />} />
               <Route path="/welcome" element={<WelcomePage />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
-              {/* PAYMENTS PAUSED: pricing route hidden during pricing rework
               <Route path="/pricing" element={<PricingPage />} />
-              */}
               <Route path="/legal/:policy" element={<LegalPage />} />
               <Route path="/legal" element={<LegalPage />} />
               <Route path="/visa-sponsors" element={

@@ -167,6 +167,27 @@ function computeSignals(resumeText: string): DeterministicSignals {
 
 // ── Step 2 – LLM call ────────────────────────────────────────────────────────
 
+/**
+ * The rules both prompts in this file need, written once.
+ *
+ * The em dash ban and the referees convention used to be pasted into the scan
+ * prompt and the roadmap prompt separately, in different words, and the visa ban
+ * appeared four times across the two. Two copies of a rule drift: the referees
+ * wording already had, one saying "never flag or criticise" and the other
+ * "never make a step about". A rule that exists twice is a rule you can only
+ * half fix.
+ *
+ * Each of these was also tagged "(absolute)" individually. Six absolutes is no
+ * absolute at all, so the weight is stated once, here, at the top.
+ */
+const HOUSE_RULES = `These are hard rules. They apply to every string you output.
+
+Never use an em dash or an en dash anywhere. Use a comma, a full stop, a colon, or the word "and".
+
+A referees section, or the line "References available on request", is standard and expected on an Australian resume. Never flag it, criticise it, advise removing it, or make an action step out of it, and never call it outdated, filler, or a waste of space. It is correct local practice, not a problem.
+
+Never mention visa status or visa sponsorship. That belongs in the cover letter or the interview stage, not the CV.`;
+
 // The instruction block is identical on every scan, so it is sent as a cacheable
 // system prefix (see callClaude's `cachedSystem`). Keep it free of any per-resume
 // data — the moment a resume leaks in here, the cache stops hitting. The current
@@ -177,24 +198,20 @@ function buildScanInstructions(): string {
 
 ${todayBlock()}
 
-PUNCTUATION RULE (absolute): NEVER use an em dash (—) or en dash (–) anywhere in any string you output. They are banned. Use a comma, a full stop, a colon, or the word "and" instead. This applies to every field without exception.
-
-AUSTRALIAN RESUME CONVENTION (absolute): a referees section, or the line "References available on request", is standard and expected on an Australian resume. NEVER flag, criticise, or advise removing the referees or references section, and never call it outdated, filler, or a waste of space. It is correct local practice, not a problem.
+${HOUSE_RULES}
 
 THE 6-SECOND RULE: Your reader has 6 seconds and no patience. Every \`text\` is a tight VERDICT of ≤64 characters, one line, no trailing period: a fact about THIS resume they can read at a glance. Not advice. Not a sentence with a recommendation. A verdict.
 
 GOOD \`text\`: \`Opening bullet leads with a duty, not an outcome\` · \`No quantified result in your last 2 roles\` · \`Strong, specific job titles, keep these\`
 BAD \`text\`: \`You should add more quantifiable achievements to show impact\` (advice + too long) · \`Your resume could be improved by tailoring it\` (generic)
 
-VOICE — DIRECT AND PLAIN (absolute): State the flaw straight. No clever wordplay, no cute metaphors, no "quotable" one-liners, no fortune-cookie phrasing. You are a blunt expert telling a friend the truth, not a copywriter being clever. "Built in text boxes the ATS cannot read" is right. "Polished design the ATS silently drops" is WRONG, it is trying to sound clever instead of being clear. This applies to every string in every field.
+VOICE, DIRECT AND PLAIN: State the flaw straight. No clever wordplay, no cute metaphors, no "quotable" one-liners, no fortune-cookie phrasing. You are a blunt expert telling a friend the truth, not a copywriter being clever. "Built in text boxes the ATS cannot read" is right. "Polished design the ATS silently drops" is WRONG, it is trying to sound clever instead of being clear. This applies to every string in every field.
 
-NO HEDGING (absolute): state every verdict as a hard fact, never as a possibility. BANNED words and softeners: "likely", "may", "might", "could", "possibly", "probably", "tends to", "can be", "a bit", "slightly", "somewhat", "often". "The ATS rejects this format" is right. "This format is likely auto-rejected" is WRONG. Say what IS, not what might be. Be brutally honest, never abusive: name the real consequence plainly so the person feels the mistake and wants to fix it, but never insult the person or call their work worthless. The flaw is in the document, not in them.
+NO HEDGING: state every verdict as a hard fact, never as a possibility. BANNED words and softeners: "likely", "may", "might", "could", "possibly", "probably", "tends to", "can be", "a bit", "slightly", "somewhat", "often". "The ATS rejects this format" is right. "This format is likely auto-rejected" is WRONG. Say what IS, not what might be. Be brutally honest, never abusive: name the real consequence plainly so the person feels the mistake and wants to fix it, but never insult the person or call their work worthless. The flaw is in the document, not in them.
 
 \`text\` vs \`evidence\`: \`text\` is the short verdict shown to the user. \`evidence\` is the real snippet from THIS resume that proves the verdict, a literal substring of the resume for any non-good item. The user never sees \`evidence\`; it exists so we can prove the verdict is real.
 
 BANNED generic outputs, never produce as \`text\`: 'add quantifiable achievements', 'use strong action verbs', 'tailor your resume to the role', 'improve formatting', or anything that would apply to every resume on earth. If your verdict would be true of most resumes, delete it.
-
-BANNED topics entirely (never mention in items or quickWins): visa status, visa sponsorship, visa anything. That information belongs in the cover letter or interview stage, not the CV or scan results.
 
 Never exceed 64 characters in \`text\`. Count them.
 
@@ -210,10 +227,8 @@ The user input includes a "Document structure" note describing how this file par
 - make ONE \`quickWin\` about rebuilding it as a clean single-column, ATS-safe layout (no text boxes, tables, or graphics), naming the payoff plainly: it actually reaches a human.
 When the structure note says the file parses cleanly, do NOT invent a format problem.
 
-BANNED from quickWins: never mention visa status, visa sponsorship, or visa anything. That belongs in the cover letter or interview stage, not the CV. If your win would involve visa advice, delete it and pick something else.
-
 ── THE INSIDER LAYER (this is what makes the scan feel like a friend in HR, not a tool) ──
-Beyond the verdicts, write a short narrative layer in ONE voice: a calm, experienced friend who works in Australian HR and is finally explaining what is really going on behind the glass. Warm, direct, never lecturing or shaming. Specific to THIS resume and this person's likely field and city. The feeling to leave them with is understanding + hope, never a grade. Same banned-generic and absolutely-no-visa rules apply to every field below.
+Beyond the verdicts, write a short narrative layer in ONE voice: a calm, experienced friend who works in Australian HR and is finally explaining what is really going on behind the glass. Warm, direct, never lecturing or shaming. Specific to THIS resume and this person's likely field and city. The feeling to leave them with is understanding + hope, never a grade. The banned-generic rule applies to every field below.
 
 \`firstImpression\`: the verdict, and it must hit like a slap. State the CONSEQUENCE for this specific resume, not a neutral description. "This resume is filtered out before a human opens it" is right. "Strong content in a weak format" is WRONG, it describes instead of landing the cost. Brutal and specific to THIS resume, never abusive: the flaw is in the document, never the person. NOT a number, NOT a grade, NOT a percentage, NOT hedged. ≤56 characters, no trailing period.
 
@@ -430,15 +445,13 @@ export interface RoadmapStep {
 function buildRoadmapPrompt(resumeText: string, firstName: string): string {
   return `You are a senior Australian recruiter. Produce a prioritised, specific action plan to fix this resume.
 
-PUNCTUATION RULE (absolute): NEVER use an em dash (—) or en dash (–) anywhere in any string you output. They are banned. Use a comma, a full stop, a colon, or the word "and" instead.
+${HOUSE_RULES}
 
 Produce exactly 7 prioritised, specific action steps to fix this resume, ranked 1 (highest leverage) to 7.
 
 Each \`title\` is a COMPLETE imperative phrase, ≤80 characters, never cut off mid-word, e.g. "Move your Professional Profile to the top", "Add a quantified result to your last role". Each \`why\` is one complete sentence ≤180 characters naming the concrete payoff (more callbacks, passes ATS, recruiter stops scrolling). Write both as finished thoughts — never trail off.
 
-Grounded and specific: reference real elements of THIS resume. Same banned-generic rules and no-visa-talk rule as the base scan prompt.
-
-AUSTRALIAN RESUME CONVENTION (absolute): a referees section, or the line "References available on request", is standard and expected on an Australian resume. NEVER make a step about removing, deleting, or cutting the referees or references section, and never call it outdated, filler, or a waste of space. That advice is wrong for the Australian market.
+Grounded and specific: reference real elements of THIS resume. The banned-generic rule from the base scan prompt applies here too.
 
 Sequenced so ${firstName || 'they'} knows exactly what to do first. Accountable tone: numbered, concrete, this-week-able.
 
