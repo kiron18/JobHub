@@ -23,11 +23,40 @@ const APP_URL = (process.env.ALLOWED_ORIGIN ?? 'https://aussiegradcareers.com.au
   .split(',')[0]
   .trim();
 
+/**
+ * The in-app offer: $197/month, AUD, recurring.
+ *
+ * Created 1 Sep 2026 against the existing "Job Hub Premium" product, because
+ * nothing at that price existed: the account had $197 as a ONE-TIME payment and
+ * $100, $97 and $250 as monthlies. The paywall sells "$197 per month", so it
+ * needed its own price rather than being pointed at the nearest thing.
+ *
+ * The literal is a default, not a hardcode: PREMIUM_MONTHLY_PRICE_ID overrides
+ * it, which is how a test-mode price gets used in a test-mode environment. It is
+ * deliberately not folded into `monthly`, because that plan is what /pricing
+ * advertises at a different price, and one env var pointing at the wrong price
+ * is how this route got switched off in the first place.
+ */
+const PREMIUM_MONTHLY_PRICE_ID =
+  process.env.PREMIUM_MONTHLY_PRICE_ID ?? 'price_1UAiOeRRHBMzeTPTxvLKH3pt';
+
 const PRICE_IDS: Record<string, string> = {
   monthly: process.env.MONTHLY_PRICE_ID!,
   annual: process.env.ANNUAL_PRICE_ID!,
   three_month: process.env.STRIPE_THREE_MONTH_PRICE_ID!,
+  premium: PREMIUM_MONTHLY_PRICE_ID,
 };
+
+/**
+ * Plans that must NOT be given a free trial.
+ *
+ * `premium` is sold at the moment somebody has just watched their application
+ * being written and asked to have it. Handing them seven free days there takes
+ * $0 today and removes the reason they were about to pay, which is the opposite
+ * of what the screen is for. The older monthly and annual plans keep their trial
+ * because that is what they were sold with.
+ */
+const NO_TRIAL_PLANS = new Set(['premium']);
 
 /**
  * Pull the subscription id off an invoice.
@@ -427,8 +456,8 @@ router.post('/checkout', authenticate, async (req: AuthRequest, res: Response) =
   const userEmail = req.user!.email ?? '';
   const { plan } = req.body as { plan?: string };
 
-  if (!plan || !['monthly', 'annual', 'three_month'].includes(plan)) {
-    res.status(400).json({ error: 'plan must be "monthly", "annual", or "three_month"' });
+  if (!plan || !['monthly', 'annual', 'three_month', 'premium'].includes(plan)) {
+    res.status(400).json({ error: 'plan must be "monthly", "annual", "three_month" or "premium"' });
     return;
   }
 
@@ -465,8 +494,8 @@ router.post('/checkout', authenticate, async (req: AuthRequest, res: Response) =
 
     if (!isOneTime) {
       sessionParams.subscription_data = {
-        trial_period_days: 7,
         metadata: { userId, plan },
+        ...(NO_TRIAL_PLANS.has(plan) ? {} : { trial_period_days: 7 }),
       };
     }
 

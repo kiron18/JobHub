@@ -16,7 +16,7 @@ import { renderResumePdf, resumeFilename } from './resumePdf';
  * enough to exhaust three retries once this file grew more parses. Raise this
  * again rather than deleting a test if it ever starts flaking.
  */
-let rawParse: (b: Buffer) => Promise<{ text: string; numpages: number }>;
+let rawParse: (b: Buffer, opts?: unknown) => Promise<{ text: string; numpages: number }>;
 
 beforeAll(async () => {
   const mod = await import('pdf-parse/lib/pdf-parse.js' as any);
@@ -33,6 +33,20 @@ async function parse(buf: Buffer): Promise<{ text: string; numpages: number }> {
 
 async function pdfText(buf: Buffer): Promise<string> {
   return (await parse(buf)).text.replace(/\s+/g, ' ');
+}
+
+/** Text per page, which is the only way to see a page that holds nothing. */
+async function pageTexts(buf: Buffer): Promise<string[]> {
+  const pages: string[] = [];
+  await rawParse(buf, {
+    pagerender: async (page: any) => {
+      const content = await page.getTextContent();
+      const text = content.items.map((i: any) => i.str).join('');
+      pages.push(text);
+      return text;
+    },
+  } as any);
+  return pages;
 }
 
 const RESUME = `# **Swastik Kaushik**
@@ -113,6 +127,35 @@ ${'- A further bullet of real content that takes up room\n'.repeat(70)}`;
     expect(pages).toBeGreaterThan(1);
     expect(text).toContain(`Page 1 of ${pages}`);
     expect(text).toContain(`Page ${pages} of ${pages}`);
+  });
+
+  it('never leaves a bullet marker alone on a page', async () => {
+    /*
+     * A real failure, caught on a client's PDF: page 3 of 4 contained "•" and
+     * the page number, and nothing else. pdfkit draws a bullet as two pieces,
+     * the dot and then the text beside it, so a bullet starting low enough on a
+     * page put the dot on one page and its sentence on the next.
+     *
+     * The filler is tuned to leave a bullet starting near the foot of a page,
+     * which is the only condition that ever triggered it.
+     */
+    const long = [
+      RESUME,
+      '',
+      '## More',
+      '',
+      ...Array.from({ length: 46 }, (_, i) =>
+        `- Bullet ${i} of real content that runs to about one full line of the page and then some`),
+      '- A final bullet long enough that it must wrap across more than a single line of the document, which is what pushes it over a page boundary',
+    ].join('\n');
+
+    const { buffer } = await renderResumePdf(long);
+    const pages = await pageTexts(buffer);
+    for (const [i, text] of pages.entries()) {
+      const stripped = text.replace(/Page \d+ of \d+/g, '').replace(/\s/g, '');
+      expect(stripped, `page ${i + 1} holds only a bullet marker`).not.toBe('•');
+      expect(stripped.length, `page ${i + 1} is effectively empty`).toBeGreaterThan(2);
+    }
   });
 
   it('does not number a one-page resume', async () => {

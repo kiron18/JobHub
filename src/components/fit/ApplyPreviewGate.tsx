@@ -130,6 +130,34 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
   const [phase, setPhase] = useState<'building' | 'offer'>('building');
   const [line, setLine] = useState(0);
   const [loading, setLoading] = useState(false);
+  /** How much of the page behind has been "printed" so far, in characters. */
+  const [typed, setTyped] = useState(0);
+
+  /*
+   * The page types itself while the card works.
+   *
+   * It starts blank and fills in, so what is behind the card is visibly being
+   * produced rather than sitting there waiting to be revealed. Blurred, so the
+   * only thing that reads is the shape: a name, then headings, then bullets
+   * arriving. Paced to finish a little before the card does, because a document
+   * that is still being written when the offer appears looks unfinished.
+   */
+  useEffect(() => {
+    if (phase !== 'building') { setTyped(resumeMarkdown.length); return; }
+    const total = resumeMarkdown.length;
+    if (total === 0) return;
+    const durationMs = BUILD_LINE_MS * BUILD_LINES.length * 0.85;
+    const tickMs = 45;
+    const perTick = Math.max(1, Math.ceil(total / (durationMs / tickMs)));
+    const id = window.setInterval(() => {
+      setTyped((n) => {
+        const next = n + perTick;
+        if (next >= total) { window.clearInterval(id); return total; }
+        return next;
+      });
+    }, tickMs);
+    return () => window.clearInterval(id);
+  }, [phase, resumeMarkdown]);
 
   useEffect(() => {
     if (phase !== 'building') return;
@@ -148,10 +176,14 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
   }, [phase]);
 
   async function checkout() {
-    trackCheckoutStarted('three_month');
+    // `premium` is the $197/month recurring price this modal advertises. It is
+    // not `three_month` (a one-time payment) and not `monthly` (a different
+    // price on the pricing page); pointing it at either would charge something
+    // other than what the box says.
+    trackCheckoutStarted('premium');
     setLoading(true);
     try {
-      const { data } = await api.post('/stripe/checkout', { plan: 'three_month' });
+      const { data } = await api.post('/stripe/checkout', { plan: 'premium' });
       window.location.href = data.url;
     } catch {
       setLoading(false);
@@ -185,7 +217,7 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
           border: `1px solid ${C.borderWhisper}`, padding: '40px 44px',
           fontFamily: warm.type.fontBody, fontSize: 14.5, lineHeight: 1.65, color: '#1a2230',
         }}>
-          <ReactMarkdown>{resumeMarkdown}</ReactMarkdown>
+          <ReactMarkdown>{resumeMarkdown.slice(0, typed)}</ReactMarkdown>
         </div>
       </div>
 

@@ -211,8 +211,8 @@ function JourneyTrack() {
       aspectRatio: '1920 / 780',
     }}>
       <img
-        src="/Assets/journey/step-5-with-result.png"
-        alt="Your progress: the last step before hired, with a sample job match"
+        src="/Assets/journey/step-4-with-result.png"
+        alt="Your progress: four of five steps done, with a sample job match"
         style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 10%', display: 'block' }}
       />
     </div>

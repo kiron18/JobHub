@@ -435,7 +435,16 @@ export const WelcomePage: React.FC = () => {
 
     return (
       <Shell wide>
-        <Eyebrow>{firstName ? `${firstName}, here is where we start` : 'Here is where we start'}</Eyebrow>
+        {/* A heading, not a pill. This is the first thing we say after reading
+            their resume, so it says what we found and that there is a way out of
+            it, in one sentence. */}
+        <div style={{ marginBottom: 22 }}>
+          <Display>
+            {firstName
+              ? `Hey ${firstName}, we've found where you're losing interviews and have a plan to fix it.`
+              : "We've found where you're losing interviews and have a plan to fix it."}
+          </Display>
+        </div>
 
         {/* Three tiles, not one scroll. Someone landing here has just been told
             their resume has problems; meeting that with a wall of findings is

@@ -100,6 +100,23 @@ function writeRich(doc: PDFKit.PDFDocument, text: string, size: number, colour: 
 }
 
 /**
+ * Start a new page if `needed` points of vertical space are not left on this one.
+ *
+ * pdfkit breaks pages on its own, but only between the pieces it is asked to
+ * draw. A bullet is drawn as two pieces, the dot and then the text beside it, so
+ * a bullet that starts far enough down the page put the dot on one page and its
+ * sentence on the next. That is how a resume came out with a page carrying a
+ * single "•" and nothing else.
+ *
+ * Deciding before drawing rather than repairing afterwards is what fixes it: ask
+ * whether the whole bullet fits, and if it does not, turn the page first.
+ */
+function ensureSpace(doc: PDFKit.PDFDocument, needed: number) {
+  const bottom = doc.page.height - doc.page.margins.bottom;
+  if (doc.y + needed > bottom) doc.addPage();
+}
+
+/**
  * Markdown in, PDF bytes out.
  *
  * Anything it does not recognise is written as body text rather than dropped. A
@@ -168,6 +185,10 @@ export function renderResumePdf(markdown: string, opts: RenderOptions = {}): Pro
       // ### Role | Employer
       if (/^###\s+/.test(line)) {
         doc.moveDown(0.35);
+        // A role heading alone at the foot of a page is a widow: the employer on
+        // one page and everything they did on the next. 46pt is the heading plus
+        // its date line plus a first bullet.
+        ensureSpace(doc, 46);
         doc.font('Helvetica-Bold').fontSize(11.5).fillColor(INK).text(stripMarks(line));
         doc.moveDown(0.15);
         continue;
@@ -178,6 +199,13 @@ export function renderResumePdf(markdown: string, opts: RenderOptions = {}): Pro
         const body = line.replace(/^[-*]\s+/, '');
         const left = doc.page.margins.left;
         doc.font('Helvetica').fontSize(10).fillColor(INK);
+
+        // Measured on the stripped text at the same width the bullet will wrap
+        // to. Bold runs shift this by a hair, never by a line, and erring early
+        // costs nothing but a slightly shorter page.
+        const textWidth = doc.page.width - left - doc.page.margins.right - 14;
+        ensureSpace(doc, doc.heightOfString(stripMarks(body), { width: textWidth }));
+
         const startY = doc.y;
         doc.text('•', left, startY, { width: 12, continued: false });
         doc.y = startY;
