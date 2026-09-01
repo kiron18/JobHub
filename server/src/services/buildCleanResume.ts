@@ -38,13 +38,22 @@ const RESUME_RULES = fs.readFileSync(
 /**
  * How many times the rewrite may be asked again before we give up and 502.
  *
- * Four, not three. The budget is shared across all three checks (blanks,
- * ungrounded figures, retention), so at three a document that trips two of them
- * can exhaust the loop without either problem ever getting a second look.
+ * Six, and the number is empirical rather than tidy. The budget is shared
+ * across all three checks (blanks, ungrounded figures, retention), so at three
+ * a document that trips two of them exhausted the loop without either problem
+ * getting a second look, and at four it still happened: a real client resume
+ * failed all four attempts and was refused, then rebuilt cleanly twice in a row
+ * on the same file minutes later. Nothing about that resume was wrong; the run
+ * was simply unlucky.
+ *
+ * Six gives each check two genuine corrections. The cost is bounded and only
+ * paid when something is already going wrong: an attempt is roughly seven
+ * seconds, and a rebuild that needs none of them is unaffected. Set against
+ * that, a refusal costs the candidate their document and us the customer.
  *
  * Exported so the tests assert against this rather than a copy of the number.
  */
-export const MAX_REBUILD_ATTEMPTS = 4;
+export const MAX_REBUILD_ATTEMPTS = 6;
 
 export type IntakeAnswerStatus = 'answered' | 'later' | 'unknown';
 
