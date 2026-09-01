@@ -42,54 +42,122 @@ const EASE = [0.25, 1, 0.5, 1] as const;
  * does not do, the free user who buys on the strength of it has been sold
  * something else, and they find out on their first real generation.
  */
-const BUILD_LINES = [
-  'Reading the ad line by line.',
-  'Matching it against your experience.',
+/**
+ * The three beats, in order, and why the screen is built around them.
+ *
+ *   1. BOOT     a log of work starting, over an empty page.
+ *   2. PRINT    the page fills, in the clear, and they watch it happen.
+ *   3. SEAL     the moment it reaches writing we have not been paid for,
+ *               the whole page softens and the offer lands on it.
+ *
+ * The order is the argument. Anticipation is built by showing the thing being
+ * made, in full view, and it is only worth anything if what they watched was
+ * genuinely theirs: the page that prints is their own resume, read out of their
+ * own profile. Nothing is generated here and no LLM call is made. If that ever
+ * changes, the sequence has to change with it, because a real generation shown
+ * and then withheld is a different product and a worse one.
+ */
+
+/**
+ * The boot log.
+ *
+ * Present tense, no full stops, monospace: this is the machine talking to
+ * itself, not the product talking to the customer. Every line names something
+ * that actually happens on a run, in the order it happens, which is why they
+ * are short enough to read at a glance and why none of them promises an
+ * outcome. They run over an empty page, so the first thing that appears in the
+ * document is the candidate's own name and not a placeholder.
+ */
+const BOOT_LINES = [
+  'opening your profile',
+  'reading the ad you pasted',
+  'pulling your roles, dates and education',
+  'matching your history against the ad',
+] as const;
+
+/** Fast. This is the throat-clearing, not the show. */
+const BOOT_LINE_MS = 620;
+
+/**
+ * What is said while the page fills.
+ *
+ * One line per beat of the print, and they sit in a thin strip at the bottom
+ * rather than a card in the middle, because the whole point of this phase is
+ * that nothing covers the document. Keep them honest: the moment a line
+ * describes something the paid product does not do, the person who bought on
+ * the strength of it finds out on their first real generation.
+ */
+const PRINT_LINES = [
   'Rewriting your resume for this employer.',
   'Writing the cover letter that answers this ad.',
   'Checking every claim against your own history.',
 ] as const;
 
 /**
- * How long each build line holds.
+ * How long their own details take to print.
  *
- * Slower than it needs to be, deliberately. This is the one moment in the funnel
- * where the machine is visibly working on THEIR document, and rushing it turns
- * the thing we want them to watch into a flicker they miss.
+ * Tuned to be read, not raced. Too fast and it is a flicker they miss, which
+ * costs the whole phase its job; too slow and they leave before the offer. The
+ * head is a fixed duration rather than a fixed character rate on purpose, so a
+ * candidate with a long address does not sit through a longer wait than one
+ * with a short one.
  */
-const BUILD_LINE_MS = 1900;
+const HEAD_MS = 5200;
 
 /**
- * How long the page behind takes to fill.
+ * The overlap, in characters and in time.
  *
- * Its own constant rather than a fraction of the card's, because the two are
- * doing different jobs and want tuning separately. The one rule between them:
- * this must stay UNDER the card's own run (BUILD_LINE_MS × BUILD_LINES.length,
- * plus one more beat before the offer), or the document is still being written
- * when the offer lands on it and reads as unfinished.
+ * The body does not stay hidden until the blur; it starts to arrive, and they
+ * see the first line of the summary land before it goes. That crossing is the
+ * whole point of the screen: this is where their details stop and our writing
+ * starts, and it is the exact line the offer is drawn on.
  */
-const TYPE_DURATION_MS = 10_800;
+const BODY_LEAD_CHARS = 90;
+const BODY_LEAD_MS = 1100;
 
 /** Small steps on a short tick, so the page grows rather than jumping a paragraph. */
 const TYPE_TICK_MS = 32;
 
 /**
- * The blur, and the line it starts at.
+ * The seal: the blur closing over the finished page.
  *
- * The top of the page is NOT blurred. Their name, their number, their address:
- * we did not write any of it, there is nothing there to withhold, and seeing it
- * come out crisp is what makes the page unmistakably theirs rather than a stock
- * image of a resume.
- *
- * The blur fades in from the first section heading — the professional summary —
- * which is exactly where the writing we are selling begins. So they watch their
- * own details print, they watch the first line of the summary start to arrive,
- * and it softens under them as it comes. That is the offer, made before a word
- * of the offer is said.
+ * Fast, and over EVERYTHING, their own name included. Up to this moment the
+ * head was crisp because we did not write it and had nothing to withhold. The
+ * seal is a different statement: the page is done, and the page is not yours
+ * yet. Softening only the half we wrote would say the opposite, that the
+ * document is half available, which is not the offer being made.
  */
-const BLUR_MAX_PX = 2.6;
-/** Characters of the body the blur ramps in over. About a line and a half. */
-const BLUR_RAMP_CHARS = 130;
+const SEAL_MS = 700;
+
+/**
+ * How hard the finished page is held back.
+ *
+ * Tuned by what has to survive it, in both directions. It has to be plainly a
+ * resume, and plainly THEIR resume, complete and sitting right there: the
+ * headings, the column of bullets, the shape of the thing. It also has to be
+ * unreadable, or there is nothing left to sell. Past about 4px it stops being a
+ * document and turns into wallpaper, which loses the argument the whole screen
+ * is making.
+ */
+const SEAL_BLUR_PX = 3.2;
+
+/**
+ * The soft edge on our writing as it arrives, before the seal.
+ *
+ * Small. This is a hint that the text landing is not the same kind of text as
+ * the name above it, not the withholding itself. The seal does that.
+ */
+const LEAD_BLUR_PX = 1.5;
+
+/**
+ * The scrim behind the offer card.
+ *
+ * Deliberately light. An offer that says "it is already built, it is right
+ * behind you" cannot be shown over a page dimmed until it is gone, because
+ * then there is visibly nothing behind it. The blur is what makes the document
+ * unreadable; this only has to lift the card off it.
+ */
+const OFFER_SCRIM = 'rgba(15,32,56,0.18)';
 
 /* ─── The offer ────────────────────────────────────────────────────────────── */
 
@@ -128,6 +196,18 @@ const OFFER = {
   /* Only true at a month: $197 over about 4.3 weeks. */
   anchor: 'Less than $50 per week.',
 
+  /*
+   * The seven days, stated the way checkout actually behaves.
+   *
+   * `premium` is out of NO_TRIAL_PLANS in server/src/routes/stripe.ts, so the
+   * session is created with trial_period_days and the card is charged $0 today.
+   * Both halves have to be said in the same breath: the card IS collected, and
+   * the $197 DOES land on day eight unless they cancel. "Free trial" on its own
+   * reads as "no card", and somebody who believed that and got charged is a
+   * chargeback with a screenshot of this box attached.
+   */
+  trial: 'Free for 7 days. Cancel any time before day 7 and you are not charged.',
+
   /* The speed claim stands on its own line, directly above the guarantee, because
      it is the sentence that does the selling and the guarantee is what makes it
      safe to believe. */
@@ -155,8 +235,8 @@ const OFFER = {
    * box on a recurring plan. The number stays loud where it is accurate; the
    * button names the action, with the guarantee immediately under it.
    */
-  cta: 'Unlock everything',
-  ctaSub: 'Afterpay and Zip both work at checkout.',
+  cta: 'Start my 7 days free',
+  ctaSub: 'Card required. Nothing is charged until day 8.',
 
   /*
    * The decline is a door, not a dead end.
@@ -179,11 +259,18 @@ interface Props {
 }
 
 export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Props) {
-  const [phase, setPhase] = useState<'building' | 'offer' | 'paying'>('building');
+  const [phase, setPhase] = useState<'boot' | 'print' | 'offer' | 'paying'>('boot');
   const [line, setLine] = useState(0);
   const [loading, setLoading] = useState(false);
   /** How much of the page behind has been "printed" so far, in characters. */
   const [typed, setTyped] = useState(0);
+  /**
+   * The blur is closing. Its own flag rather than a phase, because the seal and
+   * the offer overlap on purpose: the page starts softening and the card lands
+   * on top of it while it is still moving. Sealing first and then opening the
+   * offer as a separate step reads as two events, and it is meant to read as one.
+   */
+  const [sealing, setSealing] = useState(false);
 
   /*
    * The page types itself while the card works.
@@ -197,30 +284,101 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
    * Smaller steps on a shorter tick than the eye needs, so the text grows rather
    * than jumping a paragraph at a time.
    */
-  useEffect(() => {
-    if (phase !== 'building') { setTyped(resumeMarkdown.length); return; }
-    const total = resumeMarkdown.length;
-    if (total === 0) return;
-    const perTick = Math.max(1, Math.ceil(total / (TYPE_DURATION_MS / TYPE_TICK_MS)));
-    const id = window.setInterval(() => {
-      setTyped((n) => {
-        const next = n + perTick;
-        if (next >= total) { window.clearInterval(id); return total; }
-        return next;
-      });
-    }, TYPE_TICK_MS);
-    return () => window.clearInterval(id);
-  }, [phase, resumeMarkdown]);
+  /*
+   * Two halves of one page: their details, and our writing.
+   *
+   * `typed` runs across both, so the head fills first and the body picks up
+   * where it stopped, and the boundary between them is where the print stops
+   * and the seal closes. Declared above the effects because the print timer
+   * needs the head's length to pace itself.
+   */
+  const { head, body } = useMemo(() => splitAtFirstSection(resumeMarkdown), [resumeMarkdown]);
 
+  /*
+   * BOOT: the log runs, then the page starts printing.
+   *
+   * Nothing is on the page yet. The document is deliberately empty behind this,
+   * so the first thing that ever appears in it is the candidate's own name.
+   */
   useEffect(() => {
-    if (phase !== 'building') return;
-    if (line >= BUILD_LINES.length - 1) {
-      const done = window.setTimeout(() => setPhase('offer'), BUILD_LINE_MS);
+    if (phase !== 'boot') return;
+    if (line >= BOOT_LINES.length - 1) {
+      /*
+       * With no resume text there is nothing to print, and six seconds of blank
+       * paper is not anticipation, it is a broken screen. Rare (the profile is
+       * written before anyone reaches a fit check) but it is the one input that
+       * turns this sequence into a bug, so it goes straight to the offer.
+       */
+      const next = resumeMarkdown.length === 0
+        ? () => { setSealing(true); setPhase('offer'); }
+        : () => { setLine(0); setPhase('print'); };
+      const done = window.setTimeout(next, BOOT_LINE_MS);
       return () => window.clearTimeout(done);
     }
-    const id = window.setTimeout(() => setLine((n) => n + 1), BUILD_LINE_MS);
+    const id = window.setTimeout(() => setLine((n) => n + 1), BOOT_LINE_MS);
+    return () => window.clearTimeout(id);
+  }, [phase, line, resumeMarkdown.length]);
+
+  /*
+   * PRINT: their details fill in, then our writing starts to arrive.
+   *
+   * Driven off elapsed time rather than a fixed step per tick, so the head
+   * always takes HEAD_MS whatever its length: the pace people see is the pace
+   * that was tuned, not a function of how long somebody's address is.
+   *
+   * It stops at BODY_LEAD_CHARS into the body and seals there. That stop is the
+   * point of the whole screen, so it is a hard boundary and not a fade-out: the
+   * run ends exactly where the writing we are selling begins.
+   */
+  useEffect(() => {
+    if (phase !== 'print') return;
+    const headLen = head.length;
+    const started = Date.now();
+    const id = window.setInterval(() => {
+      const elapsed = Date.now() - started;
+      if (elapsed < HEAD_MS) {
+        setTyped(Math.round((elapsed / HEAD_MS) * headLen));
+        return;
+      }
+      const intoBody = Math.min(1, (elapsed - HEAD_MS) / BODY_LEAD_MS);
+      setTyped(headLen + Math.round(intoBody * BODY_LEAD_CHARS));
+      if (intoBody >= 1) {
+        window.clearInterval(id);
+        /*
+         * The rest of the page fills in on the same tick the seal starts, so
+         * what sets behind the offer is a COMPLETE document rather than one
+         * that stopped mid-sentence. That is the sentence the offer makes: it
+         * is built, it is right there, and it is not yours yet. Under the blur
+         * none of it can be read, which is what makes showing it whole safe.
+         */
+        setTyped(resumeMarkdown.length);
+        setSealing(true);
+      }
+    }, TYPE_TICK_MS);
+    return () => window.clearInterval(id);
+  }, [phase, head.length, resumeMarkdown.length]);
+
+  /* The narration keeps pace with the print and gets out of the way after it. */
+  useEffect(() => {
+    if (phase !== 'print') return;
+    if (line >= PRINT_LINES.length - 1) return;
+    const each = (HEAD_MS + BODY_LEAD_MS) / PRINT_LINES.length;
+    const id = window.setTimeout(() => setLine((n) => n + 1), each);
     return () => window.clearTimeout(id);
   }, [phase, line]);
+
+  /*
+   * SEAL: the offer lands while the blur is still closing.
+   *
+   * One beat, not two. The card is timed to arrive before the page has finished
+   * softening, so the withholding and the offer read as the same event rather
+   * than a thing that happens and then a thing that is sold.
+   */
+  useEffect(() => {
+    if (!sealing) return;
+    const id = window.setTimeout(() => setPhase('offer'), SEAL_MS);
+    return () => window.clearTimeout(id);
+  }, [sealing]);
 
   useEffect(() => {
     if (phase !== 'offer') return;
@@ -264,18 +422,19 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
 
   const forWhat = [role, company].filter(Boolean).join(' at ');
 
-  /*
-   * Two halves of one page: their details, and our writing.
-   *
-   * `typed` runs across both, so the head fills first and the body picks up
-   * where it stopped. The blur belongs only to the body and ramps in over its
-   * opening line and a half, which is the moment the summary starts to arrive
-   * and softens under them.
-   */
-  const { head, body } = useMemo(() => splitAtFirstSection(resumeMarkdown), [resumeMarkdown]);
   const headTyped = Math.min(typed, head.length);
   const bodyTyped = Math.max(0, typed - head.length);
-  const bodyBlurPx = (Math.min(1, bodyTyped / BLUR_RAMP_CHARS) * BLUR_MAX_PX).toFixed(2);
+
+  /*
+   * Two blurs doing two different jobs.
+   *
+   * The lead blur is on the body alone and ramps in over its opening line, so
+   * our writing arrives visibly softer than the details above it. The seal is
+   * on the whole page and closes once, at the end, over all of it.
+   */
+  const leadBlurPx = (Math.min(1, bodyTyped / BODY_LEAD_CHARS) * LEAD_BLUR_PX).toFixed(2);
+  const sealed = sealing || phase === 'offer' || phase === 'paying';
+  const pageBlurPx = sealed ? SEAL_BLUR_PX : 0;
 
   return (
     <div style={{
@@ -298,16 +457,20 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
           maxWidth: 680, margin: '0 auto', background: '#fff', borderRadius: 14,
           border: `1px solid ${C.borderWhisper}`, padding: '40px 44px',
           fontFamily: warm.type.fontBody, fontSize: 14.5, lineHeight: 1.65, color: '#1a2230',
+          /* The seal, over the whole document, their name included. It is off
+             for the entire print so they watch a page they can actually read
+             fill in, and it closes once at the end. */
+          filter: `blur(${pageBlurPx}px)`,
+          transition: `filter ${SEAL_MS}ms ease-out`,
         }}>
-          {/* Their own details. Crisp, and they stay crisp. */}
+          {/* Their own details. Crisp while it prints, because we did not write
+              a word of it and there is nothing here to withhold. */}
           <ReactMarkdown>{head.slice(0, headTyped)}</ReactMarkdown>
 
-          {/* Our writing, softening as it arrives. Enough blur that no line can
-              be read, little enough that it is plainly still a resume — the
-              headings and the shape of the bullets survive. Past about 4px it
-              stops being a document and turns into wallpaper. */}
+          {/* Our writing, arriving a touch softer than the details above it, so
+              the boundary between the two is visible before it is named. */}
           <div style={{
-            filter: `blur(${bodyBlurPx}px)`,
+            filter: `blur(${leadBlurPx}px)`,
             transition: `filter ${TYPE_TICK_MS * 6}ms linear`,
           }}>
             <ReactMarkdown>{body.slice(0, bodyTyped)}</ReactMarkdown>
@@ -316,47 +479,103 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
       </div>
 
       <AnimatePresence mode="wait">
-        {phase === 'building' ? (
+        {phase === 'boot' ? (
+          /*
+            The log, over an empty page.
+
+            A terminal on purpose. The previous version of this screen was a
+            spinner and a sentence, which is the visual language of waiting, and
+            waiting is the one thing this moment must not feel like. A log
+            reads as work being done and it can be scanned rather than read, so
+            it holds attention for the two and a half seconds it needs without
+            asking for any.
+
+            Every line is an operation that actually runs, so this stays honest
+            even though it is theatre: the theatre is in the pacing, not the
+            claims.
+          */
           <motion.div
-            key="building"
+            key="boot"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.28 }}
             style={{
               position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 24,
+              alignItems: 'center', justifyContent: 'center', padding: 24,
             }}
           >
-            {/* A card, not loose text on the canvas. Three lines floating over a
-                blurred page read as a rendering fault; the same three inside a
-                bordered card read as a machine doing something. */}
             <div style={{
-              width: '100%', maxWidth: 420,
-              background: C.bgSurface, border: `1px solid ${C.borderDefined}`,
-              borderRadius: 18, padding: '30px 28px', boxShadow: warm.shadow.lifted,
-              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              width: '100%', maxWidth: 460,
+              background: C.bgDeep, border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: 14, padding: '22px 24px', boxShadow: warm.shadow.lifted,
+              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+              fontSize: 13, lineHeight: 1.9, color: 'rgba(255,255,255,0.92)',
             }}>
-              <Loader2 size={28} className="animate-spin" style={{ color: C.accentPetrol }} />
               <p style={{
-                margin: '18px 0 0', fontFamily: landingType.display, fontWeight: 600,
-                fontSize: 'clamp(19px, 3vw, 23px)', lineHeight: 1.25, color: C.textPrimary,
+                margin: '0 0 10px', fontSize: 11, letterSpacing: '0.1em',
+                textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)',
               }}>
-                {forWhat ? `Writing your application for ${forWhat}` : 'Writing your application'}
+                {forWhat ? `building for ${forWhat}` : 'building your application'}
               </p>
-              <div style={{ minHeight: 24, marginTop: 8 }}>
-                <AnimatePresence mode="wait">
-                  <motion.p
-                    key={line}
-                    initial={{ opacity: 0, y: 5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -5 }}
-                    transition={{ duration: 0.25, ease: EASE }}
-                    style={{ margin: 0, fontSize: 14.5, color: C.textSecondary }}
-                  >
-                    {BUILD_LINES[line]}
-                  </motion.p>
-                </AnimatePresence>
-              </div>
+              {/* Lines stay once they land, so the log grows instead of
+                  replacing itself. A list that swaps one line for another reads
+                  as one thing being retried; a list that accumulates reads as
+                  progress, which is what is actually happening. */}
+              {BOOT_LINES.slice(0, line + 1).map((text, i) => (
+                <motion.div
+                  key={text}
+                  initial={{ opacity: 0, x: -4 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.2, ease: EASE }}
+                  style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}
+                >
+                  <span style={{ color: C.success }}>{i < line ? '✓' : '›'}</span>
+                  <span style={{ opacity: i < line ? 0.6 : 1 }}>{text}</span>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        ) : phase === 'print' ? (
+          /*
+            Nothing in the middle of the screen.
+
+            This is the phase the whole sequence exists for, and the one rule is
+            that the document is not covered. The narration moves to a strip at
+            the bottom edge where it can be read without standing between anyone
+            and the page filling in above it.
+          */
+          <motion.div
+            key="print"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.28 }}
+            style={{
+              position: 'absolute', left: 0, right: 0, bottom: 0,
+              display: 'flex', justifyContent: 'center', padding: '0 24px 28px',
+              pointerEvents: 'none',
+            }}
+          >
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 10,
+              maxWidth: '100%', padding: '11px 20px', borderRadius: 99,
+              background: C.bgSurface, border: `1px solid ${C.borderDefined}`,
+              boxShadow: warm.shadow.lifted,
+            }}>
+              <Loader2 size={15} className="animate-spin" style={{ color: C.accentPetrol, flexShrink: 0 }} />
+              <AnimatePresence mode="wait">
+                <motion.span
+                  key={line}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.22, ease: EASE }}
+                  style={{ fontSize: 14, color: C.textSecondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                >
+                  {PRINT_LINES[line]}
+                </motion.span>
+              </AnimatePresence>
             </div>
           </motion.div>
         ) : (
@@ -368,7 +587,7 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
             style={{
               position: 'absolute', inset: 0, display: 'flex', alignItems: 'center',
               justifyContent: 'center', padding: 24, overflowY: 'auto',
-              background: 'rgba(15,32,56,0.34)',
+              background: OFFER_SCRIM,
             }}
           >
             <motion.div
@@ -415,8 +634,11 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
                   }}>
                     {OFFER.price}
                   </h2>
+                  {/* The form below says "$0.00 due today". Restating the
+                      monthly price with nothing to explain it is the moment
+                      somebody goes looking for what they are actually paying. */}
                   <p style={{ margin: '0 0 18px', fontSize: 14, color: C.textMuted }}>
-                    {OFFER.ctaSub}
+                    {OFFER.trial}
                   </p>
 
                   <EmbeddedCheckoutPanel
@@ -513,6 +735,14 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
                   {OFFER.price}
                 </p>
                 <p style={{ margin: 0, fontSize: 13.5, color: C.textMuted }}>{OFFER.anchor}</p>
+                {/* The risk reversal sits with the number it reverses, not down
+                    by the button, because the hesitation happens here. */}
+                <p style={{
+                  margin: '6px 0 0', fontSize: 14, fontWeight: 700, lineHeight: 1.45,
+                  color: C.success,
+                }}>
+                  {OFFER.trial}
+                </p>
               </div>
 
               <p style={{

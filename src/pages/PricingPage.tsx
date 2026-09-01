@@ -19,13 +19,19 @@ import { PrimaryCTA } from '../components/landing/shared/PrimaryCTA';
    how this works" and landed here was shown a different number for the same
    thing. One price across the funnel or none of it is believable.
 
-   THERE IS NO TRIAL ON THIS PLAN. `premium` is in NO_TRIAL_PLANS in
-   server/src/routes/stripe.ts, deliberately, so every word about seven free
-   days came out with the price change rather than being left to advertise
-   something checkout does not do. If a trial is ever wanted here, it is one
-   line on that set — and this copy has to move back at the same time.        */
+   THERE IS A SEVEN DAY TRIAL ON THIS PLAN. `premium` is NOT in NO_TRIAL_PLANS
+   in server/src/routes/stripe.ts, so checkout creates the subscription with
+   trial_period_days and takes $0 today. Every price on this page has to say so
+   in the same breath as the number, and say the other half too: the card is
+   collected and the $197 lands on day eight unless they cancel. If the trial is
+   ever taken off again it is one entry on that set, and this copy moves back in
+   the same change, or the page is advertising something checkout does not do.
+                                                                              */
 
 const PRICE = '$197';
+
+/** Must match TRIAL_PERIOD_DAYS in server/src/routes/stripe.ts. */
+const TRIAL_DAYS = 7;
 
 /** The plan key checkout is opened with. Must be the plan PRICE describes. */
 const PLAN_KEY = 'premium';
@@ -92,11 +98,11 @@ const STACK = [
 const FAQS = [
   {
     q: 'What do I pay today?',
-    a: `${PRICE}, and that is the whole price. There is no trial to forget to cancel, no setup fee and no second tier you find out about later. If you would rather try it before paying anything, the free tier gives you five documents and five job analyses with no card at all.`,
+    a: `Nothing. The first ${TRIAL_DAYS} days are free, and ${PRICE} is charged on day ${TRIAL_DAYS + 1} unless you cancel before then. Your card is collected at checkout so the subscription can start on its own, but it is not charged during those ${TRIAL_DAYS} days. After that it is ${PRICE} a month and that is the whole price: no setup fee and no second tier you find out about later.`,
   },
   {
     q: 'Can I cancel?',
-    a: 'Any time, in one click, from your account. It is a monthly subscription, not a lock-in. If you land a role in week three, you cancel in week three.',
+    a: `Any time, in one click, from your account. Cancel inside the first ${TRIAL_DAYS} days and you are never charged at all. After that it is a monthly subscription, not a lock-in: if you land a role in week three, you cancel in week three.`,
   },
   {
     q: 'How does the guarantee actually work?',
@@ -487,7 +493,8 @@ export function PricingPage() {
             <PrimaryCTA label={loading ? 'Opening checkout…' : CTA_LABEL} onClick={startCheckout} />
 
             <p style={{ fontSize: '0.875rem', color: colors.textMuted, margin: '16px 0 0' }}>
-              {PRICE}/month. Cancel any time, in one click.
+              Free for {TRIAL_DAYS} days, then {PRICE}/month. Cancel any time, in
+              one click.
             </p>
           </div>
 
@@ -814,8 +821,15 @@ export function PricingPage() {
                   /month
                 </span>
               </div>
-              <div style={{ fontSize: '0.875rem', color: colors.textMuted, marginTop: 8 }}>
-                Cancel any time, in one click.
+              {/* The trial is louder than the cancel line under it: it is the
+                  reason to click, and the cancel line is only the reassurance
+                  that makes it safe. Both are true of what checkout does. */}
+              <div style={{ fontSize: '1rem', fontWeight: 600, color: colors.success, marginTop: 10 }}>
+                Free for your first {TRIAL_DAYS} days
+              </div>
+              <div style={{ fontSize: '0.875rem', color: colors.textMuted, marginTop: 6 }}>
+                Cancel before day {TRIAL_DAYS + 1} and you are not charged. Cancel
+                any time after, in one click.
               </div>
             </div>
 
