@@ -10,9 +10,10 @@
  *
  * The flow, and why it is shaped this way:
  *
- *   POST /brief   (anonymous) upload -> read + the questions only they can answer
- *   POST /build   (anonymous) answers -> the finished clean resume, shown to them
- *   POST /finish  (authed)    claim the session onto their account
+ *   POST  /brief   (anonymous) upload -> read + the questions only they can answer
+ *   POST  /build   (anonymous) answers -> the finished clean resume, shown to them
+ *   PATCH /resume  (anonymous) their own edit of it, before the single send
+ *   POST  /finish  (authed)    claim the session onto their account
  *
  * Everything up to /finish is anonymous on purpose: they do the work, they see
  * the finished resume, and only then are they asked for an email to save it.
@@ -54,6 +55,13 @@ const router = Router();
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 /** Rebuilds allowed per anonymous session. Each one costs an LLM call. */
 const MAX_BUILDS = 3;
+/**
+ * Ceiling on an edited resume. Nothing a person types into that box comes near
+ * this — a long two-pager is around 6,000 characters — so it is not a limit on
+ * the candidate, it is a limit on what an automated client can push into a text
+ * column that every future generation is then built from.
+ */
+const MAX_RESUME_CHARS = 60_000;
 
 // ── Upload ───────────────────────────────────────────────────────────────────
 const upload = multer({
@@ -324,6 +332,89 @@ router.post('/build', async (req: Request, res: Response) => {
   }
 });
 
+// ── PATCH /api/welcome/resume ────────────────────────────────────────────────
+// The candidate's own edit of the rebuilt resume, saved before the single send.
+//
+// Anonymous like /brief and /build: the token IS the credential, and the whole
+// point of this flow is that they do the work and see the result before being
+// asked for an email. This is also the last write to resumeCleanText before
+// /finish copies it onto the profile, so it runs the same gate that guards that
+// field — in 'human' mode, because they wrote it.
+router.patch('/resume', async (req: Request, res: Response) => {
+  try {
+    const { token, resume } = req.body || {};
+
+    const session = await loadSession(token);
+    if (!session) {
+      res.status(410).json({ error: 'Your session expired, please upload your resume again.' });
+      return;
+    }
+    if (session.claimedByUserId) {
+      res.status(409).json({ error: 'This resume has already been saved to an account.' });
+      return;
+    }
+    if (!session.resumeCleanText) {
+      res.status(409).json({ error: 'Your resume has not been built yet.' });
+      return;
+    }
+
+    const text = typeof resume === 'string' ? resume.trim() : '';
+    if (!text) { res.status(400).json({ error: 'Nothing to save.' }); return; }
+    if (text.length > MAX_RESUME_CHARS) {
+      res.status(413).json({ error: 'That is longer than a resume can be. Trim it and try again.' });
+      return;
+    }
+
+    // Their own history is the source, same as at /finish: the original upload
+    // plus everything they told us in the questions. 'human' mode, so a figure
+    // they added that is in neither is an advisory rather than a refusal — it is
+    // their resume, and the upload is not the limit of what is true about them.
+    const answered = ((session.answers as unknown as IntakeAnswer[] | null) ?? [])
+      .filter((a) => a.status === 'answered')
+      .map((a) => a.value);
+    const check = assertResumeSource(
+      text,
+      [session.resumeOriginalText, ...answered],
+      'human',
+      'welcome/edit',
+    );
+
+    await prisma.welcomeSession.update({
+      where: { id: session.id },
+      data: { resumeCleanText: text, resumeEditedAt: new Date() },
+    });
+
+    // Recomputed off the same renderer that produces the emailed PDF, so the
+    // number on screen moves as they cut. Never fatal: a render failure costs
+    // the count, not the edit they just made.
+    let pageCount: number | null = null;
+    try {
+      pageCount = (await renderResumePdf(text)).pages;
+    } catch (err) {
+      console.warn('[welcome/resume] page count unavailable:', (err as Error).message);
+    }
+
+    res.json({ ok: true, pageCount, figures: check.ungroundedFigures });
+  } catch (err) {
+    if (err instanceof ResumeSourceError) {
+      // In 'human' mode only two things throw, and both are defects in the
+      // document rather than claims about the person, so both can be said
+      // plainly enough to act on.
+      const { tooShort, placeholders } = err.check;
+      console.warn('[welcome/resume] refused the edit:', err.message);
+      res.status(422).json({
+        error: tooShort
+          ? 'That is too short to be a resume. Put the content back before saving.'
+          : `Fill in the square brackets before saving: ${placeholders.slice(0, 3).join(', ')}`,
+        placeholders,
+      });
+      return;
+    }
+    console.error('[welcome/resume]', err instanceof Error ? `${err.name}: ${err.message}` : String(err));
+    res.status(502).json({ error: 'Could not save your edit, please try again.' });
+  }
+});
+
 // ── POST /api/welcome/finish ─────────────────────────────────────────────────
 // Now they have an account. Claim the session onto it. Works identically whether
 // this email is brand new (the OTP created it) or an existing client signing in.
@@ -353,18 +444,24 @@ router.post('/finish', authenticate, async (req: AuthRequest, res: Response) => 
       return;
     }
 
-    // The gate on resumeRawText. This is the one write where a model authored
-    // the text, so an ungrounded figure is a fabrication and must never land:
-    // once it is in this field, checkGrounding treats it as truth forever and
-    // will defend it in every future application rather than catch it.
-    // Grounded against the original upload plus what the candidate told us.
+    // The gate on resumeRawText, grounded against the original upload plus what
+    // the candidate told us.
+    //
+    // The mode turns on who wrote the text that is about to land. Untouched, it
+    // is the model's, and an ungrounded figure is a fabrication that must never
+    // get in: once it is in this field checkGrounding treats it as truth
+    // forever and will defend it in every future application rather than catch
+    // it. Once the candidate has edited it on the resume screen, the same
+    // figure is them telling us something true about themselves that the upload
+    // did not happen to say, and refusing it would mean refusing their own
+    // resume back. Length and placeholders still throw either way.
     const answered = ((session.answers as unknown as IntakeAnswer[] | null) ?? [])
       .filter((a) => a.status === 'answered')
       .map((a) => a.value);
     assertResumeSource(
       session.resumeCleanText,
       [session.resumeOriginalText, ...answered],
-      'authored',
+      session.resumeEditedAt ? 'human' : 'authored',
       'welcome/finish',
     );
 

@@ -929,6 +929,12 @@ model WelcomeSession {
   // Inventory the rebuild is verified against before it may become the truth.
   mustKeep           Json?
   resumeCleanText    String?
+  // Set the first time the candidate edits the rebuilt resume themselves.
+  // It records WHO WROTE the text now sitting in resumeCleanText, which is what
+  // decides the mode the resumeRawText gate runs in at /finish: a figure the
+  // model invented is a fabrication, the same figure typed by the candidate is
+  // them telling us something true about themselves that the upload did not say.
+  resumeEditedAt     DateTime?
   // Rebuilds attempted on this session. /welcome/build is anonymous and costs an
   // LLM call, so it is capped per session rather than left open.
   buildCount         Int      @default(0)
