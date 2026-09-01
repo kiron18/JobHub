@@ -15,7 +15,7 @@
  * as markdown via ReactMarkdown. Inline editing is out of scope for this
  * commit; users copy or download for now.
  */
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -34,16 +34,12 @@ import {
     RefreshCw,
     ListChecks,
     Briefcase,
-    Heading2,
-    List,
-    Pilcrow,
 } from 'lucide-react';
 import { DraftCritiquePanel, type CritiqueResult } from '../components/strategy/DraftCritiquePanel';
 import { ApplyDeepLinkButton } from '../components/strategy/ApplyDeepLinkButton';
 import { PostApplyOutreach } from '../components/strategy/PostApplyOutreach';
 import ReactMarkdown from 'react-markdown';
-import { toggleEmphasis, type EmphasisMarker } from '../lib/toggleEmphasis';
-import { toggleLinePrefix, continueList, lineStyleOf, type LineStyle } from '../lib/toggleLinePrefix';
+import { MarkdownDocEditor, FormattingHelp } from '../components/MarkdownDocEditor';
 import React from 'react';
 import { toast } from 'sonner';
 import api from '../lib/api';
@@ -680,22 +676,9 @@ function DocumentStep({
     const [hasDraft, setHasDraft] = useState(false);
     const [editing, setEditing] = useState(false);
     const [confirmRegen, setConfirmRegen] = useState(false);
+    // The buffer lives here rather than in the editor because `commitEdit` is
+    // what persists it, and that belongs to the step, not to the editing.
     const [editBuffer, setEditBuffer] = useState('');
-    const editorRef = useRef<HTMLTextAreaElement>(null);
-    // Where the caret should land once React has re-rendered the edited buffer.
-    const pendingSelection = useRef<[number, number] | null>(null);
-    /**
-     * The style of the line the caret is on, so the toolbar can show it lit up.
-     * This is what teaches the format: you put the cursor on a bullet, the
-     * bullet button is on, and the connection between `- ` and "this is a
-     * point" makes itself without a paragraph of instructions.
-     */
-    const [activeLineStyle, setActiveLineStyle] = useState<LineStyle>('body');
-    // Formatting help starts open, then remembers being closed. It is worth one
-    // read and a nuisance on every document after that.
-    const [formatHelpOpen, setFormatHelpOpen] = useState<boolean>(() => {
-        try { return localStorage.getItem('jobhub_format_help') !== 'closed'; } catch { return true; }
-    });
     // PDF is the default download everywhere: it is the format we control the
     // look of end to end, and it cannot be reflowed by whatever Word version the
     // employer opens it in. Someone who has explicitly picked .docx before keeps
@@ -985,75 +968,9 @@ function DocumentStep({
             setEditing(false);
         } else {
             setEditBuffer(content);
-            setActiveLineStyle(lineStyleOf(currentLine(content, 0)));
             setEditing(true);
         }
     };
-
-    /**
-     * Bold / italic over the current selection. `toggleEmphasis` owns the rules
-     * about what may be marked — it keeps bullet and heading prefixes outside
-     * the markers, since a line emphasised end to end can be re-read as a date
-     * or a skills row when the document is exported.
-     *
-     * The caret is restored after React has re-rendered with the new buffer, so
-     * the marked text stays selected and pressing the button again undoes it.
-     */
-    const applyEmphasis = (marker: EmphasisMarker) => {
-        const textarea = editorRef.current;
-        if (!textarea) return;
-
-        const result = toggleEmphasis(
-            editBuffer,
-            textarea.selectionStart,
-            textarea.selectionEnd,
-            marker,
-        );
-        if (result.text === editBuffer) return;
-
-        pendingSelection.current = [result.selectionStart, result.selectionEnd];
-        setEditBuffer(result.text);
-    };
-
-    /** The whole line `position` falls on, used to light up the toolbar. */
-    const currentLine = (text: string, position: number) => {
-        const start = position <= 0 ? 0 : text.lastIndexOf('\n', position - 1) + 1;
-        const newline = text.indexOf('\n', position);
-        return text.slice(start, newline === -1 ? text.length : newline);
-    };
-
-    /**
-     * Heading / bullet / paragraph over the current line or selection — the
-     * structural half of the toolbar. Same shape as `applyEmphasis`: the pure
-     * function decides, this just hands it the caret and takes back where the
-     * caret should end up.
-     */
-    const applyLineStyle = (style: LineStyle) => {
-        const textarea = editorRef.current;
-        if (!textarea) return;
-
-        const result = toggleLinePrefix(editBuffer, textarea.selectionStart, textarea.selectionEnd, style);
-        if (result.text === editBuffer) return;
-
-        pendingSelection.current = [result.selectionStart, result.selectionEnd];
-        setEditBuffer(result.text);
-        setActiveLineStyle(lineStyleOf(currentLine(result.text, result.selectionStart)));
-    };
-
-    const syncActiveLineStyle = () => {
-        const textarea = editorRef.current;
-        if (!textarea) return;
-        setActiveLineStyle(lineStyleOf(currentLine(textarea.value, textarea.selectionStart)));
-    };
-
-    useLayoutEffect(() => {
-        const pending = pendingSelection.current;
-        const textarea = editorRef.current;
-        if (!pending || !textarea) return;
-        pendingSelection.current = null;
-        textarea.focus();
-        textarea.setSelectionRange(pending[0], pending[1]);
-    }, [editBuffer]);
 
     const exportType = stepId === 'cover-letter' ? 'cover-letter' : stepId === 'selection-criteria' ? 'selection-criteria' : 'resume';
 
@@ -1260,73 +1177,7 @@ function DocumentStep({
                 </div>
             )}
 
-            {/*
-                Formatting help. Deliberately outside the document card and in
-                the amber this app already uses for tips: inside, in the card's
-                own cream, it read as the first page of the resume rather than
-                as a note about it. Collapsed to a strip once read, because the
-                toolbar now carries the same information permanently.
-            */}
-            {editing && (
-                <div style={{
-                    marginBottom: 10,
-                    borderRadius: 8,
-                    background: 'rgba(217, 119, 6, 0.07)',
-                    border: '1px solid rgba(217, 119, 6, 0.25)',
-                    borderLeft: '3px solid #d97706',
-                    overflow: 'hidden',
-                }}>
-                    <button
-                        onClick={() => {
-                            const next = !formatHelpOpen;
-                            setFormatHelpOpen(next);
-                            try { localStorage.setItem('jobhub_format_help', next ? 'open' : 'closed'); } catch { /* noop */ }
-                        }}
-                        style={{
-                            width: '100%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            gap: 8,
-                            padding: '8px 12px',
-                            background: 'transparent',
-                            border: 'none',
-                            cursor: 'pointer',
-                            fontSize: 12,
-                            fontWeight: 700,
-                            letterSpacing: '0.02em',
-                            color: '#92400e',
-                            textAlign: 'left',
-                        }}
-                        aria-expanded={formatHelpOpen}
-                    >
-                        <span>Formatting help</span>
-                        {formatHelpOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                    </button>
-
-                    {formatHelpOpen && (
-                        <div style={{ padding: '0 12px 11px', fontSize: 12.5, lineHeight: 1.65, color: '#78350f' }}>
-                            <div style={{ marginBottom: 8 }}>
-                                Put the cursor on a line and use the toolbar, top right of the document:{' '}
-                                <strong>heading</strong> for a new section, <strong>list</strong> for a point,{' '}
-                                <strong>¶</strong> for ordinary text. The lit-up button tells you what the line already is.
-                            </div>
-                            <div style={{ marginBottom: 9 }}>
-                                Press <strong>Enter</strong> at the end of a point and the next one starts itself. Press it on
-                                an empty point to finish the list.
-                            </div>
-                            <div style={{ marginBottom: 6 }}>Typing the marks by hand works too — that is all the buttons do:</div>
-                            <pre style={{
-                                margin: 0, padding: '9px 12px', borderRadius: 6,
-                                background: 'rgba(255,255,255,0.72)',
-                                border: '1px solid rgba(217, 119, 6, 0.22)',
-                                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-                                fontSize: 12, lineHeight: 1.7, color: '#5c2e0a', whiteSpace: 'pre-wrap',
-                            }}>{'## Hobbies\n- Long distance running\n- Volunteer surf lifesaving'}</pre>
-                        </div>
-                    )}
-                </div>
-            )}
+            {editing && <FormattingHelp />}
 
             {/* Body */}
             <div style={{
@@ -1365,95 +1216,6 @@ function DocumentStep({
                     </button>
                 )}
 
-                {/* Formatting controls — only while editing. `onMouseDown` is
-                    prevented so clicking a button never pulls focus out of the
-                    textarea, which would drop the user's selection before the
-                    toggle could act on it.
-
-                    Structure first, then emphasis, split by a hairline: heading
-                    and bullet are the marks that change what the exporter
-                    builds, and they used to be the ones you had to type. The
-                    structural three light up to show what the current line
-                    already is. */}
-                {editing && (
-                    <div style={{
-                        position: 'absolute',
-                        top: 10,
-                        right: 62,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        zIndex: 1,
-                    }}>
-                        {([
-                            { style: 'heading' as LineStyle, Icon: Heading2, title: 'Section heading' },
-                            { style: 'bullet' as LineStyle, Icon: List, title: 'Bullet point' },
-                            { style: 'body' as LineStyle, Icon: Pilcrow, title: 'Plain paragraph' },
-                        ]).map(({ style, Icon, title }) => {
-                            const active = activeLineStyle === style;
-                            return (
-                                <button
-                                    key={style}
-                                    onMouseDown={(e) => e.preventDefault()}
-                                    onClick={() => applyLineStyle(style)}
-                                    title={title}
-                                    aria-label={title}
-                                    aria-pressed={active}
-                                    style={{
-                                        width: 26,
-                                        height: 24,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        background: active ? 'rgba(45, 90, 110, 0.12)' : 'transparent',
-                                        border: `1px solid ${active ? warm.colors.accentPetrol : warm.colors.borderWhisper}`,
-                                        borderRadius: 5,
-                                        color: active ? warm.colors.accentPetrol : warm.colors.textMuted,
-                                        cursor: 'pointer',
-                                        padding: 0,
-                                    }}
-                                >
-                                    <Icon size={13} strokeWidth={active ? 2.4 : 2} />
-                                </button>
-                            );
-                        })}
-
-                        <div style={{ width: 1, height: 16, background: warm.colors.borderDefined, margin: '0 3px' }} />
-
-                        {([
-                            { marker: '**' as EmphasisMarker, label: 'B', title: 'Bold (Ctrl+B)', weight: 800, style: 'normal' as const },
-                            { marker: '*' as EmphasisMarker, label: 'I', title: 'Italic (Ctrl+I)', weight: 500, style: 'italic' as const },
-                        ]).map(({ marker, label, title, weight, style }) => (
-                            <button
-                                key={label}
-                                onMouseDown={(e) => e.preventDefault()}
-                                onClick={() => applyEmphasis(marker)}
-                                title={title}
-                                aria-label={title}
-                                style={{
-                                    width: 24,
-                                    height: 24,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    background: 'transparent',
-                                    border: `1px solid ${warm.colors.borderWhisper}`,
-                                    borderRadius: 5,
-                                    color: warm.colors.textMuted,
-                                    fontSize: 12,
-                                    fontWeight: weight,
-                                    fontStyle: style,
-                                    lineHeight: 1,
-                                    cursor: 'pointer',
-                                    padding: 0,
-                                }}
-                            >
-                                {label}
-                            </button>
-                        ))}
-                    </div>
-                )}
-
                 {stepId === 'resume' && resumeTips.length > 0 && !editing && (
                     <button
                         onClick={() => setShowTips(t => !t)}
@@ -1481,54 +1243,12 @@ function DocumentStep({
                 {generating || (generationStatus === 'generating' && !content) ? (
                     <GenerationProgress docType={stepId === 'cover-letter' ? 'cover-letter' : stepId === 'selection-criteria' ? 'selection-criteria' : 'resume'} />
                 ) : editing ? (
-                    <>
-                    <textarea
-                        ref={editorRef}
+                    <MarkdownDocEditor
                         value={editBuffer}
-                        onChange={(e) => setEditBuffer(e.target.value)}
+                        onChange={setEditBuffer}
                         onBlur={() => commitEdit()}
-                        onSelect={syncActiveLineStyle}
-                        onClick={syncActiveLineStyle}
-                        onKeyUp={syncActiveLineStyle}
-                        onKeyDown={(e) => {
-                            // Enter carries the list on, so a section of points
-                            // costs one `- ` rather than one per line. Shift+Enter
-                            // is left alone as the way to break out mid-point.
-                            if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
-                                const textarea = e.currentTarget;
-                                const carried = continueList(editBuffer, textarea.selectionStart, textarea.selectionEnd);
-                                if (carried) {
-                                    e.preventDefault();
-                                    pendingSelection.current = [carried.selectionStart, carried.selectionEnd];
-                                    setEditBuffer(carried.text);
-                                    setActiveLineStyle(lineStyleOf(currentLine(carried.text, carried.selectionStart)));
-                                }
-                                return;
-                            }
-                            if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
-                            const key = e.key.toLowerCase();
-                            if (key !== 'b' && key !== 'i') return;
-                            e.preventDefault();
-                            applyEmphasis(key === 'b' ? '**' : '*');
-                        }}
-                        spellCheck
-                        style={{
-                            width: '100%',
-                            minHeight: 360,
-                            padding: 0,
-                            paddingRight: 56,
-                            background: 'transparent',
-                            border: 'none',
-                            outline: 'none',
-                            color: warm.colors.textPrimary,
-                            fontSize: 13.5,
-                            lineHeight: 1.7,
-                            fontFamily: 'inherit',
-                            resize: 'vertical',
-                            boxSizing: 'border-box',
-                        }}
+                        ariaLabel={`Edit ${stepLabel}`}
                     />
-                    </>
                 ) : content ? (
                     <>
                         {/*
