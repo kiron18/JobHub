@@ -50,10 +50,18 @@ export function FollowUpCard({ variant }: Props) {
         borderRadius: warm.radius.card,
       }}
     >
-      {/* One fact per line. Stacked, not run together, because the three only
-          work as an argument when you can see them as three. */}
+      {/*
+        On the report, one fact. In the tracker, all three.
+
+        The report is read at the moment somebody has just been told a job is
+        worth applying for, and the only thing that should slow them down there
+        is the button. Three statistics and a "which means" underneath it is an
+        argument being made to a person who has already agreed. The tracker is
+        the other case: they have applied, they are waiting, and that is where
+        the case for following up is worth reading in full.
+      */}
       <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {STATS.map(({ figure, rest }) => (
+        {(variant === 'preview' ? STATS.slice(0, 1) : STATS).map(({ figure, rest }) => (
           <li key={figure} style={{
             display: 'flex', alignItems: 'baseline', gap: 12,
             fontSize: 15, lineHeight: 1.5, color: C.textSecondary,
@@ -70,6 +78,7 @@ export function FollowUpCard({ variant }: Props) {
         ))}
       </ul>
 
+      {variant === 'armed' && (
       <div style={{
         marginTop: 22, paddingTop: 20,
         borderTop: `1px solid ${C.borderWhisper}`,
@@ -101,12 +110,12 @@ export function FollowUpCard({ variant }: Props) {
         }}>
           <Bell size={14} style={{ flexShrink: 0, marginTop: 3, color: C.accentGold }} />
           <span>
-            {variant === 'armed'
-              ? 'Seven days after you apply we will email you a reminder with the follow-up already written. You copy it and send it.'
-              : 'Apply through here and seven days later we email you a reminder with the follow-up already written, ready to copy and send.'}
+            Seven days after you apply we will email you a reminder with the
+            follow-up already written. You copy it and send it.
           </span>
         </p>
       </div>
+      )}
     </motion.div>
   );
 }
