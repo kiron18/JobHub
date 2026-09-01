@@ -476,14 +476,33 @@ router.post('/checkout', authenticate, async (req: AuthRequest, res: Response) =
     const profile = await prisma.candidateProfile.findUnique({ where: { userId } });
     const isOneTime = plan === 'three_month';
 
+    /*
+     * Two ways to take the money, one session builder.
+     *
+     * 'hosted' is the original: Stripe's own page, on Stripe's domain, reached
+     * by sending the browser there. 'embedded' mounts that same checkout inside
+     * our page, so somebody who has just watched their application being
+     * written never leaves the screen it was written on.
+     *
+     * The caller asks for embedded; it is never the default and never inferred.
+     * Everything that decides what is CHARGED — the price, the mode, the trial —
+     * is above this split and identical either way, so the two can never drift
+     * into charging different amounts.
+     */
+    const embedded = req.body?.uiMode === 'embedded';
+
     const sessionParams: any = {
       mode: isOneTime ? 'payment' : 'subscription',
       line_items: [{ price: priceId, quantity: 1 }],
       metadata: { userId, plan },
-      success_url: `${APP_URL}/?payment=success`,
-      cancel_url: `${APP_URL}/pricing`,
       billing_address_collection: 'auto',
       allow_promotion_codes: true,
+      // Embedded takes a return_url and REFUSES success_url/cancel_url; hosted
+      // is the other way round. Stripe errors on the wrong pair, so this is not
+      // a style choice.
+      ...(embedded
+        ? { ui_mode: 'embedded', return_url: `${APP_URL}/?payment=success&session_id={CHECKOUT_SESSION_ID}` }
+        : { success_url: `${APP_URL}/?payment=success`, cancel_url: `${APP_URL}/pricing` }),
     };
 
     if (profile?.stripeCustomerId) {
@@ -500,7 +519,10 @@ router.post('/checkout', authenticate, async (req: AuthRequest, res: Response) =
     }
 
     const session = await stripe.checkout.sessions.create(sessionParams);
-    res.json({ url: session.url });
+    // An embedded session has no url to send anyone to; the client secret is
+    // what mounts it. Returning both shapes from one endpoint keeps the plan,
+    // price and trial rules in a single place.
+    res.json(embedded ? { clientSecret: session.client_secret } : { url: session.url });
   } catch (err: any) {
     console.error('[stripe/checkout] Error:', err.message);
     res.status(500).json({ error: 'Failed to create checkout session' });

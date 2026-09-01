@@ -22,12 +22,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import { X, Check, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import api from '../../lib/api';
 import { warm } from '../../lib/theme/warmTokens';
 import { type as landingType } from '../landing/tokens';
 import { trackUpgradeModalOpened, trackCheckoutStarted, trackFreeLimitHit } from '../../lib/analytics';
 import { SALES_PAGE_URL } from '../../lib/salesPage';
 import { splitAtFirstSection } from '../../lib/resumeHead';
+import { embeddedCheckoutEnabled } from '../../lib/embeddedCheckout';
+import { EmbeddedCheckoutPanel } from './EmbeddedCheckoutPanel';
 
 const C = warm.colors;
 const EASE = [0.25, 1, 0.5, 1] as const;
@@ -176,7 +179,7 @@ interface Props {
 }
 
 export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Props) {
-  const [phase, setPhase] = useState<'building' | 'offer'>('building');
+  const [phase, setPhase] = useState<'building' | 'offer' | 'paying'>('building');
   const [line, setLine] = useState(0);
   const [loading, setLoading] = useState(false);
   /** How much of the page behind has been "printed" so far, in characters. */
@@ -225,15 +228,34 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
     trackFreeLimitHit('generation');
   }, [phase]);
 
+  /*
+   * `premium` is the $197/month recurring price this modal advertises. It is
+   * not `three_month` (a one-time payment) and not `monthly` (a different price
+   * on the pricing page); pointing it at either would charge something other
+   * than what the box says.
+   */
+  const PLAN = 'premium';
+
   async function checkout() {
-    // `premium` is the $197/month recurring price this modal advertises. It is
-    // not `three_month` (a one-time payment) and not `monthly` (a different
-    // price on the pricing page); pointing it at either would charge something
-    // other than what the box says.
-    trackCheckoutStarted('premium');
+    trackCheckoutStarted(PLAN);
+
+    /*
+     * In-page payment, when it is switched on.
+     *
+     * They have just watched their own application being written on this
+     * screen. Sending them to another domain to pay for it is the one moment
+     * the whole sequence is undone, so behind the flag the form opens here
+     * instead. Off — or with no publishable key to mount it — this falls
+     * straight through to the redirect that has always worked.
+     */
+    if (embeddedCheckoutEnabled()) {
+      setPhase('paying');
+      return;
+    }
+
     setLoading(true);
     try {
-      const { data } = await api.post('/stripe/checkout', { plan: 'premium' });
+      const { data } = await api.post('/stripe/checkout', { plan: PLAN });
       window.location.href = data.url;
     } catch {
       setLoading(false);
@@ -375,6 +397,54 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
                 <X size={16} />
               </button>
 
+              {phase === 'paying' ? (
+                /*
+                  The same checkout, mounted here.
+
+                  Deliberately spare: they have already read the offer and
+                  decided, so re-selling over the top of a card form is noise.
+                  The price is restated once, because a payment form with no
+                  amount beside it is the moment people go looking for the
+                  amount.
+                */
+                <>
+                  <h2 style={{
+                    margin: '0 0 4px', fontFamily: landingType.display, fontWeight: 700,
+                    fontSize: 'clamp(20px, 3.6vw, 24px)', letterSpacing: '-0.02em',
+                    lineHeight: 1.25, color: C.textPrimary,
+                  }}>
+                    {OFFER.price}
+                  </h2>
+                  <p style={{ margin: '0 0 18px', fontSize: 14, color: C.textMuted }}>
+                    {OFFER.ctaSub}
+                  </p>
+
+                  <EmbeddedCheckoutPanel
+                    plan={PLAN}
+                    onError={(message) => {
+                      // Never strand them on a form that will not load: say what
+                      // happened and put the offer back, redirect button and all.
+                      toast.error(message);
+                      setPhase('offer');
+                    }}
+                  />
+
+                  <div style={{ textAlign: 'center', marginTop: 14 }}>
+                    <button
+                      type="button"
+                      onClick={() => setPhase('offer')}
+                      style={{
+                        background: 'none', border: 'none', padding: 4, cursor: 'pointer',
+                        fontFamily: 'inherit', fontSize: 13.5, color: C.textMuted,
+                        textDecoration: 'underline',
+                      }}
+                    >
+                      Back to what is included
+                    </button>
+                  </div>
+                </>
+              ) : (
+              <>
               {/* One step from hired: the same track they have seen twice, at its end. */}
               <div style={{
                 borderRadius: warm.radius.card, overflow: 'hidden', background: '#fff',
@@ -505,6 +575,8 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
                   {OFFER.decline}
                 </a>
               </div>
+              </>
+              )}
             </motion.div>
           </motion.div>
         )}
