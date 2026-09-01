@@ -16,6 +16,16 @@ There is no resend, no versioning and no snapshot mismatch, because the edit
 happens before the only send. Editing later from the profile, and a download
 button there, is out of scope for now.
 
+## Two decisions, made
+
+- **An explicit Edit / Done toggle**, not an always-live textarea. Consistent
+  with the generation workspace they meet later, and this screen is the payoff
+  being handed over: a page that turns out to be a giant textarea reads as a
+  form rather than a resume.
+- **The send flushes a pending edit.** "See my next steps" saves the buffer
+  before it sends, so what is on screen is what gets emailed even if they never
+  blurred the field. The button waits on that save rather than racing it.
+
 ## Reuse, do not rebuild
 
 One editor, used in three places. `DocumentStep` in `StepperWorkspace.tsx`
