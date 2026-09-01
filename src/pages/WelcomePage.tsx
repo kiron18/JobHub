@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -11,6 +11,8 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { trackWelcomeStep, trackWelcomeFailed, trackWelcomeCompleted } from '../lib/analytics';
 import { colors, type as T } from '../components/landing/tokens';
+import { MarkdownDocEditor, FormattingHelp } from '../components/MarkdownDocEditor';
+import { suggestCuts } from '../lib/resumeCuts';
 import { SALES_PAGE_URL } from '../lib/salesPage';
 
 // The resume is built BEFORE we ask for an email — they see the finished thing,
@@ -138,6 +140,46 @@ export const WelcomePage: React.FC = () => {
   const [cleanResume, setCleanResume] = useState('');
   /** Real page count of the rendered PDF, from the server. Null if it could not render. */
   const [pageCount, setPageCount] = useState<number | null>(null);
+
+  /**
+   * The resume screen is the ONLY place this document is edited.
+   *
+   * Everything downstream depends on that being true. There is one send, at the
+   * bottom of this screen, and it carries whatever is on screen at that moment,
+   * so there is no resend, no version history and no way for the copy they were
+   * emailed to disagree with the copy on their account.
+   *
+   * An explicit Edit / Done toggle rather than a live textarea: this screen is
+   * the payoff being handed over, and a page that turns out to be a giant text
+   * box reads as a form to fill in rather than as a resume to read.
+   */
+  const [editing, setEditing] = useState(false);
+  const [editBuffer, setEditBuffer] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+  /**
+   * Figures the gate found in the edited text and in neither the upload nor
+   * their answers. Not an error — they are allowed to know things about
+   * themselves their old resume did not say — but worth one look before it
+   * becomes the text every future application is built from.
+   */
+  const [addedFigures, setAddedFigures] = useState<string[]>([]);
+  /**
+   * How tall the rendered document was when they pressed Edit, so the textarea
+   * opens at the same size. Without it a two-page resume collapses to a short
+   * box the moment you touch it, which reads as content being lost.
+   */
+  const [paperHeight, setPaperHeight] = useState<number | null>(null);
+  const paperRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * What to cut when it runs long. Rules over the document itself, so it costs
+   * nothing and cannot invent a bullet they did not write. Read off the buffer
+   * while they are editing, so it never points at a line they just deleted.
+   */
+  const cuts = useMemo(
+    () => suggestCuts(editing ? editBuffer : cleanResume),
+    [editing, editBuffer, cleanResume],
+  );
 
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -270,9 +312,60 @@ export const WelcomePage: React.FC = () => {
     }
   }
 
+  /**
+   * Save the edit buffer, or do nothing if there is nothing to save.
+   *
+   * Never toggles `editing` — the callers own that, so this is safe to call
+   * from both the Done button and the send. Returns whether the document on the
+   * server now matches what is on screen, which is the only question either
+   * caller actually has.
+   *
+   * A refusal here is the gate on resumeRawText, the field every future
+   * application is built from: too short, or square brackets left unfilled. It
+   * is answerable, so the message says what to fix and the screen stays in edit
+   * mode with their text intact rather than throwing it away.
+   */
+  async function flushEdit(): Promise<boolean> {
+    if (!editing || savingEdit) return !editing;
+    const next = editBuffer.trim();
+    if (!next || next === cleanResume) return true;
+
+    setSavingEdit(true);
+    try {
+      const { data } = await api.patch('/welcome/resume', { token, resume: next });
+      setCleanResume(next);
+      setPageCount(typeof data?.pageCount === 'number' ? data.pageCount : null);
+      setAddedFigures(Array.isArray(data?.figures) ? data.figures : []);
+      return true;
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Could not save your changes, please try again.');
+      return false;
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
+  async function toggleEditing() {
+    if (!editing) {
+      setPaperHeight(paperRef.current?.offsetHeight ?? null);
+      setEditBuffer(cleanResume);
+      setEditing(true);
+      return;
+    }
+    if (await flushEdit()) setEditing(false);
+  }
+
   // From the finished resume: signed-in users save immediately, everyone else
   // goes through email + code, which doubles as registration.
-  function onSaveResume() {
+  //
+  // The send flushes a pending edit first and WAITS on it, rather than racing
+  // it. This is the only send, so what is on screen when they press the button
+  // is what gets emailed and what lands on their account — including an edit
+  // they never finished by pressing Done. If the save is refused they stay
+  // here, in edit mode, with the reason.
+  async function onSaveResume() {
+    if (!(await flushEdit())) return;
+    setEditing(false);
     if (user) { void finishNow(); return; }
     setStep('email');
   }
@@ -720,6 +813,42 @@ export const WelcomePage: React.FC = () => {
           </Display>
         </div>
 
+        {/*
+          Read, then change. The toggle sits above the document rather than on
+          it: on the page corner it would be a third thing competing with the
+          length badge, and it is not a property of the resume, it is a thing
+          you can do to it.
+        */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          gap: 12, marginBottom: 10,
+        }}>
+          <span style={{ fontFamily: T.body, fontSize: 13, color: colors.textMuted }}>
+            {editing
+              ? 'Change anything that is not right. This is the copy we send.'
+              : 'Something not quite right? You can change it before we send it.'}
+          </span>
+          <button
+            onClick={() => void toggleEditing()}
+            disabled={savingEdit}
+            style={{
+              flexShrink: 0,
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              background: 'transparent', border: 'none', padding: 0,
+              fontFamily: T.body, fontSize: 13.5, fontWeight: 700,
+              color: savingEdit ? colors.textMuted : colors.accentPetrol,
+              cursor: savingEdit ? 'default' : 'pointer',
+              textDecoration: 'underline', textUnderlineOffset: 4,
+            }}
+          >
+            {savingEdit
+              ? <><Loader2 size={14} className="animate-spin" /> Saving</>
+              : editing ? 'Done' : <><PencilLine size={14} /> Edit</>}
+          </button>
+        </div>
+
+        {editing && <FormattingHelp />}
+
         {/* Rendered as a page, not a text box — people trust what looks like a document. */}
         <div className="bank-paper" style={{ position: 'relative' }}>
           {/*
@@ -730,7 +859,8 @@ export const WelcomePage: React.FC = () => {
             off the same renderer that produces the emailed PDF, not a guess from
             character count, which is wrong the moment somebody has a long
             education section. Sitting on the page corner it reads as a property
-            of the document, which is what it is.
+            of the document, which is what it is — and it is recomputed on every
+            save, so they watch three pages become two as they cut.
           */}
           {pageCount !== null && (
             <span style={{
@@ -740,12 +870,102 @@ export const WelcomePage: React.FC = () => {
               background: colors.bgAlt, border: `1px solid ${colors.borderDefined}`,
               fontFamily: T.body, fontSize: 11.5, fontWeight: 700,
               letterSpacing: '0.04em', color: colors.textSecondary, whiteSpace: 'nowrap',
+              zIndex: 1,
             }}>
               <FileText size={12} /> {pageCount} page{pageCount === 1 ? '' : 's'}
             </span>
           )}
-          <ReactMarkdown>{cleanResume}</ReactMarkdown>
+
+          {editing ? (
+            /*
+              The same editor the paid workspace uses, on the same paper the
+              document was just read on. The toolbar sits to the left of the
+              length badge and the text starts below both, so nothing the
+              candidate types can hide under the chrome.
+            */
+            <MarkdownDocEditor
+              value={editBuffer}
+              onChange={setEditBuffer}
+              ariaLabel="Edit your resume"
+              toolbarStyle={{ top: 12, right: 128 }}
+              tone={{
+                text: RESUME_BODY_INK,
+                muted: colors.textMuted,
+                border: colors.borderDefined,
+                divider: colors.borderDefined,
+                accent: colors.accentPetrol,
+                accentSoft: 'rgba(45, 90, 110, 0.10)',
+              }}
+              textareaStyle={{
+                paddingTop: 40,
+                paddingRight: 0,
+                fontSize: 14.5,
+                lineHeight: 1.65,
+                minHeight: paperHeight ?? 460,
+              }}
+            />
+          ) : (
+            <div ref={paperRef}>
+              <ReactMarkdown>{cleanResume}</ReactMarkdown>
+            </div>
+          )}
         </div>
+
+        {/*
+          The number said it was too long; this says what to do about it.
+
+          Naming a page count and then leaving someone to work out which part of
+          their own career to delete is the cruel half of the feedback. These
+          are rules over their document, not a model: instant, free, and every
+          line quotes their own words back so the advice is findable. When the
+          rules have nothing honest to say they say nothing.
+        */}
+        {pageCount !== null && pageCount > 2 && cuts.length > 0 && (
+          <div style={{
+            marginTop: 14, padding: '16px 18px', borderRadius: 12,
+            background: colors.bgSurface, border: `1px solid ${colors.borderDefined}`,
+          }}>
+            <p style={{
+              margin: '0 0 12px', fontFamily: T.body, fontSize: 14, fontWeight: 700,
+              color: colors.textPrimary,
+            }}>
+              This runs to {pageCount} pages. Here is what I would cut.
+            </p>
+            <ol style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 12 }}>
+              {cuts.map((cut) => (
+                <li key={cut.title} style={{ fontFamily: T.body }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 700, color: colors.textPrimary, lineHeight: 1.5 }}>
+                    {cut.title}
+                  </span>
+                  <span style={{ display: 'block', marginTop: 3, fontSize: 13, lineHeight: 1.6, color: colors.textSecondary }}>
+                    {cut.detail}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
+
+        {/*
+          A figure they added that is in neither their original file nor their
+          answers. Not a refusal — their history is not limited to what the old
+          resume happened to say — but this text becomes the ground truth every
+          future application is built from and graded against, so it is worth
+          one look while they are still the person holding it.
+        */}
+        {!editing && addedFigures.length > 0 && (
+          <p style={{
+            margin: '12px 0 0', padding: '10px 14px', borderRadius: 10,
+            background: 'rgba(217, 119, 6, 0.08)', border: '1px solid rgba(217, 119, 6, 0.28)',
+            fontFamily: T.body, fontSize: 13, lineHeight: 1.6, color: '#78350f',
+          }}>
+            You added {addedFigures.length === 1 ? 'a number' : 'some numbers'} that
+            {' '}{addedFigures.length === 1 ? 'was' : 'were'} not on the resume you uploaded
+            {' '}({addedFigures.slice(0, 4).join(', ')}). Worth a last check that
+            {' '}{addedFigures.length === 1 ? 'it is' : 'they are'} right — this is the copy
+            every future application is built from.
+          </p>
+        )}
 
         {/*
           The claim, then the picture of it, then the one thing to do next.
@@ -766,7 +986,7 @@ export const WelcomePage: React.FC = () => {
         <JourneyTrack src="/Assets/journey/step-3-of-5.png" />
 
         <div style={{ marginTop: 22 }}>
-          <PrimaryBtn label="See my next steps" onClick={onSaveResume} />
+          <PrimaryBtn label="See my next steps" onClick={() => void onSaveResume()} loading={savingEdit} />
         </div>
         <p style={{ fontFamily: T.body, fontSize: 13.5, color: colors.textMuted, margin: '14px 0 0' }}>
           Your resume will be sent as a PDF to your email address.
@@ -1043,6 +1263,13 @@ const bodyText: React.CSSProperties = { fontFamily: T.body, fontSize: 15.5, line
 const RESUME_INK = '#24211C';
 
 /**
+ * The body ink of the rendered page. Named because the editor writes in it too:
+ * the textarea sits on the same paper, and the moment these two disagree,
+ * pressing Edit changes the colour of the document under the candidate.
+ */
+const RESUME_BODY_INK = '#1a2230';
+
+/**
  * The two waits, narrated.
  *
  * A single frozen "Reading your resume..." for twenty or forty seconds reads as
@@ -1136,10 +1363,13 @@ const RESUME_PAPER_CSS = `
   background: #fff;
   border: 1px solid ${colors.borderDefined};
   box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 12px 32px -12px rgba(16,24,40,.14);
-  font-family: ${T.body}; font-size: 14.5; line-height: 1.65; color: #1a2230;
+  font-family: ${T.body}; font-size: 14.5; line-height: 1.65; color: ${RESUME_BODY_INK};
 }
-.bank-paper > *:first-child { margin-top: 0; }
-.bank-paper > *:last-child { margin-bottom: 0; }
+/* One level of nesting too: the rendered document sits in a wrapper so its
+   height can be measured before the editor replaces it, and without these the
+   wrapper would swallow the trim and leave a stray margin inside the page. */
+.bank-paper > *:first-child, .bank-paper > div > *:first-child { margin-top: 0; }
+.bank-paper > *:last-child, .bank-paper > div > *:last-child { margin-bottom: 0; }
 .bank-paper h1 {
   font-family: ${T.display}; font-size: 24px; font-weight: 600; letter-spacing: .01em;
   margin: 0 0 4px; color: #101828;
