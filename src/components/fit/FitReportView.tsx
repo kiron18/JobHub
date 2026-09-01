@@ -426,7 +426,7 @@ export function FitReportView({ report, onTailor, onCheckAnother, targetCity, sa
             */}
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
               <PrimaryButton onClick={onTailor}>
-                Apply Now <ArrowRight size={17} />
+                Apply <ArrowRight size={17} />
               </PrimaryButton>
 
               <button

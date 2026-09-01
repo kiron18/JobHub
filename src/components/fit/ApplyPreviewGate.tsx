@@ -18,7 +18,7 @@
  * A paying account never reaches this component. FitCheckPage sends them to the
  * real workspace instead.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import { X, Check, Loader2 } from 'lucide-react';
@@ -27,6 +27,7 @@ import { warm } from '../../lib/theme/warmTokens';
 import { type as landingType } from '../landing/tokens';
 import { trackUpgradeModalOpened, trackCheckoutStarted, trackFreeLimitHit } from '../../lib/analytics';
 import { SALES_PAGE_URL } from '../../lib/salesPage';
+import { splitAtFirstSection } from '../../lib/resumeHead';
 
 const C = warm.colors;
 const EASE = [0.25, 1, 0.5, 1] as const;
@@ -51,22 +52,41 @@ const BUILD_LINES = [
  *
  * Slower than it needs to be, deliberately. This is the one moment in the funnel
  * where the machine is visibly working on THEIR document, and rushing it turns
- * the thing we want them to watch into a flicker they miss. At this pace the
- * page behind fills in at a readable rhythm and the name at the top resolves
- * before the offer lands on it.
+ * the thing we want them to watch into a flicker they miss.
  */
-const BUILD_LINE_MS = 1700;
+const BUILD_LINE_MS = 1900;
 
 /**
- * The blur on the page behind, at the start of the build and at the end.
+ * How long the page behind takes to fill.
  *
- * It sharpens as the document fills. Starting softer and resolving is what makes
- * it feel like something coming into being rather than a static image someone
- * smeared, and finishing at 2.1px leaves the name and the section headings
- * plainly theirs while the body text stays a texture rather than a read.
+ * Its own constant rather than a fraction of the card's, because the two are
+ * doing different jobs and want tuning separately. The one rule between them:
+ * this must stay UNDER the card's own run (BUILD_LINE_MS × BUILD_LINES.length,
+ * plus one more beat before the offer), or the document is still being written
+ * when the offer lands on it and reads as unfinished.
  */
-const BLUR_START_PX = 3.4;
-const BLUR_END_PX = 2.1;
+const TYPE_DURATION_MS = 10_800;
+
+/** Small steps on a short tick, so the page grows rather than jumping a paragraph. */
+const TYPE_TICK_MS = 32;
+
+/**
+ * The blur, and the line it starts at.
+ *
+ * The top of the page is NOT blurred. Their name, their number, their address:
+ * we did not write any of it, there is nothing there to withhold, and seeing it
+ * come out crisp is what makes the page unmistakably theirs rather than a stock
+ * image of a resume.
+ *
+ * The blur fades in from the first section heading — the professional summary —
+ * which is exactly where the writing we are selling begins. So they watch their
+ * own details print, they watch the first line of the summary start to arrive,
+ * and it softens under them as it comes. That is the offer, made before a word
+ * of the offer is said.
+ */
+const BLUR_MAX_PX = 2.6;
+/** Characters of the body the blur ramps in over. About a line and a half. */
+const BLUR_RAMP_CHARS = 130;
 
 /* ─── The offer ────────────────────────────────────────────────────────────── */
 
@@ -178,16 +198,14 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
     if (phase !== 'building') { setTyped(resumeMarkdown.length); return; }
     const total = resumeMarkdown.length;
     if (total === 0) return;
-    const durationMs = BUILD_LINE_MS * BUILD_LINES.length * 0.85;
-    const tickMs = 32;
-    const perTick = Math.max(1, Math.ceil(total / (durationMs / tickMs)));
+    const perTick = Math.max(1, Math.ceil(total / (TYPE_DURATION_MS / TYPE_TICK_MS)));
     const id = window.setInterval(() => {
       setTyped((n) => {
         const next = n + perTick;
         if (next >= total) { window.clearInterval(id); return total; }
         return next;
       });
-    }, tickMs);
+    }, TYPE_TICK_MS);
     return () => window.clearInterval(id);
   }, [phase, resumeMarkdown]);
 
@@ -224,9 +242,18 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
 
   const forWhat = [role, company].filter(Boolean).join(' at ');
 
-  /* Sharpens as the page fills, so the document resolves rather than sits there. */
-  const progress = resumeMarkdown.length > 0 ? Math.min(1, typed / resumeMarkdown.length) : 1;
-  const blurPx = (BLUR_START_PX - (BLUR_START_PX - BLUR_END_PX) * progress).toFixed(2);
+  /*
+   * Two halves of one page: their details, and our writing.
+   *
+   * `typed` runs across both, so the head fills first and the body picks up
+   * where it stopped. The blur belongs only to the body and ramps in over its
+   * opening line and a half, which is the moment the summary starts to arrive
+   * and softens under them.
+   */
+  const { head, body } = useMemo(() => splitAtFirstSection(resumeMarkdown), [resumeMarkdown]);
+  const headTyped = Math.min(typed, head.length);
+  const bodyTyped = Math.max(0, typed - head.length);
+  const bodyBlurPx = (Math.min(1, bodyTyped / BLUR_RAMP_CHARS) * BLUR_MAX_PX).toFixed(2);
 
   return (
     <div style={{
@@ -242,13 +269,7 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
         aria-hidden
         style={{
           position: 'absolute', inset: 0, padding: '40px 24px', overflow: 'hidden',
-          /* Enough blur that no line of body copy can be read, little enough
-             that it is plainly THEIR resume: the name at the top, the section
-             headings and the shape of the bullets all survive. Past about 4px it
-             stops being a document and turns into wallpaper. */
-          filter: `blur(${blurPx}px)`, opacity: 0.94,
-          transition: 'filter 240ms linear',
-          userSelect: 'none', pointerEvents: 'none',
+          opacity: 0.96, userSelect: 'none', pointerEvents: 'none',
         }}
       >
         <div style={{
@@ -256,7 +277,19 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
           border: `1px solid ${C.borderWhisper}`, padding: '40px 44px',
           fontFamily: warm.type.fontBody, fontSize: 14.5, lineHeight: 1.65, color: '#1a2230',
         }}>
-          <ReactMarkdown>{resumeMarkdown.slice(0, typed)}</ReactMarkdown>
+          {/* Their own details. Crisp, and they stay crisp. */}
+          <ReactMarkdown>{head.slice(0, headTyped)}</ReactMarkdown>
+
+          {/* Our writing, softening as it arrives. Enough blur that no line can
+              be read, little enough that it is plainly still a resume — the
+              headings and the shape of the bullets survive. Past about 4px it
+              stops being a document and turns into wallpaper. */}
+          <div style={{
+            filter: `blur(${bodyBlurPx}px)`,
+            transition: `filter ${TYPE_TICK_MS * 6}ms linear`,
+          }}>
+            <ReactMarkdown>{body.slice(0, bodyTyped)}</ReactMarkdown>
+          </div>
         </div>
       </div>
 
