@@ -11,6 +11,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { trackWelcomeStep, trackWelcomeFailed, trackWelcomeCompleted } from '../lib/analytics';
 import { colors, type as T } from '../components/landing/tokens';
+import { SALES_PAGE_URL } from '../lib/salesPage';
 
 // The resume is built BEFORE we ask for an email — they see the finished thing,
 // then decide to save it. Email/code only appear if they aren't already signed in.
@@ -28,7 +29,7 @@ const EASE = [0.25, 1, 0.5, 1] as const;
  * back into. Point this at the real page when it lands, and drop the
  * target="_blank" if you would rather it navigate in place.
  */
-const POSITIONING_EXPLAINER_URL = '/how-it-works';
+const POSITIONING_EXPLAINER_URL = SALES_PAGE_URL;
 
 const ROLE_PLACEHOLDERS = ['e.g. Marketing Coordinator', 'e.g. Business Analyst', 'e.g. Registered Nurse', 'e.g. Software Engineer', 'e.g. Project Manager', 'e.g. Graphic Designer'];
 

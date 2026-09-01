@@ -200,19 +200,20 @@ export function EligibilityIntroModal() {
  * it is the thing that actually has to land. The instruction is one line of copy
  * now, and the picture only has to say where this sits in the journey.
  *
- * Same artwork as the resume screen, one step further along: four of five.
+ * The composited artwork: the track at its last step, with a sample job match
+ * card sitting over it. Cropped to the drawing rather than the artboard.
  */
 function JourneyTrack() {
   return (
     <div style={{
       borderRadius: warm.radius.card, overflow: 'hidden',
       background: '#fff', border: `1px solid ${C.borderWhisper}`,
-      aspectRatio: '1920 / 820',
+      aspectRatio: '1920 / 780',
     }}>
       <img
-        src="/Assets/journey/step-4-of-5.png"
-        alt="Your progress: four of five steps done, on the way to hired"
-        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 38%', display: 'block' }}
+        src="/Assets/journey/step-5-with-result.png"
+        alt="Your progress: the last step before hired, with a sample job match"
+        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 10%', display: 'block' }}
       />
     </div>
   );

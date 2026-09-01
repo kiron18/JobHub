@@ -50,15 +50,6 @@ export function FollowUpCard({ variant }: Props) {
         borderRadius: warm.radius.card,
       }}
     >
-      <p style={{
-        margin: '0 0 18px',
-        fontFamily: SERIF,
-        fontSize: 21, fontWeight: 600,
-        letterSpacing: '-0.01em', color: C.textPrimary,
-      }}>
-        Did you know?
-      </p>
-
       {/* One fact per line. Stacked, not run together, because the three only
           work as an argument when you can see them as three. */}
       <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 12 }}>

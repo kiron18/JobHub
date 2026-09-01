@@ -147,16 +147,16 @@ function Refunds() {
         </ul>
         <p>Change-of-mind refunds outside these windows are not guaranteed but can be requested.</p>
       </Section>
-      <Section title="The 7-day money-back guarantee (30-Day Pass)">
-        <p>The 30-Day Pass carries a money-back guarantee for the first 7 days, on one condition: that you actually use it. Used properly for a week and it has done nothing for you, ask and you get your money back in full.</p>
-        <p>"Used properly" means, on each day of those 7 days:</p>
+      <Section title="Our guarantee (30-Day Pass)">
+<p>Complete 10 applications and 5 outreach messages a day for 7 days straight. If you do that and do not land at least one interview or callback within 30 days of finishing that week, message us and we will refund every dollar. No questions asked.</p>
+        <p>In plain terms:</p>
         <ul>
-          <li>10 job applications sent</li>
-          <li>5 outreach messages sent</li>
+          <li><strong style={{ color: warm.colors.textPrimary }}>The seven days:</strong> 10 applications and 5 outreach messages on each of 7 consecutive days, started within your paid period.</li>
+          <li><strong style={{ color: warm.colors.textPrimary }}>The window:</strong> 30 days from the end of that week. If no interview or callback has come in by then, the refund is yours for the asking.</li>
+          <li><strong style={{ color: warm.colors.textPrimary }}>The proof:</strong> none needed from you. Your applications and outreach are already recorded in your own tracker, and that is what we read, so there is nothing to collect or screenshot.</li>
         </ul>
-        <p>We do not ask you to prove any of this. Your applications and outreach are already recorded in your own tracker, and that is what we read when a request comes in, so there is nothing for you to collect or screenshot.</p>
-        <p>We hold to this condition because it is also the method. Ten applications and five messages a day is the volume the whole service is built around, and it is what makes the difference for the people it works for. If you have done that for a week and have nothing to show for it, we would rather return your money than keep it.</p>
-        <p>Outside the 7 days, or where the condition has not been met, refunds are at our discretion and are considered case by case. This does not limit your rights under the Australian Consumer Law, which are set out above and which nothing here can take away.</p>
+        <p>We hold to the condition because it is also the method. Ten applications and five messages a day is the volume the whole service is built around, and it is what makes the difference for the people it works for. If you have done that and have nothing to show for it, we would rather return your money than keep it.</p>
+        <p>Where the condition has not been met, refunds are at our discretion and are considered case by case. This does not limit your rights under the Australian Consumer Law, which are set out above and which nothing here can take away.</p>
       </Section>
       <Section title="How to request a refund">
         <p>Email <a href="mailto:kiron@aussiegradcareers.com.au" style={{ color: warm.colors.accentPetrol }}>kiron@aussiegradcareers.com.au</a> with your account email and reason. We aim to respond within 2 business days. Approved refunds are processed via Stripe and appear within 5-10 business days.</p>

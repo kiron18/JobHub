@@ -26,6 +26,7 @@ import api from '../../lib/api';
 import { warm } from '../../lib/theme/warmTokens';
 import { type as landingType } from '../landing/tokens';
 import { trackUpgradeModalOpened, trackCheckoutStarted, trackFreeLimitHit } from '../../lib/analytics';
+import { SALES_PAGE_URL } from '../../lib/salesPage';
 
 const C = warm.colors;
 const EASE = [0.25, 1, 0.5, 1] as const;
@@ -60,17 +61,9 @@ const BUILD_LINE_MS = 1100;
  * real one ever exists (a price rise, a cohort date), it can be said plainly.
  */
 const OFFER = {
-  /*
-   * The headline is the one sentence a competitor cannot copy.
-   *
-   * Everyone in this market tells a job seeker their resume is the problem. We
-   * have just told this person, for free, that a job was not worth their time.
-   * Naming that is the whole pitch: what they are buying is the judgement they
-   * have already had a demonstration of.
-   */
-  title: 'We just told you not to apply for a job.',
+  title: 'Unlock access to your dream job today.',
   subtitle:
-    'That is what you are paying for. Your application for this role is already written. Unlock it, and every one after it, for the next 30 days.',
+    'Unlimited high quality personalised applications sent in minutes that guarantee you getting hired.',
 
   /*
    * Anchored values, one line each, every one a thing that is actually built.
@@ -83,35 +76,45 @@ const OFFER = {
     { item: 'Selection criteria for government and council roles', value: '$300' },
     { item: 'Interview prep that runs during the call', value: '$250' },
     { item: 'Follow-up emails, written and scheduled', value: '$150' },
+    { item: 'Weekly community call with professional guidance', value: '$400' },
     { item: 'Tracker, daily target and the community', value: '$350' },
   ],
-  stackTotal: '$1,950',
+  stackTotal: '$2,350',
 
-  priceWas: '$1,950',
-  priceNow: '$197 today',
-  priceLine: 'One payment. Not a subscription, and nothing to cancel.',
-  /* Only true at 30 days: $197 over about 4.3 weeks. If the window ever moves,
-     this line moves with it, and PAID_ACCESS_DAYS on the server decides it. */
+  price: '$197 per month',
+  /* Only true at a month: $197 over about 4.3 weeks. */
   anchor: 'Less than $50 per week.',
 
+  /* The speed claim stands on its own line, directly above the guarantee, because
+     it is the sentence that does the selling and the guarantee is what makes it
+     safe to believe. */
+  speed: 'High quality applications + outreach in just one hour.',
+
   /*
-   * One sentence, and the conditions one tap away on the terms page.
+   * The guarantee, in full, in the box.
    *
-   * The conditions are real and they are enforced (ten applications and five
-   * outreach messages a day, read off their own tracker), but a paragraph of
-   * qualifiers inside the box kills the reassurance the guarantee exists to
-   * give. What it must never be is undisclosed: a guarantee advertised without
-   * its conditions and then refused on them is misleading conduct under
-   * Australian Consumer Law, which is why the link is here and not omitted.
+   * It is stated with its conditions rather than behind a link, because the
+   * conditions are the offer: they are the volume the whole service is built
+   * around. A guarantee advertised without its conditions and then refused on
+   * them is misleading conduct, so the version the customer reads here is the
+   * version we honour, and the refund policy page carries the same words.
    */
-  guaranteeName: '7-day money-back guarantee',
-  guarantee: 'Use it properly for a week. If it does nothing for you, ask and you get your money back.',
-  guaranteeLink: 'What counts as using it',
-  guaranteeHref: '/legal/refunds',
+  guaranteeName: 'Our guarantee',
+  guarantee:
+    'Complete 10 applications and 5 outreach messages a day for 7 days straight. If you do that and do not land at least one interview or callback within 30 days of finishing, message us and we will refund every dollar. No questions asked.',
 
   cta: 'Unlock everything · $197',
   ctaSub: 'Afterpay and Zip both work at checkout.',
-  decline: 'No thanks, I will keep doing it by hand',
+
+  /*
+   * The decline is a door, not a dead end.
+   *
+   * Someone who is not ready to pay is not necessarily gone; they usually want
+   * to understand what they would be buying. This sends them to the sales page
+   * that the rest of the funnel already points at, rather than dropping them
+   * back onto a report they have finished reading.
+   */
+  decline: 'Let me see how this works',
 } as const;
 
 interface Props {
@@ -171,7 +174,10 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
         aria-hidden
         style={{
           position: 'absolute', inset: 0, padding: '40px 24px', overflow: 'hidden',
-          filter: 'blur(7px)', opacity: 0.55, userSelect: 'none', pointerEvents: 'none',
+          /* Enough blur that no line can be read, little enough that it is
+             plainly a resume: the name, the headings and the shape of the
+             bullets all survive. Past about 4px it turns into wallpaper. */
+          filter: 'blur(3.2px)', opacity: 0.92, userSelect: 'none', pointerEvents: 'none',
         }}
       >
         <div style={{
@@ -195,26 +201,36 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
               alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 24,
             }}
           >
-            <Loader2 size={30} className="animate-spin" style={{ color: C.accentPetrol }} />
-            <p style={{
-              margin: '20px 0 0', fontFamily: landingType.display, fontWeight: 600,
-              fontSize: 'clamp(20px, 3.4vw, 26px)', color: C.textPrimary,
+            {/* A card, not loose text on the canvas. Three lines floating over a
+                blurred page read as a rendering fault; the same three inside a
+                bordered card read as a machine doing something. */}
+            <div style={{
+              width: '100%', maxWidth: 420,
+              background: C.bgSurface, border: `1px solid ${C.borderDefined}`,
+              borderRadius: 18, padding: '30px 28px', boxShadow: warm.shadow.lifted,
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
             }}>
-              {forWhat ? `Writing your application for ${forWhat}` : 'Writing your application'}
-            </p>
-            <div style={{ minHeight: 26, marginTop: 10 }}>
-              <AnimatePresence mode="wait">
-                <motion.p
-                  key={line}
-                  initial={{ opacity: 0, y: 5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -5 }}
-                  transition={{ duration: 0.25, ease: EASE }}
-                  style={{ margin: 0, fontSize: 15, color: C.textSecondary }}
-                >
-                  {BUILD_LINES[line]}
-                </motion.p>
-              </AnimatePresence>
+              <Loader2 size={28} className="animate-spin" style={{ color: C.accentPetrol }} />
+              <p style={{
+                margin: '18px 0 0', fontFamily: landingType.display, fontWeight: 600,
+                fontSize: 'clamp(19px, 3vw, 23px)', lineHeight: 1.25, color: C.textPrimary,
+              }}>
+                {forWhat ? `Writing your application for ${forWhat}` : 'Writing your application'}
+              </p>
+              <div style={{ minHeight: 24, marginTop: 8 }}>
+                <AnimatePresence mode="wait">
+                  <motion.p
+                    key={line}
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -5 }}
+                    transition={{ duration: 0.25, ease: EASE }}
+                    style={{ margin: 0, fontSize: 14.5, color: C.textSecondary }}
+                  >
+                    {BUILD_LINES[line]}
+                  </motion.p>
+                </AnimatePresence>
+              </div>
             </div>
           </motion.div>
         ) : (
@@ -298,32 +314,39 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
                 ))}
               </ul>
 
+              {/* The total and the price share the stack's right-hand column, so
+                  the eye falls straight down the numbers: value, then cost. */}
               <div style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12,
-                borderTop: `1px solid ${C.borderDefined}`, paddingTop: 10, marginBottom: 16,
-                fontSize: 12.5, letterSpacing: '0.05em', textTransform: 'uppercase', color: C.textMuted,
+                borderTop: `1px solid ${C.borderDefined}`, paddingTop: 12, marginBottom: 18,
+                display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2,
               }}>
-                <span>Total value</span>
-                <span style={{ fontSize: 15, fontWeight: 700, color: C.textPrimary }}>{OFFER.stackTotal}</span>
+                <div style={{
+                  display: 'flex', alignItems: 'baseline', gap: 10,
+                  fontSize: 12.5, letterSpacing: '0.05em', textTransform: 'uppercase', color: C.textMuted,
+                }}>
+                  <span>Total value</span>
+                  <span style={{
+                    fontSize: 15, fontWeight: 700, color: C.textMuted,
+                    textDecoration: 'line-through', fontVariantNumeric: 'tabular-nums',
+                  }}>
+                    {OFFER.stackTotal}
+                  </span>
+                </div>
+                <p style={{
+                  margin: '2px 0 0', fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em',
+                  color: C.textPrimary, fontVariantNumeric: 'tabular-nums',
+                }}>
+                  {OFFER.price}
+                </p>
+                <p style={{ margin: 0, fontSize: 13.5, color: C.textMuted }}>{OFFER.anchor}</p>
               </div>
 
-              <div style={{
-                padding: '14px 16px', marginBottom: 16, borderRadius: 12,
-                background: C.bgAlt, border: `1px solid ${C.borderDefined}`,
+              <p style={{
+                margin: '0 0 10px', fontSize: 15.5, fontWeight: 700, lineHeight: 1.45,
+                color: C.textPrimary,
               }}>
-                <p style={{ margin: 0, fontSize: 17, fontWeight: 700, color: C.textPrimary }}>
-                  <span style={{ textDecoration: 'line-through', color: C.textMuted, fontWeight: 600 }}>
-                    {OFFER.priceWas}
-                  </span>
-                  {'  '}{OFFER.priceNow}
-                </p>
-                <p style={{ margin: '5px 0 0', fontSize: 14, lineHeight: 1.55, color: C.textSecondary }}>
-                  {OFFER.priceLine}
-                </p>
-                <p style={{ margin: '8px 0 0', fontSize: 13.5, lineHeight: 1.55, color: C.textMuted }}>
-                  {OFFER.anchor}
-                </p>
-              </div>
+                {OFFER.speed}
+              </p>
 
               <div style={{
                 padding: '13px 16px', marginBottom: 18, borderRadius: 12,
@@ -333,15 +356,7 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
                   {OFFER.guaranteeName}
                 </p>
                 <p style={{ margin: '5px 0 0', fontSize: 14, lineHeight: 1.55, color: C.textSecondary }}>
-                  {OFFER.guarantee}{' '}
-                  <a
-                    href={OFFER.guaranteeHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ color: C.accentPetrol, fontWeight: 600 }}
-                  >
-                    {OFFER.guaranteeLink}
-                  </a>
+                  {OFFER.guarantee}
                 </p>
               </div>
 
@@ -364,16 +379,17 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
               </p>
 
               <div style={{ textAlign: 'center', marginTop: 14 }}>
-                <button
-                  type="button"
-                  onClick={onClose}
+                <a
+                  href={SALES_PAGE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   style={{
-                    background: 'none', border: 'none', cursor: 'pointer', padding: 4,
-                    fontSize: 13.5, color: C.textMuted, fontFamily: 'inherit', textDecoration: 'underline',
+                    display: 'inline-block', padding: 4,
+                    fontSize: 13.5, color: C.textMuted, textDecoration: 'underline',
                   }}
                 >
                   {OFFER.decline}
-                </button>
+                </a>
               </div>
             </motion.div>
           </motion.div>

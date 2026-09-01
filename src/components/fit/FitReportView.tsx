@@ -127,36 +127,6 @@ const NEXT_STEP: Record<FitReport['band'], string> = {
 const APPLICATION_ETA_MINUTES = 3;
 
 /**
- * The follow-up promise, tacked onto the corner of the next-step card.
- *
- * Deliberately reads as a stamp rather than a sentence: it is a standing fact
- * about every application, not advice about this one, and giving it the same
- * type as the copy around it would make it look like a fourth thing to read.
- */
-function FollowUpSticker() {
-  return (
-    <span
-      aria-label="Automated follow up with every application"
-      style={{
-        position: 'absolute', top: -14, right: 14,
-        width: 94, height: 94, borderRadius: '50%',
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
-        textAlign: 'center', padding: 8, boxSizing: 'border-box',
-        background: C.accentGold, color: '#fff',
-        transform: 'rotate(-9deg)',
-        boxShadow: '0 6px 16px -8px rgba(26,24,20,0.55)',
-        fontSize: 10.5, fontWeight: 800, lineHeight: 1.25,
-        letterSpacing: '0.01em', textTransform: 'uppercase',
-        pointerEvents: 'none',
-      }}
-    >
-      Automated follow&#8209;up with every application
-    </span>
-  );
-}
-
-/**
  * Three reasons a side, hard stop.
  *
  * A list of eight is a score wearing a disguise: people count them and compare
@@ -344,17 +314,6 @@ export function FitReportView({ report, onTailor, onCheckAnother, targetCity, sa
         borderRadius: warm.radius.card,
         display: 'flex', flexDirection: 'column', gap: 16,
       }}>
-        {/*
-          The follow-up promise, said on the first report someone ever sees
-          rather than only inside the tracker they reach a week later. It is the
-          proof of the argument the rest of the funnel makes: the edge is volume
-          and follow-up, and the follow-up is handled.
-
-          Only on apply. On a mismatch there is nothing to follow up, and a
-          badge selling the next thing sits badly next to an honest "no".
-        */}
-        {report.outcome === 'apply' && <FollowUpSticker />}
-
         {report.outcome === 'apply' ? (
           <>
             <div style={{ paddingRight: 96 }}>
