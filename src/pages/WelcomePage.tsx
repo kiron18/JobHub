@@ -1219,17 +1219,30 @@ export const WelcomePage: React.FC = () => {
           the only screen whose whole job is getting the file into the box, so a
           second thing to click must not compete with the dropzone and must not
           navigate them away from it. */}
-      <p style={{ textAlign: 'center', margin: '10px 0 0' }}>
+      <p style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        gap: 14, flexWrap: 'wrap', margin: '10px 0 0',
+      }}>
         <a
           href={POSITIONING_EXPLAINER_URL}
           target="_blank"
           rel="noopener noreferrer"
-          style={{
-            fontFamily: T.body, fontSize: 13.5, color: colors.textMuted,
-            textDecoration: 'underline', textUnderlineOffset: 3,
-          }}
+          style={quietLinkStyle}
         >
           Find out how
+        </a>
+        <span aria-hidden style={{ color: colors.borderDefined }}>·</span>
+        {/*
+          The way back in.
+
+          Signed out, this page IS the site, so without this there was no door
+          for somebody who already has an account — they had to know /auth
+          existed and type it. It stays as quiet as the link beside it and does
+          not open a new tab: unlike the explainer, this one is meant to take
+          you somewhere.
+        */}
+        <a href="/auth" style={quietLinkStyle}>
+          Already have an account? Log in
         </a>
       </p>
       </div>
@@ -1246,6 +1259,12 @@ export const WelcomePage: React.FC = () => {
  * the site's usual whisper of an edge disappears against a photo.
  */
 const PANEL_BORDER = 'rgba(26, 24, 20, 0.28)';
+
+/** The two links under the dropzone. Quiet on purpose: neither may compete with it. */
+const quietLinkStyle: React.CSSProperties = {
+  fontFamily: T.body, fontSize: 13.5, color: colors.textMuted,
+  textDecoration: 'underline', textUnderlineOffset: 3,
+};
 
 const bodyText: React.CSSProperties = { fontFamily: T.body, fontSize: 15.5, lineHeight: 1.65, color: colors.textSecondary, margin: '0 0 24px' };
 

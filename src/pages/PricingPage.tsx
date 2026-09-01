@@ -13,12 +13,22 @@ import { PrimaryCTA } from '../components/landing/shared/PrimaryCTA';
    One plan, one price, one promise. The page sells the outcome and the
    guarantee; the tool is only ever named as the mechanism that delivers them.
 
-   $100/mo maps to the live Stripe price "Job Hub System monthly". The 7 free
-   days are configured on the subscription in server/src/routes/stripe.ts, not
-   here, so this copy and that trial have to move together.                    */
+   $197/mo is the `premium` plan, the same price and the same Stripe price id
+   the in-app paywall sells. It used to be $100 on the `monthly` plan, which
+   meant somebody who met the $197 offer inside the product, clicked "let me see
+   how this works" and landed here was shown a different number for the same
+   thing. One price across the funnel or none of it is believable.
 
-const PRICE = '$100';
-const TRIAL_DAYS = 7;
+   THERE IS NO TRIAL ON THIS PLAN. `premium` is in NO_TRIAL_PLANS in
+   server/src/routes/stripe.ts, deliberately, so every word about seven free
+   days came out with the price change rather than being left to advertise
+   something checkout does not do. If a trial is ever wanted here, it is one
+   line on that set — and this copy has to move back at the same time.        */
+
+const PRICE = '$197';
+
+/** The plan key checkout is opened with. Must be the plan PRICE describes. */
+const PLAN_KEY = 'premium';
 
 const CTA_LABEL = 'Start my 5 interviews in 30 days →';
 
@@ -81,8 +91,8 @@ const STACK = [
 
 const FAQS = [
   {
-    q: `Is the first ${TRIAL_DAYS} days really free?`,
-    a: `Yes. You start a ${TRIAL_DAYS}-day trial with full access and nothing is charged until it ends. Cancel inside the trial and you pay nothing at all.`,
+    q: 'What do I pay today?',
+    a: `${PRICE}, and that is the whole price. There is no trial to forget to cancel, no setup fee and no second tier you find out about later. If you would rather try it before paying anything, the free tier gives you five documents and five job analyses with no card at all.`,
   },
   {
     q: 'Can I cancel?',
@@ -99,6 +109,43 @@ const FAQS = [
   {
     q: 'Do I have to pay to try it?',
     a: 'No. There is a free tier with 5 document generations and 5 job analyses, no card required. Use that first if you would rather see it work before you decide.',
+  },
+];
+
+/* ── Proof ───────────────────────────────────────────────────────────────────
+   Real people, real messages, nothing typed up by us.
+
+   The cards are screenshots the clients sent: a face and the message they wrote
+   the day it happened. That pairing is the whole reason they work — a typed
+   quote in a nice font is something anyone can write, and everybody knows it.
+
+   Names are redacted in the source images and are NOT invented here. Where a
+   first name is legible in the screenshot itself it is already public in the
+   image, so it is not restated in text either. The quotes below are transcribed
+   verbatim from LinkedIn messages, and each is attributed by the outcome the
+   message itself reports and nothing more.                                    */
+
+const PROOF_CARDS = Array.from({ length: 8 }, (_, i) => `/Assets/testimonials/card_${i + 1}.jpg`);
+
+const PROOF_QUOTES = [
+  {
+    quote:
+      'I have got a job as a Technical BA with TAC. Thank you for your support and assistance in helping me with the process.',
+    outcome: 'Technical Business Analyst, TAC',
+  },
+  {
+    quote:
+      'Hey, I just got a call from Inlight, they said I have been selected for the role and will send across the offer letter.',
+    outcome: 'Offer letter, Inlight',
+  },
+  {
+    quote:
+      'I broke the fear and despite the rain I managed to go and handed my resume to 5 companies which I applied through Seek and Indeed. I managed to speak to 2 HR people in that relevant company too.',
+    outcome: 'Five walk-ins and two HR conversations in a day',
+  },
+  {
+    quote: 'I have 2 interviews lined up next week, hopefully something works out!',
+    outcome: 'Two interviews in one week',
   },
 ];
 
@@ -313,14 +360,14 @@ export function PricingPage() {
     };
   }, []);
 
-  async function startTrial() {
+  async function startCheckout() {
     if (!user) {
       navigate('/auth?next=/pricing');
       return;
     }
     setLoading(true);
     try {
-      const { data } = await api.post('/stripe/checkout', { plan: 'monthly' });
+      const { data } = await api.post('/stripe/checkout', { plan: PLAN_KEY });
       window.location.href = data.url;
     } catch (err: any) {
       setLoading(false);
@@ -437,10 +484,10 @@ export function PricingPage() {
               hand.
             </p>
 
-            <PrimaryCTA label={loading ? 'Opening checkout…' : CTA_LABEL} onClick={startTrial} />
+            <PrimaryCTA label={loading ? 'Opening checkout…' : CTA_LABEL} onClick={startCheckout} />
 
             <p style={{ fontSize: '0.875rem', color: colors.textMuted, margin: '16px 0 0' }}>
-              {TRIAL_DAYS} days free, then {PRICE}/month. Cancel any time, in one click.
+              {PRICE}/month. Cancel any time, in one click.
             </p>
           </div>
 
@@ -593,7 +640,149 @@ export function PricingPage() {
         </div>
       </Section>
 
-      {/* 6 — the offer stack and the guarantee */}
+      {/* 6 — proof, immediately before the price */}
+      <Section id="proof">
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <Eyebrow>THE RECEIPTS</Eyebrow>
+        </div>
+        <div style={{ textAlign: 'center', maxWidth: 620, margin: '0 auto 40px' }}>
+          <H2>People who were where you are now.</H2>
+          <p style={{ fontSize: '1rem', lineHeight: 1.65, color: colors.textSecondary, margin: 0 }}>
+            These are messages clients sent the day it happened. Nothing here has
+            been rewritten, and no name has been added that they did not put there
+            themselves.
+          </p>
+        </div>
+
+        {/*
+          Their own screenshots, at a size you can actually read.
+
+          They already run as a muted marquee behind the front door, where they
+          are texture. Here they are the argument, so they get shown whole: the
+          face and the message together, natural proportions, nothing cropped —
+          the message sits at the bottom of every one of these, so any crop that
+          keeps the face throws away the sentence that matters.
+        */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gap: 16,
+            alignItems: 'start',
+            marginBottom: 48,
+          }}
+        >
+          {PROOF_CARDS.map((src, i) => (
+            <img
+              key={src}
+              src={src}
+              alt={`A client's message on the day they got their result (${i + 1} of ${PROOF_CARDS.length})`}
+              loading="lazy"
+              style={{
+                width: '100%',
+                height: 'auto',
+                display: 'block',
+                borderRadius: 12,
+                border: `1px solid ${colors.borderDefined}`,
+                boxShadow: '0 1px 2px rgba(26,24,20,0.04), 0 12px 30px -18px rgba(26,24,20,0.35)',
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Transcribed, because a screenshot of a long message is unreadable on a
+            phone and unusable to a screen reader. Verbatim, attributed only by
+            the outcome each message reports. */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+            gap: 20,
+            alignItems: 'start',
+          }}
+        >
+          {PROOF_QUOTES.map(({ quote, outcome }) => (
+            <figure
+              key={outcome}
+              style={{
+                margin: 0,
+                background: colors.bgSurface,
+                border: `1px solid ${colors.borderDefined}`,
+                borderRadius: 14,
+                padding: '22px 24px',
+              }}
+            >
+              <blockquote
+                style={{
+                  margin: 0,
+                  fontSize: '0.9375rem',
+                  lineHeight: 1.65,
+                  color: colors.textPrimary,
+                }}
+              >
+                &ldquo;{quote}&rdquo;
+              </blockquote>
+              <figcaption
+                style={{
+                  marginTop: 14,
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                  color: colors.accentPetrol,
+                }}
+              >
+                {outcome}
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      </Section>
+
+      {/* 7 — who is behind it */}
+      <Section alt id="about">
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: 'clamp(28px, 5vw, 56px)',
+            alignItems: 'center',
+            maxWidth: 900,
+            margin: '0 auto',
+          }}
+        >
+          <img
+            src="/Assets/about-me.png"
+            alt="Kiron, who runs Aussie Grad Careers, on a Melbourne street"
+            loading="lazy"
+            style={{
+              width: '100%',
+              height: 'auto',
+              display: 'block',
+              borderRadius: 16,
+              border: `1px solid ${colors.borderDefined}`,
+            }}
+          />
+          <div>
+            <Eyebrow>WHO YOU ARE BUYING FROM</Eyebrow>
+            <H2>I am the one who picks up when it does not work.</H2>
+            <p style={{ fontSize: '1rem', lineHeight: 1.7, color: colors.textSecondary, margin: '0 0 14px' }}>
+              I am Kiron. I built this because I watched good people send the same
+              resume three hundred times and get nothing back, and conclude the
+              problem was them. It usually is not. It is volume, and it is the
+              fact that nobody rewrites for the ad.
+            </p>
+            <p style={{ fontSize: '1rem', lineHeight: 1.7, color: colors.textSecondary, margin: 0 }}>
+              The guarantee below has my name on it, not a company&rsquo;s. If you
+              run the applications and the callbacks do not come, I audit your
+              profile and run them myself until they do. That is the whole reason
+              the number is what it is.
+            </p>
+          </div>
+        </div>
+      </Section>
+
+      {/* 8 — the offer stack and the guarantee */}
       <Section alt id="offer">
         <div style={{ maxWidth: 560, margin: '0 auto' }}>
           <div style={{ display: 'flex', justifyContent: 'center' }}>
@@ -626,7 +815,7 @@ export function PricingPage() {
                 </span>
               </div>
               <div style={{ fontSize: '0.875rem', color: colors.textMuted, marginTop: 8 }}>
-                First {TRIAL_DAYS} days free. Cancel any time.
+                Cancel any time, in one click.
               </div>
             </div>
 
@@ -680,7 +869,7 @@ export function PricingPage() {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'center' }}>
-              <PrimaryCTA label={loading ? 'Opening checkout…' : CTA_LABEL} onClick={startTrial} />
+              <PrimaryCTA label={loading ? 'Opening checkout…' : CTA_LABEL} onClick={startCheckout} />
             </div>
 
             <p
