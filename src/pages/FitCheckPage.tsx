@@ -145,12 +145,26 @@ export default function FitCheckPage() {
    * check they just ran was the free tier's whole promise and it was kept; this
    * is the door, and it is the first place in the flow where money is mentioned.
    *
-   * `plan` is the signal, and an admin account is treated as paid so the real
-   * workspace stays reachable for testing. A profile that has not loaded yet is
-   * treated as PAID, deliberately: showing the offer to somebody who has already
-   * bought, because a query was slow, is the one failure here that costs money.
+   * Three ways to be past this door, because the server already recognises
+   * three and the frontend only knew about two:
+   *
+   *   plan            — they bought something.
+   *   isAdmin         — owner and test logins, so the workspace stays reachable.
+   *   dashboardAccess — the manual grant. hasActiveAccess and isPaidOrExempt
+   *                     both honour it server-side, and this check did not, so
+   *                     an account granted access by hand was waved through
+   *                     every API call and then shown the offer modal anyway.
+   *                     It is also the right way to comp an account: unlike a
+   *                     fake plan, it does not land in the paying-client count
+   *                     on the admin dashboard.
+   *
+   * A profile that has not loaded yet is treated as PAID, deliberately: showing
+   * the offer to somebody who has already bought, because a query was slow, is
+   * the one failure here that costs money.
    */
-  const isFree = profile ? (profile.plan ?? 'free') === 'free' && !profile.isAdmin : false;
+  const isFree = profile
+    ? (profile.plan ?? 'free') === 'free' && !profile.isAdmin && profile.dashboardAccess !== true
+    : false;
 
   const goToApply = (companyOverride?: string) => {
     if (!result) return;

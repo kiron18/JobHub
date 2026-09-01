@@ -46,7 +46,27 @@ const BUILD_LINES = [
   'Checking every claim against your own history.',
 ] as const;
 
-const BUILD_LINE_MS = 1100;
+/**
+ * How long each build line holds.
+ *
+ * Slower than it needs to be, deliberately. This is the one moment in the funnel
+ * where the machine is visibly working on THEIR document, and rushing it turns
+ * the thing we want them to watch into a flicker they miss. At this pace the
+ * page behind fills in at a readable rhythm and the name at the top resolves
+ * before the offer lands on it.
+ */
+const BUILD_LINE_MS = 1700;
+
+/**
+ * The blur on the page behind, at the start of the build and at the end.
+ *
+ * It sharpens as the document fills. Starting softer and resolving is what makes
+ * it feel like something coming into being rather than a static image someone
+ * smeared, and finishing at 2.1px leaves the name and the section headings
+ * plainly theirs while the body text stays a texture rather than a read.
+ */
+const BLUR_START_PX = 3.4;
+const BLUR_END_PX = 2.1;
 
 /* ─── The offer ────────────────────────────────────────────────────────────── */
 
@@ -103,7 +123,16 @@ const OFFER = {
   guarantee:
     'Complete 10 applications and 5 outreach messages a day for 7 days straight. If you do that and do not land at least one interview or callback within 30 days of finishing, message us and we will refund every dollar. No questions asked.',
 
-  cta: 'Unlock everything · $197',
+  /*
+   * No price on the button.
+   *
+   * "$197 per month" is already set at 26px directly above it, so the button was
+   * charging them twice in the same glance — and the button's own "· $197" said
+   * it WITHOUT "per month", which is the one genuinely misleading thing in the
+   * box on a recurring plan. The number stays loud where it is accurate; the
+   * button names the action, with the guarantee immediately under it.
+   */
+  cta: 'Unlock everything',
   ctaSub: 'Afterpay and Zip both work at checkout.',
 
   /*
@@ -141,13 +170,16 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
    * only thing that reads is the shape: a name, then headings, then bullets
    * arriving. Paced to finish a little before the card does, because a document
    * that is still being written when the offer appears looks unfinished.
+   *
+   * Smaller steps on a shorter tick than the eye needs, so the text grows rather
+   * than jumping a paragraph at a time.
    */
   useEffect(() => {
     if (phase !== 'building') { setTyped(resumeMarkdown.length); return; }
     const total = resumeMarkdown.length;
     if (total === 0) return;
     const durationMs = BUILD_LINE_MS * BUILD_LINES.length * 0.85;
-    const tickMs = 45;
+    const tickMs = 32;
     const perTick = Math.max(1, Math.ceil(total / (durationMs / tickMs)));
     const id = window.setInterval(() => {
       setTyped((n) => {
@@ -192,6 +224,10 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
 
   const forWhat = [role, company].filter(Boolean).join(' at ');
 
+  /* Sharpens as the page fills, so the document resolves rather than sits there. */
+  const progress = resumeMarkdown.length > 0 ? Math.min(1, typed / resumeMarkdown.length) : 1;
+  const blurPx = (BLUR_START_PX - (BLUR_START_PX - BLUR_END_PX) * progress).toFixed(2);
+
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 120,
@@ -206,10 +242,13 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
         aria-hidden
         style={{
           position: 'absolute', inset: 0, padding: '40px 24px', overflow: 'hidden',
-          /* Enough blur that no line can be read, little enough that it is
-             plainly a resume: the name, the headings and the shape of the
-             bullets all survive. Past about 4px it turns into wallpaper. */
-          filter: 'blur(3.2px)', opacity: 0.92, userSelect: 'none', pointerEvents: 'none',
+          /* Enough blur that no line of body copy can be read, little enough
+             that it is plainly THEIR resume: the name at the top, the section
+             headings and the shape of the bullets all survive. Past about 4px it
+             stops being a document and turns into wallpaper. */
+          filter: `blur(${blurPx}px)`, opacity: 0.94,
+          transition: 'filter 240ms linear',
+          userSelect: 'none', pointerEvents: 'none',
         }}
       >
         <div style={{
@@ -380,18 +419,6 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
                 {OFFER.speed}
               </p>
 
-              <div style={{
-                padding: '13px 16px', marginBottom: 18, borderRadius: 12,
-                background: 'rgba(18,128,92,0.07)', borderLeft: `3px solid ${C.success}`,
-              }}>
-                <p style={{ margin: 0, fontSize: 14.5, fontWeight: 700, color: C.textPrimary }}>
-                  {OFFER.guaranteeName}
-                </p>
-                <p style={{ margin: '5px 0 0', fontSize: 14, lineHeight: 1.55, color: C.textSecondary }}>
-                  {OFFER.guarantee}
-                </p>
-              </div>
-
               <button
                 type="button"
                 onClick={checkout}
@@ -409,6 +436,28 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
               <p style={{ margin: '10px 0 0', fontSize: 13, textAlign: 'center', color: C.textMuted }}>
                 {OFFER.ctaSub}
               </p>
+
+              {/*
+                The guarantee sits UNDER the button, not above it.
+
+                Above, it was one more thing to read before deciding, and it read
+                as part of the pitch. Under the button it is what it actually is:
+                the answer to the hesitation someone feels with their finger over
+                the price. It is stated with its conditions rather than behind a
+                link, because the conditions are the offer, and the version they
+                read here is the version we honour.
+              */}
+              <div style={{
+                padding: '13px 16px', marginTop: 16, borderRadius: 12,
+                background: 'rgba(18,128,92,0.07)', borderLeft: `3px solid ${C.success}`,
+              }}>
+                <p style={{ margin: 0, fontSize: 14.5, fontWeight: 700, color: C.textPrimary }}>
+                  {OFFER.guaranteeName}
+                </p>
+                <p style={{ margin: '5px 0 0', fontSize: 14, lineHeight: 1.55, color: C.textSecondary }}>
+                  {OFFER.guarantee}
+                </p>
+              </div>
 
               <div style={{ textAlign: 'center', marginTop: 14 }}>
                 <a

@@ -214,7 +214,19 @@ function Notice({ children }: { children: React.ReactNode }) {
 
 export function FitReportView({ report, onTailor, onCheckAnother, targetCity, saved }: Props) {
   const verdict = VERDICT[report.band];
-  const applying = report.outcome === 'apply';
+  /**
+   * The verdict block reads ONE field.
+   *
+   * `band` and `outcome` are two independent answers from the model and nothing
+   * reconciles them, so a stretch that came back with outcome "search" put a
+   * red cross next to the words "Worth applying" in a green circle. The
+   * headline comes from `band`, so the tick has to as well — a badge that
+   * disagrees with its own heading is worse than either answer alone.
+   *
+   * `outcome` still owns the panel further down, which is a different question:
+   * not "can they win this" but "is this the best use of the next hour".
+   */
+  const positive = report.band !== 'mismatch';
 
   return (
     <motion.div
@@ -240,8 +252,8 @@ export function FitReportView({ report, onTailor, onCheckAnother, targetCity, sa
       <div style={{
         display: 'flex', alignItems: 'flex-start', gap: 14,
         padding: '18px 20px',
-        background: applying ? 'rgba(42,157,111,0.07)' : C.bgAlt,
-        border: `1px solid ${applying ? 'rgba(42,157,111,0.28)' : C.borderDefined}`,
+        background: positive ? 'rgba(42,157,111,0.07)' : C.bgAlt,
+        border: `1px solid ${positive ? 'rgba(42,157,111,0.28)' : C.borderDefined}`,
         borderRadius: warm.radius.card,
       }}>
         <span style={{
@@ -250,7 +262,7 @@ export function FitReportView({ report, onTailor, onCheckAnother, targetCity, sa
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           background: verdict.colour, color: '#fff',
         }}>
-          {applying ? <Check size={15} strokeWidth={3.5} /> : <X size={15} strokeWidth={3.5} />}
+          {positive ? <Check size={15} strokeWidth={3.5} /> : <X size={15} strokeWidth={3.5} />}
         </span>
         <span style={{ minWidth: 0 }}>
           <span style={{
@@ -360,17 +372,22 @@ export function FitReportView({ report, onTailor, onCheckAnother, targetCity, sa
           </>
         ) : (
           <>
-            <div>
-              <p style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700, color: C.textPrimary }}>
-                Spend the hour somewhere else
+            {/*
+              A heading, and then the roles.
+
+              This used to open with a paragraph arguing the verdict a second
+              time — "you do not match this role, no amount of rewrites closes
+              this gap". It was already said above, in the verdict block, and
+              said twice it stops being information and starts being a lecture.
+              Worse, `band` and `outcome` can disagree, so it could appear
+              directly under the words "Worth applying" and flatly contradict
+              them. The pills are the useful part; this just names them.
+            */}
+            {report.searchRoles.length > 0 && (
+              <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: C.textPrimary }}>
+                Other roles you might be interested in
               </p>
-              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: C.textSecondary }}>
-                {NEXT_STEP.mismatch}{' '}
-                {report.searchRoles.length > 0
-                  ? 'These are the titles your experience already answers.'
-                  : 'Look for roles closer to what you have actually done.'}
-              </p>
-            </div>
+            )}
 
             {report.searchRoles.length > 0 && (
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -397,24 +414,24 @@ export function FitReportView({ report, onTailor, onCheckAnother, targetCity, sa
             )}
 
             {/*
-              Two ways on, and the honest one leads.
+              Two ways on, and applying leads.
 
               The role pills above are already a Seek search, so a "search jobs
               on Seek" button beside them was the same door twice. What was
-              missing is the other one: someone who has been told no and wants
-              to go anyway. Telling them they cannot is not our call, and it is
-              the moment they are most willing to pay for the best possible
-              version of a long shot, so "apply anyway" is offered plainly and
-              without arguing the verdict a second time.
+              missing is the other one: someone who has read the verdict and
+              wants to go anyway. Telling them they cannot is not our call, and
+              it is the moment they are most willing to pay for the best
+              possible version of a long shot — so it takes the blue, and
+              checking another job sits beside it without competing for the eye.
             */}
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-              <PrimaryButton onClick={onCheckAnother}>
-                Check another job <ArrowRight size={17} />
+              <PrimaryButton onClick={onTailor}>
+                Apply Now <ArrowRight size={17} />
               </PrimaryButton>
 
               <button
                 type="button"
-                onClick={onTailor}
+                onClick={onCheckAnother}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 8,
                   padding: '12px 20px',
@@ -425,7 +442,7 @@ export function FitReportView({ report, onTailor, onCheckAnother, targetCity, sa
                   cursor: 'pointer', fontFamily: 'inherit',
                 }}
               >
-                Apply anyway
+                Check another job
               </button>
             </div>
           </>

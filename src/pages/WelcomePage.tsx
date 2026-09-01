@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Loader2, UploadCloud, ArrowRight, Plus, X, Check, ChevronDown, AlertTriangle, ListChecks, PencilLine, Sparkles, FileText } from 'lucide-react';
+import { Loader2, UploadCloud, ArrowRight, Plus, X, Check, ChevronDown, AlertTriangle, Eye, PencilLine, Sparkles, FileText } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
@@ -521,8 +521,8 @@ export const WelcomePage: React.FC = () => {
     const outstandingQs = questions.filter(q => !answers[q.id]).length;
 
     const tiles: Array<{ id: DiagnosisCardId; title: string; blurb: string; count?: number; tone: DiagnosisTone }> = [
+      { id: 'found', title: 'Overview', blurb: 'Read line by line. Not yours to fix.', count: findings.length, tone: 'neutral' },
       { id: 'gap', title: 'Your biggest gap', blurb: 'The one thing holding this resume back.', tone: 'alert' },
-      { id: 'found', title: 'Everything we found', blurb: 'Read line by line. Not yours to fix.', count: findings.length, tone: 'neutral' },
       { id: 'need', title: 'What we need to fix', blurb: outstandingQs > 0 ? 'Only you can tell us these.' : 'All answered. Nothing waiting on you.', count: outstandingQs, tone: 'action' },
     ];
 
@@ -539,11 +539,16 @@ export const WelcomePage: React.FC = () => {
         <p style={{
           fontFamily: T.body, fontWeight: 700, letterSpacing: '-0.01em',
           fontSize: 'clamp(17px, 2.6vw, 21px)', lineHeight: 1.35,
-          color: colors.textPrimary, margin: '0 0 22px',
+          color: colors.textPrimary, margin: '0 0 22px', textAlign: 'center',
         }}>
+          {/* Two lines, deliberately. The first is the diagnosis and the second
+              is the way out of it, and they land harder as two beats than as
+              one long sentence that wraps wherever the viewport decides. */}
           {firstName
-            ? `Hey ${firstName}, we've found where you're losing interviews and have a plan to fix it.`
-            : "We've found where you're losing interviews and have a plan to fix it."}
+            ? `Hey ${firstName}, we've found where you're losing interviews`
+            : "We've found where you're losing interviews"}
+          <br />
+          and we have a plan to fix it.
         </p>
 
         {/* Three tiles, not one scroll. Someone landing here has just been told
@@ -824,9 +829,7 @@ export const WelcomePage: React.FC = () => {
           gap: 12, marginBottom: 10,
         }}>
           <span style={{ fontFamily: T.body, fontSize: 13, color: colors.textMuted }}>
-            {editing
-              ? 'Change anything that is not right. This is the copy we send.'
-              : 'Something not quite right? You can change it before we send it.'}
+            {editing ? 'Change anything that is not right. This is the copy we send.' : ''}
           </span>
           <button
             onClick={() => void toggleEditing()}
@@ -1416,7 +1419,7 @@ type DiagnosisTone = 'alert' | 'action' | 'neutral';
  */
 const DIAGNOSIS_ICONS: Record<DiagnosisCardId, LucideIcon> = {
   gap: AlertTriangle,
-  found: ListChecks,
+  found: Eye,
   need: PencilLine,
 };
 
