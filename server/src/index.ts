@@ -295,6 +295,13 @@ async function ensureColumns() {
         ADD COLUMN IF NOT EXISTS "ratingComment" TEXT,
         ADD COLUMN IF NOT EXISTS "ratedAt" TIMESTAMP(3);
     `);
+    // The welcome flow refuses to save an edited resume without this column, and
+    // migrate-safe.js deliberately starts the app even when a migration did not
+    // apply. Belt and braces, same as every other column above.
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "WelcomeSession"
+        ADD COLUMN IF NOT EXISTS "resumeEditedAt" TIMESTAMP(3);
+    `);
     await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS "SponsorLead" (
         id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
