@@ -17,9 +17,9 @@ interface Props {
   variant?: Variant;
 }
 
-const FULL = `Your diagnostic is yours to keep, free. If you want to act on what it found, three months of full access is $197 — Afterpay splits that into four payments.`;
-const COMPACT = `Tailored documents for this role unlock with 3-Month Access. $65 a month.`;
-const INLINE = `3-Month Access — $65 a month`;
+const FULL = `Your diagnostic is yours to keep, free. If you want to act on what it found, 30 days of full access is $197, which is less than $50 a week. Afterpay splits that into four payments.`;
+const COMPACT = `Tailored documents for this role unlock with 30-Day Access. $197 once.`;
+const INLINE = `30-Day Access, $197 once`;
 const AFTERPAY_INLINE = `Afterpay available`;
 
 const LINES: Record<Variant, { body: string; afterpay?: string }> = {

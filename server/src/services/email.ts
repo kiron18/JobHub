@@ -626,7 +626,7 @@ export async function sendAdminPaymentAlert(params: {
         'They have NO account, so this is not a grant_access case. Run from server/:',
         `  npx tsx src/scripts/onboard_paid.ts ${userEmail}`,
         '',
-        'That creates their login, opens 90 days of access, and emails them a',
+        'That creates their login, opens their access window, and emails them a',
         'set-password link. Add --dry-run first to see it without sending.',
         '',
         'One reminder a week while this stays unresolved, then nothing once they',

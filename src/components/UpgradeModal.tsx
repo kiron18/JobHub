@@ -131,18 +131,18 @@ export const UpgradeModal: React.FC<Props> = ({ trigger, onClose }) => {
           </div>
           <h2 className="text-xl font-black text-[#1A1814] mb-1">{TRIGGER_HEADLINES[trigger]}</h2>
           <p className="text-sm text-[#5C5750] mb-6">
-            One payment unlocks full access for 90 days. No subscription, no recurring charge.
+            One payment unlocks full access for 30 days. No subscription, no recurring charge.
           </p>
 
           <div className="max-w-xs mx-auto mb-5">
             <PlanCard
-              name="3-Month Access"
+              name="30-Day Access"
               price="$197 AUD"
-              weekly="Full access for your job hunt"
-              billing="One payment, 90 days access"
+              weekly="Less than $50 per week"
+              billing="One payment, 30 days access"
               trial={null}
-              savings={"One payment of $197 for three months. That's about $65 a month.\nAfterpay and Zip both work at checkout."}
-              cta="Get 3-Month Access"
+              savings={"One payment of $197 for 30 days of everything.\nAfterpay and Zip both work at checkout."}
+              cta="Unlock everything"
               recommended
               onSelect={() => handleCheckout('three_month')}
               loading={loading === 'three_month'}
@@ -150,7 +150,7 @@ export const UpgradeModal: React.FC<Props> = ({ trigger, onClose }) => {
           </div>
 
           <p className="text-center text-[11px] text-[#8B847B] italic">
-            "The average Australian graduate earns $1,200+ per week in their first role. This is how you get there."
+            7-day money-back guarantee. See the refund policy for what counts as using it.
           </p>
         </motion.div>
       </motion.div>

@@ -6,6 +6,7 @@ import { sendAdminPaymentAlert } from '../services/email';
 import { onboardPaidCustomer } from '../services/onboarding';
 import { raiseSkoolUpgrade } from '../services/skoolUpgrade';
 import { recordLeadSignal } from '../services/salesLead';
+import { accessExpiryFromNow, PAID_ACCESS_DAYS } from '../lib/accessWindow';
 
 export const EXEMPT_EMAILS = [
   'kamiproject2021@gmail.com',
@@ -133,8 +134,11 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
         }
 
         if (isOneTime) {
-          // 3-month bundle: one-time payment
-          const accessExpiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+          // The one-time pass. PAID_ACCESS_DAYS is the single source of truth for
+          // how long it runs, and it moved from 90 to 30 when the offer changed.
+          // The `three_month` plan key is historical: live rows carry it and every
+          // access check reads it, so it stays.
+          const accessExpiresAt = accessExpiryFromNow();
           await prisma.candidateProfile.update({
             where: { userId },
             data: {
@@ -145,7 +149,7 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
               dashboardAccess: true,
             },
           });
-          console.log(`[stripe/webhook] 3-month access granted to userId=${userId}, expires=${accessExpiresAt.toISOString()}`);
+          console.log(`[stripe/webhook] ${PAID_ACCESS_DAYS}-day access granted to userId=${userId}, expires=${accessExpiresAt.toISOString()}`);
         } else {
           // Monthly or annual subscription — may be in trial
           let trialEndDate: Date | null = null;

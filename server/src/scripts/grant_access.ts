@@ -21,6 +21,7 @@
 import { PrismaClient } from '@prisma/client';
 import dotenv from 'dotenv';
 import path from 'path';
+import { accessExpiryFromNow, PAID_ACCESS_DAYS } from '../lib/accessWindow';
 
 dotenv.config({ path: path.join(__dirname, '..', '..', '.env') });
 
@@ -63,7 +64,16 @@ async function main() {
     dashboardAccess: true,
   };
   if (planArg === 'three_month') {
-    data.accessExpiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+    // Default is the self-serve pass. `--days 90` is how a coaching client on
+    // the program gets their own window without changing what everyone buys.
+    const daysFlag = process.argv.indexOf('--days');
+    const days = daysFlag !== -1 ? Number(process.argv[daysFlag + 1]) : PAID_ACCESS_DAYS;
+    if (!Number.isFinite(days) || days <= 0) {
+      console.error('--days must be a positive number of days');
+      process.exit(1);
+    }
+    data.accessExpiresAt = accessExpiryFromNow(days);
+    console.log(`  granting ${days} days of access`);
   }
 
   console.log(`Found profile: ${profile.name ?? '(no name)'} <${profile.email}>`);

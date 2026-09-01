@@ -143,9 +143,20 @@ function Refunds() {
         <ul>
           <li><strong style={{ color: warm.colors.textPrimary }}>Monthly plan:</strong> requests made within 7 days of your first charge (after the free trial) will generally be approved.</li>
           <li><strong style={{ color: warm.colors.textPrimary }}>Annual plan:</strong> requests made within 14 days of your first charge will generally be approved.</li>
-          <li><strong style={{ color: warm.colors.textPrimary }}>3-Month Bundle:</strong> requests made within 14 days of purchase will generally be approved if the service has not been substantially used.</li>
+          <li><strong style={{ color: warm.colors.textPrimary }}>30-Day Pass:</strong> covered by the 7-day money-back guarantee below.</li>
         </ul>
         <p>Change-of-mind refunds outside these windows are not guaranteed but can be requested.</p>
+      </Section>
+      <Section title="The 7-day money-back guarantee (30-Day Pass)">
+        <p>The 30-Day Pass carries a money-back guarantee for the first 7 days, on one condition: that you actually use it. Used properly for a week and it has done nothing for you, ask and you get your money back in full.</p>
+        <p>"Used properly" means, on each day of those 7 days:</p>
+        <ul>
+          <li>10 job applications sent</li>
+          <li>5 outreach messages sent</li>
+        </ul>
+        <p>We do not ask you to prove any of this. Your applications and outreach are already recorded in your own tracker, and that is what we read when a request comes in, so there is nothing for you to collect or screenshot.</p>
+        <p>We hold to this condition because it is also the method. Ten applications and five messages a day is the volume the whole service is built around, and it is what makes the difference for the people it works for. If you have done that for a week and have nothing to show for it, we would rather return your money than keep it.</p>
+        <p>Outside the 7 days, or where the condition has not been met, refunds are at our discretion and are considered case by case. This does not limit your rights under the Australian Consumer Law, which are set out above and which nothing here can take away.</p>
       </Section>
       <Section title="How to request a refund">
         <p>Email <a href="mailto:kiron@aussiegradcareers.com.au" style={{ color: warm.colors.accentPetrol }}>kiron@aussiegradcareers.com.au</a> with your account email and reason. We aim to respond within 2 business days. Approved refunds are processed via Stripe and appear within 5-10 business days.</p>
@@ -172,8 +183,9 @@ function Cancellation() {
           <li>No partial refunds are issued for the remaining days (unless required by the ACL)</li>
         </ul>
       </Section>
-      <Section title="3-Month Bundle">
-        <p>The 3-Month Bundle is a one-time payment. There is no recurring subscription to cancel. Your access runs for 90 days from the date of purchase and expires automatically.</p>
+      <Section title="30-Day Pass">
+        <p>The 30-Day Pass is a one-time payment. There is no recurring subscription to cancel. Your access runs for 30 days from the date of purchase and expires automatically.</p>
+        <p>Anyone who bought the earlier 3-Month Bundle keeps the 90 days they paid for. That expiry is already recorded on the account and is not affected by this change.</p>
       </Section>
       <Section title="Free trial cancellation">
         <p>If you are on a free trial, you must cancel before day 8 to avoid being charged. Cancelling during the trial ends your access at the end of the trial period.</p>
@@ -192,7 +204,7 @@ function Trial() {
   return (
     <Policy title="Free Trial Terms" updated="April 2026">
       <Section title="Which plans include a free trial">
-        <p>The Monthly and Annual plans include a 7-day free trial. The 3-Month Bundle does not include a free trial as it is a one-time payment.</p>
+        <p>The Monthly and Annual plans include a 7-day free trial. The 30-Day Pass does not include a free trial as it is a one-time payment; it carries the 7-day money-back guarantee instead.</p>
       </Section>
       <Section title="How the trial works">
         <ul>

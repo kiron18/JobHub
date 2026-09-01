@@ -126,7 +126,9 @@ export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan
   }
 
   const isPaid = plan !== 'free';
-  const planLabel = plan === 'annual' ? 'annual' : plan === 'three_month' ? '3-month' : 'monthly';
+  // `three_month` is the historical key for the one-time pass. It opens 30
+  // days now, so it is never shown to a customer under its old name.
+  const planLabel = plan === 'annual' ? 'annual' : plan === 'three_month' ? '30-day' : 'monthly';
 
   return (
     <AnimatePresence>

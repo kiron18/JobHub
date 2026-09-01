@@ -55,28 +55,63 @@ const BUILD_LINE_MS = 1100;
  *
  * The claims are deliberately about what the product does and what it costs,
  * never about outcomes we cannot measure. No invented success rates, no "3x
- * more interviews", no fake countdown. The price anchor is a published ABS-type
- * figure about graduate pay and it is framed as what a week of work pays, not
- * as a promise about their week.
+ * more interviews", and no countdown, because a fake deadline in front of
+ * somebody who has been rejected forty times costs more than it earns. If a
+ * real one ever exists (a price rise, a cohort date), it can be said plainly.
  */
 const OFFER = {
-  title: 'Your application is written. Unlock it.',
+  /*
+   * The headline is the one sentence a competitor cannot copy.
+   *
+   * Everyone in this market tells a job seeker their resume is the problem. We
+   * have just told this person, for free, that a job was not worth their time.
+   * Naming that is the whole pitch: what they are buying is the judgement they
+   * have already had a demonstration of.
+   */
+  title: 'We just told you not to apply for a job.',
   subtitle:
-    'One payment opens every document, for every job you apply to, for the next 90 days.',
+    'That is what you are paying for. Your application for this role is already written. Unlock it, and every one after it, for the next 30 days.',
+
+  /*
+   * Anchored values, one line each, every one a thing that is actually built.
+   * If a line is ever cut from the product, cut it from here the same day: a
+   * stack that oversells by one line is a refund request with a receipt.
+   */
   stack: [
-    'A resume rewritten for each job, in the ad’s own language, in about four minutes',
-    'A cover letter that answers this employer, not a template with the name swapped',
-    'Selection criteria written out for government and council roles',
-    'The follow-up email that gets your application read, and the day to send it',
-    'A tracker that tells you what to do today, so nothing goes silent',
+    { item: 'A resume rewritten for every job you paste', value: '$600' },
+    { item: 'A cover letter that answers each ad', value: '$300' },
+    { item: 'Selection criteria for government and council roles', value: '$300' },
+    { item: 'Interview prep that runs during the call', value: '$250' },
+    { item: 'Follow-up emails, written and scheduled', value: '$150' },
+    { item: 'Tracker, daily target and the community', value: '$350' },
   ],
-  priceLine: '$197 once. Not a subscription, and nothing recurring.',
-  priceSub: '90 days of full access, which is about how long a real job hunt runs.',
-  anchor:
-    'A graduate week in Australia pays around $1,200. This is a sixth of one week, paid once.',
-  cta: 'Unlock my application',
+  stackTotal: '$1,950',
+
+  priceWas: '$1,950',
+  priceNow: '$197 today',
+  priceLine: 'One payment. Not a subscription, and nothing to cancel.',
+  /* Only true at 30 days: $197 over about 4.3 weeks. If the window ever moves,
+     this line moves with it, and PAID_ACCESS_DAYS on the server decides it. */
+  anchor: 'Less than $50 per week.',
+
+  /*
+   * One sentence, and the conditions one tap away on the terms page.
+   *
+   * The conditions are real and they are enforced (ten applications and five
+   * outreach messages a day, read off their own tracker), but a paragraph of
+   * qualifiers inside the box kills the reassurance the guarantee exists to
+   * give. What it must never be is undisclosed: a guarantee advertised without
+   * its conditions and then refused on them is misleading conduct under
+   * Australian Consumer Law, which is why the link is here and not omitted.
+   */
+  guaranteeName: '7-day money-back guarantee',
+  guarantee: 'Use it properly for a week. If it does nothing for you, ask and you get your money back.',
+  guaranteeLink: 'What counts as using it',
+  guaranteeHref: '/legal/refunds',
+
+  cta: 'Unlock everything · $197',
   ctaSub: 'Afterpay and Zip both work at checkout.',
-  decline: 'Not yet, take me back',
+  decline: 'No thanks, I will keep doing it by hand',
 } as const;
 
 interface Props {
@@ -244,29 +279,69 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
                 {OFFER.subtitle}
               </p>
 
-              <ul style={{ listStyle: 'none', margin: '0 0 18px', padding: 0, display: 'grid', gap: 9 }}>
-                {OFFER.stack.map((item) => (
-                  <li key={item} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                    <span style={{ color: C.success, flexShrink: 0, marginTop: 2 }}>
+              <ul style={{ listStyle: 'none', margin: '0 0 10px', padding: 0, display: 'grid', gap: 9 }}>
+                {OFFER.stack.map(({ item, value }) => (
+                  <li key={item} style={{
+                    display: 'grid', gridTemplateColumns: '18px 1fr auto', gap: 10, alignItems: 'start',
+                  }}>
+                    <span style={{ color: C.success, marginTop: 2 }}>
                       <Check size={15} strokeWidth={3} />
                     </span>
-                    <span style={{ fontSize: 14.5, lineHeight: 1.55, color: C.textPrimary }}>{item}</span>
+                    <span style={{ fontSize: 14.5, lineHeight: 1.5, color: C.textPrimary }}>{item}</span>
+                    <span style={{
+                      fontSize: 13, color: C.textMuted, whiteSpace: 'nowrap',
+                      fontVariantNumeric: 'tabular-nums', paddingLeft: 8,
+                    }}>
+                      {value}
+                    </span>
                   </li>
                 ))}
               </ul>
 
               <div style={{
-                padding: '14px 16px', marginBottom: 18, borderRadius: 12,
+                display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12,
+                borderTop: `1px solid ${C.borderDefined}`, paddingTop: 10, marginBottom: 16,
+                fontSize: 12.5, letterSpacing: '0.05em', textTransform: 'uppercase', color: C.textMuted,
+              }}>
+                <span>Total value</span>
+                <span style={{ fontSize: 15, fontWeight: 700, color: C.textPrimary }}>{OFFER.stackTotal}</span>
+              </div>
+
+              <div style={{
+                padding: '14px 16px', marginBottom: 16, borderRadius: 12,
                 background: C.bgAlt, border: `1px solid ${C.borderDefined}`,
               }}>
-                <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: C.textPrimary }}>
-                  {OFFER.priceLine}
+                <p style={{ margin: 0, fontSize: 17, fontWeight: 700, color: C.textPrimary }}>
+                  <span style={{ textDecoration: 'line-through', color: C.textMuted, fontWeight: 600 }}>
+                    {OFFER.priceWas}
+                  </span>
+                  {'  '}{OFFER.priceNow}
                 </p>
                 <p style={{ margin: '5px 0 0', fontSize: 14, lineHeight: 1.55, color: C.textSecondary }}>
-                  {OFFER.priceSub}
+                  {OFFER.priceLine}
                 </p>
                 <p style={{ margin: '8px 0 0', fontSize: 13.5, lineHeight: 1.55, color: C.textMuted }}>
                   {OFFER.anchor}
+                </p>
+              </div>
+
+              <div style={{
+                padding: '13px 16px', marginBottom: 18, borderRadius: 12,
+                background: 'rgba(18,128,92,0.07)', borderLeft: `3px solid ${C.success}`,
+              }}>
+                <p style={{ margin: 0, fontSize: 14.5, fontWeight: 700, color: C.textPrimary }}>
+                  {OFFER.guaranteeName}
+                </p>
+                <p style={{ margin: '5px 0 0', fontSize: 14, lineHeight: 1.55, color: C.textSecondary }}>
+                  {OFFER.guarantee}{' '}
+                  <a
+                    href={OFFER.guaranteeHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: C.accentPetrol, fontWeight: 600 }}
+                  >
+                    {OFFER.guaranteeLink}
+                  </a>
                 </p>
               </div>
 

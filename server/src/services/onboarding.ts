@@ -19,6 +19,7 @@ import { supabase } from '../lib/supabase';
 import { prisma } from '../index';
 import { sendClientOnboardingEmail } from './email';
 import { PUBLIC_APP_URL } from '../lib/appUrl';
+import { accessExpiryFromNow, PAID_ACCESS_DAYS } from '../lib/accessWindow';
 
 /**
  * CandidateProfile.email is unique. When `userId`'s login is about to take
@@ -74,6 +75,14 @@ async function findAuthUserByEmail(email: string): Promise<{ id: string } | null
 export async function onboardPaidCustomer(params: {
   email: string;
   stripeCustomerId?: string | null;
+  /**
+   * How many days of access to open. Defaults to the self-serve pass.
+   *
+   * A coaching client is a different sale with its own window, so their
+   * onboarding passes PROGRAM_ACCESS_DAYS explicitly rather than relying on
+   * whatever the current self-serve offer happens to be.
+   */
+  accessDays?: number;
 }): Promise<OnboardResult> {
   const email = params.email.toLowerCase().trim();
   if (!email) throw new Error('onboardPaidCustomer called without an email');
@@ -100,11 +109,12 @@ export async function onboardPaidCustomer(params: {
     console.log(`[onboarding] Created Supabase login for ${email} → userId=${authUserId}`);
   }
 
-  // 2. Ensure a CandidateProfile exists AND grant 3 months of full access.
+  // 2. Ensure a CandidateProfile exists AND open full access.
   //    Paying is the entitlement — the moment they pay we open the whole site
-  //    for 90 days, regardless of whether they've finished onboarding yet.
+  //    for the length of the pass, regardless of whether they've finished
+  //    onboarding yet.
   await reconcileProfileEmail(authUserId, email);
-  const accessExpiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+  const accessExpiresAt = accessExpiryFromNow(params.accessDays ?? PAID_ACCESS_DAYS);
   const grant = {
     plan: 'three_month',
     planStatus: 'active',

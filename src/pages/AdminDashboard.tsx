@@ -297,7 +297,7 @@ function OverviewTab({ stats }: { stats: Stats }) {
     RESUME: 'Resume', COVER_LETTER: 'Cover Letter', STAR_RESPONSE: 'Selection Criteria',
   };
   const planLabels: Record<string, string> = {
-    free: 'Free', monthly: 'Monthly', three_month: '3-Month Bundle', annual: 'Annual',
+    free: 'Free', monthly: 'Monthly', three_month: '30-Day Pass', annual: 'Annual',
   };
 
   return (
