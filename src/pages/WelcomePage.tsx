@@ -180,6 +180,10 @@ export const WelcomePage: React.FC = () => {
     () => suggestCuts(editing ? editBuffer : cleanResume),
     [editing, editBuffer, cleanResume],
   );
+  /** Where the length warning on the page corner scrolls to. */
+  const cutsRef = useRef<HTMLDivElement>(null);
+  /** The two sentences on why the last edit is theirs. See OwnershipNote. */
+  const [ownershipOpen, setOwnershipOpen] = useState(false);
 
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -828,9 +832,33 @@ export const WelcomePage: React.FC = () => {
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           gap: 12, marginBottom: 10,
         }}>
-          <span style={{ fontFamily: T.body, fontSize: 13, color: colors.textMuted }}>
-            {editing ? 'Change anything that is not right. This is the copy we send.' : ''}
-          </span>
+          {editing ? (
+            <span style={{ fontFamily: T.body, fontSize: 13, color: colors.textMuted }}>
+              Change anything that is not right. This is the copy we send.
+            </span>
+          ) : (
+            /*
+              The question people actually have when a machine that just
+              rewrote their resume then asks them to edit it, answered before
+              they have to ask it.
+
+              It sits on the reading side of the toggle rather than in the
+              editor, because it is the reason to press Edit, not a note for
+              somebody already typing. Quiet, and it opens two sentences: the
+              answer only lands if it costs nothing to go and read.
+            */
+            <button
+              type="button"
+              onClick={() => setOwnershipOpen(true)}
+              style={{
+                background: 'transparent', border: 'none', padding: 0, textAlign: 'left',
+                fontFamily: T.body, fontSize: 13, color: colors.textMuted,
+                textDecoration: 'underline', textUnderlineOffset: 3, cursor: 'pointer',
+              }}
+            >
+              Why don't we just do this for you?
+            </button>
+          )}
           <button
             onClick={() => void toggleEditing()}
             disabled={savingEdit}
@@ -852,6 +880,10 @@ export const WelcomePage: React.FC = () => {
 
         {editing && <FormattingHelp />}
 
+        <AnimatePresence>
+          {ownershipOpen && <OwnershipNote onClose={() => setOwnershipOpen(false)} />}
+        </AnimatePresence>
+
         {/* Rendered as a page, not a text box — people trust what looks like a document. */}
         <div className="bank-paper" style={{ position: 'relative' }}>
           {/*
@@ -865,19 +897,51 @@ export const WelcomePage: React.FC = () => {
             of the document, which is what it is — and it is recomputed on every
             save, so they watch three pages become two as they cut.
           */}
-          {pageCount !== null && (
-            <span style={{
+          {pageCount !== null && (() => {
+            /*
+              Over two pages, the badge stops being a fact and becomes a
+              warning.
+
+              Two pages is the Australian norm, so three is the single most
+              common thing wrong with a resume that arrives here, and a neutral
+              grey count says nothing about that. It turns amber, takes a
+              triangle, and becomes a button, because a warning that names a
+              problem and then leaves you to find the fix yourself is only half
+              the feedback. The advice is already on this page, further down;
+              this is the way to it.
+
+              It is only a button when there is somewhere to go. If the cut
+              rules had nothing honest to say, the block below never renders,
+              and a button that scrolls to nothing is worse than a plain count.
+            */
+            const tooLong = pageCount > 2;
+            const canJump = tooLong && cuts.length > 0;
+            const shared: React.CSSProperties = {
               position: 'absolute', top: 14, right: 14,
               display: 'inline-flex', alignItems: 'center', gap: 6,
               padding: '4px 11px', borderRadius: 99,
-              background: colors.bgAlt, border: `1px solid ${colors.borderDefined}`,
               fontFamily: T.body, fontSize: 11.5, fontWeight: 700,
-              letterSpacing: '0.04em', color: colors.textSecondary, whiteSpace: 'nowrap',
-              zIndex: 1,
-            }}>
-              <FileText size={12} /> {pageCount} page{pageCount === 1 ? '' : 's'}
-            </span>
-          )}
+              letterSpacing: '0.04em', whiteSpace: 'nowrap', zIndex: 1,
+              background: tooLong ? OVERLONG_BG : colors.bgAlt,
+              border: `1px solid ${tooLong ? OVERLONG_BORDER : colors.borderDefined}`,
+              color: tooLong ? OVERLONG_INK : colors.textSecondary,
+            };
+            const label = <>{pageCount} page{pageCount === 1 ? '' : 's'}</>;
+            const icon = tooLong ? <AlertTriangle size={12} /> : <FileText size={12} />;
+
+            if (!canJump) return <span style={shared}>{icon} {label}</span>;
+
+            return (
+              <button
+                type="button"
+                onClick={() => cutsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                title="Two pages is the Australian norm. See what to cut."
+                style={{ ...shared, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 }}
+              >
+                {icon} {label}
+              </button>
+            );
+          })()}
 
           {editing ? (
             /*
@@ -924,9 +988,9 @@ export const WelcomePage: React.FC = () => {
           rules have nothing honest to say they say nothing.
         */}
         {pageCount !== null && pageCount > 2 && cuts.length > 0 && (
-          <div style={{
+          <div ref={cutsRef} style={{
             marginTop: 14, padding: '16px 18px', borderRadius: 12,
-            background: colors.bgSurface, border: `1px solid ${colors.borderDefined}`,
+            background: OVERLONG_BG, border: `1px solid ${OVERLONG_BORDER}`,
           }}>
             <p style={{
               margin: '0 0 12px', fontFamily: T.body, fontSize: 14, fontWeight: 700,
@@ -1132,6 +1196,43 @@ export const WelcomePage: React.FC = () => {
   return (
     <>
       <TestimonialWash />
+      {/*
+        The way back in, in the corner where a returning user looks for it.
+
+        It used to be a link under the dropzone, level with the explainer, which
+        put the door for people who already have an account in the same breath
+        as the pitch for people who do not. In the corner it is findable without
+        being part of the argument.
+
+        It leaves the moment a file lands. From that point the screen has one
+        job — parse, then claim — and a log-in button sitting over it is an
+        invitation to abandon a resume that is already halfway uploaded. The
+        account they are about to sign into is the one this upload creates.
+      */}
+      <AnimatePresence>
+        {step === 'upload' && !file && (
+          <motion.a
+            key="login"
+            href="/auth"
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.22, ease: EASE }}
+            style={{
+              position: 'fixed', top: 20, right: 24, zIndex: 3,
+              display: 'inline-flex', alignItems: 'center',
+              padding: '9px 18px', borderRadius: 99,
+              background: colors.bgSurface,
+              border: `1px solid ${PANEL_BORDER}`,
+              boxShadow: '0 1px 2px rgba(26,24,20,0.05), 0 10px 24px -18px rgba(26,24,20,0.45)',
+              fontFamily: T.body, fontSize: 13.5, fontWeight: 700,
+              color: colors.accentPetrol, textDecoration: 'none',
+            }}
+          >
+            Log in
+          </motion.a>
+        )}
+      </AnimatePresence>
       <Shell wide onWash>
       {/* A panel with an edge, not a glow. The testimonials behind used to be
           hidden under a radial white bloom, which left the content floating in
@@ -1231,19 +1332,6 @@ export const WelcomePage: React.FC = () => {
         >
           Find out how
         </a>
-        <span aria-hidden style={{ color: colors.borderDefined }}>·</span>
-        {/*
-          The way back in.
-
-          Signed out, this page IS the site, so without this there was no door
-          for somebody who already has an account — they had to know /auth
-          existed and type it. It stays as quiet as the link beside it and does
-          not open a new tab: unlike the explainer, this one is meant to take
-          you somewhere.
-        */}
-        <a href="/auth" style={quietLinkStyle}>
-          Already have an account? Log in
-        </a>
       </p>
       </div>
       </Shell>
@@ -1259,6 +1347,19 @@ export const WelcomePage: React.FC = () => {
  * the site's usual whisper of an edge disappears against a photo.
  */
 const PANEL_BORDER = 'rgba(26, 24, 20, 0.28)';
+
+/**
+ * The one warning colour on the resume screen.
+ *
+ * Amber, not red. Three pages is a thing to fix before sending, not a failure,
+ * and the palette here is white, blue and gold — a red alert box would be the
+ * loudest thing on a screen whose whole point is the document. The badge and
+ * the block of advice share these three values on purpose: the warning and its
+ * fix have to read as one thing, or the badge looks like it points nowhere.
+ */
+const OVERLONG_BG = 'rgba(217, 119, 6, 0.08)';
+const OVERLONG_BORDER = 'rgba(217, 119, 6, 0.34)';
+const OVERLONG_INK = '#8a4b06';
 
 /** The two links under the dropzone. Quiet on purpose: neither may compete with it. */
 const quietLinkStyle: React.CSSProperties = {
@@ -2014,6 +2115,84 @@ function JourneyTrack({ src }: { src: string }) {
         style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 38%', display: 'block' }}
       />
     </div>
+  );
+}
+
+/**
+ * Why the last pass over the resume is theirs.
+ *
+ * This is a positioning note, not an apology. Everything a machine can do to a
+ * resume has already been done by the time anyone reads this: the structure is
+ * fixed, the outcomes lead, the formatting is clean. What is left is the one
+ * judgement that is not a language problem, which is which parts of a career a
+ * person actually wants to be hired for. Handing that back is the product
+ * working, so it is said as a reason and not as a limitation.
+ *
+ * Two sentences and a way out. Anything longer turns a moment of ownership into
+ * a wall of text between somebody and the document they came to read, and the
+ * point is made or it is not.
+ */
+function OwnershipNote({ onClose }: { onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      transition={{ duration: 0.18 }}
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 60, display: 'flex',
+        alignItems: 'center', justifyContent: 'center', padding: 24,
+        background: 'rgba(26,24,20,0.34)',
+      }}
+    >
+      <motion.div
+        role="dialog" aria-modal="true" aria-label="Why you make the final call"
+        onClick={(e) => e.stopPropagation()}
+        initial={{ opacity: 0, scale: 0.97, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.98, y: 6 }}
+        transition={{ duration: 0.22, ease: EASE }}
+        style={{
+          position: 'relative', width: '100%', maxWidth: 430,
+          background: colors.bgSurface, border: `1px solid ${colors.borderDefined}`,
+          borderRadius: 18, padding: '26px 28px',
+          boxShadow: '0 1px 2px rgba(26,24,20,0.05), 0 30px 60px -30px rgba(26,24,20,0.5)',
+        }}
+      >
+        <button
+          type="button" onClick={onClose} aria-label="Close"
+          style={{
+            position: 'absolute', top: 12, right: 12, background: 'none', border: 'none',
+            padding: 6, borderRadius: 8, cursor: 'pointer', color: colors.textMuted,
+            display: 'flex', alignItems: 'center',
+          }}
+        >
+          <X size={16} />
+        </button>
+
+        <h2 style={{
+          margin: '0 0 10px', fontFamily: T.display, fontWeight: 600,
+          letterSpacing: '-0.015em', fontSize: 20, lineHeight: 1.25,
+          color: colors.textPrimary, paddingRight: 24,
+        }}>
+          This part is yours.
+        </h2>
+        <p style={{ margin: 0, fontFamily: T.body, fontSize: 14.5, lineHeight: 1.65, color: colors.textSecondary }}>
+          We can fix the structure, lead with your results and cut what is not
+          earning its place. What we cannot know is which parts of your work you
+          are proud of and want to be hired for, and no model ever will.
+        </p>
+        <p style={{ margin: '12px 0 0', fontFamily: T.body, fontSize: 14.5, lineHeight: 1.65, color: colors.textSecondary }}>
+          That call is the one that shapes every application we write from here,
+          so it stays with you.
+        </p>
+      </motion.div>
+    </motion.div>
   );
 }
 
