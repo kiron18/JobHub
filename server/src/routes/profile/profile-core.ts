@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../../index';
 import { authenticate } from '../../middleware/auth';
 import { indexAchievement } from '../../services/vector';
-import { EXEMPT_EMAILS } from '../stripe';
+import { EXEMPT_EMAILS, hasComplimentaryAccess } from '../stripe';
 import { generateBaselineResume } from '../../services/baselineResume';
 import { derivePositioningStatement, type PositioningStatement } from '../../services/positioningStatement';
 import { runCoherenceCheck } from '../../services/coherenceCheck';
@@ -30,9 +30,12 @@ router.get('/profile', authenticate, async (req, res) => {
 
         if (!profile) return res.json(null);
 
-        // Auto-grant dashboardAccess for exempt accounts (owner + test accounts)
+        // Auto-grant dashboardAccess for accounts that pay nothing (owner +
+        // test logins). This is the flag the frontend reads to decide whether
+        // to show the offer, so a comp'd account that never gets it is waved
+        // through every API call and then shown the paywall anyway.
         const authEmail = ((req as any).user?.email ?? '').toLowerCase();
-        if (EXEMPT_EMAILS.includes(authEmail) && !profile.dashboardAccess) {
+        if (hasComplimentaryAccess(authEmail) && !profile.dashboardAccess) {
           await prisma.candidateProfile.update({
             where: { userId },
             data: { dashboardAccess: true },
@@ -40,6 +43,8 @@ router.get('/profile', authenticate, async (req, res) => {
           profile.dashboardAccess = true;
         }
 
+        // Deliberately the owner list, not hasComplimentaryAccess: a test
+        // login is comp'd, not an admin, and this flag opens the coach view.
         const isAdmin = EXEMPT_EMAILS.includes(authEmail);
 
         // Compute profile completion score

@@ -1,5 +1,5 @@
 import { prisma } from '../index';
-import { EXEMPT_EMAILS } from '../routes/stripe';
+import { hasComplimentaryAccess } from '../routes/stripe';
 
 export type FeatureType = 'generation' | 'analysis' | 'job_search' | 'match_score';
 
@@ -17,7 +17,7 @@ export interface AccessProfileLike {
 // paying clients whose access was granted and is now being withheld. Exempt
 // accounts (owner + test logins) are never holdable.
 export function isOnBillingHold(p: AccessProfileLike, email?: string | null): boolean {
-  if (email && EXEMPT_EMAILS.includes(email.toLowerCase())) return false;
+  if (hasComplimentaryAccess(email)) return false;
   return p.billingHoldAt != null;
 }
 
@@ -53,7 +53,7 @@ export function hasActiveAccess(p: AccessProfileLike): boolean {
 // are never throttled. Trial-by-default users (free plan + trialEndDate) are NOT
 // paid, so the cap still applies to them.
 export function isPaidOrExempt(p: AccessProfileLike, email?: string | null): boolean {
-  if (email && EXEMPT_EMAILS.includes(email.toLowerCase())) return true;
+  if (hasComplimentaryAccess(email)) return true;
   if (p.dashboardAccess === true) return true;
   const plan = p.plan ?? 'free';
   const planStatus = p.planStatus ?? 'active';
@@ -104,7 +104,7 @@ export async function checkAccess(
   return { allowed: true };
 
   /* ORIGINAL CODE - restore when payments resume
-  if (EXEMPT_EMAILS.includes(userEmail.toLowerCase())) {
+  if (hasComplimentaryAccess(userEmail)) {
     return { allowed: true };
   }
 

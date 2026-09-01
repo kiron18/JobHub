@@ -1,9 +1,21 @@
 import { describe, it, expect, vi } from 'vitest';
 
-// Mock the stripe import before importing the module under test.
-// EXEMPT_EMAILS is a const array, so we provide the real value.
+// Mock the stripe import before importing the module under test. Importing it
+// for real would construct the Stripe client at module load and need a key.
+// The plus-tag rule is reproduced here rather than stubbed away, because it is
+// the behaviour these tests are asserting on.
 vi.mock('../routes/stripe', () => ({
   EXEMPT_EMAILS: ['kiron@example.com'],
+  COMP_EMAILS: ['tester@example.com'],
+  hasComplimentaryAccess: (email?: string | null) => {
+    const trimmed = (email ?? '').trim().toLowerCase();
+    const at = trimmed.lastIndexOf('@');
+    if (at <= 0) return false;
+    const local = trimmed.slice(0, at);
+    const plus = local.indexOf('+');
+    const normalised = (plus === -1 ? local : local.slice(0, plus)) + trimmed.slice(at);
+    return ['kiron@example.com', 'tester@example.com'].includes(normalised);
+  },
 }));
 
 import { hasActiveAccess, isOnBillingHold, denyPayload } from './accessControl';
@@ -41,6 +53,15 @@ describe('isOnBillingHold', () => {
   it('never holds an exempt account', () => {
     expect(isOnBillingHold({ billingHoldAt: held }, 'kiron@example.com')).toBe(false);
     expect(isOnBillingHold({ billingHoldAt: held }, 'KIRON@example.com')).toBe(false);
+  });
+  // Every staging run of the funnel signs up under a fresh plus tag, so a
+  // comp'd address only stays comp'd if the tag is ignored.
+  it('never holds a comp account signed up under a plus tag', () => {
+    expect(isOnBillingHold({ billingHoldAt: held }, 'tester+t27329@example.com')).toBe(false);
+    expect(isOnBillingHold({ billingHoldAt: held }, 'TESTER+T99@example.com')).toBe(false);
+  });
+  it('still holds a stranger who merely shares the tag', () => {
+    expect(isOnBillingHold({ billingHoldAt: held }, 'someoneelse+tester@example.com')).toBe(true);
   });
 });
 

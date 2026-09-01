@@ -15,6 +15,64 @@ export const EXEMPT_EMAILS = [
   'kironorik@gmail.com',
 ];
 
+/**
+ * Test logins: the whole product for free, and nothing else.
+ *
+ * Deliberately NOT in EXEMPT_EMAILS. That list is the owner's own addresses and
+ * it is what every admin guard in the app checks, so an address added there
+ * gets the admin dashboard, the sales pipeline and the client roster along with
+ * it. A throwaway address used to walk the funnel should never carry that, and
+ * this file ships to production, not just staging.
+ *
+ * Plus tags are stripped before the lookup (see normaliseEmail), which is the
+ * point of the list: staging has its own database, so testing the funnel end to
+ * end means a signup that does not exist yet, which means a new plus tag every
+ * run. An exact-match list misses all of them.
+ */
+export const COMP_EMAILS = [
+  'yornorik281@gmail.com',
+];
+
+/**
+ * The address as the mailbox owner sees it, for identity comparisons only.
+ *
+ * Sub-addressing (`someone+tag@gmail.com`) delivers to `someone@gmail.com`, so
+ * for the purpose of "is this the same person", the tag is noise. It stopped
+ * mattering as soon as the funnel had to be tested end to end: every test run
+ * needs an account that does not exist yet, which means a new plus tag, which
+ * an exact-match list misses every single time.
+ *
+ * Comparison only. NEVER write this back to the profile or send mail to it:
+ * the address somebody typed is the address they own, and rewriting it is how
+ * two people who share a mail provider quirk end up merged into one account.
+ */
+export function normaliseEmail(email?: string | null): string {
+  const trimmed = (email ?? '').trim().toLowerCase();
+  const at = trimmed.lastIndexOf('@');
+  if (at <= 0) return trimmed;
+  const local = trimmed.slice(0, at);
+  const domain = trimmed.slice(at);
+  const plus = local.indexOf('+');
+  return (plus === -1 ? local : local.slice(0, plus)) + domain;
+}
+
+/**
+ * Nothing to pay: the owner's own logins, plus the test accounts.
+ *
+ * Every ACCESS decision goes through this rather than reading either list
+ * directly, so the plus-tag rule is applied in all of them at once. A caller
+ * that does its own `EXEMPT_EMAILS.includes(...)` is a caller that will start
+ * charging the test account the next time somebody adds a tag.
+ *
+ * This is not an admin check. The admin guards keep reading EXEMPT_EMAILS on
+ * purpose, and adding an address here must never widen what it can see.
+ */
+export function hasComplimentaryAccess(email?: string | null): boolean {
+  const normalised = normaliseEmail(email);
+  if (normalised === '') return false;
+  return EXEMPT_EMAILS.includes(normalised) || COMP_EMAILS.includes(normalised);
+}
+
 const stripe = new StripeLib(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2026-03-25.dahlia',
 });
@@ -47,16 +105,34 @@ const PRICE_IDS: Record<string, string> = {
   premium: PREMIUM_MONTHLY_PRICE_ID,
 };
 
+/** How many free days a trialling plan gets. One number, both checkout paths. */
+export const TRIAL_PERIOD_DAYS = 7;
+
 /**
- * Plans that must NOT be given a free trial.
+ * Plans sold WITHOUT a free trial.
  *
- * `premium` is sold at the moment somebody has just watched their application
- * being written and asked to have it. Handing them seven free days there takes
- * $0 today and removes the reason they were about to pay, which is the opposite
- * of what the screen is for. The older monthly and annual plans keep their trial
- * because that is what they were sold with.
+ * Empty by default: every subscription plan, `premium` included, is sold with
+ * seven free days.
+ *
+ * `premium` sat in here for a day on the argument that a trial takes $0 from
+ * somebody who has just watched their application being written. That call was
+ * reversed deliberately: the seven days are now the reason they say yes, and
+ * the card is still collected, so the charge lands on day eight unless they
+ * cancel. It is out of the set by decision, not by deletion.
+ *
+ * Kept as a switch rather than removed, because "no trial on plan X" is a
+ * pricing call that has been made once and can be made again. NO_TRIAL_PLANS is
+ * a comma-separated list of plan keys, so it can be turned off for a plan
+ * without a deploy. Move the copy in ApplyPreviewGate.tsx and PricingPage.tsx in
+ * the same change: an advertised trial that checkout does not give is the worse
+ * half of this, and it is the half a customer notices.
  */
-const NO_TRIAL_PLANS = new Set(['premium']);
+const NO_TRIAL_PLANS = new Set(
+  (process.env.NO_TRIAL_PLANS ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean),
+);
 
 /**
  * Pull the subscription id off an invoice.
@@ -461,7 +537,7 @@ router.post('/checkout', authenticate, async (req: AuthRequest, res: Response) =
     return;
   }
 
-  if (EXEMPT_EMAILS.includes(userEmail.toLowerCase())) {
+  if (hasComplimentaryAccess(userEmail)) {
     res.status(400).json({ error: 'This account has complimentary access.' });
     return;
   }
@@ -514,7 +590,7 @@ router.post('/checkout', authenticate, async (req: AuthRequest, res: Response) =
     if (!isOneTime) {
       sessionParams.subscription_data = {
         metadata: { userId, plan },
-        ...(NO_TRIAL_PLANS.has(plan) ? {} : { trial_period_days: 7 }),
+        ...(NO_TRIAL_PLANS.has(plan) ? {} : { trial_period_days: TRIAL_PERIOD_DAYS }),
       };
     }
 
