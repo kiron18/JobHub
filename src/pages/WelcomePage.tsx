@@ -435,16 +435,23 @@ export const WelcomePage: React.FC = () => {
 
     return (
       <Shell wide>
-        {/* A heading, not a pill. This is the first thing we say after reading
-            their resume, so it says what we found and that there is a way out of
-            it, in one sentence. */}
-        <div style={{ marginBottom: 22 }}>
-          <Display>
-            {firstName
-              ? `Hey ${firstName}, we've found where you're losing interviews and have a plan to fix it.`
-              : "We've found where you're losing interviews and have a plan to fix it."}
-          </Display>
-        </div>
+        {/*
+          Sans, not the display face.
+
+          This sentence is long, and set in Fraunces at display size it ran to
+          three lines and took the whole screen before a single finding was
+          visible. The tiles under it are the thing to look at; this only has to
+          say what we found and that there is a way out of it.
+        */}
+        <p style={{
+          fontFamily: T.body, fontWeight: 700, letterSpacing: '-0.01em',
+          fontSize: 'clamp(17px, 2.6vw, 21px)', lineHeight: 1.35,
+          color: colors.textPrimary, margin: '0 0 22px',
+        }}>
+          {firstName
+            ? `Hey ${firstName}, we've found where you're losing interviews and have a plan to fix it.`
+            : "We've found where you're losing interviews and have a plan to fix it."}
+        </p>
 
         {/* Three tiles, not one scroll. Someone landing here has just been told
             their resume has problems; meeting that with a wall of findings is

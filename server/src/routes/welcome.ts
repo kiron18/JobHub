@@ -290,8 +290,21 @@ router.post('/build', async (req: Request, res: Response) => {
   } catch (err) {
     if (err instanceof ContentLossError) {
       // Never persist a resume that lost part of their real history.
+      //
+      // `missing` rides along in the response as well as the log. Every one of
+      // these is three LLM attempts that all dropped the same thing, and the
+      // only way to tell an over-strict check from a genuinely bad rewrite is to
+      // see WHICH items it says went missing. Without that, this is a dead end
+      // for the candidate and a mystery for us: the browser console shows a
+      // bare 502 and the reason sits in a log nobody is reading at the time.
+      //
+      // It is their own resume content, so there is nothing here they are not
+      // already looking at.
       console.error('[welcome/build] content loss, refused to save:', err.message);
-      res.status(502).json({ error: 'We could not rebuild your resume without leaving something out. Please try again.' });
+      res.status(502).json({
+        error: 'We could not rebuild your resume without leaving something out. Please try again.',
+        missing: err.missing?.map((m) => m.item) ?? [],
+      });
       return;
     }
     if (err instanceof UngroundedFigureError) {
