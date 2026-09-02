@@ -875,38 +875,9 @@ export const WelcomePage: React.FC = () => {
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           gap: 12, marginBottom: 10,
         }}>
-          {editing ? (
-            <span style={{ fontFamily: T.body, fontSize: 13, color: colors.textMuted }}>
-              Change anything that is not right. This is the copy we send.
-            </span>
-          ) : (
-            /*
-              The question people actually have when a machine that just
-              rewrote their resume then asks them to edit it, answered before
-              they have to ask it.
-
-              It sits on the reading side of the toggle rather than in the
-              editor, because it is the reason to press Edit, not a note for
-              somebody already typing. Quiet, and it opens two sentences: the
-              answer only lands if it costs nothing to go and read.
-            */
-            <button
-              type="button"
-              onClick={() => setOwnershipOpen(true)}
-              style={{
-                background: 'transparent', border: 'none', padding: 0, textAlign: 'left',
-                fontFamily: T.body, fontSize: 13.5, fontWeight: 700,
-                /* Petrol, matching Edit across the row. In muted grey at 13px it
-                   read as chrome and went unnoticed, which for the one line on
-                   this screen that explains why we are asking them to do
-                   anything is the same as not shipping it. */
-                color: colors.accentPetrol,
-                textDecoration: 'underline', textUnderlineOffset: 4, cursor: 'pointer',
-              }}
-            >
-              Why don't we just do this for you?
-            </button>
-          )}
+          <span style={{ fontFamily: T.body, fontSize: 13, color: colors.textMuted }}>
+            {editing ? 'Change anything that is not right. This is the copy we send.' : ''}
+          </span>
           <button
             onClick={() => void toggleEditing()}
             disabled={savingEdit}
@@ -1079,6 +1050,36 @@ export const WelcomePage: React.FC = () => {
             {' '}({addedFigures.slice(0, 4).join(', ')}). Worth a last check that
             {' '}{addedFigures.length === 1 ? 'it is' : 'they are'} right — this is the copy
             every future application is built from.
+          </p>
+        )}
+
+        {/*
+          Why the work we just handed them is theirs to finish.
+
+          Under the advice, not up beside the Edit toggle. Nobody asks "why am
+          I doing this" before they have been given something to do; they ask
+          it the moment they finish reading a list of cuts to make to their own
+          resume. Above the document it was a link nobody had a reason to press
+          yet, and it went unread. Here it lands on the question already in
+          their head.
+
+          Quiet, and it opens two sentences. The answer only works if it costs
+          nothing to go and read it.
+        */}
+        {!editing && (
+          <p style={{ margin: '16px 0 0', textAlign: 'center' }}>
+            <button
+              type="button"
+              onClick={() => setOwnershipOpen(true)}
+              style={{
+                background: 'transparent', border: 'none', padding: 0,
+                fontFamily: T.body, fontSize: 13.5, fontWeight: 700,
+                color: colors.accentPetrol,
+                textDecoration: 'underline', textUnderlineOffset: 4, cursor: 'pointer',
+              }}
+            >
+              Why don't we just do this for you?
+            </button>
           </p>
         )}
 
