@@ -36,7 +36,6 @@ import {
     Briefcase,
 } from 'lucide-react';
 import { DraftCritiquePanel, type CritiqueResult } from '../components/strategy/DraftCritiquePanel';
-import { ApplyDeepLinkButton } from '../components/strategy/ApplyDeepLinkButton';
 import { PostApplyOutreach } from '../components/strategy/PostApplyOutreach';
 import ReactMarkdown from 'react-markdown';
 import { MarkdownDocEditor, FormattingHelp } from '../components/MarkdownDocEditor';
@@ -45,7 +44,6 @@ import { toast } from 'sonner';
 import api from '../lib/api';
 import { warm } from '../lib/theme/warmTokens';
 import { GenerationProgress } from '../components/shared/GenerationProgress';
-import { FollowUpCard } from '../components/fit/FollowUpCard';
 import { applyWorkspaceCopy } from './applyWorkspaceCopy';
 import { extractReactText } from '../lib/extractReactText';
 
@@ -488,9 +486,7 @@ export function StepperWorkspace() {
                         role={state.role}
                         workspaceKey={workspaceKey}
                         onBack={() => setCurrentIndex(currentIndex - 1)}
-                        feedItemId={state.feedItemId}
                         sourceUrl={state.sourceUrl}
-                        sourcePlatform={state.sourcePlatform}
                         fitJobId={state.fitJobId}
                     />
                 ) : (
@@ -1439,9 +1435,7 @@ function TrackStep({
     role,
     workspaceKey,
     onBack,
-    feedItemId,
     sourceUrl,
-    sourcePlatform,
     fitJobId,
 }: {
     jobDescription: string;
@@ -1451,9 +1445,7 @@ function TrackStep({
     role?: string;
     workspaceKey: string;
     onBack: () => void;
-    feedItemId?: string;
     sourceUrl?: string;
-    sourcePlatform?: string;
     fitJobId?: string;
 }) {
     const navigate = useNavigate();
@@ -1631,13 +1623,6 @@ function TrackStep({
                 </div>
             )}
 
-            {/*
-                The tracker earning its keep, at the only moment it can. They
-                have just done the work; the follow-up is the one thing left,
-                and it is the thing almost nobody does.
-            */}
-            <FollowUpCard variant="armed" />
-
             {/* Compact tracker chip with hover tooltip. The full explanation
                 lives in the tooltip, not the layout, so the Track screen reads
                 less crowded. */}
@@ -1708,44 +1693,6 @@ function TrackStep({
                     extra to do here — it picks up from this point.
                 </div>
             </div>
-
-            {/* Apply on platform — only when both docs exist. Downloads PDFs,
-                copies cover letter to clipboard, opens the listing (if we have
-                its URL), and transitions the application to APPLIED. */}
-            {drafted.resume && drafted.cover && (
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    justifyContent: 'space-between',
-                    gap: 14,
-                    padding: '14px 18px',
-                    background: 'rgba(125,166,125,0.08)',
-                    border: '1px solid rgba(125,166,125,0.30)',
-                    borderRadius: 12,
-                }}>
-                    <div style={{ flex: 1 }}>
-                        <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 700, color: warm.colors.textPrimary }}>
-                            {sourceUrl ? 'Ready to send' : 'Your docs are ready'}
-                        </p>
-                        <p style={{ margin: 0, fontSize: 12.5, color: warm.colors.textMuted, lineHeight: 1.55 }}>
-                            {sourceUrl
-                                ? 'One click downloads your resume and cover letter as PDFs, copies the cover letter to your clipboard, and opens the listing.'
-                                : 'One click downloads your resume and cover letter as PDFs and copies the cover letter to your clipboard. Send this one off, then queue up the next.'
-                            }
-                        </p>
-                    </div>
-                    <ApplyDeepLinkButton
-                        resumeMarkdown={resumeDraft?.content ?? ''}
-                        coverLetterMarkdown={coverDraft?.content ?? ''}
-                        candidateName={candidateName}
-                        jobTitle={role}
-                        company={company}
-                        sourceUrl={sourceUrl}
-                        sourcePlatform={sourcePlatform}
-                        feedItemId={feedItemId}
-                    />
-                </div>
-            )}
 
             {/* Reaching a person at the company is the only lever left once the
                 application is in. Sits above the navigation deliberately — it is

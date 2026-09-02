@@ -39,18 +39,27 @@ import { LINKEDIN_NOTE_LIMIT, buildOutreachMessages } from '../../lib/outreachFi
 const PLACEHOLDER_SPLIT = /(\[[^\]]+\])/g;
 const IS_PLACEHOLDER = /^\[[^\]]+\]$/;
 
+/**
+ * Who to message, best odds first.
+ *
+ * One line each. This card is read by somebody who has just finished an
+ * application and is deciding whether to spend two more minutes, and the
+ * version of it that explained the reasoning behind all three targets was
+ * longer than the messages it was introducing. The reasoning was correct and
+ * nobody read it.
+ */
 const TARGETS = [
     {
         title: 'A recruiter or talent partner',
-        detail: 'Replying to people is their job, so they answer the most often. Search the company on LinkedIn and filter the people tab for "Talent", "Recruiter" or "People".',
+        detail: 'Answering people is their job. Filter the company’s LinkedIn people tab for "Talent" or "Recruiter".',
     },
     {
         title: 'Someone already on the team',
-        detail: 'The one almost nobody thinks of, and the second most likely to answer. Look for something you genuinely share: the same university, the same home country, a previous employer in common. That is what turns a cold message into a warm one.',
+        detail: 'Almost nobody tries this one. Look for a shared university, home country or past employer.',
     },
     {
         title: 'The hiring manager',
-        detail: 'Whoever would be your manager. The least likely to reply at a large Australian firm, and easily the most valuable when they do. Search the company name plus the team, and look for a "Manager" or "Lead" title.',
+        detail: 'Hardest to reach, best to reach. Search the company plus the team, and look for "Manager" or "Lead".',
     },
 ];
 
@@ -251,9 +260,7 @@ export function PostApplyOutreach({
                     padding: '4px 18px 18px',
                 }}>
                     <p style={{ margin: 0, fontSize: 12.5, color: warm.colors.textSecondary, lineHeight: 1.6 }}>
-                        Be realistic about the odds. Most of these get no reply, and it is still worth the
-                        two minutes, because the ones that do land are the ones that tend to turn into
-                        interviews.
+                        Most get no reply. The ones that land are the ones that turn into interviews.
                     </p>
 
                     <div>
@@ -279,15 +286,13 @@ export function PostApplyOutreach({
                             How to reach them
                         </p>
                         <p style={{ margin: '0 0 6px', fontSize: 12.5, color: warm.colors.textSecondary, lineHeight: 1.6 }}>
-                            <strong style={{ color: warm.colors.textPrimary }}>LinkedIn first.</strong> It is free,
-                            it needs no email address, and the note below fits inside a connection request.
+                            <strong style={{ color: warm.colors.textPrimary }}>LinkedIn first.</strong> Free, no
+                            email needed, and the note below fits in a connection request.
                         </p>
                         <p style={{ margin: 0, fontSize: 12.5, color: warm.colors.textSecondary, lineHeight: 1.6 }}>
-                            <strong style={{ color: warm.colors.textPrimary }}>Email second.</strong> Use
-                            Hunter.io, RocketReach or Apollo to find the company's address{' '}
-                            <em>pattern</em>, usually firstname.lastname@company.com, then apply that
-                            pattern to the name you found on LinkedIn. Looking the pattern up once spares
-                            you burning a free lookup on every person you contact.
+                            <strong style={{ color: warm.colors.textPrimary }}>Email second.</strong> Find the
+                            company's address pattern on Hunter.io, usually firstname.lastname@company.com,
+                            then apply it to the name from LinkedIn.
                         </p>
                     </div>
 
@@ -300,16 +305,13 @@ export function PostApplyOutreach({
                         <p style={{ margin: 0, fontSize: 12.5, color: warm.colors.textPrimary, lineHeight: 1.6 }}>
                             {hasBlanks ? (
                                 <>
-                                    Replace every highlighted blank before you send. The one that matters
-                                    most is the couple of sentences in your own words: a recruiter can spot
-                                    an untouched template instantly, and writing that bit yourself is
-                                    exactly what separates you from everyone else who sent one.
+                                    Fill every highlighted blank before you send. A recruiter spots an
+                                    untouched template instantly.
                                 </>
                             ) : (
                                 <>
-                                    These are filled in from your cover letter, so they are ready to send
-                                    as they are. Read them once first. If the evidence we carried across
-                                    is not the part you would have led with for this person, change it.
+                                    Filled in from your cover letter and ready to send. Read it once, and
+                                    change the evidence if it is not what you would have led with.
                                 </>
                             )}
                         </p>
@@ -337,9 +339,8 @@ export function PostApplyOutreach({
                     />
 
                     <p style={{ margin: 0, fontSize: 12, color: warm.colors.textMuted, lineHeight: 1.6 }}>
-                        Neither message asks them for anything, which is deliberate. A first message with
-                        no request in it is the one that gets answered, and it earns you the right to ask
-                        later.
+                        Neither message asks for anything. That is deliberate: the first one with no
+                        request in it is the one that gets answered.
                     </p>
                 </div>
             )}
