@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 // Components — layout/gate loaded eagerly, page-level components lazy
 import { DashboardLayout } from './layouts/DashboardLayout';
 import { OnboardingGate } from './components/OnboardingGate';
+import { useWelcomeHandoff } from './lib/welcomeHandoff';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 const ApplicationTracker   = React.lazy(() => import('./components/ApplicationTracker').then(m => ({ default: m.ApplicationTracker })));
@@ -335,7 +336,18 @@ type ReportFlowStage = 'loading' | 'diagnostic' | 'from-scratch' | 'dashboard';
 
 function LandingPageOrExisting() {
   const { user, loading } = useAuth();
+  /*
+   * Signing up IS what creates the session, so `user` flips non-null the
+   * instant the account exists and this route would swap to the dashboard
+   * while WelcomePage is still posting the profile. OnboardingGate then mounts
+   * on a userId with no profile row and shows the intake for a beat. Holding
+   * the welcome screen until the handoff ends is the only place that window
+   * can be closed: at that moment "no profile" is the true answer, so no
+   * amount of care inside the gate can tell it apart from a real one.
+   */
+  const handingOff = useWelcomeHandoff();
   if (loading) return null;
+  if (handingOff) return <WelcomePage />;
   // Signed out, the site IS the intake. There is one way in and it collects the
   // resume and creates the account in the same pass, so an account without a
   // resume can't exist. The separate cv-scan funnel and its marketing page were
