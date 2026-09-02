@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Download, X } from 'lucide-react';
 import type { BannerConfig } from './types';
+import { warm } from '../../lib/theme/warmTokens';
 
 const BANNER_W = 1584;
 const BANNER_H = 396;
@@ -34,6 +35,60 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number)
   return lines;
 }
 
+
+/* -- Colour helpers ----------------------------------------------------
+   The banner used to be white text, always, on whatever background you
+   picked. That works until you pick a light background, at which point
+   the banner is blank. Text colour is now yours, which means the two
+   things that were hardcoded around it have to follow it: the drop
+   shadow (which only helps light text) and the sub-line's translucency.
+*/
+
+const DEFAULT_TEXT = '#FFFFFF';
+
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace('#', '');
+  const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
+  const n = parseInt(full, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+/** Perceived brightness, 0 to 1. Decides whether a dark shadow helps. */
+function luminance(hex: string): number {
+  try {
+    const [r, g, b] = hexToRgb(hex);
+    return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  } catch {
+    return 1;
+  }
+}
+
+function withAlpha(hex: string, alpha: number): string {
+  try {
+    const [r, g, b] = hexToRgb(hex);
+    return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + alpha + ')';
+  } catch {
+    return hex;
+  }
+}
+
+/* Ten pairs that are known to work together, so nobody has to find a
+   readable combination using two colour pickers and a guess. Ordered
+   dark to light because most people want dark, and the light ones are
+   there for the people who do not. */
+const PALETTES: Array<{ name: string; bg: string; text: string; texture: BannerConfig['texture'] }> = [
+  { name: 'Midnight',   bg: '#0F172A', text: '#FFFFFF', texture: 'gradient' },
+  { name: 'Ink & gold', bg: '#12100E', text: '#E8C88A', texture: 'clean' },
+  { name: 'Deep sea',   bg: '#0B3A54', text: '#E6F4FA', texture: 'gradient' },
+  { name: 'Forest',     bg: '#14342B', text: '#E9F5EC', texture: 'clean' },
+  { name: 'Plum',       bg: '#2A1B3D', text: '#EFE6FF', texture: 'gradient' },
+  { name: 'Terracotta', bg: '#7A3B2E', text: '#FDF1E7', texture: 'clean' },
+  { name: 'Signal',     bg: '#1257C4', text: '#FFFFFF', texture: 'gradient' },
+  { name: 'Graphite',   bg: '#1D2125', text: '#C8F169', texture: 'grid' },
+  { name: 'Slate',      bg: '#334155', text: '#F1F5F9', texture: 'grid' },
+  { name: 'Paper',      bg: '#F4F1EA', text: '#161412', texture: 'clean' },
+];
+
 function drawBanner(ctx: CanvasRenderingContext2D, config: BannerConfig) {
   // Background
   ctx.fillStyle = config.bgColor;
@@ -66,10 +121,14 @@ function drawBanner(ctx: CanvasRenderingContext2D, config: BannerConfig) {
   let y = (BANNER_H - blockH) / 2;
 
   // Main message
-  ctx.fillStyle = 'white';
-  ctx.shadowColor = 'rgba(0,0,0,0.4)';
-  ctx.shadowBlur = 12;
-  ctx.shadowOffsetY = 2;
+  const textColor = config.textColor || DEFAULT_TEXT;
+  const lightText = luminance(textColor) > 0.5;
+  ctx.fillStyle = textColor;
+  // The shadow exists to hold light text off a busy background. Under dark
+  // text on a light one it just looks smudged, so it does not run.
+  ctx.shadowColor = lightText ? 'rgba(0,0,0,0.4)' : 'transparent';
+  ctx.shadowBlur = lightText ? 12 : 0;
+  ctx.shadowOffsetY = lightText ? 2 : 0;
   for (const line of mainLines) {
     ctx.fillText(line, rightEdge, y + MAIN_LINE_H / 2);
     y += MAIN_LINE_H;
@@ -83,7 +142,7 @@ function drawBanner(ctx: CanvasRenderingContext2D, config: BannerConfig) {
     ctx.shadowColor = 'transparent';
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;
-    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.fillStyle = withAlpha(textColor, 0.75);
     ctx.fillText(sub, rightEdge, y + SUB_LINE_H / 2);
   }
 }
@@ -130,7 +189,7 @@ export const BannerCanvas: React.FC<Props> = ({ config, onConfigChange, onClose 
     <div style={{ padding: '0 0 24px' }}>
       {/* Controls */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: '#94a3b8' }}>Banner Editor</span>
+        <span style={{ fontSize: 13, fontWeight: 700, color: warm.colors.textMuted }}>Banner Editor</span>
         <div style={{ display: 'flex', gap: 8 }}>
           <button
             onClick={handleExport}
@@ -138,7 +197,7 @@ export const BannerCanvas: React.FC<Props> = ({ config, onConfigChange, onClose 
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '8px 14px', borderRadius: 8, border: 'none',
-              background: '#0A66C2', color: 'white', fontWeight: 700, fontSize: 13,
+              background: warm.colors.accentPetrol, color: 'white', fontWeight: 700, fontSize: 13,
               cursor: exporting ? 'default' : 'pointer',
             }}
           >
@@ -148,17 +207,53 @@ export const BannerCanvas: React.FC<Props> = ({ config, onConfigChange, onClose 
           <button
             aria-label="Close banner editor"
             onClick={onClose}
-            style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: 6 }}
+            style={{ background: 'none', border: 'none', color: warm.colors.textMuted, cursor: 'pointer', padding: 6 }}
           >
             <X size={16} />
           </button>
         </div>
       </div>
 
+      {/* Palettes. One press sets background, text and texture together. */}
+      <div style={{ marginBottom: 14 }}>
+        <label style={{
+          display: 'block', marginBottom: 8,
+          fontSize: 11, fontWeight: 700, color: warm.colors.textMuted,
+          textTransform: 'uppercase', letterSpacing: '0.08em',
+        }}>
+          Palette
+        </label>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {PALETTES.map(pal => {
+            const active = config.bgColor.toUpperCase() === pal.bg
+              && (config.textColor || DEFAULT_TEXT).toUpperCase() === pal.text;
+            return (
+              <button
+                key={pal.name}
+                type="button"
+                title={pal.name}
+                aria-label={pal.name}
+                onClick={() => onConfigChange({ ...config, bgColor: pal.bg, textColor: pal.text, texture: pal.texture })}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 62, height: 38, borderRadius: 8, cursor: 'pointer',
+                  background: pal.bg,
+                  border: active ? '2px solid #0A66C2' : '1px solid rgba(15,23,42,0.14)',
+                  boxShadow: active ? '0 0 0 3px rgba(10,102,194,0.18)' : 'none',
+                  padding: 0,
+                }}
+              >
+                <span style={{ color: pal.text, fontSize: 14, fontWeight: 800, letterSpacing: '-0.01em' }}>Aa</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Colour + texture controls */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 16, marginBottom: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          <label style={{ fontSize: 11, fontWeight: 700, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
             Background
           </label>
           <input
@@ -169,7 +264,19 @@ export const BannerCanvas: React.FC<Props> = ({ config, onConfigChange, onClose 
           />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          <label style={{ fontSize: 11, fontWeight: 700, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            Text
+          </label>
+          <input
+            type="color"
+            aria-label="Text colour"
+            value={config.textColor || DEFAULT_TEXT}
+            onChange={e => onConfigChange({ ...config, textColor: e.target.value })}
+            style={{ width: 32, height: 32, borderRadius: 6, border: 'none', cursor: 'pointer', padding: 0 }}
+          />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <label style={{ fontSize: 11, fontWeight: 700, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
             Texture
           </label>
           {(['clean', 'gradient', 'grid'] as const).map(t => (
@@ -177,9 +284,9 @@ export const BannerCanvas: React.FC<Props> = ({ config, onConfigChange, onClose 
               key={t}
               onClick={() => onConfigChange({ ...config, texture: t })}
               style={{
-                padding: '5px 12px', borderRadius: 6, border: `1px solid ${config.texture === t ? '#0A66C2' : 'rgba(255,255,255,0.12)'}`,
+                padding: '5px 12px', borderRadius: 6, border: `1px solid ${config.texture === t ? warm.colors.accentPetrol : 'rgba(255,255,255,0.12)'}`,
                 background: config.texture === t ? 'rgba(10,102,194,0.15)' : 'transparent',
-                color: config.texture === t ? '#60a5fa' : '#64748b',
+                color: config.texture === t ? warm.colors.accentPetrol : warm.colors.textMuted,
                 fontSize: 12, fontWeight: 600, cursor: 'pointer', textTransform: 'capitalize',
               }}
             >
@@ -215,15 +322,17 @@ export const BannerCanvas: React.FC<Props> = ({ config, onConfigChange, onClose 
         >
           <div style={{ textAlign: 'right', maxWidth: '60%' }}>
             <p style={{
-              fontSize: 56, fontWeight: 900, color: 'white',
+              fontSize: 56, fontWeight: 900, color: config.textColor || DEFAULT_TEXT,
               margin: 0, lineHeight: 1.1, letterSpacing: '-0.02em',
-              textShadow: '0 2px 12px rgba(0,0,0,0.4)',
+              textShadow: luminance(config.textColor || DEFAULT_TEXT) > 0.5
+                ? '0 2px 12px rgba(0,0,0,0.4)'
+                : 'none',
             }}>
               {config.mainMessage || 'Your Message Here'}
             </p>
             {config.subLine && (
               <p style={{
-                fontSize: 28, fontWeight: 600, color: 'rgba(255,255,255,0.75)',
+                fontSize: 28, fontWeight: 600, color: withAlpha(config.textColor || DEFAULT_TEXT, 0.75),
                 margin: '16px 0 0', letterSpacing: '0.02em',
               }}>
                 {config.subLine}

@@ -8,10 +8,10 @@ import { trackSection5CtaClicked } from '../lib/analytics';
 import { warm } from '../lib/theme/warmTokens';
 import { PricingTeaser } from './PricingTeaser';
 
-const PETROL = '#2D5A6E';
-const GOLD   = '#C5A059';
-const SAGE   = '#7DA67D';
-const SLATE  = '#A0A4A8';
+const PETROL = warm.colors.accentPetrol;
+const GOLD   = warm.colors.accentGold;
+const SAGE   = warm.colors.success;
+const SLATE  = warm.colors.textMuted;
 
 /**
  * The diagnostic runs on white rather than the warm cream the rest of the app

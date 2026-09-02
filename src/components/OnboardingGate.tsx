@@ -4,6 +4,7 @@ import api from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { hasPendingOnboarding } from '../lib/pendingOnboarding';
 import { OnboardingIntake, type IntakeVariant } from './OnboardingIntake';
+import { warm } from '../lib/theme/warmTokens';
 
 // Paid-client onboarding uses different (non-diagnostic) messaging. The flag is
 // set by the set-password page the coaching email link lands on, and mirrored
@@ -266,8 +267,8 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
 
   if (authLoading || isLoading || claimPending || answerPending || nullPending || (isAuthenticated && !profile?.hasCompletedOnboarding && reportStatus === 'checking')) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAF7F2' }}>
-        <div className="w-12 h-12 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(45,90,110,0.2)', borderTopColor: '#2D5A6E' }} />
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: warm.colors.bgCanvas }}>
+        <div className="w-12 h-12 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(45,90,110,0.2)', borderTopColor: warm.colors.accentPetrol }} />
       </div>
     );
   }
@@ -294,7 +295,7 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
 
   if (isError && !definitivelySignedOut) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAF7F2', padding: 24 }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: warm.colors.bgCanvas, padding: 24 }}>
         <div style={{ textAlign: 'center', maxWidth: 380 }}>
           <p style={{ margin: '0 0 8px', fontSize: 17, fontWeight: 700, color: '#1A1814' }}>
             We could not reach your account
@@ -307,7 +308,7 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
             onClick={() => queryClient.refetchQueries({ queryKey: ['profile'] })}
             style={{
               padding: '12px 24px', borderRadius: 10, border: 'none', cursor: 'pointer',
-              background: '#2D5A6E', color: '#FAF7F2', fontSize: 15, fontWeight: 700, fontFamily: 'inherit',
+              background: warm.colors.accentPetrol, color: warm.colors.bgCanvas, fontSize: 15, fontWeight: 700, fontFamily: 'inherit',
             }}
           >
             Try again

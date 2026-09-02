@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, ShieldCheck, ChevronDown, ChevronUp, Zap } from 'lucide-react';
 import api from '../lib/api';
+import { warm } from '../lib/theme/warmTokens';
 
 interface ATSResult {
     score: number;
@@ -17,7 +18,7 @@ interface ATSCoveragePanelProps {
 }
 
 function ScoreArc({ score }: { score: number }) {
-    const color = score >= 80 ? '#34d399' : score >= 60 ? '#fbbf24' : '#f87171';
+    const color = score >= 80 ? warm.colors.success : score >= 60 ? warm.colors.accentGold : warm.colors.danger;
     const label = score >= 80 ? 'Strong' : score >= 60 ? 'Moderate' : 'Needs work';
     const [showTip, setShowTip] = useState(false);
     return (
@@ -39,7 +40,7 @@ function ScoreArc({ score }: { score: number }) {
                     <button
                         onMouseEnter={() => setShowTip(true)}
                         onMouseLeave={() => setShowTip(false)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#4b5563', lineHeight: 1, fontSize: 11 }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: warm.colors.textSecondary, lineHeight: 1, fontSize: 11 }}
                     >
                         ⓘ
                     </button>
@@ -66,8 +67,8 @@ function ScoreArc({ score }: { score: number }) {
                                 boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
                             }}
                         >
-                            <p style={{ fontSize: 11, fontWeight: 700, color: '#f3f4f6', margin: '0 0 5px' }}>What is ATS coverage?</p>
-                            <p style={{ fontSize: 10, color: '#9ca3af', margin: '0 0 6px', lineHeight: 1.6 }}>
+                            <p style={{ fontSize: 11, fontWeight: 700, color: warm.colors.bgAlt, margin: '0 0 5px' }}>What is ATS coverage?</p>
+                            <p style={{ fontSize: 10, color: warm.colors.textMuted, margin: '0 0 6px', lineHeight: 1.6 }}>
                                 Most companies use software to filter resumes before a human reads them. It scans for keywords from the job description. Low coverage = filtered out before anyone sees your name.
                             </p>
                             <p style={{ fontSize: 10, color: color, margin: 0, fontWeight: 700 }}>
@@ -110,7 +111,7 @@ export function ATSCoveragePanel({ document, jobDescription, docType }: ATSCover
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                     <ShieldCheck size={12} color="#34d399" />
-                    <span style={{ fontSize: 10, fontWeight: 800, color: '#34d399', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                    <span style={{ fontSize: 10, fontWeight: 800, color: warm.colors.success, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                         ATS Coverage
                     </span>
                 </div>
@@ -122,7 +123,7 @@ export function ATSCoveragePanel({ document, jobDescription, docType }: ATSCover
                         padding: '4px 10px', borderRadius: 6,
                         border: '1px solid rgba(52,211,153,0.3)',
                         background: 'rgba(52,211,153,0.08)',
-                        color: (loading || !document) ? '#6b7280' : '#34d399',
+                        color: (loading || !document) ? warm.colors.textMuted : warm.colors.success,
                         fontSize: 10, fontWeight: 700,
                         cursor: (loading || !document) ? 'default' : 'pointer',
                     }}
@@ -133,13 +134,13 @@ export function ATSCoveragePanel({ document, jobDescription, docType }: ATSCover
             </div>
 
             {!document && !result && (
-                <p style={{ fontSize: 10, color: '#4b5563', textAlign: 'center', padding: '4px 0', margin: 0 }}>
+                <p style={{ fontSize: 10, color: warm.colors.textSecondary, textAlign: 'center', padding: '4px 0', margin: 0 }}>
                     Generate a document first to check ATS keyword coverage.
                 </p>
             )}
 
             {!result && document && !loading && (
-                <p style={{ fontSize: 10, color: '#4b5563', textAlign: 'center', padding: '4px 0', margin: 0 }}>
+                <p style={{ fontSize: 10, color: warm.colors.textSecondary, textAlign: 'center', padding: '4px 0', margin: 0 }}>
                     See how well your document's keywords match the job description.
                 </p>
             )}
@@ -157,7 +158,7 @@ export function ATSCoveragePanel({ document, jobDescription, docType }: ATSCover
                         {/* Matched terms */}
                         {result.matched.length > 0 && (
                             <div>
-                                <p style={{ fontSize: 9, fontWeight: 800, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 5px' }}>
+                                <p style={{ fontSize: 9, fontWeight: 800, color: warm.colors.textSecondary, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 5px' }}>
                                     Covered ({result.matched.length})
                                 </p>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
@@ -165,7 +166,7 @@ export function ATSCoveragePanel({ document, jobDescription, docType }: ATSCover
                                         <span key={i} style={{
                                             padding: '2px 7px', borderRadius: 99, fontSize: 9, fontWeight: 700,
                                             background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.25)',
-                                            color: '#34d399',
+                                            color: warm.colors.success,
                                         }}>
                                             {term}
                                         </span>
@@ -177,7 +178,7 @@ export function ATSCoveragePanel({ document, jobDescription, docType }: ATSCover
                         {/* Missing terms */}
                         {result.missing.length > 0 && (
                             <div>
-                                <p style={{ fontSize: 9, fontWeight: 800, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 5px' }}>
+                                <p style={{ fontSize: 9, fontWeight: 800, color: warm.colors.textSecondary, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 5px' }}>
                                     Missing ({result.missing.length})
                                 </p>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
@@ -185,7 +186,7 @@ export function ATSCoveragePanel({ document, jobDescription, docType }: ATSCover
                                         <span key={i} style={{
                                             padding: '2px 7px', borderRadius: 99, fontSize: 9, fontWeight: 700,
                                             background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)',
-                                            color: '#f87171',
+                                            color: warm.colors.danger,
                                         }}>
                                             {term}
                                         </span>
@@ -209,7 +210,7 @@ export function ATSCoveragePanel({ document, jobDescription, docType }: ATSCover
                                         cursor: 'pointer',
                                     }}
                                 >
-                                    <span style={{ fontSize: 9, fontWeight: 800, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                                    <span style={{ fontSize: 9, fontWeight: 800, color: warm.colors.accentPetrol, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
                                         Quick Fixes ({result.quickFixes.length})
                                     </span>
                                     {fixesOpen ? <ChevronUp size={10} color="#4b5563" /> : <ChevronDown size={10} color="#4b5563" />}
@@ -229,7 +230,7 @@ export function ATSCoveragePanel({ document, jobDescription, docType }: ATSCover
                                                         <span style={{
                                                             flexShrink: 0, width: 14, height: 14, borderRadius: '50%',
                                                             background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)',
-                                                            color: '#818cf8', fontSize: 8, fontWeight: 900,
+                                                            color: warm.colors.accentPetrol, fontSize: 8, fontWeight: 900,
                                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                         }}>
                                                             {i + 1}

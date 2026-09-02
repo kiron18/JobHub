@@ -692,14 +692,15 @@ export function SectionFeedback() {
       <Item
         n="17.1"
         title="The celebration"
-        note="Fires when an application is filed, and is reserved for things at roughly that weight. Press the button to play it."
-        verdict="Light scrim rather than dark, because good news should brighten the page. The disc overshoots, the ring draws itself, the tick strokes on, a bloom ring carries the impact, and a chip flies out to wherever the thing landed."
+        note="Fires when an application is filed. Press the button to play it. On a dashboard page it lands beside the Applications link in the sidebar; here there is no sidebar, so it falls back to the corner."
+        verdict="Deliberately small. This was a full-screen moment first, and a full-screen moment is lovely once and a toll gate by the tenth time. It springs in next to the tracker link, the link pulses back, and both are gone in two seconds."
         now={
           <Stage>
             <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6, color: '#B3261E' }}>
-              Nothing. Finishing an application showed a static card headed "Nice work.
-              This one is in your tracker." There was no moment, and nothing on screen
-              connected the finish to the tracker it landed in.
+              Nothing, then briefly too much. First there was a static card headed
+              "Nice work. This one is in your tracker", which nobody read. Then a
+              full-screen celebration, which worked once and would have worn out by
+              the fifth application of the week.
             </p>
           </Stage>
         }
@@ -713,19 +714,18 @@ export function SectionFeedback() {
                 land: { label: 'Applications', target: 'tracker' },
               })}
             />
-            <Spec>{`0.00  scrim brightens
-0.05  disc springs in, overshoots
-0.08  ring draws itself
-0.24  tick strokes on
-0.22  bloom ring expands and dies
-0.44  headline rises
-0.53  subtitle rises
-1.25  chip flies to the sidebar
-2.60  ends
+            <Spec>{`Anchored to the thing it is about:
+the pill appears beside whatever
+carries data-celebration-target, and
+that element pulses as it arrives.
 
-Click anywhere to end it early.
-Under prefers-reduced-motion it holds
-as a still card for 1.6s instead.`}</Spec>
+Nothing is covered. Nothing is blocked.
+Gone in 2.4s, or on click.
+
+No anchor on screen (mobile with the
+drawer shut, or a page outside the
+dashboard) falls back to the corner
+rather than not appearing at all.`}</Spec>
           </Stage>
         }
       />

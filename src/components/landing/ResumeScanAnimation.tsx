@@ -11,6 +11,7 @@
 import { useEffect, useRef, useState } from 'react';
 import lottie, { type AnimationItem } from 'lottie-web';
 import { motion, AnimatePresence } from 'framer-motion';
+import { warm } from '../../lib/theme/warmTokens';
 
 // ---------------------------------------------------------------------------
 // Data: 3 resumes with realistic content
@@ -532,7 +533,7 @@ export function ResumeScanAnimation({ onComplete }: Props) {
                   width: 5,
                   height: 5,
                   borderRadius: '50%',
-                  background: i === visibleIdx ? '#2D5A6E' : 'rgba(0,0,0,0.1)',
+                  background: i === visibleIdx ? warm.colors.accentPetrol : 'rgba(0,0,0,0.1)',
                   transition: 'background 300ms ease',
                 }}
               />

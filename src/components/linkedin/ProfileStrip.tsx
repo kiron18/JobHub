@@ -29,7 +29,7 @@ export const ProfileStrip: React.FC<Props> = ({ name, title, headshotUrl }) => {
         <p style={{ fontSize: 14, color: warm.colors.textSecondary, margin: '2px 0 0' }}>{title || 'Your Title'}</p>
       </div>
       <div style={{
-        marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: '#0A66C2',
+        marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: warm.colors.accentPetrol,
         background: 'rgba(10,102,194,0.1)', padding: '4px 10px', borderRadius: 20,
         border: '1px solid rgba(10,102,194,0.2)',
       }}>

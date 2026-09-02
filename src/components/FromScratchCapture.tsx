@@ -32,7 +32,7 @@ const inputStyle: React.CSSProperties = {
   background: 'rgba(255,255,255,0.04)',
   border: '1px solid rgba(255,255,255,0.1)',
   borderRadius: 10,
-  color: '#f3f4f6',
+  color: warm.colors.bgAlt,
   fontSize: 15,
   padding: '13px 16px',
   outline: 'none',
@@ -45,7 +45,7 @@ const labelStyle: React.CSSProperties = {
   fontSize: 11,
   fontWeight: 700,
   letterSpacing: '0.08em',
-  color: '#6b7280',
+  color: warm.colors.textMuted,
   textTransform: 'uppercase',
   marginBottom: 6,
 };
@@ -122,11 +122,11 @@ export function FromScratchCapture({ onDone }: FromScratchCaptureProps) {
       <div style={{ maxWidth: 560, margin: '0 auto', padding: '64px 24px 0' }}>
         <p style={{
           margin: '0 0 8px', fontSize: 11, fontWeight: 800, letterSpacing: '0.12em',
-          color: '#4b5563', textTransform: 'uppercase',
+          color: warm.colors.textSecondary, textTransform: 'uppercase',
         }}>
           BUILDING YOUR PROFILE · Step {stepIndex + 1} of 4
         </p>
-        <p style={{ margin: '0 0 32px', fontSize: 13, color: '#9ca3af', lineHeight: 1.55 }}>
+        <p style={{ margin: '0 0 32px', fontSize: 13, color: warm.colors.textMuted, lineHeight: 1.55 }}>
           We couldn't read a resume from your file, so let's set up the basics — takes about a minute.
         </p>
 
@@ -140,7 +140,7 @@ export function FromScratchCapture({ onDone }: FromScratchCaptureProps) {
           >
             {step === 'name' && (
               <div>
-                <h1 style={{ margin: '0 0 24px', fontSize: 24, fontWeight: 600, color: '#f3f4f6', letterSpacing: '-0.02em' }}>
+                <h1 style={{ margin: '0 0 24px', fontSize: 24, fontWeight: 600, color: warm.colors.bgAlt, letterSpacing: '-0.02em' }}>
                   What's your name?
                 </h1>
                 <label style={labelStyle}>Full name</label>
@@ -158,7 +158,7 @@ export function FromScratchCapture({ onDone }: FromScratchCaptureProps) {
 
             {step === 'role' && (
               <div>
-                <h1 style={{ margin: '0 0 24px', fontSize: 24, fontWeight: 600, color: '#f3f4f6', letterSpacing: '-0.02em' }}>
+                <h1 style={{ margin: '0 0 24px', fontSize: 24, fontWeight: 600, color: warm.colors.bgAlt, letterSpacing: '-0.02em' }}>
                   What's your most recent role?
                 </h1>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
@@ -186,10 +186,10 @@ export function FromScratchCapture({ onDone }: FromScratchCaptureProps) {
 
             {step === 'achievement' && (
               <div>
-                <h1 style={{ margin: '0 0 8px', fontSize: 24, fontWeight: 600, color: '#f3f4f6', letterSpacing: '-0.02em' }}>
+                <h1 style={{ margin: '0 0 8px', fontSize: 24, fontWeight: 600, color: warm.colors.bgAlt, letterSpacing: '-0.02em' }}>
                   One thing you delivered in that role
                 </h1>
-                <p style={{ margin: '0 0 24px', fontSize: 13, color: '#9ca3af', lineHeight: 1.55 }}>
+                <p style={{ margin: '0 0 24px', fontSize: 13, color: warm.colors.textMuted, lineHeight: 1.55 }}>
                   Just one. We'll help you sharpen and add more later when you apply to your first job.
                 </p>
                 <label style={labelStyle}>What changed because of you?</label>
@@ -206,7 +206,7 @@ export function FromScratchCapture({ onDone }: FromScratchCaptureProps) {
 
             {step === 'target' && (
               <div>
-                <h1 style={{ margin: '0 0 24px', fontSize: 24, fontWeight: 600, color: '#f3f4f6', letterSpacing: '-0.02em' }}>
+                <h1 style={{ margin: '0 0 24px', fontSize: 24, fontWeight: 600, color: warm.colors.bgAlt, letterSpacing: '-0.02em' }}>
                   What's your target?
                 </h1>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -237,7 +237,7 @@ export function FromScratchCapture({ onDone }: FromScratchCaptureProps) {
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 8,
-                  background: '#6366f1',
+                  background: warm.colors.accentPetrol,
                   color: '#fff',
                   border: 'none',
                   borderRadius: 11,

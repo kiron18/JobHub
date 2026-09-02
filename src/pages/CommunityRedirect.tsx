@@ -20,6 +20,7 @@
    ──────────────────────────────────────────────────────────────────────────── */
 import { useEffect } from 'react';
 import { trackCommunityClick } from '../lib/analytics';
+import { warm } from '../lib/theme/warmTokens';
 
 /** The free group. Overridable at build time so it moves without a code change. */
 const SKOOL_URL =
@@ -99,7 +100,7 @@ export default function CommunityRedirect() {
       </p>
       <a
         href={SKOOL_URL}
-        style={{ fontSize: '0.9375rem', color: '#2D5A6E', textDecoration: 'underline', textUnderlineOffset: 3 }}
+        style={{ fontSize: '0.9375rem', color: warm.colors.accentPetrol, textDecoration: 'underline', textUnderlineOffset: 3 }}
       >
         Tap here if nothing happens
       </a>

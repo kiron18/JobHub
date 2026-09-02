@@ -58,5 +58,7 @@ export interface BannerConfig {
   mainMessage: string;
   subLine: string;
   bgColor: string;
+  /** Optional so banners saved before text colour existed still open. */
+  textColor?: string;
   texture: 'clean' | 'gradient' | 'grid';
 }

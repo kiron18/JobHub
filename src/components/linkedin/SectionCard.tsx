@@ -42,7 +42,7 @@ export const SectionCard: React.FC<Props> = ({
           {(charLimit || charTarget) && (
             <span style={{
               fontSize: 11, fontWeight: 600,
-              color: overLimit ? '#f87171' : warm.colors.textMuted,
+              color: overLimit ? warm.colors.danger : warm.colors.textMuted,
             }}>
               {charTarget ? `${charCount} / target ${charTarget}` : `${charCount} / ${charLimit}`}
             </span>
@@ -66,9 +66,9 @@ export const SectionCard: React.FC<Props> = ({
             style={{
               display: 'flex', alignItems: 'center', gap: 4,
               fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 6,
-              border: `1px solid ${copied ? '#34d399' : warm.colors.borderWhisper}`,
+              border: `1px solid ${copied ? warm.colors.success : warm.colors.borderWhisper}`,
               background: copied ? 'rgba(52,211,153,0.1)' : 'transparent',
-              color: copied ? '#34d399' : warm.colors.textSecondary, cursor: 'pointer',
+              color: copied ? warm.colors.success : warm.colors.textSecondary, cursor: 'pointer',
               transition: 'all 0.15s',
             }}
           >
@@ -91,7 +91,7 @@ export const SectionCard: React.FC<Props> = ({
           rows={label === 'About' ? 10 : label === 'Experience Bullets (Most Recent Role)' ? 5 : 3}
           style={{
             width: '100%', background: 'rgba(255,255,255,0.03)',
-            border: `1px solid ${overLimit ? '#f87171' : warm.colors.borderWhisper}`,
+            border: `1px solid ${overLimit ? warm.colors.danger : warm.colors.borderWhisper}`,
             borderRadius: 10, padding: '10px 12px', fontSize: 14,
             color: warm.colors.textPrimary, resize: 'vertical', lineHeight: 1.6,
             fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box',

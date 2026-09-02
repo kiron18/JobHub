@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import { type SectionMeta, type SceneIcon, SECTION_LINKS, SECTION_ICONS } from '../lib/reportIcons';
 import api from '../lib/api';
+import { warm } from '../lib/theme/warmTokens';
 
 // Renders markdown text into React elements — handles **bold**, *italic*, and paragraph breaks.
 // No external dependency. Deliberately minimal: only what the diagnostic report uses.
@@ -99,14 +100,14 @@ export function ReportIsland({
   const hintBg         = isDark ? 'rgba(255,255,255,0.12)'     : 'rgba(0,0,0,0.08)';
   const hintColor      = isDark ? 'rgba(255,255,255,0.7)'      : 'rgba(0,0,0,0.45)';
   const teaserColor    = isDark ? 'rgba(255,255,255,0.60)'     : 'rgba(0,0,0,0.45)';
-  const problemColor   = isDark ? '#e5e7eb'                    : '#374151';
-  const fixBodyColor   = isDark ? '#e5e7eb'                    : '#1f2937';
+  const problemColor   = isDark ? warm.colors.borderWhisper                    : warm.colors.textSecondary;
+  const fixBodyColor   = isDark ? warm.colors.borderWhisper                    : warm.colors.textPrimary;
   const pillBorder     = isDark ? 'rgba(255,255,255,0.10)'     : 'rgba(0,0,0,0.10)';
-  const pillInactive   = isDark ? '#6b7280'                    : '#9ca3af';
+  const pillInactive   = isDark ? warm.colors.textMuted                    : warm.colors.textMuted;
   const ctaItemBg      = isDark ? 'rgba(255,255,255,0.03)'     : 'rgba(0,0,0,0.02)';
   const ctaItemBorder  = isDark ? 'rgba(255,255,255,0.07)'     : 'rgba(0,0,0,0.07)';
   const ctaItemHover   = isDark ? 'rgba(255,255,255,0.07)'     : 'rgba(0,0,0,0.05)';
-  const ctaSubColor    = isDark ? '#6b7280'                    : '#9ca3af';
+  const ctaSubColor    = isDark ? warm.colors.textMuted                    : warm.colors.textMuted;
 
   async function submitFeedback(score: Feedback) {
     if (feedback || feedbackLoading) return;

@@ -285,7 +285,7 @@ const categoryLabelColor: Record<string, string> = {
     Interview: warm.colors.success,
     Networking: '#7C6CB5',
     Offer: warm.colors.accentPetrol,
-    Tools: '#0A66C2',
+    Tools: warm.colors.accentPetrol,
 };
 
 const cardStyle: React.CSSProperties = {

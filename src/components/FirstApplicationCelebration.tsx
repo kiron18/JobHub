@@ -132,25 +132,15 @@ export function FirstApplicationCelebration() {
 
             {/* Beat 1 — The moment */}
             <div style={{ textAlign: 'center', marginBottom: 28 }}>
-              <p style={{
-                margin: '0 0 10px',
-                fontSize: 11,
-                fontWeight: 800,
-                letterSpacing: '0.16em',
-                textTransform: 'uppercase',
-                color: warm.colors.accentGold,
-              }}>
-                Your first application is out
-              </p>
               <h2 style={{
                 margin: '0 0 14px',
-                fontSize: 'clamp(24px, 4.8vw, 32px)',
-                fontWeight: 900,
+                fontSize: 'clamp(27px, 5.4vw, 36px)',
+                fontWeight: warm.weight.bold,
                 color: warm.colors.textPrimary,
-                lineHeight: 1.18,
-                letterSpacing: '-0.02em',
+                lineHeight: 1.14,
+                letterSpacing: '-0.022em',
               }}>
-                One down. Many more to go.
+                Your first application is out
               </h2>
               <p style={{
                 margin: 0,
@@ -254,20 +244,28 @@ export function FirstApplicationCelebration() {
                 Send another
                 <ArrowRight size={16} />
               </motion.button>
+              {/*
+                Was "Take a breath first", which is a nice thought and a dead
+                end. Applications are half the job; the other half is that
+                somebody inside the company knows your name. This sends them
+                straight into the outreach tab with the generator on screen.
+              */}
               <button
-                onClick={close}
+                onClick={() => { close(); navigate('/linkedin?tab=outreach'); }}
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: warm.colors.textSecondary,
-                  fontSize: 12,
-                  fontWeight: 600,
+                  color: warm.colors.accentPetrol,
+                  fontSize: 13.5,
+                  fontWeight: warm.weight.semibold,
                   cursor: 'pointer',
-                  padding: '6px',
+                  padding: '8px 6px',
                   letterSpacing: '-0.01em',
+                  textDecoration: 'underline',
+                  textUnderlineOffset: 4,
                 }}
               >
-                Take a breath first
+                Use the Networking Wizard
               </button>
             </div>
           </motion.div>

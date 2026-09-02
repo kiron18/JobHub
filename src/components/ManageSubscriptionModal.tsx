@@ -158,7 +158,7 @@ export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan
             {/* Header */}
             <div style={{ padding: '24px 24px 0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
               <div>
-                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: isPaid ? '#6366f1' : '#2D5A6E', marginBottom: 6 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: isPaid ? warm.colors.accentPetrol : warm.colors.accentPetrol, marginBottom: 6 }}>
                   {isPaid ? 'Before you go' : 'Account & billing'}
                 </p>
                 <h2 style={{ fontSize: 20, fontWeight: 600, letterSpacing: '-0.02em', color: textMain, margin: 0, lineHeight: 1.3 }}>
@@ -222,7 +222,7 @@ export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan
                     >
                       <span>{label}</span>
                       {isActive && (
-                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#6366f1', flexShrink: 0 }} />
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: warm.colors.accentPetrol, flexShrink: 0 }} />
                       )}
                     </button>
                   );
@@ -270,7 +270,7 @@ export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan
                   width: '100%', padding: '11px 16px',
                   borderRadius: 10, border: `1px solid ${isPaid ? ('rgba(239,68,68,0.3)') : border}`,
                   background: isPaid ? ('rgba(239,68,68,0.04)') : ('rgba(45,90,110,0.08)'),
-                  color: isPaid ? ('#dc2626') : '#2D5A6E',
+                  color: isPaid ? (warm.colors.danger) : warm.colors.accentPetrol,
                   fontSize: 13, fontWeight: 600,
                   cursor: cancelling ? 'not-allowed' : 'pointer',
                   opacity: cancelling ? 0.6 : 1,
@@ -290,7 +290,7 @@ export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan
                 style={{
                   width: '100%', padding: '11px 16px',
                   borderRadius: 10, border: `1px solid ${border}`,
-                  background: '#f9fafb',
+                  background: warm.colors.bgAlt,
                   color: textMain,
                   fontSize: 13, fontWeight: 700,
                   cursor: 'pointer',

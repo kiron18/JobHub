@@ -1065,8 +1065,13 @@ export const WelcomePage: React.FC = () => {
 
           Quiet, and it opens two sentences. The answer only works if it costs
           nothing to go and read it.
+
+          Conditional on the same test as the cuts panel above: it is an answer
+          to "why am I being asked to delete my own work", so on a resume that
+          is already the right length there is no question for it to answer and
+          it is just another link.
         */}
-        {!editing && (
+        {!editing && pageCount !== null && pageCount > 2 && cuts.length > 0 && (
           <p style={{ margin: '16px 0 0', textAlign: 'center' }}>
             <button
               type="button"
@@ -1623,7 +1628,7 @@ function DiagnosisTile({
         /* Square-ish, and the same height across the row, so the three read as
            one set rather than three panels. */
         position: 'relative',
-        aspectRatio: '1 / 1', minHeight: 180,
+        aspectRatio: '1 / 1', minHeight: 208,
         display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
         gap: 8, padding: '22px 18px 20px', cursor: 'pointer', borderRadius: 18,
         background: colors.bgSurface,
@@ -1646,19 +1651,24 @@ function DiagnosisTile({
         </span>
       )}
 
+      {/* marginTop:auto here, and again on the "Show me" row below, splits the
+          free space evenly above and below this pair so the icon and the title
+          sit in the middle of the tile instead of at the top of it with a hole
+          underneath. */}
       <span style={{
-        width: 56, height: 56, borderRadius: 16, flexShrink: 0,
+        marginTop: 'auto',
+        width: 74, height: 74, borderRadius: 20, flexShrink: 0,
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         background: open ? accent : colors.bgAlt,
         color: open ? '#fff' : accent,
         transition: 'background .2s ease, color .2s ease',
       }}>
-        <Icon size={28} strokeWidth={2} />
+        <Icon size={36} strokeWidth={1.9} />
       </span>
 
-      {/* The title follows the icon directly; the spacer lives on the row below
-          it, so all three headings sit on the same line across the row. */}
-      <span style={{ fontFamily: T.display, fontSize: 'clamp(16px, 2vw, 18.5px)', fontWeight: 600, color: colors.textPrimary, lineHeight: 1.25, marginTop: 6 }}>
+      {/* The title follows the icon directly, so all three headings sit on the
+          same line across the row. */}
+      <span style={{ fontFamily: T.display, fontSize: 'clamp(19px, 2.5vw, 23px)', fontWeight: 600, color: colors.textPrimary, lineHeight: 1.22, marginTop: 10 }}>
         {title}
       </span>
 

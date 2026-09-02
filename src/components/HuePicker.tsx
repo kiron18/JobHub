@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Palette } from 'lucide-react';
 import type { PaletteName } from '../styles/tokens';
 import { PALETTES, applyPalette } from '../styles/tokens';
+import { warm } from '../lib/theme/warmTokens';
 
 const STORAGE_KEY = 'jobhub_palette';
 const LEGACY_KEY  = 'jobhub_brand_hue';
@@ -58,8 +59,8 @@ export function HuePicker({ isDark }: { isDark: boolean }) {
 
   const bgColor     = isDark ? 'rgba(15,20,30,0.92)' : 'rgba(255,255,255,0.95)';
   const borderColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
-  const labelColor  = isDark ? '#6b7280' : '#9ca3af';
-  const iconColor   = isDark ? '#9ca3af' : '#6b7280';
+  const labelColor  = isDark ? warm.colors.textMuted : warm.colors.textMuted;
+  const iconColor   = isDark ? warm.colors.textMuted : warm.colors.textMuted;
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>

@@ -7,12 +7,12 @@ import type { OutreachLogEntry } from './types';
 import { renderFollowUpNudge } from '../../data/outreachTemplates';
 
 const STATUS_COLORS: Record<OutreachLogEntry['status'], string> = {
-  ACTIVE: '#60a5fa',
-  REPLIED: '#34d399',
-  CALL_BOOKED: '#a78bfa',
-  REFERRAL: '#fbbf24',
-  CLOSED_NO_REPLY: '#94a3b8',
-  CLOSED_MANUAL: '#64748b',
+  ACTIVE: warm.colors.accentPetrol,
+  REPLIED: warm.colors.success,
+  CALL_BOOKED: warm.colors.accentPetrol,
+  REFERRAL: warm.colors.accentGold,
+  CLOSED_NO_REPLY: warm.colors.textMuted,
+  CLOSED_MANUAL: warm.colors.textMuted,
 };
 
 const STATUS_LABELS: Record<OutreachLogEntry['status'], string> = {
@@ -137,7 +137,7 @@ function DraftRow({
   return (
     <div style={{ marginBottom: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 5 }}>
-        <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: sent ? '#34d399' : '#0A66C2' }}>
+        <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: sent ? warm.colors.success : warm.colors.accentPetrol }}>
           {label}{sent ? ' · sent' : ''}
         </span>
         <div style={{ display: 'flex', gap: 6 }}>
@@ -146,9 +146,9 @@ function DraftRow({
             style={{
               display: 'flex', alignItems: 'center', gap: 4, fontSize: 10.5, fontWeight: 700,
               padding: '3px 9px', borderRadius: 6, cursor: 'pointer',
-              border: `1px solid ${copied ? '#34d399' : warm.colors.borderWhisper}`,
+              border: `1px solid ${copied ? warm.colors.success : warm.colors.borderWhisper}`,
               background: copied ? 'rgba(52,211,153,0.1)' : 'transparent',
-              color: copied ? '#34d399' : warm.colors.textSecondary,
+              color: copied ? warm.colors.success : warm.colors.textSecondary,
             }}
           >
             {copied ? <Check size={10} /> : <Copy size={10} />}
@@ -162,7 +162,7 @@ function DraftRow({
                 display: 'flex', alignItems: 'center', gap: 4, fontSize: 10.5, fontWeight: 700,
                 padding: '3px 9px', borderRadius: 6, cursor: sending ? 'default' : 'pointer',
                 border: '1px solid rgba(10,102,194,0.4)', background: 'rgba(10,102,194,0.1)',
-                color: '#60a5fa',
+                color: warm.colors.accentPetrol,
               }}
             >
               {sending ? <Loader2 size={10} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={10} />}
@@ -206,7 +206,7 @@ function ReadOnlyMessage({ body, sentAt }: { body: string; sentAt?: string }) {
   return (
     <div style={{ marginBottom: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 5 }}>
-        <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#34d399' }}>
+        <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: warm.colors.success }}>
           Sent{sentAt ? ` · ${new Date(sentAt).toLocaleDateString()}` : ''}
         </span>
         <button
@@ -214,9 +214,9 @@ function ReadOnlyMessage({ body, sentAt }: { body: string; sentAt?: string }) {
           style={{
             display: 'flex', alignItems: 'center', gap: 4, fontSize: 10.5, fontWeight: 700,
             padding: '3px 9px', borderRadius: 6, cursor: 'pointer',
-            border: `1px solid ${copied ? '#34d399' : warm.colors.borderWhisper}`,
+            border: `1px solid ${copied ? warm.colors.success : warm.colors.borderWhisper}`,
             background: copied ? 'rgba(52,211,153,0.1)' : 'transparent',
-            color: copied ? '#34d399' : warm.colors.textSecondary,
+            color: copied ? warm.colors.success : warm.colors.textSecondary,
           }}
         >
           {copied ? <Check size={10} /> : <Copy size={10} />}
@@ -295,7 +295,7 @@ function AddMessageRow({ onAdd, personName }: { onAdd: (body: string) => Promise
             padding: '5px 12px', borderRadius: 6,
             border: '1px solid rgba(10,102,194,0.4)',
             background: body.trim() ? 'rgba(10,102,194,0.12)' : 'transparent',
-            color: '#60a5fa', cursor: !body.trim() || saving ? 'default' : 'pointer',
+            color: warm.colors.accentPetrol, cursor: !body.trim() || saving ? 'default' : 'pointer',
           }}
         >
           {saving ? <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> : <Check size={11} />}
@@ -454,7 +454,7 @@ function EntryCard({
             <Video size={12} color="#a78bfa" />
             <span style={{
               fontSize: 10, fontWeight: 800, letterSpacing: '0.1em',
-              textTransform: 'uppercase', color: '#a78bfa',
+              textTransform: 'uppercase', color: warm.colors.accentPetrol,
             }}>
               If this turns into a call
             </span>
@@ -488,7 +488,7 @@ function EntryCard({
               fontWeight: 700,
               border: '1px solid rgba(52,211,153,0.4)',
               background: updating === 'REPLIED' ? 'rgba(52,211,153,0.2)' : 'rgba(52,211,153,0.1)',
-              color: '#34d399',
+              color: warm.colors.success,
               cursor: updating ? 'default' : 'pointer',
             }}
           >
@@ -517,7 +517,7 @@ function EntryCard({
                 fontWeight: 700,
                 border: '1px solid rgba(167,139,250,0.4)',
                 background: updating === 'CALL_BOOKED' ? 'rgba(167,139,250,0.2)' : 'rgba(167,139,250,0.1)',
-                color: '#a78bfa',
+                color: warm.colors.accentPetrol,
                 cursor: updating ? 'default' : 'pointer',
               }}
             >
@@ -542,7 +542,7 @@ function EntryCard({
                 fontWeight: 700,
                 border: '1px solid rgba(251,191,36,0.4)',
                 background: updating === 'REFERRAL' ? 'rgba(251,191,36,0.2)' : 'rgba(251,191,36,0.1)',
-                color: '#fbbf24',
+                color: warm.colors.accentGold,
                 cursor: updating ? 'default' : 'pointer',
               }}
             >
@@ -699,7 +699,7 @@ function FollowUpDueCard({
             {due.personName}
           </span>
           <span style={{ fontSize: 13, color: warm.colors.textSecondary }}> · {due.company}</span>
-          <div style={{ fontSize: 11, color: '#f59e0b', marginTop: 4 }}>
+          <div style={{ fontSize: 11, color: warm.colors.accentGold, marginTop: 4 }}>
             <Clock size={11} style={{ display: 'inline', marginRight: 4 }} />
             {isReContact
               ? `${due.daysSinceLastTouch} days since your last message · time for the 3-4 week follow-up`
@@ -746,8 +746,8 @@ function FollowUpDueCard({
           fontSize: 12,
           fontWeight: 700,
           border: '1px solid rgba(251,191,36,0.4)',
-          background: copying ? 'rgba(251,191,36,0.15)' : '#f59e0b',
-          color: copying ? '#f59e0b' : 'white',
+          background: copying ? 'rgba(251,191,36,0.15)' : warm.colors.accentGold,
+          color: copying ? warm.colors.accentGold : 'white',
           cursor: copying ? 'default' : 'pointer',
         }}
       >
@@ -848,7 +848,7 @@ export const OutreachTracker: React.FC = () => {
             border: 'none',
             fontSize: 13,
             fontWeight: 700,
-            background: activeTab === 'due' ? '#f59e0b' : warm.colors.bgAlt,
+            background: activeTab === 'due' ? warm.colors.accentGold : warm.colors.bgAlt,
             color: activeTab === 'due' ? 'white' : warm.colors.textSecondary,
             cursor: 'pointer',
           }}
@@ -861,7 +861,7 @@ export const OutreachTracker: React.FC = () => {
                 padding: '2px 6px',
                 borderRadius: 10,
                 fontSize: 10,
-                background: activeTab === 'due' ? 'rgba(255,255,255,0.2)' : '#f59e0b',
+                background: activeTab === 'due' ? 'rgba(255,255,255,0.2)' : warm.colors.accentGold,
                 color: activeTab === 'due' ? 'white' : 'white',
               }}
             >
@@ -877,7 +877,7 @@ export const OutreachTracker: React.FC = () => {
             border: 'none',
             fontSize: 13,
             fontWeight: 700,
-            background: activeTab === 'all' ? '#0A66C2' : warm.colors.bgAlt,
+            background: activeTab === 'all' ? warm.colors.accentPetrol : warm.colors.bgAlt,
             color: activeTab === 'all' ? 'white' : warm.colors.textSecondary,
             cursor: 'pointer',
           }}

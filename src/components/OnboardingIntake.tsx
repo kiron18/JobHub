@@ -173,7 +173,7 @@ function TSelect({ value, onChange, options, placeholder }: {
       }}
       value={value} onChange={e => onChange(e.target.value)}
     >
-      <option value="" style={{ color: '#9ca3af' }}>{placeholder}</option>
+      <option value="" style={{ color: warm.colors.textMuted }}>{placeholder}</option>
       {options.map(o => <option key={o} value={o}>{o}</option>)}
     </select>
   );
@@ -727,8 +727,8 @@ export function OnboardingIntake({ resumeMode: _resumeMode = false, initialStep,
   ) : null;
 
   if (authLoading) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAF7F2' }}>
-      <div className="w-10 h-10 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(45,90,110,0.2)', borderTopColor: '#2D5A6E' }} />
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: warm.colors.bgCanvas }}>
+      <div className="w-10 h-10 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(45,90,110,0.2)', borderTopColor: warm.colors.accentPetrol }} />
     </div>
   );
 

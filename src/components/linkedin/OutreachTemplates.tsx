@@ -3,7 +3,7 @@ import { Loader2, Copy, Check, ChevronDown, ChevronUp, UserCheck } from 'lucide-
 import { toast } from 'sonner';
 import api from '../../lib/api';
 import { warm } from '../../lib/theme/warmTokens';
-import { OutreachWalkthrough } from './OutreachWalkthrough';
+import { NetworkingGuide } from './NetworkingGuide';
 import type { OutreachData } from './types';
 
 const COACHING_TIPS: Record<keyof Omit<OutreachData, 'questionSuggestions'>, string> = {
@@ -72,12 +72,12 @@ function TemplateCard({ label, content, tip, charLimit, editableNote, logEnabled
   return (
     <div style={{ background: warm.colors.bgSurface, border: `1px solid ${warm.colors.borderWhisper}`, borderRadius: 14, padding: 20, marginBottom: 14 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-        <span style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#0A66C2' }}>
+        <span style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: warm.colors.accentPetrol }}>
           {label}
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {charLimit && (
-            <span style={{ fontSize: 11, color: overLimit ? '#f87171' : warm.colors.textMuted, fontWeight: 600 }}>
+            <span style={{ fontSize: 11, color: overLimit ? warm.colors.danger : warm.colors.textMuted, fontWeight: 600 }}>
               {charCount} / {charLimit}
             </span>
           )}
@@ -86,9 +86,9 @@ function TemplateCard({ label, content, tip, charLimit, editableNote, logEnabled
             style={{
               display: 'flex', alignItems: 'center', gap: 4,
               fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 6,
-              border: `1px solid ${copied ? '#34d399' : warm.colors.borderWhisper}`,
+              border: `1px solid ${copied ? warm.colors.success : warm.colors.borderWhisper}`,
               background: copied ? 'rgba(52,211,153,0.1)' : 'transparent',
-              color: copied ? '#34d399' : warm.colors.textSecondary, cursor: 'pointer',
+              color: copied ? warm.colors.success : warm.colors.textSecondary, cursor: 'pointer',
             }}
           >
             {copied ? <Check size={11} /> : <Copy size={11} />}
@@ -98,7 +98,7 @@ function TemplateCard({ label, content, tip, charLimit, editableNote, logEnabled
       </div>
 
       {editableNote && (
-        <p style={{ fontSize: 12, color: '#f59e0b', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 6, padding: '6px 10px', marginBottom: 10 }}>
+        <p style={{ fontSize: 12, color: warm.colors.accentGold, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 6, padding: '6px 10px', marginBottom: 10 }}>
           {editableNote}
         </p>
       )}
@@ -109,7 +109,7 @@ function TemplateCard({ label, content, tip, charLimit, editableNote, logEnabled
         rows={5}
         style={{
           width: '100%', background: 'rgba(255,255,255,0.03)',
-          border: `1px solid ${overLimit ? '#f87171' : warm.colors.borderWhisper}`,
+          border: `1px solid ${overLimit ? warm.colors.danger : warm.colors.borderWhisper}`,
           borderRadius: 8, padding: '10px 12px', fontSize: 13,
           color: warm.colors.textPrimary, resize: 'vertical', lineHeight: 1.6,
           fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box',
@@ -143,7 +143,6 @@ export const OutreachTemplates: React.FC = () => {
   const [generating, setGenerating] = useState(false);
   const [outreach, setOutreach] = useState<OutreachData | null>(null);
   const [genId, setGenId] = useState(0);
-  const [showPlaybook, setShowPlaybook] = useState(false);
   const [logging, setLogging] = useState(false);
   const [loggedThisGen, setLoggedThisGen] = useState(false);
   const [outreachLogId, setOutreachLogId] = useState<string | null>(null);
@@ -260,81 +259,20 @@ export const OutreachTemplates: React.FC = () => {
 
   const labelStyle: React.CSSProperties = {
     fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
-    letterSpacing: '0.08em', color: '#64748b', display: 'block', marginBottom: 6,
+    letterSpacing: '0.08em', color: warm.colors.textMuted, display: 'block', marginBottom: 6,
   };
 
   return (
     <div>
-      {/* The annotated transcript. Sits first because the shape it teaches is
-          what makes every generated draft below actually work. */}
-      <OutreachWalkthrough />
+      {/*
+        One guide, collapsed.
 
-      {/* Brief strategy overview: always visible, sets up the playbook below */}
-      <div style={{
-        background: warm.colors.bgAlt,
-        border: `1px solid ${warm.colors.borderWhisper}`,
-        borderLeft: `3px solid ${warm.colors.accentPetrol}`,
-        borderRadius: 12,
-        padding: '14px 16px',
-        marginBottom: 14,
-      }}>
-        <p style={{
-          margin: '0 0 6px',
-          fontSize: 11,
-          fontWeight: 800,
-          letterSpacing: '0.12em',
-          textTransform: 'uppercase',
-          color: warm.colors.textSecondary,
-        }}>
-          The outreach strategy
-        </p>
-        <p style={{ margin: '0 0 6px', fontSize: 13, lineHeight: 1.6, color: warm.colors.textPrimary, fontWeight: 600 }}>
-          Don't ask for a job. Become someone people are glad they know, then ask for a quick Zoom or Google Meet call.
-        </p>
-        <p style={{ margin: '0 0 6px', fontSize: 12.5, lineHeight: 1.6, color: warm.colors.textSecondary }}>
-          Fill in the person you want to reach below. We'll generate five templates: a connection note, the first message after they accept, an after-conversation follow-up, a second run at the call ask, and the 3-4 week follow-up. Send the connection note, then the first message once they accept. The first message is the one that asks for the call, so you are not sitting on the ask for three rounds hoping the moment feels right.
-        </p>
-        <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6, color: warm.colors.textSecondary }}>
-          Stay curious and playful in these conversations: this is focused play and socialising, not a transaction. Think of it as relationship building, not career growth. The career growth is a byproduct of strong relationships.
-        </p>
-      </div>
-
-      {/* Playbook guide */}
-      <div style={{
-        background: warm.colors.bgSurface,
-        border: showPlaybook ? '1px solid rgba(239,68,68,0.25)' : '1px solid rgba(239,68,68,0.35)',
-        borderRadius: 14, padding: 16, marginBottom: 20,
-        boxShadow: showPlaybook ? 'none' : '0 0 14px rgba(239,68,68,0.12)',
-      }}>
-        <button
-          onClick={() => setShowPlaybook(v => !v)}
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            width: '100%', background: 'none', border: 'none', cursor: 'pointer',
-            color: showPlaybook ? warm.colors.textPrimary : '#f87171', fontWeight: 700, fontSize: 14,
-          }}
-        >
-          Before you start: The 7-Step Networking Playbook
-          {showPlaybook ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-        </button>
-        {showPlaybook && (
-          <div style={{ marginTop: 16, fontSize: 13, color: warm.colors.textSecondary, lineHeight: 1.7 }}>
-            <p style={{ fontWeight: 700, color: warm.colors.textPrimary }}>The one mindset shift that makes everything else work:</p>
-            <blockquote style={{ borderLeft: '2px solid rgba(10,102,194,0.5)', paddingLeft: 12, margin: '8px 0 16px', fontStyle: 'italic' }}>
-              LinkedIn networking is not about asking people for jobs. It is about becoming someone people are glad they know. Give before you ask.
-            </blockquote>
-            <ol style={{ paddingLeft: 20, margin: 0 }}>
-              <li><strong>Find the right people.</strong> Target professionals with 400-500 connections who post regularly. Avoid mega-accounts.</li>
-              <li><strong>Comment before you connect.</strong> A genuine, specific comment makes you familiar before your request arrives.</li>
-              <li><strong>Send a connection note.</strong> Reference something real, keep it under 200 characters, and don't put an ask in it. The connection request is already an ask.</li>
-              <li><strong>First message after connecting.</strong> Say plainly that you're moving into this field, then ask for the 15-20 minute call. This is the message that books it.</li>
-              <li><strong>Have the conversation.</strong> Prepare 3 specific questions, listen more than you talk, do not ask for a job. Close by asking for a name, not a referral.</li>
-              <li><strong>Follow up within 24 hours,</strong> then again in 3-4 weeks with something you actually did off the back of their advice. That second one is where referrals come from.</li>
-              <li><strong>Stay on their radar.</strong> Thoughtful comments 1-2x/month, share relevant articles.</li>
-            </ol>
-          </div>
-        )}
-      </div>
+        Three blocks used to sit here: an annotated transcript, a strategy
+        summary, and a seven step playbook. They said the same things three
+        times in three voices, and between them they filled the screen above
+        the tool people came here to use.
+      */}
+      <NetworkingGuide />
 
       {/* Input form */}
       <div style={{ background: warm.colors.bgSurface, border: `1px solid ${warm.colors.borderWhisper}`, borderRadius: 16, padding: 24, marginBottom: 20 }}>
@@ -379,7 +317,7 @@ export const OutreachTemplates: React.FC = () => {
                   style={{
                     fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 16,
                     border: '1px solid rgba(10,102,194,0.3)', background: 'rgba(10,102,194,0.08)',
-                    color: '#60a5fa', cursor: 'pointer',
+                    color: warm.colors.accentPetrol, cursor: 'pointer',
                   }}
                 >
                   {q}
@@ -395,7 +333,7 @@ export const OutreachTemplates: React.FC = () => {
           style={{
             width: '100%', padding: '12px 0', borderRadius: 10, border: 'none',
             background: !targetFirstName || !targetCompany || !targetTopicOrPost || generating
-              ? 'rgba(10,102,194,0.3)' : '#0A66C2',
+              ? 'rgba(10,102,194,0.3)' : warm.colors.accentPetrol,
             color: 'white', fontWeight: 700, fontSize: 14,
             cursor: (!targetFirstName || !targetCompany || !targetTopicOrPost || generating) ? 'default' : 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -460,9 +398,9 @@ export const OutreachTemplates: React.FC = () => {
               style={{
                 display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
                 padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 700,
-                border: `1px solid ${loggedThisGen ? '#34d399' : 'rgba(10,102,194,0.4)'}`,
-                background: loggedThisGen ? 'rgba(52,211,153,0.1)' : '#0A66C2',
-                color: loggedThisGen ? '#34d399' : 'white',
+                border: `1px solid ${loggedThisGen ? warm.colors.success : 'rgba(10,102,194,0.4)'}`,
+                background: loggedThisGen ? 'rgba(52,211,153,0.1)' : warm.colors.accentPetrol,
+                color: loggedThisGen ? warm.colors.success : 'white',
                 cursor: logging || loggedThisGen ? 'default' : 'pointer',
               }}
             >

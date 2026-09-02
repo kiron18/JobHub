@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import { getPlatformConfig } from '../../lib/platforms';
 import { JobPreviewModal } from './JobPreviewModal';
+import { warm } from '../../lib/theme/warmTokens';
 
 export interface JobFeedItem {
   id: string;
@@ -197,10 +198,10 @@ export const JobCard: React.FC<Props> = ({ item, onUpdate }) => {
                 <span
                   className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full"
                   style={{
-                    color: item.applicationStatus === 'REJECTED' ? '#A0A4A8'
-                      : item.applicationStatus === 'OFFER' ? '#7DA67D'
-                      : item.applicationStatus === 'INTERVIEW' ? '#C5A059'
-                      : '#7DA67D',
+                    color: item.applicationStatus === 'REJECTED' ? warm.colors.textMuted
+                      : item.applicationStatus === 'OFFER' ? warm.colors.success
+                      : item.applicationStatus === 'INTERVIEW' ? warm.colors.accentGold
+                      : warm.colors.success,
                     background: item.applicationStatus === 'REJECTED' ? 'rgba(160,164,168,0.10)'
                       : item.applicationStatus === 'OFFER' ? 'rgba(125,166,125,0.12)'
                       : item.applicationStatus === 'INTERVIEW' ? 'rgba(197,160,89,0.12)'

@@ -96,7 +96,7 @@ export const HeadshotGenerator: React.FC<Props> = ({ initialHeadshotUrl, onSaved
           </span>
         </div>
         {usage && (
-          <span style={{ fontSize: 11, fontWeight: 600, color: usage.usedToday >= usage.limit ? '#f87171' : warm.colors.textMuted }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: usage.usedToday >= usage.limit ? warm.colors.danger : warm.colors.textMuted }}>
             {usage.usedToday} / {usage.limit} today
           </span>
         )}
@@ -128,7 +128,7 @@ export const HeadshotGenerator: React.FC<Props> = ({ initialHeadshotUrl, onSaved
             : (
               <div style={{ textAlign: 'center', padding: 12 }}>
                 <Upload size={24} color="#0A66C2" style={{ marginBottom: 8 }} />
-                <p style={{ fontSize: 12, color: '#60a5fa', fontWeight: 600, margin: 0 }}>Upload photo</p>
+                <p style={{ fontSize: 12, color: warm.colors.accentPetrol, fontWeight: 600, margin: 0 }}>Upload photo</p>
                 <p style={{ fontSize: 11, color: warm.colors.textMuted, margin: '4px 0 0' }}>JPG, PNG, WebP</p>
               </div>
             )
@@ -161,7 +161,7 @@ export const HeadshotGenerator: React.FC<Props> = ({ initialHeadshotUrl, onSaved
               style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 padding: '9px 16px', borderRadius: 8, border: 'none',
-                background: !file || generating ? 'rgba(10,102,194,0.3)' : '#0A66C2',
+                background: !file || generating ? 'rgba(10,102,194,0.3)' : warm.colors.accentPetrol,
                 color: 'white', fontWeight: 700, fontSize: 13,
                 cursor: !file || generating ? 'default' : 'pointer',
               }}
@@ -177,7 +177,7 @@ export const HeadshotGenerator: React.FC<Props> = ({ initialHeadshotUrl, onSaved
                   style={{
                     display: 'flex', alignItems: 'center', gap: 6,
                     padding: '9px 16px', borderRadius: 8, border: `1px solid ${warm.colors.borderWhisper}`,
-                    background: 'transparent', color: '#34d399', fontWeight: 700, fontSize: 13,
+                    background: 'transparent', color: warm.colors.success, fontWeight: 700, fontSize: 13,
                     cursor: saving ? 'default' : 'pointer',
                   }}
                 >

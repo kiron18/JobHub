@@ -178,9 +178,9 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAF7F2' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: warm.colors.bgCanvas }}>
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(45,90,110,0.2)', borderTopColor: '#2D5A6E' }} />
+          <div className="w-12 h-12 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(45,90,110,0.2)', borderTopColor: warm.colors.accentPetrol }} />
           <p style={{ color: '#5C5750', fontWeight: 500, margin: 0 }}>Loading...</p>
         </div>
       </div>
@@ -368,6 +368,31 @@ function LandingPageOrExisting() {
   );
 }
 
+/*
+ * /visa-sponsors is a public marketing page AND a sidebar destination, and it
+ * was only ever the first. Signed out it is the standalone page it always was.
+ * Signed in it goes through the protected tree, where the dashboard Routes
+ * carry it, so the sidebar comes with it instead of vanishing.
+ */
+function VisaSponsorsRoute() {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (!user) {
+    return (
+      <React.Suspense fallback={null}>
+        <VisaSponsorsPage />
+      </React.Suspense>
+    );
+  }
+  return (
+    <ProtectedRoute>
+      <OnboardingGate>
+        <ReportOrDashboard />
+      </OnboardingGate>
+    </ProtectedRoute>
+  );
+}
+
 function ReportOrDashboard() {
   const queryClient = useQueryClient();
 
@@ -427,8 +452,8 @@ function ReportOrDashboard() {
   }
 
   const spinner = (
-    <div style={{ minHeight: '100vh', background: '#FAF7F2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div className="w-10 h-10 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(45,90,110,0.2)', borderTopColor: '#2D5A6E' }} />
+    <div style={{ minHeight: '100vh', background: warm.colors.bgCanvas, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="w-10 h-10 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(45,90,110,0.2)', borderTopColor: warm.colors.accentPetrol }} />
     </div>
   );
 
@@ -461,7 +486,7 @@ function ReportOrDashboard() {
       >
         <DashboardLayout>
           <ErrorBoundary>
-            <React.Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 256 }}><div className="w-8 h-8 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(45,90,110,0.2)', borderTopColor: '#2D5A6E' }} /></div>}>
+            <React.Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 256 }}><div className="w-8 h-8 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(45,90,110,0.2)', borderTopColor: warm.colors.accentPetrol }} /></div>}>
               <Routes>
                 <Route path="/" element={<StrategyHub />} />
                 <Route path="/tracker" element={<ApplicationTracker />} />
@@ -476,6 +501,7 @@ function ReportOrDashboard() {
                 <Route path="/linkedin" element={<LinkedInPage />} />
                 <Route path="/local-experience-playbook" element={<LocalExperiencePlaybookPage />} />
                 <Route path="/skipped" element={<SkippedJobsPage />} />
+                <Route path="/visa-sponsors" element={<VisaSponsorsPage />} />
                 {/* Job feed removed — app runs on pasted jobs. Stray links to /jobs land on the dashboard. */}
                 <Route path="/jobs" element={<Navigate to="/" replace />} />
                 <Route path="/mindset" element={<MindsetPage />} />
@@ -527,11 +553,7 @@ function App() {
                   <StyleGuidePage />
                 </React.Suspense>
               } />
-              <Route path="/visa-sponsors" element={
-                <React.Suspense fallback={null}>
-                  <VisaSponsorsPage />
-                </React.Suspense>
-              } />
+              <Route path="/visa-sponsors" element={<VisaSponsorsRoute />} />
               <Route path="/anim-test" element={
                 <React.Suspense fallback={null}>
                   <AnimationTest />

@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
+import { warm } from '../lib/theme/warmTokens';
 
 function getPointedQuestions(description: string): string[] {
   const d = description.toLowerCase();
@@ -40,8 +41,8 @@ export const AchievementVideoModal: React.FC<Props> = ({
 }) => {
   const bg = isDark ? '#0d1117' : '#fff';
   const border = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
-  const text = isDark ? '#f3f4f6' : '#111827';
-  const sub = isDark ? '#9ca3af' : '#6b7280';
+  const text = isDark ? warm.colors.bgAlt : warm.colors.textPrimary;
+  const sub = isDark ? warm.colors.textMuted : warm.colors.textMuted;
   const questions = getPointedQuestions(achievementDescription);
 
   return (
@@ -91,14 +92,14 @@ export const AchievementVideoModal: React.FC<Props> = ({
               border: '1px solid rgba(217,119,6,0.18)',
               borderRadius: 10, padding: '14px 16px', marginBottom: 16,
             }}>
-              <p style={{ margin: '0 0 10px', fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#d97706' }}>
+              <p style={{ margin: '0 0 10px', fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: warm.colors.accentGold }}>
                 Ask yourself
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                 {questions.map((q, i) => (
                   <div key={i} style={{ display: 'flex', gap: 9, alignItems: 'flex-start' }}>
-                    <span style={{ fontSize: 11, fontWeight: 800, color: '#d97706', flexShrink: 0, marginTop: 1 }}>{i + 1}.</span>
-                    <span style={{ fontSize: 13, color: isDark ? '#e5e7eb' : '#374151', lineHeight: 1.5 }}>{q}</span>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: warm.colors.accentGold, flexShrink: 0, marginTop: 1 }}>{i + 1}.</span>
+                    <span style={{ fontSize: 13, color: isDark ? warm.colors.borderWhisper : warm.colors.textSecondary, lineHeight: 1.5 }}>{q}</span>
                   </div>
                 ))}
               </div>
@@ -128,7 +129,7 @@ export const AchievementVideoModal: React.FC<Props> = ({
                   onClick={() => { onMarkQualitative(); onClose(); }}
                   style={{
                     background: 'none', border: 'none', cursor: 'pointer',
-                    fontSize: 12, fontWeight: 600, color: isDark ? '#6b7280' : '#9ca3af',
+                    fontSize: 12, fontWeight: 600, color: isDark ? warm.colors.textMuted : warm.colors.textMuted,
                     textDecoration: 'underline', textUnderlineOffset: 3, padding: 0,
                   }}
                 >

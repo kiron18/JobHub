@@ -22,6 +22,27 @@ export const ProfileSections: React.FC<Props> = ({
   
   return (
     <div>
+      {/*
+        Why this screen exists, said before the first field.
+
+        Outreach is the point of this whole section, and the profile is what a
+        stranger checks in the four seconds between reading your message and
+        deciding whether to reply. Doing it once, up front, is what makes every
+        message sent afterwards land on something.
+      */}
+      <p style={{
+        margin: '0 0 18px', padding: '13px 15px',
+        background: warm.colors.accentPetrolSoft,
+        border: `1px solid ${warm.colors.borderWhisper}`,
+        borderRadius: warm.radius.card,
+        fontFamily: warm.type.fontBody,
+        fontSize: 14, lineHeight: 1.6, color: warm.colors.textPrimary,
+      }}>
+        <strong style={{ fontWeight: warm.weight.semibold }}>Fix your profile up once</strong>{' '}
+        so the people you reach out to know who they are speaking to. Every message you send
+        from the Outreach tab sends them here first.
+      </p>
+
       {/* Target role input */}
       <div style={{ marginBottom: 20 }}>
         <label htmlFor="targetRole" style={{ display: 'block', fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: warm.colors.textMuted, marginBottom: 8 }}>
@@ -50,7 +71,7 @@ export const ProfileSections: React.FC<Props> = ({
         disabled={generating}
         style={{
           width: '100%', padding: '13px 0', borderRadius: 12, border: 'none',
-          background: generating ? 'rgba(10,102,194,0.4)' : '#0A66C2',
+          background: generating ? 'rgba(10,102,194,0.4)' : warm.colors.accentPetrol,
           color: 'white', fontSize: 15, fontWeight: 700,
           cursor: generating ? 'default' : 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -90,7 +111,7 @@ export const ProfileSections: React.FC<Props> = ({
                 {content.split(',').map(s => s.trim()).filter(Boolean).map((skill, i) => (
                   <span key={i} style={{
                     fontSize: 13, fontWeight: 600, padding: '4px 12px', borderRadius: 20,
-                    background: 'rgba(10,102,194,0.12)', color: '#60a5fa',
+                    background: 'rgba(10,102,194,0.12)', color: warm.colors.accentPetrol,
                     border: '1px solid rgba(10,102,194,0.25)',
                   }}>{skill}</span>
                 ))}

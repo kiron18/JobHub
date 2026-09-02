@@ -1,4 +1,5 @@
 import { Sparkles } from 'lucide-react';
+import { warm } from '../lib/theme/warmTokens';
 
 /**
  * Inline screen-only pill rendered next to bullets that the AI rewrote.
@@ -17,7 +18,7 @@ export function AIRewriteBadge() {
         gap: 3,
         fontSize: 9,
         fontWeight: 800,
-        color: '#a5b4fc',
+        color: warm.colors.accentPetrol,
         background: 'rgba(99,102,241,0.12)',
         border: '1px solid rgba(99,102,241,0.3)',
         borderRadius: 999,

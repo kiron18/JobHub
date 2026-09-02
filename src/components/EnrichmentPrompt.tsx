@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, Check, X } from 'lucide-react';
 import api from '../lib/api';
+import { warm } from '../lib/theme/warmTokens';
 
 interface Question {
   achievementId: string;
@@ -48,7 +49,7 @@ export function EnrichmentPrompt({ jobDescription, achievementIds, onComplete, o
             marginLeft: 8,
             background: 'transparent',
             border: '1px solid rgba(255,255,255,0.15)',
-            color: '#e5e7eb',
+            color: warm.colors.borderWhisper,
             borderRadius: 8,
             padding: '4px 10px',
             fontSize: 12,
@@ -62,7 +63,7 @@ export function EnrichmentPrompt({ jobDescription, achievementIds, onComplete, o
     );
   }
   if (!questions) {
-    return <div style={{ padding: 16, color: '#9ca3af', fontSize: 13 }}>Preparing questions…</div>;
+    return <div style={{ padding: 16, color: warm.colors.textMuted, fontSize: 13 }}>Preparing questions…</div>;
   }
   if (questions.length === 0) {
     onComplete();
@@ -127,10 +128,10 @@ export function EnrichmentPrompt({ jobDescription, achievementIds, onComplete, o
       padding: 24,
       marginTop: 16,
     }}>
-      <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 800, letterSpacing: '0.12em', color: '#818cf8', textTransform: 'uppercase' }}>
+      <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 800, letterSpacing: '0.12em', color: warm.colors.accentPetrol, textTransform: 'uppercase' }}>
         Sharpen for this role
       </p>
-      <p style={{ margin: '0 0 16px', fontSize: 13, color: '#a5b4fc' }}>
+      <p style={{ margin: '0 0 16px', fontSize: 13, color: warm.colors.accentPetrol }}>
         Achievement {index + 1} of {questions.length} — answer in plain English
       </p>
 
@@ -143,10 +144,10 @@ export function EnrichmentPrompt({ jobDescription, achievementIds, onComplete, o
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.2 }}
           >
-            <p style={{ margin: '0 0 8px', fontSize: 14, color: '#9ca3af' }}>
-              <strong style={{ color: '#e5e7eb' }}>{current.title}:</strong> {current.text}
+            <p style={{ margin: '0 0 8px', fontSize: 14, color: warm.colors.textMuted }}>
+              <strong style={{ color: warm.colors.borderWhisper }}>{current.title}:</strong> {current.text}
             </p>
-            <p style={{ margin: '12px 0 12px', fontSize: 16, color: '#f3f4f6', fontWeight: 700, lineHeight: 1.45 }}>
+            <p style={{ margin: '12px 0 12px', fontSize: 16, color: warm.colors.bgAlt, fontWeight: 700, lineHeight: 1.45 }}>
               {current.question}
             </p>
             <textarea
@@ -160,7 +161,7 @@ export function EnrichmentPrompt({ jobDescription, achievementIds, onComplete, o
                 background: 'rgba(255,255,255,0.04)',
                 border: '1px solid rgba(255,255,255,0.1)',
                 borderRadius: 10,
-                color: '#f3f4f6',
+                color: warm.colors.bgAlt,
                 fontSize: 14,
                 padding: '11px 14px',
                 outline: 'none',
@@ -175,7 +176,7 @@ export function EnrichmentPrompt({ jobDescription, achievementIds, onComplete, o
                 disabled={busy || !answer.trim()}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6,
-                  background: '#6366f1', color: '#fff',
+                  background: warm.colors.accentPetrol, color: '#fff',
                   border: 'none', borderRadius: 10, padding: '10px 18px',
                   fontSize: 13, fontWeight: 800, cursor: busy ? 'wait' : 'pointer',
                   opacity: (busy || !answer.trim()) ? 0.5 : 1,
@@ -187,7 +188,7 @@ export function EnrichmentPrompt({ jobDescription, achievementIds, onComplete, o
               <button
                 onClick={onSkipAll}
                 style={{
-                  background: 'transparent', color: '#9ca3af',
+                  background: 'transparent', color: warm.colors.textMuted,
                   border: 'none', fontSize: 12, fontWeight: 600,
                   cursor: 'pointer', padding: '8px 12px',
                 }}
@@ -204,7 +205,7 @@ export function EnrichmentPrompt({ jobDescription, achievementIds, onComplete, o
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.2 }}
           >
-            <p style={{ margin: '0 0 8px', fontSize: 12, color: '#a5b4fc', fontWeight: 700 }}>
+            <p style={{ margin: '0 0 8px', fontSize: 12, color: warm.colors.accentPetrol, fontWeight: 700 }}>
               I'll capture this as:
             </p>
             <p style={{
@@ -214,7 +215,7 @@ export function EnrichmentPrompt({ jobDescription, achievementIds, onComplete, o
               border: '1px solid rgba(34,197,94,0.25)',
               borderRadius: 10,
               fontSize: 14,
-              color: '#f3f4f6',
+              color: warm.colors.bgAlt,
               lineHeight: 1.5,
             }}>
               {parsed.rewrittenText}
@@ -237,7 +238,7 @@ export function EnrichmentPrompt({ jobDescription, achievementIds, onComplete, o
                 onClick={editParsed}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6,
-                  background: 'transparent', color: '#9ca3af',
+                  background: 'transparent', color: warm.colors.textMuted,
                   border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '10px 18px',
                   fontSize: 13, fontWeight: 700, cursor: 'pointer',
                 }}

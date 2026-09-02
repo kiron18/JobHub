@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { NavLink, Link } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     LayoutDashboard,
@@ -12,7 +12,6 @@ import {
     ShieldCheck,
     Menu,
     X,
-    EyeOff,
     Trophy, MessagesSquare } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
@@ -135,7 +134,6 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
         { to: '/linkedin', icon: Linkedin, label: 'LinkedIn' },
         { to: '/email-templates', icon: Mail, label: 'Email Templates' },
         { to: '/visa-sponsors', icon: ShieldCheck, label: 'Visa Sponsors' },
-        { to: '/skipped', icon: EyeOff, label: 'Skipped Jobs' },
     ];
 
     const sidebarContent = (showLabels: boolean) => (
@@ -364,18 +362,10 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                     {children}
                 </div>
 
-                {/* Quiet mindset link — visible on every dashboard page */}
-                <div className="max-w-5xl mx-auto px-6 md:px-10 pb-12 pt-4">
-                    <Link
-                        to="/mindset"
-                        className="inline-block text-xs transition-colors"
-                        style={{ color: warmT.textFaint, textDecoration: 'none' }}
-                        onMouseEnter={(e) => (e.currentTarget.style.color = warmT.textMuted)}
-                        onMouseLeave={(e) => (e.currentTarget.style.color = warmT.textFaint)}
-                    >
-                        Dealing with silence? Quick-ref mindset tips →
-                    </Link>
-                </div>
+                {/* The mindset link that used to sit here is gone. /mindset still
+                    exists and is still linked from where it is relevant; on every
+                    page it was a permanent reminder that things might be going
+                    badly, under screens where they were going fine. */}
             </main>
         </div>
     );

@@ -36,12 +36,12 @@ export const BannerCopyPicker: React.FC<Props> = ({
             onClick={() => onConfigChange({ ...config, mainMessage: bc.copy, subLine: bc.sublineSuggestion ?? '' })}
             style={{
               textAlign: 'left', padding: '12px 16px', borderRadius: 10, cursor: 'pointer',
-              border: `1px solid ${config.mainMessage === bc.copy ? '#0A66C2' : warm.colors.borderWhisper}`,
+              border: `1px solid ${config.mainMessage === bc.copy ? warm.colors.accentPetrol : warm.colors.borderWhisper}`,
               background: config.mainMessage === bc.copy ? 'rgba(10,102,194,0.1)' : 'rgba(255,255,255,0.02)',
               transition: 'all 0.15s',
             }}
           >
-            <p style={{ fontSize: 11, fontWeight: 700, color: '#0A66C2', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: warm.colors.accentPetrol, margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
               {FORMULA_LABELS[bc.formula]}
             </p>
             <p style={{ fontSize: 14, fontWeight: 700, color: warm.colors.textPrimary, margin: 0 }}>{bc.copy}</p>
@@ -56,8 +56,8 @@ export const BannerCopyPicker: React.FC<Props> = ({
       <div style={{ marginBottom: 12 }}>
         <label htmlFor="bannerMain" style={{ fontSize: 11, fontWeight: 700, color: warm.colors.textMuted, display: 'block', marginBottom: 6 }}>
           Main Message{' '}
-          {hardWarning && <span style={{ color: '#f87171' }}>({wordCount} words — aim for 5–12)</span>}
-          {softWarning && <span style={{ color: '#f59e0b' }}>({wordCount} words — ideal is under 12)</span>}
+          {hardWarning && <span style={{ color: warm.colors.danger }}>({wordCount} words — aim for 5–12)</span>}
+          {softWarning && <span style={{ color: warm.colors.accentGold }}>({wordCount} words — ideal is under 12)</span>}
         </label>
         <input
           id="bannerMain"
@@ -65,7 +65,7 @@ export const BannerCopyPicker: React.FC<Props> = ({
           onChange={e => onConfigChange({ ...config, mainMessage: e.target.value })}
           style={{
             width: '100%', padding: '10px 12px', borderRadius: 8, fontSize: 14,
-            background: 'rgba(255,255,255,0.04)', border: `1px solid ${hardWarning ? '#f87171' : warm.colors.borderWhisper}`,
+            background: 'rgba(255,255,255,0.04)', border: `1px solid ${hardWarning ? warm.colors.danger : warm.colors.borderWhisper}`,
             color: warm.colors.textPrimary, outline: 'none', boxSizing: 'border-box',
           }}
         />
@@ -91,7 +91,7 @@ export const BannerCopyPicker: React.FC<Props> = ({
         disabled={!config.mainMessage.trim()}
         style={{
           width: '100%', padding: '12px 0', borderRadius: 10, border: 'none',
-          background: config.mainMessage.trim() ? '#0A66C2' : 'rgba(10,102,194,0.3)',
+          background: config.mainMessage.trim() ? warm.colors.accentPetrol : 'rgba(10,102,194,0.3)',
           color: 'white', fontWeight: 700, fontSize: 14,
           cursor: config.mainMessage.trim() ? 'pointer' : 'default',
         }}

@@ -5,14 +5,15 @@ import { Sun, Moon, X, ChevronDown } from 'lucide-react';
 import api from '../lib/api';
 import { parseReportSections, splitProblemFix, parseFixMoves, type Move } from '../lib/parseReport';
 import { trackSection5CtaClicked } from '../lib/analytics';
+import { warm } from '../lib/theme/warmTokens';
 
 // ── Strategy Hub palette (replaces the previous severity-coded indigo/red/amber/teal) ──
 // Calm-ally rule: no red, no orange. Severity coding is removed. Sections use
 // neutral slate for informational areas and muted gold for action-worthy ones.
-const PETROL = '#2D5A6E';
-const GOLD   = '#C5A059';
-const SAGE   = '#7DA67D';
-const SLATE  = '#9ca3af';
+const PETROL = warm.colors.accentPetrol;
+const GOLD   = warm.colors.accentGold;
+const SAGE   = warm.colors.success;
+const SLATE  = warm.colors.textMuted;
 const TEAL   = SAGE; // Legacy alias retained for downstream references (loading spinner, Skool link)
 
 // ── Section metadata ──────────────────────────────────────────────────────────
@@ -67,20 +68,20 @@ function makeTheme(isDark: boolean) {
     bg:           '#1A1C1E',
     card:         '#25282B',
     cardBorder:   'rgba(255,255,255,0.06)',
-    heading:      '#E0E0E0',
-    sub:          '#A0A4A8',
-    intro:        '#A0A4A8',
+    heading:      warm.colors.borderWhisper,
+    sub:          warm.colors.textMuted,
+    intro:        warm.colors.textMuted,
     body:         '#C8CCD0',
     divider:      'rgba(255,255,255,0.06)',
     fixBand:      'rgba(255,255,255,0.025)',
     toggleBg:     'rgba(255,255,255,0.06)',
-    toggleColor:  '#A0A4A8',
+    toggleColor:  warm.colors.textMuted,
     stickyBg:     '#1F2225',
     stickyBorder: 'rgba(255,255,255,0.08)',
     modalBg:      '#25282B',
     inputBg:      'rgba(255,255,255,0.04)',
     inputBorder:  'rgba(255,255,255,0.08)',
-    inputText:    '#E0E0E0',
+    inputText:    warm.colors.borderWhisper,
     chipBg:       'rgba(255,255,255,0.05)',
     chipBorder:   'rgba(255,255,255,0.10)',
     chipActive:   PETROL,
@@ -88,17 +89,17 @@ function makeTheme(isDark: boolean) {
     referralBorder:'rgba(255,255,255,0.06)',
     blobs:        ['rgba(45,90,110,0.05)', 'rgba(125,166,125,0.04)', 'rgba(197,160,89,0.03)'],
   } : {
-    bg:           '#F8FAFC',
+    bg:           warm.colors.bgAlt,
     card:         'rgba(255,255,255,0.92)',
     cardBorder:   'rgba(0,0,0,0.08)',
     heading:      '#0F172A',
-    sub:          '#64748B',
-    intro:        '#64748B',
+    sub:          warm.colors.textMuted,
+    intro:        warm.colors.textMuted,
     body:         '#334155',
     divider:      'rgba(0,0,0,0.07)',
     fixBand:      'rgba(0,0,0,0.025)',
     toggleBg:     'rgba(0,0,0,0.07)',
-    toggleColor:  '#64748B',
+    toggleColor:  warm.colors.textMuted,
     stickyBg:     '#ffffff',
     stickyBorder: 'rgba(0,0,0,0.09)',
     modalBg:      '#ffffff',
@@ -127,7 +128,7 @@ function renderInline(text: string, headingColor?: string): React.ReactNode {
     <>
       {boldParts.map((part, i) => {
         if (part.startsWith('**') && part.endsWith('**')) {
-          return <strong key={i} style={{ fontWeight: 700, color: headingColor ?? '#f3f4f6' }}>{part.slice(2, -2)}</strong>;
+          return <strong key={i} style={{ fontWeight: 700, color: headingColor ?? warm.colors.bgAlt }}>{part.slice(2, -2)}</strong>;
         }
         // For non-bold segments, auto-bold numeric tokens.
         const numberParts = part.split(NUMBER_PATTERN);
@@ -358,8 +359,8 @@ function DisconnectCard({
       </p>
 
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        {targetRows.length > 0 && renderColumn('Targeting', '#C5A059', targetRows)}
-        {currentRows.length > 0 && renderColumn('Your profile reads as', '#A0A4A8', currentRows)}
+        {targetRows.length > 0 && renderColumn('Targeting', warm.colors.accentGold, targetRows)}
+        {currentRows.length > 0 && renderColumn('Your profile reads as', warm.colors.textMuted, currentRows)}
       </div>
 
       {gapInsight && (
@@ -376,7 +377,7 @@ function DisconnectCard({
             fontWeight: 800,
             letterSpacing: '0.14em',
             textTransform: 'uppercase',
-            color: '#7DA67D',
+            color: warm.colors.success,
           }}>
             The gap, in one line
           </p>
@@ -409,9 +410,9 @@ function classifyPatternLine(t: string): 'REQUIRES' | 'SHOWS' | 'BRIDGE' | null 
 }
 
 const PATTERN_STYLES: Record<'REQUIRES' | 'SHOWS' | 'BRIDGE', { fg: string; bg: string; border: string; label: string }> = {
-    REQUIRES: { fg: '#C5A059', bg: 'rgba(197,160,89,0.10)', border: 'rgba(197,160,89,0.30)', label: 'Target' },
-    SHOWS:    { fg: '#A0A4A8', bg: 'rgba(160,164,168,0.08)', border: 'rgba(160,164,168,0.22)', label: 'Current' },
-    BRIDGE:   { fg: '#7DA67D', bg: 'rgba(125,166,125,0.10)', border: 'rgba(125,166,125,0.30)', label: 'Next move' },
+    REQUIRES: { fg: warm.colors.accentGold, bg: 'rgba(197,160,89,0.10)', border: 'rgba(197,160,89,0.30)', label: 'Target' },
+    SHOWS:    { fg: warm.colors.textMuted, bg: 'rgba(160,164,168,0.08)', border: 'rgba(160,164,168,0.22)', label: 'Current' },
+    BRIDGE:   { fg: warm.colors.success, bg: 'rgba(125,166,125,0.10)', border: 'rgba(125,166,125,0.30)', label: 'Next move' },
 };
 
 function RenderContent({ text, color, headingColor }: { text: string; color: string; headingColor?: string }) {
@@ -652,7 +653,7 @@ function Section5Card({
             style={{
               width: '100%',
               background: PETROL,
-              color: '#E0E0E0',
+              color: warm.colors.borderWhisper,
               borderRadius: 14,
               padding: '16px 24px',
               fontSize: 16,
@@ -974,7 +975,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
               <p style={{ color: theme.sub, fontSize: 13, marginBottom: 24 }}>Regenerating is safe and only takes a minute.</p>
               <button
                 onClick={async () => { await api.post('/onboarding/retry'); setProcessingMs(0); refetch(); }}
-                style={{ background: '#FCD34D', color: '#111827', border: 'none', borderRadius: 10, padding: '10px 24px', fontWeight: 700, cursor: 'pointer' }}
+                style={{ background: '#FCD34D', color: warm.colors.textPrimary, border: 'none', borderRadius: 10, padding: '10px 24px', fontWeight: 700, cursor: 'pointer' }}
               >
                 Regenerate report
               </button>
@@ -984,11 +985,11 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
           {/* ── API error ── */}
           {(isError || (!isLoading && !data)) && (
             <div style={{ textAlign: 'center', padding: '60px 0' }}>
-              <p style={{ color: '#f87171', fontSize: 15, marginBottom: 8 }}>Couldn't load your report.</p>
+              <p style={{ color: warm.colors.danger, fontSize: 15, marginBottom: 8 }}>Couldn't load your report.</p>
               <p style={{ color: theme.sub, fontSize: 13, marginBottom: 24 }}>Your intake answers are saved, try regenerating.</p>
               <button
                 onClick={async () => { await api.post('/onboarding/retry'); refetch(); }}
-                style={{ background: '#FCD34D', color: '#111827', border: 'none', borderRadius: 10, padding: '10px 24px', fontWeight: 700, cursor: 'pointer' }}
+                style={{ background: '#FCD34D', color: warm.colors.textPrimary, border: 'none', borderRadius: 10, padding: '10px 24px', fontWeight: 700, cursor: 'pointer' }}
               >
                 Generate report
               </button>
@@ -998,13 +999,13 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
           {/* ── FAILED / unparseable ── */}
           {!isError && data && (status === 'FAILED' || (status === 'COMPLETE' && sections.length === 0)) && (
             <div style={{ textAlign: 'center', padding: '60px 0' }}>
-              <p style={{ color: '#f87171', fontSize: 15, marginBottom: 8 }}>
+              <p style={{ color: warm.colors.danger, fontSize: 15, marginBottom: 8 }}>
                 {status === 'FAILED' ? 'Report generation failed.' : 'Your report couldn\'t be parsed.'}
               </p>
               <p style={{ color: theme.sub, fontSize: 13, marginBottom: 24 }}>Please try again, it only takes a minute.</p>
               <button
                 onClick={async () => { await api.post('/onboarding/retry'); refetch(); }}
-                style={{ background: '#FCD34D', color: '#111827', border: 'none', borderRadius: 10, padding: '10px 24px', fontWeight: 700, cursor: 'pointer' }}
+                style={{ background: '#FCD34D', color: warm.colors.textPrimary, border: 'none', borderRadius: 10, padding: '10px 24px', fontWeight: 700, cursor: 'pointer' }}
               >
                 Regenerate report
               </button>
@@ -1247,7 +1248,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                 style={{
                   background: isDark ? `rgba(15,118,110,0.12)` : `rgba(15,118,110,0.09)`,
                   border: '1px solid rgba(15,118,110,0.30)',
-                  color: isDark ? '#34d399' : TEAL, borderRadius: 10,
+                  color: isDark ? warm.colors.success : TEAL, borderRadius: 10,
                   padding: '10px 18px', fontSize: 13, fontWeight: 700,
                   textDecoration: 'none', whiteSpace: 'nowrap', minHeight: 44,
                   display: 'inline-flex', alignItems: 'center',
@@ -1258,7 +1259,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
               <button
                 onClick={() => { trackSection5CtaClicked(); onDone(); }}
                 style={{
-                  background: PETROL, color: '#E0E0E0',
+                  background: PETROL, color: warm.colors.borderWhisper,
                   borderRadius: 10, padding: '10px 18px', fontSize: 13, fontWeight: 700,
                   border: 'none', cursor: 'pointer',
                   boxShadow: `0 4px 16px ${PETROL}30`,
@@ -1272,7 +1273,7 @@ export function ReportExperience({ onDone }: ReportExperienceProps) {
                 aria-label="Dismiss"
                 style={{
                   background: 'none', border: 'none', cursor: 'pointer',
-                  color: isDark ? '#4b5563' : '#9ca3af', padding: 8,
+                  color: isDark ? warm.colors.textSecondary : warm.colors.textMuted, padding: 8,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 44,
                 }}
               >

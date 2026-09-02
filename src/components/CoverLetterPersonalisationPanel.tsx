@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, Heart, Zap } from 'lucide-react';
 import api from '../lib/api';
+import { warm } from '../lib/theme/warmTokens';
 
 interface Dimension {
     name: string;
@@ -22,10 +23,10 @@ interface CoverLetterPersonalisationPanelProps {
 }
 
 function grade(score: number) {
-    if (score >= 80) return { label: 'Highly Personalised', color: '#34d399' };
-    if (score >= 60) return { label: 'Somewhat Personal',   color: '#818cf8' };
-    if (score >= 40) return { label: 'Needs Personalising', color: '#fbbf24' };
-    return               { label: 'Generic — Revise',      color: '#f87171' };
+    if (score >= 80) return { label: 'Highly Personalised', color: warm.colors.success };
+    if (score >= 60) return { label: 'Somewhat Personal',   color: warm.colors.accentPetrol };
+    if (score >= 40) return { label: 'Needs Personalising', color: warm.colors.accentGold };
+    return               { label: 'Generic — Revise',      color: warm.colors.danger };
 }
 
 export function CoverLetterPersonalisationPanel({ document, jobDescription, company }: CoverLetterPersonalisationPanelProps) {
@@ -69,7 +70,7 @@ export function CoverLetterPersonalisationPanel({ document, jobDescription, comp
                         padding: '4px 10px', borderRadius: 6,
                         border: '1px solid rgba(244,114,182,0.3)',
                         background: 'rgba(244,114,182,0.08)',
-                        color: (loading || !document) ? '#6b7280' : '#f472b6',
+                        color: (loading || !document) ? warm.colors.textMuted : '#f472b6',
                         fontSize: 10, fontWeight: 700, cursor: (loading || !document) ? 'default' : 'pointer',
                     }}
                 >
@@ -79,7 +80,7 @@ export function CoverLetterPersonalisationPanel({ document, jobDescription, comp
             </div>
 
             {!document && (
-                <p style={{ fontSize: 10, color: '#4b5563', textAlign: 'center', padding: '4px 0', margin: 0 }}>
+                <p style={{ fontSize: 10, color: warm.colors.textSecondary, textAlign: 'center', padding: '4px 0', margin: 0 }}>
                     Generate a cover letter first.
                 </p>
             )}
@@ -120,11 +121,11 @@ export function CoverLetterPersonalisationPanel({ document, jobDescription, comp
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                             {result.dimensions.map((dim, i) => {
                                 const pct = (dim.score / 25) * 100;
-                                const dColor = pct >= 75 ? '#34d399' : pct >= 50 ? '#818cf8' : pct >= 25 ? '#fbbf24' : '#f87171';
+                                const dColor = pct >= 75 ? warm.colors.success : pct >= 50 ? warm.colors.accentPetrol : pct >= 25 ? warm.colors.accentGold : warm.colors.danger;
                                 return (
                                     <div key={i}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                                            <span style={{ fontSize: 9, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                                            <span style={{ fontSize: 9, fontWeight: 700, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                                                 {dim.name}
                                             </span>
                                             <span style={{ fontSize: 9, fontWeight: 800, color: dColor }}>{dim.score}/25</span>
@@ -137,7 +138,7 @@ export function CoverLetterPersonalisationPanel({ document, jobDescription, comp
                                                 style={{ height: '100%', borderRadius: 99, background: dColor }}
                                             />
                                         </div>
-                                        <p style={{ fontSize: 9, color: '#4b5563', margin: '2px 0 0', lineHeight: 1.4 }}>{dim.note}</p>
+                                        <p style={{ fontSize: 9, color: warm.colors.textSecondary, margin: '2px 0 0', lineHeight: 1.4 }}>{dim.note}</p>
                                     </div>
                                 );
                             })}

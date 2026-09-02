@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, Wand2, Copy, CheckCircle, ChevronDown } from 'lucide-react';
 import api from '../lib/api';
+import { warm } from '../lib/theme/warmTokens';
 
 const TONES = [
     { id: 'confident',  label: 'Confident',  desc: 'Strong active verbs, no hedging' },
@@ -102,7 +103,7 @@ export function ToneRewritePanel({ document, docType }: ToneRewritePanelProps) {
                                             cursor: 'pointer', transition: 'all 0.12s',
                                             border: selectedTone === t.id ? '1px solid rgba(192,132,252,0.5)' : '1px solid rgba(255,255,255,0.07)',
                                             background: selectedTone === t.id ? 'rgba(192,132,252,0.15)' : 'rgba(255,255,255,0.03)',
-                                            color: selectedTone === t.id ? '#c084fc' : '#6b7280',
+                                            color: selectedTone === t.id ? '#c084fc' : warm.colors.textMuted,
                                         }}
                                     >
                                         {t.label}
@@ -118,7 +119,7 @@ export function ToneRewritePanel({ document, docType }: ToneRewritePanelProps) {
                                     onChange={e => setUseCustom(e.target.checked)}
                                     style={{ accentColor: '#c084fc', cursor: 'pointer' }}
                                 />
-                                <span style={{ fontSize: 10, color: '#6b7280' }}>Rewrite a specific paragraph instead</span>
+                                <span style={{ fontSize: 10, color: warm.colors.textMuted }}>Rewrite a specific paragraph instead</span>
                             </label>
 
                             {useCustom && (
@@ -144,7 +145,7 @@ export function ToneRewritePanel({ document, docType }: ToneRewritePanelProps) {
                                     padding: '6px 12px', borderRadius: 7,
                                     border: '1px solid rgba(192,132,252,0.3)',
                                     background: 'rgba(192,132,252,0.08)',
-                                    color: (loading || (!document && !customText.trim())) ? '#6b7280' : '#c084fc',
+                                    color: (loading || (!document && !customText.trim())) ? warm.colors.textMuted : '#c084fc',
                                     fontSize: 11, fontWeight: 700, cursor: 'pointer',
                                     opacity: (loading || (!document && !customText.trim())) ? 0.6 : 1,
                                 }}
@@ -172,7 +173,7 @@ export function ToneRewritePanel({ document, docType }: ToneRewritePanelProps) {
                                                 </span>
                                                 <button
                                                     onClick={handleCopy}
-                                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: copied ? '#34d399' : '#6b7280', padding: 2 }}
+                                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: copied ? warm.colors.success : warm.colors.textMuted, padding: 2 }}
                                                 >
                                                     {copied ? <CheckCircle size={12} /> : <Copy size={12} />}
                                                 </button>
@@ -180,7 +181,7 @@ export function ToneRewritePanel({ document, docType }: ToneRewritePanelProps) {
                                             <p style={{ fontSize: 11, color: '#e2e8f0', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>{rewritten}</p>
                                         </div>
                                         {changes && (
-                                            <p style={{ fontSize: 10, color: '#6b7280', margin: 0, fontStyle: 'italic' }}>
+                                            <p style={{ fontSize: 10, color: warm.colors.textMuted, margin: 0, fontStyle: 'italic' }}>
                                                 {changes}
                                             </p>
                                         )}

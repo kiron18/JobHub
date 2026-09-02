@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../lib/api';
+import { warm } from '../lib/theme/warmTokens';
 
 interface SkoolGateProps {
   onJoined: () => void;
@@ -81,18 +82,18 @@ export function SkoolGate({ onJoined }: SkoolGateProps) {
                 </p>
                 <h2 style={{
                   fontSize: 'clamp(22px, 4vw, 30px)', fontWeight: 900,
-                  color: '#f3f4f6', lineHeight: 1.2, marginBottom: 20, letterSpacing: '-0.02em',
+                  color: warm.colors.bgAlt, lineHeight: 1.2, marginBottom: 20, letterSpacing: '-0.02em',
                 }}>
                   Your diagnosis is ready, {name}.
                 </h2>
-                <p style={{ fontSize: 15, color: '#9ca3af', lineHeight: 1.75, marginBottom: 16 }}>
+                <p style={{ fontSize: 15, color: warm.colors.textMuted, lineHeight: 1.75, marginBottom: 16 }}>
                   We've analysed your profile and put together a strategic breakdown of the
-                  specific moves that will sharpen your <strong style={{ color: '#e5e7eb' }}>{role}</strong> applications.
+                  specific moves that will sharpen your <strong style={{ color: warm.colors.borderWhisper }}>{role}</strong> applications.
                 </p>
-                <p style={{ fontSize: 18, color: '#e5e7eb', fontWeight: 800, lineHeight: 1.35, marginBottom: 28, letterSpacing: '-0.01em' }}>
+                <p style={{ fontSize: 18, color: warm.colors.borderWhisper, fontWeight: 800, lineHeight: 1.35, marginBottom: 28, letterSpacing: '-0.01em' }}>
                   Before you read it.<br />One quick step.
                 </p>
-                <p style={{ fontSize: 15, color: '#9ca3af', lineHeight: 1.75, marginBottom: 28 }}>
+                <p style={{ fontSize: 15, color: warm.colors.textMuted, lineHeight: 1.75, marginBottom: 28 }}>
                   Join the free{' '}
                   <a href="/community?src=app" target="_blank" rel="noopener noreferrer" style={{ color: '#2dd4bf', textDecoration: 'underline', textUnderlineOffset: 3 }}>
                     Aussie Grad Careers community
@@ -124,7 +125,7 @@ export function SkoolGate({ onJoined }: SkoolGateProps) {
                   style={{
                     width: '100%', background: 'none',
                     border: '1px solid rgba(255,255,255,0.07)',
-                    color: '#4b5563', borderRadius: 12, padding: '11px',
+                    color: warm.colors.textSecondary, borderRadius: 12, padding: '11px',
                     fontSize: 13, cursor: submitting ? 'default' : 'pointer',
                   }}
                 >
@@ -135,10 +136,10 @@ export function SkoolGate({ onJoined }: SkoolGateProps) {
 
             {gateState === 'success' && (
               <div style={{ textAlign: 'center', padding: '16px 0' }}>
-                <p style={{ fontSize: 22, fontWeight: 900, color: '#f3f4f6', marginBottom: 8 }}>
+                <p style={{ fontSize: 22, fontWeight: 900, color: warm.colors.bgAlt, marginBottom: 8 }}>
                   You're in.
                 </p>
-                <p style={{ fontSize: 15, color: '#9ca3af' }}>
+                <p style={{ fontSize: 15, color: warm.colors.textMuted }}>
                   Opening your report now.
                 </p>
               </div>

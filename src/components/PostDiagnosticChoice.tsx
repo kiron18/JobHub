@@ -3,9 +3,9 @@ import { ArrowRight } from 'lucide-react';
 import { scanProfile, type ProfileIssue } from '../lib/scanProfile';
 import { warm } from '../lib/theme/warmTokens';
 
-const PETROL = '#2D5A6E';
-const GOLD   = '#C5A059';
-const SAGE   = '#7DA67D';
+const PETROL = warm.colors.accentPetrol;
+const GOLD   = warm.colors.accentGold;
+const SAGE   = warm.colors.success;
 
 interface PostDiagnosticChoiceProps {
   onApplyNow: () => void;
@@ -247,7 +247,7 @@ export function PostDiagnosticChoice({ onApplyNow, onSeeDiagnostic, profile }: P
               letterSpacing: '-0.01em',
               transition: 'color 0.15s',
             }}
-            onMouseEnter={e => { e.currentTarget.style.color = '#A0A4A8'; }}
+            onMouseEnter={e => { e.currentTarget.style.color = warm.colors.textMuted; }}
             onMouseLeave={e => { e.currentTarget.style.color = warm.colors.textMuted; }}
           >
             {hasIssues ? 'Fix it and start applying →' : 'Start applying now →'}

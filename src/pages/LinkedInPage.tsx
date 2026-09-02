@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { warm } from '../lib/theme/warmTokens';
 import api from '../lib/api';
@@ -20,13 +21,24 @@ const DEFAULT_BANNER: BannerConfig = {
   mainMessage: '',
   subLine: '',
   bgColor: '#0F172A',
+  textColor: '#FFFFFF',
   texture: 'clean',
 };
 
 export const LinkedInPage: React.FC = () => {
   const { profile } = useProfile();
 
-  const [tab, setTab] = useState<Tab>('profile');
+  /* ?tab=outreach opens straight on the generator. The first-application
+     modal and anywhere else that says "go network" links here, and landing
+     on the Profile tab with the outreach tools one more click away was
+     enough friction to lose people at exactly the wrong moment. */
+  const [searchParams] = useSearchParams();
+  const requestedTab = searchParams.get('tab');
+  const [tab, setTab] = useState<Tab>(
+    requestedTab === 'outreach' || requestedTab === 'tracker' || requestedTab === 'local-experience'
+      ? requestedTab
+      : 'profile',
+  );
   const [targetRole, setTargetRole] = useState('');
   const [generating, setGenerating] = useState(false);
   const [regeneratingSection, setRegeneratingSection] = useState<string | null>(null);
@@ -96,7 +108,7 @@ export const LinkedInPage: React.FC = () => {
   const tabStyle = (active: boolean): React.CSSProperties => ({
     padding: '10px 24px', borderRadius: 10, border: 'none', cursor: 'pointer',
     fontWeight: 700, fontSize: 14,
-    background: active ? '#0A66C2' : 'transparent',
+    background: active ? warm.colors.accentPetrol : 'transparent',
     color: active ? 'white' : warm.colors.textSecondary,
     transition: 'all 0.15s',
   });

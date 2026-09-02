@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { colors, type } from '../landing/tokens';
 import api from '../../lib/api';
 import { trackSponsorEmailCaptured, trackSponsorLinksUnlocked } from '../../lib/analytics';
+import { warm } from '../../lib/theme/warmTokens';
 
 interface Props {
   onClose: () => void;
@@ -105,7 +106,7 @@ export function SponsorEmailModal({ onClose, onUnlock, total }: Props) {
                 width: '100%',
                 padding: '12px 16px',
                 borderRadius: 10,
-                border: `1.5px solid ${error ? '#dc2626' : colors.borderDefined}`,
+                border: `1.5px solid ${error ? warm.colors.danger : colors.borderDefined}`,
                 fontSize: 15,
                 fontFamily: type.body,
                 outline: 'none',
@@ -113,7 +114,7 @@ export function SponsorEmailModal({ onClose, onUnlock, total }: Props) {
                 marginBottom: error ? 6 : 16,
               }}
             />
-            {error && <p style={{ color: '#dc2626', fontSize: 12, margin: '0 0 12px', textAlign: 'left' }}>{error}</p>}
+            {error && <p style={{ color: warm.colors.danger, fontSize: 12, margin: '0 0 12px', textAlign: 'left' }}>{error}</p>}
 
             <button
               type="submit"

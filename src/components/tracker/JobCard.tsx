@@ -40,10 +40,10 @@ function daysSinceApplied(dateApplied: string | null): number | null {
 }
 
 const BADGE_COLORS: Record<TrackerDocument['type'], { label: string; color: string }> = {
-    RESUME: { label: 'Resume', color: '#7DA67D' },
-    COVER_LETTER: { label: 'Cover Letter', color: '#C5A059' },
-    STAR_RESPONSE: { label: 'Selection Criteria', color: '#2D5A6E' },
-    INTERVIEW_PREP: { label: 'Interview Prep', color: '#818cf8' },
+    RESUME: { label: 'Resume', color: warm.colors.success },
+    COVER_LETTER: { label: 'Cover Letter', color: warm.colors.accentGold },
+    STAR_RESPONSE: { label: 'Selection Criteria', color: warm.colors.accentPetrol },
+    INTERVIEW_PREP: { label: 'Interview Prep', color: warm.colors.accentPetrol },
 };
 
 // ─── DocumentBadge ──────────────────────────────────────────────────────────
@@ -1246,8 +1246,8 @@ export const JobCard: React.FC<JobCardProps> = ({ job, isFirst, onStatusChange, 
                                         }}
                                     >
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                            <Sparkles size={13} style={{ color: '#818cf8' }} />
-                                            <span style={{ fontSize: 12, fontWeight: 700, color: '#818cf8' }}>
+                                            <Sparkles size={13} style={{ color: warm.colors.accentPetrol }} />
+                                            <span style={{ fontSize: 12, fontWeight: 700, color: warm.colors.accentPetrol }}>
                                                 {job.documents.some(d => d.type === 'INTERVIEW_PREP')
                                                     ? 'Open your interview prep'
                                                     : 'Prepare for your interview'}

@@ -66,7 +66,7 @@ export const WARM: Theme = {
   fileBg: warm.colors.bgAlt,
   fileBorder: warm.colors.borderWhisper,
   accentSuccess: warm.colors.accentGold,                      // gold (preserves prior visual identity)
-  accentSecondary: '#7DA67D',
+  accentSecondary: warm.colors.success,
   errorMuted: '#B85C5C',
 };
 
@@ -84,7 +84,7 @@ function applyWarmTokens(): void {
   root.style.setProperty('--bg-surface',       warm.colors.bgSurface);
   root.style.setProperty('--accent-primary',   warm.colors.accentPetrol);
   root.style.setProperty('--accent-success',   warm.colors.accentGold);
-  root.style.setProperty('--accent-secondary', '#7DA67D');
+  root.style.setProperty('--accent-secondary', warm.colors.success);
   root.style.setProperty('--error-muted',      '#B85C5C');
   root.style.setProperty('--radius-card',  '18px');
   root.style.setProperty('--radius-input', '12px');

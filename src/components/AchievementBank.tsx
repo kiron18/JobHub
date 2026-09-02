@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, Edit2, Save, Loader2, RefreshCw, TrendingUp, Sparkles, Search, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../lib/api';
+import { warm } from '../lib/theme/warmTokens';
 
 interface Achievement {
   id: string;
@@ -151,7 +152,7 @@ export const AchievementBank: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '32px 0', color: '#6b7280' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '32px 0', color: warm.colors.textMuted }}>
         <Loader2 size={16} className="animate-spin" />
         <span style={{ fontSize: 13 }}>Loading achievements...</span>
       </div>
@@ -160,7 +161,7 @@ export const AchievementBank: React.FC = () => {
 
   if (error) {
     return (
-      <div style={{ padding: 16, borderRadius: 12, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171', fontSize: 13 }}>
+      <div style={{ padding: 16, borderRadius: 12, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: warm.colors.danger, fontSize: 13 }}>
         Could not load achievements. Check your connection.
       </div>
     );
@@ -197,16 +198,16 @@ export const AchievementBank: React.FC = () => {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: warm.colors.textMuted, letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>
               {total} achievement{total !== 1 ? 's' : ''}
             </p>
             {total > 0 && (
               <>
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#10b981' }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: warm.colors.success }}>
                   {strongCount} strong
                 </span>
                 {weakCount > 0 && (
-                  <span style={{ fontSize: 10, fontWeight: 700, color: '#f59e0b' }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: warm.colors.accentGold }}>
                     {weakCount} need work
                   </span>
                 )}
@@ -219,14 +220,14 @@ export const AchievementBank: React.FC = () => {
                 initial={{ width: 0 }}
                 animate={{ width: `${strongPct}%` }}
                 transition={{ duration: 0.6, ease: [0.25, 1, 0.5, 1] }}
-                style={{ height: '100%', borderRadius: 99, background: strongPct >= 60 ? '#10b981' : strongPct >= 30 ? '#f59e0b' : '#ef4444' }}
+                style={{ height: '100%', borderRadius: 99, background: strongPct >= 60 ? warm.colors.success : strongPct >= 30 ? warm.colors.accentGold : warm.colors.danger }}
               />
             </div>
           )}
         </div>
         <button
           onClick={() => { setIsCreating(true); setEditForm({}); }}
-          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 8, border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.08)', color: '#818cf8', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 8, border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.08)', color: warm.colors.accentPetrol, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
         >
           <Plus size={12} /> Add
         </button>
@@ -237,7 +238,7 @@ export const AchievementBank: React.FC = () => {
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {/* Search */}
           <div style={{ flex: 1, position: 'relative' }}>
-            <Search size={11} style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: '#4b5563', pointerEvents: 'none' }} />
+            <Search size={11} style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: warm.colors.textSecondary, pointerEvents: 'none' }} />
             <input
               type="text"
               placeholder="Search achievements…"
@@ -253,7 +254,7 @@ export const AchievementBank: React.FC = () => {
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: '#6b7280' }}
+                style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: warm.colors.textMuted }}
               >
                 <X size={10} />
               </button>
@@ -270,7 +271,7 @@ export const AchievementBank: React.FC = () => {
                   textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer',
                   border: qualityFilter === f ? '1px solid rgba(99,102,241,0.5)' : '1px solid rgba(255,255,255,0.07)',
                   background: qualityFilter === f ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.03)',
-                  color: qualityFilter === f ? '#818cf8' : '#4b5563',
+                  color: qualityFilter === f ? warm.colors.accentPetrol : warm.colors.textSecondary,
                 }}
               >
                 {f === 'ALL' ? 'All' : f === 'STRONG' ? '✦ Strong' : f === 'GOOD' ? 'Good' : '△ Weak'}
@@ -294,27 +295,27 @@ export const AchievementBank: React.FC = () => {
               placeholder="Title — e.g. Reduced costs by 22% through supplier renegotiation"
               value={editForm.title ?? ''}
               onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
-              style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: '#f3f4f6', fontSize: 13, fontWeight: 600, boxSizing: 'border-box' }}
+              style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: warm.colors.bgAlt, fontSize: 13, fontWeight: 600, boxSizing: 'border-box' }}
             />
             <textarea
               placeholder="Describe the situation, your action, and the outcome..."
               rows={3}
               value={editForm.description ?? ''}
               onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
-              style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: '#d1d5db', fontSize: 12, resize: 'vertical', boxSizing: 'border-box' }}
+              style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: warm.colors.borderDefined, fontSize: 12, resize: 'vertical', boxSizing: 'border-box' }}
             />
             <input
               placeholder="Metric — e.g. 22%, $1.2M, 40 people"
               value={editForm.metric ?? ''}
               onChange={e => setEditForm(f => ({ ...f, metric: e.target.value }))}
-              style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: '#f3f4f6', fontSize: 12, boxSizing: 'border-box' }}
+              style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: warm.colors.bgAlt, fontSize: 12, boxSizing: 'border-box' }}
             />
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => setIsCreating(false)} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'transparent', color: '#6b7280', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+              <button onClick={() => setIsCreating(false)} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'transparent', color: warm.colors.textMuted, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
               <button
                 onClick={handleSave}
                 disabled={createMutation.isPending}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 16px', borderRadius: 8, border: 'none', background: '#6366f1', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 16px', borderRadius: 8, border: 'none', background: warm.colors.accentPetrol, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
               >
                 <Save size={12} /> Save
               </button>
@@ -350,22 +351,22 @@ export const AchievementBank: React.FC = () => {
                     autoFocus
                     value={editForm.title ?? ''}
                     onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: '#f3f4f6', fontSize: 13, fontWeight: 600, boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: warm.colors.bgAlt, fontSize: 13, fontWeight: 600, boxSizing: 'border-box' }}
                   />
                   <textarea
                     rows={3}
                     value={editForm.description ?? ''}
                     onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: '#d1d5db', fontSize: 12, resize: 'vertical', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: warm.colors.borderDefined, fontSize: 12, resize: 'vertical', boxSizing: 'border-box' }}
                   />
                   <input
                     placeholder="Metric (e.g. 22%, $1.2M)"
                     value={editForm.metric ?? ''}
                     onChange={e => setEditForm(f => ({ ...f, metric: e.target.value }))}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: '#f3f4f6', fontSize: 12, boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: warm.colors.bgAlt, fontSize: 12, boxSizing: 'border-box' }}
                   />
                   {polishingId === achievement.id && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#818cf8' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: warm.colors.accentPetrol }}>
                       <Loader2 size={11} className="animate-spin" /> Polishing with AI...
                     </div>
                   )}
@@ -379,16 +380,16 @@ export const AchievementBank: React.FC = () => {
                       onClick={() => handlePolish(achievement.id)}
                       disabled={polishingId === achievement.id}
                       title="Rewrite as a polished STAR bullet with metrics"
-                      style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 7, border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.07)', color: '#818cf8', fontSize: 11, fontWeight: 700, cursor: 'pointer', opacity: polishingId === achievement.id ? 0.5 : 1 }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 7, border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.07)', color: warm.colors.accentPetrol, fontSize: 11, fontWeight: 700, cursor: 'pointer', opacity: polishingId === achievement.id ? 0.5 : 1 }}
                     >
                       <Sparkles size={11} /> Polish with AI
                     </button>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button onClick={() => { setEditingId(null); setPolishReasoning(null); }} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'transparent', color: '#6b7280', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                      <button onClick={() => { setEditingId(null); setPolishReasoning(null); }} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'transparent', color: warm.colors.textMuted, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
                       <button
                         onClick={handleSave}
                         disabled={updateMutation.isPending}
-                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 16px', borderRadius: 8, border: 'none', background: '#6366f1', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 16px', borderRadius: 8, border: 'none', background: warm.colors.accentPetrol, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                       >
                         <Save size={12} /> Save
                       </button>
@@ -407,24 +408,24 @@ export const AchievementBank: React.FC = () => {
                             fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase',
                             padding: '2px 7px', borderRadius: 99, flexShrink: 0,
                             background: quality.label === 'STRONG' ? 'rgba(16,185,129,0.12)' : quality.label === 'GOOD' ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.10)',
-                            color: quality.label === 'STRONG' ? '#34d399' : quality.label === 'GOOD' ? '#fbbf24' : '#f87171',
+                            color: quality.label === 'STRONG' ? warm.colors.success : quality.label === 'GOOD' ? warm.colors.accentGold : warm.colors.danger,
                             border: `1px solid ${quality.label === 'STRONG' ? 'rgba(16,185,129,0.25)' : quality.label === 'GOOD' ? 'rgba(245,158,11,0.25)' : 'rgba(239,68,68,0.2)'}`,
                           }}>
                             {[1,2,3,4,5].map(n => (
                               <span key={n} style={{
                                 width: 4, height: 4, borderRadius: '50%', display: 'inline-block',
                                 background: n <= quality.score
-                                  ? (quality.label === 'STRONG' ? '#34d399' : quality.label === 'GOOD' ? '#fbbf24' : '#f87171')
+                                  ? (quality.label === 'STRONG' ? warm.colors.success : quality.label === 'GOOD' ? warm.colors.accentGold : warm.colors.danger)
                                   : 'rgba(255,255,255,0.12)',
                               }} />
                             ))}
                             <span style={{ marginLeft: 2 }}>{quality.label}</span>
                           </span>
-                          <p style={{ fontSize: 13, fontWeight: 700, color: '#f3f4f6', margin: 0, lineHeight: 1.4 }}>{achievement.title}</p>
+                          <p style={{ fontSize: 13, fontWeight: 700, color: warm.colors.bgAlt, margin: 0, lineHeight: 1.4 }}>{achievement.title}</p>
                         </div>
-                        <p style={{ fontSize: 12, color: '#9ca3af', margin: 0, lineHeight: 1.55 }}>{achievement.description}</p>
+                        <p style={{ fontSize: 12, color: warm.colors.textMuted, margin: 0, lineHeight: 1.55 }}>{achievement.description}</p>
                         {achievement.metric && (
-                          <span style={{ display: 'inline-block', marginTop: 8, fontSize: 11, fontWeight: 700, color: '#34d399', background: 'rgba(16,185,129,0.1)', padding: '2px 8px', borderRadius: 99, border: '1px solid rgba(16,185,129,0.2)' }}>
+                          <span style={{ display: 'inline-block', marginTop: 8, fontSize: 11, fontWeight: 700, color: warm.colors.success, background: 'rgba(16,185,129,0.1)', padding: '2px 8px', borderRadius: 99, border: '1px solid rgba(16,185,129,0.2)' }}>
                             {achievement.metric}
                           </span>
                         )}
@@ -432,14 +433,14 @@ export const AchievementBank: React.FC = () => {
                       <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                         <button
                           onClick={() => { setEditingId(achievement.id); setEditForm(achievement); }}
-                          style={{ padding: 6, borderRadius: 7, border: 'none', background: 'transparent', color: '#6b7280', cursor: 'pointer' }}
+                          style={{ padding: 6, borderRadius: 7, border: 'none', background: 'transparent', color: warm.colors.textMuted, cursor: 'pointer' }}
                           title="Edit"
                         >
                           <Edit2 size={13} />
                         </button>
                         <button
                           onClick={() => deleteMutation.mutate(achievement.id)}
-                          style={{ padding: 6, borderRadius: 7, border: 'none', background: 'transparent', color: '#6b7280', cursor: 'pointer' }}
+                          style={{ padding: 6, borderRadius: 7, border: 'none', background: 'transparent', color: warm.colors.textMuted, cursor: 'pointer' }}
                           title="Delete"
                         >
                           <Trash2 size={13} />
@@ -458,11 +459,11 @@ export const AchievementBank: React.FC = () => {
                         onClick={() => toggleHint(achievement.id)}
                         style={{ width: '100%', padding: '8px 16px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left' }}
                       >
-                        <TrendingUp size={10} color={quality.label === 'WEAK' ? '#f87171' : '#fbbf24'} />
-                        <span style={{ fontSize: 10, fontWeight: 700, color: quality.label === 'WEAK' ? '#f87171' : '#d97706', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                        <TrendingUp size={10} color={quality.label === 'WEAK' ? warm.colors.danger : warm.colors.accentGold} />
+                        <span style={{ fontSize: 10, fontWeight: 700, color: quality.label === 'WEAK' ? warm.colors.danger : warm.colors.accentGold, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
                           {quality.missing.length} improvement{quality.missing.length !== 1 ? 's' : ''} to reach Strong
                         </span>
-                        <span style={{ fontSize: 10, color: '#4b5563', marginLeft: 'auto' }}>{hintOpen ? '▲' : '▼'}</span>
+                        <span style={{ fontSize: 10, color: warm.colors.textSecondary, marginLeft: 'auto' }}>{hintOpen ? '▲' : '▼'}</span>
                       </button>
                       <AnimatePresence>
                         {hintOpen && (
@@ -476,8 +477,8 @@ export const AchievementBank: React.FC = () => {
                             <ul style={{ margin: 0, padding: '0 16px 12px 16px', listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 5 }}>
                               {quality.missing.map((tip, i) => (
                                 <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                                  <span style={{ color: quality.label === 'WEAK' ? '#f87171' : '#fbbf24', fontSize: 10, marginTop: 2, flexShrink: 0 }}>→</span>
-                                  <span style={{ fontSize: 11, color: '#9ca3af', lineHeight: 1.5 }}>{tip}</span>
+                                  <span style={{ color: quality.label === 'WEAK' ? warm.colors.danger : warm.colors.accentGold, fontSize: 10, marginTop: 2, flexShrink: 0 }}>→</span>
+                                  <span style={{ fontSize: 11, color: warm.colors.textMuted, lineHeight: 1.5 }}>{tip}</span>
                                 </li>
                               ))}
                             </ul>
@@ -494,13 +495,13 @@ export const AchievementBank: React.FC = () => {
       </AnimatePresence>
 
       {filteredAchievements.length === 0 && achievements && achievements.length > 0 && !isCreating && (
-        <div style={{ padding: '20px 0', textAlign: 'center', color: '#4b5563' }}>
+        <div style={{ padding: '20px 0', textAlign: 'center', color: warm.colors.textSecondary }}>
           <p style={{ fontSize: 12, margin: 0 }}>No achievements match your search.</p>
         </div>
       )}
 
       {(!achievements || achievements.length === 0) && !isCreating && (
-        <div style={{ padding: '40px 0', textAlign: 'center', color: '#4b5563' }}>
+        <div style={{ padding: '40px 0', textAlign: 'center', color: warm.colors.textSecondary }}>
           <p style={{ fontSize: 13, marginBottom: 16 }}>No achievements found. Click below to extract them from your resume.</p>
           <button
             disabled={extracting}
@@ -533,7 +534,7 @@ export const AchievementBank: React.FC = () => {
               padding: '10px 20px', borderRadius: 10,
               border: '1px solid rgba(99,102,241,0.3)',
               background: 'rgba(99,102,241,0.08)',
-              color: extracting ? '#6b7280' : '#818cf8',
+              color: extracting ? warm.colors.textMuted : warm.colors.accentPetrol,
               fontSize: 13, fontWeight: 700, cursor: extracting ? 'default' : 'pointer',
             }}
           >

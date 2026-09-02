@@ -6,6 +6,7 @@
  * A "Try again" button forces a remount; "Back to dashboard" navigates home.
  */
 import React from 'react';
+import { warm } from '../lib/theme/warmTokens';
 
 interface Props {
   children: React.ReactNode;
@@ -36,13 +37,13 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
     return (
       <div style={{ maxWidth: 560, margin: '80px auto', padding: '0 24px' }}>
-        <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#A0A4A8' }}>
+        <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: warm.colors.textMuted }}>
           Something went wrong
         </p>
-        <h1 style={{ margin: '0 0 16px', fontSize: 24, fontWeight: 700, color: '#E0E0E0', letterSpacing: '-0.01em', lineHeight: 1.3 }}>
+        <h1 style={{ margin: '0 0 16px', fontSize: 24, fontWeight: 700, color: warm.colors.borderWhisper, letterSpacing: '-0.01em', lineHeight: 1.3 }}>
           This page hit an error.
         </h1>
-        <p style={{ margin: '0 0 12px', fontSize: 14, color: '#A0A4A8', lineHeight: 1.6 }}>
+        <p style={{ margin: '0 0 12px', fontSize: 14, color: warm.colors.textMuted, lineHeight: 1.6 }}>
           Your data is safe. The page failed to render. You can try again, or go back to the dashboard.
         </p>
         <pre style={{
@@ -68,8 +69,8 @@ export class ErrorBoundary extends React.Component<Props, State> {
               padding: '10px 18px',
               fontSize: 13,
               fontWeight: 700,
-              color: '#E0E0E0',
-              background: '#2D5A6E',
+              color: warm.colors.borderWhisper,
+              background: warm.colors.accentPetrol,
               border: 'none',
               borderRadius: 10,
               cursor: 'pointer',
@@ -83,7 +84,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
               padding: '10px 18px',
               fontSize: 13,
               fontWeight: 700,
-              color: '#A0A4A8',
+              color: warm.colors.textMuted,
               background: 'transparent',
               border: '1px solid rgba(255,255,255,0.12)',
               borderRadius: 10,

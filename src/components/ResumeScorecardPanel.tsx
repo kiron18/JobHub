@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, BarChart2, Zap } from 'lucide-react';
 import api from '../lib/api';
+import { warm } from '../lib/theme/warmTokens';
 
 interface Dimension {
     name: string;
@@ -21,10 +22,10 @@ interface ResumeScorecardPanelProps {
 }
 
 function grade(total: number): { label: string; color: string } {
-    if (total >= 80) return { label: 'Excellent', color: '#34d399' };
-    if (total >= 65) return { label: 'Good',      color: '#818cf8' };
-    if (total >= 50) return { label: 'Fair',       color: '#fbbf24' };
-    return               { label: 'Needs Work',  color: '#f87171' };
+    if (total >= 80) return { label: 'Excellent', color: warm.colors.success };
+    if (total >= 65) return { label: 'Good',      color: warm.colors.accentPetrol };
+    if (total >= 50) return { label: 'Fair',       color: warm.colors.accentGold };
+    return               { label: 'Needs Work',  color: warm.colors.danger };
 }
 
 export function ResumeScorecardPanel({ document, jobDescription }: ResumeScorecardPanelProps) {
@@ -52,7 +53,7 @@ export function ResumeScorecardPanel({ document, jobDescription }: ResumeScoreca
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                     <BarChart2 size={12} color="#a78bfa" />
-                    <span style={{ fontSize: 10, fontWeight: 800, color: '#a78bfa', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                    <span style={{ fontSize: 10, fontWeight: 800, color: warm.colors.accentPetrol, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                         Resume Score
                     </span>
                 </div>
@@ -64,7 +65,7 @@ export function ResumeScorecardPanel({ document, jobDescription }: ResumeScoreca
                         padding: '4px 10px', borderRadius: 6,
                         border: '1px solid rgba(167,139,250,0.3)',
                         background: 'rgba(167,139,250,0.08)',
-                        color: (loading || !document) ? '#6b7280' : '#a78bfa',
+                        color: (loading || !document) ? warm.colors.textMuted : warm.colors.accentPetrol,
                         fontSize: 10, fontWeight: 700, cursor: (loading || !document) ? 'default' : 'pointer',
                     }}
                 >
@@ -74,7 +75,7 @@ export function ResumeScorecardPanel({ document, jobDescription }: ResumeScoreca
             </div>
 
             {!document && !result && (
-                <p style={{ fontSize: 10, color: '#4b5563', textAlign: 'center', padding: '4px 0', margin: 0 }}>
+                <p style={{ fontSize: 10, color: warm.colors.textSecondary, textAlign: 'center', padding: '4px 0', margin: 0 }}>
                     Generate a resume first to get a quality score.
                 </p>
             )}
@@ -100,7 +101,7 @@ export function ResumeScorecardPanel({ document, jobDescription }: ResumeScoreca
                                 <p style={{ fontSize: 11, fontWeight: 800, color: g.color, margin: 0, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
                                     {g.label}
                                 </p>
-                                <p style={{ fontSize: 10, color: '#6b7280', margin: '2px 0 0' }}>out of 100</p>
+                                <p style={{ fontSize: 10, color: warm.colors.textMuted, margin: '2px 0 0' }}>out of 100</p>
                             </div>
                         </div>
 
@@ -108,11 +109,11 @@ export function ResumeScorecardPanel({ document, jobDescription }: ResumeScoreca
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                             {result.dimensions.map((dim, i) => {
                                 const pct = (dim.score / 20) * 100;
-                                const dColor = pct >= 75 ? '#34d399' : pct >= 50 ? '#818cf8' : pct >= 30 ? '#fbbf24' : '#f87171';
+                                const dColor = pct >= 75 ? warm.colors.success : pct >= 50 ? warm.colors.accentPetrol : pct >= 30 ? warm.colors.accentGold : warm.colors.danger;
                                 return (
                                     <div key={i}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                                            <span style={{ fontSize: 9, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                                            <span style={{ fontSize: 9, fontWeight: 700, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                                                 {dim.name}
                                             </span>
                                             <span style={{ fontSize: 9, fontWeight: 800, color: dColor }}>
@@ -127,7 +128,7 @@ export function ResumeScorecardPanel({ document, jobDescription }: ResumeScoreca
                                                 style={{ height: '100%', borderRadius: 99, background: dColor }}
                                             />
                                         </div>
-                                        <p style={{ fontSize: 9, color: '#4b5563', margin: '2px 0 0', lineHeight: 1.4 }}>{dim.feedback}</p>
+                                        <p style={{ fontSize: 9, color: warm.colors.textSecondary, margin: '2px 0 0', lineHeight: 1.4 }}>{dim.feedback}</p>
                                     </div>
                                 );
                             })}
@@ -140,7 +141,7 @@ export function ResumeScorecardPanel({ document, jobDescription }: ResumeScoreca
                                 border: '1px solid rgba(167,139,250,0.2)',
                                 background: 'rgba(167,139,250,0.06)',
                             }}>
-                                <p style={{ fontSize: 9, fontWeight: 800, color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 3px' }}>
+                                <p style={{ fontSize: 9, fontWeight: 800, color: warm.colors.accentPetrol, textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 3px' }}>
                                     Top Fix
                                 </p>
                                 <p style={{ fontSize: 11, color: '#ddd6fe', margin: 0, lineHeight: 1.5 }}>{result.topFix}</p>

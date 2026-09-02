@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Zap } from 'lucide-react';
 import api from '../lib/api';
 import { trackUpgradeModalOpened, trackCheckoutStarted, trackFreeLimitHit } from '../lib/analytics';
+import { warm } from '../lib/theme/warmTokens';
 
 export type UpgradeTrigger = 'generation' | 'analysis' | 'job_search' | 'match_score';
 
@@ -38,7 +39,7 @@ function PlanCard({ name, price, weekly, billing, trial, cta, recommended, savin
       style={{
         background: recommended
           ? 'linear-gradient(135deg, rgba(15,118,110,0.10), rgba(197,160,89,0.08))'
-          : '#F4EFE8',
+          : warm.colors.bgAlt,
         borderColor: recommended ? 'rgba(15,118,110,0.35)' : 'rgba(26,24,20,0.08)',
       }}
     >

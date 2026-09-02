@@ -31,10 +31,10 @@ interface Document {
 interface TypeConfigEntry { label: string; color: string; }
 
 const TYPE_CONFIG: Record<KnownDocumentType, TypeConfigEntry> = {
-    RESUME:          { label: 'Resume',             color: '#7DA67D' },
-    COVER_LETTER:    { label: 'Cover Letter',       color: '#C5A059' },
-    STAR_RESPONSE:   { label: 'Selection Criteria', color: '#2D5A6E' },
-    BASELINE_RESUME: { label: 'Starter Resume',     color: '#7DA67D' },
+    RESUME:          { label: 'Resume',             color: warm.colors.success },
+    COVER_LETTER:    { label: 'Cover Letter',       color: warm.colors.accentGold },
+    STAR_RESPONSE:   { label: 'Selection Criteria', color: warm.colors.accentPetrol },
+    BASELINE_RESUME: { label: 'Starter Resume',     color: warm.colors.success },
 };
 
 const DOC_TYPE_MAP: Record<KnownDocumentType, DocType> = {

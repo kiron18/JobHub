@@ -5,86 +5,83 @@ import { EASE, SPRING, prefersReducedMotion } from '../../lib/theme/motion';
 import { onCelebrate, haptic, type CelebrationPayload } from '../../lib/feedback';
 
 /* ── Celebration ───────────────────────────────────────────────────────
-   The moment. Fired when someone finishes an application, and reserved
-   for things at roughly that weight: a real, irreversible step forward.
-   If this plays for saving a draft it stops meaning anything.
+   Filing an application is worth marking. It is not worth stopping the
+   screen for.
 
-   How it is built, in order, because the order is the design:
+   This started as a full-screen moment and that was the wrong instinct:
+   the first one is lovely and the tenth one is a toll gate between you
+   and the next application. A member who is doing well sees this five
+   times a week, so it has to be the kind of thing you can enjoy and walk
+   straight past.
 
-     1. A near-white scrim, not a black one. Black reads as an interruption
-        and as a warning. This is good news, so the page brightens.
-     2. The disc springs in past its resting size and settles back. The
-        overshoot is the whole reason it feels like a reward rather than a
-        confirmation dialog.
-     3. The ring draws itself around the disc. Drawing takes time and time
-        is what makes a moment feel earned.
-     4. The tick strokes on. Never faded in: a tick that fades looks like
-        it was already there.
-     5. A bloom ring expands past the disc and dies. This is the impact.
-     6. Copy rises in, staggered, after the visual has landed. Reading
-        starts once the eye has stopped moving.
-     7. A chip carrying the role name flies out of the badge and into the
-        sidebar, where the tracker link pulses as it arrives. This is the
-        part that answers "where did my application go".
+   So the news is delivered where the news actually landed. A pill springs
+   in beside the tracker link in the sidebar, the link itself pulses, and
+   both are gone in two seconds. Nothing is covered, nothing is blocked,
+   and the eye is pointed at the place the application now lives rather
+   than at a dialog in the middle of the screen.
 
-   The whole thing is 2.6 seconds and a click anywhere ends it early.
-   Under prefers-reduced-motion it becomes a still card that holds for
-   1.6s: the news still gets delivered, nothing travels.
+   If the anchor is not on screen — mobile with the drawer shut, or a page
+   outside the dashboard shell — it falls back to the bottom-left corner
+   rather than not appearing at all.
 */
 
-const FLIGHT_MS = 720;
+const HOLD_MS = 2400;
+
+interface Anchor { top: number; left: number; below: boolean }
 
 export function CelebrationHost() {
   const [payload, setPayload] = useState<CelebrationPayload | null>(null);
-  const [flight, setFlight] = useState<{ x: number; y: number } | null>(null);
-  const badgeRef = useRef<HTMLDivElement>(null);
+  const [anchor, setAnchor] = useState<Anchor | null>(null);
   const timers = useRef<number[]>([]);
   const reduced = prefersReducedMotion();
 
   const clearTimers = () => { timers.current.forEach(clearTimeout); timers.current = []; };
-  const close = () => { clearTimers(); setPayload(null); setFlight(null); };
+  const close = () => { clearTimers(); setPayload(null); setAnchor(null); };
 
   useEffect(() => onCelebrate(p => {
     clearTimers();
-    setFlight(null);
-    setPayload(p);
     haptic('success');
 
-    if (reduced) {
-      timers.current.push(window.setTimeout(close, 1600));
-      return;
+    const target = p.land
+      ? document.querySelector<HTMLElement>(`[data-celebration-target="${p.land.target}"]`)
+      : null;
+
+    if (target) {
+      const r = target.getBoundingClientRect();
+      // Beside the link if there is room to its right, otherwise under it.
+      const roomRight = window.innerWidth - r.right > 300;
+      setAnchor(roomRight
+        ? { top: r.top + r.height / 2, left: r.right + 12, below: false }
+        : { top: r.bottom + 10, left: Math.max(12, r.left), below: true });
+
+      if (!reduced) {
+        // The destination answers. This is the half that says "here".
+        target.animate(
+          [
+            { transform: 'scale(1)', offset: 0 },
+            { transform: 'scale(1.05)', offset: 0.4 },
+            { transform: 'scale(1)', offset: 1 },
+          ],
+          { duration: 460, easing: 'cubic-bezier(0.16, 1, 0.30, 1)' },
+        );
+      }
+    } else {
+      setAnchor(null);
     }
 
-    // Work out where the chip is flying to, once the badge has been placed.
-    if (p.land) {
-      timers.current.push(window.setTimeout(() => {
-        const target = document.querySelector<HTMLElement>(`[data-celebration-target="${p.land!.target}"]`);
-        const from = badgeRef.current?.getBoundingClientRect();
-        if (!target || !from) return;
-        const to = target.getBoundingClientRect();
-        setFlight({
-          x: (to.left + to.width / 2) - (from.left + from.width / 2),
-          y: (to.top + to.height / 2) - (from.top + from.height / 2),
-        });
-        // Let the destination answer, so the arrival is visible even if the
-        // chip is small by the time it lands.
-        window.setTimeout(() => {
-          target.animate(
-            [
-              { transform: 'scale(1)', offset: 0 },
-              { transform: 'scale(1.06)', offset: 0.45 },
-              { transform: 'scale(1)', offset: 1 },
-            ],
-            { duration: 420, easing: 'cubic-bezier(0.16, 1, 0.30, 1)' },
-          );
-        }, FLIGHT_MS - 120);
-      }, 1250));
-    }
-
-    timers.current.push(window.setTimeout(close, p.land ? 2600 : 2100));
+    setPayload(p);
+    timers.current.push(window.setTimeout(close, HOLD_MS));
   }), [reduced]);
 
   useEffect(() => clearTimers, []);
+
+  const placement: React.CSSProperties = anchor
+    ? {
+        top: anchor.top,
+        left: anchor.left,
+        transform: anchor.below ? undefined : 'translateY(-50%)',
+      }
+    : { bottom: 20, left: 20 };
 
   return (
     <AnimatePresence>
@@ -92,130 +89,76 @@ export function CelebrationHost() {
         <motion.div
           key="celebration"
           onClick={close}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0, transition: { duration: 0.28, ease: EASE.in } }}
-          transition={{ duration: 0.24, ease: EASE.out }}
+          initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.86, x: anchor?.below ? 0 : -8 }}
+          animate={{ opacity: 1, scale: 1, x: 0 }}
+          exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.18, ease: EASE.in } }}
+          transition={reduced ? { duration: 0.12 } : SPRING.arrive}
           style={{
-            position: 'fixed', inset: 0, zIndex: 4000,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            // Light, not dark. Good news brightens the page.
-            background: 'rgba(248, 250, 253, 0.86)',
-            backdropFilter: 'blur(6px)',
-            WebkitBackdropFilter: 'blur(6px)',
-            cursor: 'pointer', padding: 24,
+            position: 'fixed',
+            zIndex: 4000,
+            ...placement,
+            display: 'flex', alignItems: 'center', gap: 10,
+            maxWidth: 280,
+            padding: '10px 14px 10px 11px',
+            background: warm.colors.bgSurface,
+            border: `1px solid ${warm.colors.borderWhisper}`,
+            borderRadius: warm.radius.card,
+            boxShadow: warm.shadow.lifted,
+            cursor: 'pointer',
+            transformOrigin: anchor?.below ? 'top left' : 'left center',
           }}
         >
-          <div style={{ textAlign: 'center', maxWidth: 420 }}>
-            {/* The badge */}
-            <motion.div
-              ref={badgeRef}
-              animate={flight
-                ? { x: flight.x, y: flight.y, scale: 0.18, opacity: 0 }
-                : { x: 0, y: 0, scale: 1, opacity: 1 }}
-              transition={flight
-                ? { duration: FLIGHT_MS / 1000, ease: EASE.inOut }
-                : { duration: 0 }}
-              style={{
-                position: 'relative', width: 104, height: 104,
-                margin: '0 auto 22px',
-              }}
-            >
-              {/* Bloom. The impact. Expands past the disc and dies. */}
-              {!reduced && (
-                <motion.span
-                  initial={{ scale: 0.9, opacity: 0.45 }}
-                  animate={{ scale: 2.1, opacity: 0 }}
-                  transition={{ duration: 0.9, ease: EASE.out, delay: 0.22 }}
-                  style={{
-                    position: 'absolute', inset: 0, borderRadius: '50%',
-                    border: `2px solid ${warm.colors.success}`,
-                  }}
-                />
-              )}
-
-              {/* Disc. Overshoots, then settles. */}
+          {/* The tick. Small, drawn on, one bloom and done. */}
+          <span style={{ position: 'relative', width: 26, height: 26, flexShrink: 0 }}>
+            {!reduced && (
               <motion.span
-                initial={reduced ? { scale: 1 } : { scale: 0.4, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={reduced ? { duration: 0 } : SPRING.celebrate}
+                initial={{ scale: 0.9, opacity: 0.5 }}
+                animate={{ scale: 2, opacity: 0 }}
+                transition={{ duration: 0.7, ease: EASE.out, delay: 0.1 }}
                 style={{
                   position: 'absolute', inset: 0, borderRadius: '50%',
-                  background: warm.colors.successSoft,
-                  boxShadow: `0 8px 30px ${warm.colors.success}22`,
+                  border: `1.5px solid ${warm.colors.success}`,
                 }}
               />
-
-              {/* Ring, drawn rather than shown. */}
+            )}
+            <span style={{
+              position: 'absolute', inset: 0, borderRadius: '50%',
+              background: warm.colors.successSoft,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
               <svg
-                width={104} height={104} viewBox="0 0 104 104"
-                style={{ position: 'absolute', inset: 0, transform: 'rotate(-90deg)' }}
-              >
-                <motion.circle
-                  cx={52} cy={52} r={49}
-                  fill="none" stroke={warm.colors.success} strokeWidth={2.5} strokeLinecap="round"
-                  initial={reduced ? { pathLength: 1 } : { pathLength: 0 }}
-                  animate={{ pathLength: 1 }}
-                  transition={reduced ? { duration: 0 } : { duration: 0.62, ease: EASE.out, delay: 0.08 }}
-                />
-              </svg>
-
-              {/* Tick, stroked on. */}
-              <svg
-                width={44} height={44} viewBox="0 0 24 24" fill="none"
-                stroke={warm.colors.success} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round"
-                style={{ position: 'absolute', top: 30, left: 30 }}
+                width={14} height={14} viewBox="0 0 24 24" fill="none"
+                stroke={warm.colors.success} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"
               >
                 <motion.path
                   d="M20 6 9 17l-5-5"
                   initial={reduced ? { pathLength: 1 } : { pathLength: 0 }}
                   animate={{ pathLength: 1 }}
-                  transition={reduced ? { duration: 0 } : { duration: 0.34, ease: EASE.out, delay: 0.24 }}
+                  transition={reduced ? { duration: 0 } : { duration: 0.3, ease: EASE.out, delay: 0.1 }}
                 />
               </svg>
-            </motion.div>
+            </span>
+          </span>
 
-            {/* Copy, after the eye has stopped moving. */}
-            <motion.h2
-              initial={reduced ? { opacity: 1 } : { opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={reduced ? { duration: 0 } : { duration: 0.42, ease: EASE.out, delay: 0.44 }}
-              style={{
-                margin: '0 0 8px', fontFamily: warm.type.fontBody,
-                ...warm.text.h1, color: warm.colors.textPrimary,
-              }}
-            >
+          <span style={{ minWidth: 0 }}>
+            <span style={{
+              display: 'block', fontFamily: warm.type.fontBody,
+              fontSize: 13.5, fontWeight: warm.weight.semibold,
+              color: warm.colors.textPrimary, lineHeight: 1.35,
+            }}>
               {payload.title}
-            </motion.h2>
-
+            </span>
             {payload.subtitle && (
-              <motion.p
-                initial={reduced ? { opacity: 1 } : { opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={reduced ? { duration: 0 } : { duration: 0.42, ease: EASE.out, delay: 0.53 }}
-                style={{
-                  margin: 0, fontFamily: warm.type.fontBody,
-                  ...warm.text.body, color: warm.colors.textSecondary,
-                }}
-              >
+              <span style={{
+                display: 'block', marginTop: 1,
+                fontFamily: warm.type.fontBody, fontSize: 12, lineHeight: 1.4,
+                color: warm.colors.textMuted,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
                 {payload.subtitle}
-              </motion.p>
+              </span>
             )}
-
-            {payload.land && !reduced && (
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3, delay: 1.25, ease: EASE.out }}
-                style={{
-                  margin: '18px 0 0', fontFamily: warm.type.fontBody,
-                  ...warm.text.micro, color: warm.colors.textMuted,
-                }}
-              >
-                Filed under {payload.land.label}
-              </motion.p>
-            )}
-          </div>
+          </span>
         </motion.div>
       )}
     </AnimatePresence>

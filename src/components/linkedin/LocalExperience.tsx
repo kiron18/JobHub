@@ -80,14 +80,14 @@ function EntryCard({ entry, onUpdate }: { entry: LocalExperienceEntry; onUpdate:
                 padding: '3px 8px',
                 borderRadius: 4,
                 background: isOngoing ? 'rgba(52,211,153,0.15)' : warm.colors.bgAlt,
-                color: isOngoing ? '#34d399' : warm.colors.textMuted,
+                color: isOngoing ? warm.colors.success : warm.colors.textMuted,
                 border: `1px solid ${isOngoing ? 'rgba(52,211,153,0.3)' : warm.colors.borderWhisper}`,
               }}
             >
               {TYPE_LABELS[entry.type]}
             </span>
             {isOngoing && (
-              <span style={{ fontSize: 11, color: '#34d399', fontWeight: 600 }}>Active</span>
+              <span style={{ fontSize: 11, color: warm.colors.success, fontWeight: 600 }}>Active</span>
             )}
           </div>
 
@@ -239,7 +239,7 @@ export const LocalExperience: React.FC = () => {
     fontWeight: 700,
     textTransform: 'uppercase',
     letterSpacing: '0.08em',
-    color: '#64748b',
+    color: warm.colors.textMuted,
     display: 'block',
     marginBottom: 6,
   };
@@ -254,7 +254,7 @@ export const LocalExperience: React.FC = () => {
           <p style={{ margin: 0, fontSize: 13, color: warm.colors.textSecondary }}>
             {activeCount > 0 ? (
               <>
-                <span style={{ color: '#34d399', fontWeight: 600 }}>{activeCount} active</span>{' '}
+                <span style={{ color: warm.colors.success, fontWeight: 600 }}>{activeCount} active</span>{' '}
                 {activeCount === 1 ? 'entry' : 'entries'} · {entries.length} total
               </>
             ) : (
@@ -293,7 +293,7 @@ export const LocalExperience: React.FC = () => {
               fontSize: 12,
               fontWeight: 700,
               border: 'none',
-              background: showForm ? warm.colors.bgAlt : '#0A66C2',
+              background: showForm ? warm.colors.bgAlt : warm.colors.accentPetrol,
               color: showForm ? warm.colors.textSecondary : 'white',
               cursor: 'pointer',
             }}
@@ -402,7 +402,7 @@ export const LocalExperience: React.FC = () => {
               padding: '12px 0',
               borderRadius: 10,
               border: 'none',
-              background: submitting ? 'rgba(10,102,194,0.3)' : '#0A66C2',
+              background: submitting ? 'rgba(10,102,194,0.3)' : warm.colors.accentPetrol,
               color: 'white',
               fontWeight: 700,
               fontSize: 14,

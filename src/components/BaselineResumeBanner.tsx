@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Download, Loader2, X, Sparkles } from 'lucide-react';
 import api from '../lib/api';
+import { warm } from '../lib/theme/warmTokens';
 
 interface Props {
   isDark: boolean;
@@ -90,8 +91,8 @@ export function BaselineResumeBanner({ isDark }: Props) {
   const accent = '#2dd4bf';
   const bg = isDark ? 'rgba(45,212,191,0.06)' : 'rgba(45,212,191,0.08)';
   const border = isDark ? 'rgba(45,212,191,0.2)' : 'rgba(45,212,191,0.3)';
-  const text = isDark ? '#f3f4f6' : '#111827';
-  const sub = isDark ? '#9ca3af' : '#6b7280';
+  const text = isDark ? warm.colors.bgAlt : warm.colors.textPrimary;
+  const sub = isDark ? warm.colors.textMuted : warm.colors.textMuted;
 
   return (
     <>

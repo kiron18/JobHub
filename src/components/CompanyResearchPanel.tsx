@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Search, User, Building2, Edit2, Check, RefreshCw, ExternalLink } from 'lucide-react';
 import api from '../lib/api';
+import { warm } from '../lib/theme/warmTokens';
 
 export type CandidateConfidence = 'high' | 'medium' | 'low';
 
@@ -36,7 +37,7 @@ const CONFIDENCE_LABEL: Record<CandidateConfidence, string> = {
 };
 const CONFIDENCE_COLOR: Record<CandidateConfidence, string> = {
     high: '#2A9D6F',
-    medium: '#C5A059',
+    medium: warm.colors.accentGold,
     low: '#8B847B',
 };
 
@@ -219,7 +220,7 @@ export function CompanyResearchPanel({ company, role, jdText, research, onResear
                                             key={`${c.name}-${i}`}
                                             className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border transition-colors"
                                             style={{
-                                                background: isSelected ? 'rgba(45,90,110,0.06)' : '#F4EFE8',
+                                                background: isSelected ? 'rgba(45,90,110,0.06)' : warm.colors.bgAlt,
                                                 borderColor: isSelected ? 'rgba(45,90,110,0.25)' : 'rgba(26,24,20,0.08)',
                                             }}
                                         >

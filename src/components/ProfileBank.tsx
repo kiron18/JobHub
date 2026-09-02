@@ -145,7 +145,7 @@ function inputStyle(): React.CSSProperties {
     borderRadius: 8,
     border: `1px solid ${'rgba(0,0,0,0.12)'}`,
     background: 'rgba(0,0,0,0.03)',
-    color: '#111827',
+    color: warm.colors.textPrimary,
     outline: 'none',
     boxSizing: 'border-box',
   };
@@ -163,9 +163,9 @@ const CoachHint: React.FC<{ hint: Hint }> = ({ hint }) => (
     border: `1px solid ${hint.type === 'warn' ? 'rgba(217,119,6,0.2)' : 'rgba(22,163,74,0.2)'}`,
   }}>
     {hint.type === 'warn'
-      ? <AlertTriangle size={13} style={{ color: '#d97706', flexShrink: 0, marginTop: 1 }} />
+      ? <AlertTriangle size={13} style={{ color: warm.colors.accentGold, flexShrink: 0, marginTop: 1 }} />
       : <CheckCircle2 size={13} style={{ color: '#16a34a', flexShrink: 0, marginTop: 1 }} />}
-    <span style={{ fontSize: 12, color: hint.type === 'warn' ? '#d97706' : '#16a34a', lineHeight: 1.5 }}>
+    <span style={{ fontSize: 12, color: hint.type === 'warn' ? warm.colors.accentGold : '#16a34a', lineHeight: 1.5 }}>
       {hint.message}
     </span>
   </div>
@@ -186,13 +186,13 @@ const SectionHeader: React.FC<SectionHeaderProps> = ({ icon, title, badge }) => 
     marginBottom: 16,
     borderBottom: `1px solid ${'rgba(0,0,0,0.07)'}`,
   }}>
-    <span style={{ color: '#9ca3af' }}>{icon}</span>
+    <span style={{ color: warm.colors.textMuted }}>{icon}</span>
     <span style={{
       fontSize: 10,
       fontWeight: 700,
       letterSpacing: '0.12em',
       textTransform: 'uppercase',
-      color: '#9ca3af',
+      color: warm.colors.textMuted,
     }}>{title}</span>
     {badge && <span style={{ marginLeft: 'auto' }}>{badge}</span>}
   </div>
@@ -225,7 +225,7 @@ const EditButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
       width: 28, height: 28, borderRadius: 7, border: 'none', cursor: 'pointer',
       background: 'rgba(0,0,0,0.05)',
-      color: '#6b7280',
+      color: warm.colors.textMuted,
       flexShrink: 0,
     }}
   >
@@ -248,7 +248,7 @@ const SaveCancelButtons: React.FC<{
       style={{
         display: 'inline-flex', alignItems: 'center', gap: 5,
         padding: '7px 14px', borderRadius: 8, border: 'none', cursor: saving ? 'not-allowed' : 'pointer',
-        background: '#6366f1', color: '#fff', fontSize: 12, fontWeight: 700,
+        background: warm.colors.accentPetrol, color: '#fff', fontSize: 12, fontWeight: 700,
         opacity: saving ? 0.6 : 1,
       }}
     >
@@ -261,7 +261,7 @@ const SaveCancelButtons: React.FC<{
         display: 'inline-flex', alignItems: 'center', gap: 5,
         padding: '7px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
         background: 'rgba(0,0,0,0.06)',
-        color: '#6b7280', fontSize: 12, fontWeight: 700,
+        color: warm.colors.textMuted, fontSize: 12, fontWeight: 700,
       }}
     >
       <X size={12} /> Cancel
@@ -408,7 +408,7 @@ const BankIsland: React.FC = () => {
         badge={!editing && data?.hasBank ? <EditButton onClick={startEditing} /> : undefined}
       />
 
-      <p style={{ fontSize: 13, lineHeight: 1.6, color: '#6b7280', margin: '0 0 12px' }}>
+      <p style={{ fontSize: 13, lineHeight: 1.6, color: warm.colors.textMuted, margin: '0 0 12px' }}>
         This is what every resume and cover letter we build for you is written from.
         Edit anything here and the next application picks it up.
       </p>
@@ -428,7 +428,7 @@ const BankIsland: React.FC = () => {
           <span style={{ fontSize: 13, fontWeight: 700, color: pages > 2 ? '#9b2c1a' : '#0f6b41' }}>
             {pages} {pages === 1 ? 'page' : 'pages'}
           </span>
-          <span style={{ fontSize: 12.5, color: pages > 2 ? '#9b2c1a' : '#4b5563' }}>
+          <span style={{ fontSize: 12.5, color: pages > 2 ? '#9b2c1a' : warm.colors.textSecondary }}>
             {pages > 2
               ? 'Too long. Recruiters rarely read past two - trim it back.'
               : 'Good length.'}
@@ -438,7 +438,7 @@ const BankIsland: React.FC = () => {
 
       {notice && (
         <div style={{
-          fontSize: 13, lineHeight: 1.5, color: '#374151', background: 'rgba(0,0,0,0.04)',
+          fontSize: 13, lineHeight: 1.5, color: warm.colors.textSecondary, background: 'rgba(0,0,0,0.04)',
           border: '1px solid rgba(0,0,0,0.07)', borderRadius: 9, padding: '9px 12px', marginBottom: 14,
         }}>
           {notice}
@@ -457,10 +457,10 @@ const BankIsland: React.FC = () => {
         </div>
       )}
 
-      {isLoading && <div style={{ fontSize: 13, color: '#9ca3af' }}>Loading…</div>}
+      {isLoading && <div style={{ fontSize: 13, color: warm.colors.textMuted }}>Loading…</div>}
 
       {!isLoading && !data?.hasBank && (
-        <div style={{ fontSize: 13, color: '#6b7280' }}>
+        <div style={{ fontSize: 13, color: warm.colors.textMuted }}>
           You do not have a bank yet. Upload your resume above and we will build one.
         </div>
       )}
@@ -470,7 +470,7 @@ const BankIsland: React.FC = () => {
           margin: 0, padding: '16px 18px', borderRadius: 10,
           background: 'rgba(0,0,0,0.025)', border: '1px solid rgba(0,0,0,0.06)',
           fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-          fontSize: 12.5, lineHeight: 1.65, color: '#111827',
+          fontSize: 12.5, lineHeight: 1.65, color: warm.colors.textPrimary,
           whiteSpace: 'pre-wrap', wordBreak: 'break-word',
           maxHeight: 460, overflowY: 'auto',
         }}>{text}</pre>
@@ -487,10 +487,10 @@ const BankIsland: React.FC = () => {
             marginBottom: 14, padding: '14px 16px', borderRadius: 10,
             background: 'rgba(37,99,235,0.04)', border: '1px solid rgba(37,99,235,0.16)',
           }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#111827', marginBottom: 8 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: warm.colors.textPrimary, marginBottom: 8 }}>
               Two rules, and everything works
             </div>
-            <div style={{ fontSize: 13, lineHeight: 1.7, color: '#374151' }}>
+            <div style={{ fontSize: 13, lineHeight: 1.7, color: warm.colors.textSecondary }}>
               <div style={{ marginBottom: 4 }}>
                 Put the cursor on a line and use the buttons below: <strong>heading</strong> for a
                 new section, <strong>list</strong> for a point, <strong>¶</strong> for ordinary text.
@@ -504,9 +504,9 @@ const BankIsland: React.FC = () => {
                 margin: 0, padding: '11px 13px', borderRadius: 8,
                 background: '#fff', border: '1px solid rgba(0,0,0,0.09)',
                 fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-                fontSize: 12.5, lineHeight: 1.7, color: '#111827', whiteSpace: 'pre-wrap',
+                fontSize: 12.5, lineHeight: 1.7, color: warm.colors.textPrimary, whiteSpace: 'pre-wrap',
               }}>{'## Hobbies\n- Long distance running\n- Volunteer surf lifesaving'}</pre>
-              <div style={{ fontSize: 12.5, color: '#6b7280', marginTop: 9 }}>
+              <div style={{ fontSize: 12.5, color: warm.colors.textMuted, marginTop: 9 }}>
                 Typing the marks by hand works too — that is all the buttons do.
               </div>
             </div>
@@ -523,7 +523,7 @@ const BankIsland: React.FC = () => {
             borderRadius: '10px 10px 0 0',
             border: '1px solid rgba(0,0,0,0.18)',
             borderBottom: 'none',
-            background: '#f9fafb',
+            background: warm.colors.bgAlt,
           }}>
             {([
               { style: 'heading' as LineStyle, Icon: Heading2, title: 'Section heading' },
@@ -545,7 +545,7 @@ const BankIsland: React.FC = () => {
                     background: active ? 'rgba(37,99,235,0.10)' : 'transparent',
                     border: `1px solid ${active ? 'rgba(37,99,235,0.55)' : 'rgba(0,0,0,0.10)'}`,
                     borderRadius: 6,
-                    color: active ? '#2563eb' : '#6b7280',
+                    color: active ? '#2563eb' : warm.colors.textMuted,
                     cursor: 'pointer', padding: 0,
                   }}
                 >
@@ -572,7 +572,7 @@ const BankIsland: React.FC = () => {
                   background: 'transparent',
                   border: '1px solid rgba(0,0,0,0.10)',
                   borderRadius: 6,
-                  color: '#6b7280',
+                  color: warm.colors.textMuted,
                   fontSize: 13, fontWeight: weight, fontStyle, lineHeight: 1,
                   cursor: 'pointer', padding: 0,
                 }}
@@ -614,7 +614,7 @@ const BankIsland: React.FC = () => {
             style={{
               width: '100%', boxSizing: 'border-box', minHeight: 460, resize: 'vertical',
               padding: '16px 18px', borderRadius: '0 0 10px 10px',
-              border: '1px solid rgba(0,0,0,0.18)', background: '#fff', color: '#111827',
+              border: '1px solid rgba(0,0,0,0.18)', background: '#fff', color: warm.colors.textPrimary,
               fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
               fontSize: 12.5, lineHeight: 1.65, outline: 'none',
               display: 'block',
@@ -626,7 +626,7 @@ const BankIsland: React.FC = () => {
               disabled={save.isPending || draft === text}
               style={{
                 padding: '9px 18px', borderRadius: 9, border: 'none',
-                background: draft === text ? 'rgba(0,0,0,0.12)' : '#111827',
+                background: draft === text ? 'rgba(0,0,0,0.12)' : warm.colors.textPrimary,
                 color: '#fff', fontSize: 13.5, fontWeight: 600,
                 cursor: save.isPending || draft === text ? 'default' : 'pointer',
               }}
@@ -637,12 +637,12 @@ const BankIsland: React.FC = () => {
               onClick={() => { setEditing(false); setNotice(null); }}
               style={{
                 padding: '9px 14px', borderRadius: 9, border: 'none', background: 'transparent',
-                color: '#6b7280', fontSize: 13.5, fontWeight: 600, cursor: 'pointer',
+                color: warm.colors.textMuted, fontSize: 13.5, fontWeight: 600, cursor: 'pointer',
               }}
             >
               Cancel
             </button>
-            <span style={{ marginLeft: 'auto', fontSize: 12, color: '#9ca3af' }}>
+            <span style={{ marginLeft: 'auto', fontSize: 12, color: warm.colors.textMuted }}>
               Saved automatically to history — you can undo.
             </span>
           </div>
@@ -689,8 +689,8 @@ const SourceDocumentsIsland: React.FC<{ profile: ProfileData }> = ({ profile }) 
 
   const docBg    = 'rgba(0,0,0,0.03)';
   const docBorder = 'rgba(0,0,0,0.08)';
-  const mutedText = '#9ca3af';
-  const mainText  = '#111827';
+  const mutedText = warm.colors.textMuted;
+  const mainText  = warm.colors.textPrimary;
 
   const docs = [
     {
@@ -735,12 +735,12 @@ const SourceDocumentsIsland: React.FC<{ profile: ProfileData }> = ({ profile }) 
               transition: 'background 0.2s, border-color 0.2s',
             }}
           >
-            <FileText size={14} color={pending ? '#818cf8' : mutedText} style={{ flexShrink: 0 }} />
+            <FileText size={14} color={pending ? warm.colors.accentPetrol : mutedText} style={{ flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: mutedText, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                {label}{required && <span style={{ color: '#f87171', marginLeft: 4 }}>*</span>}
+                {label}{required && <span style={{ color: warm.colors.danger, marginLeft: 4 }}>*</span>}
               </p>
-              <p style={{ margin: '2px 0 0', fontSize: 12, color: pending ? '#a5b4fc' : (stored ? mainText : mutedText), fontWeight: pending ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <p style={{ margin: '2px 0 0', fontSize: 12, color: pending ? warm.colors.accentPetrol : (stored ? mainText : mutedText), fontWeight: pending ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {pending ? pending.name : (stored ?? 'Not on file')}
               </p>
             </div>
@@ -758,7 +758,7 @@ const SourceDocumentsIsland: React.FC<{ profile: ProfileData }> = ({ profile }) 
                 display: 'inline-flex', alignItems: 'center', gap: 5,
                 padding: '6px 12px', borderRadius: 7, border: 'none', cursor: uploading ? 'not-allowed' : 'pointer',
                 background: 'rgba(0,0,0,0.06)',
-                color: '#6b7280',
+                color: warm.colors.textMuted,
                 fontSize: 11, fontWeight: 700, flexShrink: 0,
               }}
             >
@@ -785,7 +785,7 @@ const SourceDocumentsIsland: React.FC<{ profile: ProfileData }> = ({ profile }) 
                   display: 'inline-flex', alignItems: 'center', gap: 6,
                   padding: '9px 18px', borderRadius: 9, border: 'none',
                   cursor: uploading ? 'not-allowed' : 'pointer',
-                  background: uploading ? 'rgba(99,102,241,0.4)' : '#6366f1',
+                  background: uploading ? 'rgba(99,102,241,0.4)' : warm.colors.accentPetrol,
                   color: '#fff', fontSize: 13, fontWeight: 700,
                   opacity: uploading ? 0.7 : 1,
                 }}
@@ -845,7 +845,7 @@ const PersonalDetailsIsland: React.FC<PersonalDetailsIslandProps> = ({ profile }
 
   const inp = inputStyle();
   const labelStyle: React.CSSProperties = {
-    fontSize: 11, fontWeight: 700, color: '#9ca3af',
+    fontSize: 11, fontWeight: 700, color: warm.colors.textMuted,
     letterSpacing: '0.06em', display: 'block', marginBottom: 4,
   };
 
@@ -881,8 +881,8 @@ const PersonalDetailsIsland: React.FC<PersonalDetailsIslandProps> = ({ profile }
           </motion.div>
         ) : (
           <motion.div key="view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <p style={{ fontSize: 26, fontWeight: 800, color: '#111827', marginBottom: 4 }}>
-              {profile.name || <span style={{ color: '#d97706' }}>No name set</span>}
+            <p style={{ fontSize: 26, fontWeight: 800, color: warm.colors.textPrimary, marginBottom: 4 }}>
+              {profile.name || <span style={{ color: warm.colors.accentGold }}>No name set</span>}
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', marginTop: 8 }}>
               {[
@@ -891,9 +891,9 @@ const PersonalDetailsIsland: React.FC<PersonalDetailsIslandProps> = ({ profile }
                 { label: 'Location', value: profile.location },
                 { label: 'LinkedIn', value: profile.linkedin },
               ].map(({ label, value }) => (
-                <span key={label} style={{ fontSize: 13, color: '#6b7280' }}>
-                  <span style={{ fontWeight: 700, color: '#9ca3af', marginRight: 4 }}>{label}:</span>
-                  {value || <span style={{ color: '#d97706' }}>missing</span>}
+                <span key={label} style={{ fontSize: 13, color: warm.colors.textMuted }}>
+                  <span style={{ fontWeight: 700, color: warm.colors.textMuted, marginRight: 4 }}>{label}:</span>
+                  {value || <span style={{ color: warm.colors.accentGold }}>missing</span>}
                 </span>
               ))}
             </div>
@@ -975,21 +975,21 @@ const AchievementRow: React.FC<AchievementRowProps> = ({ ach }) => {
               </motion.div>
             ) : (
               <motion.div key="view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <p style={{ fontSize: 13, fontWeight: 700, color: '#1f2937', marginBottom: 3 }}>{ach.title}</p>
-                <p style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.6 }}>{ach.description}</p>
+                <p style={{ fontSize: 13, fontWeight: 700, color: warm.colors.textPrimary, marginBottom: 3 }}>{ach.title}</p>
+                <p style={{ fontSize: 13, color: warm.colors.textMuted, lineHeight: 1.6 }}>{ach.description}</p>
                 {ach.metric && ach.metric !== 'qualitative' && (
                   <span style={{
                     display: 'inline-block', marginTop: 5,
                     padding: '2px 8px', borderRadius: 5,
                     fontSize: 11, fontWeight: 700,
-                    background: 'rgba(99,102,241,0.12)', color: '#818cf8',
+                    background: 'rgba(99,102,241,0.12)', color: warm.colors.accentPetrol,
                     border: '1px solid rgba(99,102,241,0.2)',
                   }}>
                     {ach.metric} {ach.metricType && `— ${ach.metricType}`}
                   </span>
                 )}
                 {ach.metric === 'qualitative' && (
-                  <span style={{ display: 'inline-block', marginTop: 5, padding: '2px 8px', borderRadius: 5, fontSize: 11, fontWeight: 600, background: 'rgba(0,0,0,0.04)', color: '#9ca3af', border: `1px solid ${'rgba(0,0,0,0.08)'}` }}>
+                  <span style={{ display: 'inline-block', marginTop: 5, padding: '2px 8px', borderRadius: 5, fontSize: 11, fontWeight: 600, background: 'rgba(0,0,0,0.04)', color: warm.colors.textMuted, border: `1px solid ${'rgba(0,0,0,0.08)'}` }}>
                     Qualitative
                   </span>
                 )}
@@ -998,7 +998,7 @@ const AchievementRow: React.FC<AchievementRowProps> = ({ ach }) => {
                     <CoachHint hint={hint} />
                     <button
                       onClick={() => setShowHowModal(true)}
-                      style={{ fontSize: 11, fontWeight: 700, color: '#d97706', background: 'rgba(217,119,6,0.1)', border: '1px solid rgba(217,119,6,0.2)', borderRadius: 5, padding: '3px 8px', cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}
+                      style={{ fontSize: 11, fontWeight: 700, color: warm.colors.accentGold, background: 'rgba(217,119,6,0.1)', border: '1px solid rgba(217,119,6,0.2)', borderRadius: 5, padding: '3px 8px', cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}
                     >
                       How?
                     </button>
@@ -1060,7 +1060,7 @@ const AddAchievementForm: React.FC<{ experienceId: string }> = ({ experienceId }
     return (
       <button
         onClick={() => setIsAdding(true)}
-        style={{ marginTop: 4, fontSize: 11, fontWeight: 700, color: '#818cf8', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}
+        style={{ marginTop: 4, fontSize: 11, fontWeight: 700, color: warm.colors.accentPetrol, background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}
       >
         + Add achievement
       </button>
@@ -1136,7 +1136,7 @@ const ExperienceIsland: React.FC<ExperienceIslandProps> = ({ experience, achieve
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <SectionHeader icon={<Briefcase size={13} />} title="Work Experience" />
         {!isAdding && (
-          <button onClick={() => setIsAdding(true)} style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>
+          <button onClick={() => setIsAdding(true)} style={{ fontSize: 11, fontWeight: 700, color: warm.colors.accentPetrol, background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>
             + Add
           </button>
         )}
@@ -1149,7 +1149,7 @@ const ExperienceIsland: React.FC<ExperienceIslandProps> = ({ experience, achieve
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 14px' }}>
               {(['role', 'company', 'startDate', 'endDate'] as const).map(f => (
                 <div key={f}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', display: 'block', marginBottom: 4 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: warm.colors.textMuted, display: 'block', marginBottom: 4 }}>
                     {f === 'startDate' ? 'Start' : f === 'endDate' ? 'End' : f.charAt(0).toUpperCase() + f.slice(1)}
                   </span>
                   <input style={inp} value={addForm[f]} onChange={e => setAddForm(p => ({ ...p, [f]: e.target.value }))} />
@@ -1157,7 +1157,7 @@ const ExperienceIsland: React.FC<ExperienceIslandProps> = ({ experience, achieve
               ))}
             </div>
             <div style={{ marginTop: 10 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', display: 'block', marginBottom: 4 }}>Description</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: warm.colors.textMuted, display: 'block', marginBottom: 4 }}>Description</span>
               <textarea rows={4} style={{ ...inp, resize: 'vertical' }} value={addForm.description}
                 onChange={e => setAddForm(p => ({ ...p, description: e.target.value }))} />
             </div>
@@ -1167,7 +1167,7 @@ const ExperienceIsland: React.FC<ExperienceIslandProps> = ({ experience, achieve
       </AnimatePresence>
 
       {workEntries.length === 0 && !isAdding && (
-        <p style={{ fontSize: 13, color: '#9ca3af', fontStyle: 'italic' }}>
+        <p style={{ fontSize: 13, color: warm.colors.textMuted, fontStyle: 'italic' }}>
           No experience yet. Upload a resume, or click <strong>+ Add</strong> above.
         </p>
       )}
@@ -1194,7 +1194,7 @@ const ExperienceIsland: React.FC<ExperienceIslandProps> = ({ experience, achieve
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 14px' }}>
                         {(['role', 'company', 'startDate', 'endDate'] as const).map(f => (
                           <div key={f}>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', display: 'block', marginBottom: 4 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: warm.colors.textMuted, display: 'block', marginBottom: 4 }}>
                               {f === 'startDate' ? 'Start' : f === 'endDate' ? 'End' : f.charAt(0).toUpperCase() + f.slice(1)}
                             </span>
                             <input style={inp} value={form[f]} onChange={e => setForms(prev => ({ ...prev, [exp.id]: { ...form, [f]: e.target.value } }))} />
@@ -1202,7 +1202,7 @@ const ExperienceIsland: React.FC<ExperienceIslandProps> = ({ experience, achieve
                         ))}
                       </div>
                       <div style={{ marginTop: 10 }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', display: 'block', marginBottom: 4 }}>Description</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: warm.colors.textMuted, display: 'block', marginBottom: 4 }}>Description</span>
                         <textarea rows={4} style={{ ...inp, resize: 'vertical' }} value={form.description}
                           onChange={e => setForms(prev => ({ ...prev, [exp.id]: { ...form, description: e.target.value } }))} />
                       </div>
@@ -1214,12 +1214,12 @@ const ExperienceIsland: React.FC<ExperienceIslandProps> = ({ experience, achieve
                     </motion.div>
                   ) : (
                     <motion.div key="view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                      <p style={{ fontSize: 15, fontWeight: 700, color: '#1f2937' }}>{exp.role}</p>
-                      <p style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>
+                      <p style={{ fontSize: 15, fontWeight: 700, color: warm.colors.textPrimary }}>{exp.role}</p>
+                      <p style={{ fontSize: 13, color: warm.colors.textMuted, marginTop: 2 }}>
                         {exp.company} · {exp.startDate}–{exp.endDate ?? 'Present'}
                       </p>
                       {exp.description && (
-                        <p style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.6, marginTop: 6 }}>{exp.description}</p>
+                        <p style={{ fontSize: 13, color: warm.colors.textMuted, lineHeight: 1.6, marginTop: 6 }}>{exp.description}</p>
                       )}
                       {hint && <CoachHint hint={hint} />}
                     </motion.div>
@@ -1242,7 +1242,7 @@ const ExperienceIsland: React.FC<ExperienceIslandProps> = ({ experience, achieve
               paddingLeft: 16,
               borderLeft: `2px solid ${'rgba(99,102,241,0.2)'}`,
             }}>
-              <p style={{ fontSize: 10, fontWeight: 700, color: '#818cf8', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: warm.colors.accentPetrol, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>
                 Achievements
               </p>
               {linked.map(ach => (
@@ -1273,18 +1273,18 @@ const ProjectsIsland: React.FC<{ experience: Experience[]; achievements: Achieve
             marginBottom: 20, paddingBottom: 20,
             borderBottom: `1px solid ${'rgba(0,0,0,0.06)'}`,
           }}>
-            <p style={{ fontSize: 15, fontWeight: 700, color: '#1f2937' }}>{proj.role}</p>
-            <p style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>
+            <p style={{ fontSize: 15, fontWeight: 700, color: warm.colors.textPrimary }}>{proj.role}</p>
+            <p style={{ fontSize: 13, color: warm.colors.textMuted, marginTop: 2 }}>
               {proj.company} · {proj.startDate}{proj.endDate ? `–${proj.endDate}` : ''}
             </p>
             {proj.description && (
-              <p style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.6, marginTop: 6 }}>{proj.description}</p>
+              <p style={{ fontSize: 13, color: warm.colors.textMuted, lineHeight: 1.6, marginTop: 6 }}>{proj.description}</p>
             )}
             <div style={{
               marginTop: 12, marginLeft: 16, paddingLeft: 16,
               borderLeft: `2px solid ${'rgba(99,102,241,0.2)'}`,
             }}>
-              <p style={{ fontSize: 10, fontWeight: 700, color: '#818cf8', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: warm.colors.accentPetrol, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>
                 Achievements
               </p>
               {linked.map(ach => <AchievementRow key={ach.id} ach={ach} />)}
@@ -1331,7 +1331,7 @@ const EducationIsland: React.FC<{ education: Education[] }> = ({ education }) =>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <SectionHeader icon={<GraduationCap size={13} />} title="Education" />
         {!isAdding && (
-          <button onClick={() => setIsAdding(true)} style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>
+          <button onClick={() => setIsAdding(true)} style={{ fontSize: 11, fontWeight: 700, color: warm.colors.accentPetrol, background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>
             + Add
           </button>
         )}
@@ -1344,7 +1344,7 @@ const EducationIsland: React.FC<{ education: Education[] }> = ({ education }) =>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 14px' }}>
               {(['institution', 'degree', 'field', 'year'] as const).map(f => (
                 <div key={f}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', display: 'block', marginBottom: 4 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: warm.colors.textMuted, display: 'block', marginBottom: 4 }}>
                     {f.charAt(0).toUpperCase() + f.slice(1)}
                   </span>
                   <input style={inp} value={addForm[f]} onChange={e => setAddForm(p => ({ ...p, [f]: e.target.value }))} />
@@ -1364,8 +1364,8 @@ const EducationIsland: React.FC<{ education: Education[] }> = ({ education }) =>
         }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           <div>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#ef4444' }}>Education missing</p>
-            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#dc2626' }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: warm.colors.danger }}>Education missing</p>
+            <p style={{ margin: '2px 0 0', fontSize: 12, color: warm.colors.danger }}>
               No education records found. Add your degree so it appears in generated resumes, click <strong>+ Add</strong> above.
             </p>
           </div>
@@ -1386,7 +1386,7 @@ const EducationIsland: React.FC<{ education: Education[] }> = ({ education }) =>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 14px' }}>
                         {(['institution', 'degree', 'field', 'year'] as const).map(f => (
                           <div key={f}>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', display: 'block', marginBottom: 4 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: warm.colors.textMuted, display: 'block', marginBottom: 4 }}>
                               {f.charAt(0).toUpperCase() + f.slice(1)}
                             </span>
                             <input style={inp} value={form[f]} onChange={e => setForms(prev => ({ ...prev, [edu.id]: { ...form, [f]: e.target.value } }))} />
@@ -1397,8 +1397,8 @@ const EducationIsland: React.FC<{ education: Education[] }> = ({ education }) =>
                     </motion.div>
                   ) : (
                     <motion.div key="view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                      <p style={{ fontSize: 14, fontWeight: 700, color: '#1f2937' }}>{edu.degree}{edu.field && ` in ${edu.field}`}</p>
-                      <p style={{ fontSize: 13, color: '#6b7280' }}>{edu.institution}{edu.year && ` · ${edu.year}`}</p>
+                      <p style={{ fontSize: 14, fontWeight: 700, color: warm.colors.textPrimary }}>{edu.degree}{edu.field && ` in ${edu.field}`}</p>
+                      <p style={{ fontSize: 13, color: warm.colors.textMuted }}>{edu.institution}{edu.year && ` · ${edu.year}`}</p>
                       {hint && <CoachHint hint={hint} />}
                     </motion.div>
                   )}
@@ -1407,7 +1407,7 @@ const EducationIsland: React.FC<{ education: Education[] }> = ({ education }) =>
               {!isEditing && (
                 <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                   <EditButton onClick={() => { setForms(prev => ({ ...prev, [edu.id]: { institution: edu.institution, degree: edu.degree, field: edu.field ?? '', year: edu.year ?? '' } })); setEditingId(edu.id); }} />
-                  <button onClick={() => deleteMutation.mutate(edu.id)} style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${'rgba(0,0,0,0.08)'}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>
+                  <button onClick={() => deleteMutation.mutate(edu.id)} style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${'rgba(0,0,0,0.08)'}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: warm.colors.textMuted }}>
                     <X size={12} />
                   </button>
                 </div>
@@ -1462,9 +1462,9 @@ const SkillsIsland: React.FC<{ skills: string | null }> = ({ skills }) => {
         <div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
             {localSkills.map(s => (
-              <span key={s} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 99, fontSize: 12, fontWeight: 600, background: 'rgba(99,102,241,0.08)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.2)' }}>
+              <span key={s} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 99, fontSize: 12, fontWeight: 600, background: 'rgba(99,102,241,0.08)', color: warm.colors.accentPetrol, border: '1px solid rgba(99,102,241,0.2)' }}>
                 {s}
-                <button onClick={() => removeSkill(s)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: '#818cf8' }}><X size={10} /></button>
+                <button onClick={() => removeSkill(s)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: warm.colors.accentPetrol }}><X size={10} /></button>
               </span>
             ))}
           </div>
@@ -1476,18 +1476,18 @@ const SkillsIsland: React.FC<{ skills: string | null }> = ({ skills }) => {
               onChange={e => setInputVal(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSkill(); } }}
             />
-            <button onClick={addSkill} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.08)', color: '#818cf8', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Add</button>
+            <button onClick={addSkill} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.08)', color: warm.colors.accentPetrol, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Add</button>
           </div>
           <SaveCancelButtons onSave={() => mutation.mutate(localSkills)} onCancel={() => setEditing(false)} saving={mutation.isPending} />
         </div>
       ) : (
         <>
           {allSkills.length === 0 ? (
-            <p style={{ fontSize: 13, color: '#9ca3af', fontStyle: 'italic' }}>No skills found.</p>
+            <p style={{ fontSize: 13, color: warm.colors.textMuted, fontStyle: 'italic' }}>No skills found.</p>
           ) : (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {allSkills.map((skill, i) => (
-                <span key={i} style={{ padding: '4px 10px', borderRadius: 99, fontSize: 12, fontWeight: 600, background: 'rgba(0,0,0,0.05)', color: '#374151', border: `1px solid ${'rgba(0,0,0,0.08)'}` }}>
+                <span key={i} style={{ padding: '4px 10px', borderRadius: 99, fontSize: 12, fontWeight: 600, background: 'rgba(0,0,0,0.05)', color: warm.colors.textSecondary, border: `1px solid ${'rgba(0,0,0,0.08)'}` }}>
                   {skill}
                 </span>
               ))}
@@ -1536,7 +1536,7 @@ const CertificationsIsland: React.FC<{ certifications: Certification[] }> = ({ c
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <SectionHeader icon={<Award size={13} />} title="Certifications" />
         {!isAdding && (
-          <button onClick={() => setIsAdding(true)} style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>
+          <button onClick={() => setIsAdding(true)} style={{ fontSize: 11, fontWeight: 700, color: warm.colors.accentPetrol, background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>
             + Add
           </button>
         )}
@@ -1548,7 +1548,7 @@ const CertificationsIsland: React.FC<{ certifications: Certification[] }> = ({ c
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 80px', gap: '10px 14px' }}>
               {(['name', 'issuingBody', 'year'] as const).map(f => (
                 <div key={f}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', display: 'block', marginBottom: 4 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: warm.colors.textMuted, display: 'block', marginBottom: 4 }}>
                     {f === 'issuingBody' ? 'Issuing Body' : f.charAt(0).toUpperCase() + f.slice(1)}
                   </span>
                   <input style={inp} value={addForm[f]} onChange={e => setAddForm(p => ({ ...p, [f]: e.target.value }))} />
@@ -1561,7 +1561,7 @@ const CertificationsIsland: React.FC<{ certifications: Certification[] }> = ({ c
       </AnimatePresence>
 
       {certifications.length === 0 && !isAdding && (
-        <p style={{ fontSize: 13, color: '#9ca3af', fontStyle: 'italic' }}>No certifications on record.</p>
+        <p style={{ fontSize: 13, color: warm.colors.textMuted, fontStyle: 'italic' }}>No certifications on record.</p>
       )}
 
       {certifications.map(cert => {
@@ -1577,7 +1577,7 @@ const CertificationsIsland: React.FC<{ certifications: Certification[] }> = ({ c
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 80px', gap: '10px 14px' }}>
                         {(['name', 'issuingBody', 'year'] as const).map(f => (
                           <div key={f}>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', display: 'block', marginBottom: 4 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: warm.colors.textMuted, display: 'block', marginBottom: 4 }}>
                               {f === 'issuingBody' ? 'Issuing Body' : f.charAt(0).toUpperCase() + f.slice(1)}
                             </span>
                             <input style={inp} value={form[f]} onChange={e => setForms(prev => ({ ...prev, [cert.id]: { ...form, [f]: e.target.value } }))} />
@@ -1588,8 +1588,8 @@ const CertificationsIsland: React.FC<{ certifications: Certification[] }> = ({ c
                     </motion.div>
                   ) : (
                     <motion.div key="view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                      <p style={{ fontSize: 13, fontWeight: 700, color: '#1f2937' }}>{cert.name}</p>
-                      <p style={{ fontSize: 12, color: '#6b7280' }}>{cert.issuingBody}{cert.year && ` · ${cert.year}`}</p>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: warm.colors.textPrimary }}>{cert.name}</p>
+                      <p style={{ fontSize: 12, color: warm.colors.textMuted }}>{cert.issuingBody}{cert.year && ` · ${cert.year}`}</p>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -1597,7 +1597,7 @@ const CertificationsIsland: React.FC<{ certifications: Certification[] }> = ({ c
               {!isEditing && (
                 <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                   <EditButton onClick={() => { setForms(prev => ({ ...prev, [cert.id]: { name: cert.name, issuingBody: cert.issuingBody, year: cert.year ?? '' } })); setEditingId(cert.id); }} />
-                  <button onClick={() => deleteMutation.mutate(cert.id)} style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${'rgba(0,0,0,0.08)'}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>
+                  <button onClick={() => deleteMutation.mutate(cert.id)} style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${'rgba(0,0,0,0.08)'}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: warm.colors.textMuted }}>
                     <X size={12} />
                   </button>
                 </div>
@@ -1644,7 +1644,7 @@ const VolunteeringIsland: React.FC<{ volunteering: Volunteering[] }> = ({ volunt
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <SectionHeader icon={<Heart size={13} />} title="Volunteering" />
         {!isAdding && (
-          <button onClick={() => setIsAdding(true)} style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>
+          <button onClick={() => setIsAdding(true)} style={{ fontSize: 11, fontWeight: 700, color: warm.colors.accentPetrol, background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>
             + Add
           </button>
         )}
@@ -1655,14 +1655,14 @@ const VolunteeringIsland: React.FC<{ volunteering: Volunteering[] }> = ({ volunt
           <motion.div key="add" {...slideIn} style={{ marginBottom: 16 }}>
             {(['organization', 'role'] as const).map(f => (
               <div key={f} style={{ marginBottom: 10 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', display: 'block', marginBottom: 4 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: warm.colors.textMuted, display: 'block', marginBottom: 4 }}>
                   {f.charAt(0).toUpperCase() + f.slice(1)}
                 </span>
                 <input style={inp} value={addForm[f]} onChange={e => setAddForm(p => ({ ...p, [f]: e.target.value }))} />
               </div>
             ))}
             <div style={{ marginBottom: 10 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', display: 'block', marginBottom: 4 }}>Description (optional)</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: warm.colors.textMuted, display: 'block', marginBottom: 4 }}>Description (optional)</span>
               <textarea rows={3} style={{ ...inp, resize: 'vertical' }} value={addForm.description} onChange={e => setAddForm(p => ({ ...p, description: e.target.value }))} />
             </div>
             <SaveCancelButtons onSave={() => addMutation.mutate(addForm)} onCancel={() => setIsAdding(false)} saving={addMutation.isPending} />
@@ -1671,7 +1671,7 @@ const VolunteeringIsland: React.FC<{ volunteering: Volunteering[] }> = ({ volunt
       </AnimatePresence>
 
       {volunteering.length === 0 && !isAdding && (
-        <p style={{ fontSize: 13, color: '#9ca3af', fontStyle: 'italic' }}>No volunteering records.</p>
+        <p style={{ fontSize: 13, color: warm.colors.textMuted, fontStyle: 'italic' }}>No volunteering records.</p>
       )}
 
       {volunteering.map(vol => {
@@ -1686,23 +1686,23 @@ const VolunteeringIsland: React.FC<{ volunteering: Volunteering[] }> = ({ volunt
                     <motion.div key="edit" {...slideIn}>
                       {(['organization', 'role'] as const).map(f => (
                         <div key={f} style={{ marginBottom: 10 }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', display: 'block', marginBottom: 4 }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: warm.colors.textMuted, display: 'block', marginBottom: 4 }}>
                             {f.charAt(0).toUpperCase() + f.slice(1)}
                           </span>
                           <input style={inp} value={form[f]} onChange={e => setForms(prev => ({ ...prev, [vol.id]: { ...form, [f]: e.target.value } }))} />
                         </div>
                       ))}
                       <div style={{ marginBottom: 10 }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', display: 'block', marginBottom: 4 }}>Description (optional)</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: warm.colors.textMuted, display: 'block', marginBottom: 4 }}>Description (optional)</span>
                         <textarea rows={3} style={{ ...inp, resize: 'vertical' }} value={form.description} onChange={e => setForms(prev => ({ ...prev, [vol.id]: { ...form, description: e.target.value } }))} />
                       </div>
                       <SaveCancelButtons onSave={() => editMutation.mutate({ id: vol.id, data: form })} onCancel={() => setEditingId(null)} saving={editMutation.isPending} />
                     </motion.div>
                   ) : (
                     <motion.div key="view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                      <p style={{ fontSize: 13, fontWeight: 700, color: '#1f2937' }}>{vol.role}</p>
-                      <p style={{ fontSize: 12, color: '#6b7280', marginBottom: vol.description ? 4 : 0 }}>{vol.organization}</p>
-                      {vol.description && <p style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.6 }}>{vol.description}</p>}
+                      <p style={{ fontSize: 13, fontWeight: 700, color: warm.colors.textPrimary }}>{vol.role}</p>
+                      <p style={{ fontSize: 12, color: warm.colors.textMuted, marginBottom: vol.description ? 4 : 0 }}>{vol.organization}</p>
+                      {vol.description && <p style={{ fontSize: 13, color: warm.colors.textMuted, lineHeight: 1.6 }}>{vol.description}</p>}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -1710,7 +1710,7 @@ const VolunteeringIsland: React.FC<{ volunteering: Volunteering[] }> = ({ volunt
               {!isEditing && (
                 <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                   <EditButton onClick={() => { setForms(prev => ({ ...prev, [vol.id]: { organization: vol.organization, role: vol.role, description: vol.description ?? '' } })); setEditingId(vol.id); }} />
-                  <button onClick={() => deleteMutation.mutate(vol.id)} style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${'rgba(0,0,0,0.08)'}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>
+                  <button onClick={() => deleteMutation.mutate(vol.id)} style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${'rgba(0,0,0,0.08)'}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: warm.colors.textMuted }}>
                     <X size={12} />
                   </button>
                 </div>
@@ -1759,8 +1759,8 @@ export const ProfileBank: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div style={{ minHeight: 320, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>
-        <div style={{ width: 20, height: 20, border: `2px solid ${'rgba(99,102,241,0.2)'}`, borderTopColor: '#6366f1', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      <div style={{ minHeight: 320, display: 'flex', alignItems: 'center', justifyContent: 'center', color: warm.colors.textMuted }}>
+        <div style={{ width: 20, height: 20, border: `2px solid ${'rgba(99,102,241,0.2)'}`, borderTopColor: warm.colors.accentPetrol, borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
         <span style={{ marginLeft: 12, fontSize: 14 }}>Loading profile…</span>
       </div>
     );
@@ -1769,8 +1769,8 @@ export const ProfileBank: React.FC = () => {
   if (isError || !profile) {
     return (
       <div style={{ minHeight: 320, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-        <AlertTriangle size={24} style={{ color: '#d97706' }} />
-        <p style={{ fontSize: 14, color: '#6b7280' }}>Could not load your profile. Refresh the page to try again.</p>
+        <AlertTriangle size={24} style={{ color: warm.colors.accentGold }} />
+        <p style={{ fontSize: 14, color: warm.colors.textMuted }}>Could not load your profile. Refresh the page to try again.</p>
       </div>
     );
   }
@@ -1804,7 +1804,7 @@ export const ProfileBank: React.FC = () => {
               </button>
             </div>
           </div>
-          <p style={{ fontSize: 14, color: '#6b7280', marginTop: 4 }}>
+          <p style={{ fontSize: 14, color: warm.colors.textMuted, marginTop: 4 }}>
             Your resume is the source of truth for every application.
           </p>
         </div>
@@ -1976,10 +1976,10 @@ const TabButton: React.FC<TabButtonProps> = ({ active, onClick, children }) => (
       padding: '10px 16px',
       fontSize: 13,
       fontWeight: active ? 700 : 600,
-      color: active ? '#111827' : '#6b7280',
+      color: active ? warm.colors.textPrimary : warm.colors.textMuted,
       background: 'transparent',
       border: 'none',
-      borderBottom: `2px solid ${active ? '#6366f1' : 'transparent'}`,
+      borderBottom: `2px solid ${active ? warm.colors.accentPetrol : 'transparent'}`,
       cursor: 'pointer',
       transition: 'all 0.15s ease',
       marginBottom: -1,
@@ -2002,7 +2002,7 @@ const UnderTheHoodWarning: React.FC = () => (
     border: '1px solid rgba(217,119,6,0.25)',
     marginBottom: 8,
   }}>
-    <AlertTriangle size={18} style={{ color: '#d97706', flexShrink: 0, marginTop: 1 }} />
+    <AlertTriangle size={18} style={{ color: warm.colors.accentGold, flexShrink: 0, marginTop: 1 }} />
     <div>
       <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#92400e', lineHeight: 1.5 }}>
         Changes here affect everything

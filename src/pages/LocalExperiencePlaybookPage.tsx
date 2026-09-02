@@ -1,48 +1,9 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { EASE, DUR } from '../lib/theme/motion';
 import { warm } from '../lib/theme/warmTokens';
 import { SectionIntroBanner } from '../components/processStrip';
-import { Building2, Heart, Briefcase, Clock, Code, FileText, AlertTriangle, Play } from 'lucide-react';
-
-interface VideoPlaceholderProps {
-  section: string;
-  title: string;
-}
-
-function VideoPlaceholder({ section, title }: VideoPlaceholderProps) {
-  return (
-    <div
-      style={{
-        background: warm.colors.bgAlt,
-        border: `2px dashed ${warm.colors.borderWhisper}`,
-        borderRadius: 12,
-        padding: '40px 24px',
-        textAlign: 'center',
-        marginBottom: 16,
-      }}
-    >
-      <div
-        style={{
-          width: 60,
-          height: 60,
-          borderRadius: '50%',
-          background: 'rgba(10,102,194,0.1)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          margin: '0 auto 16px',
-        }}
-      >
-        <Play size={24} color="#0A66C2" />
-      </div>
-      <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 600, color: warm.colors.textPrimary }}>
-        {title}
-      </p>
-      <p style={{ margin: 0, fontSize: 11, color: warm.colors.textMuted }}>
-        Video placeholder — Section {section}
-      </p>
-    </div>
-  );
-}
+import { Building2, Heart, Briefcase, Clock, Code, FileText, AlertTriangle, ChevronDown } from 'lucide-react';
 
 interface SectionProps {
   icon: React.ReactNode;
@@ -52,7 +13,13 @@ interface SectionProps {
 }
 
 function Section({ icon, number, title, children }: SectionProps) {
-  const [expanded, setExpanded] = useState(true);
+  /*
+    Closed to start with, and closes again on a second press.
+
+    Six sections all open at once is a 4,000 word page, and the six headings
+    are the actual navigation: read them, open the one that applies to you.
+  */
+  const [expanded, setExpanded] = useState(false);
 
   return (
     <div
@@ -97,7 +64,7 @@ function Section({ icon, number, title, children }: SectionProps) {
             style={{
               fontSize: 11,
               fontWeight: 800,
-              color: '#0A66C2',
+              color: warm.colors.accentPetrol,
               letterSpacing: '0.05em',
             }}
           >
@@ -105,14 +72,34 @@ function Section({ icon, number, title, children }: SectionProps) {
           </span>
           <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: warm.colors.textPrimary }}>{title}</h3>
         </div>
-        <span style={{ fontSize: 18, color: warm.colors.textMuted }}>{expanded ? '−' : '+'}</span>
+        <motion.span
+          animate={{ rotate: expanded ? 180 : 0 }}
+          transition={{ duration: DUR.base, ease: EASE.out }}
+          style={{ display: 'inline-flex', color: warm.colors.textMuted, flexShrink: 0 }}
+        >
+          <ChevronDown size={17} />
+        </motion.span>
       </button>
 
-      {expanded && (
-        <div style={{ padding: '0 20px 20px', borderTop: `1px solid ${warm.colors.borderWhisper}` }}>
-          <div style={{ paddingTop: 16 }}>{children}</div>
-        </div>
-      )}
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            key="body"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{
+              height: { duration: DUR.base, ease: EASE.out },
+              opacity: { duration: DUR.fast, ease: EASE.out },
+            }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div style={{ padding: '0 20px 20px', borderTop: `1px solid ${warm.colors.borderWhisper}` }}>
+              <div style={{ paddingTop: 16 }}>{children}</div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -157,12 +144,12 @@ export const LocalExperiencePlaybookPage: React.FC = () => {
           Local Experience Playbook
         </h1>
         <p style={{ fontSize: 14, color: warm.colors.textSecondary, margin: 0 }}>
-          Six proven paths to building Australian experience — and how to document each one
+          Six proven paths to building Australian experience, and how to document each one.
+          Open the ones that apply to you.
         </p>
       </div>
 
       <Section icon={<Building2 size={18} color="#0A66C2" />} number="01" title="Temp Agencies">
-        <VideoPlaceholder section="01" title="How to Work with Temp Agencies" />
 
         <p style={{ fontSize: 13.5, lineHeight: 1.7, color: warm.colors.textSecondary, marginBottom: 16 }}>
           Temp and contract recruitment agencies are a legitimate fast route to local experience — even though agency
@@ -180,7 +167,6 @@ export const LocalExperiencePlaybookPage: React.FC = () => {
       </Section>
 
       <Section icon={<Heart size={18} color="#0A66C2" />} number="02" title="Volunteering">
-        <VideoPlaceholder section="02" title="Finding Strategic Volunteering Opportunities" />
 
         <p style={{ fontSize: 13.5, lineHeight: 1.7, color: warm.colors.textSecondary, marginBottom: 16 }}>
           Volunteering is not just about "giving back" — it's a structured way to build Australian workplace skills,
@@ -197,7 +183,6 @@ export const LocalExperiencePlaybookPage: React.FC = () => {
       </Section>
 
       <Section icon={<Briefcase size={18} color="#0A66C2" />} number="03" title="Internships and Unpaid Work">
-        <VideoPlaceholder section="03" title="Navigating Internships and Unpaid Work" />
 
         <p style={{ fontSize: 13.5, lineHeight: 1.7, color: warm.colors.textSecondary, marginBottom: 16 }}>
           Unpaid internships can provide valuable experience — but know your rights under Australian law. Unpaid trials
@@ -220,7 +205,6 @@ export const LocalExperiencePlaybookPage: React.FC = () => {
       </Section>
 
       <Section icon={<Clock size={18} color="#0A66C2" />} number="04" title="Part-Time In-Field and Adjacent Work">
-        <VideoPlaceholder section="04" title="Finding Part-Time and Adjacent Roles" />
 
         <p style={{ fontSize: 13.5, lineHeight: 1.7, color: warm.colors.textSecondary, marginBottom: 16 }}>
           You don't need your dream job to build local experience. Adjacent roles — those near your field but not in it
@@ -237,7 +221,6 @@ export const LocalExperiencePlaybookPage: React.FC = () => {
       </Section>
 
       <Section icon={<Code size={18} color="#0A66C2" />} number="05" title="Projects, Hackathons, and Open Source">
-        <VideoPlaceholder section="05" title="Building Evidence Through Projects" />
 
         <p style={{ fontSize: 13.5, lineHeight: 1.7, color: warm.colors.textSecondary, marginBottom: 16 }}>
           Self-directed work counts as experience — if you can prove you did it and show the outcome. The key is
@@ -268,7 +251,6 @@ export const LocalExperiencePlaybookPage: React.FC = () => {
       </Section>
 
       <Section icon={<FileText size={18} color="#0A66C2" />} number="06" title="How to Put This on Your Resume">
-        <VideoPlaceholder section="06" title="Resume Strategies for Local Experience" />
 
         <p style={{ fontSize: 13.5, lineHeight: 1.7, color: warm.colors.textSecondary, marginBottom: 16 }}>
           The biggest mistake? Waiting until an experience is "finished" to put it on your resume. Local experience

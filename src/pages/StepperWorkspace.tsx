@@ -120,7 +120,7 @@ function TipIcon({ suggestion }: { suggestion: string }) {
                     width: 16,
                     height: 16,
                     borderRadius: '50%',
-                    background: '#d97706',
+                    background: warm.colors.accentGold,
                     color: '#fff',
                     fontSize: 10,
                     fontWeight: 700,
@@ -594,10 +594,10 @@ const PageCountBadge: React.FC<{ pages: number; measured: boolean }> = ({ pages,
             border: `1px solid ${tooLong ? 'rgba(217, 119, 6, 0.35)' : 'rgba(16, 133, 80, 0.28)'}`,
             fontSize: 12.5,
         }}>
-            <span style={{ fontWeight: 700, color: tooLong ? '#d97706' : '#0f6b41' }}>
+            <span style={{ fontWeight: 700, color: tooLong ? warm.colors.accentGold : '#0f6b41' }}>
                 {pages} {pages === 1 ? 'page' : 'pages'}
             </span>
-            <span style={{ color: tooLong ? '#d97706' : warm.colors.textMuted }}>
+            <span style={{ color: tooLong ? warm.colors.accentGold : warm.colors.textMuted }}>
                 {tooLong
                     ? 'Too long. Most roles shortlist resumes under two pages — trim the least relevant bullets.'
                     : 'Good length.'}
@@ -1188,9 +1188,9 @@ function DocumentStep({
                             top: 38,
                             right: 16,
                             background: showTips ? 'rgba(217, 119, 6, 0.15)' : 'transparent',
-                            border: `1px solid ${showTips ? '#d97706' : 'rgba(255,255,255,0.15)'}`,
+                            border: `1px solid ${showTips ? warm.colors.accentGold : 'rgba(255,255,255,0.15)'}`,
                             borderRadius: 6,
-                            color: showTips ? '#d97706' : warm.colors.textMuted,
+                            color: showTips ? warm.colors.accentGold : warm.colors.textMuted,
                             fontSize: 11,
                             fontWeight: 600,
                             padding: '4px 10px',
@@ -1453,13 +1453,13 @@ function TrackStep({
         let cancelled = false;
         (async () => {
             const appliedAt = new Date().toISOString();
-            // The one moment in the flow worth stopping for. It fires only on the
-            // real first save — the flag above means revisiting this step later
-            // replays nothing — and the chip flies into the sidebar so the answer
-            // to "where did that go" is shown rather than written.
+            // Fires only on the real first save: the flag above means revisiting
+            // this step later replays nothing. It lands beside the tracker link
+            // rather than over the screen, so the answer to "where did that go"
+            // is pointed at rather than announced.
             const announce = () => celebrate({
-                title: 'Application filed',
-                subtitle: `${role ?? 'This role'}${company ? ` at ${company}` : ''} is in your tracker, dated today.`,
+                title: 'Added to your tracker',
+                subtitle: `${role ?? 'This role'}${company ? ` · ${company}` : ''}`,
                 land: { label: 'Applications', target: 'tracker' },
             });
             try {
