@@ -222,7 +222,8 @@ async function ensureColumns() {
         ADD COLUMN IF NOT EXISTS "overallGrade" TEXT,
         ADD COLUMN IF NOT EXISTS "followUpSentAt" TIMESTAMP(3),
         ADD COLUMN IF NOT EXISTS "companyIntel" JSONB,
-        ADD COLUMN IF NOT EXISTS "interviewStage" TEXT;
+        ADD COLUMN IF NOT EXISTS "interviewStage" TEXT,
+        ADD COLUMN IF NOT EXISTS "interviewAt" TIMESTAMP(3);
     `);
     await prisma.$executeRawUnsafe(`
       ALTER TABLE "Document"

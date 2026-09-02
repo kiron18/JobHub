@@ -51,12 +51,21 @@ describe('linkDocumentsToApplication', () => {
         expect(data).toEqual({ jobApplicationId: 'job1' });
     });
 
-    it('will not reach back further than a day', async () => {
+    it('reaches back a week, so drafting on Sunday and applying on Tuesday still links', async () => {
         await linkDocumentsToApplication('u1', 'job1', ADVERT);
         const [{ where }] = updateMany.mock.calls[0] as [{ where: any }];
         const age = Date.now() - where.createdAt.gte.getTime();
-        expect(age).toBeGreaterThan(23 * 3600_000);
-        expect(age).toBeLessThanOrEqual(24 * 3600_000 + 1000);
+        expect(age).toBeGreaterThan(6.9 * 24 * 3600_000);
+        expect(age).toBeLessThanOrEqual(7 * 24 * 3600_000 + 1000);
+    });
+
+    it('fingerprints a short but genuine advert', () => {
+        // The floor exists to reject "Nurse at Ramsay", not to reject the many
+        // real Australian ads that run to only a few lines.
+        const short = 'Junior Data Analyst, Melbourne CBD. Reporting to the Head of Insights, '
+            + 'you will build dashboards and maintain our weekly reporting pack. '
+            + 'Immediate start, hybrid.';
+        expect(jobDescriptionHash(short)).not.toBeNull();
     });
 
     it('reports how many it attached', async () => {

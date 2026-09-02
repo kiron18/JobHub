@@ -77,11 +77,10 @@ const InterviewPrepWorkspace = React.lazy(() =>
   import('./pages/InterviewPrepWorkspace').then(m => ({ default: m.InterviewPrepWorkspace }))
 );
 const AnswerBankIntakePage = React.lazy(() => import('./pages/AnswerBankIntakePage'));
+const ResourcesPage = React.lazy(() => import('./pages/ResourcesPage'));
+const InterviewPrepIndex = React.lazy(() => import('./pages/InterviewPrepIndex'));
 const VisaSponsorsPage = React.lazy(() =>
   import('./pages/VisaSponsorsPage').then(m => ({ default: m.VisaSponsorsPage }))
-);
-const SkippedJobsPage = React.lazy(() =>
-  import('./pages/SkippedJobsPage').then(m => ({ default: m.SkippedJobsPage }))
 );
 const SessionSignupPage = React.lazy(() => import('./pages/SessionSignupPage'));
 const ClaimPage = React.lazy(() => import('./pages/ClaimPage'));
@@ -493,14 +492,15 @@ function ReportOrDashboard() {
                 <Route path="/leaderboard" element={<LeaderboardPage />} />
                 <Route path="/check" element={<FitCheckPage />} />
                 <Route path="/apply" element={<StepperWorkspace />} />
+                <Route path="/interview-prep" element={<InterviewPrepIndex />} />
                 <Route path="/interview/:jobId" element={<InterviewPrepWorkspace />} />
+                <Route path="/resources" element={<ResourcesPage />} />
                 <Route path="/answer-bank" element={<AnswerBankIntakePage />} />
                 <Route path="/workspace" element={<Workspace />} />
                 <Route path="/documents" element={<DocumentLibrary />} />
                 <Route path="/email-templates" element={<EmailTemplatesLibrary />} />
                 <Route path="/linkedin" element={<LinkedInPage />} />
                 <Route path="/local-experience-playbook" element={<LocalExperiencePlaybookPage />} />
-                <Route path="/skipped" element={<SkippedJobsPage />} />
                 <Route path="/visa-sponsors" element={<VisaSponsorsPage />} />
                 {/* Job feed removed — app runs on pasted jobs. Stray links to /jobs land on the dashboard. */}
                 <Route path="/jobs" element={<Navigate to="/" replace />} />

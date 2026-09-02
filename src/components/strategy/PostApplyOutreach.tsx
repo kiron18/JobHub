@@ -191,7 +191,18 @@ export function PostApplyOutreach({
     /** ISO date the application was logged to the tracker. */
     dateApplied?: string;
 }) {
-    const [open, setOpen] = useState(false);
+    /*
+      Open.
+
+      This was collapsed and labelled "Optional, two minutes", which is a fair
+      description of how it was built and the wrong description of what it is.
+      Sending the application is not the end of applying: telling a person you
+      sent it is, and that note is already written by the time you get here.
+
+      The "Apply for another role" button below stays live throughout, so this
+      still cannot become a toll gate. Volume is what moves the needle.
+    */
+    const [open, setOpen] = useState(true);
     const t = buildOutreachMessages({
         role: jobTitle || '',
         company: company || '',
@@ -204,8 +215,8 @@ export function PostApplyOutreach({
 
     return (
         <div style={{
-            border: `1px solid ${open ? warm.colors.borderDefined : 'rgba(197, 160, 89, 0.45)'}`,
-            background: open ? 'transparent' : 'rgba(197, 160, 89, 0.07)',
+            border: `1px solid ${warm.colors.borderDefined}`,
+            background: 'transparent',
             borderRadius: 12,
             overflow: 'hidden',
         }}>
@@ -226,20 +237,19 @@ export function PostApplyOutreach({
             >
                 <span>
                     <span style={{
-                        display: 'block', fontSize: 11, fontWeight: 700,
-                        letterSpacing: '0.14em', textTransform: 'uppercase',
-                        color: warm.colors.accentGold, marginBottom: 3,
+                        display: 'block', ...warm.text.micro,
+                        color: warm.colors.accentPetrol, marginBottom: 3,
                     }}>
-                        Optional, two minutes
+                        Last step
                     </span>
-                    <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: warm.colors.textPrimary }}>
-                        Message someone at {company || 'the company'}
+                    <span style={{ display: 'block', ...warm.text.h3, color: warm.colors.textPrimary }}>
+                        Tell someone at {company || 'the company'} you have applied
                     </span>
-                    <span style={{ display: 'block', fontSize: 12.5, color: warm.colors.textSecondary, marginTop: 2 }}>
-                        A short note to a real person is the one part of this you still control.{' '}
+                    <span style={{ display: 'block', ...warm.text.small, color: warm.colors.textSecondary, marginTop: 2 }}>
+                        Two minutes, and it is the one part of this you still control.{' '}
                         {hasBlanks
-                            ? 'Templates ready inside.'
-                            : 'Written for you already, ready to copy.'}
+                            ? 'Templates ready below.'
+                            : 'Already written from your cover letter, ready to copy.'}
                     </span>
                 </span>
                 <span style={{
@@ -247,7 +257,7 @@ export function PostApplyOutreach({
                     fontSize: 12, fontWeight: 700, color: warm.colors.accentPetrol,
                     whiteSpace: 'nowrap',
                 }}>
-                    {open ? 'Hide' : 'Show me how'}
+                    {open ? 'Hide' : 'Show me'}
                     {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                 </span>
             </button>

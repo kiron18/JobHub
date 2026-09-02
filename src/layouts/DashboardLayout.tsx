@@ -6,14 +6,11 @@ import {
     FileText,
     Briefcase,
     LogOut,
-    Library,
-    Mail,
-    Linkedin,
-    ShieldCheck,
     Menu,
     X,
     Plus,
-    Send,
+    Trophy,
+    BookOpen,
     MessagesSquare } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
@@ -118,16 +115,26 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
     const expanded = !isTouch && (introVisible || hovered);
 
     /*
-      Two things you do, then the places those things live.
+      Seven.
 
-      There is no separate dashboard item, because there was never a separate
-      dashboard. /check calls itself "the one door: every application starts
-      here", and the paste box on / ends every one of its paths in
-      navigate('/check'). Home and "start an application" were already the same
-      act wearing two names, so the first item is both.
+      Two verbs, then your own data, then the two things you look at rather
+      than work in. There is no dashboard item because there was never a
+      dashboard: /check calls itself "the one door: every application starts
+      here", and the paste box on / ends every path in navigate('/check'), so
+      New application IS home.
+
+      Gone from here, deliberately:
+        Networking      was the LinkedIn page under another name, and the only
+                        thing anybody went there for is now its own entry.
+        Your documents  documents live inside the job they were written for.
+        Answer bank     hidden, not deleted. The route and the data stay, and
+                        interviewPrepContext.ts still reads the bank to build
+                        interview prep, so removing it would quietly make prep
+                        worse. It comes back when Kiron wants it.
+        Skipped jobs    the feed it belonged to is gone.
 
       `divider: true` draws a rule above an item. It is the only grouping in
-      here: at this length, headings would be more clutter than structure.
+      here: at this length, headings are more clutter than structure.
     */
     const navItems: Array<{
         to?: string;
@@ -136,23 +143,18 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
         label: string;
         divider?: boolean;
     }> = [
-        // The two verbs.
+        // The two verbs. Same icon, because they are the same kind of act.
         { to: '/', icon: Plus, label: 'New application' },
-        { to: '/linkedin?tab=outreach', icon: Send, label: 'New outreach' },
+        { to: '/linkedin?tab=outreach', icon: Plus, label: 'New outreach' },
 
-        // Where the work you have already done lives.
+        // Yours.
         { to: '/tracker', icon: Briefcase, label: 'Your tracker', divider: true },
-        { to: '/linkedin', icon: Linkedin, label: 'Networking' },
+        { to: '/workspace', icon: FileText, label: 'Your profile' },
+        { to: '/interview-prep', icon: MessagesSquare, label: 'Interview prep' },
 
-        // Reference. Things you go and fetch from, rather than places you work.
-        { to: '/workspace', icon: FileText, label: 'About you', divider: true },
-        // Not "Resumes & letters": this also holds selection-criteria responses,
-        // which are a whole step of the apply flow, and the baseline Starter
-        // Resume, which belongs to no application at all.
-        { to: '/documents', icon: Library, label: 'Your documents' },
-        { to: '/email-templates', icon: Mail, label: 'Templates' },
-        { to: '/answer-bank', icon: MessagesSquare, label: 'Answer bank' },
-        { to: '/visa-sponsors', icon: ShieldCheck, label: 'Visa sponsors' },
+        // Looked at, not worked in.
+        { to: '/leaderboard', icon: Trophy, label: 'Leaderboard', divider: true },
+        { to: '/resources', icon: BookOpen, label: 'Resources' },
     ];
 
     const sidebarContent = (showLabels: boolean) => (

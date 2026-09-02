@@ -166,7 +166,7 @@ router.post('/jobs', authenticate, async (req, res) => {
 router.patch('/jobs/:id', authenticate, async (req, res) => {
     const { id } = req.params as any;
     const userId = (req as any).user.id;
-    const { status, dateApplied, notes, priority, closingDate } = req.body;
+    const { status, dateApplied, notes, priority, closingDate, interviewAt } = req.body;
 
     try {
         // Fetch current status before update so we can detect a genuine transition.
@@ -180,6 +180,17 @@ router.patch('/jobs/:id', authenticate, async (req, res) => {
         const reachedInterview =
             (status === 'INTERVIEW' || status === 'OFFER') && existing && !existing.interviewReachedAt;
         const reachedOffer = status === 'OFFER' && existing && !existing.offerReachedAt;
+
+        // Taking it back.
+        //
+        // A misclick on "yes I have an interview" moves the tracker and awards
+        // leaderboard points, so there has to be a way out that returns both.
+        // The stamp is deliberately one-way on the way up (never overwritten),
+        // which means a plain status change back down would leave the milestone
+        // behind and the interview would keep counting forever. Only an explicit
+        // move below INTERVIEW clears it.
+        const retreatFromInterview =
+            (status === 'SAVED' || status === 'APPLIED') && existing && !!existing.interviewReachedAt;
 
         // dateApplied has to follow status, or the application goes missing.
         //
@@ -207,6 +218,8 @@ router.patch('/jobs/:id', authenticate, async (req, res) => {
                 ...(status && { status }),
                 ...(reachedInterview && { interviewReachedAt: new Date() }),
                 ...(reachedOffer && { offerReachedAt: new Date() }),
+                ...(retreatFromInterview && { interviewReachedAt: null, offerReachedAt: null, interviewAt: null }),
+                ...(interviewAt !== undefined && { interviewAt: interviewAt ? new Date(interviewAt) : null }),
                 ...(dateApplied !== undefined && { dateApplied: dateApplied ? new Date(dateApplied) : null }),
                 ...(stampDateApplied ? { dateApplied: new Date() } : {}),
                 ...(clearDateApplied ? { dateApplied: null } : {}),

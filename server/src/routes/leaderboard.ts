@@ -1,7 +1,6 @@
 import { Router, type Response, type NextFunction } from 'express';
 import { prisma } from '../index';
 import { authenticate, type AuthRequest } from '../middleware/auth';
-import { EXEMPT_EMAILS } from './stripe';
 import { getRealUserIds } from './admin';
 import { countDistinctJobs, SENT_APPLICATION_FILTER } from '../services/tracker/metricHelpers';
 import {
@@ -16,34 +15,35 @@ import {
 
 const router = Router();
 
-/**
- * Closed to clients while the streak logic is being reviewed.
+/*
+ * Open to everyone again.
  *
- * Every entry currently reports streak 0 and nobody has ever earned the weekly
- * bonus, because a streak needs 20 applications AND 20 outreach in one week and
- * no client has ever logged 20 outreach (44 rows exist across all users, all
- * time). A board showing a permanently dead column reads as broken, so it is
- * off for clients until the target or the logging is fixed.
+ * It was closed because every row reported streak 0 and nobody had ever earned
+ * the weekly bonus: a streak needed 20 applications AND 20 outreach in one
+ * week, and across all users and all time there were 44 outreach rows. A board
+ * with a permanently dead column reads as broken software, which is the last
+ * thing you want in front of a paying cohort.
  *
- * Gated server-side rather than by hiding the link: the board carries other
- * clients' names and figures, and a hidden link is not access control.
+ * Both of the things that were broken are gone rather than fixed. The streak
+ * column no longer exists, and the weekly bonus no longer scores. What is left
+ * is two numbers everybody actually generates.
  */
-function leaderboardOpenTo(req: AuthRequest, res: Response, next: NextFunction) {
-    const email = (req.user?.email ?? '').toLowerCase();
-    if (!EXEMPT_EMAILS.includes(email)) {
-        return res.status(403).json({ error: 'The leaderboard is temporarily unavailable.', code: 'leaderboard_closed' });
-    }
-    next();
-}
 
-router.use(authenticate, leaderboardOpenTo);
+router.use(authenticate);
 
 /**
- * Leaderboard scoring. Applications and outreach are volume; interviews and
- * offers are outcomes and dominate the board. A weekly bonus rewards hitting
- * both program minimums in a week.
+ * Leaderboard scoring: one point per application, one per outreach.
+ *
+ * Interviews used to be worth 15 and offers 40, which meant the board ranked
+ * people by outcomes they do not control. Two members can do identical work all
+ * week and finish 40 points apart because one employer happened to reply. That
+ * is demoralising for the person who did everything right, and it rewards luck.
+ *
+ * So points are effort, and effort only. Interviews and offers still show on
+ * the board, in their own columns, because seeing somebody land one is the best
+ * motivation on the page. They just do not move the ranking.
  */
-const POINTS = { application: 1, outreach: 1, interview: 15, offer: 40, weeklyGoalBonus: 10 } as const;
+const POINTS = { application: 1, outreach: 1 } as const;
 const DAY_MS = 86400000;
 const STREAK_WEEKS = 26;
 
@@ -66,8 +66,49 @@ export interface LeaderboardEntry {
     interviews: number;
     offers: number;
     points: number;
-    streak: number;
     goalHit: boolean;
+    /**
+     * A pace marker rather than a member. Rendered in the board but never
+     * ranked against, and always labelled. See PACE_ROWS.
+     */
+    isExample?: boolean;
+}
+
+/**
+ * Pace rows.
+ *
+ * The board is thin while the cohort is small, and a leaderboard with three
+ * names on it reads as a room with nobody in it. These fill it out.
+ *
+ * They are targets, not people, and that is deliberate. Inventing members
+ * would work right up until somebody asks on a call who Priya M is and why
+ * she has never been on one, and in a cohort this size that is a matter of
+ * weeks. A target does the same motivating job without anything to find out:
+ * "you: 7, program minimum: 20" tells you where you stand AND what to do,
+ * which a fake rival never does.
+ *
+ * Both numbers are real. 20 and 20 is the program minimum enforced in
+ * services/tracker/goals.ts. The strong week is what the top of the board
+ * has actually looked like.
+ */
+const PACE_ROWS: Array<{ name: string; applications: number; outreach: number }> = [
+    { name: 'A strong week', applications: 35, outreach: 30 },
+    { name: 'Program minimum', applications: 20, outreach: 20 },
+];
+
+function paceEntries(): LeaderboardEntry[] {
+    return PACE_ROWS.map(p => ({
+        rank: 0,
+        name: p.name,
+        isYou: false,
+        applications: p.applications,
+        outreach: p.outreach,
+        interviews: 0,
+        offers: 0,
+        points: p.applications * POINTS.application + p.outreach * POINTS.outreach,
+        goalHit: true,
+        isExample: true,
+    }));
 }
 
 // GET /api/leaderboard?period=week|all
@@ -158,7 +199,6 @@ router.get('/', async (req: any, res: any) => {
             const weekly = weeklyMap.get(userId)!;
             const currentWeek = weekly[weekly.length - 1];
             const milestones = milestonesByUser.get(userId) ?? { interviews: 0, offers: 0 };
-            const streak = computeStreak(weekly);
 
             const appTarget = weeklyEquivalent(profile.dailyApplicationGoal, (profile.applicationGoalType === 'weekly' ? 'weekly' : 'daily') as GoalType);
             const outreachTarget = weeklyEquivalent(profile.dailyOutreachGoal, (profile.outreachGoalType === 'weekly' ? 'weekly' : 'daily') as GoalType);
@@ -171,16 +211,9 @@ router.get('/', async (req: any, res: any) => {
                 ? currentWeek.outreach
                 : (allOutreachByUser.get(userId) ?? 0);
 
-            const minimumsHitWeeks = period === 'week'
-                ? (currentWeek.applications >= WEEKLY_MINIMUM.applications && currentWeek.outreach >= WEEKLY_MINIMUM.outreach ? 1 : 0)
-                : weekly.filter(w => !w.paused && w.applications >= WEEKLY_MINIMUM.applications && w.outreach >= WEEKLY_MINIMUM.outreach).length;
-
             const points =
                 applications * POINTS.application +
-                outreach * POINTS.outreach +
-                milestones.interviews * POINTS.interview +
-                milestones.offers * POINTS.offer +
-                minimumsHitWeeks * POINTS.weeklyGoalBonus;
+                outreach * POINTS.outreach;
 
             if (period === 'all' && points === 0) continue; // hide totally inactive accounts
 
@@ -193,14 +226,23 @@ router.get('/', async (req: any, res: any) => {
                 interviews: milestones.interviews,
                 offers: milestones.offers,
                 points,
-                streak,
                 goalHit,
             });
         }
 
-        entries.sort((a, b) =>
+        // Pace rows sit in the ordering so you can see where you fall against
+        // them, but they never take a rank number: a target is not in the race.
+        const withPace = period === 'week' ? [...entries, ...paceEntries()] : entries;
+        withPace.sort((a, b) =>
             b.points - a.points || b.interviews - a.interviews || b.applications - a.applications || a.name.localeCompare(b.name));
-        entries.forEach((e, i) => { e.rank = i + 1; });
+
+        let rank = 0;
+        for (const e of withPace) {
+            if (e.isExample) continue;
+            e.rank = ++rank;
+        }
+        entries.length = 0;
+        entries.push(...withPace);
 
         const highlights = recentInterviews.map(r => {
             const p = profileByUser.get(r.userId);

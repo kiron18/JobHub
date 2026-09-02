@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Trophy, Search, Flame, Loader2, PartyPopper, CheckCircle2 } from 'lucide-react';
+import { Trophy, Search, Loader2, PartyPopper, CheckCircle2 } from 'lucide-react';
 import api from '../lib/api';
 import { warm } from '../lib/theme/warmTokens';
 
@@ -13,7 +13,8 @@ interface LeaderboardEntry {
     interviews: number;
     offers: number;
     points: number;
-    streak: number;
+    /** A pace marker, not a member. Shown in the board, never ranked. */
+    isExample?: boolean;
     goalHit: boolean;
 }
 
@@ -65,7 +66,8 @@ export const LeaderboardPage: React.FC = () => {
                         Who's putting in the work
                     </h1>
                     <p style={{ margin: '4px 0 0', fontSize: 13, color: warm.colors.textSecondary }}>
-                        Points: 1 per application or outreach · 15 per interview · 40 per offer · 10 for hitting both weekly minimums.
+                        One point per application, one per outreach. Interviews and offers are shown but
+                        do not score: the board ranks the work you control, not the replies you get.
                     </p>
                 </div>
                 {you && (
@@ -161,7 +163,7 @@ export const LeaderboardPage: React.FC = () => {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                         <thead>
                             <tr style={{ borderBottom: `1px solid ${warm.colors.borderWhisper}` }}>
-                                {['#', 'Member', 'Apps', 'Outreach', 'Interviews', 'Offers', 'Streak', period === 'week' ? 'On target' : '', 'Points'].map((h, i) => (
+                                {['#', 'Member', 'Apps', 'Outreach', 'Interviews', 'Offers', period === 'week' ? 'On target' : '', 'Points'].map((h, i) => (
                                     <th key={i} style={{
                                         padding: '10px 14px', textAlign: i <= 1 ? 'left' : 'center',
                                         fontSize: 10.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em',
@@ -171,20 +173,32 @@ export const LeaderboardPage: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {filtered.map(e => (
-                                <tr key={e.rank} style={{
+                            {filtered.map((e, ri) => (
+                                <tr key={e.isExample ? `pace-${e.name}` : `rank-${e.rank}-${ri}`} style={{
                                     borderBottom: `1px solid ${warm.colors.borderWhisper}`,
-                                    background: e.isYou ? 'rgba(45,90,110,0.06)' : 'transparent',
+                                    background: e.isYou
+                                        ? warm.colors.accentPetrolSoft
+                                        : e.isExample ? warm.colors.bgAlt : 'transparent',
                                 }}>
                                     <td style={{ padding: '10px 14px', fontWeight: 800, color: warm.colors.textPrimary, whiteSpace: 'nowrap' }}>
-                                        {e.rank <= 3 ? MEDALS[e.rank - 1] : e.rank}
+                                        {e.isExample ? '' : (e.rank <= 3 ? MEDALS[e.rank - 1] : e.rank)}
                                     </td>
-                                    <td style={{ padding: '10px 14px', fontWeight: e.isYou ? 800 : 600, color: warm.colors.textPrimary }}>
+                                    <td style={{
+                                        padding: '10px 14px',
+                                        fontWeight: e.isYou ? 800 : 600,
+                                        color: e.isExample ? warm.colors.textMuted : warm.colors.textPrimary,
+                                        fontStyle: e.isExample ? 'italic' : 'normal',
+                                    }}>
                                         {e.name}
                                         {e.isYou && <span style={{
                                             marginLeft: 7, padding: '1px 7px', borderRadius: 999, fontSize: 10, fontWeight: 800,
-                                            background: 'rgba(45,90,110,0.12)', color: warm.colors.accentPetrol,
+                                            background: warm.colors.accentPetrolSoft, color: warm.colors.accentPetrol,
                                         }}>you</span>}
+                                        {e.isExample && <span style={{
+                                            marginLeft: 7, padding: '1px 7px', borderRadius: 999, fontSize: 10, fontWeight: 800,
+                                            background: warm.colors.bgSurface, border: `1px solid ${warm.colors.borderDefined}`,
+                                            color: warm.colors.textMuted, fontStyle: 'normal',
+                                        }}>target</span>}
                                     </td>
                                     <td style={{ padding: '10px 14px', textAlign: 'center', color: warm.colors.textSecondary }}>{e.applications}</td>
                                     <td style={{ padding: '10px 14px', textAlign: 'center', color: warm.colors.textSecondary }}>{e.outreach}</td>
@@ -193,11 +207,6 @@ export const LeaderboardPage: React.FC = () => {
                                     </td>
                                     <td style={{ padding: '10px 14px', textAlign: 'center', fontWeight: e.offers > 0 ? 800 : 400, color: e.offers > 0 ? warm.colors.success : warm.colors.textMuted }}>
                                         {e.offers > 0 ? e.offers : '—'}
-                                    </td>
-                                    <td style={{ padding: '10px 14px', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                                        {e.streak > 0
-                                            ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontWeight: 700, color: '#C4713A' }}><Flame size={11} />{e.streak}w</span>
-                                            : <span style={{ color: warm.colors.textMuted }}>—</span>}
                                     </td>
                                     <td style={{ padding: '10px 14px', textAlign: 'center' }}>
                                         {period === 'week'
@@ -211,7 +220,7 @@ export const LeaderboardPage: React.FC = () => {
                             ))}
                             {filtered.length === 0 && (
                                 <tr>
-                                    <td colSpan={9} style={{ padding: 30, textAlign: 'center', color: warm.colors.textMuted }}>
+                                    <td colSpan={8} style={{ padding: 30, textAlign: 'center', color: warm.colors.textMuted }}>
                                         {search ? 'No members match that search.' : 'No activity on the board yet — first application gets the top spot.'}
                                     </td>
                                 </tr>
@@ -222,7 +231,8 @@ export const LeaderboardPage: React.FC = () => {
             )}
 
             <p style={{ margin: '12px 4px 0', fontSize: 11.5, color: warm.colors.textMuted }}>
-                Week runs Monday to Sunday (AEST). Streak = consecutive weeks hitting both program minimums (20 applications + 20 outreach).
+                Week runs Monday to Sunday (AEST). The two italic rows are targets, not members:
+                the program minimum is 20 applications and 20 outreach a week.
             </p>
         </div>
     );

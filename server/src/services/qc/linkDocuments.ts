@@ -14,8 +14,16 @@
 import { createHash } from 'crypto';
 import { prisma } from '../../index';
 
-/** How far back to look for a document belonging to a newly-saved application. */
-const LINK_WINDOW_MS = 24 * 60 * 60 * 1000;
+/**
+ * How far back to look for a document belonging to a newly-saved application.
+ *
+ * Was 24 hours, which quietly assumed everyone generates and applies in one
+ * sitting. Plenty of people draft on a Sunday and send on a Tuesday, and every
+ * one of those documents was orphaned by the clock rather than by the data.
+ * A week costs nothing: the advert fingerprint is what actually does the
+ * matching, and it is specific enough that time is only a tie-breaker.
+ */
+const LINK_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
  * Fingerprint of an advert, stable across the whitespace and line-ending
@@ -27,7 +35,11 @@ const LINK_WINDOW_MS = 24 * 60 * 60 * 1000;
  */
 export function jobDescriptionHash(jobDescription: string | null | undefined): string | null {
     const normalized = (jobDescription ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
-    if (normalized.length < 200) return null;
+    // Was 200, which is longer than plenty of real Australian ads, especially
+    // agency listings and internal postings. 120 still throws out the one-line
+    // stand-ins this guard exists for ("Nurse at Ramsay") while letting a short
+    // but genuine advert link its documents.
+    if (normalized.length < 120) return null;
     return createHash('sha256').update(normalized).digest('hex').slice(0, 32);
 }
 

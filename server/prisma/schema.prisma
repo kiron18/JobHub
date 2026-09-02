@@ -256,6 +256,12 @@ model JobApplication {
   followUpDismissedAt DateTime?
   interviewReachedAt  DateTime?
   offerReachedAt      DateTime?
+  /// When the interview actually is. Asked for at the moment somebody claims
+  /// one, because a date is a question a real interviewee answers instantly
+  /// and a fabricator has to invent, which makes it a better gate than a
+  /// warning nobody reads. It also lets the prep know whether it is writing
+  /// for tomorrow or for a fortnight away.
+  interviewAt         DateTime?
   companyIntel        Json?
   /// Which round this prep is for: recruiter_screen, hiring_manager, panel,
   /// technical, final. A screening call and a final panel are different
