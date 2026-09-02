@@ -21,6 +21,13 @@ interface OnboardingGateProps {
   children: React.ReactNode;
 }
 
+/**
+ * How long to hold the spinner before accepting that an authenticated account
+ * really has no profile. Covers a write landing a beat behind the session
+ * without making a genuinely new user wait on it.
+ */
+const NULL_PROFILE_GRACE_MS = 1200;
+
 const PENDING_KEY = 'jobhub_pending_onboarding';
 const RESTORED_KEY = 'jobhub_restored_onboarding';
 
@@ -49,6 +56,25 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
   // a brand-new userId legitimately has no profile row yet (GET /profile returns
   // null), so we must keep the spinner up — NOT flash the onboarding intake.
   const [claimSettled, setClaimSettled] = useState(false);
+  /*
+   * "No profile row at all" is the one answer worth double-checking.
+   *
+   * A profile that EXISTS but is unfinished is a real, settled fact and the
+   * intake is the right screen for it. A profile that is missing entirely is
+   * ambiguous: it is what a genuinely new account looks like, and it is also
+   * what an account looks like in the second between the session being created
+   * and the row being written. The two are indistinguishable from here.
+   *
+   * WelcomePage holds its own screen through that second (see welcomeHandoff),
+   * which is the real fix and covers the path we know about. This is the
+   * backstop for every path we do not: rather than answer from a null we have
+   * only seen once, hold the spinner briefly, ask again, and let the second
+   * answer decide. A spinner that resolves into the intake costs a new user a
+   * moment; the intake shown to somebody who just finished it costs their
+   * trust in what the page is telling them.
+   */
+  const [nullChecked, setNullChecked] = useState(false);
+  const nullRecheckRef = useRef(false);
   // Track whether an in-progress report exists. Checked here (during the loading
   // gate spinner) so OnboardingIntake never has to fire its own API call and risk
   // a mid-step state jump.
@@ -171,6 +197,26 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.hasCompletedOnboarding, user?.email, isLoading]);
 
+  /*
+   * One more look before we call a missing profile a missing profile.
+   *
+   * Fires once per mount, and only in the ambiguous case: authenticated, the
+   * query has settled, and there is no row. The wait is deliberately short —
+   * long enough to cover a write landing a beat behind the session, short
+   * enough that a real new user does not sit staring at a spinner.
+   */
+  useEffect(() => {
+    if (!isAuthenticated || isLoading || nullRecheckRef.current) return;
+    if (profile != null) { setNullChecked(true); return; }
+    nullRecheckRef.current = true;
+    const id = window.setTimeout(() => {
+      queryClient
+        .refetchQueries({ queryKey: ['profile'], type: 'all' })
+        .finally(() => setNullChecked(true));
+    }, NULL_PROFILE_GRACE_MS);
+    return () => window.clearTimeout(id);
+  }, [isAuthenticated, isLoading, profile, queryClient]);
+
   // NUCLEAR BYPASS: If profile has actual data from CV scan, allow through immediately.
   // This must come BEFORE the spinner check to prevent CV-first users from being stuck.
   // CV scan always sets resumeRawText; extraction may also populate experience/achievements.
@@ -211,7 +257,14 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
    */
   const answerPending = isAuthenticated && isFetching && !profile?.hasCompletedOnboarding;
 
-  if (authLoading || isLoading || claimPending || answerPending || (isAuthenticated && !profile?.hasCompletedOnboarding && reportStatus === 'checking')) {
+  /*
+   * Nor is a single null. See nullChecked: while the second look is still out,
+   * we do not know whether this account has no profile or has one that is a
+   * moment old, and the spinner is the honest answer to that.
+   */
+  const nullPending = isAuthenticated && profile == null && !nullChecked;
+
+  if (authLoading || isLoading || claimPending || answerPending || nullPending || (isAuthenticated && !profile?.hasCompletedOnboarding && reportStatus === 'checking')) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAF7F2' }}>
         <div className="w-12 h-12 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(45,90,110,0.2)', borderTopColor: '#2D5A6E' }} />
