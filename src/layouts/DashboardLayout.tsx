@@ -217,14 +217,23 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                             to={item.to!}
                             end={item.to === '/'}
                             onClick={() => isTouch && setDrawerOpen(false)}
-                            {...(item.to === '/tracker' ? { 'data-process-nav': 'track' } : {})}
+                            {...(item.to === '/tracker'
+                                // data-celebration-target is where the "application
+                                // filed" chip flies to, and what pulses on arrival.
+                                ? { 'data-process-nav': 'track', 'data-celebration-target': 'tracker' }
+                                : {})}
                             className={({ isActive }) =>
                                 `relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${isActive ? '' : 'hover:bg-black/[0.04]'}`
                             }
+                            /* Active nav is a soft accent fill with accent text, not a
+                               bordered teal box left over from the retired palette.
+                               Solid blue stays reserved for buttons, so the sidebar
+                               never competes with the action on the page. */
                             style={({ isActive }) => ({
-                                color: isActive ? warmT.text : warmT.textMuted,
-                                background: isActive ? 'rgba(45,90,110,0.10)' : 'transparent',
-                                border: isActive ? '1px solid rgba(45,90,110,0.25)' : '1px solid transparent',
+                                color: isActive ? warm.colors.accentPetrol : warmT.textMuted,
+                                background: isActive ? warm.colors.accentPetrolSoft : 'transparent',
+                                border: '1px solid transparent',
+                                fontWeight: isActive ? warm.weight.semibold : warm.weight.medium,
                             })}
                         >
                             {iconAndLabel}

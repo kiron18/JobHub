@@ -44,6 +44,8 @@ import { toast } from 'sonner';
 import api from '../lib/api';
 import { warm } from '../lib/theme/warmTokens';
 import { GenerationProgress } from '../components/shared/GenerationProgress';
+import { StepRail } from '../components/shared/StepRail';
+import { celebrate } from '../lib/feedback';
 import { applyWorkspaceCopy } from './applyWorkspaceCopy';
 import { extractReactText } from '../lib/extractReactText';
 
@@ -534,71 +536,37 @@ function Stepper({
     currentIndex: number;
     onSelect: (i: number) => void;
 }) {
-    const visibleSteps = steps.filter(s => !s.manualOnly);
+    // A manualOnly step is off the path and stays out of the rail, except
+    // while you are standing on it — a rail that hides the step you are on
+    // has nowhere to put the marker.
+    const railSteps = steps.filter((s, i) => !s.manualOnly || i === currentIndex);
+    const railIndex = railSteps.findIndex(s => steps.indexOf(s) === currentIndex);
     const manualSCStepIndex = steps.findIndex(s => s.id === 'selection-criteria' && s.manualOnly);
     const isOnManualSC = manualSCStepIndex >= 0 && currentIndex === manualSCStepIndex;
 
     return (
-        <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '14px 18px',
-            background: warm.colors.bgSurface,
-            border: `1px solid ${warm.colors.borderWhisper}`,
-            borderRadius: 12,
-            flexWrap: 'wrap',
-        }}>
-            {visibleSteps.map((step) => {
-                // Map the visible-step index back to the real index in the steps array
-                const realIndex = steps.indexOf(step);
-                const isActive = realIndex === currentIndex;
-                const isDone = realIndex < currentIndex;
-                const color = isActive ? warm.colors.accentGold : isDone ? warm.colors.accentPetrol : warm.colors.textMuted;
-                return (
-                    <button
-                        key={step.id}
-                        onClick={() => onSelect(realIndex)}
-                        style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            padding: '6px 12px',
-                            fontSize: 12,
-                            fontWeight: 700,
-                            letterSpacing: '0.04em',
-                            color,
-                            background: isActive ? 'rgba(197,160,89,0.12)' : 'transparent',
-                            border: `1px solid ${isActive ? 'rgba(197,160,89,0.30)' : 'transparent'}`,
-                            borderRadius: 8,
-                            cursor: 'pointer',
-                            transition: 'background 200ms, color 200ms',
-                        }}
-                    >
-                        {isDone ? <Check size={13} /> : step.icon}
-                        {step.label}
-                        {realIndex < steps.length - 1 && (
-                            <ChevronRight size={12} style={{ color: warm.colors.textMuted, marginLeft: 4 }} />
-                        )}
-                    </button>
-                );
-            })}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <StepRail
+                steps={railSteps.map(s => ({ id: s.id, label: s.label }))}
+                currentIndex={Math.max(0, railIndex)}
+                onSelect={(i) => onSelect(steps.indexOf(railSteps[i]))}
+            />
 
             {/* Discreet manual SC link when the job doesn't mention SC */}
             {manualSCStepIndex >= 0 && !isOnManualSC && (
                 <button
                     onClick={() => onSelect(manualSCStepIndex)}
                     style={{
+                        alignSelf: 'flex-start',
                         background: 'transparent',
                         border: 'none',
                         color: warm.colors.textMuted,
-                        fontSize: 11,
-                        fontWeight: 600,
+                        fontSize: 12,
+                        fontWeight: 500,
                         textDecoration: 'underline',
                         textUnderlineOffset: 3,
                         cursor: 'pointer',
-                        padding: '4px 8px',
-                        opacity: 0.65,
+                        padding: '2px 4px',
                     }}
                 >
                     Responding to selection criteria?
@@ -1485,6 +1453,15 @@ function TrackStep({
         let cancelled = false;
         (async () => {
             const appliedAt = new Date().toISOString();
+            // The one moment in the flow worth stopping for. It fires only on the
+            // real first save — the flag above means revisiting this step later
+            // replays nothing — and the chip flies into the sidebar so the answer
+            // to "where did that go" is shown rather than written.
+            const announce = () => celebrate({
+                title: 'Application filed',
+                subtitle: `${role ?? 'This role'}${company ? ` at ${company}` : ''} is in your tracker, dated today.`,
+                land: { label: 'Applications', target: 'tracker' },
+            });
             try {
                 // Every application now starts at the fit check, which already
                 // wrote this ad into the tracker as SAVED. Moving that row to
@@ -1496,6 +1473,7 @@ function TrackStep({
                         localStorage.setItem(flag, appliedAt);
                         setSavedAt(appliedAt);
                         localStorage.setItem('jobhub_last_apply_at', appliedAt);
+                        announce();
                     }
                     return;
                 }
@@ -1522,6 +1500,7 @@ function TrackStep({
                     setSavedAt(appliedAt);
                     // Notify dashboard to show goal-counter onboarding if first ever
                     localStorage.setItem('jobhub_last_apply_at', appliedAt);
+                    announce();
                 }
             } catch {
                 if (!cancelled) setAutoSaveError(true);

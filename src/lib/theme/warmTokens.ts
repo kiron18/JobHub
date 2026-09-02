@@ -29,24 +29,50 @@ export const warm = {
     /** Deep navy, for the one or two blocks that need to stop the eye. */
     bgDeep:      '#0F2038',
     textPrimary: '#111827',
-    textSecondary: '#4B5563',
-    textMuted:   '#6B7280',
+    textSecondary: '#48566B',
+    textMuted:   '#6D7A8C',
     textOnDeep:  '#FFFFFF',
-    borderWhisper:  '#E5E9F0',
-    borderDefined:  '#CBD3DF',
+    borderWhisper:  '#E6EAF0',
+    borderDefined:  '#CFD6E0',
     /** The accent. Passes AA on white at normal text size. */
     accentPetrol:        '#1257C4',
     accentPetrolHover:   '#0E47A1',
     accentPetrolPressed: '#0B3A85',
+    /** The accent as a fill. Selected rows, active nav, soft badges. */
+    accentPetrolSoft:    '#EEF3FD',
     /** Warnings and cannot-fumble items only. */
     accentGold:          '#A9760D',
     accentGoldSoft:      '#FBF1DC',
+    /** Gold as a live signal: where you are right now in a sequence. */
+    accentGoldBright:    '#C9901A',
     success:    '#12805C',
-    ringFocus:  'rgba(18, 87, 196, 0.35)',
+    successSoft:'#E8F5F0',
+    ringFocus:  'rgba(18, 87, 196, 0.32)',
     // Semantic
     danger:     '#B3261E',
     dangerSoft: '#FDECEA',
   },
+
+  /* ── The type scale ──────────────────────────────────────────────────
+     Seven steps. Before this existed the app used 53 distinct font sizes,
+     mixing px numbers and rem strings, and the most common size in the
+     product was 13px, which made everything read as small print.
+
+     Spread one of these into a style object:
+       style={{ ...warm.text.body, color: warm.colors.textSecondary }}
+  */
+  text: {
+    display: { fontSize: 34, lineHeight: 1.15, fontWeight: 700, letterSpacing: '-0.021em' },
+    h1:      { fontSize: 26, lineHeight: 1.22, fontWeight: 700, letterSpacing: '-0.018em' },
+    h2:      { fontSize: 20, lineHeight: 1.30, fontWeight: 700, letterSpacing: '-0.012em' },
+    h3:      { fontSize: 16, lineHeight: 1.40, fontWeight: 600, letterSpacing: '-0.006em' },
+    body:    { fontSize: 15, lineHeight: 1.55, fontWeight: 400 },
+    small:   { fontSize: 13, lineHeight: 1.50, fontWeight: 400 },
+    micro:   { fontSize: 11, lineHeight: 1.40, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase' as const },
+  },
+
+  /** Four weights. No 450, no 650, no 900. */
+  weight: { regular: 400, medium: 500, semibold: 600, bold: 700 },
   type: {
     /** One family. A second one was doing nothing but adding weight. */
     fontDisplay: "'Geist', -apple-system, 'Segoe UI', system-ui, sans-serif",

@@ -9,6 +9,8 @@ import { DashboardLayout } from './layouts/DashboardLayout';
 import { OnboardingGate } from './components/OnboardingGate';
 import { useWelcomeHandoff } from './lib/welcomeHandoff';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { CelebrationHost } from './components/shared/Celebration';
+import { warm } from './lib/theme/warmTokens';
 
 const ApplicationTracker   = React.lazy(() => import('./components/ApplicationTracker').then(m => ({ default: m.ApplicationTracker })));
 const FitCheckPage         = React.lazy(() => import('./pages/FitCheckPage'));
@@ -95,6 +97,8 @@ const ReceiptsPage = React.lazy(() =>
 const AnimationTest = React.lazy(() =>
   import('./pages/AnimationTest').then(m => ({ default: m.AnimationTest }))
 );
+// Design review surface. Unlisted, renders no user data, imported by nothing else.
+const StyleGuidePage = React.lazy(() => import('./pages/styleguide/StyleGuidePage'));
 
 // Auth & Context
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -518,6 +522,11 @@ function App() {
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/legal/:policy" element={<LegalPage />} />
               <Route path="/legal" element={<LegalPage />} />
+              <Route path="/styleguide" element={
+                <React.Suspense fallback={null}>
+                  <StyleGuidePage />
+                </React.Suspense>
+              } />
               <Route path="/visa-sponsors" element={
                 <React.Suspense fallback={null}>
                   <VisaSponsorsPage />
@@ -603,7 +612,30 @@ function App() {
               } />
             </Routes>
           </Router>
-          <Toaster richColors position="top-right" theme="dark" />
+          {/*
+            Was theme="dark" position="top-right" on a white product, where it
+            landed on the page heading. Light, bottom-right, and lifted off the
+            page with the one shadow reserved for overlays.
+          */}
+          <Toaster
+            richColors
+            theme="light"
+            position="bottom-right"
+            offset={20}
+            duration={4200}
+            toastOptions={{
+              style: {
+                fontFamily: warm.type.fontBody,
+                fontSize: 14,
+                borderRadius: warm.radius.input,
+                border: `1px solid ${warm.colors.borderDefined}`,
+                boxShadow: warm.shadow.lifted,
+                color: warm.colors.textPrimary,
+              },
+            }}
+          />
+          {/* Fired from anywhere via celebrate(). See src/lib/feedback.ts. */}
+          <CelebrationHost />
         </AuthProvider>
       </QueryClientProvider>
     </ThemeProvider>
