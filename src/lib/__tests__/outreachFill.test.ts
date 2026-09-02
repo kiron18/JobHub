@@ -157,6 +157,25 @@ describe('contactNameFromJobDescription', () => {
     it('stays quiet when the ad names nobody', () => {
         expect(contactNameFromJobDescription('We are hiring a Business Analyst in Melbourne.')).toBeNull();
     });
+
+    /*
+     * The patterns compile with the `i` flag so the lead-in matches in any
+     * case, which also made the `[A-Z]` in NAME_TOKENS match lowercase. Every
+     * one of these ran straight past the capitalisation guard and greeted a
+     * real person with a joining word out of the ad.
+     */
+    it('refuses lowercase words that a lead-in happens to run into', () => {
+        expect(contactNameFromJobDescription('You can contact and apply via our portal.')).toBeNull();
+        expect(contactNameFromJobDescription('Please contact us for more details.')).toBeNull();
+        expect(contactNameFromJobDescription('Questions to your local branch.')).toBeNull();
+        expect(contactNameFromJobDescription('Applications should be sent to the address below.')).toBeNull();
+        expect(contactNameFromJobDescription('Reach out to any of the team.')).toBeNull();
+    });
+
+    it('still reads a capitalised name after the same lead-ins', () => {
+        expect(contactNameFromJobDescription('You can contact Alice Nguyen to apply.')).toBe('Alice');
+        expect(contactNameFromJobDescription('Reach out to Daniel with questions.')).toBe('Daniel');
+    });
 });
 
 describe('buildOutreachMessages', () => {

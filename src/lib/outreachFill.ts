@@ -260,23 +260,54 @@ const NOT_A_NAME = new Set([
     'head', 'department', 'division', 'group', 'australia', 'australian', 'pty', 'ltd',
     'limited', 'details', 'information', 'info', 'us', 'me', 'our', 'the', 'this',
     'applications', 'application', 'candidates', 'enquiries', 'sir', 'madam',
+    // Joining words. Never a given name, and they are what a lead-in runs into
+    // when the ad does not actually name anybody: "contact and apply via" gave
+    // a real candidate a message opening "Hi and,".
+    'and', 'or', 'via', 'for', 'with', 'your', 'their', 'any', 'all', 'more',
+    'please', 'apply', 'email', 'phone', 'call', 'quote', 'ref', 'reference',
 ]);
 
-/** One to three capitalised words, allowing O'Brien and Anne-Marie. */
-const NAME_TOKENS = "([A-Z][a-z'’\\-]+(?:\\s+[A-Z][a-z'’\\-]+){0,2})";
+/**
+ * One to three words, each STARTING capitalised. Internal capitals and marks
+ * are allowed so O'Brien, Anne-Marie and McDonald survive; a lowercase first
+ * letter does not, which is the whole job this does.
+ */
+const NAME_TOKENS = "([A-Z][A-Za-z'’\\-]*(?:\\s+[A-Z][A-Za-z'’\\-]*){0,2})";
+
+/**
+ * A literal matched in any case, WITHOUT putting an `i` flag on the pattern.
+ *
+ * The flag is the thing to avoid here. It applies to the whole expression, so
+ * an `i` added so that "Please contact" also matches "please contact" turned
+ * the `[A-Z]` in NAME_TOKENS into "any letter", and the capitalisation rule
+ * that separates a person's name from an ordinary run of words in the ad
+ * quietly stopped existing. That is how "you can contact and apply via our
+ * portal" produced the contact name "and", and how outreach went out opening
+ * "Hi and,". The lead-ins need the case-insensitivity; the name must never
+ * have it.
+ */
+function anyCase(literal: string): string {
+    return literal.replace(/[a-z]/g, (c) => `[${c.toUpperCase()}${c}]`);
+}
 
 /**
  * How Australian ads name a contact. Each pattern must anchor on a lead-in that
  * only ever precedes a person, so an ordinary capitalised phrase in the body of
  * the ad cannot be mistaken for one.
  */
+const LEAD_IN = {
+    please: anyCase('please'),
+    contact: anyCase('contact'),
+    to: anyCase('to'),
+} as const;
+
 const CONTACT_PATTERNS: RegExp[] = [
-    new RegExp(`(?:please\\s+)?contact\\s+${NAME_TOKENS}`, 'i'),
-    new RegExp(`(?:please\\s+)?(?:call|phone)\\s+${NAME_TOKENS}`, 'i'),
-    new RegExp(`(?:reach\\s+out|speak|talk)\\s+to\\s+${NAME_TOKENS}`, 'i'),
-    new RegExp(`(?:directed|addressed|sent|submitted)\\s+to\\s+${NAME_TOKENS}`, 'i'),
-    new RegExp(`(?:questions|enquiries|inquiries|queries)\\s+to\\s+${NAME_TOKENS}`, 'i'),
-    new RegExp(`(?:contact|recruiter|consultant|hiring\\s+manager|point\\s+of\\s+contact)\\s*:\\s*${NAME_TOKENS}`, 'i'),
+    new RegExp(`(?:${LEAD_IN.please}\\s+)?${LEAD_IN.contact}\\s+${NAME_TOKENS}`),
+    new RegExp(`(?:${LEAD_IN.please}\\s+)?(?:${anyCase('call')}|${anyCase('phone')})\\s+${NAME_TOKENS}`),
+    new RegExp(`(?:${anyCase('reach')}\\s+${anyCase('out')}|${anyCase('speak')}|${anyCase('talk')})\\s+${LEAD_IN.to}\\s+${NAME_TOKENS}`),
+    new RegExp(`(?:${anyCase('directed')}|${anyCase('addressed')}|${anyCase('sent')}|${anyCase('submitted')})\\s+${LEAD_IN.to}\\s+${NAME_TOKENS}`),
+    new RegExp(`(?:${anyCase('questions')}|${anyCase('enquiries')}|${anyCase('inquiries')}|${anyCase('queries')})\\s+${LEAD_IN.to}\\s+${NAME_TOKENS}`),
+    new RegExp(`(?:${LEAD_IN.contact}|${anyCase('recruiter')}|${anyCase('consultant')}|${anyCase('hiring')}\\s+${anyCase('manager')}|${anyCase('point')}\\s+${anyCase('of')}\\s+${LEAD_IN.contact})\\s*:\\s*${NAME_TOKENS}`),
 ];
 
 /** True when every token reads like part of a person's name. */
@@ -284,6 +315,24 @@ function looksLikeAPerson(name: string, company?: string): boolean {
     const tokens = name.split(/\s+/);
     if (tokens.length === 0 || tokens.length > 3) return false;
     if (tokens.some((t) => t.length < 2 || NOT_A_NAME.has(t.toLowerCase()))) return false;
+
+    /*
+     * Every token has to be capitalised, checked here rather than left to the
+     * pattern.
+     *
+     * NAME_TOKENS is written `[A-Z][a-z...]` and reads as though it enforces
+     * this, but CONTACT_PATTERNS compile with the `i` flag so the lead-in
+     * ("please contact") can match in any case, and that flag applies to the
+     * whole expression. `[A-Z]` therefore matched lowercase too, and the one
+     * guard separating a person's name from an ordinary run of words in the ad
+     * was doing nothing at all. That is how "you can contact and apply via our
+     * portal" produced the contact name "and".
+     *
+     * Enforced on the extracted tokens instead of by splitting the flag off the
+     * patterns, because it also covers the salutation path, where the same
+     * assumption is made about a name read out of the letter.
+     */
+    if (tokens.some((t) => !/^[A-Z]/.test(t))) return false;
 
     // A match that is really just the employer's name read back at us.
     const companyTokens = new Set(
