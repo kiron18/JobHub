@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     LayoutDashboard,
@@ -12,10 +12,11 @@ import {
     ShieldCheck,
     Menu,
     X,
-    Trophy, MessagesSquare } from 'lucide-react';
+    Plus,
+    Send,
+    MessagesSquare } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
-import { isAdminEmail } from '../lib/adminEmails';
 import api from '../lib/api';
 import { warm } from '../lib/theme/warmTokens';
 
@@ -54,6 +55,7 @@ function useIsTouch(): boolean {
 export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { user, signOut } = useAuth();
     const isTouch = useIsTouch();
+    const location = useLocation();
 
     // Profile prefetch — used implicitly by downstream queries
     useQuery({
@@ -115,25 +117,39 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
 
     const expanded = !isTouch && (introVisible || hovered);
 
+    /*
+      Two things you do, then the places those things live.
+
+      There is no separate dashboard item, because there was never a separate
+      dashboard. /check calls itself "the one door: every application starts
+      here", and the paste box on / ends every one of its paths in
+      navigate('/check'). Home and "start an application" were already the same
+      act wearing two names, so the first item is both.
+
+      `divider: true` draws a rule above an item. It is the only grouping in
+      here: at this length, headings would be more clutter than structure.
+    */
     const navItems: Array<{
         to?: string;
         onClick?: () => void;
         icon: typeof LayoutDashboard;
         label: string;
+        divider?: boolean;
     }> = [
-        { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-        { to: '/tracker', icon: Briefcase, label: 'Applications' },
-        // Closed to clients while the streak logic is reviewed: a streak needs
-        // 20 outreach in a week and nobody has ever logged that, so the column
-        // is permanently zero and the board reads as broken. Gated server-side
-        // too; this only decides whether to draw the link.
-        ...(isAdminEmail(user?.email) ? [{ to: '/leaderboard', icon: Trophy, label: 'Leaderboard' }] : []),
-        { to: '/documents', icon: Library, label: 'Documents' },
-        { to: '/workspace', icon: FileText, label: 'Profile' },
-        { to: '/answer-bank', icon: MessagesSquare, label: 'Answer Bank' },
-        { to: '/linkedin', icon: Linkedin, label: 'LinkedIn' },
-        { to: '/email-templates', icon: Mail, label: 'Email Templates' },
-        { to: '/visa-sponsors', icon: ShieldCheck, label: 'Visa Sponsors' },
+        // The two verbs.
+        { to: '/', icon: Plus, label: 'New application' },
+        { to: '/linkedin?tab=outreach', icon: Send, label: 'New outreach' },
+
+        // Where the work you have already done lives.
+        { to: '/tracker', icon: Briefcase, label: 'Your tracker', divider: true },
+        { to: '/linkedin', icon: Linkedin, label: 'Networking' },
+
+        // Reference. Things you go and fetch from, rather than places you work.
+        { to: '/workspace', icon: FileText, label: 'About you', divider: true },
+        { to: '/documents', icon: Library, label: 'Resumes & letters' },
+        { to: '/email-templates', icon: Mail, label: 'Templates' },
+        { to: '/answer-bank', icon: MessagesSquare, label: 'Answer bank' },
+        { to: '/visa-sponsors', icon: ShieldCheck, label: 'Visa sponsors' },
     ];
 
     const sidebarContent = (showLabels: boolean) => (
@@ -163,6 +179,15 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
             <nav className="flex-1 space-y-1.5">
                 {navItems.map((item) => {
                     const Icon = item.icon;
+                    const rule = item.divider ? (
+                        <div
+                            aria-hidden
+                            style={{
+                                height: 1, margin: '10px 12px 9px',
+                                background: warm.colors.borderWhisper,
+                            }}
+                        />
+                    ) : null;
                     const badge = item.to === '/tracker' && (followUpCount ?? 0) > 0
                         ? ((followUpCount ?? 0) > 9 ? '9+' : String(followUpCount))
                         : null;
@@ -197,8 +222,9 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
 
                     if (item.onClick) {
                         return (
+                            <React.Fragment key={item.label}>
+                            {rule}
                             <button
-                                key={item.label}
                                 type="button"
                                 onClick={() => { item.onClick!(); if (isTouch) setDrawerOpen(false); }}
                                 className="relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all hover:bg-black/[0.04] text-left"
@@ -206,12 +232,22 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                             >
                                 {iconAndLabel}
                             </button>
+                            </React.Fragment>
                         );
                     }
 
+                    /* Two items point at /linkedin and only differ by the query
+                       string, which NavLink ignores when it decides what is
+                       active. Without this they both light up at once. */
+                    const path = item.to!.split('?')[0];
+                    const query = item.to!.includes('?') ? item.to!.split('?')[1] : '';
+                    const selfActive = location.pathname === path
+                        && (query ? location.search.includes(query) : !location.search);
+
                     return (
+                        <React.Fragment key={item.to}>
+                        {rule}
                         <NavLink
-                            key={item.to}
                             to={item.to!}
                             end={item.to === '/'}
                             onClick={() => isTouch && setDrawerOpen(false)}
@@ -220,22 +256,23 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                                 // filed" chip flies to, and what pulses on arrival.
                                 ? { 'data-process-nav': 'track', 'data-celebration-target': 'tracker' }
                                 : {})}
-                            className={({ isActive }) =>
-                                `relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${isActive ? '' : 'hover:bg-black/[0.04]'}`
+                            className={() =>
+                                `relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${selfActive ? '' : 'hover:bg-black/[0.04]'}`
                             }
                             /* Active nav is a soft accent fill with accent text, not a
                                bordered teal box left over from the retired palette.
                                Solid blue stays reserved for buttons, so the sidebar
                                never competes with the action on the page. */
-                            style={({ isActive }) => ({
-                                color: isActive ? warm.colors.accentPetrol : warmT.textMuted,
-                                background: isActive ? warm.colors.accentPetrolSoft : 'transparent',
+                            style={() => ({
+                                color: selfActive ? warm.colors.accentPetrol : warmT.textMuted,
+                                background: selfActive ? warm.colors.accentPetrolSoft : 'transparent',
                                 border: '1px solid transparent',
-                                fontWeight: isActive ? warm.weight.semibold : warm.weight.medium,
+                                fontWeight: selfActive ? warm.weight.semibold : warm.weight.medium,
                             })}
                         >
                             {iconAndLabel}
                         </NavLink>
+                        </React.Fragment>
                     );
                 })}
             </nav>
