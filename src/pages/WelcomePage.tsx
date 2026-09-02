@@ -14,6 +14,7 @@ import { colors, type as T } from '../components/landing/tokens';
 import { MarkdownDocEditor, FormattingHelp } from '../components/MarkdownDocEditor';
 import { suggestCuts } from '../lib/resumeCuts';
 import { SALES_PAGE_URL } from '../lib/salesPage';
+import { beginWelcomeHandoff, endWelcomeHandoff } from '../lib/welcomeHandoff';
 
 // The resume is built BEFORE we ask for an email — they see the finished thing,
 // then decide to save it. Email/code only appear if they aren't already signed in.
@@ -396,6 +397,13 @@ export const WelcomePage: React.FC = () => {
     if (password.length < PASSWORD_MIN) { toast.error(`Your password needs at least ${PASSWORD_MIN} characters.`); return; }
 
     setSending(true);
+    /*
+     * Raised BEFORE the credentials go up, because the window it covers opens
+     * inside the await below: signUp returning a session is what re-renders the
+     * route at `/`. Cleared in finishNow once the profile is written, or in the
+     * catch below if we never got that far.
+     */
+    beginWelcomeHandoff();
     try {
       const signIn = await supabase.auth.signInWithPassword({ email: addr, password });
       if (!signIn.error && signIn.data.session) {
@@ -432,6 +440,14 @@ export const WelcomePage: React.FC = () => {
       toast.error(err?.message || 'Could not save your resume, please try again.');
     } finally {
       setSending(false);
+      /*
+       * Every path that did NOT reach finishNow ends here still holding the
+       * flag: a rejected signup, a confirmation-required fallback to the code
+       * screen, a thrown request. finishNow clears it itself on the way out, so
+       * this only ever releases a handoff that is not going to happen — and
+       * leaving one raised would strand a signed-in user on the welcome screen.
+       */
+      endWelcomeHandoff();
     }
   }
 
@@ -461,11 +477,15 @@ export const WelcomePage: React.FC = () => {
     const otp = code.trim();
     if (otp.length < OTP_MIN) { toast.error('Enter the full code from your email.'); return; }
     setVerifying(true);
+    // Verifying the code is also what creates the session, so this path opens
+    // exactly the same window as the password one. See welcomeHandoff.
+    beginWelcomeHandoff();
     try {
       const { error } = await supabase.auth.verifyOtp({ email: email.trim().toLowerCase(), token: otp, type: 'email' });
       if (error) throw error;
       await finishNow();
     } catch (err: any) {
+      endWelcomeHandoff();
       toast.error(err?.message || "That code didn't match. Check it and try again.");
       setVerifying(false);
     }
@@ -473,7 +493,9 @@ export const WelcomePage: React.FC = () => {
 
   async function finishNow() {
     const clean = cleanRoles();
-    if (clean.length === 0) { toast.error('Add at least one target role.'); setStep('roles'); return; }
+    // Bails before anything is written, so the handoff has to end here too or
+    // the flag stays raised and pins a signed-in user to the welcome screen.
+    if (clean.length === 0) { endWelcomeHandoff(); toast.error('Add at least one target role.'); setStep('roles'); return; }
     setStep('finishing');
     try {
       await api.post('/welcome/finish', { token, targetRoles: clean, targetCity: city.trim() || null });
@@ -492,14 +514,25 @@ export const WelcomePage: React.FC = () => {
       //
       // refetchQueries, not invalidateQueries: invalidate only marks it dirty,
       // and the gate can still mount and read the old value first.
-      await queryClient.refetchQueries({ queryKey: ['profile'] });
+      //
+      // type: 'all', not the default 'active'. During the handoff the dashboard
+      // is deliberately not mounted, so NOTHING is observing ['profile'] and an
+      // active-only refetch is a no-op that leaves whatever the cache held —
+      // including a previous user's profile from an earlier session in this
+      // browser. Refetching inactive entries too is what makes the await below
+      // mean "the cache now holds the profile we just wrote".
+      await queryClient.refetchQueries({ queryKey: ['profile'], type: 'all' });
 
       // No flag is carried across. The dashboard's eligibility intro fires off
       // the profile's own eligibilityIntroSeenAt column, so it belongs to the
       // signup rather than to this navigation, and it survives the refresh that
       // used to eat it.
+      // Released immediately before the navigation, never earlier: the profile
+      // is written and the cache holds it, so the gate has a real answer now.
+      endWelcomeHandoff();
       navigate('/', { replace: true });
     } catch (err: any) {
+      endWelcomeHandoff();
       trackWelcomeFailed('finishing', 'finish_failed');
       toast.error(err?.response?.data?.error || 'Could not complete setup, please try again.');
       setStep(user ? 'resume' : 'code');
@@ -524,10 +557,20 @@ export const WelcomePage: React.FC = () => {
     // The tile counts what is still owed, so it goes down as they answer.
     const outstandingQs = questions.filter(q => !answers[q.id]).length;
 
-    const tiles: Array<{ id: DiagnosisCardId; title: string; blurb: string; count?: number; tone: DiagnosisTone }> = [
-      { id: 'found', title: 'Overview', blurb: 'Read line by line. Not yours to fix.', count: findings.length, tone: 'neutral' },
-      { id: 'gap', title: 'Your biggest gap', blurb: 'The one thing holding this resume back.', tone: 'alert' },
-      { id: 'need', title: 'What we need to fix', blurb: outstandingQs > 0 ? 'Only you can tell us these.' : 'All answered. Nothing waiting on you.', count: outstandingQs, tone: 'action' },
+    /*
+      Title, count, and the way in. No blurb.
+    
+      Each tile used to carry a line under its heading explaining what was
+      inside it, and all three headings already say that: "Your biggest gap"
+      does not need "the one thing holding this resume back" underneath it. It
+      was the same sentence twice, and three of them across the row turned a
+      set of doors into a wall of text sitting between somebody and their
+      diagnosis.
+    */
+    const tiles: Array<{ id: DiagnosisCardId; title: string; count?: number; tone: DiagnosisTone }> = [
+      { id: 'found', title: 'Overview', count: findings.length, tone: 'neutral' },
+      { id: 'gap', title: 'Your biggest gap', tone: 'alert' },
+      { id: 'need', title: 'What we need to fix', count: outstandingQs, tone: 'action' },
     ];
 
     return (
@@ -852,8 +895,13 @@ export const WelcomePage: React.FC = () => {
               onClick={() => setOwnershipOpen(true)}
               style={{
                 background: 'transparent', border: 'none', padding: 0, textAlign: 'left',
-                fontFamily: T.body, fontSize: 13, color: colors.textMuted,
-                textDecoration: 'underline', textUnderlineOffset: 3, cursor: 'pointer',
+                fontFamily: T.body, fontSize: 13.5, fontWeight: 700,
+                /* Petrol, matching Edit across the row. In muted grey at 13px it
+                   read as chrome and went unnoticed, which for the one line on
+                   this screen that explains why we are asking them to do
+                   anything is the same as not shipping it. */
+                color: colors.accentPetrol,
+                textDecoration: 'underline', textUnderlineOffset: 4, cursor: 'pointer',
               }}
             >
               Why don't we just do this for you?
@@ -1552,11 +1600,10 @@ const DIAGNOSIS_ICONS: Record<DiagnosisCardId, LucideIcon> = {
  * the point.
  */
 function DiagnosisTile({
-  id, title, blurb, count, tone, open, onToggle,
+  id, title, count, tone, open, onToggle,
 }: {
   id: DiagnosisCardId;
   title: string;
-  blurb: string;
   count?: number;
   tone: DiagnosisTone;
   open: boolean;
@@ -1572,8 +1619,8 @@ function DiagnosisTile({
       whileHover={{ y: -2 }}
       transition={{ duration: 0.18, ease: EASE }}
       style={{
-        /* Square-ish, and the same height across the row whatever the blurb
-           does, so the three read as one set rather than three panels. */
+        /* Square-ish, and the same height across the row, so the three read as
+           one set rather than three panels. */
         position: 'relative',
         aspectRatio: '1 / 1', minHeight: 180,
         display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
@@ -1608,19 +1655,10 @@ function DiagnosisTile({
         <Icon size={28} strokeWidth={2} />
       </span>
 
-      {/*
-        The title follows the icon directly. It used to carry `marginTop: auto`,
-        which pushed it down by however much room the blurb left over, so the
-        tile with the one-line blurb sat its heading lower than the other two and
-        the row looked broken. The spacer now lives on the row below, where a
-        difference in blurb length belongs.
-      */}
+      {/* The title follows the icon directly; the spacer lives on the row below
+          it, so all three headings sit on the same line across the row. */}
       <span style={{ fontFamily: T.display, fontSize: 'clamp(16px, 2vw, 18.5px)', fontWeight: 600, color: colors.textPrimary, lineHeight: 1.25, marginTop: 6 }}>
         {title}
-      </span>
-
-      <span style={{ fontFamily: T.body, fontSize: 13.5, lineHeight: 1.5, color: colors.textMuted }}>
-        {blurb}
       </span>
 
       <span style={{ marginTop: 'auto', display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: T.body, fontSize: 13, fontWeight: 700, color: accent }}>
