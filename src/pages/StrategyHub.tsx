@@ -385,6 +385,28 @@ function GoalEditor({
 
 // ─── AnalysisHeroCard ───────────────────────────────────────────────────────
 
+/**
+ * The target role as it should read inside "Browse ___ jobs".
+ *
+ * Printed verbatim it produced "Browse BUsiness analyst jobs" on a real
+ * account. The stray capital is in the candidate's own stored role, typed once
+ * during signup and then repeated on this button forever, and it is not worth
+ * a support conversation over a button label.
+ *
+ * Lowercased word by word, because this sits mid-sentence and every ordinary
+ * role reads correctly there whatever case it was stored in. An all-uppercase
+ * word is left exactly as it is: "IT", "HR" and "UX" are acronyms, and
+ * "Browse it support jobs" is a worse bug than the one being fixed.
+ */
+function roleLabelFor(targetRole?: string): string {
+    const trimmed = targetRole?.trim();
+    if (!trimmed) return 'more';
+    return trimmed
+        .split(/\s+/)
+        .map((word) => (word === word.toUpperCase() ? word : word.toLowerCase()))
+        .join(' ');
+}
+
 function AnalysisHeroCard() {
     const navigate = useNavigate();
     const location = useLocation();
@@ -464,7 +486,7 @@ function AnalysisHeroCard() {
         staleTime: 30_000,
     });
     const seekUrl = buildSeekSearchUrl(profileLite?.targetRole, profileLite?.targetCity);
-    const roleLabel = profileLite?.targetRole?.trim() || 'more';
+    const roleLabel = roleLabelFor(profileLite?.targetRole);
 
     const trimmed = jd.trim();
     // A Seek link is ~35 characters, well under the old 50-character floor, so

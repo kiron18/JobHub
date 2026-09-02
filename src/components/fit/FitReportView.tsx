@@ -20,7 +20,6 @@
 import { motion } from 'framer-motion';
 import { ArrowRight, Check, Clock, Info, Search, X } from 'lucide-react';
 import { warm } from '../../lib/theme/warmTokens';
-import { FollowUpCard } from './FollowUpCard';
 
 const C = warm.colors;
 
@@ -228,6 +227,20 @@ export function FitReportView({ report, onTailor, onCheckAnother, targetCity, sa
    */
   const positive = report.band !== 'mismatch';
 
+  /*
+   * And so does the panel at the bottom.
+   *
+   * It used to branch on `outcome` while the verdict above branched on `band`,
+   * and the two are independent answers from the model with nothing
+   * reconciling them. A stretch that came back outcome "search" therefore put
+   * "Worth applying" at the top of the screen and a list of other roles to go
+   * look at underneath it, which is the screen arguing with itself.
+   *
+   * One field decides the whole page. `band` is the one, because it is the
+   * question the candidate actually asked: can I get this job.
+   */
+  const promoteApplying = positive;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -326,7 +339,7 @@ export function FitReportView({ report, onTailor, onCheckAnother, targetCity, sa
         borderRadius: warm.radius.card,
         display: 'flex', flexDirection: 'column', gap: 16,
       }}>
-        {report.outcome === 'apply' ? (
+        {promoteApplying ? (
           <>
             <div style={{ paddingRight: 96 }}>
               <p style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700, color: C.textPrimary }}>
@@ -383,9 +396,18 @@ export function FitReportView({ report, onTailor, onCheckAnother, targetCity, sa
               directly under the words "Worth applying" and flatly contradict
               them. The pills are the useful part; this just names them.
             */}
+            <div>
+              <p style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700, color: C.textPrimary }}>
+                Your next step
+              </p>
+              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: C.textSecondary }}>
+                {NEXT_STEP[report.band]}
+              </p>
+            </div>
+
             {report.searchRoles.length > 0 && (
-              <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: C.textPrimary }}>
-                Other roles you might be interested in
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: C.textPrimary }}>
+                Roles worth your next hour instead
               </p>
             )}
 
@@ -414,24 +436,29 @@ export function FitReportView({ report, onTailor, onCheckAnother, targetCity, sa
             )}
 
             {/*
-              Two ways on, and applying leads.
+              Two ways on, and the better one leads.
 
-              The role pills above are already a Seek search, so a "search jobs
-              on Seek" button beside them was the same door twice. What was
-              missing is the other one: someone who has read the verdict and
-              wants to go anyway. Telling them they cannot is not our call, and
-              it is the moment they are most willing to pay for the best
-              possible version of a long shot — so it takes the blue, and
-              checking another job sits beside it without competing for the eye.
+              Both doors stay open. Telling somebody they may not apply is not
+              our call, and the moment they have read a bad verdict and want to
+              go anyway is the moment they most want the best possible version
+              of a long shot.
+
+              But the emphasis is the advice. This panel used to give "Apply"
+              the blue on a mismatch, which promoted the move the screen had
+              just spent four paragraphs explaining was the wrong one, and a
+              product that argues against its own verdict with its own button
+              is not worth reading. So the blue goes to the next job, and the
+              application keeps its door in plain sight beside it, named for
+              what it is: applying anyway.
             */}
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-              <PrimaryButton onClick={onTailor}>
-                Apply <ArrowRight size={17} />
+              <PrimaryButton onClick={onCheckAnother}>
+                Find a better match <ArrowRight size={17} />
               </PrimaryButton>
 
               <button
                 type="button"
-                onClick={onCheckAnother}
+                onClick={onTailor}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 8,
                   padding: '12px 20px',
@@ -442,18 +469,12 @@ export function FitReportView({ report, onTailor, onCheckAnother, targetCity, sa
                   cursor: 'pointer', fontFamily: 'inherit',
                 }}
               >
-                Check another job
+                Apply anyway
               </button>
             </div>
           </>
         )}
       </div>
-
-      {/*
-        Only on a match. On a mismatch the next move is another job, and a
-        follow-up pitch for an application they are not going to send is noise.
-      */}
-      {report.outcome === 'apply' && <FollowUpCard variant="preview" />}
 
       {saved && (
         <p style={{ margin: 0, fontSize: 13, color: C.textMuted, textAlign: 'center' }}>
