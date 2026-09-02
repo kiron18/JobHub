@@ -146,7 +146,10 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
 
         // Reference. Things you go and fetch from, rather than places you work.
         { to: '/workspace', icon: FileText, label: 'About you', divider: true },
-        { to: '/documents', icon: Library, label: 'Resumes & letters' },
+        // Not "Resumes & letters": this also holds selection-criteria responses,
+        // which are a whole step of the apply flow, and the baseline Starter
+        // Resume, which belongs to no application at all.
+        { to: '/documents', icon: Library, label: 'Your documents' },
         { to: '/email-templates', icon: Mail, label: 'Templates' },
         { to: '/answer-bank', icon: MessagesSquare, label: 'Answer bank' },
         { to: '/visa-sponsors', icon: ShieldCheck, label: 'Visa sponsors' },
