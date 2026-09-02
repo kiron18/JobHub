@@ -24,6 +24,7 @@ import { EligibilityIntroModal } from '../components/EligibilityIntroModal';
 import type { JobFeedItem } from '../components/jobs/JobCard';
 import { DailyProgressBar } from '../components/jobs/DailyProgressBar';
 import { WeekStrip } from '../components/jobs/WeekStrip';
+import { WeekGlance } from '../components/tracker/WeekGlance';
 import { warm } from '../lib/theme/warmTokens';
 import { jdMentionsSelectionCriteria } from '../lib/selectionCriteria';
 import { extractJobFacts } from '../lib/extractJobFacts';
@@ -1034,6 +1035,9 @@ export function StrategyHub() {
                             <DailyProgressBar />
                         </div>
                         <GoalChip jobs={jobs ?? []} />
+                        {/* The count, next to the squares. WeekStrip says which
+                            days you worked; this says how much, against target. */}
+                        <WeekGlance />
                         <WeekStrip />
                     </div>
                 </DimPeer>

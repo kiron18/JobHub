@@ -626,22 +626,24 @@ function EntryCard({
   );
 }
 
+interface DueEntry {
+  id: string;
+  personName: string;
+  company: string;
+  topic: string;
+  specificQuestion: string;
+  nextTouchNumber: number;
+  daysSinceLastTouch: number;
+  isReContact?: boolean;
+  reContactDraft?: string;
+}
+
 // Follow-up due card with editable template
 function FollowUpDueCard({
   due,
   onCopied,
 }: {
-  due: {
-    id: string;
-    personName: string;
-    company: string;
-    topic: string;
-    specificQuestion: string;
-    nextTouchNumber: number;
-    daysSinceLastTouch: number;
-    isReContact?: boolean;
-    reContactDraft?: string;
-  };
+  due: DueEntry;
   onCopied: () => void;
 }) {
   // At the 3-4 week mark the right message is the re-contact that was written
@@ -762,19 +764,60 @@ function FollowUpDueCard({
   );
 }
 
+/**
+ * Follow-ups that are due, on their own.
+ *
+ * These used to be visible only inside the Outreach tab of the LinkedIn page,
+ * which is a list you had to remember to open. A reminder you have to go and
+ * look for is not a reminder. It now also sits at the top of the outreach
+ * generator, where somebody is already writing a message: the cheapest moment
+ * to chase a reply is while you are in the middle of chasing a different one.
+ *
+ * Renders nothing at all when nothing is due.
+ */
+export const OutreachDueNudges: React.FC<{ compact?: boolean }> = ({ compact }) => {
+  const [due, setDue] = useState<DueEntry[]>([]);
+
+  const load = async () => {
+    try {
+      const { data } = await api.get('/linkedin/outreach/due');
+      setDue(data.due || []);
+    } catch {
+      // A nudge that fails to load is not worth a toast: the page it sits on
+      // has its own job and this is an extra.
+    }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  if (due.length === 0) return null;
+
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <p style={{
+        margin: '0 0 12px', fontFamily: warm.type.fontBody,
+        ...warm.text.micro, color: warm.colors.accentGold,
+      }}>
+        {due.length} follow-up{due.length !== 1 ? 's' : ''} due
+      </p>
+      {(compact ? due.slice(0, 2) : due).map((d) => (
+        <FollowUpDueCard key={d.id} due={d} onCopied={load} />
+      ))}
+      {compact && due.length > 2 && (
+        <p style={{
+          margin: '2px 0 0', fontFamily: warm.type.fontBody,
+          ...warm.text.small, color: warm.colors.textMuted,
+        }}>
+          {due.length - 2} more waiting in Your tracker.
+        </p>
+      )}
+    </div>
+  );
+};
+
 export const OutreachTracker: React.FC = () => {
   const [entries, setEntries] = useState<OutreachLogEntry[]>([]);
-  const [dueEntries, setDueEntries] = useState<Array<{
-    id: string;
-    personName: string;
-    company: string;
-    topic: string;
-    specificQuestion: string;
-    nextTouchNumber: number;
-    daysSinceLastTouch: number;
-    isReContact?: boolean;
-    reContactDraft?: string;
-  }>>([]);
+  const [dueEntries, setDueEntries] = useState<DueEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [dueLoading, setDueLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'all' | 'due'>('due');

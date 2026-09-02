@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import api from '../../lib/api';
 import { warm } from '../../lib/theme/warmTokens';
 import { NetworkingGuide } from './NetworkingGuide';
+import { OutreachDueNudges } from './OutreachTracker';
 import type { OutreachData } from './types';
 
 const COACHING_TIPS: Record<keyof Omit<OutreachData, 'questionSuggestions'>, string> = {
@@ -272,6 +273,9 @@ export const OutreachTemplates: React.FC = () => {
         times in three voices, and between them they filled the screen above
         the tool people came here to use.
       */}
+      {/* Anyone waiting on a reply sees it before they write a new message. */}
+      <OutreachDueNudges compact />
+
       <NetworkingGuide />
 
       {/* Input form */}

@@ -23,6 +23,7 @@ import type { SortBy } from './tracker/SortControls';
 import { SectionIntroBanner } from './processStrip';
 import { warm } from '../lib/theme/warmTokens';
 import { ActivityHeatmap } from './tracker/ActivityHeatmap';
+import { OutreachTracker } from './linkedin/OutreachTracker';
 import { GoalCard } from './tracker/GoalCard';
 
 const PRIORITY_ORDER: Record<string, number> = { DREAM: 0, TARGET: 1, BACKUP: 2 };
@@ -34,6 +35,7 @@ function daysSinceApplied(dateApplied: string | null): number | null {
 }
 
 export const ApplicationTracker: React.FC = () => {
+    const [trackerTab, setTrackerTab] = useState<'applications' | 'outreach'>('applications');
     const queryClient = useQueryClient();
     const [filterStatus, setFilterStatus] = useState<ApplicationStatus | 'ALL' | 'SKIPPED'>('ALL');
     const [sortBy, setSortBy] = useState<SortBy>('match');
@@ -228,10 +230,45 @@ export const ApplicationTracker: React.FC = () => {
                 Every job you've started or applied to lives here. Track status, set follow-up reminders, and surface interview notes in one place.
             </SectionIntroBanner>
             <header style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <h1 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.5rem)', fontWeight: 800, letterSpacing: '-0.02em', color: warm.colors.textPrimary, margin: 0 }}>Application Tracker</h1>
-                <p style={{ margin: 0, fontSize: 16, color: warm.colors.textSecondary, fontWeight: 500 }}>What we measure, we improve. Stay ahead of the game by knowing what volume you're putting out, when to follow up, and how to keep connections strong.</p>
+                <h1 style={{ margin: 0, fontFamily: warm.type.fontBody, ...warm.text.display, color: warm.colors.textPrimary }}>Your tracker</h1>
+                <p style={{ margin: 0, fontFamily: warm.type.fontBody, ...warm.text.body, color: warm.colors.textSecondary }}>
+                    Both halves of the work in one place: the jobs you have sent, and the people you have spoken to.
+                </p>
             </header>
 
+            {/*
+              Two tabs, not two pages.
+
+              Outreach used to be tracked inside the LinkedIn page, which meant
+              the product had two trackers that never appeared on screen
+              together, and no answer to "how am I doing this week" that counted
+              both. They are the same question about two kinds of effort.
+            */}
+            <div style={{
+                display: 'flex', gap: 24,
+                borderBottom: `1px solid ${warm.colors.borderWhisper}`,
+            }}>
+                {([['applications', 'Applications'], ['outreach', 'Outreach']] as const).map(([id, label]) => (
+                    <button
+                        key={id}
+                        onClick={() => setTrackerTab(id)}
+                        style={{
+                            background: 'none', border: 'none', padding: '0 0 10px', cursor: 'pointer',
+                            fontFamily: warm.type.fontBody, fontSize: 15,
+                            fontWeight: trackerTab === id ? warm.weight.semibold : warm.weight.medium,
+                            color: trackerTab === id ? warm.colors.textPrimary : warm.colors.textMuted,
+                            boxShadow: trackerTab === id ? `inset 0 -2px 0 ${warm.colors.accentPetrol}` : 'none',
+                        }}
+                    >
+                        {label}
+                    </button>
+                ))}
+            </div>
+
+            {trackerTab === 'outreach' && <OutreachTracker />}
+
+            {trackerTab === 'applications' && (
+              <>
             <GoalCard />
 
             {!isLoading && <FollowUpNudge jobs={jobs} />}
@@ -609,6 +646,8 @@ export const ApplicationTracker: React.FC = () => {
                         />
                     ))}
                 </div>
+            )}
+              </>
             )}
         </div>
     );

@@ -9,7 +9,6 @@ import { BannerCopyPicker } from '../components/linkedin/BannerCopyPicker';
 import { BannerCanvas } from '../components/linkedin/BannerCanvas';
 import { HeadshotGenerator } from '../components/linkedin/HeadshotGenerator';
 import { OutreachTemplates } from '../components/linkedin/OutreachTemplates';
-import { OutreachTracker } from '../components/linkedin/OutreachTracker';
 import { LocalExperience } from '../components/linkedin/LocalExperience';
 import type { LinkedInProfileData, BannerConfig } from '../components/linkedin/types';
 import { useProfile } from '../hooks/useProfile';
@@ -35,9 +34,9 @@ export const LinkedInPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab');
   const [tab, setTab] = useState<Tab>(
-    requestedTab === 'outreach' || requestedTab === 'tracker' || requestedTab === 'local-experience'
+    requestedTab === 'profile' || requestedTab === 'local-experience'
       ? requestedTab
-      : 'profile',
+      : 'outreach',
   );
   const [targetRole, setTargetRole] = useState('');
   const [generating, setGenerating] = useState(false);
@@ -123,7 +122,7 @@ export const LinkedInPage: React.FC = () => {
           LinkedIn Hub
         </h1>
         <p style={{ fontSize: 14, color: warm.colors.textSecondary, margin: 0 }}>
-          Profile · Outreach · Tracker · Local Experience · Headshot · Banner · one cohesive system
+Write the message, fix the profile behind it, and log the local experience that backs both.
         </p>
       </div>
 
@@ -133,10 +132,13 @@ export const LinkedInPage: React.FC = () => {
         background: warm.colors.bgAlt, border: `1px solid ${warm.colors.borderWhisper}`,
         width: 'fit-content',
       }}>
-        <button style={tabStyle(tab === 'profile')} onClick={() => setTab('profile')}>Profile</button>
+        {/* Outreach first, and the default. It is the only reason anybody comes
+            here, and it used to be the second thing you saw.
+            The Tracker tab is gone: outreach history now lives in Your tracker,
+            beside applications, instead of being a second tracker in a corner. */}
         <button style={tabStyle(tab === 'outreach')} onClick={() => setTab('outreach')}>Outreach</button>
-        <button style={tabStyle(tab === 'tracker')} onClick={() => setTab('tracker')}>Tracker</button>
-        <button style={tabStyle(tab === 'local-experience')} onClick={() => setTab('local-experience')}>Local Experience</button>
+        <button style={tabStyle(tab === 'profile')} onClick={() => setTab('profile')}>LinkedIn profile</button>
+        <button style={tabStyle(tab === 'local-experience')} onClick={() => setTab('local-experience')}>Local experience</button>
       </div>
 
       {tab === 'profile' && (
@@ -189,7 +191,6 @@ export const LinkedInPage: React.FC = () => {
       <div style={{ display: tab === 'outreach' ? 'block' : 'none' }}>
         <OutreachTemplates />
       </div>
-      {tab === 'tracker' && <OutreachTracker />}
       {tab === 'local-experience' && <LocalExperience />}
     </div>
   );
