@@ -232,7 +232,7 @@ export default function OutreachSendCard({
 
             {linkedInNote && (
                 <div style={{
-                    background: warm.colors.bgSubtle,
+                    background: warm.colors.bgAlt,
                     border: `1px solid ${warm.colors.borderWhisper}`,
                     borderRadius: 12, padding: 14,
                     display: 'flex', flexDirection: 'column', gap: 8,
