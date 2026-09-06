@@ -1644,7 +1644,16 @@ const RESUME_PAPER_CSS = `
 .bank-paper li::marker { color: ${RESUME_INK}; }
 .bank-paper hr { border: 0; border-top: 1px solid ${colors.borderDefined}; margin: 20px 0; }
 .bank-paper a { color: ${RESUME_INK}; text-decoration: none; }
-@media (max-width: 640px) { .bank-paper { padding: 24px 20px; max-height: 56vh; } }
+/* Padding only. The paper is deliberately uncapped and scrolls with the page —
+   it once had max-height 62vh with overflow-y auto, and when that came off the
+   desktop rule the phone override kept its max-height 56vh without the
+   scroller. A cap with no scroller does not shorten anything: overflow
+   defaults to visible, so the resume clipped at 56vh in layout and went on
+   painting past it, and because .bank-paper is positioned its spill drew over
+   the headline, the journey image and the CTA, and ate the taps meant for the
+   button. If the document is ever capped again, the cap and the scroller ship
+   together. */
+@media (max-width: 640px) { .bank-paper { padding: 24px 20px; } }
 `;
 const inputStyle: React.CSSProperties = {
   flex: 1, width: '100%', boxSizing: 'border-box', fontFamily: T.body, fontSize: 15, padding: '13px 16px',
