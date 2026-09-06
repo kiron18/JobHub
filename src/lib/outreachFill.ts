@@ -352,15 +352,30 @@ function looksLikeAPerson(name: string, company?: string): boolean {
  * than either "Hi Ms Williams," or "Hi there,".
  */
 export function contactNameFromSalutation(salutation: string): string | null {
-    const raw = salutation.replace(/^Dear\s+/i, '').replace(/[,:]\s*$/, '').trim();
-    if (!raw) return null;
+    return greetableFirstName(salutation.replace(/^Dear\s+/i, '').replace(/[,:]\s*$/, ''));
+}
 
-    const titled = TITLE_PREFIX.test(raw);
-    const bare = raw.replace(TITLE_PREFIX, '').trim();
+/**
+ * The part of a person's name you would actually say out loud to greet them.
+ *
+ * "David Kim" gives "David". A bare surname keeps its title, because
+ * "Hi Williams," is worse than either "Hi Ms Williams," or "Hi there,". Anything
+ * that does not look like a person's name at all gives null, so the caller
+ * falls back rather than greeting a department.
+ *
+ * Shared by the salutation reader and by contact discovery, which hands over a
+ * full name and needs the same answer from it.
+ */
+export function greetableFirstName(name?: string | null): string | null {
+    const formatted = formatPersonName(name ?? undefined);
+    if (!formatted) return null;
+
+    const titled = TITLE_PREFIX.test(formatted);
+    const bare = formatted.replace(TITLE_PREFIX, '').trim();
     if (!looksLikeAPerson(bare)) return null;
 
     const tokens = bare.split(/\s+/);
-    if (titled && tokens.length === 1) return raw;
+    if (titled && tokens.length === 1) return formatted;
     return tokens[0];
 }
 
@@ -386,6 +401,20 @@ export interface OutreachInput {
     candidateName?: string;
     /** ISO date the application was logged. */
     dateApplied?: string;
+    /**
+     * The person contact discovery actually found, when it found one.
+     *
+     * Outranks both derivations below, because it is a different KIND of
+     * evidence. The other two infer a name from what the cover letter or the ad
+     * happens to say; this one is a named human whose mailbox we are about to
+     * put in the To field. Writing "Dear Hiring Manager" to an address we know
+     * belongs to David Kim reads as a mail merge, which is the one thing this
+     * whole note exists not to be.
+     *
+     * The caller passes null when the address is a shared inbox. Nobody is
+     * called Info.
+     */
+    discoveredContactName?: string | null;
 }
 
 export interface OutreachMessages {
@@ -452,6 +481,7 @@ export function buildOutreachMessages(input: OutreachInput): OutreachMessages {
     const letter = input.coverLetter ? splitCoverLetter(input.coverLetter) : null;
 
     const contactName =
+        greetableFirstName(input.discoveredContactName) ??
         (letter ? contactNameFromSalutation(letter.salutation) : null) ??
         (input.jobDescription
             ? contactNameFromJobDescription(input.jobDescription, input.company)

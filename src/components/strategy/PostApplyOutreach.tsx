@@ -31,7 +31,7 @@ import { toast } from 'sonner';
 import api from '../../lib/api';
 import { warm } from '../../lib/theme/warmTokens';
 import { LINKEDIN_NOTE_LIMIT, buildOutreachMessages } from '../../lib/outreachFill';
-import { resolveContact } from '../../lib/contactSlots';
+import { resolveContact, isGenericAddress } from '../../lib/contactSlots';
 import OutreachSendCard from './OutreachSendCard';
 
 /**
@@ -210,15 +210,14 @@ export function PostApplyOutreach({
       still cannot become a toll gate. Volume is what moves the needle.
     */
     const [open, setOpen] = useState(true);
-    const t = buildOutreachMessages({
-        role: jobTitle || '',
-        company: company || '',
-        coverLetter,
-        jobDescription,
-        candidateName,
-        dateApplied,
-    });
-    const hasBlanks = t.linkedInNeedsPitch || t.emailNeedsPitch;
+    /*
+      Who to message is reference material, not the task.
+
+      It is three lines of advice about finding a person, and the card below it
+      has usually already found one. Open by default it pushed the draft, which
+      is the thing to act on, below the fold.
+    */
+    const [whoOpen, setWhoOpen] = useState(false);
 
     /*
       Who to write to.
@@ -247,6 +246,36 @@ export function PostApplyOutreach({
     // A name with no address cannot fill a compose window, so the card only
     // replaces the manual instructions when it can actually do better.
     const sendable = contact && contact.addresses.length > 0 ? contact : null;
+
+    /*
+      Greet the person whose mailbox we are about to fill.
+
+      "Dear Hiring Manager" above an address we know belongs to David Kim reads
+      as a mail merge, and it is the one thing a note like this cannot afford to
+      look like.
+
+      The exception is the shared inbox. `info@`, `careers@`, `hr@` and the rest
+      reach a function rather than a person, and the directory sometimes files
+      one of them under a real name anyway, so the address decides and not the
+      record. Nobody is called Info.
+    */
+    const primaryAddress = sendable?.addresses[0]?.address ?? null;
+    const greetByName =
+        sendable && primaryAddress && !isGenericAddress(primaryAddress)
+            ? sendable.name
+            : null;
+
+    // Built after the lookup, because the lookup is what supplies the name.
+    const t = buildOutreachMessages({
+        role: jobTitle || '',
+        company: company || '',
+        coverLetter,
+        jobDescription,
+        candidateName,
+        dateApplied,
+        discoveredContactName: greetByName,
+    });
+    const hasBlanks = t.linkedInNeedsPitch || t.emailNeedsPitch;
 
     return (
         <div style={{
@@ -304,22 +333,52 @@ export function PostApplyOutreach({
                     gap: 16,
                     padding: '4px 18px 18px',
                 }}>
-                    <p style={{ margin: 0, fontSize: 12.5, color: warm.colors.textSecondary, lineHeight: 1.6 }}>
-                        Most get no reply. The ones that land are the ones that turn into interviews.
-                    </p>
+                    {/*
+                      The argument, in three lines rather than one paragraph.
+
+                      Split deliberately: it is two statistics and the
+                      conclusion they force, and run together as prose the
+                      conclusion is the part that gets skimmed past. On its own
+                      line it is the sentence that makes someone act.
+                    */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <p style={{ margin: 0, fontSize: 12.5, color: warm.colors.textSecondary, lineHeight: 1.6 }}>
+                            <strong style={{ color: warm.colors.textPrimary }}>The majority (70%) of Australian
+                            employers</strong> see someone following up as a positive gesture, SEEK data shows.
+                        </p>
+                        <p style={{ margin: 0, fontSize: 12.5, color: warm.colors.textSecondary, lineHeight: 1.6 }}>
+                            Yet <strong style={{ color: warm.colors.textPrimary }}>41% of Australian
+                            candidates</strong> confess to not following up on their applications.
+                        </p>
+                        <p style={{ margin: 0, fontSize: 12.5, color: warm.colors.textPrimary, lineHeight: 1.6, fontWeight: 600 }}>
+                            So the one action that can really set your application apart and get you noticed is
+                            the one hardly any of the competition is doing.
+                        </p>
+                    </div>
 
                     <div>
-                        <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: warm.colors.textPrimary }}>
+                        <button
+                            onClick={() => setWhoOpen((v) => !v)}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: 6,
+                                width: '100%', padding: 0, background: 'transparent', border: 'none',
+                                cursor: 'pointer', textAlign: 'left',
+                                fontSize: 12, fontWeight: 700, color: warm.colors.textPrimary,
+                            }}
+                        >
+                            {whoOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                             Who to message, best odds first
-                        </p>
-                        <ol style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            {TARGETS.map((target) => (
-                                <li key={target.title} style={{ fontSize: 12.5, color: warm.colors.textSecondary, lineHeight: 1.6 }}>
-                                    <span style={{ fontWeight: 700, color: warm.colors.textPrimary }}>{target.title}.</span>{' '}
-                                    {target.detail}
-                                </li>
-                            ))}
-                        </ol>
+                        </button>
+                        {whoOpen && (
+                            <ol style={{ margin: '8px 0 0', paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                {TARGETS.map((target) => (
+                                    <li key={target.title} style={{ fontSize: 12.5, color: warm.colors.textSecondary, lineHeight: 1.6 }}>
+                                        <span style={{ fontWeight: 700, color: warm.colors.textPrimary }}>{target.title}.</span>{' '}
+                                        {target.detail}
+                                    </li>
+                                ))}
+                            </ol>
+                        )}
                     </div>
 
                     <div>

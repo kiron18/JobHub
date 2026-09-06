@@ -288,3 +288,41 @@ describe('condenseToClause', () => {
         expect(out).not.toMatch(/\b(and|but|which|so)\.$/);
     });
 });
+
+describe('greeting the person contact discovery found', () => {
+    it('uses the discovered first name over the cover letter salutation', () => {
+        const t = buildOutreachMessages({
+            role: 'AI Engineer',
+            company: 'New Home Care Pty. Ltd.',
+            coverLetter: 'Dear Hiring Manager,\n\nI built the thing.\n\nYours sincerely,\nVaibhav',
+            discoveredContactName: 'David Kim',
+        });
+        expect(t.email).toContain('Hi David,');
+        expect(t.email).not.toContain('Dear Hiring Manager');
+        expect(t.contactName).toBe('David');
+    });
+
+    it('falls back to Dear Hiring Manager when nobody was found', () => {
+        const t = buildOutreachMessages({
+            role: 'AI Engineer',
+            company: 'New Home Care Pty. Ltd.',
+            coverLetter: 'Dear Hiring Manager,\n\nI built the thing.\n\nYours sincerely,\nVaibhav',
+            discoveredContactName: null,
+        });
+        expect(t.email).toContain('Dear Hiring Manager,');
+    });
+
+    it('keeps a title when the directory held only a surname', () => {
+        const t = buildOutreachMessages({
+            role: 'Registrar', company: 'A Hospital', discoveredContactName: 'Dr Williams',
+        });
+        expect(t.email).toContain('Hi Dr Williams,');
+    });
+
+    it('does not greet a department that arrived in the name field', () => {
+        const t = buildOutreachMessages({
+            role: 'Analyst', company: 'A Council', discoveredContactName: 'Recruitment Team',
+        });
+        expect(t.email).toContain('Dear Hiring Manager,');
+    });
+});
