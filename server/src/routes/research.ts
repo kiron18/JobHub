@@ -4,7 +4,7 @@ import { searchSerper, scrapeUrl, snippetsToText, type SerperResult } from '../s
 import { callLLMWithRetry } from '../utils/callLLMWithRetry';
 import { parseLLMJson } from '../utils/parseLLMResponse';
 import { fillSlots, filterContact, type OutreachRole } from '../services/contactFilter';
-import { fetchDirectoryForRole } from '../services/hunterDirectory';
+import { fetchDirectoryTargeted } from '../services/hunterDirectory';
 import { pickFromDirectory, type Pick, type Slots } from '../services/directoryPick';
 import { findSiteContact } from '../services/siteContact';
 import { verifySlots } from '../services/verifySlots';
@@ -461,9 +461,14 @@ router.post('/company', authenticate, async (req, res) => {
             : (fromAd.domain ?? (directoryEnabled() ? await resolveCompanyDomain(company, jdText) : null));
 
         // With a contact already in hand there is nothing for the directory to
-        // add that is worth two credits and a verification.
+        // add that is worth a credit and a verification.
+        //
+        // `fetchDirectoryTargeted` asks the free coverage endpoint first and
+        // then buys exactly one department, instead of buying `hr` and the
+        // role's department blind. Same slots filled, half the credits, and an
+        // employer Hunter has never heard of now costs nothing to rule out.
         const directory = (!adSlot && domain && directoryEnabled())
-            ? await fetchDirectoryForRole(domain, role || '')
+            ? await fetchDirectoryTargeted(domain, role || '')
             : null;
         const directorySlots = adSlot
             ? { talent: fromAd.emailIsGeneric ? adSlot : null, hiring_manager: fromAd.emailIsGeneric ? null : adSlot, team_insider: null } as Slots

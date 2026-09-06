@@ -224,6 +224,125 @@ export async function fetchDirectoryForRole(domain: string, role: string): Promi
 }
 
 /**
+ * What Hunter holds for a domain, WITHOUT buying it.
+ *
+ * `/email-count` is free. Measured directly: fifteen calls across the corpus
+ * moved neither the search counter nor the verification counter. It reports the
+ * total, the personal/generic split, and a full breakdown by department, which
+ * is everything a paid directory call would tell us about shape, minus the
+ * names.
+ *
+ * It does require the API key despite being free. Called without one it returns
+ * 401, which is how an hour went into debugging "Hunter holds nothing" for
+ * every employer in the corpus.
+ */
+export interface EmailCount {
+    total: number;
+    personal: number;
+    generic: number;
+    /** Hunter's own department labels, zero-count buckets removed. */
+    departments: Record<string, number>;
+}
+
+export async function fetchEmailCount(domain: string): Promise<EmailCount | null> {
+    const key = hunterKey();
+    if (!key || !domain) return null;
+    try {
+        const { data } = await axios.get('https://api.hunter.io/v2/email-count', {
+            params: { domain, api_key: key },
+            timeout: 15000,
+        });
+        const d = data?.data;
+        if (!d) return null;
+        return {
+            total: d.total ?? 0,
+            personal: d.personal_emails ?? 0,
+            generic: d.generic_emails ?? 0,
+            departments: Object.fromEntries(
+                Object.entries(d.department ?? {}).filter(([, v]) => (v as number) > 0),
+            ) as Record<string, number>,
+        };
+    } catch (err: any) {
+        console.warn(`[hunter] email-count failed for ${domain}: ${err.message}`);
+        return null;
+    }
+}
+
+/**
+ * Which single department is worth buying, given what Hunter says it holds.
+ *
+ * HR first: whoever handles hiring is the best contact at any seniority, and
+ * replying is part of their job. Then the vacancy's own function, for a manager
+ * and a peer. Then the largest bucket Hunter has, because at a small employer
+ * the only people it knows may be in neither and some contact beats none.
+ *
+ * Returns null when Hunter reports no departments at all, which the caller
+ * turns into a single untargeted call rather than skipping.
+ */
+export function departmentToBuy(count: EmailCount, role: string): string | null {
+    const own = hunterDepartmentForRole(role);
+    const has = (d: string | null): boolean => !!d && (count.departments[d] ?? 0) > 0;
+
+    if (has('hr')) return 'hr';
+    if (has(own)) return own;
+
+    const biggest = Object.entries(count.departments).sort((a, b) => b[1] - a[1])[0];
+    return biggest ? biggest[0] : null;
+}
+
+/**
+ * Set `HUNTER_TARGETED_DIRECTORY=false` to go back to the two-call version.
+ *
+ * The old function stays exported and tested rather than deleted. It is the
+ * fallback if the free coverage endpoint ever starts lying, and removing code
+ * to prevent its reuse only means the next person writes it again worse.
+ */
+function targetedDirectoryEnabled(): boolean {
+    return process.env.HUNTER_TARGETED_DIRECTORY !== 'false';
+}
+
+/**
+ * The directory, bought once instead of twice.
+ *
+ * `fetchDirectoryForRole` asks blind: one call for `hr` and one for the
+ * vacancy's department, every time, for every employer, whether or not Hunter
+ * holds anybody in either. That is 2 credits per company and it is the single
+ * largest line in the bill.
+ *
+ * The free `/email-count` already knows which departments have people in them.
+ * So: ask for free, and only then buy the one bucket worth having. Measured
+ * over the twenty-ad corpus this filled the same slots for half the credits,
+ * and it adds a second saving the blind version cannot have: an employer Hunter
+ * has never heard of is now identified for nothing, instead of costing two
+ * calls to discover.
+ *
+ * On the free plan of 50 searches that is the difference between roughly 35
+ * job applications a month and roughly 70.
+ */
+export async function fetchDirectoryTargeted(domain: string, role: string): Promise<Directory | null> {
+    if (!targetedDirectoryEnabled()) return fetchDirectoryForRole(domain, role);
+    if (!domain) return null;
+
+    const count = await fetchEmailCount(domain);
+
+    // A null count is Hunter being unreachable, not a verdict about the
+    // employer, so we fall through and let the paid call decide. A count of
+    // zero IS a verdict, and it cost nothing to get.
+    if (count && count.total === 0) {
+        return { domain, acceptAll: false, pattern: null, total: 0, people: [] };
+    }
+
+    const department = count ? departmentToBuy(count, role) : hunterDepartmentForRole(role);
+    const directory = await fetchDirectory(domain, department ? { department } : {});
+    if (!directory) return null;
+
+    // A department-filtered call reports THAT DEPARTMENT's count, not the
+    // company's, so the small-employer rule would read "4 people in HR" as a
+    // four-person company. The free count knows the real total, so use it.
+    return count ? { ...directory, total: Math.max(count.total, directory.total) } : directory;
+}
+
+/**
  * Confirm a mailbox actually exists.
  *
  * Separate from the directory call and on a separate quota, which matters

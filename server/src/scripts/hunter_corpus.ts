@@ -40,7 +40,7 @@ import { readJdContact, isSufficient, type JdContact } from '../services/jdConta
 import { resolveEmployerDomain, type DomainSearchers } from '../services/employerDomain';
 import { searchGoogle, searchMaps } from '../services/serpapi';
 import { mxOverHttps } from '../services/mailDomain';
-import { fetchDirectory, hunterDepartmentForRole, type Directory } from '../services/hunterDirectory';
+import { fetchDirectory, departmentToBuy, type Directory } from '../services/hunterDirectory';
 import { verifySlots } from '../services/verifySlots';
 import { pickFromDirectory, type Slots } from '../services/directoryPick';
 import { findSiteContact, type SiteContact } from '../services/siteContact';
@@ -198,25 +198,6 @@ async function emailCount(domain: string): Promise<Coverage | null> {
             return null;
         }
     });
-}
-
-/**
- * Which single department to buy.
- *
- * The current pipeline calls `/domain-search` twice per employer, blind: once
- * for `hr` and once for the vacancy's own department. The free coverage call
- * already says which of those Hunter actually holds anyone in, so the pair
- * collapses to one targeted call. Where it holds people in neither, an
- * untargeted call still returns the ten Hunter lists first, which is what the
- * old untargeted path did.
- */
-export function departmentToBuy(cov: Coverage, role: string): string | null {
-    const own = hunterDepartmentForRole(role);
-    const has = (d: string | null) => !!d && (cov.departments[d] ?? 0) > 0;
-    if (has('hr')) return 'hr';
-    if (has(own)) return own;
-    const biggest = Object.entries(cov.departments).sort((a, b) => b[1] - a[1])[0];
-    return biggest ? biggest[0] : null;
 }
 
 // ---------------------------------------------------------------------------
