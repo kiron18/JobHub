@@ -1,0 +1,35 @@
+{
+ "key": {
+  "emails": [
+   null,
+   "stuart.haddad@itstrategic.com.au",
+   "chris.cumpian@itstrategic.com.au"
+  ]
+ },
+ "value": {
+  "talent": null,
+  "hiring_manager": {
+   "name": "Stuart Haddad",
+   "email": "stuart.haddad@itstrategic.com.au",
+   "position": "IT Manager",
+   "department": "it",
+   "verification": "valid",
+   "why": [
+    "IT Manager in it",
+    "senior to the advertised role and in the same function"
+   ]
+  },
+  "team_insider": {
+   "name": "Chris Cumpian",
+   "email": "chris.cumpian@itstrategic.com.au",
+   "position": "IT Support Engineer",
+   "department": "it",
+   "verification": "valid",
+   "why": [
+    "IT Support Engineer in it",
+    "does the work the role does, so knows what the team actually needs"
+   ]
+  }
+ },
+ "at": "2026-09-06T00:36:03.346Z"
+}

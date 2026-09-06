@@ -1,0 +1,15 @@
+{
+ "key": {
+  "domain": "coalitionofpeaks.org.au"
+ },
+ "value": {
+  "total": 8,
+  "personal": 3,
+  "generic": 5,
+  "departments": {
+   "management": 4,
+   "support": 1
+  }
+ },
+ "at": "2026-09-06T00:35:19.655Z"
+}

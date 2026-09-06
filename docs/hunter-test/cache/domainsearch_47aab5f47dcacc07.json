@@ -1,0 +1,27 @@
+{
+ "key": {
+  "domain": "unipier.com.au",
+  "department": "support"
+ },
+ "value": {
+  "domain": "unipier.com.au",
+  "acceptAll": true,
+  "pattern": "{first}",
+  "total": 1,
+  "people": [
+   {
+    "email": "info@unipier.com.au",
+    "firstName": null,
+    "lastName": null,
+    "position": null,
+    "department": "support",
+    "seniority": null,
+    "verification": null,
+    "confidence": 78,
+    "type": "generic",
+    "linkedin": null
+   }
+  ]
+ },
+ "at": "2026-09-06T00:35:53.401Z"
+}

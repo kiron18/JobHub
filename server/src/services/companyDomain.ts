@@ -48,6 +48,30 @@ export const DOMAIN_BLACKLIST = [
     'nationalredress.gov.au', 'healthdirect.gov.au', 'vehiclerecalls.gov.au',
     'myagedcare.gov.au', 'id.com.au', 'profile.id.com.au', 'apps.apple.com',
     'afr.com', 'news.com.au', 'hcamag.com', 'developmentaid.org', 'syncgtm.com',
+    // The .com roots of boards already listed under their .com.au form. Matching
+    // is exact-or-subdomain, so 'seek.com.au' never covered au.seek.com, which
+    // is the host Seek actually serves its international pages from. Same trap
+    // for gradconnection and glassdoor's other country domains.
+    'seek.com', 'gradconnection.com', 'glassdoor.ch', 'glassdoor.co.uk',
+    // Applicant tracking systems. The employer's ad genuinely lives here, but
+    // the host belongs to the ATS vendor, so a directory read off it is a
+    // directory of the vendor's staff.
+    'workable.com', 'applynow.com.au', 'recruitwizard.com', 'scouterecruit.net',
+    'jobadder.com', 'elmotalent.com.au', 'expr3ss.com',
+    // Government job boards. A council's own domain is fine and stays allowed;
+    // these are the whole-of-state portals that carry every employer's ads.
+    'smartjobs.qld.gov.au', 'iworkfor.nsw.gov.au', 'careers.vic.gov.au',
+    'jobs.wa.gov.au', 'jobs.act.gov.au',
+    // Contact-data brokers. They rank well on a person's name, never host the
+    // employer, and their pages are the ones that mask the address anyway.
+    'theorg.com', 'datanyze.com', 'contactout.com', 'neverbounce.com',
+    'usebouncer.com', 'lusha.com', 'signalhire.com', 'lawinsider.com',
+    // Business directories. They rank above small employers on the employer's
+    // own name, and for a business with no website of its own they are the
+    // only thing a search returns, which is exactly when a wrong pick is most
+    // tempting and least excusable.
+    'dnb.com', 'whitepages.com.au', 'purelocal.com.au', 'serviceseeking.com.au',
+    'alooba.com', 'classpass.com', 'wikidata.org', 'neonmarketplace.nsw.gov.au',
 ];
 
 /** Words that carry no identity, so they never count as a name match. */

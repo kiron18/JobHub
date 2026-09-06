@@ -1,0 +1,35 @@
+{
+ "key": {
+  "emails": [
+   "norma.aguilar@screenaustralia.gov.au",
+   "norma.aguilar@screenaustralia.gov.au",
+   null
+  ]
+ },
+ "value": {
+  "talent": {
+   "name": "Norma Aguilar",
+   "email": "norma.aguilar@screenaustralia.gov.au",
+   "position": "Head of People and Culture",
+   "department": "hr",
+   "verification": "accept_all",
+   "why": [
+    "Head of People and Culture at screenaustralia.gov.au",
+    "handles hiring, so replying is part of the job"
+   ]
+  },
+  "hiring_manager": {
+   "name": "Norma Aguilar",
+   "email": "norma.aguilar@screenaustralia.gov.au",
+   "position": "Head of People and Culture",
+   "department": "hr",
+   "verification": "accept_all",
+   "why": [
+    "Head of People and Culture at a company with 1 known staff",
+    "small enough that the leadership does its own hiring"
+   ]
+  },
+  "team_insider": null
+ },
+ "at": "2026-09-06T00:35:52.187Z"
+}

@@ -1,0 +1,32 @@
+{
+ "key": {
+  "domain": "defence.gov.au"
+ },
+ "value": {
+  "total": 2803,
+  "personal": 2301,
+  "generic": 502,
+  "departments": {
+   "executive": 243,
+   "it": 117,
+   "finance & accounting": 31,
+   "management": 463,
+   "sales": 44,
+   "legal": 22,
+   "support": 54,
+   "hr": 25,
+   "marketing": 2,
+   "communication": 66,
+   "education": 37,
+   "design": 5,
+   "health": 34,
+   "operations": 171,
+   "product": 6,
+   "research": 19,
+   "consulting": 2,
+   "administrative": 267,
+   "procurement": 5
+  }
+ },
+ "at": "2026-09-06T00:35:16.706Z"
+}

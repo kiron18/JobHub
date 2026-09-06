@@ -1,0 +1,39 @@
+{
+ "key": {
+  "domain": "strongpilates.com.au",
+  "department": "marketing"
+ },
+ "value": {
+  "domain": "strongpilates.com.au",
+  "acceptAll": false,
+  "pattern": "{first}",
+  "total": 2,
+  "people": [
+   {
+    "email": "amanda@strongpilates.com.au",
+    "firstName": "Amanda",
+    "lastName": "Burwood",
+    "position": "Head of Marketing",
+    "department": "marketing",
+    "seniority": "executive",
+    "verification": "valid",
+    "confidence": 96,
+    "type": "personal",
+    "linkedin": "https://www.linkedin.com/in/amanda-burwood-237b5343"
+   },
+   {
+    "email": "tweedheads@strongpilates.com.au",
+    "firstName": null,
+    "lastName": null,
+    "position": null,
+    "department": "marketing",
+    "seniority": null,
+    "verification": null,
+    "confidence": 10,
+    "type": "generic",
+    "linkedin": null
+   }
+  ]
+ },
+ "at": "2026-09-06T00:35:51.666Z"
+}

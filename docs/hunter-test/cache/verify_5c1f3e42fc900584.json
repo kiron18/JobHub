@@ -1,0 +1,25 @@
+{
+ "key": {
+  "emails": [
+   null,
+   "amanda@strongpilates.com.au",
+   null
+  ]
+ },
+ "value": {
+  "talent": null,
+  "hiring_manager": {
+   "name": "Amanda Burwood",
+   "email": "amanda@strongpilates.com.au",
+   "position": "Head of Marketing",
+   "department": "marketing",
+   "verification": "valid",
+   "why": [
+    "Head of Marketing in marketing",
+    "senior to the advertised role and in the same function"
+   ]
+  },
+  "team_insider": null
+ },
+ "at": "2026-09-06T00:35:51.668Z"
+}

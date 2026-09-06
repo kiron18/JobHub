@@ -1,0 +1,39 @@
+{
+ "key": {
+  "domain": "goodgames.com.au",
+  "department": "sales"
+ },
+ "value": {
+  "domain": "goodgames.com.au",
+  "acceptAll": true,
+  "pattern": "{first}",
+  "total": 2,
+  "people": [
+   {
+    "email": "shop@goodgames.com.au",
+    "firstName": null,
+    "lastName": null,
+    "position": null,
+    "department": "sales",
+    "seniority": null,
+    "verification": null,
+    "confidence": 85,
+    "type": "generic",
+    "linkedin": null
+   },
+   {
+    "email": "buying@goodgames.com.au",
+    "firstName": null,
+    "lastName": null,
+    "position": null,
+    "department": "sales",
+    "seniority": null,
+    "verification": "valid",
+    "confidence": 76,
+    "type": "generic",
+    "linkedin": null
+   }
+  ]
+ },
+ "at": "2026-09-06T01:38:46.757Z"
+}

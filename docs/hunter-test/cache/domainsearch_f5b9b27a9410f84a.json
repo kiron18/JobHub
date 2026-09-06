@@ -1,0 +1,39 @@
+{
+ "key": {
+  "domain": "newhomecare.com.au",
+  "department": "legal"
+ },
+ "value": {
+  "domain": "newhomecare.com.au",
+  "acceptAll": false,
+  "pattern": "{first}",
+  "total": 2,
+  "people": [
+   {
+    "email": "david@newhomecare.com.au",
+    "firstName": "David",
+    "lastName": "Kim",
+    "position": "Compliance Manager",
+    "department": "legal",
+    "seniority": "senior",
+    "verification": null,
+    "confidence": 99,
+    "type": "personal",
+    "linkedin": "https://www.linkedin.com/in/david-kim-041950116"
+   },
+   {
+    "email": "sally.lee@newhomecare.com.au",
+    "firstName": "Sally",
+    "lastName": "Lee",
+    "position": "Clinical Compliance Manager",
+    "department": "legal",
+    "seniority": "senior",
+    "verification": "valid",
+    "confidence": 97,
+    "type": "personal",
+    "linkedin": "https://www.linkedin.com/in/sally-lee-1aa3ab80"
+   }
+  ]
+ },
+ "at": "2026-09-06T00:35:47.336Z"
+}

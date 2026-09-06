@@ -1,0 +1,15 @@
+{
+ "key": {
+  "domain": "goodgames.com.au"
+ },
+ "value": {
+  "total": 22,
+  "personal": 9,
+  "generic": 13,
+  "departments": {
+   "sales": 2,
+   "design": 1
+  }
+ },
+ "at": "2026-09-06T01:38:45.680Z"
+}

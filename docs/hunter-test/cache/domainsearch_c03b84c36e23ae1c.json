@@ -1,0 +1,75 @@
+{
+ "key": {
+  "domain": "earth-ai.com",
+  "department": "operations"
+ },
+ "value": {
+  "domain": "earth-ai.com",
+  "acceptAll": false,
+  "pattern": "{first}",
+  "total": 5,
+  "people": [
+   {
+    "email": "isabella@earth-ai.com",
+    "firstName": "Isabella",
+    "lastName": "Sykes",
+    "position": "Chief Operating Officer",
+    "department": "operations",
+    "seniority": "executive",
+    "verification": null,
+    "confidence": 97,
+    "type": "personal",
+    "linkedin": "https://www.linkedin.com/in/isabella-sykes-78309115a"
+   },
+   {
+    "email": "lillie@earth-ai.com",
+    "firstName": "Lillie",
+    "lastName": "Alston",
+    "position": "Chief of Staff",
+    "department": "operations",
+    "seniority": null,
+    "verification": null,
+    "confidence": 96,
+    "type": "personal",
+    "linkedin": "https://www.linkedin.com/in/lillie-maree-alston-873620235"
+   },
+   {
+    "email": "isabelle@earth-ai.com",
+    "firstName": "Isabelle",
+    "lastName": "Dann",
+    "position": "Operations",
+    "department": "operations",
+    "seniority": null,
+    "verification": null,
+    "confidence": 98,
+    "type": "personal",
+    "linkedin": "https://www.linkedin.com/in/isabelle-dann-506721268"
+   },
+   {
+    "email": "taylor@earth-ai.com",
+    "firstName": "Taylor",
+    "lastName": "Baker",
+    "position": "Operations Manager",
+    "department": "operations",
+    "seniority": "senior",
+    "verification": "valid",
+    "confidence": 96,
+    "type": "personal",
+    "linkedin": "https://www.linkedin.com/in/taylorbakeruow"
+   },
+   {
+    "email": "colin@earth-ai.com",
+    "firstName": "Colin",
+    "lastName": "Smith",
+    "position": "Driller",
+    "department": "operations",
+    "seniority": null,
+    "verification": null,
+    "confidence": 95,
+    "type": "personal",
+    "linkedin": "https://www.linkedin.com/in/colin-smith-75b984218"
+   }
+  ]
+ },
+ "at": "2026-09-06T00:35:44.047Z"
+}

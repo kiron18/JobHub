@@ -1,0 +1,17 @@
+{
+ "key": {
+  "domain": "konnexuscg.com.au"
+ },
+ "value": {
+  "total": 5,
+  "personal": 3,
+  "generic": 2,
+  "departments": {
+   "it": 1,
+   "support": 2,
+   "hr": 1,
+   "operations": 1
+  }
+ },
+ "at": "2026-09-06T00:35:17.588Z"
+}

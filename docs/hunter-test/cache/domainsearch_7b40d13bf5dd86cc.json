@@ -1,0 +1,87 @@
+{
+ "key": {
+  "domain": "itstrategic.com.au",
+  "department": "it"
+ },
+ "value": {
+  "domain": "itstrategic.com.au",
+  "acceptAll": true,
+  "pattern": "{first}.{last}",
+  "total": 6,
+  "people": [
+   {
+    "email": "chris.cumpian@itstrategic.com.au",
+    "firstName": "Chris",
+    "lastName": "Cumpian",
+    "position": "IT Support Engineer",
+    "department": "it",
+    "seniority": null,
+    "verification": null,
+    "confidence": 85,
+    "type": "personal",
+    "linkedin": "https://www.linkedin.com/in/chris-cumpian-3a377767"
+   },
+   {
+    "email": "dara.seng@itstrategic.com.au",
+    "firstName": "Dara",
+    "lastName": "Seng",
+    "position": "IT Technician",
+    "department": "it",
+    "seniority": null,
+    "verification": null,
+    "confidence": 85,
+    "type": "personal",
+    "linkedin": "https://www.linkedin.com/in/daraseng"
+   },
+   {
+    "email": "stuart.haddad@itstrategic.com.au",
+    "firstName": "Stuart",
+    "lastName": "Haddad",
+    "position": "IT Manager",
+    "department": "it",
+    "seniority": "senior",
+    "verification": null,
+    "confidence": 85,
+    "type": "personal",
+    "linkedin": "https://www.linkedin.com/in/stuhad"
+   },
+   {
+    "email": "sopana.lim@itstrategic.com.au",
+    "firstName": "Sopana",
+    "lastName": "Lim",
+    "position": "IT Support Engineer",
+    "department": "it",
+    "seniority": null,
+    "verification": null,
+    "confidence": 84,
+    "type": "personal",
+    "linkedin": "https://www.linkedin.com/in/sopana-lim-020891233"
+   },
+   {
+    "email": "stratos.kaskabas@itstrategic.com.au",
+    "firstName": "Stratos",
+    "lastName": "Kaskabas",
+    "position": "IT Support Engineer",
+    "department": "it",
+    "seniority": null,
+    "verification": null,
+    "confidence": 83,
+    "type": "personal",
+    "linkedin": "https://www.linkedin.com/in/stratos-kaskabas-b657b7190"
+   },
+   {
+    "email": "dokatchi.sangma@itstrategic.com.au",
+    "firstName": "Dokatchi",
+    "lastName": "Sangma",
+    "position": "IT Support Technician",
+    "department": "it",
+    "seniority": null,
+    "verification": null,
+    "confidence": 82,
+    "type": "personal",
+    "linkedin": "https://www.linkedin.com/in/dokatchi-nengminja-sangma-7716a914b"
+   }
+  ]
+ },
+ "at": "2026-09-06T00:36:01.670Z"
+}

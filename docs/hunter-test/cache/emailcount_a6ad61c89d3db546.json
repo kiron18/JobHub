@@ -1,0 +1,16 @@
+{
+ "key": {
+  "domain": "itstrategic.com.au"
+ },
+ "value": {
+  "total": 12,
+  "personal": 7,
+  "generic": 5,
+  "departments": {
+   "it": 6,
+   "management": 1,
+   "support": 2
+  }
+ },
+ "at": "2026-09-06T00:35:20.695Z"
+}

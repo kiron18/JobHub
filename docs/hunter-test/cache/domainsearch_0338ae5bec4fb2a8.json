@@ -1,0 +1,63 @@
+{
+ "key": {
+  "domain": "coalitionofpeaks.org.au",
+  "department": "management"
+ },
+ "value": {
+  "domain": "coalitionofpeaks.org.au",
+  "acceptAll": false,
+  "pattern": "{first}.{last}",
+  "total": 4,
+  "people": [
+   {
+    "email": "keryn.maloney@coalitionofpeaks.org.au",
+    "firstName": "Keryn",
+    "lastName": "Maloney",
+    "position": "Director",
+    "department": "management",
+    "seniority": "executive",
+    "verification": "valid",
+    "confidence": 99,
+    "type": "personal",
+    "linkedin": "https://www.linkedin.com/in/keryn-maloney-1817ba21b"
+   },
+   {
+    "email": "janis.constable@coalitionofpeaks.org.au",
+    "firstName": "Janis",
+    "lastName": "Constable",
+    "position": "Senior Project Manager",
+    "department": "management",
+    "seniority": "senior",
+    "verification": null,
+    "confidence": 98,
+    "type": "personal",
+    "linkedin": "https://www.linkedin.com/in/janis-constable-1719a629"
+   },
+   {
+    "email": "secretariat@coalitionofpeaks.org.au",
+    "firstName": null,
+    "lastName": null,
+    "position": null,
+    "department": "management",
+    "seniority": null,
+    "verification": null,
+    "confidence": 83,
+    "type": "generic",
+    "linkedin": null
+   },
+   {
+    "email": "dppsecretariat@coalitionofpeaks.org.au",
+    "firstName": null,
+    "lastName": null,
+    "position": null,
+    "department": "management",
+    "seniority": null,
+    "verification": null,
+    "confidence": 78,
+    "type": "generic",
+    "linkedin": null
+   }
+  ]
+ },
+ "at": "2026-09-06T00:35:54.282Z"
+}

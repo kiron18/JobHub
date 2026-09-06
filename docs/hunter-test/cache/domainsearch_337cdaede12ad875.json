@@ -1,0 +1,135 @@
+{
+ "key": {
+  "domain": "defence.gov.au",
+  "department": "hr"
+ },
+ "value": {
+  "domain": "defence.gov.au",
+  "acceptAll": true,
+  "pattern": "{first}.{last}",
+  "total": 25,
+  "people": [
+   {
+    "email": "amanda.hales@defence.gov.au",
+    "firstName": "Amanda",
+    "lastName": "Hales",
+    "position": "Director of Talent Development",
+    "department": "hr",
+    "seniority": "executive",
+    "verification": "accept_all",
+    "confidence": 83,
+    "type": "personal",
+    "linkedin": "https://www.linkedin.com/in/amanda-hales-a66344192"
+   },
+   {
+    "email": "adele.moncur@defence.gov.au",
+    "firstName": "Adele",
+    "lastName": "Moncur",
+    "position": "Director of Leadership and Talent",
+    "department": "hr",
+    "seniority": "executive",
+    "verification": "accept_all",
+    "confidence": 83,
+    "type": "personal",
+    "linkedin": "https://www.linkedin.com/in/adele-moncur"
+   },
+   {
+    "email": "marijke.henshaw@defence.gov.au",
+    "firstName": "Marijke",
+    "lastName": "Henshaw",
+    "position": "Chief Diversity Officer",
+    "department": "hr",
+    "seniority": "executive",
+    "verification": "accept_all",
+    "confidence": 82,
+    "type": "personal",
+    "linkedin": "https://www.linkedin.com/in/marijke-henshaw-ba471358"
+   },
+   {
+    "email": "andrew.elfverson@defence.gov.au",
+    "firstName": "Andrew",
+    "lastName": "Elfverson",
+    "position": "Director of Human Resources",
+    "department": "hr",
+    "seniority": "executive",
+    "verification": "accept_all",
+    "confidence": 82,
+    "type": "personal",
+    "linkedin": "https://www.linkedin.com/in/andrew-elfverson-1b875052"
+   },
+   {
+    "email": "amy.roknic@defence.gov.au",
+    "firstName": "Amy",
+    "lastName": "Roknic",
+    "position": "Director of Human Resources",
+    "department": "hr",
+    "seniority": "executive",
+    "verification": "accept_all",
+    "confidence": 82,
+    "type": "personal",
+    "linkedin": "https://www.linkedin.com/in/amy-roknic-662282235"
+   },
+   {
+    "email": "debra.greig@defence.gov.au",
+    "firstName": "Debra",
+    "lastName": "Greig",
+    "position": "Director of Human Resources",
+    "department": "hr",
+    "seniority": "executive",
+    "verification": "accept_all",
+    "confidence": 82,
+    "type": "personal",
+    "linkedin": "https://www.linkedin.com/in/debra-greig-3a860064"
+   },
+   {
+    "email": "andrew.brennan@defence.gov.au",
+    "firstName": "Andrew",
+    "lastName": "Brennan",
+    "position": "Director of Human Resources",
+    "department": "hr",
+    "seniority": "executive",
+    "verification": "accept_all",
+    "confidence": 68,
+    "type": "personal",
+    "linkedin": "https://www.linkedin.com/in/andrew-brennan-57803118"
+   },
+   {
+    "email": "craig.flynn@defence.gov.au",
+    "firstName": "Craig",
+    "lastName": "Flynn",
+    "position": "Director of Operations and Human Resources",
+    "department": "hr",
+    "seniority": "executive",
+    "verification": null,
+    "confidence": 67,
+    "type": "personal",
+    "linkedin": "https://www.linkedin.com/in/craig-flynn-3209ab78"
+   },
+   {
+    "email": "ben.kamphuis@defence.gov.au",
+    "firstName": "Ben",
+    "lastName": "Kamphuis",
+    "position": "Human Resources Manager",
+    "department": "hr",
+    "seniority": "senior",
+    "verification": "accept_all",
+    "confidence": 85,
+    "type": "personal",
+    "linkedin": "https://www.linkedin.com/in/ben-kamphuis-b5050b55"
+   },
+   {
+    "email": "ainsley.longmuir@defence.gov.au",
+    "firstName": "Ainsley",
+    "lastName": "Longmuir",
+    "position": "Deputy Director of Diversity and Inclusion",
+    "department": "hr",
+    "seniority": "executive",
+    "verification": null,
+    "confidence": 85,
+    "type": "personal",
+    "linkedin": "https://www.linkedin.com/in/ainsley-longmuir-she-her-184b4350"
+   }
+  ]
+ },
+ "at": "2026-09-06T00:35:48.092Z"
+}

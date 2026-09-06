@@ -1,0 +1,51 @@
+{
+ "key": {
+  "domain": "hitechaust.com",
+  "department": "hr"
+ },
+ "value": {
+  "domain": "hitechaust.com",
+  "acceptAll": false,
+  "pattern": "{first}{l}",
+  "total": 3,
+  "people": [
+   {
+    "email": "jennifer@hitechaust.com",
+    "firstName": "Jennifer",
+    "lastName": "Jowett",
+    "position": "Recruitment Consultant",
+    "department": "hr",
+    "seniority": null,
+    "verification": null,
+    "confidence": 89,
+    "type": "personal",
+    "linkedin": "https://www.linkedin.com/in/jennifer-jowett-822b6824"
+   },
+   {
+    "email": "jobs@hitechaust.com",
+    "firstName": null,
+    "lastName": null,
+    "position": null,
+    "department": "hr",
+    "seniority": null,
+    "verification": null,
+    "confidence": 84,
+    "type": "generic",
+    "linkedin": null
+   },
+   {
+    "email": "nikkil@hitechaust.com",
+    "firstName": "Nikki",
+    "lastName": "Lepagier",
+    "position": "Recruitment Consultant",
+    "department": "hr",
+    "seniority": null,
+    "verification": null,
+    "confidence": 67,
+    "type": "personal",
+    "linkedin": "https://www.linkedin.com/in/nikki-lepagier-713673198"
+   }
+  ]
+ },
+ "at": "2026-09-06T00:35:55.158Z"
+}

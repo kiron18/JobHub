@@ -1,0 +1,25 @@
+{
+ "key": {
+  "emails": [
+   null,
+   null,
+   "david@newhomecare.com.au"
+  ]
+ },
+ "value": {
+  "talent": null,
+  "hiring_manager": null,
+  "team_insider": {
+   "name": "David Kim",
+   "email": "david@newhomecare.com.au",
+   "position": "Compliance Manager",
+   "department": "legal",
+   "verification": "valid",
+   "why": [
+    "Compliance Manager at newhomecare.com.au, which has 2 known addresses",
+    "not the hiring manager and not in this function: at a company this size, they will know who is"
+   ]
+  }
+ },
+ "at": "2026-09-06T00:55:51.163Z"
+}

@@ -1,0 +1,27 @@
+{
+ "key": {
+  "domain": "konnexuscg.com.au",
+  "department": "hr"
+ },
+ "value": {
+  "domain": "konnexuscg.com.au",
+  "acceptAll": false,
+  "pattern": "{first}",
+  "total": 1,
+  "people": [
+   {
+    "email": "raed@konnexuscg.com.au",
+    "firstName": "Raed",
+    "lastName": "Mahboub",
+    "position": "Recruitment Specialist",
+    "department": "hr",
+    "seniority": "senior",
+    "verification": null,
+    "confidence": 92,
+    "type": "personal",
+    "linkedin": "https://www.linkedin.com/in/raed-mahboub-b593a41b4"
+   }
+  ]
+ },
+ "at": "2026-09-06T00:35:48.591Z"
+}

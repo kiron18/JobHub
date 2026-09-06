@@ -1,0 +1,25 @@
+{
+ "key": {
+  "emails": [
+   "raed@konnexuscg.com.au",
+   null,
+   null
+  ]
+ },
+ "value": {
+  "talent": {
+   "name": "Raed Mahboub",
+   "email": "raed@konnexuscg.com.au",
+   "position": "Recruitment Specialist",
+   "department": "hr",
+   "verification": "valid",
+   "why": [
+    "Recruitment Specialist at konnexuscg.com.au",
+    "handles hiring, so replying is part of the job"
+   ]
+  },
+  "hiring_manager": null,
+  "team_insider": null
+ },
+ "at": "2026-09-06T00:35:51.129Z"
+}

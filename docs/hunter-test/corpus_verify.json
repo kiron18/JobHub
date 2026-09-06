@@ -1,0 +1,673 @@
+{
+ "stage": "verify",
+ "at": "2026-09-06T01:38:50.696Z",
+ "before": {
+  "searches": 34,
+  "verifications": 68
+ },
+ "after": {
+  "searches": 33,
+  "verifications": 66
+ },
+ "rows": [
+  {
+   "company": "Earth AI",
+   "title": "Creative Content Creator",
+   "jdEmail": null,
+   "jdName": null,
+   "domain": "earth-ai.com",
+   "domainSource": "KNOWLEDGE_GRAPH",
+   "domainNote": "Google knowledge panel",
+   "mx": "pass",
+   "coverage": {
+    "total": 17,
+    "personal": 16,
+    "generic": 1,
+    "departments": {
+     "executive": 1,
+     "finance & accounting": 1,
+     "sales": 1,
+     "support": 1,
+     "communication": 1,
+     "health": 2,
+     "operations": 5,
+     "research": 4
+    }
+   },
+   "department": "operations",
+   "directoryTotal": 5,
+   "slots": {
+    "talent": null,
+    "hiring_manager": {
+     "name": "Isabella Sykes",
+     "email": "isabella@earth-ai.com",
+     "position": "Chief Operating Officer",
+     "department": "operations",
+     "verification": "valid",
+     "why": [
+      "Chief Operating Officer at a company with 5 known staff",
+      "small enough that the leadership does its own hiring"
+     ]
+    },
+    "team_insider": null
+   },
+   "site": null,
+   "outcome": "filled: hiring_manager"
+  },
+  {
+   "company": "Sekisui Pilon Pty Ltd",
+   "title": "Graduate Mechanical Engineer",
+   "jdEmail": null,
+   "jdName": null,
+   "domain": "sekisuifoam.com.au",
+   "domainSource": "KNOWLEDGE_GRAPH",
+   "domainNote": "Google knowledge panel",
+   "mx": "pass",
+   "coverage": {
+    "total": 5,
+    "personal": 4,
+    "generic": 1,
+    "departments": {
+     "executive": 1,
+     "management": 1,
+     "sales": 1,
+     "support": 1
+    }
+   },
+   "department": "executive",
+   "directoryTotal": 1,
+   "slots": {
+    "talent": null,
+    "hiring_manager": {
+     "name": "Jared Lewis",
+     "email": "jaredlewis@sekisuifoam.com.au",
+     "position": "Chief Commercial Officer",
+     "department": "executive",
+     "verification": "valid",
+     "why": [
+      "Chief Commercial Officer at a company with 1 known staff",
+      "small enough that the leadership does its own hiring"
+     ]
+    },
+    "team_insider": null
+   },
+   "site": null,
+   "outcome": "filled: hiring_manager"
+  },
+  {
+   "company": "New Home Care Pty. Ltd.",
+   "title": "AI Engineer / Software Integrator",
+   "jdEmail": null,
+   "jdName": null,
+   "domain": "newhomecare.com.au",
+   "domainSource": "KNOWLEDGE_GRAPH",
+   "domainNote": "Google knowledge panel",
+   "mx": "pass",
+   "coverage": {
+    "total": 4,
+    "personal": 3,
+    "generic": 1,
+    "departments": {
+     "finance & accounting": 1,
+     "legal": 2,
+     "support": 1
+    }
+   },
+   "department": "legal",
+   "directoryTotal": 2,
+   "slots": {
+    "talent": null,
+    "hiring_manager": null,
+    "team_insider": {
+     "name": "David Kim",
+     "email": "david@newhomecare.com.au",
+     "position": "Compliance Manager",
+     "department": "legal",
+     "verification": "valid",
+     "why": [
+      "Compliance Manager at newhomecare.com.au, which has 2 known addresses",
+      "not the hiring manager and not in this function: at a company this size, they will know who is"
+     ]
+    }
+   },
+   "site": null,
+   "outcome": "filled: team_insider"
+  },
+  {
+   "company": "Department of Defence",
+   "title": "Technical Officer",
+   "jdEmail": null,
+   "jdName": null,
+   "domain": "defence.gov.au",
+   "domainSource": "ORGANIC",
+   "domainNote": "name-match",
+   "mx": "pass",
+   "coverage": {
+    "total": 2803,
+    "personal": 2301,
+    "generic": 502,
+    "departments": {
+     "executive": 243,
+     "it": 117,
+     "finance & accounting": 31,
+     "management": 463,
+     "sales": 44,
+     "legal": 22,
+     "support": 54,
+     "hr": 25,
+     "marketing": 2,
+     "communication": 66,
+     "education": 37,
+     "design": 5,
+     "health": 34,
+     "operations": 171,
+     "product": 6,
+     "research": 19,
+     "consulting": 2,
+     "administrative": 267,
+     "procurement": 5
+    }
+   },
+   "department": "hr",
+   "directoryTotal": 25,
+   "slots": {
+    "talent": {
+     "name": "Marijke Henshaw",
+     "email": "marijke.henshaw@defence.gov.au",
+     "position": "Chief Diversity Officer",
+     "department": "hr",
+     "verification": "accept_all",
+     "why": [
+      "Chief Diversity Officer at defence.gov.au",
+      "handles hiring, so replying is part of the job"
+     ]
+    },
+    "hiring_manager": null,
+    "team_insider": null
+   },
+   "site": null,
+   "outcome": "filled: talent"
+  },
+  {
+   "company": "Konnexus",
+   "title": "Workfront Support Analyst",
+   "jdEmail": null,
+   "jdName": null,
+   "domain": "konnexuscg.com.au",
+   "domainSource": "JD_REDACTED",
+   "domainNote": "printed in the ad",
+   "mx": "pass",
+   "coverage": {
+    "total": 5,
+    "personal": 3,
+    "generic": 2,
+    "departments": {
+     "it": 1,
+     "support": 2,
+     "hr": 1,
+     "operations": 1
+    }
+   },
+   "department": "hr",
+   "directoryTotal": 1,
+   "slots": {
+    "talent": {
+     "name": "Raed Mahboub",
+     "email": "raed@konnexuscg.com.au",
+     "position": "Recruitment Specialist",
+     "department": "hr",
+     "verification": "valid",
+     "why": [
+      "Recruitment Specialist at konnexuscg.com.au",
+      "handles hiring, so replying is part of the job"
+     ]
+    },
+    "hiring_manager": null,
+    "team_insider": null
+   },
+   "site": null,
+   "outcome": "filled: talent"
+  },
+  {
+   "company": "Di Placido Group",
+   "title": "Social Media Content Creator/ Marketing – Cars & Motorcycles",
+   "jdEmail": null,
+   "jdName": null,
+   "domain": null,
+   "domainSource": null,
+   "domainNote": "nothing bore the name; best positional was perthmotorbikes.com.au",
+   "mx": "no-mail",
+   "coverage": null,
+   "department": null,
+   "directoryTotal": null,
+   "slots": null,
+   "site": null,
+   "outcome": "no domain: nothing bore the name; best positional was perthmotorbikes.com.au"
+  },
+  {
+   "company": "Strong Pilates Scarborough",
+   "title": "Content Creator & Marketing Assistant - STRONG Pilates Scarborough",
+   "jdEmail": null,
+   "jdName": null,
+   "domain": "strongpilates.com.au",
+   "domainSource": "ORGANIC",
+   "domainNote": "name-match",
+   "mx": "pass",
+   "coverage": {
+    "total": 57,
+    "personal": 23,
+    "generic": 34,
+    "departments": {
+     "executive": 2,
+     "it": 2,
+     "management": 1,
+     "sales": 1,
+     "support": 1,
+     "marketing": 2,
+     "communication": 1,
+     "education": 1,
+     "design": 1,
+     "health": 1
+    }
+   },
+   "department": "marketing",
+   "directoryTotal": 2,
+   "slots": {
+    "talent": null,
+    "hiring_manager": {
+     "name": "Amanda Burwood",
+     "email": "amanda@strongpilates.com.au",
+     "position": "Head of Marketing",
+     "department": "marketing",
+     "verification": "valid",
+     "why": [
+      "Head of Marketing in marketing",
+      "senior to the advertised role and in the same function"
+     ]
+    },
+    "team_insider": null
+   },
+   "site": null,
+   "outcome": "filled: hiring_manager"
+  },
+  {
+   "company": "Screen Australia",
+   "title": "Digital Content Creator",
+   "jdEmail": null,
+   "jdName": null,
+   "domain": "screenaustralia.gov.au",
+   "domainSource": "ORGANIC",
+   "domainNote": "name-match",
+   "mx": "pass",
+   "coverage": {
+    "total": 108,
+    "personal": 47,
+    "generic": 61,
+    "departments": {
+     "executive": 9,
+     "it": 5,
+     "finance & accounting": 1,
+     "management": 5,
+     "sales": 3,
+     "legal": 1,
+     "support": 3,
+     "hr": 1,
+     "marketing": 1,
+     "communication": 10,
+     "design": 4,
+     "operations": 2
+    }
+   },
+   "department": "hr",
+   "directoryTotal": 1,
+   "slots": {
+    "talent": {
+     "name": "Norma Aguilar",
+     "email": "norma.aguilar@screenaustralia.gov.au",
+     "position": "Head of People and Culture",
+     "department": "hr",
+     "verification": "accept_all",
+     "why": [
+      "Head of People and Culture at screenaustralia.gov.au",
+      "handles hiring, so replying is part of the job"
+     ]
+    },
+    "hiring_manager": {
+     "name": "Norma Aguilar",
+     "email": "norma.aguilar@screenaustralia.gov.au",
+     "position": "Head of People and Culture",
+     "department": "hr",
+     "verification": "accept_all",
+     "why": [
+      "Head of People and Culture at a company with 1 known staff",
+      "small enough that the leadership does its own hiring"
+     ]
+    },
+    "team_insider": null
+   },
+   "site": null,
+   "outcome": "filled: talent, hiring_manager"
+  },
+  {
+   "company": "Erskine street Investments Pty Ltd",
+   "title": "Reception with managerial responsibilities in Adult Entretainment",
+   "jdEmail": null,
+   "jdName": null,
+   "domain": null,
+   "domainSource": null,
+   "domainNote": "nothing bore the name; best positional was growthpoint.com.au",
+   "mx": "no-mail",
+   "coverage": null,
+   "department": null,
+   "directoryTotal": null,
+   "slots": null,
+   "site": null,
+   "outcome": "no domain: nothing bore the name; best positional was growthpoint.com.au"
+  },
+  {
+   "company": "GIOXLE",
+   "title": "RECEPTIONIST (female*) – Excellent Pay & Flexible Shifts",
+   "jdEmail": null,
+   "jdName": null,
+   "domain": null,
+   "domainSource": null,
+   "domainNote": "no candidate bore the company name",
+   "mx": "no-mail",
+   "coverage": null,
+   "department": null,
+   "directoryTotal": null,
+   "slots": null,
+   "site": null,
+   "outcome": "no domain: no candidate bore the company name"
+  },
+  {
+   "company": "Dig Deep Excavations (NSW) Pty Ltd",
+   "title": "Office Assistant – Part-Time or Casual",
+   "jdEmail": null,
+   "jdName": null,
+   "domain": "digdeepcivil.com.au",
+   "domainSource": "KNOWLEDGE_GRAPH",
+   "domainNote": "Google knowledge panel",
+   "mx": "pass",
+   "coverage": {
+    "total": 0,
+    "personal": 0,
+    "generic": 0,
+    "departments": {}
+   },
+   "department": null,
+   "directoryTotal": null,
+   "slots": null,
+   "site": {
+    "email": "info@digdeepcivil.com.au",
+    "generic": true,
+    "ownDomain": true,
+    "sourceUrl": "https://digdeepcivil.com.au/contact"
+   },
+   "outcome": "site contact: info@digdeepcivil.com.au (https://digdeepcivil.com.au/contact)"
+  },
+  {
+   "company": "Speed",
+   "title": "Media Grad",
+   "jdEmail": null,
+   "jdName": null,
+   "domain": "gangcalledspeed.com",
+   "domainSource": "ORGANIC",
+   "domainNote": "name-match",
+   "mx": "pass",
+   "coverage": {
+    "total": 0,
+    "personal": 0,
+    "generic": 0,
+    "departments": {}
+   },
+   "department": null,
+   "directoryTotal": null,
+   "slots": null,
+   "site": null,
+   "outcome": "Hunter holds nothing, and the site publishes no address either"
+  },
+  {
+   "company": "WA Country Health Service",
+   "title": "Business Analyst",
+   "jdEmail": null,
+   "jdName": "Jonathan Patroni",
+   "domain": null,
+   "domainSource": null,
+   "domainNote": "wacountry.health.wa.gov.au receives no mail and no alternative bears the name",
+   "mx": "no-mail",
+   "coverage": null,
+   "department": null,
+   "directoryTotal": null,
+   "slots": null,
+   "site": null,
+   "outcome": "no domain: wacountry.health.wa.gov.au receives no mail and no alternative bears the name"
+  },
+  {
+   "company": "Beyond Pier",
+   "title": "Business Analyst",
+   "jdEmail": null,
+   "jdName": null,
+   "domain": "unipier.com.au",
+   "domainSource": "ORGANIC",
+   "domainNote": "name-match",
+   "mx": "pass",
+   "coverage": {
+    "total": 1,
+    "personal": 0,
+    "generic": 1,
+    "departments": {
+     "support": 1
+    }
+   },
+   "department": "support",
+   "directoryTotal": 1,
+   "slots": {
+    "talent": null,
+    "hiring_manager": null,
+    "team_insider": null
+   },
+   "site": null,
+   "outcome": "directory had nobody who fits, and the site publishes no address"
+  },
+  {
+   "company": "Coalition of Peaks",
+   "title": "Assistant Director, Policy and Strategy",
+   "jdEmail": null,
+   "jdName": null,
+   "domain": "coalitionofpeaks.org.au",
+   "domainSource": "JD_REDACTED",
+   "domainNote": "printed in the ad",
+   "mx": "pass",
+   "coverage": {
+    "total": 8,
+    "personal": 3,
+    "generic": 5,
+    "departments": {
+     "management": 4,
+     "support": 1
+    }
+   },
+   "department": "management",
+   "directoryTotal": 4,
+   "slots": {
+    "talent": null,
+    "hiring_manager": {
+     "name": "Keryn Maloney",
+     "email": "keryn.maloney@coalitionofpeaks.org.au",
+     "position": "Director",
+     "department": "management",
+     "verification": "valid",
+     "why": [
+      "Director at a company with 4 known staff",
+      "small enough that the leadership does its own hiring"
+     ]
+    },
+    "team_insider": null
+   },
+   "site": null,
+   "outcome": "filled: hiring_manager"
+  },
+  {
+   "company": "HiTech Personnel",
+   "title": "Multiple Policy Officer - Stakeholder Management, Strategy, Admin - Fed Govt!",
+   "jdEmail": null,
+   "jdName": null,
+   "domain": "hitechaust.com",
+   "domainSource": "JD_REDACTED",
+   "domainNote": "printed in the ad",
+   "mx": "pass",
+   "coverage": {
+    "total": 11,
+    "personal": 8,
+    "generic": 3,
+    "departments": {
+     "executive": 1,
+     "management": 1,
+     "sales": 3,
+     "support": 1,
+     "hr": 3,
+     "consulting": 1
+    }
+   },
+   "department": "hr",
+   "directoryTotal": 3,
+   "slots": {
+    "talent": {
+     "name": "Jennifer Jowett",
+     "email": "jennifer@hitechaust.com",
+     "position": "Recruitment Consultant",
+     "department": "hr",
+     "verification": "valid",
+     "why": [
+      "Recruitment Consultant at hitechaust.com",
+      "handles hiring, so replying is part of the job"
+     ]
+    },
+    "hiring_manager": null,
+    "team_insider": null
+   },
+   "site": null,
+   "outcome": "filled: talent"
+  },
+  {
+   "company": "NSW Police Force",
+   "title": "Policy Officer",
+   "jdEmail": "PCC-AEET@police.nsw.gov.au",
+   "jdName": null,
+   "domain": "police.nsw.gov.au",
+   "domainSource": "JD_EMAIL",
+   "domainNote": "printed in the ad",
+   "mx": "skipped",
+   "coverage": null,
+   "department": null,
+   "directoryTotal": null,
+   "slots": null,
+   "site": null,
+   "outcome": "JD contact: PCC-AEET@police.nsw.gov.au"
+  },
+  {
+   "company": "NSN Electrical",
+   "title": "Office Administrator",
+   "jdEmail": null,
+   "jdName": null,
+   "domain": "nsnelectrical.com.au",
+   "domainSource": "KNOWLEDGE_GRAPH",
+   "domainNote": "Google knowledge panel",
+   "mx": "pass",
+   "coverage": {
+    "total": 0,
+    "personal": 0,
+    "generic": 0,
+    "departments": {}
+   },
+   "department": null,
+   "directoryTotal": null,
+   "slots": null,
+   "site": null,
+   "outcome": "Hunter holds nothing, and the site publishes no address either"
+  },
+  {
+   "company": "IT Strategic Pty Ltd",
+   "title": "IT Support Engineer / Technician",
+   "jdEmail": null,
+   "jdName": null,
+   "domain": "itstrategic.com.au",
+   "domainSource": "ORGANIC",
+   "domainNote": "name-match",
+   "mx": "pass",
+   "coverage": {
+    "total": 12,
+    "personal": 7,
+    "generic": 5,
+    "departments": {
+     "it": 6,
+     "management": 1,
+     "support": 2
+    }
+   },
+   "department": "it",
+   "directoryTotal": 6,
+   "slots": {
+    "talent": null,
+    "hiring_manager": {
+     "name": "Stuart Haddad",
+     "email": "stuart.haddad@itstrategic.com.au",
+     "position": "IT Manager",
+     "department": "it",
+     "verification": "valid",
+     "why": [
+      "IT Manager in it",
+      "senior to the advertised role and in the same function"
+     ]
+    },
+    "team_insider": {
+     "name": "Chris Cumpian",
+     "email": "chris.cumpian@itstrategic.com.au",
+     "position": "IT Support Engineer",
+     "department": "it",
+     "verification": "valid",
+     "why": [
+      "IT Support Engineer in it",
+      "does the work the role does, so knows what the team actually needs"
+     ]
+    }
+   },
+   "site": null,
+   "outcome": "filled: hiring_manager, team_insider"
+  },
+  {
+   "company": "Good Games PTY LTD",
+   "title": "Online Warehouse Manager",
+   "jdEmail": null,
+   "jdName": null,
+   "domain": "goodgames.com.au",
+   "domainSource": "ORGANIC",
+   "domainNote": "name-match",
+   "mx": "pass",
+   "coverage": {
+    "total": 22,
+    "personal": 9,
+    "generic": 13,
+    "departments": {
+     "sales": 2,
+     "design": 1
+    }
+   },
+   "department": "sales",
+   "directoryTotal": 2,
+   "slots": {
+    "talent": null,
+    "hiring_manager": null,
+    "team_insider": null
+   },
+   "site": {
+    "email": "shop@goodgames.com.au",
+    "generic": false,
+    "ownDomain": true,
+    "sourceUrl": "https://goodgames.com.au/contact-us"
+   },
+   "outcome": "nobody in the directory fits; site contact: shop@goodgames.com.au"
+  }
+ ]
+}

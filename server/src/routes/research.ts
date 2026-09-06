@@ -5,8 +5,13 @@ import { callLLMWithRetry } from '../utils/callLLMWithRetry';
 import { parseLLMJson } from '../utils/parseLLMResponse';
 import { fillSlots, filterContact, type OutreachRole } from '../services/contactFilter';
 import { fetchDirectoryForRole } from '../services/hunterDirectory';
-import { pickFromDirectory } from '../services/directoryPick';
-import { pickCompanyDomain, type DomainCandidate } from '../services/companyDomain';
+import { pickFromDirectory, type Pick, type Slots } from '../services/directoryPick';
+import { findSiteContact } from '../services/siteContact';
+import { verifySlots } from '../services/verifySlots';
+import { readJdContact, isSufficient } from '../services/jdContact';
+import { resolveEmployerDomain, stateOf } from '../services/employerDomain';
+import { pickMailableDomain } from '../services/mailDomain';
+import { resolveEntityName } from '../services/abnLookup';
 
 const router = Router();
 
@@ -306,22 +311,44 @@ function directoryEnabled(): boolean {
  * the wrong domain is a directory of strangers, so an unconvincing domain is
  * treated as no domain at all.
  */
-async function resolveCompanyDomain(company: string): Promise<string | null> {
-    const results = await searchSerper(`"${company}" official website Australia`, 8);
-    if (!results.length) return null;
+async function resolveCompanyDomain(company: string, jdText?: string | null): Promise<string | null> {
+    // An acronym searches badly, so ask the companies register what the
+    // business is actually called before spending the search on "BHL". The
+    // register holds no website, so this only ever improves the search TERM;
+    // when it is unavailable or unsure, `name` comes back as the ad's own
+    // wording and everything below behaves exactly as it did before.
+    const { name: searchName } = await resolveEntityName(company);
 
-    const candidates: DomainCandidate[] = [];
-    results.forEach((r, position) => {
-        try {
-            candidates.push({ host: new URL(r.link).hostname.replace(/^www\./, '').toLowerCase(), position });
-        } catch {
-            /* a malformed link is simply not a candidate */
-        }
-    });
+    // The ladder itself lives in `employerDomain.ts` and is the same code the
+    // corpus harness measures, so a result seen in testing is a result the
+    // product produces. It reads Google's knowledge panel first, falls to the
+    // organic name match, and only then spends a second search on Maps, where
+    // the returned address confirms the state.
+    //
+    // This replaced a Serper.dev call that had been returning `400 Not enough
+    // credits` for every query. The failure was invisible: the client caught
+    // it, warned, and returned an empty array, so every employer resolved to
+    // "no domain" and the whole feature reported an honest-looking blank.
+    const state = stateOf(jdText);
 
-    const pick = pickCompanyDomain(candidates, company);
-    if (!pick.domain || pick.reason === 'position') return null;
-    return pick.domain;
+    let found = await resolveEmployerDomain(searchName, state);
+
+    // Score against both names and keep whichever actually matches. A
+    // registered name can be a numbered holding company that matches no host,
+    // and the ad's name can be the acronym the host is built from, so neither
+    // is reliably the better one to judge by.
+    if (!found.domain && searchName !== company) {
+        found = await resolveEmployerDomain(company, state);
+    }
+
+    if (!found.domain) {
+        console.warn(`[research] ${company}: no domain (${found.note})`);
+        return null;
+    }
+    if (found.corrected) {
+        console.warn(`[research] ${company}: corrected to ${found.domain} (${found.note})`);
+    }
+    return found.domain;
 }
 
 /** Culture/news facts used downstream in the cover letter. Never blocking. */
@@ -398,26 +425,70 @@ router.post('/company', authenticate, async (req, res) => {
         // a domain chosen purely on search position is discarded: that is how
         // AC3 resolved to a procurement marketplace and PeopleConnect to Seek,
         // and a directory read off the wrong domain is a directory of strangers.
-        const domain = directoryEnabled() ? await resolveCompanyDomain(company) : null;
-        const directory = domain ? await fetchDirectoryForRole(domain, role || '') : null;
-        const directorySlots = directory ? pickFromDirectory(directory, { role: role || '' }) : null;
+        //
+        // Step 0, and it costs nothing: read the ad.
+        //
+        // A contact printed in the job ad was chosen BY THE EMPLOYER as the
+        // person to ask about this role, which is a stronger claim than
+        // anything a directory or a search snippet can make, and the bake-off
+        // found one in 30% of ads. This used to run last, as one of three
+        // fallback passes, AFTER the domain search and both Hunter calls had
+        // already been paid for. Running it first makes the most accurate
+        // answer also the cheapest one.
+        const fromAd = readJdContact(jdText);
+        const adSlot: Pick | null = isSufficient(fromAd)
+            ? {
+                name: fromAd.personName ?? (fromAd.emailIsGeneric ? `${company} recruitment` : fromAd.email!),
+                email: fromAd.email!,
+                position: fromAd.personTitle,
+                department: null,
+                // Printed by the employer, so nothing to verify against and
+                // nothing that a verification could improve on.
+                verification: 'jd',
+                why: [
+                    fromAd.emailIsGeneric
+                        ? 'The address the job ad gives for applications.'
+                        : 'Named in the job ad as the contact for this role.',
+                    ...(fromAd.personTitle ? [`The ad describes them as ${fromAd.personTitle}.`] : []),
+                ],
+            }
+            : null;
+
+        // The ad's own domain beats a searched one and costs nothing, so the
+        // search only runs when the ad gave us nothing to go on.
+        const domain = adSlot
+            ? fromAd.domain
+            : (fromAd.domain ?? (directoryEnabled() ? await resolveCompanyDomain(company, jdText) : null));
+
+        // With a contact already in hand there is nothing for the directory to
+        // add that is worth two credits and a verification.
+        const directory = (!adSlot && domain && directoryEnabled())
+            ? await fetchDirectoryForRole(domain, role || '')
+            : null;
+        const directorySlots = adSlot
+            ? { talent: fromAd.emailIsGeneric ? adSlot : null, hiring_manager: fromAd.emailIsGeneric ? null : adSlot, team_insider: null } as Slots
+            : (directory ? pickFromDirectory(directory, { role: role || '' }) : null);
         const directoryFilled = directorySlots
             ? Object.values(directorySlots).filter(Boolean).length
             : 0;
 
         if (directorySlots && directoryFilled > 0) {
+            // Confirm the mailboxes before we hand them over, skipping any
+            // Hunter has already tested. Half a credit each, and it is the
+            // difference between "found published online" and "checked".
+            const verified = await verifySlots(directorySlots);
             const { highlights, companySize } = await companyHighlights(company);
-            const lead = directorySlots.hiring_manager ?? directorySlots.talent ?? directorySlots.team_insider;
+            const lead = verified.hiring_manager ?? verified.talent ?? verified.team_insider;
             return res.json({
                 source: 'directory',
                 domain,
                 slots: {
-                    talent: directorySlots.talent,
-                    hiringManager: directorySlots.hiring_manager,
-                    teamInsider: directorySlots.team_insider,
+                    talent: verified.talent,
+                    hiringManager: verified.hiring_manager,
+                    teamInsider: verified.team_insider,
                 },
                 rejected: [],
-                candidates: [directorySlots.hiring_manager, directorySlots.talent, directorySlots.team_insider]
+                candidates: [verified.hiring_manager, verified.talent, verified.team_insider]
                     .filter(Boolean)
                     .map(p => ({ name: p!.name, title: p!.position, confidence: 'high', sourceUrl: null, location: null })),
                 hiringManager: lead?.name ?? null,
@@ -426,6 +497,56 @@ router.post('/company', authenticate, async (req, res) => {
                 highlights,
                 companySize,
             });
+        }
+
+        // ── The employer's own contact page ───────────────────────────────
+        //
+        // Runs only when the directory gave us nothing, and before we spend a
+        // search on the passes below. Four of the twenty corpus ads resolved to
+        // a correct website that Hunter holds zero addresses for: one-location
+        // Australian businesses that no directory has ever indexed. Every one
+        // of them publishes an address on their own contact page.
+        //
+        // It costs nothing. No search vendor, no directory vendor, just a GET
+        // of a page the employer wrote to be read. An address here is usually a
+        // shared inbox, which is why it sits below the directory and above the
+        // searches rather than at the top.
+        if (domain) {
+            const site = await findSiteContact(domain);
+            if (site) {
+                const { highlights, companySize } = await companyHighlights(company);
+                const slot: Pick = {
+                    name: site.generic ? `${company}` : site.email.split('@')[0],
+                    email: site.email,
+                    position: null,
+                    department: null,
+                    // Published by the employer on their own site. There is no
+                    // status to refresh and nothing a verification would add.
+                    verification: 'site',
+                    why: [
+                        site.generic
+                            ? 'The address the company publishes on its own contact page.'
+                            : 'Published on the company\'s own contact page.',
+                        'No directory holds anyone at this company, so this is the address they chose to publish.',
+                    ],
+                };
+                return res.json({
+                    source: 'site',
+                    domain,
+                    slots: {
+                        talent: site.generic ? slot : null,
+                        hiringManager: site.generic ? null : slot,
+                        teamInsider: null,
+                    },
+                    rejected: [],
+                    candidates: [{ name: slot.name, title: null, confidence: 'low', sourceUrl: site.sourceUrl, location: null }],
+                    hiringManager: site.generic ? null : slot.name,
+                    hiringManagerTitle: null,
+                    salutation: salutationFor(site.generic ? undefined : { name: slot.name }),
+                    highlights,
+                    companySize,
+                });
+            }
         }
 
         // ── Passes 0, 1 and 2, all at once ────────────────────────────────

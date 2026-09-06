@@ -1,0 +1,23 @@
+{
+ "key": {
+  "domain": "strongpilates.com.au"
+ },
+ "value": {
+  "total": 57,
+  "personal": 23,
+  "generic": 34,
+  "departments": {
+   "executive": 2,
+   "it": 2,
+   "management": 1,
+   "sales": 1,
+   "support": 1,
+   "marketing": 2,
+   "communication": 1,
+   "education": 1,
+   "design": 1,
+   "health": 1
+  }
+ },
+ "at": "2026-09-06T00:35:17.743Z"
+}

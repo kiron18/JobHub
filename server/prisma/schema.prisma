@@ -1210,3 +1210,148 @@ model AnswerBankEntry {
   @@unique([intakeId, questionId])
   @@index([intakeId])
 }
+
+// ─── Contact discovery, written down ────────────────────────────────────────
+
+/// Every contact this system has ever proposed, and what became of it.
+///
+/// Contact discovery has never recorded anything. `routes/research.ts` makes no
+/// database calls at all: it resolves a domain, picks up to three people,
+/// serialises them into a JSON response, and forgets. So "how often is this
+/// right" has never been answerable from our own data. The only measurement
+/// that exists is a bake-off that has to re-spend the search budget every time
+/// the question is asked, and whose email stage has never once been run.
+///
+/// One row per proposed contact, written when research returns. That turns
+/// accuracy into a query rather than an experiment, and it is what lets a
+/// domain's address pattern be learned once instead of rediscovered per job.
+///
+/// Nothing here sends anything. `outcome` exists because a bounce is the only
+/// authoritative verification there is, so the column should be ready if a
+/// candidate ever does write to one of these. It defaults to UNSENT and stays
+/// there until something real happens.
+model ContactDiscovery {
+  id               String    @id @default(uuid())
+  userId           String
+  jobApplicationId String?
+  /// Nullable for the same reason JobApplication.company is: a great many ads
+  /// never name the employer, and null means we do not know.
+  company          String?
+  role             String?
+
+  /// The employer's own domain, and how we came to believe it. `domainSource`
+  /// is the field that would have caught Hudson resolving to finance.gov.au:
+  /// a domain read out of the ad's own redacted address is evidence, one
+  /// picked off a search result is a guess, and they should never be counted
+  /// together when measuring.
+  domain           String?
+  domainSource     DomainSource?
+
+  slot             ContactSlot
+  personName       String
+  /// Their function, which is the field whose absence let an Investment &
+  /// Economic Development Coordinator be proposed for a data role.
+  personTitle      String?
+  nameSource       ContactSource
+
+  /// Null is the normal case and not a failure. A constructed address is
+  /// recorded as CONSTRUCTED and must never be presented as confirmed.
+  email            String?
+  emailSource      EmailSource?
+  /// The shape used to build it, e.g. "f.last". Recorded per row so a pattern
+  /// that turns out to be wrong can be traced to everything it produced.
+  emailPattern     String?
+  /// Hunter's status where we paid for one, "mx" where only the domain's mail
+  /// server was checked, null where nothing was verified at all.
+  verification     String?
+
+  /// Filled in by a human reviewing the pick. This is the column the whole
+  /// table exists for: it is the only place "was this the right person" has
+  /// ever been recordable, and it is answerable from one search.
+  reviewVerdict    ReviewVerdict @default(UNREVIEWED)
+  reviewNote       String?
+  reviewedAt       DateTime?
+
+  outcome          ContactOutcome @default(UNSENT)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([userId])
+  @@index([domain])
+  @@index([jobApplicationId])
+}
+
+/// One learned address shape per employer domain.
+///
+/// Patterns are per-domain and guessing the common one is not good enough:
+/// Western Sydney University uses f.last, and the "93.7% use first.last"
+/// heuristic would have addressed its PMO Program Director wrongly. Learned
+/// once from a confirmed address, then reused for free.
+model EmailPattern {
+  domain         String   @id
+  /// "f.last", "first.last", "firstlast", "flast".
+  pattern        String
+  /// The confirmed address the shape was read off, kept so a wrong pattern is
+  /// traceable to its source rather than merely overwritten.
+  evidence       String
+  /// Where that evidence came from: a published page, a PDF, a JD, Hunter.
+  evidenceSource String
+  /// How many independent confirmed addresses agree. One is a hypothesis.
+  confirmations  Int      @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+enum ContactSlot {
+  TALENT
+  HIRING_MANAGER
+  TEAM_INSIDER
+}
+
+/// How we learned the person's name. Ordered by how much it is worth trusting:
+/// a name printed in the ad as its contact is evidence, a name inferred from a
+/// search snippet is a guess.
+enum ContactSource {
+  JD
+  HUNTER_DIRECTORY
+  LINKEDIN
+  RECRUITER
+  MANUAL
+}
+
+/// How we learned the domain. JD_REDACTED is Seek masking the local part but
+/// leaving the domain intact, which is certainty for free.
+enum DomainSource {
+  JD_EMAIL
+  JD_REDACTED
+  HUNTER
+  SEARCH
+  MANUAL
+}
+
+/// PUBLISHED means the address was found written down somewhere. CONSTRUCTED
+/// means we built it from a pattern and it is a hypothesis, however well
+/// formed. The distinction is the entire point of the column.
+enum EmailSource {
+  PUBLISHED
+  JD
+  HUNTER
+  CONSTRUCTED
+}
+
+enum ReviewVerdict {
+  UNREVIEWED
+  RIGHT_PERSON
+  WRONG_FUNCTION
+  WRONG_SENIORITY
+  WRONG_EMPLOYER
+  WRONG_LOCATION
+  NOT_FOUND
+}
+
+enum ContactOutcome {
+  UNSENT
+  SENT
+  BOUNCED
+  REPLIED
+}

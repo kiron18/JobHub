@@ -1,0 +1,25 @@
+{
+ "key": {
+  "emails": [
+   null,
+   "jaredlewis@sekisuifoam.com.au",
+   null
+  ]
+ },
+ "value": {
+  "talent": null,
+  "hiring_manager": {
+   "name": "Jared Lewis",
+   "email": "jaredlewis@sekisuifoam.com.au",
+   "position": "Chief Commercial Officer",
+   "department": "executive",
+   "verification": "valid",
+   "why": [
+    "Chief Commercial Officer at a company with 1 known staff",
+    "small enough that the leadership does its own hiring"
+   ]
+  },
+  "team_insider": null
+ },
+ "at": "2026-09-06T00:35:46.799Z"
+}

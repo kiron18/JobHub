@@ -136,3 +136,61 @@ describe('what it refuses to do', () => {
         expect(new Set(emails).size).toBe(emails.length);
     });
 });
+
+/**
+ * New Home Care, verbatim from the corpus run on 2026-09-06. Four addresses at
+ * a four-person company, none of them in the advertised function, and before
+ * the last-resort rule this directory produced three empty slots after a credit
+ * had already been spent on it.
+ */
+const NEW_HOME_CARE: Directory = {
+    domain: 'newhomecare.com.au',
+    acceptAll: false,
+    pattern: '{first}',
+    total: 4,
+    people: [
+        person({ email: 'anita@newhomecare.com.au', firstName: 'Anita', lastName: 'Prasad', position: 'Legal Counsel', department: 'legal' }),
+        person({ email: 'ravi@newhomecare.com.au', firstName: 'Ravi', lastName: 'Naidu', position: 'Paralegal', department: 'legal' }),
+        person({ email: 'mei@newhomecare.com.au', firstName: 'Mei', lastName: 'Chan', position: 'Bookkeeper', department: 'finance' }),
+        person({ email: 'info@newhomecare.com.au', firstName: null, lastName: null, position: null, department: 'support', type: 'generic' }),
+    ],
+};
+
+describe('last resort at a tiny company', () => {
+    it('offers somebody rather than nobody when no slot could be filled', () => {
+        const slots = pickFromDirectory(NEW_HOME_CARE, { role: 'AI Engineer / Software Integrator' });
+        const filled = Object.values(slots).filter(Boolean);
+        expect(filled).toHaveLength(1);
+        expect(filled[0]!.email).toBe('anita@newhomecare.com.au');
+    });
+
+    it('says plainly that they are not the hiring manager', () => {
+        const slots = pickFromDirectory(NEW_HOME_CARE, { role: 'AI Engineer / Software Integrator' });
+        expect(slots.team_insider!.why.join(' ')).toMatch(/not the hiring manager/i);
+    });
+
+    it('never hands over the generic inbox as if it were a person', () => {
+        const slots = pickFromDirectory(NEW_HOME_CARE, { role: 'AI Engineer / Software Integrator' });
+        expect(slots.team_insider!.email).not.toBe('info@newhomecare.com.au');
+    });
+
+    it('does not fire at a company large enough to have the right person', () => {
+        const big = { ...NEW_HOME_CARE, total: SMALL_ORG_MAX + 30 };
+        expect(Object.values(pickFromDirectory(big, { role: 'AI Engineer' })).filter(Boolean)).toHaveLength(0);
+    });
+
+    it('does not displace a real match when one exists', () => {
+        const slots = pickFromDirectory(AUSMEAT, { role: 'Junior Data Analyst' });
+        expect(slots.talent?.email).toBe('heidi.casey@ausmeat.com.au');
+    });
+
+    it('can be switched off entirely', () => {
+        process.env.DIRECTORY_LAST_RESORT_MAX = '0';
+        try {
+            const slots = pickFromDirectory(NEW_HOME_CARE, { role: 'AI Engineer' });
+            expect(Object.values(slots).filter(Boolean)).toHaveLength(0);
+        } finally {
+            delete process.env.DIRECTORY_LAST_RESORT_MAX;
+        }
+    });
+});

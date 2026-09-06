@@ -1,0 +1,14 @@
+{
+ "key": {
+  "domain": "prospeedracing.com.au"
+ },
+ "value": {
+  "total": 4,
+  "personal": 2,
+  "generic": 2,
+  "departments": {
+   "sales": 1
+  }
+ },
+ "at": "2026-09-06T00:35:18.843Z"
+}

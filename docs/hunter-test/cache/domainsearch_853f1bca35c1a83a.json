@@ -1,0 +1,27 @@
+{
+ "key": {
+  "domain": "sekisuifoam.com.au",
+  "department": "executive"
+ },
+ "value": {
+  "domain": "sekisuifoam.com.au",
+  "acceptAll": false,
+  "pattern": "{first}{last}",
+  "total": 1,
+  "people": [
+   {
+    "email": "jaredlewis@sekisuifoam.com.au",
+    "firstName": "Jared",
+    "lastName": "Lewis",
+    "position": "Chief Commercial Officer",
+    "department": "executive",
+    "seniority": "executive",
+    "verification": "valid",
+    "confidence": 93,
+    "type": "personal",
+    "linkedin": "https://www.linkedin.com/in/jared-lewis-99951422"
+   }
+  ]
+ },
+ "at": "2026-09-06T00:35:46.781Z"
+}

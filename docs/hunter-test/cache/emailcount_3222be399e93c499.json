@@ -1,0 +1,25 @@
+{
+ "key": {
+  "domain": "screenaustralia.gov.au"
+ },
+ "value": {
+  "total": 108,
+  "personal": 47,
+  "generic": 61,
+  "departments": {
+   "executive": 9,
+   "it": 5,
+   "finance & accounting": 1,
+   "management": 5,
+   "sales": 3,
+   "legal": 1,
+   "support": 3,
+   "hr": 1,
+   "marketing": 1,
+   "communication": 10,
+   "design": 4,
+   "operations": 2
+  }
+ },
+ "at": "2026-09-06T00:35:17.836Z"
+}

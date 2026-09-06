@@ -1,0 +1,27 @@
+{
+ "key": {
+  "domain": "prospeedracing.com.au",
+  "department": "sales"
+ },
+ "value": {
+  "domain": "prospeedracing.com.au",
+  "acceptAll": false,
+  "pattern": "{first}",
+  "total": 1,
+  "people": [
+   {
+    "email": "sales@prospeedracing.com.au",
+    "firstName": null,
+    "lastName": null,
+    "position": null,
+    "department": "sales",
+    "seniority": null,
+    "verification": null,
+    "confidence": 99,
+    "type": "generic",
+    "linkedin": null
+   }
+  ]
+ },
+ "at": "2026-09-06T00:35:52.806Z"
+}

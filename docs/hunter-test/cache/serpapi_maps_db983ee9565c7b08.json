@@ -1,0 +1,23 @@
+{
+ "key": {
+  "q": "Erskine street Investments Pty Ltd NSW"
+ },
+ "value": [
+  {
+   "title": "Tehran Investments Pty Ltd",
+   "website": null,
+   "address": "Unit 1/9 Swanson St, Erskineville NSW 2043"
+  },
+  {
+   "title": "Centuria Capital",
+   "website": "https://centuria.com.au/",
+   "address": "Chifley Tower, Level 41/2 Chifley Square, Sydney NSW 2000"
+  },
+  {
+   "title": "SCG Finance",
+   "website": "http://www.scgfinance.com.au/",
+   "address": "Ste 12.01/289 King St, Mascot NSW 2020"
+  }
+ ],
+ "at": "2026-09-06T01:37:36.530Z"
+}

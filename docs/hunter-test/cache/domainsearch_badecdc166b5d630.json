@@ -1,0 +1,27 @@
+{
+ "key": {
+  "domain": "screenaustralia.gov.au",
+  "department": "hr"
+ },
+ "value": {
+  "domain": "screenaustralia.gov.au",
+  "acceptAll": true,
+  "pattern": "{first}.{last}",
+  "total": 1,
+  "people": [
+   {
+    "email": "norma.aguilar@screenaustralia.gov.au",
+    "firstName": "Norma",
+    "lastName": "Aguilar",
+    "position": "Head of People and Culture",
+    "department": "hr",
+    "seniority": "executive",
+    "verification": "accept_all",
+    "confidence": 85,
+    "type": "personal",
+    "linkedin": "https://www.linkedin.com/in/norma-aguilar-233ba920"
+   }
+  ]
+ },
+ "at": "2026-09-06T00:35:52.186Z"
+}

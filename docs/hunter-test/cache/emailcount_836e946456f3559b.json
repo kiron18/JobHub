@@ -1,0 +1,17 @@
+{
+ "key": {
+  "domain": "sekisuifoam.com.au"
+ },
+ "value": {
+  "total": 5,
+  "personal": 4,
+  "generic": 1,
+  "departments": {
+   "executive": 1,
+   "management": 1,
+   "sales": 1,
+   "support": 1
+  }
+ },
+ "at": "2026-09-06T00:35:16.263Z"
+}

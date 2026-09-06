@@ -1,0 +1,25 @@
+{
+ "key": {
+  "emails": [
+   null,
+   "isabella@earth-ai.com",
+   null
+  ]
+ },
+ "value": {
+  "talent": null,
+  "hiring_manager": {
+   "name": "Isabella Sykes",
+   "email": "isabella@earth-ai.com",
+   "position": "Chief Operating Officer",
+   "department": "operations",
+   "verification": "valid",
+   "why": [
+    "Chief Operating Officer at a company with 5 known staff",
+    "small enough that the leadership does its own hiring"
+   ]
+  },
+  "team_insider": null
+ },
+ "at": "2026-09-06T00:35:46.253Z"
+}

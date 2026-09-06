@@ -1,0 +1,19 @@
+{
+ "key": {
+  "domain": "hitechaust.com"
+ },
+ "value": {
+  "total": 11,
+  "personal": 8,
+  "generic": 3,
+  "departments": {
+   "executive": 1,
+   "management": 1,
+   "sales": 3,
+   "support": 1,
+   "hr": 3,
+   "consulting": 1
+  }
+ },
+ "at": "2026-09-06T00:35:20.233Z"
+}

@@ -1,0 +1,21 @@
+{
+ "key": {
+  "domain": "earth-ai.com"
+ },
+ "value": {
+  "total": 17,
+  "personal": 16,
+  "generic": 1,
+  "departments": {
+   "executive": 1,
+   "finance & accounting": 1,
+   "sales": 1,
+   "support": 1,
+   "communication": 1,
+   "health": 2,
+   "operations": 5,
+   "research": 4
+  }
+ },
+ "at": "2026-09-06T00:35:16.139Z"
+}

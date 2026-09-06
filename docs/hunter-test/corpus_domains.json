@@ -1,0 +1,423 @@
+{
+ "rows": [
+  {
+   "title": "Creative Content Creator",
+   "company": "Earth AI",
+   "body_chars": 3689,
+   "domain": "earthai.tech",
+   "matched_name": "Earth AI",
+   "hunter_emails": 0,
+   "why": "exact name match",
+   "alternatives": [
+    "Earth AI -> earth-ai.com (17)",
+    "EarthAI -> earthai.com (0)",
+    "Earth Day -> earthday.org (110)",
+    "Brilliant Earth -> brilliantearth.com (375)"
+   ],
+   "departments": null
+  },
+  {
+   "title": "Graduate Mechanical Engineer",
+   "company": "Sekisui Pilon Pty Ltd",
+   "body_chars": 3707,
+   "domain": null,
+   "matched_name": null,
+   "hunter_emails": null,
+   "why": "no candidates",
+   "alternatives": [],
+   "departments": null
+  },
+  {
+   "title": "AI Engineer / Software Integrator",
+   "company": "New Home Care Pty. Ltd.",
+   "body_chars": 4335,
+   "domain": "newhomecare.com.au",
+   "matched_name": "New Home Care",
+   "hunter_emails": 4,
+   "why": "exact name match",
+   "alternatives": [
+    "New Beginnings Home Care -> newbeginningscny.com (34)",
+    "New Wave Home Care -> newwavehomecare.com (15)",
+    "New Century Home Care -> newcenturypa.com (5)",
+    "New Estuary Home Care -> newestuaryhomecare.com (6)"
+   ],
+   "departments": {
+    "legal": 2,
+    "finance & accounting": 1,
+    "support": 1
+   },
+   "personal": 3,
+   "generic": 1
+  },
+  {
+   "title": "Technical Officer",
+   "company": "Department of Defence",
+   "body_chars": 3113,
+   "domain": "defence.ie",
+   "matched_name": "Department of Defence Ireland",
+   "hunter_emails": 46,
+   "why": "name prefix match",
+   "alternatives": [
+    "Department Of Defence Production[Edit] -> ddpmod.gov.in (29)",
+    "RAAF AIS Department of Defence -> raafais.gov.au (0)",
+    "U.S. Department of Labor -> dol.gov (8560)",
+    "U.S. Department of State -> state.gov (14395)"
+   ],
+   "departments": {
+    "executive": 8,
+    "it": 4,
+    "support": 4,
+    "communication": 3,
+    "education": 1
+   },
+   "personal": 21,
+   "generic": 25
+  },
+  {
+   "title": "Workfront Support Analyst",
+   "company": "Konnexus",
+   "body_chars": 4795,
+   "domain": "konnexus.ca",
+   "matched_name": "Konnexus",
+   "hunter_emails": 1,
+   "why": "exact name match",
+   "alternatives": [
+    "Konnexus -> konnexus.net (0)",
+    "Konnexus -> konnexus.no (0)",
+    "Konnexus -> konnexuscg.com.au (5)"
+   ],
+   "departments": {
+    "support": 1
+   },
+   "personal": 0,
+   "generic": 1
+  },
+  {
+   "title": "Social Media Content Creator/ Marketing \u2013 Cars & Motorcycles",
+   "company": "Di Placido Group",
+   "body_chars": 4116,
+   "domain": "diplacido.ch",
+   "matched_name": "Di Placido Motos GmbH",
+   "hunter_emails": 1,
+   "why": "name prefix match",
+   "alternatives": [
+    "Placido Group -> placidogroup.co.uk (0)",
+    "Mike Di Placido -> mikediplacidopoetry.co.uk (0)",
+    "DI-Group -> di-group.biz (3)",
+    "Di Leone Group -> dileonegroup.com (25)"
+   ],
+   "departments": {},
+   "personal": 1,
+   "generic": 0
+  },
+  {
+   "title": "Content Creator & Marketing Assistant - STRONG Pilates Scarborough",
+   "company": "Strong Pilates Scarborough",
+   "body_chars": 3908,
+   "domain": "strongpilates.com.au",
+   "matched_name": "Strong Pilates",
+   "hunter_emails": 57,
+   "why": "name prefix match",
+   "alternatives": [
+    "Scarborough Pilates -> scarboroughpilates.com (0)",
+    "STRONG Pilates -> strongpilates.co (18)",
+    "STRONG Pilates -> strongpilates.ae (6)",
+    "STRONG Pilates -> strongpilates.co.nz (7)"
+   ],
+   "departments": {
+    "executive": 2,
+    "it": 2,
+    "marketing": 2,
+    "management": 1,
+    "sales": 1,
+    "support": 1,
+    "communication": 1,
+    "education": 1,
+    "design": 1,
+    "health": 1
+   },
+   "personal": 23,
+   "generic": 34
+  },
+  {
+   "title": "Digital Content Creator",
+   "company": "Screen Australia",
+   "body_chars": 4372,
+   "domain": "screenaustralia.gov.au",
+   "matched_name": "Screen Australia",
+   "hunter_emails": 108,
+   "why": "exact name match",
+   "alternatives": [
+    "Budget Laptop Screen Australia -> budgetlaptopscreens.com.au (0)",
+    "Australia Post -> auspost.com.au (9053)",
+    "Services Australia -> servicesaustralia.gov.au (2782)",
+    "Virgin Australia -> virginaustralia.com (1957)"
+   ],
+   "departments": {
+    "communication": 10,
+    "executive": 9,
+    "it": 5,
+    "management": 5,
+    "design": 4,
+    "sales": 3,
+    "support": 3,
+    "operations": 2,
+    "finance & accounting": 1,
+    "legal": 1,
+    "hr": 1,
+    "marketing": 1
+   },
+   "personal": 47,
+   "generic": 61
+  },
+  {
+   "title": "Reception with managerial responsibilities in Adult Entretainment",
+   "company": "Erskine street Investments Pty Ltd",
+   "body_chars": 3339,
+   "domain": null,
+   "matched_name": null,
+   "hunter_emails": null,
+   "why": "no candidates",
+   "alternatives": [],
+   "departments": null
+  },
+  {
+   "title": "RECEPTIONIST (female*) \u2013 Excellent Pay & Flexible Shifts",
+   "company": "GIOXLE",
+   "body_chars": 4782,
+   "domain": null,
+   "matched_name": null,
+   "hunter_emails": null,
+   "why": "no candidates",
+   "alternatives": [],
+   "departments": null
+  },
+  {
+   "title": "Office Assistant \u2013 Part-Time or Casual",
+   "company": "Dig Deep Excavations (NSW) Pty Ltd",
+   "body_chars": 3047,
+   "domain": "jandgasphalt.com.au",
+   "matched_name": "J & G Excavations & Asphalting NSW PTY LTD",
+   "hunter_emails": 4,
+   "why": "TOP RESULT ONLY, unmatched name",
+   "alternatives": [
+    "APACK NSW PTY -> apack.net.au (10)",
+    "Duraglaze NSW Pty. -> duraglaze.com.au (3)",
+    "Footprint NSW Pty -> footprinteng.com.au (0)",
+    "NSW Leather Co. Pty -> leatherco.com.au (7)"
+   ],
+   "departments": {
+    "management": 2,
+    "support": 1
+   },
+   "personal": 2,
+   "generic": 2
+  },
+  {
+   "title": "Media Grad",
+   "company": "Speed",
+   "body_chars": 4725,
+   "domain": "speed.gdynia.pl",
+   "matched_name": "Speed",
+   "hunter_emails": 17,
+   "why": "exact name match",
+   "alternatives": [
+    "Speed -> speed.si (10)",
+    "Speed -> speed.io (0)",
+    "SPEED -> speed.co.nz (5)",
+    "SpeeD -> speedadv.it (31)"
+   ],
+   "departments": {
+    "finance & accounting": 4,
+    "management": 2,
+    "operations": 2,
+    "executive": 1,
+    "it": 1,
+    "administrative": 1
+   },
+   "personal": 16,
+   "generic": 1
+  },
+  {
+   "title": "Business Analyst",
+   "company": "WA Country Health Service",
+   "body_chars": 3156,
+   "domain": "dhaswa.com.au",
+   "matched_name": "Doctors' Health Advisory Service WA",
+   "hunter_emails": 1,
+   "why": "TOP RESULT ONLY, unmatched name",
+   "alternatives": [],
+   "departments": {
+    "management": 1
+   },
+   "personal": 0,
+   "generic": 1
+  },
+  {
+   "title": "Business Analyst",
+   "company": "Beyond Pier",
+   "body_chars": 3208,
+   "domain": "beyondpier.com",
+   "matched_name": "Beyond Pier",
+   "hunter_emails": 0,
+   "why": "exact name match",
+   "alternatives": [
+    "Pier -> pier.net (251)",
+    "Navy Pier -> navypier.org (47)",
+    "PIER 39 -> pier39.com (36)",
+    "Pier 1 -> pier1.com (16)"
+   ],
+   "departments": null
+  },
+  {
+   "title": "Assistant Director, Policy and Strategy",
+   "company": "Coalition of Peaks",
+   "body_chars": 4390,
+   "domain": "coalitionofpeaks.org.au",
+   "matched_name": "Coalition of Peaks",
+   "hunter_emails": 8,
+   "why": "exact name match",
+   "alternatives": [
+    "Coalition of Immokalee Workers -> ciw-online.org (29)",
+    "Peaks Of Africa -> peaksofafrica.co.za (3)",
+    "Maryland Coalition of Families -> mdcoalition.org (92)",
+    "Christian Coalition of America -> cc.org (25)"
+   ],
+   "departments": {
+    "management": 4,
+    "support": 1
+   },
+   "personal": 3,
+   "generic": 5
+  },
+  {
+   "title": "Multiple Policy Officer - Stakeholder Management, Strategy, Admin - Fed Govt!",
+   "company": "HiTech Personnel",
+   "body_chars": 2274,
+   "domain": "hitech.in",
+   "matched_name": "Hitech",
+   "hunter_emails": 45,
+   "why": "name prefix match",
+   "alternatives": [
+    "Hitech -> hitechgp.co.uk (30)",
+    "U.S. Office of Personnel Management -> opm.gov (1357)",
+    "Hitech -> hitech.ind.br (15)",
+    "Page Personnel -> pagepersonnel.com (898)"
+   ],
+   "departments": {
+    "sales": 11,
+    "it": 9,
+    "management": 9,
+    "administrative": 4,
+    "support": 2,
+    "hr": 2,
+    "executive": 1,
+    "marketing": 1,
+    "operations": 1,
+    "product": 1,
+    "research": 1
+   },
+   "personal": 42,
+   "generic": 3
+  },
+  {
+   "title": "Policy Officer",
+   "company": "NSW Police Force",
+   "body_chars": 7919,
+   "domain": "police.wa.gov.au",
+   "matched_name": "WA Police Force",
+   "hunter_emails": 1231,
+   "why": "exact name match",
+   "alternatives": [
+    "Singapore Police Force -> spf.gov.sg (210)",
+    "Uganda Police Force -> upf.go.ug (14)",
+    "NSW Police Legacy -> policelegacynsw.org.au (13)",
+    "Nigeria Police Force -> npf.gov.ng (12)"
+   ],
+   "departments": {
+    "legal": 339,
+    "executive": 89,
+    "operations": 84,
+    "management": 80,
+    "support": 54,
+    "administrative": 47,
+    "it": 37,
+    "education": 35,
+    "communication": 31,
+    "finance & accounting": 23,
+    "health": 17,
+    "sales": 15,
+    "hr": 14,
+    "research": 10,
+    "consulting": 6,
+    "design": 4,
+    "procurement": 4
+   },
+   "personal": 1065,
+   "generic": 166
+  },
+  {
+   "title": "Office Administrator",
+   "company": "NSN Electrical",
+   "body_chars": 7390,
+   "domain": "nsnelectrical.co.uk",
+   "matched_name": "NSN Electrical",
+   "hunter_emails": 1,
+   "why": "exact name match",
+   "alternatives": [
+    "NSN -> nsn.no (20)",
+    "Nsn -> nsn.org (1)",
+    "NSN -> nsn.vn (3)",
+    "NSN -> nsnijmegen.nl (6)"
+   ],
+   "departments": {
+    "support": 1
+   },
+   "personal": 0,
+   "generic": 1
+  },
+  {
+   "title": "IT Support Engineer / Technician",
+   "company": "IT Strategic Pty Ltd",
+   "body_chars": 3162,
+   "domain": "itstrategic.com.au",
+   "matched_name": "IT Strategic",
+   "hunter_emails": 12,
+   "why": "exact name match",
+   "alternatives": [
+    "Strategic IT -> strategic-it.de (19)",
+    "Strategic IT -> strategic-it.nl (1)",
+    "Strategic IT -> strategicit.co.za (2)",
+    "Strategic IT -> strategicitpro.com (2)"
+   ],
+   "departments": {
+    "it": 6,
+    "support": 2,
+    "management": 1
+   },
+   "personal": 7,
+   "generic": 5
+  },
+  {
+   "title": "Online Warehouse Manager",
+   "company": "Good Games PTY LTD",
+   "body_chars": 3352,
+   "domain": "goodgames.com.au",
+   "matched_name": "Good Games",
+   "hunter_emails": 22,
+   "why": "exact name match",
+   "alternatives": [
+    "Good Job Games -> goodjobgames.com (64)",
+    "Good Games -> goodgames.pl (3)",
+    "Good Games -> goodgames.sk (1)",
+    "Good Mood Games -> goodmoodgames.com.tr (17)"
+   ],
+   "departments": {
+    "sales": 2,
+    "design": 1
+   },
+   "personal": 9,
+   "generic": 13
+  }
+ ]
+}

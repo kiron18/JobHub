@@ -62,6 +62,23 @@ export type Slots = Record<OutreachRole, Pick | null>;
 export const SMALL_ORG_MAX = 10;
 
 /**
+ * How small a company has to be before "anyone who works there" is a fair answer.
+ *
+ * Separate from `SMALL_ORG_MAX` on purpose, and read from the environment so it
+ * can be moved without a code change. `SMALL_ORG_MAX` governs whether an
+ * executive counts as the hiring manager, which is a claim about the company's
+ * shape. This one governs whether we hand over somebody in the wrong function
+ * entirely, which is a claim about our own confidence, and the two do not have
+ * to move together.
+ *
+ * Set `DIRECTORY_LAST_RESORT_MAX=0` to switch the behaviour off completely.
+ */
+export function lastResortMax(): number {
+    const v = Number(process.env.DIRECTORY_LAST_RESORT_MAX);
+    return Number.isFinite(v) && v >= 0 ? v : SMALL_ORG_MAX;
+}
+
+/**
  * Hunter's department labels, translated into the vocabulary contactFilter
  * already speaks so that one set of rules governs both paths.
  *
@@ -213,6 +230,39 @@ export function pickFromDirectory(directory: Directory, target: DirectoryTarget)
             `${peers[0].position ?? 'peer'} in ${peers[0].department ?? 'the same function'}`,
             'does the work the role does, so knows what the team actually needs',
         ]);
+    }
+
+    // -- last resort ----------------------------------------------------------
+    //
+    // Every rule above asks "is this the RIGHT person", and at a four-person
+    // company that question has no good answer, so all three slots come back
+    // empty and we hand the candidate nothing.
+    //
+    // New Home Care is the case. Hunter holds four addresses there: two in
+    // legal, one in finance, one in support. The vacancy is an AI engineer, so
+    // nobody matches the function, nobody outranks the role in it, and nobody
+    // is a peer in it. We paid a credit, learned the names of four people who
+    // work at a four-person company, and threw all four away.
+    //
+    // At that size the lawyer forwards the email. So when the directory is
+    // small enough that everyone in it is a meaningful fraction of the company,
+    // the most senior person is offered, and the `why` says plainly that they
+    // are not the hiring manager. An honest weak contact beats a blank.
+    //
+    // The size limit is what stops this becoming the CEO-for-a-junior-analyst
+    // failure the department rule exists to prevent: at a real company the
+    // limit is not met and this branch never runs.
+    const max = lastResortMax();
+    const nothingFilled = !slots.talent && !slots.hiring_manager && !slots.team_insider;
+
+    if (nothingFilled && max > 0 && directory.total > 0 && directory.total <= max) {
+        const anyone = [...people].sort((a, b) => rankOfTitle(b.position) - rankOfTitle(a.position))[0];
+        if (anyone) {
+            slots.team_insider = toPick(anyone, [
+                `${anyone.position ?? 'works'} at ${directory.domain}, which has ${directory.total} known addresses`,
+                'not the hiring manager and not in this function: at a company this size, they will know who is',
+            ]);
+        }
     }
 
     return slots;

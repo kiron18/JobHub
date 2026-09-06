@@ -1,0 +1,16 @@
+{
+ "key": {
+  "domain": "newhomecare.com.au"
+ },
+ "value": {
+  "total": 4,
+  "personal": 3,
+  "generic": 1,
+  "departments": {
+   "finance & accounting": 1,
+   "legal": 2,
+   "support": 1
+  }
+ },
+ "at": "2026-09-06T00:35:16.577Z"
+}
