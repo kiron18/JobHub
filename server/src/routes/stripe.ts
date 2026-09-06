@@ -82,21 +82,29 @@ const APP_URL = (process.env.ALLOWED_ORIGIN ?? 'https://aussiegradcareers.com.au
   .trim();
 
 /**
- * The in-app offer: $197/month, AUD, recurring.
+ * The offer: $250/month, AUD, recurring. One price across the whole funnel.
  *
- * Created 1 Sep 2026 against the existing "Job Hub Premium" product, because
- * nothing at that price existed: the account had $197 as a ONE-TIME payment and
- * $100, $97 and $250 as monthlies. The paywall sells "$197 per month", so it
- * needed its own price rather than being pointed at the nearest thing.
+ * It was $197 (price_1UAiOe…, "JobHub Premium monthly") from 1 Sep 2026 until
+ * 3 Sep 2026, when the price was set at $250 and everything that quotes a
+ * number moved with it in the same change: the sales page at /pricing and the
+ * in-app paywall in src/components/fit/ApplyPreviewGate.tsx. That is the rule
+ * this constant exists to keep. A page advertising one number while checkout
+ * takes another is the single worst bug this route can have, and it has
+ * happened here before.
+ *
+ * price_1TnG71… is the live "Monthly Subscription - $250" recurring AUD price
+ * that already existed on the account; nothing new was created in Stripe, so
+ * no existing subscription is touched. People already billed $197 stay on
+ * $197 until they cancel, because Stripe prices are per subscription.
  *
  * The literal is a default, not a hardcode: PREMIUM_MONTHLY_PRICE_ID overrides
  * it, which is how a test-mode price gets used in a test-mode environment. It is
- * deliberately not folded into `monthly`, because that plan is what /pricing
- * advertises at a different price, and one env var pointing at the wrong price
- * is how this route got switched off in the first place.
+ * deliberately not folded into `monthly`, because that plan is a different
+ * product at a different price, and one env var pointing at the wrong price is
+ * how this route got switched off in the first place.
  */
 const PREMIUM_MONTHLY_PRICE_ID =
-  process.env.PREMIUM_MONTHLY_PRICE_ID ?? 'price_1UAiOeRRHBMzeTPTxvLKH3pt';
+  process.env.PREMIUM_MONTHLY_PRICE_ID ?? 'price_1TnG71RRHBMzeTPTpU8BfCIr';
 
 const PRICE_IDS: Record<string, string> = {
   monthly: process.env.MONTHLY_PRICE_ID!,

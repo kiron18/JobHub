@@ -78,10 +78,22 @@ function keysFor(item: string): string[] {
   return [...keys];
 }
 
-/** Words too common to prove anything on their own. */
+/**
+ * Words too common to prove anything on their own.
+ *
+ * The URL scheme and host prefix belong here for the same reason "pty" does:
+ * they are boilerplate, not identity. A contact recorded as
+ * "http://www.linkedin.com/in/fasane" is the same link as "linkedin.com/in/fasane",
+ * and the rewrite writes the second because that is how a resume writes a
+ * LinkedIn. Counting "http" and "www" as words that must survive made a
+ * correctly rebuilt resume fail forever: the model kept the link, the check kept
+ * demanding the protocol back, and no retry could satisfy it. What identifies
+ * the link is the domain and the path, and those are still required.
+ */
 const STOPWORDS = new Set([
   'the', 'and', 'of', 'for', 'at', 'in', 'on', 'to', 'a', 'an', 'from', 'with',
   'pty', 'ltd', 'inc', 'llc', 'limited', 'services', 'group', 'company',
+  'http', 'https', 'www', 'mailto', 'tel',
 ]);
 
 /** Distinctive words in an item — what actually identifies it. */
@@ -117,6 +129,7 @@ export function checkRetention(
   mustKeep: Partial<MustKeep> | null | undefined,
 ): RetentionResult {
   const haystack = normalise(rebuilt);
+  const source = normalise(original);
   const missing: MissingItem[] = [];
   let checked = 0;
 
@@ -130,6 +143,31 @@ export function checkRetention(
     for (const raw of items) {
       const item = String(raw ?? '').trim();
       if (!item) continue;
+
+      /*
+        Only demand back what we can prove was there.
+
+        The inventory is written by a model reading the original, so an entry
+        is not guaranteed to be a quotation from it. The model expands "QUT" to
+        "Queensland University of Technology", spells out a certification, or
+        infers an employer's full legal name. The rebuild then quite correctly
+        writes what the resume actually says — and the gate reads that as
+        content loss, on an item that was never in the document in those words.
+        No retry can fix it, because there is nothing to put back. Three
+        attempts fail identically and the candidate gets a 502 telling them to
+        try again, which does the same thing.
+        (Same trap for an item with nothing distinctive to match on at all —
+        a two-letter employer, a spaced-out phone number. `isPresent` returns
+        false for those against any text, the original included.)
+
+        This is the gate's own stated safety property, applied to its input:
+        the model may only ever cause us to check LESS, never to lose
+        something. Anything genuinely in the original still matches here and is
+        still enforced against the rebuild, so real loss is caught exactly as
+        before. Only the unverifiable entries drop out.
+      */
+      if (!isPresent(item, source)) continue;
+
       checked++;
       if (!isPresent(item, haystack)) missing.push({ item, kind });
     }
@@ -161,5 +199,12 @@ Rewrite the resume with every one of them included, in the right place, alongsid
 /** One plain sentence for the sign-off summary. */
 export function describeRetention(result: RetentionResult): string {
   if (result.checked === 0) return 'We rebuilt your resume from the file you uploaded.';
+  // Never claim a clean sweep over a document that came through flagged. The
+  // count is the sign-off the candidate is given, so it has to be true.
+  if (result.missing.length > 0) {
+    const n = result.missing.length;
+    return `We checked ${result.checked} ${result.checked === 1 ? 'item' : 'items'} from your original resume. `
+      + `${n} ${n === 1 ? 'is' : 'are'} worth a look before you send it.`;
+  }
   return `We checked all ${result.checked} ${result.checked === 1 ? 'item' : 'items'} from your original resume are still here.`;
 }

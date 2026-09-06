@@ -277,6 +277,32 @@ export async function buildCleanResume({
   let lastBlanks: string[] = [];
   let lastUngrounded: string[] = [];
   let lastRetention: RetentionResult | null = null;
+  // The most recent draft that cleared the fabrication checks. Kept because a
+  // retention failure no longer refuses the document, it flags it.
+  let lastContent = '';
+  /*
+    The missing set from the previous retention failure, to spot a correction
+    that is not landing.
+
+    The three checks fail for different reasons and retries are worth different
+    amounts to each. A placeholder blank or an invented figure is the model
+    getting it wrong, and naming the fault fixes it most of the time, so those
+    keep the full attempt budget: they still refuse to save, and a retry is the
+    only route to a document at all.
+
+    Retention is not like that. Most of what fails here is the model being
+    right and the matcher being unable to tell: a phone written +61 instead of
+    04, a university written as its acronym, a URL without its protocol. We tell
+    it to put back a LinkedIn it already included, it includes the LinkedIn
+    again, the matcher says no again. On 4 Sep 2026 that ran six times, twice in
+    a row, for zero recoveries and 105 seconds a go.
+
+    One retry is a genuine second look, because the model does sometimes really
+    drop something and being told so fixes it. The same set coming back twice is
+    the matcher talking, not the model, and attempts three through six are
+    guaranteed to say the same thing.
+  */
+  let lastMissingKey = '';
 
   /**
    * One standing correction per check, not one correction at a time.
@@ -333,10 +359,20 @@ export async function buildCleanResume({
     const retention = checkRetention(resumeText, content, mustKeep);
     lastRetention = retention;
     if (!retention.passed) {
+      lastContent = content;
       console.warn(
         `[buildCleanResume] attempt ${attempt}: dropped ${retention.missing.length} item(s): `
         + retention.missing.map((m) => m.item).join(', '),
       );
+
+      // Sorted, so the same set in a different order still counts as a repeat.
+      const missingKey = retention.missing.map((m) => m.item).sort().join('|');
+      if (missingKey === lastMissingKey) {
+        console.warn('[buildCleanResume] same items twice, the correction is not landing — handing over flagged');
+        break;
+      }
+      lastMissingKey = missingKey;
+
       corrections.set('retention', retentionRetryInstruction(retention.missing));
       continue;
     }
@@ -346,5 +382,36 @@ export async function buildCleanResume({
 
   if (lastBlanks.length > 0) throw new BlankLeakError(lastBlanks);
   if (lastUngrounded.length > 0) throw new UngroundedFigureError(lastUngrounded);
+
+  /*
+    Out of attempts with something still unaccounted for. Hand the resume over
+    anyway, carrying the list.
+
+    This used to throw, and the candidate got a 502 telling them to try again,
+    which ran the identical thing again. Most of what lands here is not loss at
+    all: it is a phone number written +61 instead of 04, a university written as
+    its acronym, a street address the rewrite correctly left off an Australian
+    resume. The check cannot tell those from a real deletion, and it never will,
+    because it is matching words in a blob.
+
+    So the person decides, not the matcher. These are the parts of a resume
+    someone can verify at a glance and has usually checked already, and the
+    screen this returns to has an editor on it. What still refuses to save is
+    the pair above: an invented figure or a leaked placeholder is something they
+    cannot catch by looking, and it would become the truth every future
+    application is built from.
+
+    `repaired` is true because the document did go round the loop more than
+    once. `retention.missing` is what to put in front of them.
+  */
+  if (lastContent && lastRetention) {
+    console.warn(
+      `[buildCleanResume] handing over with ${lastRetention.missing.length} item(s) unverified: `
+      + lastRetention.missing.map((m) => m.item).join(', '),
+    );
+    return { resume: lastContent, retention: lastRetention, repaired: true };
+  }
+
+  // Nothing usable was ever produced, so there is nothing to flag.
   throw new ContentLossError(lastRetention?.missing ?? []);
 }

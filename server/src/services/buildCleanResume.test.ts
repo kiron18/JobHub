@@ -7,7 +7,7 @@ vi.mock('../utils/callLLMWithRetry', () => ({
   callLLMWithRetry: (...args: unknown[]) => callLLMWithRetry(...args),
 }));
 
-import { buildCleanResume, findBlanks, unwrapSourcedBrackets, BlankLeakError, ContentLossError, MAX_REBUILD_ATTEMPTS, IntakeAnswer } from './buildCleanResume';
+import { buildCleanResume, findBlanks, unwrapSourcedBrackets, BlankLeakError, ContentLossError, UngroundedFigureError, MAX_REBUILD_ATTEMPTS, IntakeAnswer } from './buildCleanResume';
 
 const RESUME = `Jane Smith
 jane@example.com
@@ -17,6 +17,28 @@ Coles, Retail Assistant, 2019 - 2023
 - Responsible for serving customers on the checkout
 - Duties included restocking shelves and closing the register
 `.repeat(3); // pad past the 200-char minimum
+
+/*
+  A resume the inventory was plausibly read from.
+
+  The gate only enforces mustKeep entries it can find in the original: an entry
+  that is not in the source document is not something a rebuild can be asked to
+  put back, and demanding it deadlocks every attempt. So a retention test has to
+  hand it a document that actually contains what it names, or it is testing a
+  filter rather than the gate.
+*/
+const RETENTION_RESUME = `Jane Smith
+jane@example.com
+
+## Work Experience
+Mont Albert Manor (Age Care Centre), Food Safety Assistant, 02/2024 - Present
+- Responsible for serving residents at mealtimes and recording temperatures
+Elgar Homes Supported Residential Services, Food Hygiene Worker, 06/2024 - 06/2025
+- Duties included restocking the store room and closing down the kitchen
+
+## Education
+BSc, Deakin University, 2023 - 2025
+`;
 
 function answer(partial: Partial<IntakeAnswer> = {}): IntakeAnswer {
   return {
@@ -179,7 +201,7 @@ describe('buildCleanResume', () => {
       .mockResolvedValueOnce('## Work Experience\nMont Albert Manor\nElgar Homes Supported Residential Services');
 
     const out = await buildCleanResume({
-      resumeText: RESUME,
+      resumeText: RETENTION_RESUME,
       answers: [],
       mustKeep: { employers: ['Mont Albert Manor', 'Elgar Homes Supported Residential Services'], qualifications: [], contacts: [] },
     });
@@ -191,22 +213,65 @@ describe('buildCleanResume', () => {
     expect(callLLMWithRetry.mock.calls[1]?.[0]).toMatch(/DROPPED CONTENT/i);
   });
 
-  it('throws rather than persisting a resume that keeps losing content', async () => {
-    // Better to fail than to make a lost role the source of truth for every
-    // future application.
+  it('hands the resume over flagged rather than refusing it, when content stays unaccounted for', async () => {
+    /*
+      This used to throw, and the candidate got a 502 telling them to try again,
+      which ran the identical thing again. The check matches words, so it cannot
+      tell a reworded phone number from a deleted one, and most of what reaches
+      here is the first kind. The person holding the resume decides now, on a
+      screen that has an editor.
+    */
     callLLMWithRetry.mockResolvedValue('## Work Experience\nElgar Homes only');
-    await expect(buildCleanResume({
-      resumeText: RESUME,
+    const out = await buildCleanResume({
+      resumeText: RETENTION_RESUME,
       answers: [],
       mustKeep: { employers: ['Mont Albert Manor'], qualifications: [], contacts: [] },
-    })).rejects.toThrow(ContentLossError);
+    });
+    expect(out.resume).toContain('Elgar Homes only');
+    expect(out.retention.passed).toBe(false);
+    expect(out.retention.missing).toEqual([{ item: 'Mont Albert Manor', kind: 'employer' }]);
+    // Two attempts, not six: the second reported the same item as the first, so
+    // the correction was not landing and the remaining four were guaranteed
+    // waste. That is 105 seconds of loading bar the candidate no longer waits.
+    expect(callLLMWithRetry).toHaveBeenCalledTimes(2);
+  });
+
+  it('still spends the full budget on a fault the model can actually fix', async () => {
+    // A placeholder blank IS the model getting it wrong, and it still blocks, so
+    // the retries are the only route to a document. They must not be cut.
+    callLLMWithRetry.mockResolvedValue('## Work Experience' + String.fromCharCode(10) + 'Coles, Retail Assistant' + String.fromCharCode(10) + '- Served [how many] customers');
+    await expect(buildCleanResume({ resumeText: RESUME, answers: [] })).rejects.toThrow(BlankLeakError);
     expect(callLLMWithRetry).toHaveBeenCalledTimes(MAX_REBUILD_ATTEMPTS);
+  });
+
+  it('still retries once when the correction might land', async () => {
+    // First attempt drops the employer, second puts it back. The bail must not
+    // fire before the model has had its one genuine corrective go.
+    callLLMWithRetry
+      .mockResolvedValueOnce('## Work Experience' + String.fromCharCode(10) + 'Elgar Homes only')
+      .mockResolvedValueOnce('## Work Experience' + String.fromCharCode(10) + 'Mont Albert Manor' + String.fromCharCode(10) + 'Elgar Homes');
+    const out = await buildCleanResume({
+      resumeText: RETENTION_RESUME,
+      answers: [],
+      mustKeep: { employers: ['Mont Albert Manor'], qualifications: [], contacts: [] },
+    });
+    expect(out.retention.passed).toBe(true);
+    expect(out.repaired).toBe(true);
+    expect(callLLMWithRetry).toHaveBeenCalledTimes(2);
+  });
+
+  it('still refuses to save an invented figure, which nobody can catch by looking', async () => {
+    // The line the flag does not cross. A dropped employer is visible on the
+    // page; a number that was never true is not, and it would become the truth
+    // every future application is graded against.
+    callLLMWithRetry.mockResolvedValue('## Work Experience\nColes, Retail Assistant\n- Served 4,200 customers a week');
+    await expect(buildCleanResume({ resumeText: RESUME, answers: [] })).rejects.toThrow(UngroundedFigureError);
   });
 
   it('reports how many items were verified, for the sign-off line', async () => {
     callLLMWithRetry.mockResolvedValueOnce('Mont Albert Manor and a BSc from Deakin University, jane@example.com');
     const out = await buildCleanResume({
-      resumeText: RESUME,
+      resumeText: RETENTION_RESUME,
       answers: [],
       mustKeep: { employers: ['Mont Albert Manor'], qualifications: ['BSc, Deakin University'], contacts: ['jane@example.com'] },
     });

@@ -8,6 +8,11 @@ export const colors = {
   bgDeep: '#2A2520' as const,
 
   textPrimary: '#1A1814' as const,
+  /* Long-form reading ink. A shade off textPrimary, because a paragraph of
+     serif set at near-black hits the eye harder than a heading does — the
+     stems are thinner and there are far more of them. Headings stay on
+     textPrimary; only prose someone actually reads through uses this. */
+  textInk: '#26221C' as const,
   textSecondary: '#5C5750' as const,
   textMuted: '#8B847B' as const,
   textOnDeep: '#FAF7F2' as const,
@@ -31,6 +36,22 @@ export const colors = {
 export const type = {
   display: "'Fraunces', Georgia, 'Times New Roman', serif",
   body: "'Geist', -apple-system, 'Segoe UI', system-ui, sans-serif",
+  /*
+    The reading face, and it is not the display face.
+
+    Fraunces is a high-contrast display serif with a WONK axis — it is drawn to
+    be set large, short and once. Put a hundred-word diagnosis in it and the
+    thin joins, the tight default fitting and the wedge serifs all work against
+    the reader: it looks busy rather than crisp, which is exactly the complaint.
+
+    Source Serif 4 is a text serif in the Tiempos/Charter family — even colour,
+    open counters, a fitting drawn for paragraphs. It is already on the page
+    (index.html loads it), so this costs no extra request.
+
+    Fraunces keeps every heading, chip and pull quote. This is only for prose
+    that is genuinely read through.
+  */
+  reading: "'Source Serif 4', 'Iowan Old Style', Charter, Georgia, serif",
 } as const;
 
 export const spacing = {

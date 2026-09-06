@@ -291,6 +291,12 @@ router.post('/build', async (req: Request, res: Response) => {
         checked: built.retention.checked,
         summary: describeRetention(built.retention),
         repaired: built.repaired,
+        // What the rebuild could not account for. Not an error: the matcher
+        // cannot tell a reworded phone number from a deleted one, so the list
+        // goes to the person holding the resume rather than blocking them.
+        // It is their own resume content, so there is nothing here they are not
+        // already looking at.
+        missing: built.retention.missing.map((m) => ({ item: m.item, kind: m.kind })),
       },
       answeredCount: resolved.length - unanswered.length,
       outstanding: unanswered.map((a) => ({ questionId: a.questionId, question: a.question, status: a.status })),

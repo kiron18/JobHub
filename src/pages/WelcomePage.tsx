@@ -141,6 +141,17 @@ export const WelcomePage: React.FC = () => {
   const [cleanResume, setCleanResume] = useState('');
   /** Real page count of the rendered PDF, from the server. Null if it could not render. */
   const [pageCount, setPageCount] = useState<number | null>(null);
+  /*
+    Facts the rebuild could not account for, for the candidate to confirm.
+
+    Not errors. The check behind this matches words, so it cannot tell "0412 345
+    678 became +61 412 345 678" from "the phone number is gone", and most of what
+    arrives here is the first kind. It used to refuse the whole document over it.
+    Now it hands the document over with a short list, on a screen that has an
+    editor, and the person who knows the answer decides.
+  */
+  const [toCheck, setToCheck] = useState<Array<{ item: string; kind: string }>>([]);
+  const [secondLookOpen, setSecondLookOpen] = useState(false);
 
   /**
    * The resume screen is the ONLY place this document is edited.
@@ -304,6 +315,7 @@ export const WelcomePage: React.FC = () => {
         targetRole: cleanRoles()[0] ?? null,
       }, { timeout: 240000 });
       setCleanResume(data.resume || '');
+      setToCheck(Array.isArray(data?.retention?.missing) ? data.retention.missing : []);
       // The response also carries `retention` and `outstanding`. The screen no
       // longer shows either: they were two more paragraphs on a page whose job
       // is to hand over the document. The server keeps sending them, so putting
@@ -875,9 +887,42 @@ export const WelcomePage: React.FC = () => {
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           gap: 12, marginBottom: 10,
         }}>
-          <span style={{ fontFamily: T.body, fontSize: 13, color: colors.textMuted }}>
-            {editing ? 'Change anything that is not right. This is the copy we send.' : ''}
-          </span>
+          {editing ? (
+            <span style={{ fontFamily: T.body, fontSize: 13, color: colors.textMuted }}>
+              Change anything that is not right. This is the copy we send.
+            </span>
+          ) : toCheck.length > 0 ? (
+            /*
+              The slot beside Edit is empty when they are reading, so the prompt
+              costs no vertical space and sits where the fix already is.
+
+              Closed by default, and worded as a proofread rather than a
+              confession. What is behind it is a handful of contact lines and
+              dates, which is a thing every resume service tells you to check
+              anyway, and saying "we could not find your LinkedIn" would turn an
+              ordinary second look into an admission that something broke.
+            */
+            <button
+              type="button"
+              onClick={() => setSecondLookOpen(o => !o)}
+              style={{
+                background: 'transparent', border: 'none', padding: 0,
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                fontFamily: T.body, fontSize: 13, color: colors.textSecondary,
+                cursor: 'pointer', textAlign: 'left',
+              }}
+            >
+              <ChevronDown
+                size={13}
+                style={{
+                  flexShrink: 0,
+                  transform: secondLookOpen ? 'rotate(0deg)' : 'rotate(-90deg)',
+                  transition: 'transform 0.18s ease',
+                }}
+              />
+              Take a second look at {toCheck.length === 1 ? 'one thing' : `${toCheck.length} things`}
+            </button>
+          ) : <span />}
           <button
             onClick={() => void toggleEditing()}
             disabled={savingEdit}
@@ -896,6 +941,29 @@ export const WelcomePage: React.FC = () => {
               : editing ? 'Done' : <><PencilLine size={14} /> Edit</>}
           </button>
         </div>
+
+        {toCheck.length > 0 && secondLookOpen && (
+          <div style={{
+            marginBottom: 12, padding: '13px 16px', borderRadius: 11,
+            background: colors.bgAlt, border: `1px solid ${colors.borderWhisper}`,
+          }}>
+            <p style={{
+              margin: '0 0 9px', fontFamily: T.body, fontSize: 13, lineHeight: 1.55,
+              color: colors.textSecondary,
+            }}>
+              Just to be sure these came across the way you want them. Edit anything below
+              that needs it, and your changes are what we send.
+            </p>
+            <ul style={{ margin: 0, paddingLeft: 17, display: 'grid', gap: 5 }}>
+              {toCheck.map((t, i) => (
+                <li key={i} style={{ fontFamily: T.body, fontSize: 13, lineHeight: 1.5, color: colors.textPrimary }}>
+                  {t.item}
+                  <span style={{ color: colors.textMuted }}> ({SECOND_LOOK_LABEL[t.kind] ?? 'detail'})</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {editing && <FormattingHelp />}
 
@@ -1421,6 +1489,14 @@ const quietLinkStyle: React.CSSProperties = {
   textDecoration: 'underline', textUnderlineOffset: 3,
 };
 
+/* Plain words for the category, so a row reads as a detail to confirm rather
+   than a database field. */
+const SECOND_LOOK_LABEL: Record<string, string> = {
+  contact: 'contact details',
+  employer: 'employer',
+  qualification: 'education',
+};
+
 const bodyText: React.CSSProperties = { fontFamily: T.body, fontSize: 15.5, lineHeight: 1.65, color: colors.textSecondary, margin: '0 0 24px' };
 
 /**
@@ -1863,6 +1939,39 @@ function QuestionRow({ question, answer, open, draft, onDraft, onToggle, onSave,
  * so the model spends no attention on it and a brief that comes back in a
  * different shape degrades to plain prose instead of breaking.
  */
+/*
+  How the diagnosis is set.
+
+  This is the one screen on the flow where somebody reads rather than scans, so
+  it is typeset rather than styled:
+
+  - The reading serif, not the display serif. See `type.reading`.
+  - 18.5px topping out, not 20px. Fraunces at 20 was loud because it had to be
+    to stay legible; a text serif is clearer at less, and smaller-and-airier is
+    the whole difference between "a lot of text" and something premium.
+  - Line height 1.72. At 1.55 a 75-character measure has lines close enough
+    that the eye loses its place returning to the left margin, which reads as
+    cramped even when nobody can name why.
+  - A hair of tracking. Source Serif is fitted tightly for print; on a backlit
+    screen a thousandth of an em of air is the "crisp" everybody means.
+  - `textWrap: pretty` so no paragraph ends on an orphan.
+  - Kerning and common ligatures on explicitly. Browsers disable both under
+    `optimizeSpeed` heuristics at some sizes, and the pairs it fixes — "Ty",
+    "fi", "rn" — are the ones that make text look unset.
+*/
+const prose: React.CSSProperties = {
+  fontFamily: T.reading,
+  fontSize: 'clamp(16.5px, 1.75vw, 18.5px)',
+  lineHeight: 1.72,
+  letterSpacing: '0.004em',
+  color: colors.textInk,
+  fontKerning: 'normal',
+  fontVariantLigatures: 'common-ligatures contextual',
+  textRendering: 'optimizeLegibility',
+  textWrap: 'pretty',
+  margin: 0,
+};
+
 function BriefProse({ text }: { text: string }) {
   const paras = text.split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
 
@@ -1880,23 +1989,11 @@ function BriefProse({ text }: { text: string }) {
   // A count needs something to count. One problem is a legitimate brief, and a
   // lone chip reading "1" looks like a list that lost its other items.
   if (problems.length < 2) {
-    return (
-      <p style={{ fontFamily: T.display, fontSize: 'clamp(17px, 2.2vw, 20px)', lineHeight: 1.55, color: colors.textPrimary, margin: 0, whiteSpace: 'pre-line' }}>
-        {text}
-      </p>
-    );
+    return <p style={{ ...prose, whiteSpace: 'pre-line' }}>{text}</p>;
   }
 
-  const prose: React.CSSProperties = {
-    fontFamily: T.display,
-    fontSize: 'clamp(17px, 2.2vw, 20px)',
-    lineHeight: 1.55,
-    color: colors.textPrimary,
-    margin: 0,
-  };
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 26 }}>
       {problems.map((p, i) => (
         // Each paragraph is a flex item, which establishes its own formatting
         // context and so contains its own float. Without that a short paragraph
@@ -1911,18 +2008,31 @@ function BriefProse({ text }: { text: string }) {
             aria-hidden
             style={{
               float: 'left',
-              width: 'clamp(48px, 7vw, 60px)',
-              height: 'clamp(48px, 7vw, 60px)',
-              marginRight: 'clamp(12px, 1.6vw, 16px)',
-              marginBottom: 6,
-              // Optical, not metric: the chip's top edge has to meet the cap
-              // height of the first line, and the line box sits above it.
-              marginTop: 3,
-              borderRadius: 14,
+              /*
+                Sized to clear exactly two lines, not "about right".
+
+                A float indents every line box it overlaps, so the chip's total
+                outer height (marginTop + height + marginBottom) has to land
+                just under two line boxes — 2 × 1.72em of prose. Over that and
+                a third line indents for no reason and the paragraph's left
+                edge goes ragged. These clamps track the prose clamp at ~2.86×,
+                which stays under the budget at both ends of the range.
+
+                If the prose size or line height changes, redo this arithmetic.
+              */
+              width: 'clamp(46px, 5vw, 53px)',
+              height: 'clamp(46px, 5vw, 53px)',
+              marginRight: 'clamp(13px, 1.7vw, 17px)',
+              marginBottom: 3,
+              // Optical, not metric: the chip's top edge meets the cap height
+              // of the first line, which sits below the line box's top by the
+              // half-leading — and the looser the leading, the lower that is.
+              marginTop: 6,
+              borderRadius: 13,
               background: colors.accentGold,
               color: '#FFFFFF',
               fontFamily: T.display,
-              fontSize: 'clamp(27px, 3.8vw, 34px)',
+              fontSize: 'clamp(26px, 2.8vw, 30px)',
               fontWeight: 700,
               lineHeight: 1,
               display: 'flex',
@@ -1949,7 +2059,7 @@ function BriefProse({ text }: { text: string }) {
           background: colors.bgAlt,
           border: `1px solid ${colors.borderWhisper}`,
         }}>
-          <p style={{ ...prose, fontSize: 'clamp(16px, 2vw, 18.5px)', color: colors.textSecondary }}>
+          <p style={{ ...prose, color: colors.textSecondary }}>
             {closing}
           </p>
         </div>

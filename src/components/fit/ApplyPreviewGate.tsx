@@ -192,9 +192,9 @@ const OFFER = {
   ],
   stackTotal: '$2,350',
 
-  price: '$197 per month',
-  /* Only true at a month: $197 over about 4.3 weeks. */
-  anchor: 'Less than $50 per week.',
+  price: '$250 per month',
+  /* Only true at a month: $250 over about 4.33 weeks is $57.69. */
+  anchor: 'About $58 per week.',
 
   /*
    * The seven days, stated the way checkout actually behaves.
@@ -202,7 +202,7 @@ const OFFER = {
    * `premium` is out of NO_TRIAL_PLANS in server/src/routes/stripe.ts, so the
    * session is created with trial_period_days and the card is charged $0 today.
    * Both halves have to be said in the same breath: the card IS collected, and
-   * the $197 DOES land on day eight unless they cancel. "Free trial" on its own
+   * the $250 DOES land on day eight unless they cancel. "Free trial" on its own
    * reads as "no card", and somebody who believed that and got charged is a
    * chargeback with a screenshot of this box attached.
    */
@@ -222,15 +222,15 @@ const OFFER = {
    * them is misleading conduct, so the version the customer reads here is the
    * version we honour, and the refund policy page carries the same words.
    */
-  guaranteeName: 'Our guarantee',
+  guaranteeName: 'The 30-day interview guarantee',
   guarantee:
-    'Complete 10 applications and 5 outreach messages a day for 7 days straight. If you do that and do not land at least one interview or callback within 30 days of finishing, message us and we will refund every dollar. No questions asked.',
+    'Complete 10 applications and 5 outreach messages a day for 7 days straight. If you do that and do not land at least one interview or callback within 30 days of finishing, message us and you choose the remedy: every dollar back, or we work for free until you land one.',
 
   /*
    * No price on the button.
    *
-   * "$197 per month" is already set at 26px directly above it, so the button was
-   * charging them twice in the same glance — and the button's own "· $197" said
+   * "$250 per month" is already set at 26px directly above it, so the button was
+   * charging them twice in the same glance — and the button's own "· $250" said
    * it WITHOUT "per month", which is the one genuinely misleading thing in the
    * box on a recurring plan. The number stays loud where it is accurate; the
    * button names the action, with the guarantee immediately under it.
@@ -387,7 +387,7 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
   }, [phase]);
 
   /*
-   * `premium` is the $197/month recurring price this modal advertises. It is
+   * `premium` is the $250/month recurring price this modal advertises. It is
    * not `three_month` (a one-time payment) and not `monthly` (a different price
    * on the pricing page); pointing it at either would charge something other
    * than what the box says.

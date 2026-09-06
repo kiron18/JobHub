@@ -25,10 +25,14 @@
  * will not do is invent a name for the person being greeted. See outreachFill.
  */
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Check, ChevronDown, ChevronUp, Copy, Linkedin, Mail, Search } from 'lucide-react';
 import { toast } from 'sonner';
+import api from '../../lib/api';
 import { warm } from '../../lib/theme/warmTokens';
 import { LINKEDIN_NOTE_LIMIT, buildOutreachMessages } from '../../lib/outreachFill';
+import { resolveContact } from '../../lib/contactSlots';
+import OutreachSendCard from './OutreachSendCard';
 
 /**
  * Placeholders are written in [brackets] so they survive a copy to plain text.
@@ -181,6 +185,7 @@ export function PostApplyOutreach({
     jobDescription,
     candidateName,
     dateApplied,
+    userEmail,
 }: {
     jobTitle?: string;
     company?: string;
@@ -190,6 +195,8 @@ export function PostApplyOutreach({
     candidateName?: string;
     /** ISO date the application was logged to the tracker. */
     dateApplied?: string;
+    /** The address they signed up with. Decides which compose window opens. */
+    userEmail?: string;
 }) {
     /*
       Open.
@@ -212,6 +219,34 @@ export function PostApplyOutreach({
         dateApplied,
     });
     const hasBlanks = t.linkedInNeedsPitch || t.emailNeedsPitch;
+
+    /*
+      Who to write to.
+
+      Never blocking and never retried. Contact discovery costs a search and a
+      Hunter credit, it succeeds on roughly a third of employers, and the
+      messages below are useful with or without it. So a failure here degrades
+      to exactly what this card was before: the drafts, and instructions for
+      finding an address by hand.
+    */
+    const { data: contact } = useQuery({
+        queryKey: ['outreach-contact', company, jobTitle],
+        enabled: !!company && open,
+        staleTime: Infinity,
+        retry: false,
+        queryFn: async () => {
+            const { data } = await api.post('/research/company', {
+                company,
+                role: jobTitle,
+                jdText: jobDescription ? jobDescription.slice(0, 8000) : undefined,
+            });
+            return resolveContact(data);
+        },
+    });
+
+    // A name with no address cannot fill a compose window, so the card only
+    // replaces the manual instructions when it can actually do better.
+    const sendable = contact && contact.addresses.length > 0 ? contact : null;
 
     return (
         <div style={{
@@ -300,9 +335,11 @@ export function PostApplyOutreach({
                             email needed, and the note below fits in a connection request.
                         </p>
                         <p style={{ margin: 0, fontSize: 12.5, color: warm.colors.textSecondary, lineHeight: 1.6 }}>
-                            <strong style={{ color: warm.colors.textPrimary }}>Email second.</strong> Find the
-                            company's address pattern on Hunter.io, usually firstname.lastname@company.com,
-                            then apply it to the name from LinkedIn.
+                            <strong style={{ color: warm.colors.textPrimary }}>Email second.</strong>{' '}
+                            {sendable
+                                ? <>We found an address for {sendable.name}. It is filled in below.</>
+                                : <>Find the company's address pattern on Hunter.io, usually
+                                    firstname.lastname@company.com, then apply it to the name from LinkedIn.</>}
                         </p>
                     </div>
 
@@ -327,26 +364,47 @@ export function PostApplyOutreach({
                         </p>
                     </div>
 
-                    <TemplateCard
-                        label="LinkedIn connection note"
-                        icon={<Linkedin size={12} />}
-                        text={t.linkedIn}
-                        charLimit={LINKEDIN_NOTE_LIMIT}
-                        needsEdit={t.linkedInNeedsPitch}
-                    />
+                    {/*
+                        With an address we can hand them a filled compose window,
+                        which is the whole point. Without one the three copy-out
+                        cards are still the best available, so nothing regresses
+                        on the two employers in three where discovery finds
+                        nobody.
+                    */}
+                    {sendable ? (
+                        <OutreachSendCard
+                            personName={sendable.name}
+                            personTitle={sendable.title}
+                            company={company ?? null}
+                            addresses={sendable.addresses}
+                            draft={{ subject: t.subject, body: t.email }}
+                            userEmail={userEmail ?? null}
+                            linkedInNote={t.linkedIn}
+                        />
+                    ) : (
+                        <>
+                            <TemplateCard
+                                label="LinkedIn connection note"
+                                icon={<Linkedin size={12} />}
+                                text={t.linkedIn}
+                                charLimit={LINKEDIN_NOTE_LIMIT}
+                                needsEdit={t.linkedInNeedsPitch}
+                            />
 
-                    <TemplateCard
-                        label="Email subject"
-                        icon={<Mail size={12} />}
-                        text={t.subject}
-                    />
+                            <TemplateCard
+                                label="Email subject"
+                                icon={<Mail size={12} />}
+                                text={t.subject}
+                            />
 
-                    <TemplateCard
-                        label="Email body"
-                        icon={<Mail size={12} />}
-                        text={t.email}
-                        needsEdit={t.emailNeedsPitch}
-                    />
+                            <TemplateCard
+                                label="Email body"
+                                icon={<Mail size={12} />}
+                                text={t.email}
+                                needsEdit={t.emailNeedsPitch}
+                            />
+                        </>
+                    )}
 
                     <p style={{ margin: 0, fontSize: 12, color: warm.colors.textMuted, lineHeight: 1.6 }}>
                         Neither message asks for anything. That is deliberate: the first one with no

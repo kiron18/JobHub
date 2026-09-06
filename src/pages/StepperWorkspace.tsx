@@ -17,7 +17,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     ArrowLeft,
@@ -46,6 +46,7 @@ import { warm } from '../lib/theme/warmTokens';
 import { GenerationProgress } from '../components/shared/GenerationProgress';
 import { StepRail } from '../components/shared/StepRail';
 import { celebrate } from '../lib/feedback';
+import { applauseFor, type Applause } from '../lib/applause';
 import { applyWorkspaceCopy } from './applyWorkspaceCopy';
 import { extractReactText } from '../lib/extractReactText';
 
@@ -477,6 +478,7 @@ export function StepperWorkspace() {
                             }
                         }
                     }}
+                    onSelectManual={(i) => setCurrentIndex(i)}
                 />
 
                 {isFinalStep ? (
@@ -531,10 +533,19 @@ function Stepper({
     steps,
     currentIndex,
     onSelect,
+    onSelectManual,
 }: {
     steps: StepDef[];
     currentIndex: number;
     onSelect: (i: number) => void;
+    /**
+     * Jump straight onto an off-path step. Separate from `onSelect` on purpose:
+     * `onSelect` is the chip bar, and the chip bar deliberately steps *over*
+     * manualOnly steps. Routing the discreet link through it landed people on
+     * Track instead of on the criteria step, which is the whole reason the link
+     * exists, so it gets its own door.
+     */
+    onSelectManual: (i: number) => void;
 }) {
     // A manualOnly step is off the path and stays out of the rail, except
     // while you are standing on it — a rail that hides the step you are on
@@ -555,7 +566,7 @@ function Stepper({
             {/* Discreet manual SC link when the job doesn't mention SC */}
             {manualSCStepIndex >= 0 && !isOnManualSC && (
                 <button
-                    onClick={() => onSelect(manualSCStepIndex)}
+                    onClick={() => onSelectManual(manualSCStepIndex)}
                     style={{
                         alignSelf: 'flex-start',
                         background: 'transparent',
@@ -695,7 +706,7 @@ function DocumentStep({
     });
     const [criteriaPanelOpen, setCriteriaPanelOpen] = useState<boolean>(false);
     const isSC = stepId === 'selection-criteria';
-    const hasCriteria = isSC && criteriaText.trim().length >= 40;
+    const hasCriteria = isSC && criteriaText.trim().length >= SC_MIN_CHARS;
 
     // ── Word counter helper for SC ──────────────────────────────────────
     const detectWordLimit = (t: string): number | null => {
@@ -767,7 +778,13 @@ function DocumentStep({
         if (isSC) {
             try {
                 const stored = localStorage.getItem(criteriaStorageKey) ?? '';
-                setCriteriaText(stored);
+                // Never replace criteria we are already holding with nothing.
+                // The only copy of this text lives in localStorage, and that
+                // write is inside a try/catch that swallows a full-quota
+                // failure. If it ever failed, this line re-running would wipe
+                // a paste the user had just made, disable Generate, and give
+                // no reason for either.
+                setCriteriaText(prev => (stored.trim().length > 0 || prev.trim().length === 0) ? stored : prev);
                 // Open the panel automatically if no criteria yet AND no draft.
                 setCriteriaPanelOpen(stored.trim().length === 0 && !draft);
             } catch { /* noop */ }
@@ -776,18 +793,26 @@ function DocumentStep({
 
     const handleSaveCriteria = (next: string) => {
         setCriteriaText(next);
-        try { localStorage.setItem(criteriaStorageKey, next); } catch { /* noop */ }
+        try {
+            localStorage.setItem(criteriaStorageKey, next);
+        } catch (err) {
+            // Browser storage full or blocked. The text still generates from
+            // memory, so this is a warning about losing it on refresh, not a
+            // failure of this screen.
+            console.warn('[criteria] could not persist criteria text', err);
+        }
     };
 
     const runGeneration = async () => {
         setGenerating(true);
+        // Declared out here so the catch below can name the call that failed.
+        let endpoint = `/generate/${stepId}`;
         try {
             const payload: Record<string, unknown> = { jobDescription };
             if (isSC) payload.selectionCriteriaText = criteriaText.trim();
 
             // Structured endpoints: resume, cover-letter, and SC use dedicated
             // Zod-validated routes. Everything else falls through to the wildcard.
-            let endpoint = `/generate/${stepId}`;
             if (stepId === 'resume') {
                 endpoint = '/generate/resume-structured';
             } else if (stepId === 'cover-letter') {
@@ -833,11 +858,24 @@ function DocumentStep({
             });
             setHasDraft(true);
         } catch (err: any) {
+            // "Generation failed. Please retry." was the answer to every
+            // failure here, which meant a 400 for a missing field, an expired
+            // session and a two minute timeout all looked identical, to the
+            // user and to anyone reading a bug report. Say which one it was.
             const status = err?.response?.status;
-            const msg = status === 402 ? 'Generation limit reached.' :
-                        status === 404 ? 'Profile not found.' :
-                        'Generation failed. Please retry.';
+            const serverMsg = err?.response?.data?.error;
+            const timedOut = err?.code === 'ECONNABORTED';
+            const msg =
+                timedOut ? 'That took over two minutes and timed out. Please retry.' :
+                status === 402 ? 'Generation limit reached.' :
+                status === 404 ? 'Profile not found.' :
+                status === 401 ? 'Your session expired. Refresh the page and sign in again.' :
+                status === 400 ? `${serverMsg || 'Something required was missing'}.` :
+                !status ? 'Could not reach the server. Check your connection and retry.' :
+                `Generation failed (${status})${serverMsg ? `: ${serverMsg}` : ''}. Please retry.`;
             toast.error(msg);
+            // The console line is the one a screenshot can carry back to us.
+            console.error(`[generate:${stepId}] ${endpoint}`, { status, serverMsg, err });
         } finally {
             setGenerating(false);
         }
@@ -846,7 +884,11 @@ function DocumentStep({
     const generate = async (regenerate = false) => {
         if (generating) return;
         if (isSC && !hasCriteria) {
-            toast.error('Paste the selection criteria first.');
+            toast.error(
+                criteriaText.trim().length === 0
+                    ? 'Paste the selection criteria into the box first.'
+                    : `That is only ${criteriaText.trim().length} characters. Paste all of the criteria, at least ${SC_MIN_CHARS}.`,
+            );
             setCriteriaPanelOpen(true);
             return;
         }
@@ -1315,6 +1357,23 @@ function DocumentStep({
                         </button>
                     )}
                     {/*
+                        A criteria response is long, so the toolbar download at
+                        the top of the card is off screen by the time anyone has
+                        read to the end. This is the same action, where the
+                        reading actually finishes.
+                    */}
+                    {hasDraft && isSC && !editing && (
+                        <button
+                            onClick={() => handleDownload()}
+                            disabled={generating}
+                            style={ghostButtonStyle(generating)}
+                            title="Download the selection criteria response"
+                        >
+                            <Download size={13} />
+                            Download Selection Criteria
+                        </button>
+                    )}
+                    {/*
                         The criteria usually live in a separate position
                         description, often behind a login the candidate cannot
                         get through. Without a way past this screen that is a
@@ -1330,11 +1389,17 @@ function DocumentStep({
                             Skip for now
                         </button>
                     )}
+                    {/*
+                        Never disabled on "no criteria yet". A disabled primary
+                        button renders at opacity 0.7 here, which reads as
+                        enabled, so the click did nothing and explained nothing.
+                        It stays live and generate() says what is missing.
+                    */}
                     {!hasDraft && isSC && (
                         <button
                             onClick={() => generate(false)}
-                            disabled={generating || !hasCriteria}
-                            style={primaryButtonStyle(generating || !hasCriteria)}
+                            disabled={generating}
+                            style={primaryButtonStyle(generating)}
                             title={!hasCriteria ? 'Paste the selection criteria first' : undefined}
                         >
                             {generating ? (<><Loader2 size={14} className="animate-spin" /> Generating…</>) : (<>Generate<ArrowRight size={14} /></>)}
@@ -1435,6 +1500,7 @@ function TrackStep({
         staleTime: 10 * 60 * 1000,
     });
     const candidateName = (profile?.name && String(profile.name).trim()) || 'Application';
+    const queryClient = useQueryClient();
 
     // Auto-save the application on mount. One-shot per workspaceKey using a
     // local flag so revisiting the step doesn't duplicate the row. The flag
@@ -1457,11 +1523,27 @@ function TrackStep({
             // this step later replays nothing. It lands beside the tracker link
             // rather than over the screen, so the answer to "where did that go"
             // is pointed at rather than announced.
-            const announce = () => celebrate({
-                title: 'Added to your tracker',
-                subtitle: `${role ?? 'This role'}${company ? ` · ${company}` : ''}`,
-                land: { label: 'Applications', target: 'tracker' },
-            });
+            //
+            // The line varies with how many have gone in today, and past ten it
+            // stops cheering and tells them to stop. The count comes from the
+            // server rather than from anything held here, because "10 today" has
+            // to be true across devices and across a refresh. If that read fails
+            // we still mark the moment, just without the number in it.
+            const announce = async () => {
+                let applause: Applause | null = null;
+                try {
+                    const { data } = await api.get<{ goal: number; applied: number }>('/tracker/goal');
+                    applause = applauseFor(data.applied, data.goal);
+                } catch { /* the count is a nicety; the celebration is not */ }
+                celebrate({
+                    title: applause?.title ?? 'Added to your tracker',
+                    subtitle: applause?.subtitle ?? `${role ?? 'This role'}${company ? ` · ${company}` : ''}`,
+                    land: { label: 'Applications', target: 'tracker' },
+                });
+                // The bar on the hub reads the same endpoint. Without this it
+                // keeps showing the count from before this application.
+                queryClient.invalidateQueries({ queryKey: ['tracker-goal'] });
+            };
             try {
                 // Every application now starts at the fit check, which already
                 // wrote this ad into the tracker as SAVED. Moving that row to
@@ -1473,7 +1555,7 @@ function TrackStep({
                         localStorage.setItem(flag, appliedAt);
                         setSavedAt(appliedAt);
                         localStorage.setItem('jobhub_last_apply_at', appliedAt);
-                        announce();
+                        void announce();
                     }
                     return;
                 }
@@ -1500,7 +1582,7 @@ function TrackStep({
                     setSavedAt(appliedAt);
                     // Notify dashboard to show goal-counter onboarding if first ever
                     localStorage.setItem('jobhub_last_apply_at', appliedAt);
-                    announce();
+                    void announce();
                 }
             } catch {
                 if (!cancelled) setAutoSaveError(true);
@@ -1684,6 +1766,7 @@ function TrackStep({
                 jobDescription={jobDescription}
                 candidateName={profile?.name ? String(profile.name).trim() : undefined}
                 dateApplied={savedAt}
+                userEmail={profile?.email ? String(profile.email).trim() : undefined}
             />
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 4 }}>
@@ -1712,6 +1795,15 @@ function TrackStep({
 }
 
 // ── CriteriaPanel (SC step only) ────────────────────────────────────────────
+
+/**
+ * Shortest paste we will generate from.
+ *
+ * The server refuses under 10 characters, but 10 characters is not a criterion,
+ * it is a slip of the mouse, and generating STAR responses from it wastes a
+ * premium call and hands back nonsense. Roughly one real criterion line.
+ */
+const SC_MIN_CHARS = 40;
 
 const CRITERIA_PLACEHOLDER = `Paste the selection criteria here.
 
@@ -1813,10 +1905,18 @@ function CriteriaPanel({
                                 </button>
                             </div>
 
-                            {/* "Not found" note when the job didn't mention SC */}
+                            {/*
+                                The manual case used to get the "we didn't find
+                                one" note and nothing else, so anyone who came
+                                here on purpose was told where the criteria are
+                                NOT and never told where they are. Same guidance
+                                as the detected case, cut to two sentences,
+                                because someone who clicked the link already
+                                knows they need one.
+                            */}
                             {jobHasSC === false && (
-                                <p style={{ margin: '0 0 10px', fontSize: 12.5, color: warm.colors.textMuted, lineHeight: 1.55, fontStyle: 'italic', padding: '8px 12px', border: `1px solid ${warm.colors.borderWhisper}`, borderRadius: 8, background: warm.colors.bgCanvas }}>
-                                    We didn't find a selection criteria requirement in this job. If the role asks for one, paste it below. Otherwise you're done — focus on getting your application in.
+                                <p style={{ margin: '0 0 10px', fontSize: 12.5, color: warm.colors.textSecondary, lineHeight: 1.6, padding: '10px 12px', border: `1px solid ${warm.colors.borderWhisper}`, borderRadius: 8, background: warm.colors.bgCanvas }}>
+                                    This ad doesn't mention selection criteria, so you'll usually find them in the Position Description or Candidate Pack, normally a PDF link near the bottom of the ad. Copy every numbered criterion and paste them all in together.
                                 </p>
                             )}
                             {/*
@@ -1874,7 +1974,9 @@ function CriteriaPanel({
                             />
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, gap: 12 }}>
                                 <p style={{ margin: 0, fontSize: 11, color: warm.colors.textMuted, lineHeight: 1.5 }}>
-                                    {buffer.trim().length} characters · paste all numbered criteria together, then hit Generate.
+                                    {buffer.trim().length < SC_MIN_CHARS
+                                        ? `${buffer.trim().length} of ${SC_MIN_CHARS} characters needed before Generate will run.`
+                                        : `${buffer.trim().length} characters · paste all numbered criteria together, then hit Generate.`}
                                 </p>
                                 {hasCriteria && (
                                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: warm.colors.accentPetrol }}>
