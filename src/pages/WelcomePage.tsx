@@ -587,6 +587,7 @@ export const WelcomePage: React.FC = () => {
 
     return (
       <Shell wide>
+        <style>{DIAGNOSIS_TILE_CSS}</style>
         {/*
           Sans, not the display face.
 
@@ -1691,8 +1692,67 @@ const DIAGNOSIS_ICONS: Record<DiagnosisCardId, LucideIcon> = {
   need: PencilLine,
 };
 
+/*
+  The tile's own layout, in CSS rather than inline, because it has to be two
+  different shapes and an inline style cannot hold a media query.
+
+  A square is a property of the row, not of the tile. Three across, squares
+  make one set. One across, which is what auto-fit gives a phone the moment
+  two 190px columns no longer fit in 342px, `aspect-ratio: 1 / 1` reads the
+  full width and returns a 342px-tall square, three of which stack to 1054px.
+  The panel opens under the grid, so it opened 726px below the tile that was
+  tapped: it worked, and nobody could see it work.
+
+  So the square is scoped to the row it belongs to. Stacked, a tile is a row:
+  icon, title, count, chevron, about 74px tall, and all three plus the panel
+  sit inside the first screen. Only the shape changes, not what is on it.
+*/
+const DIAGNOSIS_TILE_CSS = `
+.diag-tile {
+  position: relative;
+  aspect-ratio: 1 / 1; min-height: 208px;
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  gap: 8px; padding: 22px 18px 20px; cursor: pointer; border-radius: 18px;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+.diag-badge {
+  position: absolute; top: 14px; right: 14px;
+  font-family: ${T.body}; font-size: 12.5px; font-weight: 700;
+  border-radius: 99px; padding: 3px 10px;
+}
+/* marginTop:auto here and on .diag-cta splits the free space evenly above and
+   below the icon/title pair, so they sit in the middle of the square instead
+   of at the top of it with a hole underneath. */
+.diag-ico {
+  margin-top: auto; width: 74px; height: 74px; border-radius: 20px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: background .2s ease, color .2s ease;
+}
+.diag-ttl { font-size: clamp(19px, 2.5vw, 23px); font-weight: 600; line-height: 1.22; margin-top: 10px; }
+.diag-cta {
+  margin-top: auto; display: inline-flex; align-items: center; gap: 5px;
+  font-family: ${T.body}; font-size: 13px; font-weight: 700;
+}
+@media (max-width: 640px) {
+  /* One column, so the tile turns on its side. The auto margins that centred
+     things in the square would push the row apart, so they go; order puts the
+     count back on the right where it was, since in a row the DOM order would
+     otherwise lead with it. */
+  .diag-tile {
+    aspect-ratio: auto; min-height: 0;
+    flex-direction: row; align-items: center; text-align: left;
+    gap: 12px; padding: 14px 16px;
+  }
+  .diag-ico { margin-top: 0; order: 0; width: 46px; height: 46px; border-radius: 14px; }
+  .diag-ico svg { width: 24px; height: 24px; }
+  .diag-ttl { margin-top: 0; order: 1; flex: 1; font-size: 17px; }
+  .diag-badge { position: static; order: 2; }
+  .diag-cta { margin-top: 0; order: 3; }
+}
+`;
+
 /**
- * One square tile in the diagnosis row.
+ * One tile in the diagnosis row.
  *
  * The face of the tile always says enough to stand alone — icon, title, a short
  * blurb and a count — so a candidate who never opens one still leaves knowing
@@ -1714,21 +1774,17 @@ function DiagnosisTile({
 
   return (
     <motion.button
+      className="diag-tile"
       onClick={() => onToggle(open ? null : id)}
       aria-expanded={open}
       whileHover={{ y: -2 }}
       transition={{ duration: 0.18, ease: EASE }}
       style={{
-        /* Square-ish, and the same height across the row, so the three read as
-           one set rather than three panels. */
-        position: 'relative',
-        aspectRatio: '1 / 1', minHeight: 208,
-        display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
-        gap: 8, padding: '22px 18px 20px', cursor: 'pointer', borderRadius: 18,
+        /* Shape lives in .diag-tile, which has to change it at 640px. Only the
+           parts that answer to `open` stay here. */
         background: colors.bgSurface,
         border: `1px solid ${open ? accent : colors.borderDefined}`,
         boxShadow: open ? '0 10px 30px -18px rgba(26,24,20,0.32)' : 'none',
-        transition: 'border-color .2s ease, box-shadow .2s ease',
       }}
     >
       {/* Out of the flow entirely. It used to share a justify-between row with
@@ -1736,37 +1792,25 @@ function DiagnosisTile({
           cannot sit beside the title either: a title long enough to wrap pushes
           it onto a line of its own where it reads as a stray number. */}
       {typeof count === 'number' && count > 0 && (
-        <span style={{
-          position: 'absolute', top: 14, right: 14,
-          fontFamily: T.body, fontSize: 12.5, fontWeight: 700, color: colors.textSecondary,
-          background: colors.bgAlt, borderRadius: 99, padding: '3px 10px',
-        }}>
+        <span className="diag-badge" style={{ color: colors.textSecondary, background: colors.bgAlt }}>
           {count}
         </span>
       )}
 
-      {/* marginTop:auto here, and again on the "Show me" row below, splits the
-          free space evenly above and below this pair so the icon and the title
-          sit in the middle of the tile instead of at the top of it with a hole
-          underneath. */}
-      <span style={{
-        marginTop: 'auto',
-        width: 74, height: 74, borderRadius: 20, flexShrink: 0,
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      <span className="diag-ico" style={{
         background: open ? accent : colors.bgAlt,
         color: open ? '#fff' : accent,
-        transition: 'background .2s ease, color .2s ease',
       }}>
         <Icon size={36} strokeWidth={1.9} />
       </span>
 
       {/* The title follows the icon directly, so all three headings sit on the
           same line across the row. */}
-      <span style={{ fontFamily: T.display, fontSize: 'clamp(19px, 2.5vw, 23px)', fontWeight: 600, color: colors.textPrimary, lineHeight: 1.22, marginTop: 10 }}>
+      <span className="diag-ttl" style={{ fontFamily: T.display, color: colors.textPrimary }}>
         {title}
       </span>
 
-      <span style={{ marginTop: 'auto', display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: T.body, fontSize: 13, fontWeight: 700, color: accent }}>
+      <span className="diag-cta" style={{ color: accent }}>
         {open ? 'Hide' : 'Show me'}
         <motion.span animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.25, ease: EASE }} style={{ display: 'inline-flex' }}>
           <ChevronDown size={15} />
