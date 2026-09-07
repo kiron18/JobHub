@@ -1159,15 +1159,24 @@ export const WelcomePage: React.FC = () => {
         {/*
           The claim, then the picture of it, then the one thing to do next.
 
-          The line is sized to hold on one line down to a 520px shell, which is
-          why the clamp tops out where it does: broken across two lines it reads
-          as two half-thoughts, and this one only works said in a single breath.
+          It wants to be one line, and it is allowed to be one wherever it fits:
+          at the 21px top of the clamp it asks for about 580px and the shell
+          gives it 672px, so on a desktop it still lands in a single breath.
+
+          It is no longer forced to be. It used to carry white-space: nowrap,
+          sized "to hold on one line down to a 520px shell" — which was true,
+          and was the bug, because a phone is not 520px wide. At the 15px floor
+          the sentence wants 415px and a 390px screen offers 342, so nowrap ran
+          the tail off the right edge where it could not be read. Balance rather
+          than nowrap: it breaks into two even lines only on the screens where
+          one line was never going to fit, and no breakpoint has to be taught
+          the font metrics to know which screens those are.
         */}
         <p style={{
           fontFamily: T.display, fontWeight: 600, letterSpacing: '-0.015em',
           fontSize: 'clamp(15px, 2.35vw, 21px)', lineHeight: 1.3,
           color: colors.textPrimary, margin: '34px 0 0',
-          textAlign: 'center', whiteSpace: 'nowrap',
+          textAlign: 'center', textWrap: 'balance',
         }}>
           You're two steps away from landing your dream job in Australia.
         </p>
