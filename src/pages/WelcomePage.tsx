@@ -585,6 +585,21 @@ export const WelcomePage: React.FC = () => {
       { id: 'need', title: 'What we need to fix', count: outstandingQs, tone: 'action' },
     ];
 
+    /*
+      Which tile is open, and what colour it is.
+
+      Stacked, the panel is placed directly under the tile that was tapped
+      rather than after the whole row, and it borrows that tile's accent so the
+      two read as one card. Both of those need to know which tile is open here,
+      where the row is built, rather than inside the tile that only knows about
+      itself. `order` is the mechanism: see .diag-panel.
+    */
+    const openIndex = tiles.findIndex(t => t.id === openCard);
+    const openTone = tiles[openIndex]?.tone;
+    const openAccent = openTone === 'alert' ? colors.accentGold
+      : openTone === 'action' ? colors.accentPetrol
+      : colors.textMuted;
+
     return (
       <Shell wide>
         <style>{DIAGNOSIS_TILE_CSS}</style>
@@ -616,27 +631,35 @@ export const WelcomePage: React.FC = () => {
             how you lose them. Each tile answers one question, and only the one
             they pick opens, in a single panel underneath the row. */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 14, marginTop: 4 }}>
-          {tiles.map(t => (
+          {tiles.map((t, i) => (
             <DiagnosisTile
               key={t.id}
               {...t}
+              order={i * 10}
               open={openCard === t.id}
               onToggle={setOpenCard}
             />
           ))}
-        </div>
 
-        <AnimatePresence initial={false}>
-          {openCard && (
-            <motion.div
-              key={openCard}
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ height: { duration: 0.34, ease: EASE }, opacity: { duration: 0.22 } }}
-              style={{ overflow: 'hidden' }}
-            >
-              <div style={{ marginTop: 14, padding: '22px 24px', borderRadius: 16, background: colors.bgSurface, border: `1px solid ${colors.borderDefined}`, boxShadow: '0 10px 30px -18px rgba(26,24,20,0.30)' }}>
+          {/* In the grid, not after it. Three across it lands on its own row
+              under the set, exactly where it always did. One across it lands
+              directly under the tile that opened it. */}
+          <AnimatePresence initial={false}>
+            {openCard && (
+              <motion.div
+                key={openCard}
+                className="diag-panel"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ height: { duration: 0.34, ease: EASE }, opacity: { duration: 0.22 } }}
+                style={{
+                  overflow: 'hidden',
+                  '--panel-order': openIndex * 10 + 5,
+                  '--panel-accent': openAccent,
+                } as React.CSSProperties}
+              >
+                <div className="diag-panel-body">
                 {openCard === 'gap' && <BriefProse text={brief} />}
 
                 {openCard === 'found' && (
@@ -760,10 +783,11 @@ export const WelcomePage: React.FC = () => {
                     </p>
                   )
                 )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
         <div style={{ marginTop: 32, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, textAlign: 'center' }}>
           <motion.button
@@ -1733,6 +1757,28 @@ const DIAGNOSIS_TILE_CSS = `
   margin-top: auto; display: inline-flex; align-items: center; gap: 5px;
   font-family: ${T.body}; font-size: 13px; font-weight: 700;
 }
+/*
+  The panel is a grid item, and order is what decides where it lands.
+
+  Three across it takes 1000, so it sorts after every tile and, spanning all
+  the columns, drops onto its own row under the set: the layout it has always
+  had. One across there is no "under the set" worth having, because the set is
+  a 1054px column and the answer opens 726px below the finger that asked for
+  it. So it takes --panel-order instead, which the row hands it as (index of
+  the open tile x 10) + 5: a number that falls between the tile that was
+  tapped and the next one.
+
+  The margins close the 14px grid gap above it and it loses its top corners
+  and top border, so the answer is not a second card floating near the
+  question, it is the same card continuing. The open tile squares off its own
+  bottom to meet it.
+*/
+.diag-panel { grid-column: 1 / -1; order: 1000; }
+.diag-panel-body {
+  padding: 22px 24px; border-radius: 16px;
+  background: ${colors.bgSurface}; border: 1px solid ${colors.borderDefined};
+  box-shadow: 0 10px 30px -18px rgba(26,24,20,0.30);
+}
 @media (max-width: 640px) {
   /* One column, so the tile turns on its side. The auto margins that centred
      things in the square would push the row apart, so they go; order puts the
@@ -1748,6 +1794,19 @@ const DIAGNOSIS_TILE_CSS = `
   .diag-ttl { margin-top: 0; order: 1; flex: 1; font-size: 17px; }
   .diag-badge { position: static; order: 2; }
   .diag-cta { margin-top: 0; order: 3; }
+
+  /* The answer, joined to the question that opened it. */
+  .diag-panel { order: var(--panel-order, 1000); margin-top: -14px; }
+  .diag-panel-body {
+    padding: 16px 16px 20px;
+    border-top-left-radius: 0; border-top-right-radius: 0;
+    border-color: var(--panel-accent, ${colors.borderDefined});
+    border-top-color: transparent;
+    box-shadow: none;
+  }
+  .diag-tile[aria-expanded="true"] {
+    border-bottom-left-radius: 0; border-bottom-right-radius: 0;
+  }
 }
 `;
 
@@ -1760,13 +1819,17 @@ const DIAGNOSIS_TILE_CSS = `
  * the point.
  */
 function DiagnosisTile({
-  id, title, count, tone, open, onToggle,
+  id, title, count, tone, open, order, onToggle,
 }: {
   id: DiagnosisCardId;
   title: string;
   count?: number;
   tone: DiagnosisTone;
   open: boolean;
+  /* Spaced by ten so the panel can take a number between two tiles. Identical
+     at every width: 0, 10, 20 is the same left-to-right order three across as
+     it is top-to-bottom stacked, so only the panel's number has to change. */
+  order: number;
   onToggle: (id: DiagnosisCardId | null) => void;
 }) {
   const accent = tone === 'alert' ? colors.accentGold : tone === 'action' ? colors.accentPetrol : colors.textMuted;
@@ -1782,6 +1845,7 @@ function DiagnosisTile({
       style={{
         /* Shape lives in .diag-tile, which has to change it at 640px. Only the
            parts that answer to `open` stay here. */
+        order,
         background: colors.bgSurface,
         border: `1px solid ${open ? accent : colors.borderDefined}`,
         boxShadow: open ? '0 10px 30px -18px rgba(26,24,20,0.32)' : 'none',
