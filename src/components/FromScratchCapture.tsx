@@ -106,7 +106,7 @@ export function FromScratchCapture({ onDone }: FromScratchCaptureProps) {
 
   return (
     <div style={{
-      minHeight: '100vh',
+      minHeight: '100dvh',
       overflowY: 'auto',
       background: warm.colors.bgCanvas,
       paddingBottom: 80,
@@ -119,7 +119,7 @@ export function FromScratchCapture({ onDone }: FromScratchCaptureProps) {
         />
       </div>
 
-      <div style={{ maxWidth: 560, margin: '0 auto', padding: '64px 24px 0' }}>
+      <div style={{ maxWidth: 560, margin: '0 auto', padding: 'clamp(32px, 8vw, 64px) clamp(16px, 5vw, 24px) 0' }}>
         <p style={{
           margin: '0 0 8px', fontSize: 11, fontWeight: 800, letterSpacing: '0.12em',
           color: warm.colors.textSecondary, textTransform: 'uppercase',
@@ -161,7 +161,7 @@ export function FromScratchCapture({ onDone }: FromScratchCaptureProps) {
                 <h1 style={{ margin: '0 0 24px', fontSize: 24, fontWeight: 600, color: warm.colors.bgAlt, letterSpacing: '-0.02em' }}>
                   What's your most recent role?
                 </h1>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 12 }}>
                   <div>
                     <label style={labelStyle}>Company</label>
                     <input type="text" autoFocus value={answers.company} onChange={e => set('company')(e.target.value)} placeholder="e.g. Canva" style={inputStyle} />
@@ -171,7 +171,7 @@ export function FromScratchCapture({ onDone }: FromScratchCaptureProps) {
                     <input type="text" value={answers.title} onChange={e => set('title')(e.target.value)} placeholder="e.g. Marketing Manager" style={inputStyle} />
                   </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
                   <div>
                     <label style={labelStyle}>Start date</label>
                     <input type="text" value={answers.startDate} onChange={e => set('startDate')(e.target.value)} placeholder="e.g. Jan 2022" style={inputStyle} />
@@ -209,7 +209,7 @@ export function FromScratchCapture({ onDone }: FromScratchCaptureProps) {
                 <h1 style={{ margin: '0 0 24px', fontSize: 24, fontWeight: 600, color: warm.colors.bgAlt, letterSpacing: '-0.02em' }}>
                   What's your target?
                 </h1>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
                   <div>
                     <label style={labelStyle}>Role you want</label>
                     <input type="text" autoFocus value={answers.targetRole} onChange={e => set('targetRole')(e.target.value)} placeholder="e.g. Senior Marketing Manager" style={inputStyle} />

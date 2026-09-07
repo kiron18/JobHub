@@ -134,7 +134,7 @@ function DetailModal({ card, m, onClose }: { card: CardConfig; m: GaugeModel; on
         exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.97, y: 8 }}
         transition={{ duration: 0.32, ease: EASE }}
         role="dialog" aria-modal="true" aria-label={card.label}
-        style={{ width: '100%', maxWidth: 520, maxHeight: '86vh', overflowY: 'auto', background: colors.bgSurface, borderRadius: 22, border: `1px solid ${colors.borderWhisper}`, boxShadow: '0 24px 70px rgba(26,24,20,0.28)' }}
+        style={{ width: '100%', maxWidth: 520, maxHeight: '86dvh', overflowY: 'auto', background: colors.bgSurface, borderRadius: 22, border: `1px solid ${colors.borderWhisper}`, boxShadow: '0 24px 70px rgba(26,24,20,0.28)' }}
       >
         {/* header */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '22px 24px 18px', borderBottom: `1px solid ${colors.borderWhisper}` }}>

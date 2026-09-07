@@ -70,9 +70,17 @@ export function HowToCopyJobAd() {
                 }}
                 aria-expanded={open}
                 style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 6, padding: 0,
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    /* Zero padding made this a 20px-tall target on the dashboard,
+                       under the paste box, where it is the answer to the one
+                       question people actually have. The negative margin keeps
+                       it visually flush with the copy above it. */
+                    padding: '10px 0',
+                    margin: 0,
+                    minHeight: 40,
                     background: 'none', border: 'none', cursor: 'pointer', font: 'inherit',
-                    fontSize: 12.5, fontWeight: 600, color: warm.colors.accentPetrol,
+                    fontSize: 13, fontWeight: 600, color: warm.colors.accentPetrol,
+                    textAlign: 'left',
                 }}
             >
                 {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}

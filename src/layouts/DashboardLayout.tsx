@@ -21,6 +21,11 @@ const COLLAPSED_WIDTH = 72;
 const EXPANDED_WIDTH = 240;
 const INTRO_DURATION_MS = 2000;
 const TOUCH_BREAKPOINT_PX = 768;
+/**
+ * Height of the phone top bar. Every page inside the shell is padded by this
+ * plus the notch, so nothing is ever born underneath it.
+ */
+const MOBILE_BAR_PX = 56;
 
 // Warm theme override — matches landing palette. ThemeContext preserved per spec §7.4.
 const warmT = {
@@ -88,8 +93,20 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
     //   - drawerOpen: tap hamburger to toggle a slide-in drawer.
     const [introVisible, setIntroVisible] = useState(true);
     const [hovered, setHovered] = useState(false);
-    const [drawerOpen, setDrawerOpen] = useState(false);
     const introTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    /*
+      The drawer stores the route it was opened on, and is open only while that
+      is still the route. So navigating closes it — including by the back
+      button, a redirect, or an in-page link, none of which run the nav items'
+      own onClick. Derived rather than an effect that resets a boolean: an
+      effect would repaint the drawer open for one frame on the new screen
+      before closing it.
+    */
+    const routeKey = location.pathname + location.search;
+    const [drawerRoute, setDrawerRoute] = useState<string | null>(null);
+    const drawerOpen = drawerRoute === routeKey;
+    const setDrawerOpen = (open: boolean) => setDrawerRoute(open ? routeKey : null);
 
     useEffect(() => {
         if (isTouch) {
@@ -111,6 +128,27 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
             introTimerRef.current = null;
         }
     }, [hovered]);
+
+    /*
+      With the drawer open, dragging anywhere scrolled the page behind it,
+      because <main> is the app's scroller and the drawer is a fixed sibling,
+      not a child. On a phone that reads as the menu sliding over a moving
+      background. Freeze the shell while the drawer is up.
+    */
+    useEffect(() => {
+        if (!drawerOpen) return;
+        const prev = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        // setDrawerRoute, not the setDrawerOpen wrapper: the wrapper closes over
+        // routeKey and is rebuilt every render, which would re-run this effect.
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setDrawerRoute(null); };
+        window.addEventListener('keydown', onKey);
+        return () => {
+            document.body.style.overflow = prev;
+            window.removeEventListener('keydown', onKey);
+        };
+    }, [drawerOpen]);
+
 
     const expanded = !isTouch && (introVisible || hovered);
 
@@ -232,7 +270,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                             <button
                                 type="button"
                                 onClick={() => { item.onClick!(); if (isTouch) setDrawerOpen(false); }}
-                                className="relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all hover:bg-black/[0.04] text-left"
+                                className={`relative flex items-center gap-3 px-3 rounded-xl transition-all hover:bg-black/[0.04] text-left ${isTouch ? "py-3.5" : "py-2.5"}`}
                                 style={{ color: warmT.textMuted, background: 'transparent', border: '1px solid transparent' }}
                             >
                                 {iconAndLabel}
@@ -262,7 +300,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                                 ? { 'data-process-nav': 'track', 'data-celebration-target': 'tracker' }
                                 : {})}
                             className={() =>
-                                `relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${selfActive ? '' : 'hover:bg-black/[0.04]'}`
+                                `relative flex items-center gap-3 px-3 rounded-xl transition-all ${isTouch ? 'py-3.5' : 'py-2.5'} ${selfActive ? '' : 'hover:bg-black/[0.04]'}`
                             }
                             /* Active nav is a soft accent fill with accent text, not a
                                bordered teal box left over from the retired palette.
@@ -301,7 +339,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                 </AnimatePresence>
                 <button
                     onClick={() => signOut()}
-                    className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all border border-transparent hover:border-black/10 hover:bg-black/5"
+                    className={`w-full flex items-center justify-center gap-2 rounded-lg text-xs font-bold transition-all border border-transparent hover:border-black/10 hover:bg-black/5 ${isTouch ? "py-3.5" : "py-2"}`}
                     style={{ color: warmT.textFaint }}
                     title="Sign Out"
                 >
@@ -314,8 +352,13 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
 
     return (
         <div
-            className="flex h-screen overflow-hidden w-screen"
+            className="flex overflow-hidden w-full"
             style={{
+                /* h-screen/w-screen were 100vh/100vw. On a phone 100vh is taller
+                   than the window whenever the address bar is showing, so the
+                   bottom of every page sat under it, and 100vw is wider than the
+                   content box wherever a scrollbar is reserved. */
+                height: '100dvh',
                 backgroundColor: warmT.bg,
                 backgroundImage: `radial-gradient(circle, ${warmT.dotColor} 1px, transparent 1px)`,
                 backgroundSize: '22px 22px',
@@ -340,20 +383,54 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                 </motion.aside>
             )}
 
-            {/* Touch hamburger */}
+            {/*
+              Phone top bar.
+
+              This replaced a floating hamburger chip that sat over the page at
+              top-left. The chip was fine on arrival, because every page padded
+              64px to clear it, but the moment you scrolled, the page slid
+              underneath a small translucent square and headings ran through it.
+              An opaque bar is the honest version of the same idea: content
+              scrolls under something that is clearly chrome, the logo gives the
+              app an identity on a phone, and there is now a fixed place to put
+              a page title if one is ever wanted.
+            */}
             {isTouch && (
-                <button
-                    onClick={() => setDrawerOpen(true)}
-                    aria-label="Open navigation"
-                    className="fixed top-4 left-4 z-30 w-10 h-10 rounded-xl flex items-center justify-center"
+                <header
+                    className="fixed top-0 left-0 right-0 z-30 flex items-center gap-3"
                     style={{
+                        height: `calc(${MOBILE_BAR_PX}px + var(--safe-top))`,
+                        paddingTop: 'var(--safe-top)',
+                        paddingLeft: 'calc(8px + var(--safe-left))',
+                        paddingRight: 'calc(8px + var(--safe-right))',
                         background: warmT.card,
-                        border: `1px solid ${warmT.cardBorder}`,
-                        color: warmT.text,
+                        borderBottom: `1px solid ${warmT.cardBorder}`,
                     }}
                 >
-                    <Menu size={18} />
-                </button>
+                    <button
+                        onClick={() => setDrawerOpen(true)}
+                        aria-label="Open navigation"
+                        aria-expanded={drawerOpen}
+                        /* 44px, not the 40 it was. Below 44 a control is
+                           smaller than the fingertip aiming at it. */
+                        className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                        style={{ background: 'transparent', border: 'none', color: warmT.text }}
+                    >
+                        <Menu size={20} />
+                    </button>
+                    <img
+                        src="/Logo.svg"
+                        alt=""
+                        aria-hidden
+                        className="w-7 h-7 rounded-lg flex-shrink-0 object-contain"
+                    />
+                    <span
+                        className="font-bold tracking-tight"
+                        style={{ color: warmT.text, fontSize: 16 }}
+                    >
+                        JobReady
+                    </span>
+                </header>
             )}
 
             {/* Touch drawer */}
@@ -374,20 +451,37 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                             animate={{ x: 0 }}
                             exit={{ x: -EXPANDED_WIDTH }}
                             transition={{ duration: 0.25, ease: 'easeOut' }}
-                            className="fixed top-0 left-0 bottom-0 z-50 flex flex-col py-6 px-3"
+                            className="fixed top-0 left-0 bottom-0 z-50 flex flex-col px-3"
+                            role="dialog"
+                            aria-modal="true"
+                            aria-label="Navigation"
                             style={{
-                                width: EXPANDED_WIDTH,
+                                /* Never wider than the phone. 240 is fine at
+                                   360px+, but a small Android in a split view is
+                                   narrower than the drawer was. */
+                                width: `min(${EXPANDED_WIDTH}px, 84vw)`,
+                                /* Clears the notch at the top and the home
+                                   indicator at the bottom, so Sign Out is not
+                                   sitting under the gesture bar. */
+                                paddingTop: 'calc(24px + var(--safe-top))',
+                                paddingBottom: 'calc(24px + var(--safe-bottom))',
+                                paddingLeft: 'calc(12px + var(--safe-left))',
                                 background: warmT.card,
                                 borderRight: `1px solid ${warmT.cardBorder}`,
+                                /* The drawer is its own scroller: seven items
+                                   plus the account block overflow a short phone
+                                   in landscape. */
+                                overflowY: 'auto',
                             }}
+                            data-scroll-pane
                         >
                             <button
                                 onClick={() => setDrawerOpen(false)}
                                 aria-label="Close navigation"
-                                className="absolute top-4 right-3 w-8 h-8 rounded-lg flex items-center justify-center"
-                                style={{ color: warmT.textMuted }}
+                                className="absolute right-2 w-11 h-11 rounded-lg flex items-center justify-center"
+                                style={{ top: 'calc(10px + var(--safe-top))', color: warmT.textMuted }}
                             >
-                                <X size={16} />
+                                <X size={18} />
                             </button>
                             {sidebarContent(true)}
                         </motion.aside>
@@ -396,10 +490,20 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
             </AnimatePresence>
 
             {/* Main content */}
-            <main className="flex-1 overflow-y-auto" style={{ background: 'transparent' }}>
+            <main className="flex-1 overflow-y-auto" style={{ background: 'transparent' }} data-scroll-pane>
                 <div
-                    className="max-w-5xl mx-auto px-6 md:px-10 pt-10 pb-6"
-                    style={{ paddingTop: isTouch ? 64 : 40 }}
+                    /* 16px of side padding on a phone, not 24. At 390px wide the
+                       old value spent 12% of the screen on margin, which is what
+                       made every text column read as a narrow ragged strip. */
+                    className="max-w-5xl mx-auto px-4 sm:px-6 md:px-10 pb-6"
+                    style={{
+                        paddingTop: isTouch
+                            ? `calc(${MOBILE_BAR_PX}px + var(--safe-top) + 20px)`
+                            : 40,
+                        paddingBottom: isTouch
+                            ? 'calc(24px + var(--safe-bottom))'
+                            : undefined,
+                    }}
                 >
                     {children}
                 </div>

@@ -306,7 +306,7 @@ function OverviewTab({ stats }: { stats: Stats }) {
       {/* Hero numbers */}
       <div>
         <SectionHead label="Users" />
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
           <StatCard label="Total users" value={stats.users.total} sub={`${fmt(stats.users.onboarded)} onboarded`} icon={Users} colour={S.petrol} />
           <StatCard label="Paid" value={stats.users.paid} sub={pct(stats.users.paid, stats.users.total) + ' conversion'} icon={Star} colour={S.gold} />
           <StatCard label="New this week" value={stats.users.newThisWeek} sub={`${fmt(stats.users.newToday)} today`} icon={TrendingUp} colour={S.success} />
@@ -328,7 +328,7 @@ function OverviewTab({ stats }: { stats: Stats }) {
       {/* Generations */}
       <div>
         <SectionHead label="Document Generations" />
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
           <StatCard label="Total generated" value={totalDocs} icon={FileText} colour={S.petrol} />
           <StatCard label="This week" value={stats.generations.thisWeek} sub={`${fmt(stats.generations.today)} today`} icon={Activity} colour={S.gold} />
           <StatCard label="Analyses run" value={stats.analyses.total} sub={`${fmt(stats.analyses.thisWeek)} this week`} icon={BarChart2} colour={S.petrolLight} />
@@ -348,7 +348,7 @@ function OverviewTab({ stats }: { stats: Stats }) {
       </div>
 
       {/* Breakdowns row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
 
         {/* Plan breakdown */}
         <div style={{ background: warm.colors.bgSurface, border: `1px solid ${warm.colors.borderWhisper}`, borderRadius: 14, padding: '18px 20px' }}>
@@ -731,7 +731,7 @@ function BehaviourTab() {
       </div>
 
       {/* Three columns: onboarding steps, doc types, features */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
         <div style={{ background: warm.colors.bgSurface, border: `1px solid ${warm.colors.borderWhisper}`, borderRadius: 14, padding: '18px 20px' }}>
           <SectionHead label="Onboarding steps (30d)" />
           <Breakdown items={data.onboardingSteps} colour={S.petrol} empty="No step events yet" max={maxStep} />
@@ -790,8 +790,8 @@ export function AdminDashboard() {
   const today = new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   return (
-    <div style={{ minHeight: '100vh', background: warm.colors.bgCanvas, color: S.main, fontFamily: 'system-ui, sans-serif' }}>
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px 80px' }}>
+    <div style={{ minHeight: '100dvh', background: warm.colors.bgCanvas, color: S.main, fontFamily: 'system-ui, sans-serif' }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(16px, 5vw, 32px) clamp(0px, 4vw, 24px) 80px' }}>
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 32, flexWrap: 'wrap', gap: 12 }}>
@@ -808,7 +808,9 @@ export function AdminDashboard() {
               <span style={{ color: S.petrol, fontWeight: 600 }}>Data since 27 April 2026</span>
             </p>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* Six section links in one non-wrapping row. On a phone they ran
+              148px past the edge; wrapping is all this needed. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <a
               href="/admin/coach"
               style={{
@@ -861,8 +863,10 @@ export function AdminDashboard() {
         </div>
 
         {/* Tab bar */}
+        {/* Four tabs in one inline-flex row came to 455px on a 390px phone.
+            Wrapping keeps them all reachable without a sideways drag. */}
         <div style={{
-          display: 'inline-flex', background: warm.colors.bgAlt,
+          display: 'flex', flexWrap: 'wrap', gap: 2, background: warm.colors.bgAlt,
           border: `1px solid ${warm.colors.borderWhisper}`, borderRadius: 12, padding: 4, marginBottom: 28,
         }}>
           {([['overview', 'Overview', BarChart2], ['funnel', 'Funnel', TrendingUp], ['behaviour', 'Behaviour', Activity], ['friday', 'Friday Brief', ClipboardList]] as const).map(([key, label, Icon]) => (

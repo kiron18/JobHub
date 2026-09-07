@@ -83,6 +83,8 @@ export const ProfileExplainerModal: React.FC<ProfileExplainerModalProps> = ({ op
             <button
               onClick={onClose}
               aria-label="Close"
+              /* The only way out of this overlay, at 28px square. */
+              className="tap-target"
               style={{
                 position: 'absolute', top: 12, right: 12,
                 background: 'transparent', border: 'none', cursor: 'pointer',

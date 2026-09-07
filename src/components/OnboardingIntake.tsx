@@ -727,14 +727,14 @@ export function OnboardingIntake({ resumeMode: _resumeMode = false, initialStep,
   ) : null;
 
   if (authLoading) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: warm.colors.bgCanvas }}>
+    <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: warm.colors.bgCanvas }}>
       <div className="w-10 h-10 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(45,90,110,0.2)', borderTopColor: warm.colors.accentPetrol }} />
     </div>
   );
 
   if (visibleStep === 4 || submitting) {
     return (
-      <div style={{ backgroundColor: warmT.bg, height: '100vh', overflowY: 'auto' }}>
+      <div style={{ backgroundColor: warmT.bg, height: '100dvh', overflowY: 'auto' }}>
         {SignOutBtn}
         <ProcessingScreen
           theme={warmT}

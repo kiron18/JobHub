@@ -79,7 +79,7 @@ export const AuthPage: React.FC = () => {
 
   return (
     <div style={{
-      height: '100vh', overflowY: 'auto', display: 'flex', alignItems: 'center',
+      height: '100dvh', overflowY: 'auto', display: 'flex', alignItems: 'center',
       justifyContent: 'center', padding: 24,
       background: warm.colors.bgCanvas,
     }}>
@@ -138,7 +138,9 @@ export const AuthPage: React.FC = () => {
                   </p>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
+              {/* Two buttons side by side came to 3px wider than a 390px phone,
+                  and the second one was 31px tall. */}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <PrimaryButton
                   label="Go to app"
                   onClick={() => navigate('/', { replace: true })}
@@ -147,11 +149,11 @@ export const AuthPage: React.FC = () => {
                 <button
                   onClick={async () => { await signOut(); }}
                   style={{
-                    padding: '7px 12px', borderRadius: warm.radius.button,
+                    padding: '10px 14px', minHeight: 40, borderRadius: warm.radius.button,
                     border: `1px solid ${warm.colors.borderDefined}`,
                     background: 'transparent',
                     color: warm.colors.textSecondary,
-                    fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                    fontSize: 13, fontWeight: 600, cursor: 'pointer',
                     display: 'flex', alignItems: 'center', gap: 6,
                     fontFamily: warm.type.fontBody,
                   }}
@@ -208,9 +210,12 @@ export const AuthPage: React.FC = () => {
                         onClick={handleForgotPassword}
                         disabled={sendingReset}
                         style={{
-                          background: 'none', border: 'none', padding: 0,
+                          background: 'none', border: 'none',
+                          /* Was padding 0, a 20px-tall target — and it is the
+                             only way back into an account. */
+                          padding: '10px 0', margin: '-10px 0', minHeight: 40,
                           color: warm.colors.accentPetrol,
-                          fontWeight: 600, fontSize: 12.5,
+                          fontWeight: 600, fontSize: 13,
                           cursor: sendingReset ? 'default' : 'pointer',
                           opacity: sendingReset ? 0.6 : 1,
                           fontFamily: warm.type.fontBody,

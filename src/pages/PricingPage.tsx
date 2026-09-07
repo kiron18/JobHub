@@ -519,7 +519,11 @@ export function PricingPage() {
             <h1
               style={{
                 fontFamily: typeTokens.display,
-                fontSize: 'clamp(2.1rem, 5.4vw, 3.25rem)',
+                /* The floor was 2.1rem, which put the longest line plus the
+                   highlight's side padding 6px past the right edge of a 390px
+                   phone — and body clips overflow-x, so the last character was
+                   simply cut off. */
+                fontSize: 'clamp(1.9rem, 5.4vw, 3.25rem)',
                 fontWeight: 500,
                 /* Not tighter than this: the highlighter block on the second
                    line sits on top of the descenders of the first at 1.05. */
@@ -536,7 +540,7 @@ export function PricingPage() {
                   background: colors.highlight,
                   boxDecorationBreak: 'clone',
                   WebkitBoxDecorationBreak: 'clone',
-                  padding: '0 6px',
+                  padding: '0 clamp(4px, 1.5vw, 6px)',
                 }}
               >
                 Or I work for free until you do.

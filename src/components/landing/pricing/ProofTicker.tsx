@@ -105,7 +105,14 @@ export function ProofTicker() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }} role="tablist" aria-label="Client messages">
+      {/*
+        The dots stay 7px. The BUTTONS around them are 32x40, which is what a
+        thumb is actually aiming at — a 7x7 target with a 7px gap between
+        neighbours is, on a phone, a control you can see and cannot press, and
+        the press you do land is as likely to be the dot next door. The gap
+        moved onto the button so the dots look exactly as they did.
+      */}
+      <div style={{ display: 'flex', alignItems: 'center' }} role="tablist" aria-label="Client messages">
         {CARDS.map((src, i) => (
           <button
             key={src}
@@ -115,16 +122,29 @@ export function ProofTicker() {
             aria-label={`Message ${i + 1}`}
             onClick={() => go(i)}
             style={{
-              width: i === index ? 20 : 7,
-              height: 7,
+              width: 32,
+              height: 40,
               padding: 0,
-              borderRadius: 99,
               border: 'none',
+              background: 'none',
               cursor: 'pointer',
-              background: i === index ? colors.accentPetrol : colors.borderDefined,
-              transition: 'width 240ms cubic-bezier(0.25,1,0.5,1), background 240ms',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
-          />
+          >
+            <span
+              aria-hidden
+              style={{
+                display: 'block',
+                width: i === index ? 20 : 7,
+                height: 7,
+                borderRadius: 99,
+                background: i === index ? colors.accentPetrol : colors.borderDefined,
+                transition: 'width 240ms cubic-bezier(0.25,1,0.5,1), background 240ms',
+              }}
+            />
+          </button>
         ))}
       </div>
 

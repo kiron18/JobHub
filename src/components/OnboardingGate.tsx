@@ -267,7 +267,7 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
 
   if (authLoading || isLoading || claimPending || answerPending || nullPending || (isAuthenticated && !profile?.hasCompletedOnboarding && reportStatus === 'checking')) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: warm.colors.bgCanvas }}>
+      <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: warm.colors.bgCanvas }}>
         <div className="w-12 h-12 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(45,90,110,0.2)', borderTopColor: warm.colors.accentPetrol }} />
       </div>
     );
@@ -295,7 +295,7 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
 
   if (isError && !definitivelySignedOut) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: warm.colors.bgCanvas, padding: 24 }}>
+      <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: warm.colors.bgCanvas, padding: 24 }}>
         <div style={{ textAlign: 'center', maxWidth: 380 }}>
           <p style={{ margin: '0 0 8px', fontSize: 17, fontWeight: 700, color: '#1A1814' }}>
             We could not reach your account

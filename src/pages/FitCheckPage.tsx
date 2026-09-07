@@ -200,10 +200,18 @@ export default function FitCheckPage() {
   };
 
   return (
-    // The body is overflow:hidden app-wide, so every full-page view owns its
-    // own scroll or it simply cannot be scrolled.
+    /*
+      No height and no scroller of its own.
+
+      The rule that every full-page view owns its scroll applies to the pages
+      that stand alone. This one does not: /check is a dashboard route, so it
+      renders inside DashboardLayout's <main>, which already scrolls. Claiming
+      100dvh on top of the shell's own padding made the content 944px tall in an
+      844px window, so the screen scrolled by exactly the padding — a hundred
+      pixels of travel with nothing at the bottom of it — while the inner
+      scroller it created never scrolled at all.
+    */
     <div style={{
-      height: '100dvh', overflowY: 'auto',
       background: C.bgCanvas,
       fontFamily: warm.type.fontBody,
       display: 'flex', flexDirection: 'column',
@@ -218,8 +226,10 @@ export default function FitCheckPage() {
       )}
 
       <div style={{
-        width: '100%', maxWidth: 680, margin: 'auto',
-        padding: '48px 24px 64px',
+        width: '100%', maxWidth: 680, margin: '0 auto',
+        /* No side padding on a phone: the shell already pads 16px, and adding
+           24 more spent a fifth of the screen on margin. */
+        padding: 'clamp(8px, 3vw, 48px) 0 clamp(40px, 8vw, 64px)',
       }}>
         {result ? (
           <>

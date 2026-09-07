@@ -688,6 +688,13 @@ function PipelineGlance({ jobs }: { jobs: JobLite[] }) {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
+                /* The whole pipeline summary is one link to the tracker, and at
+                   21px tall it was a line of text you were expected to tap.
+                   Padding gives it a row to be tapped in; the negative margin
+                   keeps it sitting where it did. */
+                padding: '9px 0',
+                margin: 0,
+                minHeight: 40,
                 fontSize: 13,
                 color: warmT.textMuted,
                 textDecoration: 'none',

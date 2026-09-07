@@ -45,7 +45,11 @@ export function AdminUserUsage() {
   const td: React.CSSProperties = { padding: '8px 10px', fontSize: 13, borderBottom: '1px solid #f0f0f0', whiteSpace: 'nowrap' };
 
   return (
-    <div style={{ height: '100dvh', overflowY: 'auto' }}>
+    /* These pages render inside DashboardLayout, whose <main> already
+     scrolls. Owning a second 100dvh scroller on top of the shell's own
+     padding made the page 100px taller than the window, so it scrolled
+     by exactly the padding and the inner pane held all the content. */
+    <div>
       <div style={{ padding: 32, maxWidth: 1280, margin: '0 auto', fontFamily: 'system-ui, sans-serif' }}>
         <h1 style={{ fontSize: 22, marginBottom: 4 }}>Client usage</h1>
         <p style={{ color: '#666', fontSize: 13, marginBottom: 20 }}>
@@ -56,7 +60,8 @@ export function AdminUserUsage() {
         </p>
 
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+          <div className="scroll-x">
+            <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 640 }}>
             <thead>
               <tr>
                 <th style={th}>Client</th>
@@ -115,6 +120,7 @@ export function AdminUserUsage() {
               ))}
             </tbody>
           </table>
+        </div>
         </div>
 
         {unidentified.length > 0 && (

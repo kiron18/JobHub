@@ -240,7 +240,7 @@ export default function FreeResourcePage() {
   const page: React.CSSProperties = {
     // Fixed height plus internal scroll: the app shell constrains its children,
     // so a page that sets only minHeight is clipped at the fold.
-    height: '100vh', overflowY: 'auto',
+    height: '100dvh', overflowY: 'auto',
     background: C.bg, color: C.ink, fontFamily: BODY,
     padding: 'clamp(24px, 5vw, 48px) clamp(16px, 5vw, 28px) 96px',
     boxSizing: 'border-box',

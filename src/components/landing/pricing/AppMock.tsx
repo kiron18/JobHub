@@ -261,8 +261,15 @@ export function MockDocuments() {
           <div
             key={t}
             style={{
-              padding: '8px 12px',
-              fontSize: 12.5,
+              /* Three nowrap tabs came to ~318px inside a 288px mock on a
+                 phone, so "Selection criteria" — the one the mock is pointing
+                 at — was the part clipped off the right edge.
+
+                 The sizes below are fixed, not vw-clamped: this mock sits in a
+                 padded card that is far narrower than the viewport, so a vw
+                 unit here describes the wrong box and still overflowed. */
+              padding: '8px 6px',
+              fontSize: 10.5,
               fontWeight: i === 2 ? 700 : 500,
               color: i === 2 ? ui.accent : ui.ink3,
               borderBottom: `2px solid ${i === 2 ? ui.accent : 'transparent'}`,

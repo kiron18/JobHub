@@ -25,6 +25,27 @@ interface LeaderboardData {
     highlights: Array<{ name: string; title: string; company: string; when: string | null }>;
 }
 
+/*
+  The two columns that stay put while the metrics scroll. A sticky cell is
+  transparent by default, so each one has to repaint the row's own fill or the
+  numbers slide visibly underneath it.
+*/
+const STICKY_COL: Array<React.CSSProperties> = [
+  { position: 'sticky', left: 0, zIndex: 1 },
+  { position: 'sticky', left: 44, zIndex: 1 },
+];
+
+/**
+ * A row's fill, repeated onto its sticky cells. `transparent` is what a normal
+ * row uses, and a transparent sticky cell shows the scrolling columns through
+ * itself, so the default has to be the surface colour rather than nothing.
+ */
+function rowFill(e: { isYou?: boolean; isExample?: boolean }): string {
+  if (e.isYou) return warm.colors.accentPetrolSoft;
+  if (e.isExample) return warm.colors.bgAlt;
+  return warm.colors.bgSurface;
+}
+
 const MEDALS = ['🥇', '🥈', '🥉'];
 
 export const LeaderboardPage: React.FC = () => {
@@ -159,15 +180,25 @@ export const LeaderboardPage: React.FC = () => {
                     <Loader2 size={22} className="animate-spin" style={{ color: warm.colors.accentPetrol }} />
                 </div>
             ) : (
-                <div style={{ overflowX: 'auto', borderRadius: 14, border: `1px solid ${warm.colors.borderWhisper}`, background: warm.colors.bgSurface }}>
+                /*
+                  Eight columns will not fit a phone and should not try: the
+                  board scrolls sideways. What makes that workable is the rank
+                  and name columns staying put while the numbers slide past —
+                  otherwise you scroll to the Points column and no longer know
+                  whose row you are reading. scroll-x also contains the
+                  overscroll, so reaching the end of the table does not trigger
+                  the browser's back-swipe.
+                */
+                <div className="scroll-x" style={{ borderRadius: 14, border: `1px solid ${warm.colors.borderWhisper}`, background: warm.colors.bgSurface }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                         <thead>
                             <tr style={{ borderBottom: `1px solid ${warm.colors.borderWhisper}` }}>
                                 {['#', 'Member', 'Apps', 'Outreach', 'Interviews', 'Offers', period === 'week' ? 'On target' : '', 'Points'].map((h, i) => (
                                     <th key={i} style={{
                                         padding: '10px 14px', textAlign: i <= 1 ? 'left' : 'center',
-                                        fontSize: 10.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em',
+                                        fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em',
                                         color: warm.colors.textMuted, whiteSpace: 'nowrap',
+                                        ...(i <= 1 ? { ...STICKY_COL[i], background: warm.colors.bgSurface, zIndex: 2 } : null),
                                     }}>{h}</th>
                                 ))}
                             </tr>
@@ -176,11 +207,13 @@ export const LeaderboardPage: React.FC = () => {
                             {filtered.map((e, ri) => (
                                 <tr key={e.isExample ? `pace-${e.name}` : `rank-${e.rank}-${ri}`} style={{
                                     borderBottom: `1px solid ${warm.colors.borderWhisper}`,
-                                    background: e.isYou
-                                        ? warm.colors.accentPetrolSoft
-                                        : e.isExample ? warm.colors.bgAlt : 'transparent',
+                                    background: rowFill(e),
                                 }}>
-                                    <td style={{ padding: '10px 14px', fontWeight: 800, color: warm.colors.textPrimary, whiteSpace: 'nowrap' }}>
+                                    <td style={{
+                                        padding: '10px 14px', fontWeight: 800,
+                                        color: warm.colors.textPrimary, whiteSpace: 'nowrap',
+                                        ...STICKY_COL[0], background: rowFill(e),
+                                    }}>
                                         {e.isExample ? '' : (e.rank <= 3 ? MEDALS[e.rank - 1] : e.rank)}
                                     </td>
                                     <td style={{
@@ -188,6 +221,10 @@ export const LeaderboardPage: React.FC = () => {
                                         fontWeight: e.isYou ? 800 : 600,
                                         color: e.isExample ? warm.colors.textMuted : warm.colors.textPrimary,
                                         fontStyle: e.isExample ? 'italic' : 'normal',
+                                        ...STICKY_COL[1], background: rowFill(e),
+                                        /* The shadow is what tells you the rest of
+                                           the row has slid underneath this one. */
+                                        boxShadow: '6px 0 8px -8px rgba(15,32,56,0.35)',
                                     }}>
                                         {e.name}
                                         {e.isYou && <span style={{

@@ -49,6 +49,7 @@ import { celebrate } from '../lib/feedback';
 import { applauseFor, type Applause } from '../lib/applause';
 import { applyWorkspaceCopy } from './applyWorkspaceCopy';
 import { extractReactText } from '../lib/extractReactText';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 interface ResumeTip {
   bulletKey: string;
@@ -129,6 +130,7 @@ function TipIcon({ suggestion }: { suggestion: string }) {
                     userSelect: 'none',
                     lineHeight: 1,
                 }}
+                className="tap-target"
             >
                 i
             </span>
@@ -143,7 +145,10 @@ function TipIcon({ suggestion }: { suggestion: string }) {
                         border: '1px solid #44403c',
                         borderRadius: 6,
                         padding: '8px 12px',
-                        width: 260,
+                        /* 260px fixed pushed the tip off the right edge of a
+                           phone whenever the bullet it belonged to sat past the
+                           middle of the line. */
+                        width: 'min(260px, calc(100vw - 48px))',
                         fontSize: 12,
                         lineHeight: 1.5,
                         color: '#e7e5e4',
@@ -369,94 +374,17 @@ export function StepperWorkspace() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [jdEmpty, workspaceKey]);
 
+    const isMobile = useIsMobile();
+
     if (jdEmpty) return null;
 
-    return (
-        <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', minHeight: 'calc(100vh - 120px)' }}>
-            {/* Collapsible JD strip */}
-            <aside
-                onMouseEnter={() => setJdExpanded(true)}
-                onMouseLeave={() => setJdExpanded(false)}
-                style={{
-                    flexShrink: 0,
-                    width: jdExpanded ? 360 : 36,
-                    transition: 'width 220ms ease',
-                    background: warm.colors.bgSurface,
-                    border: `1px solid ${warm.colors.borderWhisper}`,
-                    borderRadius: 14,
-                    padding: jdExpanded ? '18px 20px' : '18px 8px',
-                    maxHeight: 'calc(100vh - 140px)',
-                    overflow: 'hidden',
-                    position: 'sticky',
-                    top: 8,
-                }}
-            >
-                {jdExpanded ? (
-                    <>
-                        {/* Job header — mirrors the feed card so the role title, company
-                            and location stay visible while generating, not just the JD body. */}
-                        {(state.role || state.company) && (
-                            <div style={{ margin: '0 0 14px', paddingBottom: 12, borderBottom: `1px solid ${warm.colors.borderWhisper}` }}>
-                                {state.role && (
-                                    <p style={{ margin: '0 0 3px', fontSize: 15, fontWeight: 700, color: warm.colors.textPrimary, lineHeight: 1.3 }}>
-                                        {state.role}
-                                    </p>
-                                )}
-                                {(state.company || state.location) && (
-                                    <p style={{ margin: 0, fontSize: 12, color: warm.colors.textMuted, lineHeight: 1.4 }}>
-                                        {[state.company, state.location].filter(Boolean).join(' · ')}
-                                    </p>
-                                )}
-                            </div>
-                        )}
-                        <p style={{
-                            margin: '0 0 12px',
-                            fontSize: 10,
-                            fontWeight: 700,
-                            letterSpacing: '0.14em',
-                            textTransform: 'uppercase',
-                            color: warm.colors.textMuted,
-                        }}>
-                            Job description
-                        </p>
-                        <div style={{
-                            fontSize: 12,
-                            lineHeight: 1.65,
-                            color: warm.colors.textMuted,
-                            whiteSpace: 'pre-wrap',
-                            maxHeight: 'calc(100vh - 200px)',
-                            overflowY: 'auto',
-                        }}>
-                            {jobDescription}
-                        </div>
-                    </>
-                ) : (
-                    <div style={{
-                        height: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        minHeight: 160,
-                    }}>
-                        <span style={{
-                            writingMode: 'vertical-rl',
-                            textOrientation: 'mixed',
-                            transform: 'rotate(180deg)',
-                            fontSize: 10,
-                            fontWeight: 700,
-                            letterSpacing: '0.14em',
-                            textTransform: 'uppercase',
-                            color: warm.colors.textMuted,
-                            whiteSpace: 'nowrap',
-                        }}>
-                            Job description
-                        </span>
-                    </div>
-                )}
-            </aside>
-
-            {/* Main column */}
-            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 24 }}>
+    /*
+      Everything to the right of the ad on a desktop, and everything under it
+      on a phone: the step rail and whichever step you are standing on. Built
+      once and placed by each layout, so the two can never fall out of sync.
+    */
+    const mainColumn = (
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: isMobile ? 16 : 24 }}>
                 <Stepper
                     steps={steps}
                     currentIndex={currentIndex}
@@ -522,7 +450,172 @@ export function StepperWorkspace() {
                         isLast={currentIndex === steps.length - 1}
                     />
                 )}
+        </div>
+    );
+
+    /*
+      The job ad, as text. Shared by both layouts so the phone and the desktop
+      can never drift apart on what the panel actually says.
+    */
+    const jdBody = (
+        <>
+            {/* Job header — mirrors the feed card so the role title, company
+                and location stay visible while generating, not just the JD body. */}
+            {(state.role || state.company) && (
+                <div style={{ margin: '0 0 14px', paddingBottom: 12, borderBottom: `1px solid ${warm.colors.borderWhisper}` }}>
+                    {state.role && (
+                        <p style={{ margin: '0 0 3px', fontSize: 15, fontWeight: 700, color: warm.colors.textPrimary, lineHeight: 1.3 }}>
+                            {state.role}
+                        </p>
+                    )}
+                    {(state.company || state.location) && (
+                        <p style={{ margin: 0, fontSize: 12, color: warm.colors.textMuted, lineHeight: 1.4 }}>
+                            {[state.company, state.location].filter(Boolean).join(' · ')}
+                        </p>
+                    )}
+                </div>
+            )}
+            <div style={{
+                fontSize: isMobile ? 13 : 12,
+                lineHeight: 1.65,
+                color: warm.colors.textMuted,
+                whiteSpace: 'pre-wrap',
+                /* On a phone the ad is capped at just under half the screen, so
+                   the panel can never bury the document underneath it. */
+                maxHeight: isMobile ? '46dvh' : 'calc(100dvh - 200px)',
+                overflowY: 'auto',
+            }} data-scroll-pane>
+                {jobDescription}
             </div>
+        </>
+    );
+
+    /*
+      One column on a phone.
+
+      The desktop layout is a 36px rail beside the document that widens to 360px
+      ON HOVER. A phone has no hover, so the ad was simply unreachable — and the
+      rail still ate 36px plus a 24px gap out of a 358px-wide screen, which is
+      what squeezed the resume into the ragged one-word-per-line column. Here it
+      is a bar you tap, above the document, and the document gets the full width.
+    */
+    if (isMobile) {
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{
+                    background: warm.colors.bgSurface,
+                    border: `1px solid ${warm.colors.borderWhisper}`,
+                    borderRadius: 14,
+                    overflow: 'hidden',
+                }}>
+                    <button
+                        type="button"
+                        onClick={() => setJdExpanded(v => !v)}
+                        aria-expanded={jdExpanded}
+                        style={{
+                            width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                            padding: '14px 16px', minHeight: 48,
+                            background: 'none', border: 'none', cursor: 'pointer',
+                            font: 'inherit', textAlign: 'left',
+                        }}
+                    >
+                        <ChevronDown
+                            size={16}
+                            style={{
+                                flexShrink: 0,
+                                color: warm.colors.textMuted,
+                                transform: jdExpanded ? 'none' : 'rotate(-90deg)',
+                                transition: 'transform 180ms ease',
+                            }}
+                        />
+                        <span style={{
+                            fontSize: 11, fontWeight: 700, letterSpacing: '0.12em',
+                            textTransform: 'uppercase', color: warm.colors.textMuted,
+                        }}>
+                            Job description
+                        </span>
+                        {/* The role, when we know it, so the closed bar still says
+                            WHICH job this workspace is for. */}
+                        {!jdExpanded && state.role && (
+                            <span style={{
+                                marginLeft: 'auto', fontSize: 12, color: warm.colors.textMuted,
+                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                maxWidth: '48%',
+                            }}>
+                                {state.role}
+                            </span>
+                        )}
+                    </button>
+                    {jdExpanded && (
+                        <div style={{ padding: '0 16px 16px' }}>{jdBody}</div>
+                    )}
+                </div>
+
+                {mainColumn}
+            </div>
+        );
+    }
+
+    return (
+        <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', minHeight: 'calc(100dvh - 120px)' }}>
+            {/* Collapsible JD strip */}
+            <aside
+                onMouseEnter={() => setJdExpanded(true)}
+                onMouseLeave={() => setJdExpanded(false)}
+                style={{
+                    flexShrink: 0,
+                    width: jdExpanded ? 360 : 36,
+                    transition: 'width 220ms ease',
+                    background: warm.colors.bgSurface,
+                    border: `1px solid ${warm.colors.borderWhisper}`,
+                    borderRadius: 14,
+                    padding: jdExpanded ? '18px 20px' : '18px 8px',
+                    maxHeight: 'calc(100dvh - 140px)',
+                    overflow: 'hidden',
+                    position: 'sticky',
+                    top: 8,
+                }}
+            >
+                {jdExpanded ? (
+                    <>
+                        <p style={{
+                            margin: '0 0 12px',
+                            fontSize: 10,
+                            fontWeight: 700,
+                            letterSpacing: '0.14em',
+                            textTransform: 'uppercase',
+                            color: warm.colors.textMuted,
+                        }}>
+                            Job description
+                        </p>
+                        {jdBody}
+                    </>
+                ) : (
+                    <div style={{
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minHeight: 160,
+                    }}>
+                        <span style={{
+                            writingMode: 'vertical-rl',
+                            textOrientation: 'mixed',
+                            transform: 'rotate(180deg)',
+                            fontSize: 10,
+                            fontWeight: 700,
+                            letterSpacing: '0.14em',
+                            textTransform: 'uppercase',
+                            color: warm.colors.textMuted,
+                            whiteSpace: 'nowrap',
+                        }}>
+                            Job description
+                        </span>
+                    </div>
+                )}
+            </aside>
+
+            {mainColumn}
         </div>
     );
 }
@@ -572,12 +665,16 @@ function Stepper({
                         background: 'transparent',
                         border: 'none',
                         color: warm.colors.textMuted,
-                        fontSize: 12,
+                        fontSize: 12.5,
                         fontWeight: 500,
                         textDecoration: 'underline',
                         textUnderlineOffset: 3,
                         cursor: 'pointer',
-                        padding: '2px 4px',
+                        /* The only door onto the selection-criteria step, and
+                           it was 23px tall. */
+                        padding: '9px 0',
+                        margin: 0,
+                        minHeight: 38,
                     }}
                 >
                     Responding to selection criteria?
@@ -649,6 +746,7 @@ function DocumentStep({
     const [content, setContent] = useState<string>('');
     const [generating, setGenerating] = useState(false);
     const [hasDraft, setHasDraft] = useState(false);
+    const isMobile = useIsMobile();
     const [editing, setEditing] = useState(false);
     const [confirmRegen, setConfirmRegen] = useState(false);
     // The buffer lives here rather than in the editor because `commitEdit` is
@@ -1045,7 +1143,9 @@ function DocumentStep({
             background: warm.colors.bgSurface,
             border: `1px solid ${warm.colors.borderWhisper}`,
             borderRadius: 14,
-            padding: 28,
+            /* 28px a side plus the shell's own 16 left a 13.5px document about
+               300px to wrap in on a phone. */
+            padding: 'clamp(16px, 4.5vw, 28px)',
             display: 'flex',
             flexDirection: 'column',
             gap: 16,
@@ -1266,7 +1366,23 @@ function DocumentStep({
                         {stepId === 'resume' && (measuredPages ?? estimatedPages) !== null && (
                             <PageCountBadge pages={(measuredPages ?? estimatedPages)!} measured={measuredPages !== null} />
                         )}
-                        <div className="prose prose-invert max-w-none" style={{ color: warm.colors.textPrimary, fontSize: 13.5, lineHeight: 1.7 }}>
+                        <div
+                            className="prose prose-invert max-w-none"
+                            style={{
+                                color: warm.colors.textPrimary,
+                                /* 13.5px is under the type scale's body step. On
+                                   the screen whose entire job is to show the
+                                   person their resume, a phone gets the readable
+                                   size. */
+                                fontSize: isMobile ? 15 : 13.5,
+                                lineHeight: 1.7,
+                                /* Long unbroken tokens in a resume — a portfolio
+                                   URL, an email — have no break opportunity and
+                                   would otherwise push the card wider than the
+                                   phone. */
+                                overflowWrap: 'anywhere',
+                            }}
+                        >
                             <ReactMarkdown components={markdownComponents as any}>{content}</ReactMarkdown>
                         </div>
                         {/* Live word counter — SC only */}
@@ -1630,7 +1746,9 @@ function TrackStep({
             background: warm.colors.bgSurface,
             border: `1px solid ${warm.colors.borderWhisper}`,
             borderRadius: 14,
-            padding: 28,
+            /* 28px a side plus the shell's own 16 left a 13.5px document about
+               300px to wrap in on a phone. */
+            padding: 'clamp(16px, 4.5vw, 28px)',
             display: 'flex',
             flexDirection: 'column',
             gap: 18,
@@ -1721,7 +1839,10 @@ function TrackStep({
                             cursor: 'help',
                             verticalAlign: 'middle',
                         }}
-                        className="peer"
+                        /* tap-target grows the HIT AREA to 44px without growing
+                           the dot. At 14px this was, on a phone, a control you
+                           could see and not press. */
+                        className="peer tap-target"
                     >
                         i
                     </span>

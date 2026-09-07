@@ -83,7 +83,7 @@ function FollowUpModal({ job, days, onClose }: FollowUpModalProps) {
           padding: 24,
           maxWidth: 560,
           width: '100%',
-          maxHeight: '90vh',
+          maxHeight: '90dvh',
           overflow: 'auto',
           boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
         }}
@@ -330,9 +330,12 @@ export function StaleApplicationsCard() {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 4,
-                    padding: '6px 12px',
+                    /* The one action on the dashboard's follow-up card, at 33px
+                       tall. It writes the email; it should be easy to hit. */
+                    padding: '10px 14px',
+                    minHeight: 40,
                     borderRadius: 8,
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: 700,
                     cursor: 'pointer',
                     border: `1px solid ${warm.colors.accentPetrol}`,

@@ -49,6 +49,9 @@ export function LandingFooter() {
             style={{
               display: 'flex',
               gap: 24,
+              flexWrap: 'wrap',
+              justifyContent: 'center',
+              rowGap: 0,
             }}
           >
             {LEGAL_LINKS.map(link => (
@@ -62,7 +65,11 @@ export function LandingFooter() {
                   fontFamily: typeTokens.body,
                   fontSize: '0.8125rem',
                   color: colors.textMuted,
-                  padding: 0,
+                  /* Five legal links at 21px tall, on the footer of every public
+                     page. The vertical padding is what makes them tappable; the
+                     gap between them absorbs it, so the row looks unchanged. */
+                  padding: '10px 2px',
+                  minHeight: 40,
                   textDecoration: 'none',
                   transition: 'color 180ms ease',
                   outline: 'none',

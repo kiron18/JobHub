@@ -160,8 +160,11 @@ function FunnelBar({ stages }: { stages: FunnelStage[] }) {
           : null;
 
         return (
-          <div key={stage.stage} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <p style={{ margin: 0, width: 200, fontSize: 13, color: S.sub, flexShrink: 0 }}>
+          /* A fixed 200px label beside the bar left the bar 40px on a phone
+             and pushed the row 68px past the edge. Below 560px the label sits
+             above its own bar instead. */
+          <div key={stage.stage} style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+            <p style={{ margin: 0, width: 'min(200px, 100%)', fontSize: 13, color: S.sub, flexShrink: 0 }}>
               {stage.label}
             </p>
             <div style={{ flex: 1, height: 28, position: 'relative', background: warm.colors.bgAlt, borderRadius: 8 }}>
@@ -353,7 +356,7 @@ export function AdminFunnel() {
 
   if (forbidden) {
     return (
-      <div style={{ minHeight: '100vh', background: warm.colors.bgCanvas, color: S.main, padding: 40 }}>
+      <div style={{ minHeight: '100dvh', background: warm.colors.bgCanvas, color: S.main, padding: 'clamp(16px, 5vw, 40px)' }}>
         <div style={{
           maxWidth: 480, margin: '80px auto', padding: 32, textAlign: 'center',
           background: warm.colors.bgSurface, border: `1px solid ${warm.colors.borderWhisper}`, borderRadius: 12,
@@ -369,7 +372,7 @@ export function AdminFunnel() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: warm.colors.bgCanvas, color: S.main, padding: '32px 28px 80px' }}>
+    <div style={{ minHeight: '100dvh', background: warm.colors.bgCanvas, color: S.main, padding: 'clamp(16px, 5vw, 32px) clamp(0px, 4vw, 28px) 80px' }}>
       <div style={{ maxWidth: 1180, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 28 }}>
 
         {/* Header */}
@@ -480,7 +483,8 @@ export function AdminFunnel() {
               </p>
             ) : (
               <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <div className="scroll-x">
+                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
                   <thead>
                     <tr style={{ borderBottom: `1px solid ${warm.colors.borderWhisper}` }}>
                       <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: S.sub, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
@@ -509,6 +513,7 @@ export function AdminFunnel() {
                     ))}
                   </tbody>
                 </table>
+        </div>
               </div>
             )
           ) : (

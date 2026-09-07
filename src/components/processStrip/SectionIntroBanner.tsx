@@ -47,7 +47,7 @@ export const SectionIntroBanner: React.FC<SectionIntroBannerProps> = ({ sectionI
             display: 'flex',
             alignItems: 'flex-start',
             gap: 12,
-            padding: '12px 16px',
+            padding: '12px 14px',
             marginBottom: 20,
             background: warm.colors.bgAlt,
             border: `1px solid ${warm.colors.borderWhisper}`,
@@ -62,19 +62,26 @@ export const SectionIntroBanner: React.FC<SectionIntroBannerProps> = ({ sectionI
           <button
             onClick={handleDismiss}
             aria-label="Dismiss"
+            /* 14px icon in 4px of padding is a 22px target, and this banner
+               appears at the top of eight different pages — so on a phone it
+               was eight screens with a dismiss you could not reliably hit.
+               tap-target keeps the X exactly this size and gives it a 44px
+               hit area. */
+            className="tap-target"
             style={{
               background: 'transparent',
               border: 'none',
               cursor: 'pointer',
               color: warm.colors.textMuted,
               padding: 4,
+              margin: -4,
               flexShrink: 0,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <X size={14} />
+            <X size={16} />
           </button>
         </motion.div>
       )}

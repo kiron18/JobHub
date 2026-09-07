@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { warm } from '../../lib/theme/warmTokens';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { SPRING, t, DUR } from '../../lib/theme/motion';
 
 /* ── Button ────────────────────────────────────────────────────────────
@@ -50,7 +51,15 @@ export function Button({
 }: ButtonProps) {
   const [hover, setHover] = useState(false);
   const [focus, setFocus] = useState(false);
-  const s = SIZES[size];
+  const isMobile = useIsMobile();
+  /*
+    The small size is 32px tall, which is right beside a cursor and under the
+    floor for a fingertip. Every `size="sm"` button in the product — and there
+    are a lot of them — grows to 40 on a phone. Only the height changes, so the
+    type and the padding are the same button, just easier to hit.
+  */
+  const base = SIZES[size];
+  const s = isMobile && size === 'sm' ? { ...base, h: 40, padX: 14 } : base;
   const off = disabled || loading;
 
   const skin = ((): React.CSSProperties => {

@@ -43,7 +43,8 @@ export default function AdminContacts() {
       {isLoading ? (
         <p>Loading contacts...</p>
       ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+        <div className="scroll-x">
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, minWidth: 640 }}>
           <thead>
             <tr style={{ borderBottom: '2px solid #eee', textAlign: 'left' }}>
               <th style={{ padding: '10px 8px' }}>Email</th>
@@ -90,6 +91,7 @@ export default function AdminContacts() {
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   );

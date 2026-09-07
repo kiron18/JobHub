@@ -449,13 +449,21 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
       <div
         aria-hidden
         style={{
-          position: 'absolute', inset: 0, padding: '40px 24px', overflow: 'hidden',
+          position: 'absolute', inset: 0,
+          /*
+            This page and the sheet inside it were spending 68px a side on a
+            390px phone — 136px of the screen — which left the resume about
+            250px to wrap in and printed it three words to a line. Both paddings
+            now scale with the viewport and are unchanged from ~760px up.
+          */
+          padding: 'clamp(20px, 5vw, 40px) clamp(10px, 4vw, 24px)', overflow: 'hidden',
           opacity: 0.96, userSelect: 'none', pointerEvents: 'none',
         }}
       >
         <div style={{
           maxWidth: 680, margin: '0 auto', background: '#fff', borderRadius: 14,
-          border: `1px solid ${C.borderWhisper}`, padding: '40px 44px',
+          border: `1px solid ${C.borderWhisper}`,
+          padding: 'clamp(24px, 6vw, 40px) clamp(16px, 6vw, 44px)',
           fontFamily: warm.type.fontBody, fontSize: 14.5, lineHeight: 1.65, color: '#1a2230',
           /* The seal, over the whole document, their name included. It is off
              for the entire print so they watch a page they can actually read
@@ -508,7 +516,7 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
             <div style={{
               width: '100%', maxWidth: 460,
               background: C.bgDeep, border: '1px solid rgba(255,255,255,0.12)',
-              borderRadius: 14, padding: '22px 24px', boxShadow: warm.shadow.lifted,
+              borderRadius: 14, padding: 'clamp(18px, 5vw, 22px) clamp(16px, 5vw, 24px)', boxShadow: warm.shadow.lifted,
               fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
               fontSize: 13, lineHeight: 1.9, color: 'rgba(255,255,255,0.92)',
             }}>
@@ -553,7 +561,7 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
             transition={{ duration: 0.28 }}
             style={{
               position: 'absolute', left: 0, right: 0, bottom: 0,
-              display: 'flex', justifyContent: 'center', padding: '0 24px 28px',
+              display: 'flex', justifyContent: 'center', padding: '0 clamp(14px, 4vw, 24px) 28px',
               pointerEvents: 'none',
             }}
           >
@@ -758,7 +766,7 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
                 disabled={loading}
                 style={{
                   width: '100%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  gap: 9, padding: '15px 24px', background: C.accentPetrol, color: C.textOnDeep,
+                  gap: 9, padding: '15px clamp(18px, 5vw, 24px)', background: C.accentPetrol, color: C.textOnDeep,
                   border: 'none', borderRadius: warm.radius.button, fontSize: 16, fontWeight: 700,
                   fontFamily: 'inherit', cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.7 : 1,
                   boxShadow: '0 1px 2px rgba(16,24,40,0.06), 0 6px 18px rgba(18,87,196,0.20)',

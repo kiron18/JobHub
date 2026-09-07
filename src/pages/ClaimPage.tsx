@@ -60,7 +60,7 @@ export default function ClaimPage() {
   }
 
   const page: React.CSSProperties = {
-    height: '100vh', overflowY: 'auto',
+    height: '100dvh', overflowY: 'auto',
     background: colors.bgCanvas,
     fontFamily: typeTokens.body,
     padding: '72px 20px 96px',

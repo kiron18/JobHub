@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import api from '../lib/api';
 import { warm } from '../lib/theme/warmTokens';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { SectionIntroBanner } from './processStrip';
 import type { DocType } from '../lib/exportDocx';
 
@@ -73,11 +74,21 @@ const cardStyle: React.CSSProperties = {
     overflow: 'hidden',
 };
 
-const btnAction: React.CSSProperties = {
-    padding: '5px 6px', borderRadius: 8, background: 'transparent', border: 'none',
+/**
+ * 5px of padding round a 14px icon is a 24px target. A fingertip is 44. On
+ * touch these are the only way to get a document out of the library, so they
+ * get the room.
+ */
+const btnAction = (isMobile: boolean): React.CSSProperties => ({
+    padding: isMobile ? '10px 12px' : '5px 6px',
+    minWidth: isMobile ? 44 : undefined,
+    minHeight: isMobile ? 40 : undefined,
+    borderRadius: 8,
+    background: isMobile ? warm.colors.bgAlt : 'transparent',
+    border: 'none',
     cursor: 'pointer', color: warm.colors.textMuted, transition: 'color 0.15s',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-};
+});
 
 interface DocCardProps {
     doc: Document;
@@ -89,6 +100,7 @@ const DocCard: React.FC<DocCardProps> = ({ doc, onDelete, deleting }) => {
     const [viewerOpen, setViewerOpen] = useState(false);
     const [copied, setCopied] = useState(false);
     const [hovered, setHovered] = useState(false);
+    const isMobile = useIsMobile();
     const resolvedType = resolveDocType(doc.type);
     const cfg = TYPE_CONFIG[resolvedType];
 
@@ -145,7 +157,10 @@ const DocCard: React.FC<DocCardProps> = ({ doc, onDelete, deleting }) => {
                     padding: 16,
                     display: 'flex',
                     alignItems: 'flex-start',
-                    gap: 16,
+                    gap: isMobile ? 12 : 16,
+                    /* On a phone the actions drop to their own line under the
+                       title rather than competing with it for width. */
+                    flexWrap: isMobile ? 'wrap' : 'nowrap',
                     cursor: 'pointer',
                     transition: 'border-color 0.15s',
                     borderColor: hovered ? warm.colors.borderDefined : warm.colors.borderWhisper,
@@ -163,13 +178,13 @@ const DocCard: React.FC<DocCardProps> = ({ doc, onDelete, deleting }) => {
                 <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
                         <span style={{
-                            fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase',
-                            padding: '1px 6px', borderRadius: 4, border: `1px solid ${cfg.color}40`,
+                            fontSize: isMobile ? 11 : 9, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase',
+                            padding: isMobile ? '2px 7px' : '1px 6px', borderRadius: 4, border: `1px solid ${cfg.color}40`,
                             color: cfg.color, background: `${cfg.color}12`,
                         }}>
                             {cfg.label}
                         </span>
-                        <span style={{ fontSize: 10, color: warm.colors.textMuted, display: 'flex', alignItems: 'center', gap: 3 }}>
+                        <span style={{ fontSize: isMobile ? 11 : 10, color: warm.colors.textMuted, display: 'flex', alignItems: 'center', gap: 3 }}>
                             <Clock size={9} />
                             {formatDate(doc.createdAt)}
                         </span>
@@ -177,8 +192,8 @@ const DocCard: React.FC<DocCardProps> = ({ doc, onDelete, deleting }) => {
                             <span
                                 title={doc.qualitySignals.filter(s => s.severity === 'warning' || s.severity === 'critical').map(s => `[${s.severity}] ${s.message}`).join(' • ')}
                                 style={{
-                                    fontSize: 9, fontWeight: 800, letterSpacing: '0.04em',
-                                    padding: '1px 6px', borderRadius: 4,
+                                    fontSize: isMobile ? 11 : 9, fontWeight: 800, letterSpacing: '0.04em',
+                                    padding: isMobile ? '2px 7px' : '1px 6px', borderRadius: 4,
                                     color: '#B85C5C', background: '#B85C5C15',
                                     border: '1px solid #B85C5C35',
                                     cursor: 'default',
@@ -188,35 +203,72 @@ const DocCard: React.FC<DocCardProps> = ({ doc, onDelete, deleting }) => {
                             </span>
                         )}
                     </div>
-                    <p style={{ margin: '0 0 3px', fontSize: 13, fontWeight: 600, color: warm.colors.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.title}</p>
-                    <p style={{ margin: 0, fontSize: 12, color: warm.colors.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{preview}…</p>
+                    {/*
+                      One nowrap line each is fine at 900px and useless at 358.
+                      Every title in the library starts with the same two words
+                      ("COVER LETTER - "), so a single truncated line rendered
+                      the whole list as a column of identical rows: "COVER
+                      LETTER - Shaba…", over and over. Two clamped lines is
+                      roughly double the characters, which is enough to reach
+                      the part of the title that differs.
+                    */}
+                    <p style={{
+                        margin: '0 0 3px', fontSize: isMobile ? 14 : 13, fontWeight: 600,
+                        color: warm.colors.textPrimary, overflow: 'hidden',
+                        ...(isMobile
+                            ? { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, lineHeight: 1.35 }
+                            : { textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }),
+                    }}>{doc.title}</p>
+                    <p style={{
+                        margin: 0, fontSize: 12, color: warm.colors.textMuted, overflow: 'hidden',
+                        ...(isMobile
+                            ? { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, lineHeight: 1.45 }
+                            : { textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }),
+                    }}>{preview}…</p>
                 </div>
 
-                {/* Actions — visible on hover */}
+                {/*
+                  Actions.
+
+                  These were opacity:0 until hover. A phone has no hover, so on a
+                  phone there was no way to copy, download or delete anything in
+                  the library — the page was a read-only list of 164 titles. On
+                  touch they are simply always visible, on their own line, at a
+                  size a thumb can hit.
+                */}
                 <div style={{
-                    display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0,
-                    opacity: hovered ? 1 : 0, transition: 'opacity 0.15s',
+                    display: 'flex', alignItems: 'center', flexShrink: 0,
+                    gap: isMobile ? 4 : 2,
+                    opacity: isMobile || hovered ? 1 : 0,
+                    transition: 'opacity 0.15s',
+                    ...(isMobile ? {
+                        width: '100%',
+                        justifyContent: 'flex-end',
+                        marginTop: 4,
+                        paddingTop: 8,
+                        borderTop: `1px solid ${warm.colors.borderWhisper}`,
+                    } : {}),
                 }} onClick={e => e.stopPropagation()}>
-                    <button onClick={handleCopy} title="Copy content" style={btnAction}
+                    <button onClick={handleCopy} title="Copy content" style={btnAction(isMobile)}
                         onMouseEnter={e => e.currentTarget.style.color = warm.colors.textPrimary}
                         onMouseLeave={e => e.currentTarget.style.color = warm.colors.textMuted}
                     >
                         {copied ? <CheckCircle size={14} style={{ color: warm.colors.success }} /> : <Copy size={14} />}
                     </button>
-                    <button onClick={handleDownloadPdf} title="Download as PDF" style={btnAction}
+                    <button onClick={handleDownloadPdf} title="Download as PDF" style={btnAction(isMobile)}
                         onMouseEnter={e => e.currentTarget.style.color = '#B85C5C'}
                         onMouseLeave={e => e.currentTarget.style.color = warm.colors.textMuted}
                     >
                         <FileText size={14} />
                     </button>
-                    <button onClick={handleDownload} title="Download as .docx" style={btnAction}
+                    <button onClick={handleDownload} title="Download as .docx" style={btnAction(isMobile)}
                         onMouseEnter={e => e.currentTarget.style.color = warm.colors.textPrimary}
                         onMouseLeave={e => e.currentTarget.style.color = warm.colors.textMuted}
                     >
                         <Download size={14} />
                     </button>
                     <button onClick={() => onDelete(doc.id)} disabled={deleting} title="Delete" style={{
-                        ...btnAction, opacity: deleting ? 0.4 : 1, cursor: deleting ? 'not-allowed' : 'pointer',
+                        ...btnAction(isMobile), opacity: deleting ? 0.4 : 1, cursor: deleting ? 'not-allowed' : 'pointer',
                     }}
                         onMouseEnter={e => { if (!deleting) e.currentTarget.style.color = '#B85C5C'; }}
                         onMouseLeave={e => { if (!deleting) e.currentTarget.style.color = warm.colors.textMuted; }}
@@ -255,7 +307,7 @@ const DocCard: React.FC<DocCardProps> = ({ doc, onDelete, deleting }) => {
                                 border: `1px solid ${warm.colors.borderWhisper}`,
                                 borderRadius: '16px 16px 0 0',
                                 display: 'flex', flexDirection: 'column',
-                                height: '100%', maxHeight: '88vh',
+                                height: '100%', maxHeight: '88dvh',
                                 overflow: 'hidden',
                             }}
                             className="sm:rounded-2xl"
@@ -375,6 +427,7 @@ export const DocumentLibrary: React.FC = () => {
     }, [documents, typeFilter, search]);
 
     const grouped = useMemo(() => groupByDate(filtered), [filtered]);
+    const isMobile = useIsMobile();
 
     const counts: Record<string, number> = useMemo(() => {
         const c: Record<string, number> = { ALL: documents.length, RESUME: 0, COVER_LETTER: 0, STAR_RESPONSE: 0, BASELINE_RESUME: 0 };
@@ -417,16 +470,16 @@ export const DocumentLibrary: React.FC = () => {
                         onBlur={e => { e.currentTarget.style.borderColor = warm.colors.borderWhisper; e.currentTarget.style.boxShadow = 'none'; }}
                     />
                     {search && (
-                        <button onClick={() => setSearch('')} style={{
-                            position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                        <button onClick={() => setSearch('')} aria-label="Clear search" style={{
+                            position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
                             background: 'none', border: 'none', cursor: 'pointer',
-                            color: warm.colors.textMuted, padding: 2, display: 'flex',
+                            color: warm.colors.textMuted, padding: isMobile ? 10 : 2, display: 'flex',
                         }}>
-                            <X size={13} />
+                            <X size={isMobile ? 16 : 13} />
                         </button>
                     )}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 6, flexWrap: 'wrap' }}>
                     {(['ALL', 'RESUME', 'COVER_LETTER', 'STAR_RESPONSE', 'BASELINE_RESUME'] as const).map(t => {
                         const active = typeFilter === t;
                         const cfg = t === 'ALL' ? null : TYPE_CONFIG[t as KnownDocumentType];
@@ -435,7 +488,15 @@ export const DocumentLibrary: React.FC = () => {
                                 key={t}
                                 onClick={() => setTypeFilter(t)}
                                 style={{
-                                    padding: '6px 10px', borderRadius: 10, fontSize: 9, fontWeight: 800,
+                                    /* Five chips at 28px tall with 9px type. On a
+                                       phone these are the only way to narrow a
+                                       list of 170 documents, so they are worth a
+                                       thumb's worth of height. */
+                                    padding: isMobile ? '10px 14px' : '6px 10px',
+                                    minHeight: isMobile ? 40 : undefined,
+                                    borderRadius: 10,
+                                    fontSize: isMobile ? 11 : 9,
+                                    fontWeight: 800,
                                     letterSpacing: '0.06em', textTransform: 'uppercase',
                                     cursor: 'pointer', border: `1px solid ${warm.colors.borderWhisper}`,
                                     background: active ? (cfg ? `${cfg.color}14` : warm.colors.bgAlt) : warm.colors.bgSurface,

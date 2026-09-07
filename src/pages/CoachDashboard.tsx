@@ -101,7 +101,8 @@ export const CoachDashboard: React.FC = () => {
                         {attention > 0 && <span style={{ color: '#B0563C', fontWeight: 700 }}> · {attention} member{attention === 1 ? '' : 's'} need a conversation</span>}
                     </p>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {/* Search box plus Refresh came to 4px wider than a 390px phone. */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <div style={{
                         display: 'flex', alignItems: 'center', gap: 7, padding: '8px 12px',
                         borderRadius: 10, background: warm.colors.bgSurface, border: `1px solid ${warm.colors.borderWhisper}`,
@@ -111,7 +112,7 @@ export const CoachDashboard: React.FC = () => {
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                             placeholder="Find a member…"
-                            style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 13, color: warm.colors.textPrimary, width: 150 }}
+                            style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 13, color: warm.colors.textPrimary, width: 150, maxWidth: '100%', minWidth: 0 }}
                         />
                     </div>
                     <button onClick={() => refetch()} disabled={isFetching}
@@ -153,8 +154,12 @@ export const CoachDashboard: React.FC = () => {
                                         background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left',
                                     }}
                                 >
-                                    <div style={{ flex: '1 1 180px', minWidth: 140 }}>
-                                        <div style={{ fontSize: 14, fontWeight: 800, color: warm.colors.textPrimary, display: 'flex', alignItems: 'center', gap: 7 }}>
+                                    {/* minWidth 140 with a long name and a badge
+                                        beside it pushed the card past the edge on
+                                        a phone. The badge wraps under the name
+                                        instead, and the email breaks anywhere. */}
+                                    <div style={{ flex: '1 1 180px', minWidth: 0, overflowWrap: 'anywhere' }}>
+                                        <div style={{ fontSize: 14, fontWeight: 800, color: warm.colors.textPrimary, display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
                                             {m.name}
                                             {m.flags.needsConversation && (
                                                 <span style={{

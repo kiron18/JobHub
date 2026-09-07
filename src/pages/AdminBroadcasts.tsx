@@ -97,7 +97,8 @@ export default function AdminBroadcasts() {
 
       {/* Past broadcasts */}
       <h2 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 12px' }}>Past Broadcasts</h2>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+      <div className="scroll-x">
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, minWidth: 640 }}>
         <thead>
           <tr style={{ borderBottom: '2px solid #eee', textAlign: 'left' }}>
             <th style={{ padding: '8px' }}>Name</th>
@@ -130,6 +131,7 @@ export default function AdminBroadcasts() {
           )}
         </tbody>
       </table>
+        </div>
     </div>
   );
 }

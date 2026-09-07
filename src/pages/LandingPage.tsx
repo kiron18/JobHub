@@ -62,7 +62,7 @@ function LoadingShell() {
     <div
       className="landing-page"
       style={{
-        height: '100vh',
+        height: '100dvh',
         overflowY: 'auto',
         background: colors.bgCanvas,
         display: 'flex',
@@ -137,7 +137,7 @@ export function LandingPage() {
 
   return (
     <div className="landing-page has-grain" style={{
-      height: '100vh',
+      height: '100dvh',
       overflowY: 'auto',
       background: colors.bgCanvas,
     }}>

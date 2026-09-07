@@ -237,10 +237,10 @@ export function DiagnosticPage({ profile, onDone }: DiagnosticPageProps) {
   const hasDiagnosticContent = cardSections.length > 0;
 
   return (
-    <div style={{ background: page.bgCanvas, height: '100vh', overflowY: 'auto' }}>
+    <div style={{ background: page.bgCanvas, height: '100dvh', overflowY: 'auto' }}>
       {/* ── LOADING STATE ── */}
       {reportStatus === 'loading' && (
-        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 24px' }}>
+        <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 24px' }}>
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -254,7 +254,7 @@ export function DiagnosticPage({ profile, onDone }: DiagnosticPageProps) {
             }} />
             <style>{`@keyframes dspin { to { transform: rotate(360deg); } }`}</style>
 
-            <p style={{ margin: '0 0 20px', fontSize: 10, fontWeight: 800, letterSpacing: '0.18em', color: GOLD, textTransform: 'uppercase' }}>
+            <p style={{ margin: '0 0 20px', fontSize: 11, fontWeight: 800, letterSpacing: '0.16em', color: GOLD, textTransform: 'uppercase' }}>
               Running your diagnostic
             </p>
 

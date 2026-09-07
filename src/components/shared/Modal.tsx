@@ -38,7 +38,19 @@ export function Modal({ open, onClose, children, maxWidth = 480, title, footer }
     if (!open) return;
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
+    /*
+      Freeze the page behind the overlay. Without this a drag anywhere outside
+      the panel scrolls the page underneath it, which on a phone — where the
+      overlay covers nearly everything — reads as the modal itself sliding
+      around. Restoring the previous value rather than clearing it matters:
+      modals stack, and an inner one closing must not unfreeze the outer one.
+    */
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', handler);
+      document.body.style.overflow = previousOverflow;
+    };
   }, [open, onClose]);
 
   return (
@@ -47,7 +59,13 @@ export function Modal({ open, onClose, children, maxWidth = 480, title, footer }
         <div style={{
           position: 'fixed', inset: 0, zIndex: 1000,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: 24,
+          /* 24px a side costs 48 of a 390px screen. 16 on a phone, 24 from a
+             tablet up. The safe-area terms keep the panel clear of the notch
+             and the home indicator. */
+          padding: 'clamp(16px, 4vw, 24px)',
+          paddingTop: 'max(clamp(16px, 4vw, 24px), var(--safe-top))',
+          paddingBottom: 'max(clamp(16px, 4vw, 24px), var(--safe-bottom))',
+          boxSizing: 'border-box',
         }}>
           <motion.div
             initial={{ opacity: 0 }}
@@ -76,7 +94,13 @@ export function Modal({ open, onClose, children, maxWidth = 480, title, footer }
               background: warm.colors.bgSurface,
               borderRadius: warm.radius.card,
               boxShadow: warm.shadow.lifted,
-              maxHeight: 'calc(100vh - 48px)',
+              /*
+                dvh, not vh. 100vh on a phone is measured with the browser
+                chrome retracted, so `100vh - 48px` was still taller than the
+                visible window and the footer — which holds the primary button —
+                sat underneath the address bar with no way to reach it.
+              */
+              maxHeight: 'calc(100dvh - clamp(32px, 8vw, 48px))',
               display: 'flex', flexDirection: 'column',
               overflow: 'hidden',
             }}
@@ -106,13 +130,23 @@ export function Modal({ open, onClose, children, maxWidth = 480, title, footer }
               </div>
             )}
 
-            <div style={{ padding: title ? '20px' : '28px', overflowY: 'auto', flex: 1 }}>
+            <div
+              data-scroll-pane
+              style={{
+                padding: title ? 'clamp(16px, 4vw, 20px)' : 'clamp(20px, 5vw, 28px)',
+                overflowY: 'auto', flex: 1,
+              }}
+            >
               {children}
             </div>
 
             {footer && (
               <div style={{
                 display: 'flex', justifyContent: 'flex-end', gap: 8,
+                /* Two full-word buttons ("Cancel" / "Save and continue") do not
+                   fit side by side at 320px. Wrapping is the graceful version
+                   of that: they stay a row wherever there is room. */
+                flexWrap: 'wrap',
                 padding: '12px 20px',
                 borderTop: `1px solid ${warm.colors.borderWhisper}`,
                 background: warm.colors.bgAlt,

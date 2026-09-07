@@ -114,7 +114,9 @@ export const QualityControlPanel: React.FC<{ userId?: string }> = ({ userId }) =
                         Quality control — every document scanned free, worst first
                     </span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {/* Two selects and a button in one non-wrapping row ran 4px past
+                    the edge of a 390px phone. */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     <select value={days} onChange={e => setDays(parseInt(e.target.value, 10))} style={selectStyle}>
                         <option value={7}>7 days</option>
                         <option value={30}>30 days</option>

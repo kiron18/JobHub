@@ -93,7 +93,7 @@ export function AdminQuality() {
         : null;
 
     return (
-        <div style={{ minHeight: '100vh', background: warm.colors.bgCanvas, padding: '32px 20px' }}>
+        <div style={{ minHeight: '100dvh', background: warm.colors.bgCanvas, padding: '32px 20px' }}>
             <div style={{ maxWidth: 1000, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
 
                 {/* Header */}

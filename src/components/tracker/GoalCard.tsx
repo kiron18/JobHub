@@ -194,13 +194,17 @@ export const GoalCard: React.FC = () => {
                         <button
                             onClick={startEditing}
                             style={{
-                                display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px',
-                                borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: 'pointer',
+                                /* This is the only way to change a weekly goal,
+                                   and it was a 54x26 target. */
+                                display: 'flex', alignItems: 'center', gap: 5,
+                                padding: '6px 12px',
+                                minHeight: 36,
+                                borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer',
                                 border: `1px solid ${warm.colors.borderWhisper}`, background: 'transparent',
                                 color: warm.colors.textMuted,
                             }}
                         >
-                            <Pencil size={10} /> Edit
+                            <Pencil size={11} /> Edit
                         </button>
                     )
                 )}

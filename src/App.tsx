@@ -177,7 +177,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: warm.colors.bgCanvas }}>
+      <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: warm.colors.bgCanvas }}>
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(45,90,110,0.2)', borderTopColor: warm.colors.accentPetrol }} />
           <p style={{ color: '#5C5750', fontWeight: 500, margin: 0 }}>Loading...</p>
@@ -451,7 +451,7 @@ function ReportOrDashboard() {
   }
 
   const spinner = (
-    <div style={{ minHeight: '100vh', background: warm.colors.bgCanvas, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ minHeight: '100dvh', background: warm.colors.bgCanvas, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div className="w-10 h-10 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(45,90,110,0.2)', borderTopColor: warm.colors.accentPetrol }} />
     </div>
   );

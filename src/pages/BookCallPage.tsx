@@ -148,7 +148,7 @@ function IntakeModal({ onClose }: { onClose: () => void }) {
           onClick={e => e.stopPropagation()}
           style={{
             background: colors.bgCanvas, borderRadius: 16, padding: '32px 28px',
-            width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto',
+            width: '100%', maxWidth: 520, maxHeight: '90dvh', overflowY: 'auto',
             boxShadow: '0 8px 40px rgba(26,24,20,0.22)',
             border: `1px solid ${colors.borderWhisper}`,
           }}
@@ -308,7 +308,7 @@ export function BookCallPage() {
   const openIntake = useCallback(() => setShowIntake(true), []);
 
   return (
-    <div style={{ height: '100vh', overflowY: 'auto', background: colors.bgCanvas, color: colors.textPrimary }}>
+    <div style={{ height: '100dvh', overflowY: 'auto', background: colors.bgCanvas, color: colors.textPrimary }}>
       {showIntake && <IntakeModal onClose={() => setShowIntake(false)} />}
       {/* Nav */}
       <nav style={{
@@ -318,7 +318,7 @@ export function BookCallPage() {
       }}>
         <button
           onClick={() => navigate('/')}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px 0', margin: '-8px 0', minHeight: 40, display: 'flex', alignItems: 'center' }}
         >
           <span style={display({ fontSize: '1.05rem', fontWeight: 600, letterSpacing: '-0.01em' })}>
             Aussie&nbsp;Grad&nbsp;<span style={{ color: colors.accentGold }}>Careers</span>
@@ -329,7 +329,8 @@ export function BookCallPage() {
           style={{
             background: 'none', border: 'none', cursor: 'pointer',
             fontFamily: typeTokens.body, fontSize: '0.9375rem', fontWeight: 600,
-            color: colors.accentPetrol, padding: '6px 4px', letterSpacing: '-0.005em',
+            color: colors.accentPetrol, padding: '10px 4px', margin: '-4px 0', minHeight: 40,
+            letterSpacing: '-0.005em',
           }}
           onMouseEnter={e => { e.currentTarget.style.textDecoration = 'underline'; e.currentTarget.style.textUnderlineOffset = '3px'; }}
           onMouseLeave={e => { e.currentTarget.style.textDecoration = 'none'; }}
@@ -551,7 +552,9 @@ export function BookCallPage() {
               <button
                 key={to}
                 onClick={() => navigate(to)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: typeTokens.body, fontSize: '0.8125rem', color: colors.textMuted, padding: 0 }}
+                /* Footer links were 21px tall with zero padding. The negative
+                   margin keeps the row looking exactly as it did. */
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: typeTokens.body, fontSize: '0.8125rem', color: colors.textMuted, padding: '10px 6px', margin: '-10px 0', minHeight: 40 }}
                 onMouseEnter={e => { e.currentTarget.style.color = colors.textSecondary; }}
                 onMouseLeave={e => { e.currentTarget.style.color = colors.textMuted; }}
               >

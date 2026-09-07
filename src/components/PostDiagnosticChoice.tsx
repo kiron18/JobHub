@@ -24,7 +24,7 @@ export function PostDiagnosticChoice({ onApplyNow, onSeeDiagnostic, profile }: P
 
   return (
     <div style={{
-      minHeight: '100vh',
+      minHeight: '100dvh',
       overflowY: 'auto',
       background: warm.colors.bgCanvas,
       display: 'flex',

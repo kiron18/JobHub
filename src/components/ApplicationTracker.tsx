@@ -22,6 +22,7 @@ import { SortControls } from './tracker/SortControls';
 import type { SortBy } from './tracker/SortControls';
 import { SectionIntroBanner } from './processStrip';
 import { warm } from '../lib/theme/warmTokens';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { ActivityHeatmap } from './tracker/ActivityHeatmap';
 import { OutreachTracker } from './linkedin/OutreachTracker';
 import { GoalCard } from './tracker/GoalCard';
@@ -35,6 +36,7 @@ function daysSinceApplied(dateApplied: string | null): number | null {
 }
 
 export const ApplicationTracker: React.FC = () => {
+    const isMobile = useIsMobile();
     const [trackerTab, setTrackerTab] = useState<'applications' | 'outreach'>('applications');
     const queryClient = useQueryClient();
     const [filterStatus, setFilterStatus] = useState<ApplicationStatus | 'ALL' | 'SKIPPED'>('ALL');
@@ -253,7 +255,11 @@ export const ApplicationTracker: React.FC = () => {
                         key={id}
                         onClick={() => setTrackerTab(id)}
                         style={{
-                            background: 'none', border: 'none', padding: '0 0 10px', cursor: 'pointer',
+                            background: 'none', border: 'none', cursor: 'pointer',
+                            /* These two switch the whole page. Padding above the
+                               label as well as below it makes the row 44px tall
+                               without moving the underline. */
+                            padding: isMobile ? '10px 0' : '0 0 10px',
                             fontFamily: warm.type.fontBody, fontSize: 15,
                             fontWeight: trackerTab === id ? warm.weight.semibold : warm.weight.medium,
                             color: trackerTab === id ? warm.colors.textPrimary : warm.colors.textMuted,
@@ -277,8 +283,18 @@ export const ApplicationTracker: React.FC = () => {
 
             {/* Stats bar — compact horizontal strip, fits screen width */}
             <div style={{
-                display: 'flex', alignItems: 'stretch',
-                background: warm.colors.bgSurface,
+                /*
+                  Five stats in one row is 68px per stat on a 358px screen, which
+                  is why the labels had shrunk to 8px and "Follow-up Due" still
+                  did not fit. As a grid they reflow to three-and-two on a phone
+                  and stay a single row of five from 560px up. The 1px gap over a
+                  hairline background draws the dividers in both directions, so
+                  the borderLeft each cell used to carry is gone.
+                */
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(96px, 1fr))',
+                gap: 1,
+                background: warm.colors.borderWhisper,
                 border: `1px solid ${warm.colors.borderWhisper}`,
                 borderRadius: 14, overflow: 'hidden',
             }}>
@@ -290,16 +306,15 @@ export const ApplicationTracker: React.FC = () => {
                     { label: 'Follow-up Due', value: followUpDue, color: followUpDue > 0 ? warm.colors.accentGold : warm.colors.textMuted, icon: Clock, highlight: followUpDue > 0 },
                 ].map((stat, i) => (
                     <div key={i} style={{
-                        flex: 1, minWidth: 0, padding: '8px 6px',
-                        borderLeft: i > 0 ? `1px solid ${warm.colors.borderWhisper}` : 'none',
-                        background: stat.highlight ? 'rgba(197,160,89,0.06)' : 'transparent',
+                        minWidth: 0, padding: '10px 10px',
+                        background: stat.highlight ? '#FBF6EA' : warm.colors.bgSurface,
                         display: 'flex', flexDirection: 'column', gap: 2,
                     }}
                     className="sm:px-3.5 sm:py-2.5"
                     >
                         <p style={{
-                            margin: 0, fontSize: 8, fontWeight: 800, textTransform: 'uppercase',
-                            letterSpacing: '0.02em', lineHeight: 1.3,
+                            margin: 0, fontSize: isMobile ? 11 : 10, fontWeight: 800, textTransform: 'uppercase',
+                            letterSpacing: '0.03em', lineHeight: 1.3,
                             color: i === 1 ? warm.colors.accentPetrol : i === 2 ? warm.colors.accentGold : i === 3 ? warm.colors.success : stat.highlight ? warm.colors.accentGold : warm.colors.textMuted,
                             display: 'flex', alignItems: 'center', gap: 3,
                         }}
@@ -326,9 +341,11 @@ export const ApplicationTracker: React.FC = () => {
                 <button
                     onClick={() => setShowAddForm(s => !s)}
                     style={{
-                        display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px',
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        padding: isMobile ? '12px 16px' : '8px 16px',
+                        minHeight: isMobile ? 44 : undefined,
                         background: warm.colors.bgSurface, color: warm.colors.textSecondary,
-                        fontSize: 12, fontWeight: 700, borderRadius: 12,
+                        fontSize: isMobile ? 13 : 12, fontWeight: 700, borderRadius: 12,
                         border: `1px solid ${warm.colors.borderWhisper}`, cursor: 'pointer',
                         transition: 'all 0.15s',
                     }}
@@ -489,7 +506,11 @@ export const ApplicationTracker: React.FC = () => {
                             onClick={() => setFilterStatus(status)}
                             style={{
                                 display: 'flex', alignItems: 'center', gap: 4,
-                                padding: '5px 12px', borderRadius: 8, fontSize: 10, fontWeight: 800,
+                                /* Six status chips, and on a phone they are the
+                                   only way to narrow the list. */
+                                padding: isMobile ? '10px 13px' : '5px 12px',
+                                minHeight: isMobile ? 40 : undefined,
+                                borderRadius: 8, fontSize: isMobile ? 11 : 10, fontWeight: 800,
                                 textTransform: 'uppercase', letterSpacing: '0.06em',
                                 cursor: 'pointer', transition: 'all 0.15s',
                                 ...(active
@@ -507,8 +528,8 @@ export const ApplicationTracker: React.FC = () => {
             </div>
 
             {/* Grade filter */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 9, fontWeight: 700, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Grade</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 6, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: isMobile ? 11 : 9, fontWeight: 700, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Grade</span>
                 {([
                     { key: 'ALL', label: 'All' },
                     { key: 'AB',  label: 'A – B' },
@@ -521,7 +542,9 @@ export const ApplicationTracker: React.FC = () => {
                             key={key}
                             onClick={() => setGradeFilter(key)}
                             style={{
-                                padding: '4px 10px', borderRadius: 8, fontSize: 9, fontWeight: 800,
+                                padding: isMobile ? '9px 13px' : '4px 10px',
+                                minHeight: isMobile ? 38 : undefined,
+                                borderRadius: 8, fontSize: isMobile ? 11 : 9, fontWeight: 800,
                                 textTransform: 'uppercase', letterSpacing: '0.06em',
                                 cursor: 'pointer', transition: 'all 0.15s',
                                 ...(active

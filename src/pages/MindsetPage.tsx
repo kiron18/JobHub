@@ -99,7 +99,11 @@ export function MindsetPage() {
           fontSize: 13,
           color: warm.colors.textSecondary,
           textDecoration: 'none',
-          marginBottom: 32,
+          /* 21px tall as bare text. The padding makes it a row; the margin
+             keeps it where it was. */
+          padding: '10px 0',
+          margin: '0 0 22px',
+          minHeight: 40,
           transition: 'color 200ms',
         }}
         onMouseEnter={(e) => (e.currentTarget.style.color = warm.colors.textPrimary)}

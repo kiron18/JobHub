@@ -153,7 +153,7 @@ const DocumentViewerModal: React.FC<{
                     border: `1px solid ${warm.colors.borderWhisper}`,
                     borderRadius: '16px 16px 0 0',
                     display: 'flex', flexDirection: 'column',
-                    height: '100%', maxHeight: '85vh',
+                    height: '100%', maxHeight: '85dvh',
                     overflow: 'hidden',
                 }}
                 className="sm:rounded-2xl"

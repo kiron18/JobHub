@@ -350,7 +350,7 @@ export default function AdminWorkshop() {
   if (readMode && session) {
     return (
       <div style={{
-        minHeight: '100vh', background: C.bg, color: C.ink, fontFamily: FONT,
+        minHeight: '100dvh', background: C.bg, color: C.ink, fontFamily: FONT,
         padding: '28px clamp(16px, 4vw, 44px) 120px',
       }}>
         <div style={{ maxWidth: 940, margin: '0 auto' }}>
@@ -397,7 +397,11 @@ export default function AdminWorkshop() {
   // ── The console ────────────────────────────────────────────────────────────
   return (
     <div style={{
-      height: '100vh', overflowY: 'auto', background: C.bg, color: C.ink, fontFamily: FONT,
+      /* These pages render inside DashboardLayout, whose <main> already
+         scrolls. Owning a second 100dvh scroller on top of the shell's own
+         padding made the page 100px taller than the window, so it scrolled
+         by exactly the padding and the inner pane held all the content. */
+      background: C.bg, color: C.ink, fontFamily: FONT,
       padding: '24px clamp(14px, 3vw, 28px) 90px', boxSizing: 'border-box',
     }}>
       <div style={{ maxWidth: 1120, margin: '0 auto' }}>

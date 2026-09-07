@@ -125,7 +125,7 @@ export function Hero({ variant, onCtaClick }: HeroProps) {
       <div
         className="hero-fold"
         style={{
-          height: 'calc(100vh - 64px)',
+          height: 'calc(100dvh - 64px)',
           position: 'relative',
           display: 'flex',
           flexDirection: 'column',
@@ -303,7 +303,7 @@ export function Hero({ variant, onCtaClick }: HeroProps) {
       {/* Mobile adjustments */}
       <style>{`
         @media (max-width: 640px) {
-          section#hero > .hero-fold { height: calc(100vh - 56px); padding-top: 16px; padding-bottom: 64px; }
+          section#hero > .hero-fold { height: calc(100dvh - 56px); padding-top: 16px; padding-bottom: 64px; }
           section#hero .hero-headline { font-size: clamp(1.875rem, 8vw, 2.5rem); }
         }
       `}</style>

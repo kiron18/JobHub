@@ -40,7 +40,7 @@ export function AuthCallback() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: warm.colors.bgCanvas }}>
+    <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: warm.colors.bgCanvas }}>
       <div className="w-12 h-12 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(45,90,110,0.2)', borderTopColor: warm.colors.accentPetrol }} />
     </div>
   );

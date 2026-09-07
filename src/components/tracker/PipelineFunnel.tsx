@@ -18,20 +18,20 @@ export const PipelineFunnel: React.FC<PipelineFunnelProps> = ({ counts }) => {
         <div style={{
             background: warm.colors.bgSurface,
             border: `1px solid ${warm.colors.borderWhisper}`,
-            borderRadius: 18, padding: 20, overflow: 'hidden',
+            borderRadius: 18, padding: 'clamp(14px, 4vw, 20px)', overflow: 'hidden',
         }}>
-            <p style={{ margin: '0 0 16px', fontSize: 10, fontWeight: 800, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Pipeline Funnel</p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+            <p style={{ margin: '0 0 16px', fontSize: 11, fontWeight: 800, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Pipeline Funnel</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 0, flexWrap: 'wrap', rowGap: 12 }}>
                 {/* Applied */}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
                     <div style={{ width: '100%', borderRadius: 4, background: 'rgba(45,90,110,0.12)', border: '1px solid rgba(45,90,110,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', height: 44 }}>
                         <span style={{ fontSize: 20, fontWeight: 800, color: warm.colors.accentPetrol, fontVariantNumeric: 'tabular-nums' }}>{counts.APPLIED}</span>
                     </div>
-                    <p style={{ margin: '6px 0 0', fontSize: 9, fontWeight: 700, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Applied</p>
+                    <p style={{ margin: '6px 0 0', fontSize: 10, fontWeight: 700, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Applied</p>
                 </div>
                 {/* Arrow + rate */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0 8px' }}>
-                    <span style={{ fontSize: 9, fontWeight: 700, color: warm.colors.textMuted }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0 clamp(4px, 1.5vw, 8px)' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: warm.colors.textMuted }}>
                         {counts.APPLIED > 0 ? `${Math.round((counts.INTERVIEW / Math.max(counts.APPLIED, 1)) * 100)}%` : '—'}
                     </span>
                     <ChevronRight size={14} style={{ color: warm.colors.borderDefined }} />
@@ -41,11 +41,11 @@ export const PipelineFunnel: React.FC<PipelineFunnelProps> = ({ counts }) => {
                     <div style={{ width: '100%', borderRadius: 4, background: 'rgba(197,160,89,0.14)', border: '1px solid rgba(197,160,89,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', height: Math.max(28, counts.APPLIED > 0 ? Math.round(44 * counts.INTERVIEW / Math.max(counts.APPLIED, 1)) : 28) }}>
                         <span style={{ fontSize: 20, fontWeight: 800, color: warm.colors.accentGold, fontVariantNumeric: 'tabular-nums' }}>{counts.INTERVIEW}</span>
                     </div>
-                    <p style={{ margin: '6px 0 0', fontSize: 9, fontWeight: 700, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Interview</p>
+                    <p style={{ margin: '6px 0 0', fontSize: 10, fontWeight: 700, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Interview</p>
                 </div>
                 {/* Arrow + rate */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0 8px' }}>
-                    <span style={{ fontSize: 9, fontWeight: 700, color: warm.colors.textMuted }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0 clamp(4px, 1.5vw, 8px)' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: warm.colors.textMuted }}>
                         {counts.INTERVIEW > 0 ? `${Math.round((counts.OFFER / Math.max(counts.INTERVIEW, 1)) * 100)}%` : '—'}
                     </span>
                     <ChevronRight size={14} style={{ color: warm.colors.borderDefined }} />
@@ -55,17 +55,17 @@ export const PipelineFunnel: React.FC<PipelineFunnelProps> = ({ counts }) => {
                     <div style={{ width: '100%', borderRadius: 4, background: 'rgba(42,157,111,0.12)', border: '1px solid rgba(42,157,111,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', height: Math.max(20, counts.APPLIED > 0 ? Math.round(44 * counts.OFFER / Math.max(counts.APPLIED, 1)) : 20) }}>
                         <span style={{ fontSize: 20, fontWeight: 800, color: counts.OFFER > 0 ? warm.colors.success : warm.colors.textMuted, fontVariantNumeric: 'tabular-nums' }}>{counts.OFFER}</span>
                     </div>
-                    <p style={{ margin: '6px 0 0', fontSize: 9, fontWeight: 700, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Offer</p>
+                    <p style={{ margin: '6px 0 0', fontSize: 10, fontWeight: 700, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Offer</p>
                 </div>
                 {/* Rejected aside */}
                 {counts.REJECTED > 0 && (
                     <>
-                        <div style={{ width: 1, height: 40, background: warm.colors.borderWhisper, margin: '0 12px' }} />
+                        <div style={{ width: 1, height: 40, background: warm.colors.borderWhisper, margin: '0 12px' }} className="hidden sm:block" />
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                             <div style={{ padding: '2px 10px', borderRadius: 4, background: 'rgba(184,92,92,0.10)', border: '1px solid rgba(184,92,92,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <span style={{ fontSize: 14, fontWeight: 800, color: warm.colors.danger, fontVariantNumeric: 'tabular-nums' }}>{counts.REJECTED}</span>
                             </div>
-                            <p style={{ margin: '6px 0 0', fontSize: 9, fontWeight: 700, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Rejected</p>
+                            <p style={{ margin: '6px 0 0', fontSize: 10, fontWeight: 700, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Rejected</p>
                         </div>
                     </>
                 )}

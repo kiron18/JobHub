@@ -87,15 +87,25 @@
 body {
   margin: 0;
   padding: 0;
-  min-height: 100vh;
-  width: 100vw;
+  /* dvh, not vh. On a phone, 100vh is measured against the browser chrome
+     RETRACTED, so a 100vh page is always taller than the window and the last
+     ~60px of every screen sits under the address bar. dvh tracks the live
+     viewport. */
+  min-height: 100dvh;
+  /* Was 100vw. On any platform that reserves space for a scrollbar, 100vw is
+     wider than the content box and the whole app could be dragged sideways. */
+  width: 100%;
   overflow: hidden;
   background-color: #FAF7F2;
+  /* A long unbroken string (a pasted URL, a company email, a Seek link) has no
+     break opportunity and pushes the page wider than the phone. Nothing in the
+     product is worth a sideways scroll. */
+  overflow-wrap: break-word;
 }
 
 #root {
-  height: 100vh;
-  width: 100vw;
+  height: 100dvh;
+  width: 100%;
 }
 
 /* Display / heading utility */
@@ -265,4 +275,92 @@ h1, h2, h3, h4, .heading-display, .heading-serif {
   border-radius: inherit;
   position: relative;
   z-index: 1;
+}
+
+/* ── Mobile ──────────────────────────────────────────────────────────────
+   The rules that apply to every screen on a phone, so no page has to
+   remember them. Anything page-specific lives with the page.
+*/
+
+/* Safe-area insets, exposed as variables so any page can pad itself off a
+   notch or a home indicator without re-deriving env(). Zero on every device
+   that has no cutout, so they are free to use unconditionally. */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+@media (max-width: 768px) {
+  /*
+    iOS Safari zooms the whole page in when you focus a form control whose
+    font-size is under 16px, and it does not zoom back out when you blur. The
+    app's inputs are 13-15px, so tapping any field left the user on a page
+    that had silently become 1.2x too wide with no way back except pinching.
+    16px is the threshold, not a preference.
+
+    `!important` because these sizes are set inline, per element, in dozens of
+    components; a plain rule loses to every one of them.
+  */
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+
+  /* Kills the 300ms wait Safari holds on every tap in case it turns into a
+     double-tap zoom. Without it, the whole app feels laggy on a phone. */
+  button, a, [role='button'], summary, label {
+    touch-action: manipulation;
+  }
+}
+
+/* The grey box iOS flashes over any tapped element. It reads as a rendering
+   bug on a design with its own press states. */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Belt and braces on sideways drag: body already clips, but a `position:
+   fixed` child escapes body's overflow and is clipped by the viewport only. */
+html {
+  overflow-x: hidden;
+}
+
+/*
+  A tap target on a phone is a fingertip, roughly 44px across. Anything the
+  product genuinely wants tappable and is smaller than that gets this class,
+  which grows the HIT AREA without growing the visible control.
+*/
+.tap-target {
+  position: relative;
+}
+.tap-target::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  transform: translate(-50%, -50%);
+}
+
+/*
+  Wide content that genuinely cannot reflow — a comparison table, a data grid —
+  scrolls inside itself instead of widening the page. `overscroll-behavior-x`
+  stops that inner scroll from turning into a browser back-swipe at the end.
+*/
+.scroll-x {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Momentum scrolling for the app's inner scroll panes on iOS. */
+@media (max-width: 768px) {
+  [data-scroll-pane] {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
 }

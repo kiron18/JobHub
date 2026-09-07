@@ -127,10 +127,13 @@ Write the message, fix the profile behind it, and log the local experience that 
       </div>
 
       {/* Tabs */}
+      {/* Three tabs on one line came to 361px on a 360px phone — one pixel of
+          sideways drag, which is still sideways drag. They wrap instead, and
+          `fit-content` stays so the strip hugs them on a desktop. */}
       <div style={{
-        display: 'flex', gap: 4, padding: 4, borderRadius: 14, marginBottom: 28,
+        display: 'flex', flexWrap: 'wrap', gap: 4, padding: 4, borderRadius: 14, marginBottom: 28,
         background: warm.colors.bgAlt, border: `1px solid ${warm.colors.borderWhisper}`,
-        width: 'fit-content',
+        width: 'fit-content', maxWidth: '100%',
       }}>
         {/* Outreach first, and the default. It is the only reason anybody comes
             here, and it used to be the second thing you saw.

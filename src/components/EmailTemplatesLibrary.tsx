@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Copy, CheckCircle, ChevronDown, ChevronUp, Mail, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { warm } from '../lib/theme/warmTokens';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { SectionIntroBanner } from './processStrip';
 import { getRawTemplate, PRE_SEND_WARNING } from '../lib/emailTemplates';
 
@@ -302,6 +303,7 @@ interface TemplateCardProps {
 const TemplateCard: React.FC<TemplateCardProps> = ({ template }) => {
     const [expanded, setExpanded] = useState(false);
     const [copied, setCopied] = useState<'subject' | 'body' | 'all' | null>(null);
+    const isMobile = useIsMobile();
 
     const copy = (field: 'subject' | 'body' | 'all') => {
         const text = field === 'subject' ? template.subject
@@ -317,47 +319,77 @@ const TemplateCard: React.FC<TemplateCardProps> = ({ template }) => {
 
     return (
         <div style={cardStyle}>
-            <button
+            {/*
+              This header was a <button> with the Copy <button> nested inside
+              it. Nested buttons are invalid HTML, and browsers resolve the
+              nesting differently — on touch the outer press often won, so
+              tapping Copy expanded the card instead of copying. It is a div
+              with a button role now, which keeps the whole header tappable and
+              leaves Copy as a real, separate control.
+            */}
+            <div
+                role="button"
+                tabIndex={0}
+                aria-expanded={expanded}
                 onClick={() => setExpanded(e => !e)}
+                onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded(v => !v); }
+                }}
                 style={{
                     width: '100%', padding: 16, display: 'flex', alignItems: 'center',
-                    justifyContent: 'space-between', gap: 16, textAlign: 'left',
+                    justifyContent: 'space-between', gap: isMobile ? 10 : 16, textAlign: 'left',
                     background: 'transparent', border: 'none', cursor: 'pointer',
-                    color: 'inherit', fontFamily: 'inherit',
+                    color: 'inherit', fontFamily: 'inherit', boxSizing: 'border-box',
                 }}
             >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-                    <Mail size={14} style={{ color: warm.colors.textMuted, flexShrink: 0 }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: 1 }}>
+                    {/* The envelope is decoration, and on a phone it is 14px of
+                        decoration standing between the edge and the title. */}
+                    {!isMobile && <Mail size={14} style={{ color: warm.colors.textMuted, flexShrink: 0 }} />}
                     <div style={{ minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 2 }}>
                             <span style={{
-                                fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase',
-                                padding: '1px 6px', borderRadius: 4, border: `1px solid ${catColor}40`,
+                                fontSize: isMobile ? 11 : 9, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase',
+                                padding: isMobile ? '2px 7px' : '1px 6px', borderRadius: 4, border: `1px solid ${catColor}40`,
                                 color: catColor, background: `${catColor}12`,
                             }}>
                                 {template.category}
                             </span>
                         </div>
-                        <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: warm.colors.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{template.title}</p>
-                        <p style={{ margin: 0, fontSize: 12, color: warm.colors.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{template.subject}</p>
+                        <p style={{
+                            margin: 0, fontSize: isMobile ? 14 : 13, fontWeight: 600,
+                            color: warm.colors.textPrimary, overflow: 'hidden',
+                            ...(isMobile
+                                ? { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, lineHeight: 1.3 }
+                                : { textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }),
+                        }}>{template.title}</p>
+                        <p style={{
+                            margin: 0, fontSize: 12, color: warm.colors.textMuted, overflow: 'hidden',
+                            ...(isMobile
+                                ? { display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' as const, lineHeight: 1.5 }
+                                : { textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }),
+                        }}>{template.subject}</p>
                     </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                     <button
                         onClick={e => { e.stopPropagation(); copy('all'); }}
+                        aria-label={`Copy the ${template.title} email`}
                         style={{
-                            display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px',
-                            borderRadius: 8, fontSize: 10, fontWeight: 700, cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', gap: 4,
+                            padding: isMobile ? '10px 12px' : '5px 10px',
+                            minHeight: isMobile ? 40 : undefined,
+                            borderRadius: 8, fontSize: isMobile ? 12 : 10, fontWeight: 700, cursor: 'pointer',
                             color: warm.colors.textSecondary, border: `1px solid ${warm.colors.borderWhisper}`,
                             background: 'transparent',
                         }}
                     >
-                        {copied === 'all' ? <CheckCircle size={11} style={{ color: warm.colors.success }} /> : <Copy size={11} />}
+                        {copied === 'all' ? <CheckCircle size={13} style={{ color: warm.colors.success }} /> : <Copy size={13} />}
                         Copy
                     </button>
-                    {expanded ? <ChevronUp size={14} style={{ color: warm.colors.textMuted }} /> : <ChevronDown size={14} style={{ color: warm.colors.textMuted }} />}
+                    {expanded ? <ChevronUp size={16} style={{ color: warm.colors.textMuted }} /> : <ChevronDown size={16} style={{ color: warm.colors.textMuted }} />}
                 </div>
-            </button>
+            </div>
 
             <AnimatePresence>
                 {expanded && (
@@ -384,12 +416,13 @@ const TemplateCard: React.FC<TemplateCardProps> = ({ template }) => {
                             {/* Subject line */}
                             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                    <p style={{ margin: '0 0 3px', fontSize: 9, fontWeight: 800, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Subject</p>
+                                    <p style={{ margin: '0 0 3px', fontSize: isMobile ? 11 : 9, fontWeight: 800, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Subject</p>
                                     <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: warm.colors.textPrimary }}>{template.subject}</p>
                                 </div>
-                                <button onClick={() => copy('subject')} style={{
+                                <button onClick={() => copy('subject')} aria-label="Copy subject line" style={{
                                     background: 'none', border: 'none', cursor: 'pointer',
                                     color: warm.colors.textMuted, display: 'flex', marginTop: 8, flexShrink: 0,
+                                    padding: isMobile ? 10 : 0, margin: isMobile ? '2px 0 0' : undefined,
                                 }}>
                                     {copied === 'subject' ? <CheckCircle size={13} style={{ color: warm.colors.success }} /> : <Copy size={13} />}
                                 </button>
@@ -398,9 +431,10 @@ const TemplateCard: React.FC<TemplateCardProps> = ({ template }) => {
                             {/* Body */}
                             <div>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                                    <p style={{ margin: 0, fontSize: 9, fontWeight: 800, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Body</p>
-                                    <button onClick={() => copy('body')} style={{
+                                    <p style={{ margin: 0, fontSize: isMobile ? 11 : 9, fontWeight: 800, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Body</p>
+                                    <button onClick={() => copy('body')} aria-label="Copy email body" style={{
                                         background: 'none', border: 'none', cursor: 'pointer', color: warm.colors.textMuted, display: 'flex',
+                                        padding: isMobile ? 10 : 0,
                                     }}>
                                         {copied === 'body' ? <CheckCircle size={13} style={{ color: warm.colors.success }} /> : <Copy size={13} />}
                                     </button>
@@ -415,7 +449,7 @@ const TemplateCard: React.FC<TemplateCardProps> = ({ template }) => {
                                 </pre>
                             </div>
 
-                            <p style={{ margin: 0, fontSize: 9, color: warm.colors.textMuted, fontStyle: 'italic' }}>
+                            <p style={{ margin: 0, fontSize: isMobile ? 11 : 9, color: warm.colors.textMuted, fontStyle: 'italic' }}>
                                 Replace all [bracketed placeholders] before sending.
                             </p>
                         </div>
@@ -428,6 +462,7 @@ const TemplateCard: React.FC<TemplateCardProps> = ({ template }) => {
 
 export const EmailTemplatesLibrary: React.FC = () => {
     const [category, setCategory] = useState('All');
+    const isMobile = useIsMobile();
 
     const filtered = category === 'All' ? TEMPLATES : TEMPLATES.filter(t => t.category === category);
 
@@ -444,7 +479,7 @@ export const EmailTemplatesLibrary: React.FC = () => {
             </header>
 
             {/* Category filter */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 20 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: isMobile ? 8 : 6, marginBottom: 20 }}>
                 {CATEGORIES.map(cat => {
                     const active = category === cat;
                     const catColor = categoryLabelColor[cat] || warm.colors.accentPetrol;
@@ -453,7 +488,14 @@ export const EmailTemplatesLibrary: React.FC = () => {
                             key={cat}
                             onClick={() => setCategory(cat)}
                             style={{
-                                padding: '6px 10px', borderRadius: 10, fontSize: 9, fontWeight: 800,
+                                /* 6px round 9px type is a 28px-tall pill. On a
+                                   phone these eight chips are the only way to
+                                   filter the list, so they get thumb-sized. */
+                                padding: isMobile ? '10px 14px' : '6px 10px',
+                                minHeight: isMobile ? 40 : undefined,
+                                borderRadius: 10,
+                                fontSize: isMobile ? 11 : 9,
+                                fontWeight: 800,
                                 letterSpacing: '0.06em', textTransform: 'uppercase',
                                 cursor: 'pointer', border: `1px solid ${warm.colors.borderWhisper}`,
                                 background: active ? `${catColor}14` : warm.colors.bgSurface,

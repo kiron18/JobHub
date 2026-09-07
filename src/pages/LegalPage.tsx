@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Zap } from 'lucide-react';
 import { warm } from '../lib/theme/warmTokens';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 type PolicyKey = 'privacy' | 'terms' | 'refunds' | 'cancellation' | 'trial' | 'disclaimer';
 
@@ -299,6 +300,7 @@ export function LegalPage() {
   const { policy } = useParams<{ policy: PolicyKey }>();
   const navigate = useNavigate();
   const active = (policy as PolicyKey) || 'terms';
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     document.body.style.overflow = 'auto';
@@ -320,7 +322,7 @@ export function LegalPage() {
 
   return (
     <div style={{
-      height: '100vh',
+      height: '100dvh',
       overflowY: 'auto',
       background: warm.colors.bgCanvas,
       color: warm.colors.textPrimary,
@@ -360,36 +362,56 @@ export function LegalPage() {
       <div style={{
         maxWidth: 960,
         margin: '0 auto',
-        padding: '48px 24px 96px',
+        padding: isMobile ? '24px 16px 64px' : '48px 24px 96px',
         display: 'grid',
-        gridTemplateColumns: '220px 1fr',
-        gap: 48,
+        /*
+          A fixed 220px rail beside `1fr` left the policy text 74px wide on a
+          phone, and its min-content pushed the page 190px past the edge. Below
+          the breakpoint the two stack, and the rail becomes a row of chips.
+        */
+        gridTemplateColumns: isMobile ? '1fr' : '220px 1fr',
+        gap: isMobile ? 20 : 48,
         alignItems: 'start',
       }}>
-        {/* Sidebar */}
-        <nav style={{ position: 'sticky', top: 32 }}>
+        {/* Sidebar — a column on a desktop, a scrolling chip row on a phone */}
+        <nav style={isMobile ? { minWidth: 0 } : { position: 'sticky', top: 32 }}>
           <p style={{
-            fontSize: 10, fontWeight: 900, letterSpacing: '0.12em',
+            fontSize: isMobile ? 11 : 10, fontWeight: 900, letterSpacing: '0.12em',
             textTransform: 'uppercase', color: warm.colors.textMuted, marginBottom: 12,
           }}>
             Legal
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <div
+            className={isMobile ? 'scroll-x' : undefined}
+            style={isMobile
+              ? { display: 'flex', flexDirection: 'row', gap: 8, paddingBottom: 4 }
+              : { display: 'flex', flexDirection: 'column', gap: 2 }}
+          >
             {NAV.map(({ key, label }) => (
               <Link
                 key={key}
                 to={`/legal/${key}`}
                 style={{
-                  display: 'block',
-                  padding: '8px 12px',
-                  borderRadius: 8,
+                  display: isMobile ? 'inline-flex' : 'block',
+                  alignItems: 'center',
+                  /* 40px tall, and never squeezed narrower than its label. */
+                  padding: isMobile ? '10px 14px' : '8px 12px',
+                  minHeight: isMobile ? 40 : undefined,
+                  flexShrink: isMobile ? 0 : undefined,
+                  whiteSpace: isMobile ? 'nowrap' : undefined,
+                  borderRadius: isMobile ? 999 : 8,
                   fontSize: 13,
                   fontWeight: active === key ? 700 : 500,
                   color: active === key ? warm.colors.textPrimary : warm.colors.textMuted,
                   background: active === key ? warm.colors.bgAlt : 'transparent',
                   textDecoration: 'none',
                   transition: 'all 0.15s',
-                  borderLeft: `2px solid ${active === key ? warm.colors.accentPetrol : 'transparent'}`,
+                  border: isMobile
+                    ? `1px solid ${active === key ? warm.colors.accentPetrol : warm.colors.borderWhisper}`
+                    : undefined,
+                  borderLeft: isMobile
+                    ? undefined
+                    : `2px solid ${active === key ? warm.colors.accentPetrol : 'transparent'}`,
                 }}
               >
                 {label}
@@ -400,10 +422,11 @@ export function LegalPage() {
 
         {/* Content */}
         <main style={{
+          minWidth: 0,
           background: warm.colors.bgSurface,
           border: `1px solid ${warm.colors.borderWhisper}`,
-          borderRadius: 20,
-          padding: '36px 40px',
+          borderRadius: isMobile ? 14 : 20,
+          padding: isMobile ? '22px 18px' : '36px 40px',
         }}>
           {POLICIES[active]}
         </main>

@@ -135,7 +135,7 @@ export function AchievementDraftModal({ open, onClose, skill, suggestion, jobRol
                             borderRadius: 18,
                             padding: 26,
                             boxShadow: warm.shadow.soft,
-                            maxHeight: '90vh',
+                            maxHeight: '90dvh',
                             overflowY: 'auto',
                         }}
                         onClick={(e) => e.stopPropagation()}

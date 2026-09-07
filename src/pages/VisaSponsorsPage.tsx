@@ -144,7 +144,7 @@ export function VisaSponsorsPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: colors.bgCanvas }}>
+    <div style={{ minHeight: '100dvh', background: colors.bgCanvas }}>
       <SponsorHero onSearch={handleSearch} searchValue={query} total={total} />
 
       <div style={{ padding: `0 24px ${spacing.sectionDesktop}` }}>

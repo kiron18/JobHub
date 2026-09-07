@@ -35,7 +35,7 @@ export default function EmailAnalytics() {
       </h1>
 
       {/* Totals */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 32 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginBottom: 32 }}>
         {statCard(<Users size={18} color={warm.muted} />, 'Total Contacts', data?.totals?.totalContacts ?? 0, `${data?.totals?.optedIn ?? 0} opted in`)}
         {statCard(<Send size={18} color={warm.muted} />, 'Emails Sent', data?.totals?.totalSends ?? 0)}
         {statCard(<Eye size={18} color={warm.muted} />, 'Opens', data?.totals?.totalOpens ?? 0)}
@@ -44,7 +44,8 @@ export default function EmailAnalytics() {
 
       {/* Per-sequence */}
       <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>Sequences</h2>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, marginBottom: 32 }}>
+      <div className="scroll-x">
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, marginBottom: 32, minWidth: 640 }}>
         <thead>
           <tr style={{ borderBottom: '2px solid #eee', textAlign: 'left' }}>
             <th style={{ padding: '8px' }}>Name</th>
@@ -70,10 +71,12 @@ export default function EmailAnalytics() {
           ))}
         </tbody>
       </table>
+        </div>
 
       {/* Per-broadcast */}
       <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>Broadcasts</h2>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+      <div className="scroll-x">
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, minWidth: 640 }}>
         <thead>
           <tr style={{ borderBottom: '2px solid #eee', textAlign: 'left' }}>
             <th style={{ padding: '8px' }}>Name</th>
@@ -100,6 +103,7 @@ export default function EmailAnalytics() {
           )}
         </tbody>
       </table>
+        </div>
     </div>
   );
 }

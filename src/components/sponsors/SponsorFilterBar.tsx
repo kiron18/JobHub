@@ -29,10 +29,14 @@ export function SponsorFilterBar({
     outline: 'none',
     cursor: 'pointer',
     minWidth: 150,
+    minHeight: 42,
   };
 
   const chipActive: React.CSSProperties = {
-    padding: '8px 16px',
+    padding: '11px 16px',
+    minHeight: 42,
+    display: 'inline-flex',
+    alignItems: 'center',
     borderRadius: 20,
     border: `1.5px solid ${colors.accentPetrol}`,
     background: colors.accentPetrol,

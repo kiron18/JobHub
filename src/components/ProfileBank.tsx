@@ -10,6 +10,7 @@ import {
 import { toast } from 'sonner';
 import api from '../lib/api';
 import { warm } from '../lib/theme/warmTokens';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { ProfileExplainerModal, hasSeenProfileExplainer } from './ProfileExplainerModal';
 import { AchievementVideoModal } from './AchievementVideoModal';
 import { trackAchievementAdded } from '../lib/analytics';
@@ -221,6 +222,11 @@ const EditButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
   <button
     onClick={onClick}
     aria-label="Edit"
+    /* 28px square, used once per section on the profile page — so on a phone
+       this was every editable block behind a target smaller than a fingertip.
+       tap-target leaves the button looking identical and gives it a 44px hit
+       area. The buttons are a section apart, so the areas never overlap. */
+    className="tap-target"
     style={{
       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
       width: 28, height: 28, borderRadius: 7, border: 'none', cursor: 'pointer',
@@ -703,6 +709,8 @@ const SourceDocumentsIsland: React.FC<{ profile: ProfileData }> = ({ profile }) 
     },
   ];
 
+  const isMobile = useIsMobile();
+
   const updatedLabel = profile.documentsUpdatedAt
     ? new Date(profile.documentsUpdatedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
     : null;
@@ -714,7 +722,7 @@ const SourceDocumentsIsland: React.FC<{ profile: ProfileData }> = ({ profile }) 
         title="Your Resume"
                 badge={
           updatedLabel
-            ? <span style={{ fontSize: 10, color: mutedText }}>Updated {updatedLabel}</span>
+            ? <span style={{ fontSize: 11, color: mutedText }}>Updated {updatedLabel}</span>
             : undefined
         }
       />
@@ -729,6 +737,12 @@ const SourceDocumentsIsland: React.FC<{ profile: ProfileData }> = ({ profile }) 
             key={label}
             style={{
               display: 'flex', alignItems: 'center', gap: 12,
+              /* The Replace button and the label left the filename 112px on a
+                 phone, so a resume called Firstname_Lastname_ASC_Resume.pdf
+                 rendered as "Shabareesh_Bha…" — the part every one of this
+                 person's files has in common. Wrapping puts the button on its
+                 own line and gives the name the width. */
+              flexWrap: isMobile ? 'wrap' : 'nowrap',
               padding: '10px 14px', borderRadius: 10,
               background: pending ? ('rgba(99,102,241,0.05)') : docBg,
               border: `1px solid ${pending ? 'rgba(99,102,241,0.25)' : docBorder}`,
@@ -740,7 +754,20 @@ const SourceDocumentsIsland: React.FC<{ profile: ProfileData }> = ({ profile }) 
               <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: mutedText, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                 {label}{required && <span style={{ color: warm.colors.danger, marginLeft: 4 }}>*</span>}
               </p>
-              <p style={{ margin: '2px 0 0', fontSize: 12, color: pending ? warm.colors.accentPetrol : (stored ? mainText : mutedText), fontWeight: pending ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <p style={{
+                margin: '2px 0 0', fontSize: isMobile ? 13 : 12,
+                color: pending ? warm.colors.accentPetrol : (stored ? mainText : mutedText),
+                fontWeight: pending ? 600 : 400, overflow: 'hidden',
+                ...(isMobile
+                  ? {
+                      /* Filenames are one long token joined by underscores, and
+                         nothing in them is a break opportunity by default. */
+                      overflowWrap: 'anywhere' as const,
+                      display: '-webkit-box', WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical' as const, lineHeight: 1.35,
+                    }
+                  : { textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }),
+              }}>
                 {pending ? pending.name : (stored ?? 'Not on file')}
               </p>
             </div>
@@ -755,11 +782,16 @@ const SourceDocumentsIsland: React.FC<{ profile: ProfileData }> = ({ profile }) 
               onClick={() => ref.current?.click()}
               disabled={uploading}
               style={{
-                display: 'inline-flex', alignItems: 'center', gap: 5,
-                padding: '6px 12px', borderRadius: 7, border: 'none', cursor: uploading ? 'not-allowed' : 'pointer',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                padding: isMobile ? '11px 14px' : '6px 12px',
+                minHeight: isMobile ? 40 : undefined,
+                /* On its own line it may as well be easy to hit. */
+                width: isMobile ? '100%' : undefined,
+                marginTop: isMobile ? 8 : undefined,
+                borderRadius: 7, border: 'none', cursor: uploading ? 'not-allowed' : 'pointer',
                 background: 'rgba(0,0,0,0.06)',
                 color: warm.colors.textMuted,
-                fontSize: 11, fontWeight: 700, flexShrink: 0,
+                fontSize: isMobile ? 13 : 11, fontWeight: 700, flexShrink: 0,
               }}
             >
               <UploadCloud size={11} />
@@ -1789,6 +1821,7 @@ export const ProfileBank: React.FC = () => {
                 onClick={() => setExplainerOpen(true)}
                 aria-label="How the Profile Bank works"
                 title="How the Profile Bank works"
+                className="tap-target"
                 style={{
                   background: 'transparent',
                   border: 'none',

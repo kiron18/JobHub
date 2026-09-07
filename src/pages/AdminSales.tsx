@@ -278,7 +278,11 @@ export default function AdminSales() {
 
   return (
     <div style={{
-      height: '100vh', overflowY: 'auto', background: C.bg, color: C.ink,
+      /* These pages render inside DashboardLayout, whose <main> already
+         scrolls. Owning a second 100dvh scroller on top of the shell's own
+         padding made the page 100px taller than the window, so it scrolled
+         by exactly the padding and the inner pane held all the content. */
+      background: C.bg, color: C.ink,
       fontFamily: "'Geist', -apple-system, 'Segoe UI', system-ui, sans-serif",
       padding: '24px clamp(14px, 3vw, 28px) 80px', boxSizing: 'border-box',
     }}>
@@ -391,7 +395,8 @@ export default function AdminSales() {
         ) : !shown.length ? (
           <p style={{ color: C.ink3 }}>Nobody here yet.</p>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+          <div className="scroll-x">
+          <table style={{ width: '100%', minWidth: 880, borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
               <tr style={{ textAlign: 'left', borderBottom: `2px solid ${C.line}`, color: C.ink3, fontSize: 12 }}>
                 <th style={{ ...cell, width: 30, paddingRight: 0 }}>
@@ -721,6 +726,7 @@ export default function AdminSales() {
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

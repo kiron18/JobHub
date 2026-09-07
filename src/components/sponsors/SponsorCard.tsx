@@ -36,7 +36,10 @@ export function SponsorCard({ sponsor, unlocked, onLockedClick }: Props) {
     fontWeight: 600,
     color: colors.accentPetrol,
     textDecoration: 'none',
-    padding: '6px 14px',
+    /* Website / Careers / Unlock are the only actions on a sponsor card, and
+       there is one card per employer — a whole page of 35px targets. */
+    padding: '10px 16px',
+    minHeight: 40,
     borderRadius: 20,
     border: `1.5px solid ${colors.accentGold}`,
     background: 'transparent',

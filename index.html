@@ -12,7 +12,13 @@
     </script>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/Logo.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- viewport-fit=cover is what makes env(safe-area-inset-*) report real
+         numbers on a notched iPhone. Without it they are always 0 and the
+         --safe-* variables in index.css do nothing. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- Paints the phone's browser chrome to match the page instead of the
+         default grey band above a white app. -->
+    <meta name="theme-color" content="#FFFFFF" />
     <title>Aussie Grad Careers</title>
     <meta name="description" content="Land your first Australian job with a resume and a strategy built for this market." />
     <!-- The image filename is versioned on purpose. WhatsApp, LinkedIn and
