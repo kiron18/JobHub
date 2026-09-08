@@ -71,8 +71,21 @@ export function fitBody(body: string, max = MAX_BODY_CHARS): { body: string; tru
  * Gmail and Outlook web both take the draft as query parameters, so a browser
  * tab is enough and nothing needs to be installed. Everyone else gets
  * `mailto:`, which their desktop client handles.
+ *
+ * `account` is the address the draft should be sent FROM, and it only does
+ * anything on Gmail. Without it the link goes to `mail.google.com/mail/`, which
+ * resolves to whichever Google account the browser happens to consider default
+ * — for anybody signed into a personal address and a university or work
+ * Workspace at the same time, that is a coin toss, and losing it means the
+ * follow-up composes in the wrong mailbox and lands in the wrong Sent folder.
+ * Worse, it is silent: the window opens, filled in and looking correct.
+ *
+ * `/mail/u/<address>/` pins it. Google resolves the address to that session's
+ * account index, and if they are not signed into it, they get an account
+ * chooser rather than the wrong mailbox. Pinning it also skips the redirect
+ * hop the default path takes, which is most of the wait before compose appears.
  */
-export function composeUrl(draft: ComposeDraft, client: MailClient): string {
+export function composeUrl(draft: ComposeDraft, client: MailClient, account?: string | null): string {
     const { body } = fitBody(draft.body);
     const q = new URLSearchParams();
 
@@ -84,7 +97,10 @@ export function composeUrl(draft: ComposeDraft, client: MailClient): string {
         q.set('body', body);
         if (draft.cc) q.set('cc', draft.cc);
         if (draft.bcc) q.set('bcc', draft.bcc);
-        return `https://mail.google.com/mail/?${q.toString()}`;
+        // Only an address is worth pinning. Anything else in that path segment
+        // is a 404 rather than a fallback to the default account.
+        const pinned = account && account.includes('@') ? `u/${encodeURIComponent(account.trim())}/` : '';
+        return `https://mail.google.com/mail/${pinned}?${q.toString()}`;
     }
 
     if (client === 'outlook') {

@@ -99,7 +99,7 @@ export default function OutreachSendCard({
             return;
         }
         const payload: ComposeDraft = { to: address.trim(), subject, body };
-        window.open(composeUrl(payload, client), '_blank', 'noopener');
+        window.open(composeUrl(payload, client, userEmail), '_blank', 'noopener');
         setOpened(true);
         onOpened?.(address.trim());
     };

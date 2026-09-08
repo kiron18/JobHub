@@ -64,6 +64,24 @@ describe('composeUrl', () => {
         expect(q.get('body')).toBe(draft.body);
     });
 
+    /*
+      Somebody signed into a personal Gmail and a university Workspace at the
+      same time got whichever one Google considered default, silently, and
+      composed the follow-up in the wrong mailbox. The account has to be pinned
+      into the path.
+    */
+    it('pins Gmail to the account the draft is sent from', () => {
+        const url = composeUrl(draft, 'gmail', 'aarav.menon@gmail.com');
+        expect(url.startsWith('https://mail.google.com/mail/u/aarav.menon%40gmail.com/?')).toBe(true);
+        expect(new URL(url).searchParams.get('to')).toBe(draft.to);
+    });
+
+    it('falls back to the default Gmail account when there is no address to pin', () => {
+        for (const account of [undefined, null, '', 'not-an-address']) {
+            expect(composeUrl(draft, 'gmail', account).startsWith('https://mail.google.com/mail/?')).toBe(true);
+        }
+    });
+
     it('opens Outlook compose for a hotmail signup', () => {
         const url = composeUrl(draft, 'outlook');
         expect(url.startsWith('https://outlook.live.com/mail/0/deeplink/compose?')).toBe(true);
