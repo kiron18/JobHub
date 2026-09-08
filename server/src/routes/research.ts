@@ -390,7 +390,38 @@ Return ONLY valid JSON.`;
     }
 }
 
+/**
+ * One line per contact lookup, in the shape `[fit]` already uses.
+ *
+ * This route used to log nothing at all about its result, only that it
+ * returned 200. So a run that found a person and a run that found nobody were
+ * indistinguishable in the logs, and the only way to tell them apart was to ask
+ * the candidate what they saw on screen. On 8 Sep 2026 that cost a round trip
+ * to work out whether contact discovery was broken or the employer was simply
+ * not findable — the answer being visible on the server the whole time.
+ *
+ * Addresses are NOT logged. Which slots filled and where the answer came from
+ * is enough to tell a fault from a miss, and the address belongs to a third
+ * party who never asked to be in a log file.
+ */
+function logLookup(
+    company: string,
+    source: string,
+    domain: string | null,
+    slots: Record<string, unknown>,
+    startedAt: number,
+) {
+    const filled = Object.entries(slots)
+        .filter(([, v]) => Boolean(v))
+        .map(([k]) => k);
+    console.log(
+        `[company] "${company}" source=${source} domain=${domain ?? 'none'} ` +
+        `slots=${filled.length ? filled.join('+') : 'NONE'} ${((Date.now() - startedAt) / 1000).toFixed(1)}s`,
+    );
+}
+
 router.post('/company', authenticate, async (req, res) => {
+    const startedAt = Date.now();
     const { company, role, jdText, location } = req.body as {
         company?: string;
         role?: string;
@@ -484,14 +515,16 @@ router.post('/company', authenticate, async (req, res) => {
             const verified = await verifySlots(directorySlots);
             const { highlights, companySize } = await companyHighlights(company);
             const lead = verified.hiring_manager ?? verified.talent ?? verified.team_insider;
+            const directoryOut = {
+                talent: verified.talent,
+                hiringManager: verified.hiring_manager,
+                teamInsider: verified.team_insider,
+            };
+            logLookup(company, 'directory', domain, directoryOut, startedAt);
             return res.json({
                 source: 'directory',
                 domain,
-                slots: {
-                    talent: verified.talent,
-                    hiringManager: verified.hiring_manager,
-                    teamInsider: verified.team_insider,
-                },
+                slots: directoryOut,
                 rejected: [],
                 candidates: [verified.hiring_manager, verified.talent, verified.team_insider]
                     .filter(Boolean)
@@ -535,14 +568,16 @@ router.post('/company', authenticate, async (req, res) => {
                         'No directory holds anyone at this company, so this is the address they chose to publish.',
                     ],
                 };
+                const siteOut = {
+                    talent: site.generic ? slot : null,
+                    hiringManager: site.generic ? null : slot,
+                    teamInsider: null,
+                };
+                logLookup(company, 'site', domain, siteOut, startedAt);
                 return res.json({
                     source: 'site',
                     domain,
-                    slots: {
-                        talent: site.generic ? slot : null,
-                        hiringManager: site.generic ? null : slot,
-                        teamInsider: null,
-                    },
+                    slots: siteOut,
                     rejected: [],
                     candidates: [{ name: slot.name, title: null, confidence: 'low', sourceUrl: site.sourceUrl, location: null }],
                     hiringManager: site.generic ? null : slot.name,
@@ -611,26 +646,30 @@ router.post('/company', authenticate, async (req, res) => {
 
         const { highlights, companySize } = await companyHighlights(company);
 
+        // The three slots PostApplyOutreach shows. Any of them may be null, and
+        // fewer than three is the intended outcome rather than a degraded one:
+        // a missing contact beats a confidently wrong one.
+        const searchOut = {
+            talent: slots.talent
+                ? { ...slots.talent.candidate, why: slots.talent.notes }
+                : null,
+            hiringManager: slots.hiring_manager
+                ? { ...slots.hiring_manager.candidate, why: slots.hiring_manager.notes }
+                : null,
+            teamInsider: slots.team_insider
+                ? { ...slots.team_insider.candidate, why: slots.team_insider.notes }
+                : null,
+        };
+
+        logLookup(company, 'search', domain, searchOut, startedAt);
+
         return res.json({
             // Reached only when the directory was empty or the domain was not
             // convincing enough to trust. Named so the caller can tell a
             // directory-backed contact from an inferred one.
             source: 'search',
             domain,
-            // The three slots PostApplyOutreach shows. Any of them may be null,
-            // and fewer than three is the intended outcome rather than a
-            // degraded one: a missing contact beats a confidently wrong one.
-            slots: {
-                talent: slots.talent
-                    ? { ...slots.talent.candidate, why: slots.talent.notes }
-                    : null,
-                hiringManager: slots.hiring_manager
-                    ? { ...slots.hiring_manager.candidate, why: slots.hiring_manager.notes }
-                    : null,
-                teamInsider: slots.team_insider
-                    ? { ...slots.team_insider.candidate, why: slots.team_insider.notes }
-                    : null,
-            },
+            slots: searchOut,
             rejected,
             // Survivors only. `candidates` used to be every raw hit; anything
             // reading it was reading unfiltered discovery output.

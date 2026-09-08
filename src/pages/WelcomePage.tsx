@@ -1729,24 +1729,58 @@ function CyclingStatus({ lines, align = 'left', intervalMs = STATUS_LINE_MS }: {
     return () => window.clearTimeout(id);
   }, [i, lines.length, intervalMs]);
 
+  /*
+    Centred means STACKED, not a centred row.
+
+    Side by side, the spinner sits at the left end of a group whose width is
+    whatever the current line happens to be — so it lands well off the middle of
+    the card, and it moves every time the line changes. On a phone the line also
+    wraps to two, which drops the spinner beside the first of them and makes it
+    read as a bullet. Above the text it is on the card's centre line and stays
+    there, and the copy has the full width to itself.
+
+    The left variant is unchanged: in a row of its own, beside the text, is
+    exactly right.
+  */
+  const centred = align === 'center';
+
+  const label = (
+    <AnimatePresence mode="wait">
+      <motion.span
+        key={i}
+        initial={{ opacity: 0, y: 5 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -5 }}
+        transition={{ duration: 0.3, ease: EASE }}
+        style={centred ? { display: 'block', maxWidth: 300 } : undefined}
+      >
+        {lines[i]}
+      </motion.span>
+    </AnimatePresence>
+  );
+
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: 12, minHeight: 24,
-      justifyContent: align === 'center' ? 'center' : 'flex-start',
-      color: colors.textSecondary, fontFamily: T.body, fontSize: 15,
+      display: 'flex',
+      flexDirection: centred ? 'column' : 'row',
+      alignItems: 'center',
+      gap: centred ? 14 : 12,
+      minHeight: 24,
+      justifyContent: centred ? 'center' : 'flex-start',
+      textAlign: centred ? 'center' : 'left',
+      color: colors.textSecondary,
+      fontFamily: T.body,
+      /* A step down from body. This is a status line, not the thing on the
+         screen to read, and at 15 it competed with the headline above it. */
+      fontSize: centred ? 14 : 15,
+      lineHeight: 1.5,
     }}>
-      <Loader2 size={20} className="animate-spin" style={{ color: colors.accentPetrol, flexShrink: 0 }} />
-      <AnimatePresence mode="wait">
-        <motion.span
-          key={i}
-          initial={{ opacity: 0, y: 5 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -5 }}
-          transition={{ duration: 0.3, ease: EASE }}
-        >
-          {lines[i]}
-        </motion.span>
-      </AnimatePresence>
+      <Loader2
+        size={centred ? 22 : 20}
+        className="animate-spin"
+        style={{ color: colors.accentPetrol, flexShrink: 0 }}
+      />
+      {label}
     </div>
   );
 }

@@ -125,6 +125,31 @@ async function welcomeJourney(browser) {
   console.log('front door:', JSON.stringify(fold), fold.cardBottom <= fold.viewport ? '(fits)' : '(BELOW THE FOLD)');
 
   await p.setInputFiles('input[type=file]', CV);
+
+  /*
+    The loading state, caught on the way past.
+
+    It only exists while the model is reading the CV, so it cannot be reached by
+    loading a route, and it is where the status line and its spinner live. The
+    spinner has to sit on the card's centre line: beside the text it landed at
+    the left end of a group whose width was whatever the current line happened
+    to be, and moved every time the line changed.
+  */
+  await p.waitForSelector('text=/Reading|Working out|Pulling out/i', { timeout: 30000 }).catch(() => {});
+  await wait(1200);
+  await shot(p, 'welcome-loading');
+  const spin = await p.evaluate(() => {
+    const el = document.querySelector('.animate-spin');
+    const row = el?.parentElement;
+    if (!row) return null;
+    const r = el.getBoundingClientRect(), c = row.getBoundingClientRect();
+    return {
+      offCentreBy: Math.round((r.left + r.width / 2) - (c.left + c.width / 2)),
+      fontSize: getComputedStyle(row).fontSize,
+    };
+  });
+  console.log('loading state:', JSON.stringify(spin));
+
   await p.waitForSelector('text=/What roles are you targeting|losing interviews|Your biggest gap/i', { timeout: 240000 });
   await wait(2500);
   await shot(p, 'welcome-diagnosis');

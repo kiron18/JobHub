@@ -244,7 +244,7 @@ export function PostApplyOutreach({
       to exactly what this card was before: the drafts, and instructions for
       finding an address by hand.
     */
-    const { data: contact } = useQuery({
+    const { data: contact, isLoading: contactLoading, isError: contactFailed } = useQuery({
         queryKey: ['outreach-contact', company, jobTitle],
         // Not gated on the banner any more: the drafts are always on screen,
         // so the address they are addressed to has to be looked up regardless.
@@ -481,6 +481,51 @@ export function PostApplyOutreach({
                         charLimit={LINKEDIN_NOTE_LIMIT}
                         needsEdit={t.linkedInNeedsPitch}
                     />
+
+                    {/*
+                        Where the address would have been.
+
+                        Without this the two outcomes render identically: an
+                        address we found sits above the subject line inside the
+                        send card, and an address we did NOT find is simply
+                        absent, so the screen goes straight from the LinkedIn
+                        note to "Email subject" and the reader is left deciding
+                        whether the lookup failed or they missed it. It did fail,
+                        for about two employers in three, and that is a fact
+                        about the employer rather than an error — so it says so
+                        plainly and hands over the way to finish the job by hand.
+                    */}
+                    <div style={{
+                        background: warm.colors.bgSurface,
+                        border: `1px dashed ${warm.colors.borderDefined}`,
+                        borderRadius: 12,
+                        padding: isMobile ? 12 : 16,
+                    }}>
+                        <p style={{
+                            margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: 6,
+                            fontSize: 11, fontWeight: 800, textTransform: 'uppercase',
+                            letterSpacing: '0.1em', color: warm.colors.textMuted,
+                        }}>
+                            <Mail size={12} /> Email address
+                        </p>
+                        <p style={{
+                            margin: 0, fontSize: isMobile ? 14 : 13, lineHeight: 1.6,
+                            color: warm.colors.textSecondary,
+                        }}>
+                            {contactLoading ? (
+                                <>Looking for someone to send this to&hellip;</>
+                            ) : (
+                                <>
+                                    {contactFailed
+                                        ? 'The lookup did not complete, so there is no address here.'
+                                        : <>We could not find an address for {company || 'this employer'}.</>}
+                                    {' '}Send the LinkedIn note above instead, or find the address
+                                    yourself: the pattern is usually firstname.lastname@ their domain,
+                                    and the name is on the company&rsquo;s LinkedIn people tab.
+                                </>
+                            )}
+                        </p>
+                    </div>
 
                     <TemplateCard
                         label="Email subject"
