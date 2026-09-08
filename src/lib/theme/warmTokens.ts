@@ -90,6 +90,41 @@ export const warm = {
     soft:    '0 1px 2px rgba(16,24,40,0.04)',
     lifted:  '0 1px 3px rgba(16,24,40,0.06), 0 8px 24px rgba(16,24,40,0.06)',
   },
+
+  /* ── Measure ─────────────────────────────────────────────────────────
+     How wide a line of text is allowed to end up, which on a phone is a
+     LAYOUT number and not a typography one.
+
+     The product reads badly at 390px because of nesting, not font size.
+     A page gutter of 24 either side, a card at 24, and a panel inside the
+     card at 16 spends 128px of the 390 on whitespace before a single word
+     is set. What is left runs 28 characters, which is three or four words
+     a line, and that is what makes a perfectly ordinary paragraph look
+     like a column in a newspaper.
+
+     So the rule is about DEPTH:
+
+       - At most two padded containers deep on a phone. A card inside a
+         panel inside a page picks one of the three to hold the padding,
+         and the other two go to zero.
+       - The innermost container that holds running text takes `nested`,
+         which is zero horizontally: it inherits its parent's inset.
+       - Anything under `minChars` per line is a layout bug to fix by
+         removing an inset, not a copy problem to fix by cutting words.
+
+     scripts/mobile-sweep.mjs measures the result per paragraph, so this
+     is checkable rather than a matter of taste.
+  */
+  measure: {
+    /** Side inset of the page itself, on a phone. */
+    gutterMobile: 16,
+    /** Side inset of a card sitting directly on the page, on a phone. */
+    cardMobile: 14,
+    /** A card inside a card. Vertical padding only — it inherits the sides. */
+    nestedMobile: 0,
+    /** Fewer characters a line than this and the layout is too deep. */
+    minChars: 38,
+  },
 } as const;
 
 export type WarmTokens = typeof warm;

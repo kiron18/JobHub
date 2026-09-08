@@ -16,6 +16,37 @@ describe('targetRoleSeed', () => {
     expect(targetRoleSeed('Intern - Data Analyst')).toBe('Data Analyst');
   });
 
+  it('drops an intern-family word sitting bare on the end', () => {
+    // The shape that reaches us most often, and the one the bracket and
+    // separator passes are both blind to.
+    expect(targetRoleSeed('Marketing Communications Intern')).toBe('Marketing Communications');
+    expect(targetRoleSeed('Business Analyst Internship')).toBe('Business Analyst');
+    expect(targetRoleSeed('Software Engineering Trainee')).toBe('Software Engineering');
+    expect(targetRoleSeed('Mechanical Engineering Cadet')).toBe('Mechanical Engineering');
+    expect(targetRoleSeed('Marketing Intern')).toBe('Marketing');
+  });
+
+  it('never mistakes internal-* for a rung word', () => {
+    // "Internal" only ever appears as a leading modifier, and the trailing
+    // check reads the LAST word, so these can never be touched.
+    expect(targetRoleSeed('Internal Communications')).toBe('Internal Communications');
+    expect(targetRoleSeed('Internal Auditor')).toBe('Internal Auditor');
+    expect(targetRoleSeed('Internal Communications Advisor')).toBe('Internal Communications Advisor');
+  });
+
+  it('leaves trailing words that are not the intern family', () => {
+    // The trailing list is much narrower than QUALIFIERS on purpose: these are
+    // all real jobs whose last word happens to be on the wider list.
+    expect(targetRoleSeed('Administrator Contract')).toBe('Administrator Contract');
+    expect(targetRoleSeed('Support Student')).toBe('Support Student');
+    expect(targetRoleSeed('Coordinator Volunteer')).toBe('Coordinator Volunteer');
+  });
+
+  it('keeps the rung rather than destroying a two-letter craft', () => {
+    // "IT" is under MIN_KEPT_LENGTH, so the over-strip guard puts it back.
+    expect(targetRoleSeed('IT Intern')).toBe('IT Intern');
+  });
+
   it('leaves a leading bare qualifier alone — it is usually part of the craft', () => {
     expect(targetRoleSeed('Contract Administrator')).toBe('Contract Administrator');
     expect(targetRoleSeed('Student Advisor')).toBe('Student Advisor');

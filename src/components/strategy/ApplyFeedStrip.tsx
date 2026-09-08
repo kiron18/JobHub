@@ -3,6 +3,7 @@ import { ExternalLink } from 'lucide-react';
 import api from '../../lib/api';
 import { warm } from '../../lib/theme/warmTokens';
 import { buildSeekSearchUrl } from '../../lib/seekSearchUrl';
+import { browseRoleLabel } from '../../lib/roleLabel';
 import type { JobFeedItem } from '../jobs/JobCard';
 
 interface ApplyFeedStripProps {
@@ -35,7 +36,9 @@ export function ApplyFeedStrip(_props: ApplyFeedStripProps) {
   });
 
   const seekUrl = buildSeekSearchUrl(profile?.targetRole, profile?.targetCity);
-  const roleLabel = profile?.targetRole?.trim() || 'roles';
+  // Same label rule as the browse button on the dashboard: case, rung and
+  // length all settled in one place. See lib/roleLabel.
+  const roleLabel = browseRoleLabel(profile?.targetRole);
 
   return (
     <div style={{ marginBottom: 18 }}>
@@ -65,8 +68,11 @@ export function ApplyFeedStrip(_props: ApplyFeedStripProps) {
           e.currentTarget.style.background = warm.colors.bgSurface;
         }}
       >
-        <span style={{ fontSize: 14, fontWeight: 600, color: warm.colors.textPrimary }}>
-          Browse {roleLabel} on Seek
+        <span style={{
+          fontSize: 14, fontWeight: 600, color: warm.colors.textPrimary,
+          minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
+          Browse {roleLabel} jobs on Seek
         </span>
         <ExternalLink size={14} style={{ color: warm.colors.textMuted, flexShrink: 0 }} />
       </a>

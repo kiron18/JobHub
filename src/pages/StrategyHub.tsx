@@ -29,6 +29,8 @@ import { jdMentionsSelectionCriteria } from '../lib/selectionCriteria';
 import { extractJobFacts } from '../lib/extractJobFacts';
 import { classifyPaste, isSubmittable, pasteHint } from '../lib/seekLink';
 import { buildSeekSearchUrl } from '../lib/seekSearchUrl';
+import { browseRoleLabel } from '../lib/roleLabel';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { HowToCopyJobAd } from '../components/strategy/HowToCopyJobAd';
 
 /** Detect whether a job description mentions selection criteria. */
@@ -105,28 +107,6 @@ function HubHeader({ profile }: { profile?: ProfileLite }) {
 
 // ─── AnalysisHeroCard ───────────────────────────────────────────────────────
 
-/**
- * The target role as it should read inside "Browse ___ jobs".
- *
- * Printed verbatim it produced "Browse BUsiness analyst jobs" on a real
- * account. The stray capital is in the candidate's own stored role, typed once
- * during signup and then repeated on this button forever, and it is not worth
- * a support conversation over a button label.
- *
- * Lowercased word by word, because this sits mid-sentence and every ordinary
- * role reads correctly there whatever case it was stored in. An all-uppercase
- * word is left exactly as it is: "IT", "HR" and "UX" are acronyms, and
- * "Browse it support jobs" is a worse bug than the one being fixed.
- */
-function roleLabelFor(targetRole?: string): string {
-    const trimmed = targetRole?.trim();
-    if (!trimmed) return 'more';
-    return trimmed
-        .split(/\s+/)
-        .map((word) => (word === word.toUpperCase() ? word : word.toLowerCase()))
-        .join(' ');
-}
-
 function AnalysisHeroCard() {
     const navigate = useNavigate();
     const location = useLocation();
@@ -140,6 +120,7 @@ function AnalysisHeroCard() {
 
     const [jd, setJd] = useState('');
     const [analysing, setAnalysing] = useState(false);
+    const isMobile = useIsMobile();
     const [pickedFeedItem, setPickedFeedItem] = useState<JobFeedItem | null>(null);
     const [applyingId, setApplyingId] = useState<string | null>(null);
     const [capMessage, setCapMessage] = useState(false);
@@ -206,7 +187,8 @@ function AnalysisHeroCard() {
         staleTime: 30_000,
     });
     const seekUrl = buildSeekSearchUrl(profileLite?.targetRole, profileLite?.targetCity);
-    const roleLabel = roleLabelFor(profileLite?.targetRole);
+    // Case, rung and length are all handled in one place now. See lib/roleLabel.
+    const roleLabel = browseRoleLabel(profileLite?.targetRole);
 
     const trimmed = jd.trim();
     // A Seek link is ~35 characters, well under the old 50-character floor, so
@@ -517,15 +499,21 @@ function AnalysisHeroCard() {
                 </div>
             )}
 
-            {/* Two ways forward, side by side and centred under the box: go find
-                an ad, or check the one already in it. The check is not "apply" —
-                applying is what happens after it comes back good — so the label
-                names what the button actually does. */}
+            {/* Two ways forward: go find an ad, or check the one already in
+                the box. The check is not "apply" — applying is what happens
+                after it comes back good — so the label names what the button
+                actually does.
+
+                Side by side on a desktop. Stacked and full width on a phone,
+                because two buttons wrapping into a ragged pair is what the
+                pair looked like at 390px, and the browse label is a variable
+                length string so the wrap point moved per account. */}
             <div
                 style={{
                     marginTop: 20,
                     display: 'flex',
-                    alignItems: 'center',
+                    flexDirection: isMobile ? 'column-reverse' : 'row',
+                    alignItems: 'stretch',
                     justifyContent: 'center',
                     gap: 12,
                     flexWrap: 'wrap',
@@ -538,25 +526,36 @@ function AnalysisHeroCard() {
                     style={{
                         display: 'inline-flex',
                         alignItems: 'center',
+                        justifyContent: 'center',
                         gap: 6,
                         padding: '12px 22px',
                         fontSize: 14,
                         fontWeight: 600,
                         letterSpacing: '-0.01em',
                         color: warmT.text,
-                        background: 'transparent',
+                        background: warm.colors.bgSurface,
                         border: `1px solid ${warm.colors.borderDefined}`,
                         borderRadius: 12,
                         textDecoration: 'none',
-                        transition: 'border-color 200ms, background 200ms',
+                        /* A resting ring rather than a flat outline. Somebody
+                           with an empty box has nothing to check yet, so this
+                           is the button they need, and next to a solid petrol
+                           primary a bare outline reads as the disabled one. */
+                        boxShadow: `0 0 0 3px ${warm.colors.accentPetrol}14`,
+                        /* The label is capped by browseRoleLabel, so it always
+                           fits on one line and never has to wrap. */
+                        whiteSpace: 'nowrap',
+                        transition: 'border-color 200ms, background 200ms, box-shadow 200ms',
                     }}
                     onMouseEnter={(e) => {
                         e.currentTarget.style.borderColor = warm.colors.accentPetrol;
                         e.currentTarget.style.background = warm.colors.bgAlt;
+                        e.currentTarget.style.boxShadow = `0 0 0 4px ${warm.colors.accentPetrol}22`;
                     }}
                     onMouseLeave={(e) => {
                         e.currentTarget.style.borderColor = warm.colors.borderDefined;
-                        e.currentTarget.style.background = 'transparent';
+                        e.currentTarget.style.background = warm.colors.bgSurface;
+                        e.currentTarget.style.boxShadow = `0 0 0 3px ${warm.colors.accentPetrol}14`;
                     }}
                 >
                     Browse {roleLabel} jobs
@@ -570,6 +569,7 @@ function AnalysisHeroCard() {
                     style={{
                         display: 'inline-flex',
                         alignItems: 'center',
+                        justifyContent: 'center',
                         gap: 6,
                         padding: '12px 22px',
                         fontSize: 14,

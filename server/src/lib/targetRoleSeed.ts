@@ -15,8 +15,9 @@
  * "Data Analyst".
  *
  * Deliberately narrow. A qualifier is stripped only where it sits in a MODIFIER
- * POSITION: inside brackets, or as its own segment after a separator. A leading
- * bare word is left alone even when it is on the list, because "Contract
+ * POSITION: inside brackets, as its own segment after a separator, or — for the
+ * intern family alone — as a bare word on the END of the title. A LEADING bare
+ * word is left alone even when it is on the list, because "Contract
  * Administrator", "Student Advisor" and "Volunteer Coordinator" are real jobs
  * whose first word is the craft, and mangling a title is a worse failure than
  * leaving a slightly junior one in a box the candidate is about to edit. This
@@ -43,8 +44,61 @@ const QUALIFIERS = [
  */
 const SEPARATOR = /\s*[,;:|]\s*|\s+[-–—/]+\s+/;
 
+/**
+ * The subset of QUALIFIERS safe to drop from the END of a title with no bracket
+ * and no separator in front of it.
+ *
+ * A bare trailing word is the weakest position to strip from, because the last
+ * word of a title is usually the noun that names the job. So this list is much
+ * narrower than QUALIFIERS: only words that are never themselves the craft.
+ * "Marketing Communications Intern" is a marketing communications job; "Contract
+ * Administrator" and "Support Student" would both be wrecked by the full list,
+ * which is why `contract`, `student`, `casual` and the rest stay out of it.
+ */
+const TRAILING_QUALIFIERS = [
+  'intern', 'interns', 'internship', 'internships',
+  'trainee', 'cadet', 'apprentice',
+];
+
 /** Nothing shorter than this survives as a target role — it means we over-stripped. */
 const MIN_KEPT_LENGTH = 3;
+
+/**
+ * How many words have to survive the trailing strip.
+ *
+ * One, deliberately. "Marketing Intern" becomes "Marketing", which is a vaguer
+ * seed than we would like and still a far better one than an internship: the
+ * rung word is the single thing on a title that actively aims the rebuild at
+ * the level the candidate is trying to leave. MIN_KEPT_LENGTH still catches the
+ * genuinely destroyed cases ("IT Intern" keeps its rung rather than becoming
+ * "IT"), and this is a box they are about to edit either way.
+ */
+const MIN_KEPT_WORDS = 1;
+
+/**
+ * Drop a rung word sitting bare on the end: "Marketing Communications Intern".
+ *
+ * The bracket and separator passes cannot see this shape — there is no bracket
+ * and no separator — and it is the shape that reaches us most often, because it
+ * is how the title is actually printed on a resume. Real case, 8 Sep 2026:
+ * "Marketing Communications Intern" seeded the target role box verbatim, which
+ * aimed the whole rebuild at another internship.
+ *
+ * Word boundaries do the work on the near-misses. "Internal Communications"
+ * ends in "Communications", and "Internal" is never the last word, so neither
+ * of the internal-* titles is ever touched.
+ */
+function stripTrailingQualifier(title: string): string {
+  const words = title.split(' ');
+  if (words.length <= MIN_KEPT_WORDS) return title;
+
+  const last = words[words.length - 1].toLowerCase().replace(/[^a-z]/g, '');
+  if (!TRAILING_QUALIFIERS.includes(last)) return title;
+
+  // Titles ending "... - Intern" have already lost the rung to the segment
+  // pass; anything left dangling here is punctuation we should not keep.
+  return words.slice(0, -1).join(' ').replace(/[\s,;:|/–—-]+$/, '').trim();
+}
 
 function isQualifier(fragment: string): boolean {
   const f = fragment.toLowerCase().replace(/[^a-z\s-]/g, '').trim().replace(/\s+/g, ' ');
@@ -74,7 +128,11 @@ export function targetRoleSeed(currentRole: string | null | undefined): string {
 
   // Reassembling a multi-segment title would invent punctuation the candidate
   // did not write, so only a clean single survivor is used.
-  const out = kept.length === 1 ? kept[0] : debracketed;
+  const desegmented = kept.length === 1 ? kept[0] : debracketed;
+
+  // Last, because it is the weakest of the three positions: by here the title
+  // is a single clean segment, so a rung word on the end really is on the end.
+  const out = stripTrailingQualifier(desegmented);
 
   // Over-stripping would hand them a blank or a fragment. The real title, rung
   // and all, beats that every time.

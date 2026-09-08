@@ -12,6 +12,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { trackWelcomeStep, trackWelcomeFailed, trackWelcomeCompleted } from '../lib/analytics';
 import { colors, type as T } from '../components/landing/tokens';
 import { MarkdownDocEditor, FormattingHelp } from '../components/MarkdownDocEditor';
+import { DocumentPaper } from '../components/shared/DocumentPaper';
+import { useIsMobile } from '../hooks/useIsMobile';
+import { stripRung } from '../lib/roleLabel';
 import { suggestCuts } from '../lib/resumeCuts';
 import { SALES_PAGE_URL } from '../lib/salesPage';
 import { beginWelcomeHandoff, endWelcomeHandoff } from '../lib/welcomeHandoff';
@@ -103,6 +106,7 @@ export const WelcomePage: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
 
   const [step, setStep] = useState<Step>('upload');
 
@@ -122,6 +126,19 @@ export const WelcomePage: React.FC = () => {
   const [firstName, setFirstName] = useState('');
   const [brief, setBrief] = useState('');
   const [roles, setRoles] = useState<string[]>(['']);
+  /*
+    Rows whose rung word we took off, so the change can be SHOWN rather than
+    done behind their back.
+
+    "Marketing Communications Intern" in this box aims the whole rebuild at
+    another internship: buildCleanResume prints the target title on the line
+    under their name, and every application generated afterwards is written
+    against it. The server already strips the rung when it seeds this box (see
+    server/src/lib/targetRoleSeed.ts) — this is the same rule for a role they
+    typed themselves, and it is reversible, because wanting an internship is a
+    legitimate thing to want and this is their box, not ours.
+  */
+  const [rungStripped, setRungStripped] = useState<Record<number, string>>({});
   const [city, setCity] = useState('');
 
   const [findings, setFindings] = useState<IntakeFinding[]>([]);
@@ -830,7 +847,23 @@ export const WelcomePage: React.FC = () => {
             <div key={i} style={{ display: 'flex', gap: 8 }}>
               <input
                 value={r}
-                onChange={e => setRoles(prev => prev.map((x, j) => (j === i ? e.target.value : x)))}
+                onChange={e => {
+                  setRoles(prev => prev.map((x, j) => (j === i ? e.target.value : x)));
+                  setRungStripped(prev => {
+                    if (!(i in prev)) return prev;
+                    const next = { ...prev };
+                    delete next[i];
+                    return next;
+                  });
+                }}
+                onBlur={() => {
+                  // On blur, not on keystroke: half-typed "Marketing Inte" must
+                  // be allowed to finish becoming "Marketing Intern" first.
+                  const cleaned = stripRung(r);
+                  if (cleaned === r.trim()) return;
+                  setRoles(prev => prev.map((x, j) => (j === i ? cleaned : x)));
+                  setRungStripped(prev => ({ ...prev, [i]: r.trim() }));
+                }}
                 placeholder={ROLE_PLACEHOLDERS[i % ROLE_PLACEHOLDERS.length]}
                 style={inputStyle}
                 autoFocus={i === 0}
@@ -843,6 +876,34 @@ export const WelcomePage: React.FC = () => {
               )}
             </div>
           ))}
+          {roles.map((_, i) => rungStripped[i] ? (
+            <p key={`rung-${i}`} style={{
+              margin: '-4px 0 0', fontFamily: T.body, fontSize: 12.5, lineHeight: 1.5,
+              color: colors.textMuted,
+            }}>
+              Aiming at the role, not the rung — your rebuilt resume is headlined with
+              whatever is in this box.{' '}
+              <button
+                type="button"
+                onClick={() => {
+                  const original = rungStripped[i];
+                  setRoles(prev => prev.map((x, j) => (j === i ? original : x)));
+                  setRungStripped(prev => {
+                    const next = { ...prev };
+                    delete next[i];
+                    return next;
+                  });
+                }}
+                style={{
+                  background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                  fontFamily: T.body, fontSize: 12.5, fontWeight: 700,
+                  color: colors.accentPetrol, textDecoration: 'underline', textUnderlineOffset: 3,
+                }}
+              >
+                Put &ldquo;{rungStripped[i]}&rdquo; back
+              </button>
+            </p>
+          ) : null)}
           {roles.length < 3 && (
             <button onClick={() => setRoles(prev => [...prev, ''])}
               style={{ alignSelf: 'flex-start', background: 'transparent', border: 'none', cursor: 'pointer', color: colors.accentPetrol, fontFamily: T.body, fontSize: 13.5, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 0' }}>
@@ -996,9 +1057,29 @@ export const WelcomePage: React.FC = () => {
           {ownershipOpen && <OwnershipNote onClose={() => setOwnershipOpen(false)} />}
         </AnimatePresence>
 
-        {/* Rendered as a page, not a text box — people trust what looks like a document. */}
-        <div className="bank-paper" style={{ position: 'relative' }}>
-          {/*
+        {/*
+          Rendered as a page, not a text box — people trust what looks like a
+          document.
+
+          On a phone that is literal: DocumentPaper draws the real A4 geometry
+          scaled to fit, with a loupe on press and a full-screen reader on tap.
+          Editing always drops back to the reflowed version, because a
+          scaled-down textarea cannot be typed into.
+
+          The ref is on the WRAPPER rather than on the document itself: in
+          scaled mode the document is rendered more than once (the lens holds a
+          second copy) and a ref on the child would end up pointing at whichever
+          copy mounted last. The wrapper is what is actually on screen, which is
+          the height the editor should open at anyway.
+        */}
+        <div ref={paperRef}>
+        <DocumentPaper
+          className="bank-paper"
+          style={{ position: 'relative' }}
+          readerTitle="Your resume"
+          flow={editing}
+          corner={
+          /*
             The length, on the document rather than in a card above it.
 
             Two pages is the Australian norm and the single thing people most
@@ -1008,8 +1089,8 @@ export const WelcomePage: React.FC = () => {
             education section. Sitting on the page corner it reads as a property
             of the document, which is what it is — and it is recomputed on every
             save, so they watch three pages become two as they cut.
-          */}
-          {pageCount !== null && (() => {
+          */
+          pageCount !== null && (() => {
             /*
               Over two pages, the badge stops being a fact and becomes a
               warning.
@@ -1053,8 +1134,9 @@ export const WelcomePage: React.FC = () => {
                 {icon} {label}
               </button>
             );
-          })()}
-
+          })()
+          }
+        >
           {editing ? (
             /*
               The same editor the paid workspace uses, on the same paper the
@@ -1084,10 +1166,9 @@ export const WelcomePage: React.FC = () => {
               }}
             />
           ) : (
-            <div ref={paperRef}>
-              <ReactMarkdown>{cleanResume}</ReactMarkdown>
-            </div>
+            <ReactMarkdown>{cleanResume}</ReactMarkdown>
           )}
+        </DocumentPaper>
         </div>
 
         {/*
@@ -1364,9 +1445,15 @@ export const WelcomePage: React.FC = () => {
         job — parse, then claim — and a log-in button sitting over it is an
         invitation to abandon a resume that is already halfway uploaded. The
         account they are about to sign into is the one this upload creates.
+
+        Corner on a desktop, IN THE FLOW on a phone. Fixed at top:20 its bottom
+        edge lands at 56px; on a phone the card starts above that line and runs
+        the full width of the screen, so the chip sat on the card's own top
+        right corner, over the brand lockup. There is no corner to sit in when
+        the card IS the screen, so a phone gets a row above the card instead.
       */}
       <AnimatePresence>
-        {step === 'upload' && !file && (
+        {step === 'upload' && !file && !isMobile && (
           <motion.a
             key="login"
             href="/auth"
@@ -1390,6 +1477,23 @@ export const WelcomePage: React.FC = () => {
         )}
       </AnimatePresence>
       <Shell wide onWash>
+      {isMobile && step === 'upload' && !file && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+          <a
+            href="/auth"
+            style={{
+              display: 'inline-flex', alignItems: 'center',
+              minHeight: 44, padding: '0 16px', borderRadius: 99,
+              background: colors.bgSurface,
+              border: '1px solid ' + PANEL_BORDER,
+              fontFamily: T.body, fontSize: 13.5, fontWeight: 700,
+              color: colors.accentPetrol, textDecoration: 'none',
+            }}
+          >
+            Log in
+          </a>
+        </div>
+      )}
       {/* A panel with an edge, not a glow. The testimonials behind used to be
           hidden under a radial white bloom, which left the content floating in
           a soft-edged smear with nothing to say where the page began. A solid
@@ -1398,13 +1502,17 @@ export const WelcomePage: React.FC = () => {
       <div style={{
         background: colors.bgSurface,
         border: `1px solid ${PANEL_BORDER}`,
-        borderRadius: 22,
-        padding: 'clamp(28px, 5vh, 44px) clamp(22px, 4vw, 40px)',
+        borderRadius: isMobile ? 18 : 22,
+        /* Smaller on a phone, because the whole card has to clear the fold on a
+           390x740 screen: brand, headline, dropzone, promise and the explainer
+           link. Anything below the fold on the front door is a thing most
+           visitors never find out is there. */
+        padding: isMobile ? '22px 18px' : 'clamp(28px, 5vh, 44px) clamp(22px, 4vw, 40px)',
         boxShadow: '0 1px 2px rgba(26,24,20,0.05), 0 26px 60px -34px rgba(26,24,20,0.45)',
       }}>
       <div style={{ textAlign: 'center' }}>
-        <BrandLockup />
-        <Display>Find out what's costing you interviews.</Display>
+        <BrandLockup tight={isMobile} />
+        <Display tight={isMobile}>Find out what's costing you interviews.</Display>
       </div>
 
       <AnimatePresence mode="wait">
@@ -1432,7 +1540,7 @@ export const WelcomePage: React.FC = () => {
                 /* Smaller than it was. The box was tall enough that the label
                    sat marooned in the middle of it; at this height the words
                    have room without the target becoming the whole screen. */
-                padding: 'clamp(26px, 5.5vh, 46px) 26px', borderRadius: 16, cursor: 'pointer',
+                padding: isMobile ? '22px 18px' : 'clamp(26px, 5.5vh, 46px) 26px', borderRadius: 16, cursor: 'pointer',
                 /* One thin solid stroke. Dashed plus a pulsing glow read as an
                    unfinished placeholder, which is the opposite of what the
                    only thing to click on the page should look like. */
@@ -1442,10 +1550,10 @@ export const WelcomePage: React.FC = () => {
               }}
             >
               <span style={{ color: dragging || file ? colors.accentPetrol : colors.textMuted }}>
-                <UploadCloud size={42} strokeWidth={1.5} />
+                <UploadCloud size={isMobile ? 32 : 42} strokeWidth={1.5} />
               </span>
               <span style={{ minWidth: 0, maxWidth: '100%' }}>
-                <span style={{ display: 'block', fontFamily: T.display, fontSize: 'clamp(19px, 2.4vw, 24px)', fontWeight: 600, color: colors.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{ display: 'block', fontFamily: T.display, fontSize: isMobile ? 19 : 'clamp(19px, 2.4vw, 24px)', fontWeight: 600, color: colors.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {file ? file.name : dragging ? 'Drop it here' : 'Upload your resume'}
                 </span>
                 <span style={{ display: 'block', fontFamily: T.body, fontSize: 14, color: colors.textMuted, marginTop: 7 }}>
@@ -1469,7 +1577,7 @@ export const WelcomePage: React.FC = () => {
           they are about to be given, before they have been given it. The
           argument now lives where it costs nothing, on the rebuilt resume and
           the fit check. */}
-      <p style={{ fontFamily: T.display, fontStyle: 'italic', textAlign: 'center', fontSize: 'clamp(15px, 1.9vw, 17.5px)', lineHeight: 1.5, color: colors.accentPetrol, maxWidth: 560, margin: '22px auto 0' }}>
+      <p style={{ fontFamily: T.display, fontStyle: 'italic', textAlign: 'center', fontSize: isMobile ? 15 : 'clamp(15px, 1.9vw, 17.5px)', lineHeight: 1.5, color: colors.accentPetrol, maxWidth: 560, margin: isMobile ? '16px auto 0' : '22px auto 0' }}>
         High quality applications consistently personalised to every job.
       </p>
       {/* Deliberately quieter than the promise above it, and a new tab. This is
@@ -2347,9 +2455,9 @@ function TestimonialWash() {
 }
 
 /** Who this is, said once at the top. Branding, not a nav bar. */
-function BrandLockup() {
+function BrandLockup({ tight }: { tight?: boolean }) {
   return (
-    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 11, marginBottom: 28 }}>
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 11, marginBottom: tight ? 14 : 28 }}>
       <img src="/Logo.svg" alt="" width={34} height={34} style={{ borderRadius: 9, objectFit: 'contain' }} />
       <span style={{ fontFamily: T.body, fontSize: 12.5, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: colors.textSecondary }}>
         Aussie Grad Careers
@@ -2364,8 +2472,13 @@ function BrandLockup() {
  * canvas it has always had.
  */
 function Shell({ children, wide, onWash }: { children: React.ReactNode; wide?: boolean; onWash?: boolean }) {
+  const isMobile = useIsMobile();
   return (
-    <div style={{ position: 'relative', zIndex: 1, height: '100dvh', overflowY: 'auto', background: onWash ? 'transparent' : colors.bgCanvas, display: 'flex', padding: '48px 24px', boxSizing: 'border-box' }}>
+    /* 48px of vertical air and 24 a side is right for a 720px card floating in
+       a desktop window. On a 390px phone the card is the width of the screen,
+       so the same insets are 96px of height and 48px of width taken off a
+       screen that has neither to give. */
+    <div style={{ position: 'relative', zIndex: 1, height: '100dvh', overflowY: 'auto', background: onWash ? 'transparent' : colors.bgCanvas, display: 'flex', padding: isMobile ? '16px 14px' : '48px 24px', boxSizing: 'border-box' }}>
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}
         style={{ width: '100%', maxWidth: wide ? 720 : 520, margin: 'auto' }}>
         {children}
@@ -2489,9 +2602,9 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Display({ children }: { children: React.ReactNode }) {
+function Display({ children, tight }: { children: React.ReactNode; tight?: boolean }) {
   return (
-    <h1 style={{ fontFamily: T.display, fontWeight: 600, letterSpacing: '-0.02em', lineHeight: 1.1, color: colors.textPrimary, fontSize: 'clamp(28px, 4.4vw, 40px)', margin: '0 0 12px' }}>
+    <h1 style={{ fontFamily: T.display, fontWeight: 600, letterSpacing: '-0.02em', lineHeight: 1.1, color: colors.textPrimary, fontSize: tight ? 'clamp(24px, 7.2vw, 31px)' : 'clamp(28px, 4.4vw, 40px)', margin: '0 0 12px' }}>
       {children}
     </h1>
   );

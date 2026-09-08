@@ -10,6 +10,7 @@
  *   tinyText      body text under 12px
  *   zoomInputs    form controls under 16px, which make iOS zoom the page in
  *   clipped       text sitting in a box shorter than the text itself
+ *   narrow        paragraphs wrapping at fewer than 38 characters a line
  *
  * Run:  node scripts/mobile-sweep.mjs [--tag before] [--only 11-apply]
  */
@@ -159,7 +160,7 @@ async function mintSession() {
 
 /** Runs in the page. Everything it returns is a fact about the rendered DOM. */
 const AUDIT = (vw) => {
-  const out = { overflowX: 0, offenders: [], tinyTaps: [], tinyText: [], zoomInputs: [], clipped: [], nested: [], hoverOnly: [] };
+  const out = { overflowX: 0, offenders: [], tinyTaps: [], tinyText: [], zoomInputs: [], clipped: [], nested: [], hoverOnly: [], narrow: [] };
   const de = document.documentElement;
   out.overflowX = Math.max(0, Math.round(de.scrollWidth - vw));
 
@@ -181,9 +182,13 @@ const AUDIT = (vw) => {
     if (over > 2 && el.clientWidth > 100) {
       const cs = getComputedStyle(el);
       const scrolls = ['auto', 'scroll'].includes(cs.overflowX);
-      // A deliberate `.scroll-x` rail is fine. Anything else is the page
+      // A deliberate `.scroll-x` rail is fine, and so is the clipped frame
+      // DocumentPaper draws: it holds an A4 page at its true 794px width and
+      // scales it down with a transform, so the child really is wider than the
+      // box and the box really cannot be dragged. Anything else is the page
       // being wider than the phone.
-      if (!el.classList.contains('scroll-x') && out.innerOverflow.length < 10) {
+      const deliberate = el.classList.contains('scroll-x') || el.classList.contains('agc-scaled-page');
+      if (!deliberate && out.innerOverflow.length < 10) {
         out.innerOverflow.push(`${el.tagName.toLowerCase()}.${String(el.className).slice(0, 30)} +${Math.round(over)}px${scrolls ? ' (scrolls)' : ''}`);
       }
     }
@@ -252,6 +257,39 @@ const AUDIT = (vw) => {
       // deliberately. Anything BELOW it is off the scale and unreadable on a
       // phone held at arm's length.
       if (fs < 11 && out.tinyText.length < 10) out.tinyText.push(`${label(el)} → ${fs}px`);
+    }
+
+    /*
+      Paragraphs wrapping three or four words to a line.
+
+      The complaint this measures is "the product looks text-heavy on a phone",
+      and the cause is almost never the font size: it is nesting. A page gutter
+      plus a card plus a panel inside the card spends over a quarter of a 390px
+      screen on whitespace before a word is set, and what is left wraps at
+      under 30 characters.
+
+      Measured rather than eyeballed. A Range over the node reports one client
+      rect per LINE BOX, so text length divided by rect count is the real
+      average characters a line — no assumptions about font metrics, and it
+      counts what the browser actually did.
+
+      Only multi-line running text: a heading, a button label or a one-line
+      caption is short because it is short, not because the column is narrow.
+    */
+    if (el.children.length === 0 && out.narrow.length < 12) {
+      const text = (el.textContent || '').trim().replace(/\s+/g, ' ');
+      const isRunningText = /^(P|LI|SPAN|DIV|TD|BLOCKQUOTE)$/.test(el.tagName);
+      if (isRunningText && text.length >= 90) {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const lines = Array.from(range.getClientRects()).filter((r) => r.height > 1 && r.width > 1).length;
+        range.detach?.();
+        // Two lines is not a column, it is a sentence that happened to wrap.
+        if (lines >= 3) {
+          const perLine = Math.round(text.length / lines);
+          if (perLine < 38) out.narrow.push(`${label(el)} → ${perLine} chars/line over ${lines} lines`);
+        }
+      }
     }
 
     // Text taller than the box holding it, with the overflow hidden.
@@ -348,6 +386,7 @@ const run = async () => {
     if (audit?.tinyTaps?.length) flags.push(`tiny-taps ${audit.tinyTaps.length}`);
     if (audit?.tinyText?.length) flags.push(`tiny-text ${audit.tinyText.length}`);
     if (audit?.clipped?.length) flags.push(`clipped ${audit.clipped.length}`);
+    if (audit?.narrow?.length) flags.push(`narrow ${audit.narrow.length}`);
     if (audit?.nested?.length) flags.push(`NESTED-BTN ${audit.nested.length}`);
     if (audit?.hoverOnly?.length) flags.push(`HOVER-ONLY ${audit.hoverOnly.length}`);
     console.log(`${p.id.padEnd(20)} ${landed.padEnd(34)} ${flags.join('  ') || 'clean'}`);
@@ -361,6 +400,9 @@ const run = async () => {
 
   const bad = report.filter((r) => r.audit?.overflowX > 0);
   console.log(`\n${bad.length} of ${report.length} pages scroll sideways.`);
+  const cramped = report.filter((r) => r.audit?.narrow?.length);
+  const crampedTotal = cramped.reduce((n, r) => n + r.audit.narrow.length, 0);
+  console.log(`${crampedTotal} paragraphs under 38 chars/line, across ${cramped.length} pages.`);
   console.log(`shots + _report.json → ${path.relative(ROOT, OUT)}`);
 };
 

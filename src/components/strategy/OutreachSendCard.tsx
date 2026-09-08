@@ -19,6 +19,7 @@ import { useState } from 'react';
 import { Check, Copy, ExternalLink, Info, Linkedin, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { warm } from '../../lib/theme/warmTokens';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { LINKEDIN_NOTE_LIMIT } from '../../lib/outreachFill';
 import {
     clientForAddress, composeUrl, fitBody, rankAddresses, confidenceNote,
@@ -65,6 +66,7 @@ export default function OutreachSendCard({
     personName, personTitle, company, addresses, draft,
     userEmail, linkedInNote, onOpened,
 }: OutreachSendCardProps) {
+    const isMobile = useIsMobile();
     const ranked = rankAddresses(addresses);
     const [address, setAddress] = useState(ranked[0]?.address ?? '');
     const [subject, setSubject] = useState(draft.subject);
@@ -78,13 +80,26 @@ export default function OutreachSendCard({
     const matched = ranked.find(a => a.address === address) ?? null;
     const { truncated } = fitBody(body);
 
+    /*
+      Name the window this opens, rather than saying "Send email".
+
+      Nothing here sends. The button hands the draft to their own mail client,
+      and "Send email" promises the opposite of that: the person taps it, a new
+      browser tab opens, and for a second they do not know whether the thing
+      was sent or not. We already know which client they use — it is decided by
+      the domain they signed up with — so the button can just say it.
+    */
+    const client = clientForAddress(userEmail);
+    const clientName = client === 'gmail' ? 'Gmail' : client === 'outlook' ? 'Outlook' : null;
+    const sendLabel = clientName ? `Open in ${clientName}` : 'Open in your email';
+
     const handleSend = () => {
         if (!address.trim()) {
             toast.error('Add an email address first');
             return;
         }
         const payload: ComposeDraft = { to: address.trim(), subject, body };
-        window.open(composeUrl(payload, clientForAddress(userEmail)), '_blank', 'noopener');
+        window.open(composeUrl(payload, client), '_blank', 'noopener');
         setOpened(true);
         onOpened?.(address.trim());
     };
@@ -105,7 +120,9 @@ export default function OutreachSendCard({
             <div style={{
                 border: `1px solid ${warm.colors.borderWhisper}`,
                 borderRadius: 14,
-                padding: 16,
+                /* One inset, not two. This card sits inside the outreach panel
+                   which sits inside the page gutter. See warm.measure. */
+                padding: isMobile ? 12 : 16,
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 12,
@@ -211,16 +228,31 @@ export default function OutreachSendCard({
                     onClick={handleSend}
                     style={{
                         display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                        width: '100%', padding: '12px 18px',
-                        fontSize: 14, fontWeight: 700,
+                        width: '100%', minHeight: 48, padding: '12px 18px',
+                        fontSize: 15, fontWeight: 700,
                         color: warm.colors.textOnDeep, background: warm.colors.accentPetrol,
                         border: 'none', borderRadius: 10, cursor: 'pointer',
                     }}
                 >
                     {opened ? <Check size={15} /> : <Mail size={15} />}
-                    {opened ? 'Opened in your email' : 'Send email'}
+                    {opened ? `Opened in ${clientName ?? 'your email'}` : sendLabel}
                     <ExternalLink size={13} />
                 </button>
+
+                {/*
+                  What the button does, said before it is pressed.
+
+                  We deliberately do not send on anyone's behalf — that needs
+                  Google's restricted gmail.send scope, and contact discovery is
+                  right about a third of the time, so a true one-tap send would
+                  mail strangers under the candidate's name. Their own compose
+                  window shows them the address first. See lib/composeHandoff.
+                */}
+                <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5, color: warm.colors.textMuted }}>
+                    {clientName
+                        ? `Opens ${clientName} with this draft filled in. It sends from your address and lands in your sent mail.`
+                        : 'Opens your email app with this draft filled in, so it sends from your address.'}
+                </p>
             </div>
 
             <p style={{
@@ -234,16 +266,22 @@ export default function OutreachSendCard({
                 <div style={{
                     background: warm.colors.bgAlt,
                     border: `1px solid ${warm.colors.borderWhisper}`,
-                    borderRadius: 12, padding: 14,
+                    borderRadius: 12, padding: isMobile ? 12 : 14,
                     display: 'flex', flexDirection: 'column', gap: 8,
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                    {/* Label, counter and Copy collided at 390px, because three
+                        things justified apart need a width none of them can
+                        claim. Allowed to wrap onto a second row instead. */}
+                    <div style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        gap: 10, flexWrap: 'wrap',
+                    }}>
                         <span style={{
                             display: 'inline-flex', alignItems: 'center', gap: 6,
                             fontSize: 10.5, fontWeight: 700, letterSpacing: '0.1em',
                             textTransform: 'uppercase', color: warm.colors.accentPetrol,
                         }}>
-                            <Linkedin size={13} /> LinkedIn connection note
+                            <Linkedin size={13} /> LinkedIn note
                         </span>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                             <span style={{
@@ -267,7 +305,14 @@ export default function OutreachSendCard({
                             </button>
                         </span>
                     </div>
-                    <p style={{ margin: 0, fontSize: 12.5, color: warm.colors.textSecondary, lineHeight: 1.6 }}>
+                    <p style={{
+                        margin: 0,
+                        fontSize: isMobile ? 14.5 : 12.5,
+                        color: warm.colors.textPrimary,
+                        lineHeight: 1.65,
+                        whiteSpace: 'pre-wrap',
+                        overflowWrap: 'anywhere',
+                    }}>
                         {linkedInNote}
                     </p>
                 </div>

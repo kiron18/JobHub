@@ -32,6 +32,7 @@ import api from '../../lib/api';
 import { warm } from '../../lib/theme/warmTokens';
 import { LINKEDIN_NOTE_LIMIT, buildOutreachMessages } from '../../lib/outreachFill';
 import { resolveContact, isGenericAddress } from '../../lib/contactSlots';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import OutreachSendCard from './OutreachSendCard';
 
 /**
@@ -108,6 +109,7 @@ function TemplateCard({
     needsEdit?: boolean;
 }) {
     const [copied, setCopied] = useState(false);
+    const isMobile = useIsMobile();
     const overLimit = charLimit ? text.length > charLimit : false;
 
     const handleCopy = async () => {
@@ -124,13 +126,20 @@ function TemplateCard({
             background: warm.colors.bgSurface,
             border: `1px solid ${warm.colors.borderWhisper}`,
             borderRadius: 12,
-            padding: 16,
+            /* 16 a side plus the card this sits in plus the page gutter is three
+               insets deep, which is what left the message about 28 characters a
+               line on a phone. See warm.measure. */
+            padding: isMobile ? '12px 12px 12px' : 16,
         }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 10 }}>
+            <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                marginBottom: 10, gap: 10, flexWrap: 'wrap',
+            }}>
                 <span style={{
                     display: 'flex', alignItems: 'center', gap: 6,
                     fontSize: 11, fontWeight: 800, textTransform: 'uppercase',
                     letterSpacing: '0.1em', color: warm.colors.accentPetrol,
+                    whiteSpace: 'nowrap',
                 }}>
                     {icon}
                     {label}
@@ -166,11 +175,16 @@ function TemplateCard({
                 margin: 0,
                 background: warm.colors.bgAlt,
                 borderRadius: 8,
-                padding: 12,
-                fontSize: 13,
-                lineHeight: 1.7,
+                /* Vertical inset only on a phone: the panel it sits in already
+                   supplies the side one, and stacking both is what narrowed the
+                   message to three words a line. */
+                padding: isMobile ? '10px 0' : 12,
+                paddingLeft: isMobile ? 0 : 12,
+                fontSize: isMobile ? 14.5 : 13,
+                lineHeight: 1.65,
                 color: warm.colors.textPrimary,
                 whiteSpace: 'pre-wrap',
+                overflowWrap: 'anywhere',
             }}>
                 <TemplateBody text={text} />
             </p>
@@ -199,17 +213,18 @@ export function PostApplyOutreach({
     userEmail?: string;
 }) {
     /*
-      Open.
+      Closed, because the drafts are no longer inside it.
 
-      This was collapsed and labelled "Optional, two minutes", which is a fair
-      description of how it was built and the wrong description of what it is.
-      Sending the application is not the end of applying: telling a person you
-      sent it is, and that note is already written by the time you get here.
+      The card used to be one collapsible holding both the ARGUMENT for
+      following up and the MESSAGES themselves, which forced a choice between
+      two bad options: closed, and the drafts nobody knows exist; open, and
+      three paragraphs of statistics standing between somebody and the thing
+      they are meant to act on.
 
-      The "Apply for another role" button below stays live throughout, so this
-      still cannot become a toll gate. Volume is what moves the needle.
+      They are two different objects now. The argument is reference material and
+      folds away. The messages are the task and always sit on the page under it.
     */
-    const [open, setOpen] = useState(true);
+    const [open, setOpen] = useState(false);
     /*
       Who to message is reference material, not the task.
 
@@ -218,6 +233,7 @@ export function PostApplyOutreach({
       is the thing to act on, below the fold.
     */
     const [whoOpen, setWhoOpen] = useState(false);
+    const isMobile = useIsMobile();
 
     /*
       Who to write to.
@@ -230,7 +246,9 @@ export function PostApplyOutreach({
     */
     const { data: contact } = useQuery({
         queryKey: ['outreach-contact', company, jobTitle],
-        enabled: !!company && open,
+        // Not gated on the banner any more: the drafts are always on screen,
+        // so the address they are addressed to has to be looked up regardless.
+        enabled: !!company,
         staleTime: Infinity,
         retry: false,
         queryFn: async () => {
@@ -278,6 +296,7 @@ export function PostApplyOutreach({
     const hasBlanks = t.linkedInNeedsPitch || t.emailNeedsPitch;
 
     return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div style={{
             border: `1px solid ${warm.colors.borderDefined}`,
             background: 'transparent',
@@ -289,10 +308,15 @@ export function PostApplyOutreach({
                 style={{
                     width: '100%',
                     display: 'flex',
-                    alignItems: 'center',
+                    /* Stacked on a phone. Side by side, a three-line heading and
+                       a "Why" toggle share a row, and the toggle ends up level
+                       with the middle of the heading looking like it belongs to
+                       the wrong line. */
+                    flexDirection: isMobile ? 'column' : 'row',
+                    alignItems: isMobile ? 'flex-start' : 'center',
                     justifyContent: 'space-between',
-                    gap: 12,
-                    padding: '14px 18px',
+                    gap: isMobile ? 8 : 12,
+                    padding: isMobile ? '14px 14px' : '14px 18px',
                     background: 'transparent',
                     border: 'none',
                     cursor: 'pointer',
@@ -311,9 +335,7 @@ export function PostApplyOutreach({
                     </span>
                     <span style={{ display: 'block', ...warm.text.small, color: warm.colors.textSecondary, marginTop: 2 }}>
                         Two minutes, and it is the one part of this you still control.{' '}
-                        {hasBlanks
-                            ? 'Templates ready below.'
-                            : 'Already written from your cover letter, ready to copy.'}
+                        Why it works, and who to write to.
                     </span>
                 </span>
                 <span style={{
@@ -321,7 +343,7 @@ export function PostApplyOutreach({
                     fontSize: 12, fontWeight: 700, color: warm.colors.accentPetrol,
                     whiteSpace: 'nowrap',
                 }}>
-                    {open ? 'Hide' : 'Show me'}
+                    {open ? 'Hide' : 'Why'}
                     {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                 </span>
             </button>
@@ -331,7 +353,7 @@ export function PostApplyOutreach({
                     display: 'flex',
                     flexDirection: 'column',
                     gap: 16,
-                    padding: '4px 18px 18px',
+                    padding: isMobile ? '4px 14px 16px' : '4px 18px 18px',
                 }}>
                     {/*
                       The argument, in three lines rather than one paragraph.
@@ -402,75 +424,84 @@ export function PostApplyOutreach({
                         </p>
                     </div>
 
-                    <div style={{
-                        background: 'rgba(197, 160, 89, 0.12)',
-                        border: '1px solid rgba(197, 160, 89, 0.35)',
-                        borderRadius: 8,
-                        padding: '10px 14px',
-                    }}>
-                        <p style={{ margin: 0, fontSize: 12.5, color: warm.colors.textPrimary, lineHeight: 1.6 }}>
-                            {hasBlanks ? (
-                                <>
-                                    Fill every highlighted blank before you send. A recruiter spots an
-                                    untouched template instantly.
-                                </>
-                            ) : (
-                                <>
-                                    Filled in from your cover letter and ready to send. Read it once, and
-                                    change the evidence if it is not what you would have led with.
-                                </>
-                            )}
-                        </p>
-                    </div>
-
-                    {/*
-                        With an address we can hand them a filled compose window,
-                        which is the whole point. Without one the three copy-out
-                        cards are still the best available, so nothing regresses
-                        on the two employers in three where discovery finds
-                        nobody.
-                    */}
-                    {sendable ? (
-                        <OutreachSendCard
-                            personName={sendable.name}
-                            personTitle={sendable.title}
-                            company={company ?? null}
-                            addresses={sendable.addresses}
-                            draft={{ subject: t.subject, body: t.email }}
-                            userEmail={userEmail ?? null}
-                            linkedInNote={t.linkedIn}
-                        />
-                    ) : (
-                        <>
-                            <TemplateCard
-                                label="LinkedIn connection note"
-                                icon={<Linkedin size={12} />}
-                                text={t.linkedIn}
-                                charLimit={LINKEDIN_NOTE_LIMIT}
-                                needsEdit={t.linkedInNeedsPitch}
-                            />
-
-                            <TemplateCard
-                                label="Email subject"
-                                icon={<Mail size={12} />}
-                                text={t.subject}
-                            />
-
-                            <TemplateCard
-                                label="Email body"
-                                icon={<Mail size={12} />}
-                                text={t.email}
-                                needsEdit={t.emailNeedsPitch}
-                            />
-                        </>
-                    )}
-
-                    <p style={{ margin: 0, fontSize: 12, color: warm.colors.textMuted, lineHeight: 1.6 }}>
-                        Neither message asks for anything. That is deliberate: the first one with no
-                        request in it is the one that gets answered.
-                    </p>
                 </div>
             )}
+        </div>
+
+        {/*
+            The messages, on the page rather than behind the banner.
+
+            This is the task. Everything above it is the reason for the task,
+            and a reason that hides the task is not doing its job.
+        */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{
+                background: 'rgba(197, 160, 89, 0.12)',
+                border: '1px solid rgba(197, 160, 89, 0.35)',
+                borderRadius: 8,
+                padding: '10px 14px',
+            }}>
+                <p style={{ margin: 0, fontSize: 13, color: warm.colors.textPrimary, lineHeight: 1.6 }}>
+                    {hasBlanks ? (
+                        <>
+                            Fill every highlighted blank before you send. A recruiter spots an
+                            untouched template instantly.
+                        </>
+                    ) : (
+                        <>
+                            Filled in from your cover letter and ready to send. Read it once, and
+                            change the evidence if it is not what you would have led with.
+                        </>
+                    )}
+                </p>
+            </div>
+
+            {/*
+                With an address we can hand them a filled compose window, which
+                is the whole point. Without one the three copy-out cards are
+                still the best available, so nothing regresses on the two
+                employers in three where discovery finds nobody.
+            */}
+            {sendable ? (
+                <OutreachSendCard
+                    personName={sendable.name}
+                    personTitle={sendable.title}
+                    company={company ?? null}
+                    addresses={sendable.addresses}
+                    draft={{ subject: t.subject, body: t.email }}
+                    userEmail={userEmail ?? null}
+                    linkedInNote={t.linkedIn}
+                />
+            ) : (
+                <>
+                    <TemplateCard
+                        label="LinkedIn note"
+                        icon={<Linkedin size={12} />}
+                        text={t.linkedIn}
+                        charLimit={LINKEDIN_NOTE_LIMIT}
+                        needsEdit={t.linkedInNeedsPitch}
+                    />
+
+                    <TemplateCard
+                        label="Email subject"
+                        icon={<Mail size={12} />}
+                        text={t.subject}
+                    />
+
+                    <TemplateCard
+                        label="Email body"
+                        icon={<Mail size={12} />}
+                        text={t.email}
+                        needsEdit={t.emailNeedsPitch}
+                    />
+                </>
+            )}
+
+            <p style={{ margin: 0, fontSize: 12, color: warm.colors.textMuted, lineHeight: 1.6 }}>
+                Neither message asks for anything. That is deliberate: the first one with no
+                request in it is the one that gets answered.
+            </p>
+        </div>
         </div>
     );
 }

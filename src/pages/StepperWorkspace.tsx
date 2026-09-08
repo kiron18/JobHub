@@ -38,6 +38,8 @@ import {
 import { DraftCritiquePanel, type CritiqueResult } from '../components/strategy/DraftCritiquePanel';
 import { PostApplyOutreach } from '../components/strategy/PostApplyOutreach';
 import ReactMarkdown from 'react-markdown';
+import { DocumentPaper } from '../components/shared/DocumentPaper';
+import { useAuth } from '../contexts/AuthContext';
 import { MarkdownDocEditor, FormattingHelp } from '../components/MarkdownDocEditor';
 import React from 'react';
 import { toast } from 'sonner';
@@ -746,7 +748,6 @@ function DocumentStep({
     const [content, setContent] = useState<string>('');
     const [generating, setGenerating] = useState(false);
     const [hasDraft, setHasDraft] = useState(false);
-    const isMobile = useIsMobile();
     const [editing, setEditing] = useState(false);
     const [confirmRegen, setConfirmRegen] = useState(false);
     // The buffer lives here rather than in the editor because `commitEdit` is
@@ -1366,15 +1367,23 @@ function DocumentStep({
                         {stepId === 'resume' && (measuredPages ?? estimatedPages) !== null && (
                             <PageCountBadge pages={(measuredPages ?? estimatedPages)!} measured={measuredPages !== null} />
                         )}
-                        <div
+                        {/*
+                            On a phone this is not a wall of reflowed text any
+                            more: it is the A4 page, scaled to fit, with the
+                            loupe and the full-screen reader behind a press and
+                            a tap. Desktop renders exactly what it always did.
+                            See components/shared/DocumentPaper.
+                        */}
+                        <DocumentPaper
                             className="prose prose-invert max-w-none"
-                            style={{
+                            readerTitle={stepLabel}
+                            typography={{
                                 color: warm.colors.textPrimary,
-                                /* 13.5px is under the type scale's body step. On
-                                   the screen whose entire job is to show the
-                                   person their resume, a phone gets the readable
-                                   size. */
-                                fontSize: isMobile ? 15 : 13.5,
+                                /* 14px is the size the PDF renderer sets at, so
+                                   the scaled page is a true picture of the
+                                   document rather than a phone approximation of
+                                   it. The reader overrides it to 16. */
+                                fontSize: 14,
                                 lineHeight: 1.7,
                                 /* Long unbroken tokens in a resume — a portfolio
                                    URL, an email — have no break opportunity and
@@ -1384,7 +1393,7 @@ function DocumentStep({
                             }}
                         >
                             <ReactMarkdown components={markdownComponents as any}>{content}</ReactMarkdown>
-                        </div>
+                        </DocumentPaper>
                         {/* Live word counter — SC only */}
                         {isSC && (
                             <div style={{
@@ -1598,6 +1607,7 @@ function TrackStep({
     fitJobId?: string;
 }) {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [autoSaveError, setAutoSaveError] = useState(false);
 
     const resumeDraft = loadDraft(workspaceKey, 'resume');
@@ -1887,7 +1897,21 @@ function TrackStep({
                 jobDescription={jobDescription}
                 candidateName={profile?.name ? String(profile.name).trim() : undefined}
                 dateApplied={savedAt}
-                userEmail={profile?.email ? String(profile.email).trim() : undefined}
+                /*
+                  The profile email first, the sign-in email second.
+
+                  This decides which compose window opens, and the profile's
+                  email is whatever was on the resume we parsed — often blank,
+                  and blank means everyone falls through to a bare mailto:,
+                  which does nothing at all for somebody reading Gmail in a
+                  browser tab. The address they signed in with is always there
+                  and is the one their mail actually lives at.
+                */
+                userEmail={
+                    (profile?.email ? String(profile.email).trim() : '')
+                    || user?.email
+                    || undefined
+                }
             />
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 4 }}>

@@ -17,9 +17,11 @@
  * renders them. If the copy ever starts disagreeing with the number, the fix
  * is in the evaluator, not here.
  */
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, Check, Clock, Info, Search, X } from 'lucide-react';
+import { ArrowRight, Check, ChevronDown, ChevronUp, Clock, Info, Search, X } from 'lucide-react';
 import { warm } from '../../lib/theme/warmTokens';
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 const C = warm.colors;
 
@@ -212,6 +214,20 @@ function Notice({ children }: { children: React.ReactNode }) {
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export function FitReportView({ report, onTailor, onCheckAnother, targetCity, saved }: Props) {
+  const isMobile = useIsMobile();
+  /*
+    The model's paragraph, closed on a phone.
+
+    It is the most valuable thing on the screen and the worst-shaped: five or
+    six lines of unbroken prose at 300px wide, which is where the whole "three
+    words to a line" complaint comes from. The evidence lists underneath say
+    the same thing in a form somebody can actually scan, so those go first and
+    the prose becomes something you open when the lists have not settled it.
+
+    Open on a desktop, where it is three comfortable lines and closing it would
+    just be hiding the answer behind a click.
+  */
+  const [whyOpen, setWhyOpen] = useState(false);
   const verdict = VERDICT[report.band];
   /**
    * The verdict block reads ONE field.
@@ -250,9 +266,13 @@ export function FitReportView({ report, onTailor, onCheckAnother, targetCity, sa
     >
       {/* What we read the ad as. Shown so a bad paste is obvious immediately. */}
       <div>
+        {/* A job title may be long. It may not be five lines: past two it stops
+            being a heading and starts being the first paragraph. */}
         <h1 style={{
-          margin: '0 0 4px', fontSize: 'clamp(22px, 4vw, 28px)', fontWeight: 800,
+          margin: '0 0 4px', fontSize: 'clamp(20px, 4vw, 28px)', fontWeight: 800,
           letterSpacing: '-0.02em', lineHeight: 1.2, color: C.textPrimary,
+          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+          overflow: 'hidden', overflowWrap: 'anywhere',
         }}>
           {report.jobTitle ?? 'This job'}
         </h1>
@@ -310,12 +330,10 @@ export function FitReportView({ report, onTailor, onCheckAnother, targetCity, sa
       */}
       {report.seniority && <Notice>{report.seniority}</Notice>}
 
-      {/* The model's own words. The whole report in a paragraph. */}
-      <p style={{ margin: 0, fontSize: 16, lineHeight: 1.65, color: C.textPrimary }}>
-        {report.verdict}
-      </p>
-
-      <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
+      {/* The evidence leads, because it is the part that can be read at a
+          glance. Two columns where there is room for two, one where there is
+          not — side by side at 300px each column is about four words wide. */}
+      <div style={{ display: 'flex', gap: isMobile ? 22 : 32, flexWrap: 'wrap' }}>
         <Evidence
           icon={<Check size={13} strokeWidth={3} />}
           tone={C.success}
@@ -330,10 +348,42 @@ export function FitReportView({ report, onTailor, onCheckAnother, targetCity, sa
         />
       </div>
 
+      {/* The model's own words. The whole report in a paragraph, and on a phone
+          a paragraph is the shape that reads worst, so it opens on request. */}
+      <div>
+        {isMobile && (
+          <button
+            type="button"
+            onClick={() => setWhyOpen((v) => !v)}
+            aria-expanded={whyOpen}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              width: '100%', minHeight: 44, padding: 0,
+              background: 'none', border: 'none', cursor: 'pointer',
+              textAlign: 'left', fontFamily: 'inherit',
+              fontSize: 14, fontWeight: 700, color: C.accentPetrol,
+            }}
+          >
+            {whyOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+            {whyOpen ? 'Hide the reasoning' : 'Read the full reasoning'}
+          </button>
+        )}
+        {(!isMobile || whyOpen) && (
+          <p style={{
+            margin: isMobile ? '6px 0 0' : 0,
+            fontSize: isMobile ? 15 : 16, lineHeight: 1.65, color: C.textPrimary,
+          }}>
+            {report.verdict}
+          </p>
+        )}
+      </div>
+
       {/* The next step. One button. */}
       <div style={{
         position: 'relative',
-        padding: 24,
+        /* 24 a side inside a page that already has its own gutter leaves this
+           copy about 280px to wrap in. See warm.measure. */
+        padding: isMobile ? '18px 14px' : 24,
         background: C.bgAlt,
         border: `1px solid ${C.borderWhisper}`,
         borderRadius: warm.radius.card,
@@ -341,7 +391,10 @@ export function FitReportView({ report, onTailor, onCheckAnother, targetCity, sa
       }}>
         {promoteApplying ? (
           <>
-            <div style={{ paddingRight: 96 }}>
+            {/* The reserved strip on the right is for the desktop chrome that
+                sits over this corner. On a phone there is nothing there and the
+                96px is taken straight out of the measure. */}
+            <div style={{ paddingRight: isMobile ? 0 : 96 }}>
               <p style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700, color: C.textPrimary }}>
                 Your next step
               </p>
@@ -349,7 +402,11 @@ export function FitReportView({ report, onTailor, onCheckAnother, targetCity, sa
                 {NEXT_STEP[report.band]}
               </p>
             </div>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{
+              display: 'flex', gap: isMobile ? 6 : 12, flexWrap: 'wrap',
+              flexDirection: isMobile ? 'column' : 'row',
+              alignItems: isMobile ? 'stretch' : 'center',
+            }}>
               <PrimaryButton onClick={onTailor}>
                 Write my resume for this job <ArrowRight size={17} />
               </PrimaryButton>
