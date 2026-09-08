@@ -25,7 +25,7 @@
  */
 import { pickCompanyDomain, nameMatchStrength, isBlacklisted, type DomainCandidate } from './companyDomain';
 import { pickMailableDomain, type MxLookup, mxOverHttps } from './mailDomain';
-import { searchGoogle, searchMaps, type GoogleSearch, type MapsResult } from './serpapi';
+import { searchGoogle, searchMaps, type GoogleSearch, type MapsResult } from './webSearch';
 
 /** Australian state, as it appears in an ad header or a Maps address. */
 export const STATE = /\b(NSW|VIC|QLD|WA|SA|TAS|NT|ACT)\b/;

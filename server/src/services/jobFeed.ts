@@ -1,8 +1,7 @@
-import axios from 'axios';
 import { prisma } from '../index';
 import { buildSeekClusterKey, buildEntryLevelSearchTerm, fetchSeekJobsForCluster } from './seekScraper';
 import { deduplicateJobs } from '../utils/deduplicateJobs';
-import { serpApiKey } from './serpapi';
+import { searchGoogle } from './webSearch';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -193,19 +192,13 @@ export async function findAddressee(
     }
   }
 
-  // Step 2: SerpAPI search
-  const SERPAPI_KEY = serpApiKey();
-  if (!SERPAPI_KEY) return null;
-
+  // Step 2: a web search, through whichever vendor is configured. This used
+  // to call SerpApi directly and read process.env.SERPAPI_KEY, a name nothing
+  // ever sets, so the whole step was dead code that returned null every time.
   try {
     const safeCompany = company.replace(/"/g, '');
     const query = `"${safeCompany}" hiring manager OR "head of" OR founder site:linkedin.com`;
-    const resp = await axios.get('https://serpapi.com/search', {
-      params: { engine: 'google', q: query, api_key: SERPAPI_KEY, num: 5 },
-      timeout: 8000,
-    });
-
-    const results: any[] = resp.data?.organic_results ?? [];
+    const { organic: results } = await searchGoogle(query, 5);
 
     const titlePatterns = [
       /\b(CEO|Founder|Co-Founder|Managing Director)\b/i,

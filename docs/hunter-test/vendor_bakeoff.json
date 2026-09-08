@@ -1,0 +1,710 @@
+{
+  "rows": [
+    {
+      "company": "Earth AI",
+      "title": "Creative Content Creator",
+      "jdEmail": null,
+      "jdName": null,
+      "domain": "earth-ai.com",
+      "domainSource": "KNOWLEDGE_GRAPH",
+      "domainNote": "Google knowledge panel",
+      "mx": "pass",
+      "coverage": {
+        "total": 17,
+        "personal": 16,
+        "generic": 1,
+        "departments": {
+          "executive": 1,
+          "finance & accounting": 1,
+          "sales": 1,
+          "support": 1,
+          "communication": 1,
+          "health": 2,
+          "operations": 5,
+          "research": 4
+        }
+      },
+      "department": "operations",
+      "directoryTotal": null,
+      "slots": null,
+      "outcome": "would buy: operations (17 known)"
+    },
+    {
+      "company": "Sekisui Pilon Pty Ltd",
+      "title": "Graduate Mechanical Engineer",
+      "jdEmail": null,
+      "jdName": null,
+      "domain": "sekisuifoam.com.au",
+      "domainSource": "KNOWLEDGE_GRAPH",
+      "domainNote": "Google knowledge panel",
+      "mx": "pass",
+      "coverage": {
+        "total": 5,
+        "personal": 4,
+        "generic": 1,
+        "departments": {
+          "executive": 1,
+          "management": 1,
+          "sales": 1,
+          "support": 1
+        }
+      },
+      "department": "executive",
+      "directoryTotal": null,
+      "slots": null,
+      "outcome": "would buy: executive (5 known)"
+    },
+    {
+      "company": "New Home Care Pty. Ltd.",
+      "title": "AI Engineer / Software Integrator",
+      "jdEmail": null,
+      "jdName": null,
+      "domain": "newhomecare.com.au",
+      "domainSource": "KNOWLEDGE_GRAPH",
+      "domainNote": "Google knowledge panel",
+      "mx": "pass",
+      "coverage": {
+        "total": 4,
+        "personal": 3,
+        "generic": 1,
+        "departments": {
+          "finance & accounting": 1,
+          "legal": 2,
+          "support": 1
+        }
+      },
+      "department": "legal",
+      "directoryTotal": null,
+      "slots": null,
+      "outcome": "would buy: legal (4 known)"
+    },
+    {
+      "company": "Department of Defence",
+      "title": "Technical Officer",
+      "jdEmail": null,
+      "jdName": null,
+      "domain": "defence.gov.au",
+      "domainSource": "ORGANIC",
+      "domainNote": "name-match",
+      "mx": "pass",
+      "coverage": {
+        "total": 2803,
+        "personal": 2301,
+        "generic": 502,
+        "departments": {
+          "executive": 243,
+          "it": 117,
+          "finance & accounting": 31,
+          "management": 463,
+          "sales": 44,
+          "legal": 22,
+          "support": 54,
+          "hr": 25,
+          "marketing": 2,
+          "communication": 66,
+          "education": 37,
+          "design": 5,
+          "health": 34,
+          "operations": 171,
+          "product": 6,
+          "research": 19,
+          "consulting": 2,
+          "administrative": 267,
+          "procurement": 5
+        }
+      },
+      "department": "hr",
+      "directoryTotal": null,
+      "slots": null,
+      "outcome": "would buy: hr (2803 known)"
+    },
+    {
+      "company": "Konnexus",
+      "title": "Workfront Support Analyst",
+      "jdEmail": null,
+      "jdName": null,
+      "domain": "konnexuscg.com.au",
+      "domainSource": "JD_REDACTED",
+      "domainNote": "printed in the ad",
+      "mx": "pass",
+      "coverage": {
+        "total": 5,
+        "personal": 3,
+        "generic": 2,
+        "departments": {
+          "it": 1,
+          "support": 2,
+          "hr": 1,
+          "operations": 1
+        }
+      },
+      "department": "hr",
+      "directoryTotal": null,
+      "slots": null,
+      "outcome": "would buy: hr (5 known)"
+    },
+    {
+      "company": "Di Placido Group",
+      "title": "Social Media Content Creator/ Marketing – Cars & Motorcycles",
+      "jdEmail": null,
+      "jdName": null,
+      "domain": null,
+      "domainSource": null,
+      "domainNote": "no name match; best positional was domain.com.au",
+      "mx": "skipped",
+      "coverage": null,
+      "department": null,
+      "directoryTotal": null,
+      "slots": null,
+      "outcome": "no domain"
+    },
+    {
+      "company": "Strong Pilates Scarborough",
+      "title": "Content Creator & Marketing Assistant - STRONG Pilates Scarborough",
+      "jdEmail": null,
+      "jdName": null,
+      "domain": "strongpilates.com.au",
+      "domainSource": "KNOWLEDGE_GRAPH",
+      "domainNote": "Google knowledge panel",
+      "mx": "pass",
+      "coverage": {
+        "total": 57,
+        "personal": 23,
+        "generic": 34,
+        "departments": {
+          "executive": 2,
+          "it": 2,
+          "management": 1,
+          "sales": 1,
+          "support": 1,
+          "marketing": 2,
+          "communication": 1,
+          "education": 1,
+          "design": 1,
+          "health": 1
+        }
+      },
+      "department": "marketing",
+      "directoryTotal": null,
+      "slots": null,
+      "outcome": "would buy: marketing (57 known)"
+    },
+    {
+      "company": "Screen Australia",
+      "title": "Digital Content Creator",
+      "jdEmail": null,
+      "jdName": null,
+      "domain": "screenaustralia.gov.au",
+      "domainSource": "ORGANIC",
+      "domainNote": "name-match",
+      "mx": "pass",
+      "coverage": {
+        "total": 108,
+        "personal": 47,
+        "generic": 61,
+        "departments": {
+          "executive": 9,
+          "it": 5,
+          "finance & accounting": 1,
+          "management": 5,
+          "sales": 3,
+          "legal": 1,
+          "support": 3,
+          "hr": 1,
+          "marketing": 1,
+          "communication": 10,
+          "design": 4,
+          "operations": 2
+        }
+      },
+      "department": "hr",
+      "directoryTotal": null,
+      "slots": null,
+      "outcome": "would buy: hr (108 known)"
+    },
+    {
+      "company": "Erskine street Investments Pty Ltd",
+      "title": "Reception with managerial responsibilities in Adult Entretainment",
+      "jdEmail": null,
+      "jdName": null,
+      "domain": null,
+      "domainSource": null,
+      "domainNote": "no name match; best positional was growthpoint.com.au",
+      "mx": "skipped",
+      "coverage": null,
+      "department": null,
+      "directoryTotal": null,
+      "slots": null,
+      "outcome": "no domain"
+    },
+    {
+      "company": "GIOXLE",
+      "title": "RECEPTIONIST (female*) – Excellent Pay & Flexible Shifts",
+      "jdEmail": null,
+      "jdName": null,
+      "domain": null,
+      "domainSource": null,
+      "domainNote": "no name match; best positional was entertainment.com.au",
+      "mx": "skipped",
+      "coverage": null,
+      "department": null,
+      "directoryTotal": null,
+      "slots": null,
+      "outcome": "no domain"
+    },
+    {
+      "company": "Dig Deep Excavations (NSW) Pty Ltd",
+      "title": "Office Assistant – Part-Time or Casual",
+      "jdEmail": null,
+      "jdName": null,
+      "domain": "digdeepcivil.com.au",
+      "domainSource": "KNOWLEDGE_GRAPH",
+      "domainNote": "Google knowledge panel",
+      "mx": "pass",
+      "coverage": {
+        "total": 0,
+        "personal": 0,
+        "generic": 0,
+        "departments": {}
+      },
+      "department": null,
+      "directoryTotal": null,
+      "slots": null,
+      "outcome": "Hunter holds nothing (free to learn, no credit spent)"
+    },
+    {
+      "company": "Speed",
+      "title": "Media Grad",
+      "jdEmail": null,
+      "jdName": null,
+      "domain": "prospeedracing.com.au",
+      "domainSource": "MAPS",
+      "domainNote": "Pro Speed Racing / Unit 1/49 Somersby Falls Rd, Somersby NSW 2250",
+      "mx": "pass",
+      "coverage": {
+        "total": 4,
+        "personal": 2,
+        "generic": 2,
+        "departments": {
+          "sales": 1
+        }
+      },
+      "department": "sales",
+      "directoryTotal": null,
+      "slots": null,
+      "outcome": "would buy: sales (4 known)"
+    },
+    {
+      "company": "WA Country Health Service",
+      "title": "Business Analyst",
+      "jdEmail": null,
+      "jdName": "Jonathan Patroni",
+      "domain": null,
+      "domainSource": "KNOWLEDGE_GRAPH",
+      "domainNote": "Google knowledge panel",
+      "mx": "no-mail",
+      "coverage": null,
+      "department": null,
+      "directoryTotal": null,
+      "slots": null,
+      "outcome": "no MX on wacountry.health.wa.gov.au"
+    },
+    {
+      "company": "Beyond Pier",
+      "title": "Business Analyst",
+      "jdEmail": null,
+      "jdName": null,
+      "domain": "unipier.com.au",
+      "domainSource": "ORGANIC",
+      "domainNote": "name-match",
+      "mx": "pass",
+      "coverage": {
+        "total": 1,
+        "personal": 0,
+        "generic": 1,
+        "departments": {
+          "support": 1
+        }
+      },
+      "department": "support",
+      "directoryTotal": null,
+      "slots": null,
+      "outcome": "would buy: support (1 known)"
+    },
+    {
+      "company": "Coalition of Peaks",
+      "title": "Assistant Director, Policy and Strategy",
+      "jdEmail": null,
+      "jdName": null,
+      "domain": "coalitionofpeaks.org.au",
+      "domainSource": "JD_REDACTED",
+      "domainNote": "printed in the ad",
+      "mx": "pass",
+      "coverage": {
+        "total": 8,
+        "personal": 3,
+        "generic": 5,
+        "departments": {
+          "management": 4,
+          "support": 1
+        }
+      },
+      "department": "management",
+      "directoryTotal": null,
+      "slots": null,
+      "outcome": "would buy: management (8 known)"
+    },
+    {
+      "company": "HiTech Personnel",
+      "title": "Multiple Policy Officer - Stakeholder Management, Strategy, Admin - Fed Govt!",
+      "jdEmail": null,
+      "jdName": null,
+      "domain": "hitechaust.com",
+      "domainSource": "JD_REDACTED",
+      "domainNote": "printed in the ad",
+      "mx": "pass",
+      "coverage": {
+        "total": 11,
+        "personal": 8,
+        "generic": 3,
+        "departments": {
+          "executive": 1,
+          "management": 1,
+          "sales": 3,
+          "support": 1,
+          "hr": 3,
+          "consulting": 1
+        }
+      },
+      "department": "hr",
+      "directoryTotal": null,
+      "slots": null,
+      "outcome": "would buy: hr (11 known)"
+    },
+    {
+      "company": "NSW Police Force",
+      "title": "Policy Officer",
+      "jdEmail": "PCC-AEET@police.nsw.gov.au",
+      "jdName": null,
+      "domain": "police.nsw.gov.au",
+      "domainSource": "JD_EMAIL",
+      "domainNote": "printed in the ad",
+      "mx": "skipped",
+      "coverage": null,
+      "department": null,
+      "directoryTotal": null,
+      "slots": null,
+      "outcome": "JD contact: PCC-AEET@police.nsw.gov.au"
+    },
+    {
+      "company": "NSN Electrical",
+      "title": "Office Administrator",
+      "jdEmail": null,
+      "jdName": null,
+      "domain": "nsnelectrical.com.au",
+      "domainSource": "KNOWLEDGE_GRAPH",
+      "domainNote": "Google knowledge panel",
+      "mx": "pass",
+      "coverage": {
+        "total": 0,
+        "personal": 0,
+        "generic": 0,
+        "departments": {}
+      },
+      "department": null,
+      "directoryTotal": null,
+      "slots": null,
+      "outcome": "Hunter holds nothing (free to learn, no credit spent)"
+    },
+    {
+      "company": "IT Strategic Pty Ltd",
+      "title": "IT Support Engineer / Technician",
+      "jdEmail": null,
+      "jdName": null,
+      "domain": "itstrategic.com.au",
+      "domainSource": "ORGANIC",
+      "domainNote": "name-match",
+      "mx": "pass",
+      "coverage": {
+        "total": 12,
+        "personal": 7,
+        "generic": 5,
+        "departments": {
+          "it": 6,
+          "management": 1,
+          "support": 2
+        }
+      },
+      "department": "it",
+      "directoryTotal": null,
+      "slots": null,
+      "outcome": "would buy: it (12 known)"
+    },
+    {
+      "company": "Good Games PTY LTD",
+      "title": "Online Warehouse Manager",
+      "jdEmail": null,
+      "jdName": null,
+      "domain": "eclipsegames.com.au",
+      "domainSource": "ORGANIC",
+      "domainNote": "name-match",
+      "mx": "pass",
+      "coverage": {
+        "total": 0,
+        "personal": 0,
+        "generic": 0,
+        "departments": {}
+      },
+      "department": null,
+      "directoryTotal": null,
+      "slots": null,
+      "outcome": "Hunter holds nothing (free to learn, no credit spent)"
+    }
+  ],
+  "results": {
+    "serpapi": {
+      "Earth AI": {
+        "domain": "earth-ai.com",
+        "source": "KNOWLEDGE_GRAPH",
+        "note": "Google knowledge panel",
+        "searches": 1
+      },
+      "Sekisui Pilon Pty Ltd": {
+        "domain": "sekisuifoam.com.au",
+        "source": "KNOWLEDGE_GRAPH",
+        "note": "Google knowledge panel",
+        "searches": 1
+      },
+      "New Home Care Pty. Ltd.": {
+        "domain": "newhomecare.com.au",
+        "source": "KNOWLEDGE_GRAPH",
+        "note": "Google knowledge panel",
+        "searches": 1
+      },
+      "Department of Defence": {
+        "domain": "defence.gov.au",
+        "source": "ORGANIC",
+        "note": "name-match",
+        "searches": 1
+      },
+      "Konnexus": {
+        "domain": "konnexuscg.com.au",
+        "source": "KNOWLEDGE_GRAPH",
+        "note": "Google knowledge panel",
+        "searches": 1
+      },
+      "Di Placido Group": {
+        "domain": null,
+        "source": null,
+        "note": "nothing bore the name; best positional was domain.com.au",
+        "searches": 2
+      },
+      "Strong Pilates Scarborough": {
+        "domain": "strongpilates.com.au",
+        "source": "KNOWLEDGE_GRAPH",
+        "note": "Google knowledge panel",
+        "searches": 1
+      },
+      "Screen Australia": {
+        "domain": "screenaustralia.gov.au",
+        "source": "ORGANIC",
+        "note": "name-match",
+        "searches": 1
+      },
+      "Erskine street Investments Pty Ltd": {
+        "domain": null,
+        "source": null,
+        "note": "nothing bore the name; best positional was growthpoint.com.au",
+        "searches": 2
+      },
+      "GIOXLE": {
+        "domain": null,
+        "source": null,
+        "note": "nothing bore the name; best positional was entertainment.com.au",
+        "searches": 2
+      },
+      "Dig Deep Excavations (NSW) Pty Ltd": {
+        "domain": null,
+        "source": null,
+        "note": "nothing bore the name; best positional was nextdc.com",
+        "searches": 2
+      },
+      "Speed": {
+        "domain": null,
+        "source": null,
+        "note": "nothing bore the name; best positional was vans.com.au",
+        "searches": 2
+      },
+      "WA Country Health Service": {
+        "domain": null,
+        "source": null,
+        "note": "wacountry.health.wa.gov.au receives no mail and no alternative bears the name",
+        "searches": 1
+      },
+      "Beyond Pier": {
+        "domain": "unipier.com.au",
+        "source": "ORGANIC",
+        "note": "name-match",
+        "searches": 1
+      },
+      "Coalition of Peaks": {
+        "domain": "coalitionofpeaks.org.au",
+        "source": "ORGANIC",
+        "note": "name-match",
+        "searches": 1
+      },
+      "HiTech Personnel": {
+        "domain": "hitechaust.com",
+        "source": "KNOWLEDGE_GRAPH",
+        "note": "Google knowledge panel",
+        "searches": 1
+      },
+      "NSW Police Force": {
+        "domain": "police.nsw.gov.au",
+        "source": "MAPS",
+        "note": "NSW Police Force Headquarters, 1 Charles St, Parramatta NSW 2150",
+        "searches": 2
+      },
+      "NSN Electrical": {
+        "domain": "nsnelectrical.com.au",
+        "source": "KNOWLEDGE_GRAPH",
+        "note": "Google knowledge panel",
+        "searches": 1
+      },
+      "IT Strategic Pty Ltd": {
+        "domain": null,
+        "source": null,
+        "note": "nothing bore the name; best positional was waterpartnership.org.au",
+        "searches": 2
+      },
+      "Good Games PTY LTD": {
+        "domain": "goodgames.com.au",
+        "source": "ORGANIC",
+        "note": "name-match",
+        "searches": 1
+      }
+    },
+    "serper": {
+      "Earth AI": {
+        "domain": "earth-ai.com",
+        "source": "ORGANIC",
+        "note": "name-match",
+        "searches": 1
+      },
+      "Sekisui Pilon Pty Ltd": {
+        "domain": "sekisuifoam.com.au",
+        "source": "ORGANIC",
+        "note": "name-match",
+        "searches": 1
+      },
+      "New Home Care Pty. Ltd.": {
+        "domain": "newhomecare.com.au",
+        "source": "ORGANIC",
+        "note": "name-match",
+        "searches": 1
+      },
+      "Department of Defence": {
+        "domain": "defence.gov.au",
+        "source": "ORGANIC",
+        "note": "name-match",
+        "searches": 1
+      },
+      "Konnexus": {
+        "domain": "konnexuscg.com.au",
+        "source": "ORGANIC",
+        "note": "name-match",
+        "searches": 1
+      },
+      "Di Placido Group": {
+        "domain": null,
+        "source": null,
+        "note": "nothing bore the name; best positional was perthmotorbikes.com.au",
+        "searches": 2
+      },
+      "Strong Pilates Scarborough": {
+        "domain": "strongpilates.com.au",
+        "source": "ORGANIC",
+        "note": "name-match",
+        "searches": 1
+      },
+      "Screen Australia": {
+        "domain": "screenaustralia.gov.au",
+        "source": "ORGANIC",
+        "note": "name-match",
+        "searches": 1
+      },
+      "Erskine street Investments Pty Ltd": {
+        "domain": null,
+        "source": null,
+        "note": "nothing bore the name; best positional was insolvencynotices.com.au",
+        "searches": 2
+      },
+      "GIOXLE": {
+        "domain": null,
+        "source": null,
+        "note": "nothing bore the name; best positional was entertainment.com.au",
+        "searches": 2
+      },
+      "Dig Deep Excavations (NSW) Pty Ltd": {
+        "domain": "digdeepcivil.com.au",
+        "source": "ORGANIC",
+        "note": "name-match",
+        "searches": 1
+      },
+      "Speed": {
+        "domain": "gangcalledspeed.com",
+        "source": "ORGANIC",
+        "note": "name-match",
+        "searches": 1
+      },
+      "WA Country Health Service": {
+        "domain": "ruralhealthwest.com.au",
+        "source": "ORGANIC",
+        "note": "name-match (wacountry.health.wa.gov.au receives no mail)",
+        "searches": 1
+      },
+      "Beyond Pier": {
+        "domain": "unipier.com.au",
+        "source": "ORGANIC",
+        "note": "name-match",
+        "searches": 1
+      },
+      "Coalition of Peaks": {
+        "domain": "coalitionofpeaks.org.au",
+        "source": "ORGANIC",
+        "note": "name-match",
+        "searches": 1
+      },
+      "HiTech Personnel": {
+        "domain": "hitechaust.com",
+        "source": "ORGANIC",
+        "note": "name-match",
+        "searches": 1
+      },
+      "NSW Police Force": {
+        "domain": "police.nsw.gov.au",
+        "source": "ORGANIC",
+        "note": "name-match",
+        "searches": 1
+      },
+      "NSN Electrical": {
+        "domain": "nsnelectrical.com.au",
+        "source": "ORGANIC",
+        "note": "name-match",
+        "searches": 1
+      },
+      "IT Strategic Pty Ltd": {
+        "domain": "itstrategic.com.au",
+        "source": "ORGANIC",
+        "note": "name-match",
+        "searches": 1
+      },
+      "Good Games PTY LTD": {
+        "domain": "goodgames.com.au",
+        "source": "ORGANIC",
+        "note": "name-match",
+        "searches": 1
+      }
+    }
+  }
+}
