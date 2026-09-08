@@ -124,7 +124,7 @@ function Column({
   );
 }
 
-export function HourCalculator() {
+export function HourCalculator({ onSeeHow }: { onSeeHow?: () => void }) {
   const [minutes, setMinutes] = useState(60);
   const sliderId = useId();
 
@@ -154,8 +154,49 @@ export function HourCalculator() {
           fontVariationSettings: "'SOFT' 50, 'WONK' 1",
         }}
       >
-        What a single hour a day gets you
+        Do the quiz
       </div>
+
+      {/*
+        The claim the slider is about to prove, before it is proved.
+
+        "Do the quiz" on its own is an instruction with no reason attached. This
+        is the reason: an hour by hand, five minutes here, and a way to go and
+        watch that happen rather than take it on trust.
+      */}
+      <p
+        style={{
+          fontFamily: typeTokens.body,
+          fontSize: '0.9375rem',
+          color: colors.textSecondary,
+          lineHeight: 1.65,
+          margin: '0 0 20px',
+        }}
+      >
+        We found that a high quality resume and cover letter with company research and a dedicated follow up mail takes
+        users an hour on average.
+        <br />
+        <span style={{ color: colors.textPrimary }}>Our system does the same in 5 minutes</span>{' '}
+        {onSeeHow && (
+          <button
+            type="button"
+            onClick={onSeeHow}
+            style={{
+              padding: 0,
+              background: 'none',
+              border: 'none',
+              borderBottom: `1px solid ${colors.accentPetrol}55`,
+              fontFamily: 'inherit',
+              fontSize: 'inherit',
+              fontWeight: 600,
+              color: colors.accentPetrol,
+              cursor: 'pointer',
+            }}
+          >
+            (see how)
+          </button>
+        )}
+      </p>
 
       {/* The one input. Their number, not ours. */}
       <label
@@ -171,7 +212,7 @@ export function HourCalculator() {
           marginBottom: 10,
         }}
       >
-        <span>How much free time do you have per day?</span>
+        <span>How much time can you honestly give to your job search every day?</span>
         <span style={{ fontWeight: 700, color: colors.textPrimary, whiteSpace: 'nowrap' }}>
           {formatMinutes(minutes)}
         </span>

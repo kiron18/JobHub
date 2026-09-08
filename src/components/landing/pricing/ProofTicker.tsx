@@ -148,16 +148,29 @@ export function ProofTicker() {
         ))}
       </div>
 
+      {/*
+        The caption used to be a provenance note: real clients, real messages.
+        That answers "are these genuine", which is not the question the reader
+        is asking. The question is "were they ever where I am", so the caption
+        answers that one instead, and lands the reframe the whole page rests on:
+        the system is broken, not them.
+      */}
       <p
         style={{
           fontFamily: typeTokens.body,
-          fontSize: '0.8125rem',
-          color: colors.textMuted,
+          fontSize: '0.9375rem',
+          color: colors.textSecondary,
+          lineHeight: 1.6,
           margin: 0,
+          maxWidth: 520,
           textAlign: 'center',
         }}
       >
-        Real clients. Real messages, the day they landed.
+        Just a few months ago these people were in the same situation you were in. Tired, uncertain and frustrated with
+        a broken system.{' '}
+        <span style={{ background: colors.highlight, padding: '0 5px', fontWeight: 600, color: colors.textPrimary }}>
+          That&rsquo;s right: the system is broken, not you.
+        </span>
       </p>
 
       <style>{`@media (min-width: 900px) { .proof-ticker-side { display: block !important; } }`}</style>

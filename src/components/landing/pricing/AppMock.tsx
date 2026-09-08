@@ -1,5 +1,5 @@
-import React from 'react';
-import { Check, Plus, Briefcase, FileText, MessagesSquare, Trophy, BookOpen } from 'lucide-react';
+import React, { useState } from 'react';
+import { Check, Plus, Briefcase, FileText, MessagesSquare, Trophy, BookOpen, ChevronLeft, ChevronRight, ClipboardPaste } from 'lucide-react';
 import { colors, type as typeTokens } from '../tokens';
 
 /* ── Mockups of the product, drawn rather than screenshotted ─────────────────
@@ -251,36 +251,204 @@ export function MockFitReport() {
   );
 }
 
-/** Steps 3 and 4: the documents, written against that ad. */
-export function MockDocuments() {
-  const tabs = ['Resume', 'Cover letter', 'Selection criteria'];
+/** Step 1: the whole input, which is one paste. */
+export function MockPaste() {
   return (
     <div style={{ fontFamily: typeTokens.body }}>
-      <div style={{ display: 'flex', gap: 4, borderBottom: `1px solid ${ui.line}`, marginBottom: 16 }}>
-        {tabs.map((t, i) => (
-          <div
-            key={t}
-            style={{
-              /* Three nowrap tabs came to ~318px inside a 288px mock on a
-                 phone, so "Selection criteria" — the one the mock is pointing
-                 at — was the part clipped off the right edge.
+      <div style={{ fontSize: 13, fontWeight: 700, color: ui.ink, marginBottom: 4 }}>Paste the job ad</div>
+      <div style={{ fontSize: 12, color: ui.ink3, marginBottom: 12 }}>
+        The whole ad, straight off SEEK or LinkedIn. Nothing to fill in.
+      </div>
 
-                 The sizes below are fixed, not vw-clamped: this mock sits in a
-                 padded card that is far narrower than the viewport, so a vw
-                 unit here describes the wrong box and still overflowed. */
-              padding: '8px 6px',
-              fontSize: 10.5,
-              fontWeight: i === 2 ? 700 : 500,
-              color: i === 2 ? ui.accent : ui.ink3,
-              borderBottom: `2px solid ${i === 2 ? ui.accent : 'transparent'}`,
-              marginBottom: -1,
-              whiteSpace: 'nowrap',
-            }}
+      <div
+        style={{
+          border: `1px solid ${ui.line}`,
+          borderRadius: 10,
+          padding: '13px 14px',
+          background: '#FCFBF9',
+          fontSize: 12,
+          lineHeight: 1.6,
+          color: ui.ink2,
+          minHeight: 118,
+        }}
+      >
+        <div style={{ fontWeight: 700, color: ui.ink }}>Graduate Business Analyst</div>
+        <div style={{ color: ui.ink3, marginBottom: 8 }}>Transport Accident Commission &middot; Geelong VIC</div>
+        You will work alongside senior analysts to gather requirements, map current-state processes and report on
+        delivery. We are looking for strong SQL, confident stakeholder communication and&hellip;
+        <span
+          aria-hidden
+          style={{
+            display: 'inline-block',
+            width: 1.5,
+            height: 13,
+            marginLeft: 2,
+            verticalAlign: 'text-bottom',
+            background: ui.accent,
+          }}
+        />
+      </div>
+
+      <div
+        style={{
+          marginTop: 14,
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '10px 18px',
+          background: ui.accent,
+          color: colors.textOnDeep,
+          borderRadius: 9,
+          fontSize: 13,
+          fontWeight: 700,
+        }}
+      >
+        <ClipboardPaste size={14} /> Check the fit
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The tab strip the three document mocks share.
+ *
+ * Three nowrap tabs came to ~318px inside a 288px mock on a phone, so the
+ * rightmost one — usually the one the mock is pointing at — was clipped off the
+ * right edge. The sizes below are fixed, not vw-clamped: this mock sits in a
+ * padded card far narrower than the viewport, so a vw unit here describes the
+ * wrong box and still overflowed.
+ */
+function DocTabs({ active }: { active: 0 | 1 | 2 }) {
+  const tabs = ['Resume', 'Cover letter', 'Selection criteria'];
+  return (
+    <div style={{ display: 'flex', gap: 4, borderBottom: `1px solid ${ui.line}`, marginBottom: 16 }}>
+      {tabs.map((t, i) => (
+        <div
+          key={t}
+          style={{
+            padding: '8px 6px',
+            fontSize: 10.5,
+            fontWeight: i === active ? 700 : 500,
+            color: i === active ? ui.accent : ui.ink3,
+            borderBottom: `2px solid ${i === active ? ui.accent : 'transparent'}`,
+            marginBottom: -1,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {t}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** The line every document mock ends on: where the words came from. */
+function DocProvenance({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        marginTop: 16,
+        paddingTop: 14,
+        borderTop: `1px solid ${ui.lineSoft}`,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        fontSize: 12,
+        color: ui.ink3,
+      }}
+    >
+      <Check size={13} style={{ color: ui.good, flexShrink: 0 }} />
+      {children}
+    </div>
+  );
+}
+
+/** Step 3: the resume, rewritten against that one ad. */
+export function MockResume() {
+  return (
+    <div style={{ fontFamily: typeTokens.body }}>
+      <DocTabs active={0} />
+
+      <div style={{ fontSize: 14, fontWeight: 800, color: ui.ink, letterSpacing: '-0.01em' }}>Aarav Menon</div>
+      <div style={{ fontSize: 11.5, color: ui.ink3, marginBottom: 14 }}>
+        Melbourne VIC &middot; Full working rights &middot; Graduate Business Analyst
+      </div>
+
+      <Label>Professional summary</Label>
+      <p style={{ margin: '0 0 16px', fontSize: 12.5, lineHeight: 1.6, color: ui.ink2 }}>
+        Business analyst with two years of stakeholder reporting and requirements work, now writing{' '}
+        <mark style={{ background: colors.highlight, padding: '0 3px', color: ui.ink }}>SQL</mark> daily against
+        operational data. Looking for a graduate analyst seat in a delivery team.
+      </p>
+
+      <Label>Experience</Label>
+      <div style={{ fontSize: 12.5, fontWeight: 700, color: ui.ink }}>Operations Analyst &middot; Vector Logistics</div>
+      <div style={{ fontSize: 11.5, color: ui.ink3, marginBottom: 8 }}>Mar 2024 &ndash; present</div>
+      <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {[
+          <>
+            Mapped the current-state despatch process across 4 depots and cut{' '}
+            <mark style={{ background: colors.highlight, padding: '0 3px', color: ui.ink }}>hand-offs from 11 to 6</mark>.
+          </>,
+          <>
+            Rebuilt the weekly delivery report in{' '}
+            <mark style={{ background: colors.highlight, padding: '0 3px', color: ui.ink }}>SQL</mark>, replacing 3
+            hours of manual collation with a scheduled query.
+          </>,
+          <>Ran fortnightly requirements sessions with 9 stakeholders across ops, finance and the depot floor.</>,
+        ].map((t, i) => (
+          <li
+            key={i}
+            style={{ fontSize: 12.5, lineHeight: 1.55, color: ui.ink2, paddingLeft: 11, borderLeft: `2px solid ${ui.accent}33` }}
           >
             {t}
-          </div>
+          </li>
+        ))}
+      </ul>
+
+      <DocProvenance>Every highlighted phrase is a word this ad used. 1 page.</DocProvenance>
+    </div>
+  );
+}
+
+/** Step 4: the cover letter, arguing from the same history. */
+export function MockCoverLetter() {
+  return (
+    <div style={{ fontFamily: typeTokens.body }}>
+      <DocTabs active={1} />
+
+      <div style={{ fontSize: 12, color: ui.ink3, marginBottom: 12 }}>
+        To the hiring team &middot; Transport Accident Commission
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {[
+          'I am applying for the Graduate Business Analyst role in Geelong. Your ad puts requirements gathering and SQL at the centre of the job, and those are the two things I have spent the last two years doing.',
+          <>
+            At Vector Logistics I mapped despatch across four depots and{' '}
+            <mark style={{ background: colors.highlight, padding: '0 3px', color: ui.ink }}>
+              cut the hand-offs from eleven to six
+            </mark>
+            . The reporting that made the case for it is a scheduled SQL query I wrote and still maintain.
+          </>,
+          'What draws me to TAC specifically is that the analysis has a person at the end of it. I would rather improve a claims process people actually depend on than shave a margin.',
+        ].map((p, i) => (
+          <p key={i} style={{ margin: 0, fontSize: 12.5, lineHeight: 1.65, color: ui.ink2 }}>
+            {p}
+          </p>
         ))}
       </div>
+
+      <DocProvenance>One argument, three paragraphs, no filler. 214 words.</DocProvenance>
+    </div>
+  );
+}
+
+/** Step 5: the selection criteria, in STAR, which is how they are scored. */
+export function MockCriteria() {
+  return (
+    <div style={{ fontFamily: typeTokens.body }}>
+      <DocTabs active={2} />
 
       <div style={{ fontSize: 13, color: ui.ink3, marginBottom: 12 }}>
         Criterion 2 of 4 &middot; Demonstrated ability to manage competing priorities
@@ -316,26 +484,111 @@ export function MockDocuments() {
         ))}
       </div>
 
+      <DocProvenance>Written from your history, against this ad. 268 words.</DocProvenance>
+    </div>
+  );
+}
+
+/**
+ * The three things one paste produces, one at a time.
+ *
+ * A carousel rather than three stacked windows because they are the same
+ * object at three stages and the point is that they came out together. Stacked,
+ * the reader scrolls past two of them; side by side at this width, none of them
+ * is readable.
+ *
+ * No autoplay. Somebody reading a cover letter should never have it slide out
+ * from under them, and the whole claim being made here is that these are worth
+ * reading.
+ */
+export function MockDocumentCarousel() {
+  const [i, setI] = useState(0);
+
+  const CAROUSEL = [
+    { label: 'Resume', window: 'Your resume, rewritten for this ad', body: <MockResume /> },
+    { label: 'Cover letter', window: 'Your cover letter', body: <MockCoverLetter /> },
+    { label: 'Follow-up mail', window: 'Follow-up', body: <MockFollowUp /> },
+  ];
+
+  const item = CAROUSEL[i];
+  const go = (n: number) => setI(((n % CAROUSEL.length) + CAROUSEL.length) % CAROUSEL.length);
+
+  return (
+    <div>
+      {/* The picker. Named, not dotted: these are three different documents,
+          and a dot cannot say which one you are about to look at. */}
       <div
-        style={{
-          marginTop: 16,
-          paddingTop: 14,
-          borderTop: `1px solid ${ui.lineSoft}`,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          fontSize: 12,
-          color: ui.ink3,
-        }}
+        role="tablist"
+        aria-label="Sample documents"
+        style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 16 }}
       >
-        <Check size={13} style={{ color: ui.good }} />
-        Written from your history, against this ad. 268 words.
+        {CAROUSEL.map((c, n) => (
+          <button
+            key={c.label}
+            type="button"
+            role="tab"
+            aria-selected={n === i}
+            onClick={() => setI(n)}
+            style={{
+              minHeight: 40,
+              padding: '9px 16px',
+              borderRadius: 99,
+              cursor: 'pointer',
+              fontFamily: typeTokens.body,
+              fontSize: 13,
+              fontWeight: 600,
+              color: n === i ? colors.textOnDeep : colors.textSecondary,
+              background: n === i ? ui.accent : 'transparent',
+              border: `1px solid ${n === i ? ui.accent : colors.borderDefined}`,
+            }}
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
+
+      <MockWindow label={item.window}>{item.body}</MockWindow>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 12 }}>
+        <CarouselArrow label="Previous document" onClick={() => go(i - 1)}>
+          <ChevronLeft size={16} />
+        </CarouselArrow>
+        <span style={{ fontFamily: typeTokens.body, fontSize: 12.5, color: colors.textMuted, minWidth: 46, textAlign: 'center' }}>
+          {i + 1} of {CAROUSEL.length}
+        </span>
+        <CarouselArrow label="Next document" onClick={() => go(i + 1)}>
+          <ChevronRight size={16} />
+        </CarouselArrow>
       </div>
     </div>
   );
 }
 
-/** Step 5: the follow-up, already written, waiting on a date. */
+function CarouselArrow({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
+      style={{
+        width: 40,
+        height: 40,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 99,
+        cursor: 'pointer',
+        color: colors.textSecondary,
+        background: 'transparent',
+        border: `1px solid ${colors.borderDefined}`,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+/** Step 6: the follow-up, already written, waiting on a date. */
 export function MockFollowUp() {
   return (
     <div style={{ fontFamily: typeTokens.body }}>
@@ -353,7 +606,7 @@ export function MockFollowUp() {
             borderRadius: 99,
           }}
         >
-          Sends day 5
+          Sends day 7
         </div>
       </div>
 

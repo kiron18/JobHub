@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, ChevronDown, ChevronUp, Zap, ArrowDown } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, ChevronUp, Zap, ArrowDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../lib/api';
@@ -9,7 +9,17 @@ import { Eyebrow } from '../components/landing/shared/Eyebrow';
 import { PrimaryCTA } from '../components/landing/shared/PrimaryCTA';
 import { HourCalculator } from '../components/landing/pricing/HourCalculator';
 import { ProofTicker } from '../components/landing/pricing/ProofTicker';
-import { MockWindow, MockFitReport, MockDocuments, MockFollowUp, MockTracker } from '../components/landing/pricing/AppMock';
+import {
+  MockWindow,
+  MockPaste,
+  MockFitReport,
+  MockResume,
+  MockCoverLetter,
+  MockCriteria,
+  MockFollowUp,
+  MockTracker,
+  MockDocumentCarousel,
+} from '../components/landing/pricing/AppMock';
 
 /* ── The offer ────────────────────────────────────────────────────────────────
    One plan, one price, one promise. The page sells the outcome and the
@@ -62,25 +72,32 @@ const OFFER_NAME = 'The 30-Day Interview Guarantee';
 const GUARANTEE =
   'Run the system for seven straight days: ten applications and five outreach messages a day, which is the hour above. If you do that and have not landed an interview or a callback within 30 days of finishing, you choose the remedy. Every dollar back, or I work for free until you land one.';
 
-/* The three ways, ranked the way the market actually ranks them. The system
-   only claims the first two, and says so, which is why the third is on the
-   page at all: an honest map is more persuasive than a shorter one. */
+/* The three ways, ranked the way the market actually ranks them. An honest map
+   is more persuasive than a shorter one, which is why the third one — the one
+   this does not do for you — is on the page at all.
+
+   The facts under each are ordered best-news-first: what you stand to gain, and
+   then what it costs you. "Highest chance of getting hired" is the reason to
+   read the card, so it is not third.
+
+   There is no "the system runs this" badge on the first two any more. Deciding
+   which of the three you are looking at is the reader's job here; a claim
+   stamped on two of the cards turns a map into a pitch three sections before
+   the pitch belongs. */
 const THREE_WAYS = [
   {
     n: 1,
     title: 'Apply directly',
     sub: 'For the roles that are already open.',
     tone: colors.accentPetrol,
-    facts: ['Lowest hanging fruit', 'Highest chance of getting hired', 'Most crowded market'],
-    covered: true,
+    facts: ['Highest chance of getting hired', 'Most crowded market', 'Lowest hanging fruit'],
   },
   {
     n: 2,
     title: 'Get recommended',
-    sub: 'Networking your way to the roles before they close.',
+    sub: 'Develop solid relationships that turn into opportunities.',
     tone: colors.accentGold,
     facts: ['Less competition', 'More strategic', 'Longer to pay off'],
-    covered: true,
   },
   {
     n: 3,
@@ -88,28 +105,50 @@ const THREE_WAYS = [
     sub: 'Projects that make employers come to you.',
     tone: colors.textMuted,
     facts: ['Most challenging', 'Longest to pay off', 'Least attempted', 'Costs the most time, effort and money'],
-    covered: false,
   },
 ] as const;
 
+/* ── The belt ────────────────────────────────────────────────────────────────
+   Seven steps, in the order the product actually runs them.
+
+   The cover letter used to be missing from this list entirely, which put
+   selection criteria — the step a lot of readers will skip — at number four,
+   directly after the resume. It is written before the criteria in the app and
+   it is the document more people care about, so it goes back in at four and
+   the criteria move to five.
+
+   Day seven, not day five. FOLLOWUP_MIN_DAYS in server/src/cron/
+   followUpReminderCron.ts is 7 and JobCard.tsx raises the follow-up flag at
+   `days >= 7`. This page said five in two places and the mock said it in a
+   third; a landing page that promises a nudge two days before the product
+   sends one is advertising something that does not happen.                   */
 const BELT = [
-  { n: 1, t: 'Paste the ad', d: 'That is the whole input. No forms, no profile to maintain.' },
-  { n: 2, t: 'It reads the ad against your real history', d: 'And tells you whether this one is worth applying for.' },
-  { n: 3, t: 'Resume rewritten to that specific ad', d: 'Phrased the way the filter is matching, in about 40 seconds.' },
+  { n: 1, t: 'Paste the ad', d: 'That is the whole input. No forms, no profile to maintain.', mock: 'paste' },
+  { n: 2, t: 'It reads the ad against your real history', d: 'And tells you whether this one is worth applying for.', mock: 'fit' },
+  { n: 3, t: 'Resume rewritten to that specific ad', d: 'Phrased the way the filter is matching, in about 40 seconds.', mock: 'resume' },
   {
     n: 4,
-    t: 'Selection criteria drafted in STAR',
-    d: 'The part government and grad programs actually score, and the part nearly everyone skips.',
+    t: 'Cover letter that argues from your evidence',
+    d: 'One argument, built from the same history, aimed at the thing this employer said they wanted.',
+    mock: 'cover',
   },
   {
     n: 5,
-    t: 'Personalised follow-up',
-    d: 'Reaching the employer with the right message, five days later, is the single biggest lever on this page.',
+    t: 'Selection criteria drafted in STAR',
+    d: 'The part government and grad programs actually score, and the part nearly everyone skips.',
+    mock: 'criteria',
   },
   {
     n: 6,
+    t: 'Personalised follow-up',
+    d: 'Reaching the employer with the right message, a week later, is the single biggest lever on this page.',
+    mock: 'followup',
+  },
+  {
+    n: 7,
     t: 'Logged, tracked, and chased',
-    d: 'It tells you who to follow up and what to send on day five, which is where most applications are quietly lost.',
+    d: 'It tells you who to follow up and what to send on day seven, which is where most applicants have forgotten they even applied, when a simple mail could put them back on top of the pile.',
+    mock: 'tracker',
   },
 ] as const;
 
@@ -189,11 +228,20 @@ const FAQS = [
    a nice font is something anyone can write and everybody knows it, so setting
    our own typography next to somebody's screenshot only invited the comparison.
 
-   Names are redacted in the source images and are NOT restored here. Some of
-   these are people at their lowest, not their best, and those are in the set on
-   purpose: they are the reason the wins are believable, and they are the
-   situation the reader is in right now.                                       */
-const PROOF_SHOTS = Array.from({ length: 10 }, (_, i) => `/Assets/testimonials/messages/${i + 1}.png`);
+   Names are redacted in the source images and are NOT restored here.
+
+   WINS ONLY. This was every message in the folder, wins and despair together,
+   on the reasoning that the low points made the highs believable. They do not:
+   by this point in the page the reader has already been shown the problem
+   twice, and three screenshots of people at their lowest sitting under a
+   heading that says "In their own words" reads as a wall of clients who did not
+   get anywhere. 6, 7 and 8 — the part-time job, the wrong degree, the rejection
+   email — are still in the folder and are deliberately not in this list.
+
+   The list is explicit rather than a range, so dropping one is deleting a line
+   rather than renumbering the folder. New screenshots go in the same folder,
+   numbered next, and get added here.                                          */
+const PROOF_SHOTS = [1, 2, 3, 4, 5, 9, 10, 11].map(n => `/Assets/testimonials/messages/${n}.png`);
 
 /* ── Sub-components ──────────────────────────────────────────────────────── */
 
@@ -321,45 +369,191 @@ function FollowUpGrid() {
   );
 }
 
+/* ── One step of the belt ────────────────────────────────────────────────────
+   A big numeral, the words, and the screen it produces, and the two sides swap
+   on every step.
+
+   The old version was a 32px chip and a paragraph in a single column with the
+   mock tucked underneath, which read as a checklist: seven items of equal
+   weight that the eye slides down without stopping. Alternating gives each step
+   a shape of its own, and putting the screen beside the sentence rather than
+   below it means the claim and the evidence for it are read together.
+
+   The alternation is CSS, not markup: the DOM order stays number, words,
+   screen, so a phone (one column) and a screen reader both get the step in the
+   order it is spoken, and only the wide layout swaps the sides.              */
 function BeltStep({
   n,
   t,
   d,
+  flip,
   children,
-  last,
 }: {
   n: number;
   t: string;
   d: string;
+  /** Puts the screen on the LEFT on a wide viewport. Odd steps stay standard. */
+  flip?: boolean;
   children?: React.ReactNode;
-  last?: boolean;
 }) {
   return (
-    <div style={{ display: 'flex', gap: 20, padding: '22px 0', borderBottom: last ? 'none' : `1px solid ${colors.borderWhisper}` }}>
-      <div
-        style={{
-          flexShrink: 0,
-          width: 32,
-          height: 32,
-          borderRadius: 99,
-          background: colors.accentPetrol,
-          color: colors.textOnDeep,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '0.875rem',
-          fontWeight: 700,
-        }}
-      >
-        {n}
+    <div className={`belt-step${flip ? ' belt-step-flip' : ''}`}>
+      <div className="belt-step-words">
+        <div
+          aria-hidden
+          style={{
+            fontFamily: typeTokens.display,
+            fontSize: 'clamp(3rem, 8vw, 4.5rem)',
+            fontWeight: 500,
+            lineHeight: 0.9,
+            letterSpacing: '-0.03em',
+            color: colors.accentPetrol,
+            opacity: 0.22,
+            marginBottom: 6,
+            fontVariationSettings: "'SOFT' 50, 'WONK' 1",
+          }}
+        >
+          {n}
+        </div>
+        <h3
+          style={{
+            fontFamily: typeTokens.display,
+            fontSize: 'clamp(1.1875rem, 2.6vw, 1.5rem)',
+            fontWeight: 500,
+            lineHeight: 1.25,
+            letterSpacing: '-0.015em',
+            color: colors.textPrimary,
+            margin: '0 0 8px',
+            fontVariationSettings: "'SOFT' 50, 'WONK' 1",
+          }}
+        >
+          <span className="sr-only-step">Step {n}. </span>
+          {t}
+        </h3>
+        <p style={{ fontSize: '1rem', color: colors.textSecondary, lineHeight: 1.65, margin: 0 }}>{d}</p>
       </div>
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 4 }}>{t}</div>
-        <p style={{ fontSize: '0.9375rem', color: colors.textSecondary, lineHeight: 1.6, margin: 0 }}>{d}</p>
-        {children && <div style={{ marginTop: 18 }}>{children}</div>}
-      </div>
+      {children && <div className="belt-step-screen">{children}</div>}
     </div>
   );
+}
+
+/* ── What one paste produces ─────────────────────────────────────────────────
+   The four outputs, in the order they come out, as a chain rather than a list.
+   The arrows are the whole point: these are not four features you pick from,
+   they are one thing that runs to the end.                                   */
+const PIPELINE = [
+  'Jobs that match your profile',
+  'Personalised, ATS-friendly resume',
+  'Results-based cover letters that speak to employers',
+  'Follow-up mail × 2',
+] as const;
+
+function PipelineChain() {
+  return (
+    <>
+      <ol className="pipeline-chain">
+        {PIPELINE.map((step, i) => (
+          <li key={step}>
+            <span className="pipeline-node">{step}</span>
+            {i < PIPELINE.length - 1 && (
+              <ChevronRight size={18} aria-hidden className="pipeline-arrow" style={{ color: colors.accentPetrol }} />
+            )}
+          </li>
+        ))}
+      </ol>
+
+      <style>{`
+        /* One per row on a phone, and the arrow turns to face the way the eye
+           now travels. Left as-is it points right at the edge of the screen,
+           which reads as "and then something you cannot see". */
+        .pipeline-chain {
+          list-style: none;
+          margin: 36px auto 0;
+          padding: 0;
+          max-width: 960px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 10px;
+        }
+        .pipeline-chain > li {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 10px;
+        }
+        .pipeline-node {
+          display: flex;
+          align-items: center;
+          height: 100%;
+          padding: 13px 18px;
+          border-radius: 10px;
+          background: ${colors.bgSurface};
+          border: 1px solid ${colors.borderDefined};
+          font-size: 0.875rem;
+          font-weight: 600;
+          line-height: 1.4;
+          color: ${colors.textPrimary};
+          text-align: center;
+        }
+        .pipeline-arrow { flex-shrink: 0; transform: rotate(90deg); }
+
+        @media (min-width: 760px) {
+          .pipeline-chain { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: stretch; }
+          .pipeline-chain > li { flex-direction: row; align-items: center; }
+          .pipeline-arrow { transform: none; }
+        }
+      `}</style>
+    </>
+  );
+}
+
+/** The screen a belt step produces. One place that knows which mock is which. */
+function BeltScreen({ kind }: { kind: (typeof BELT)[number]['mock'] }) {
+  switch (kind) {
+    case 'paste':
+      return (
+        <MockWindow label="Paste the ad">
+          <MockPaste />
+        </MockWindow>
+      );
+    case 'fit':
+      return (
+        <MockWindow label="Job fit check">
+          <MockFitReport />
+        </MockWindow>
+      );
+    case 'resume':
+      return (
+        <MockWindow label="Your resume">
+          <MockResume />
+        </MockWindow>
+      );
+    case 'cover':
+      return (
+        <MockWindow label="Your cover letter">
+          <MockCoverLetter />
+        </MockWindow>
+      );
+    case 'criteria':
+      return (
+        <MockWindow label="Selection criteria">
+          <MockCriteria />
+        </MockWindow>
+      );
+    case 'followup':
+      return (
+        <MockWindow label="Follow-up">
+          <MockFollowUp />
+        </MockWindow>
+      );
+    case 'tracker':
+      return (
+        <MockWindow label="Your tracker">
+          <MockTracker />
+        </MockWindow>
+      );
+  }
 }
 
 function FaqItem({ q, a }: { q: string; a: string }) {
@@ -598,7 +792,11 @@ export function PricingPage() {
             </p>
           </div>
 
-          <HourCalculator />
+          <HourCalculator
+            onSeeHow={() =>
+              document.getElementById('process')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }
+          />
         </div>
 
         {/* The people the hour worked for, one at a time, under the maths. */}
@@ -607,13 +805,13 @@ export function PricingPage() {
         </div>
       </section>
 
-      {/* 2 — the map: three ways, and the two this covers */}
+      {/* 2 — the map: every way to land a job, in three buckets */}
       <Section id="how">
         <Eyebrow>WHY IT WORKS</Eyebrow>
         <H2>There are only three ways to land a job in Australia.</H2>
         <Body>
-          Every one of them works. They cost wildly different amounts of time, and only two of them can be turned into a
-          process you follow on a Tuesday night.
+          Every other way to land a job can be categorised into one of these three buckets. Most people only use method
+          one, haphazardly, and expect results.
         </Body>
 
         <div
@@ -628,8 +826,8 @@ export function PricingPage() {
             <div
               key={w.n}
               style={{
-                background: w.covered ? colors.bgSurface : colors.bgAlt,
-                border: `1px solid ${w.covered ? colors.borderDefined : colors.borderWhisper}`,
+                background: colors.bgSurface,
+                border: `1px solid ${colors.borderDefined}`,
                 borderTop: `3px solid ${w.tone}`,
                 borderRadius: 12,
                 padding: 24,
@@ -656,7 +854,7 @@ export function PricingPage() {
                 {w.sub}
               </p>
 
-              <ul style={{ listStyle: 'none', margin: '0 0 18px', padding: 0, display: 'flex', flexDirection: 'column', gap: 7 }}>
+              <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 7 }}>
                 {w.facts.map(f => (
                   <li
                     key={f}
@@ -672,32 +870,20 @@ export function PricingPage() {
                   </li>
                 ))}
               </ul>
-
-              <div
-                style={{
-                  marginTop: 'auto',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 7,
-                  alignSelf: 'flex-start',
-                  fontSize: '0.6875rem',
-                  fontWeight: 700,
-                  letterSpacing: '0.1em',
-                  textTransform: 'uppercase',
-                  padding: '5px 10px',
-                  borderRadius: 99,
-                  color: w.covered ? colors.accentPetrol : colors.textMuted,
-                  background: w.covered ? 'rgba(45,90,110,0.09)' : 'transparent',
-                  border: w.covered ? 'none' : `1px solid ${colors.borderWhisper}`,
-                }}
-              >
-                {w.covered && <Check size={12} strokeWidth={3} />}
-                {w.covered ? 'The system runs this' : 'Yours to build'}
-              </div>
             </div>
           ))}
         </div>
 
+        {/*
+          The paragraph that used to sit here closed the sale on the reader's
+          behalf: I built a system, it does the first two, go and enjoy your
+          evening. Three sections too early, and it answers a question they have
+          not asked yet.
+
+          This one hands the question back instead. Nobody argues with a
+          question about their own process, and "whether you work with us or
+          not" is the line that makes the section below worth scrolling to.
+        */}
         <p
           style={{
             fontSize: '1.0625rem',
@@ -707,79 +893,89 @@ export function PricingPage() {
             margin: '36px 0 0',
           }}
         >
-          I built a system that turns the first two into an easy process anyone can execute in an hour.{' '}
+          You only really need to use one of these methods, and combining two can get you results that pay off over
+          time. But ask yourself: how systematic and strategic are you actually being in this process?{' '}
           <span style={{ background: colors.highlight, padding: '0 5px' }}>
-            That leaves you the rest of your day to work, see your friends, or finally build the third one.
+            Whether you work with us or not, take a look at what a systematic approach looks like below.
           </span>
         </p>
       </Section>
 
-      {/* 3 — the mechanism, with the screens people actually use */}
-      <Section alt>
-        <Eyebrow>THE MECHANISM</Eyebrow>
-        <H2>This is the page you will be looking at.</H2>
-        <Body>
-          Every competitor in this market coaches you on how to apply. This does the applying. Paste an ad, and the first
-          thing you get back is whether it is worth your hour at all.
+      {/* 3 — the process: what comes out, then the belt that makes it */}
+      <Section alt id="process">
+        <H2 center>Here&rsquo;s the process that gets results fast.</H2>
+        <Body center>
+          Every competitor in this market coaches you on how to apply. This does the applying. Paste an ad, and the
+          first thing you get back is whether it is worth your hour at all.
         </Body>
 
-        <div style={{ maxWidth: 880, margin: '36px auto 0' }}>
-          <MockWindow label="Job fit check" withRail>
-            <MockFitReport />
-          </MockWindow>
+        {/* The four outputs of one paste, as the chain they come out in. */}
+        <PipelineChain />
+
+        <div
+          style={{
+            textAlign: 'center',
+            fontFamily: typeTokens.display,
+            fontSize: 'clamp(1.0625rem, 2.4vw, 1.25rem)',
+            fontWeight: 500,
+            letterSpacing: '-0.01em',
+            color: colors.textPrimary,
+            margin: '28px 0 0',
+            fontVariationSettings: "'SOFT' 50, 'WONK' 1",
+          }}
+        >
+          Time taken using our system &mdash;{' '}
+          <span style={{ background: colors.highlight, padding: '0 6px' }}>5 minutes</span>
         </div>
 
-        <div style={{ maxWidth: spacing.containerReadable, margin: '64px auto 0' }}>
-          <H2>The conveyor belt, start to finish.</H2>
+        {/* The documents themselves, one at a time, at a size you can read. */}
+        <div style={{ maxWidth: 760, margin: '40px auto 0' }}>
+          <MockDocumentCarousel />
+        </div>
 
-          {BELT.map(s => {
-            if (s.n === 4) {
-              return (
-                <BeltStep key={s.n} n={s.n} t={s.t} d={s.d}>
-                  <MockWindow label="Your application">
-                    <MockDocuments />
-                  </MockWindow>
-                </BeltStep>
-              );
+        <div style={{ maxWidth: spacing.containerMax, margin: '72px auto 0' }}>
+          <H2 center>A simple process you can execute even on your worst days.</H2>
+          <Body center>No thinking. Just pure execution that gets results.</Body>
+
+          <div style={{ marginTop: 8 }}>
+            {BELT.map(s => (
+              <BeltStep key={s.n} n={s.n} t={s.t} d={s.d} flip={s.n % 2 === 0}>
+                <BeltScreen kind={s.mock} />
+              </BeltStep>
+            ))}
+          </div>
+
+          <style>{`
+            /* One column on a phone: a 320px mock beside a 320px paragraph is
+               two unreadable halves, and the words have to come first. */
+            .belt-step {
+              display: grid;
+              grid-template-columns: 1fr;
+              gap: 20px;
+              align-items: center;
+              padding: clamp(28px, 5vw, 44px) 0;
+              border-bottom: 1px solid ${colors.borderWhisper};
             }
-            if (s.n === 5) {
-              return (
-                <BeltStep key={s.n} n={s.n} t={s.t} d={s.d}>
-                  <MockWindow label="Follow-up">
-                    <MockFollowUp />
-                  </MockWindow>
-                  <div style={{ marginTop: 20 }}>
-                    <FollowUpGrid />
-                    <p
-                      style={{
-                        fontSize: '0.9375rem',
-                        color: colors.textPrimary,
-                        lineHeight: 1.65,
-                        margin: '14px 0 0',
-                      }}
-                    >
-                      Our own applications, split by whether a follow-up went out.{' '}
-                      <span style={{ background: colors.highlight, padding: '0 5px', fontWeight: 600 }}>
-                        Roughly one in five became two in three.
-                      </span>{' '}
-                      It is a small sample and both denominators are printed above, because a response rate without one
-                      is a number nobody should believe.
-                    </p>
-                  </div>
-                </BeltStep>
-              );
+            .belt-step:last-child { border-bottom: none; }
+            .sr-only-step {
+              position: absolute;
+              width: 1px; height: 1px;
+              margin: -1px; padding: 0; overflow: hidden;
+              clip: rect(0 0 0 0); clip-path: inset(50%);
+              white-space: nowrap; border: 0;
             }
-            if (s.n === 6) {
-              return (
-                <BeltStep key={s.n} n={s.n} t={s.t} d={s.d} last>
-                  <MockWindow label="Your tracker">
-                    <MockTracker />
-                  </MockWindow>
-                </BeltStep>
-              );
+            @media (min-width: 860px) {
+              .belt-step {
+                grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+                gap: clamp(32px, 5vw, 64px);
+              }
+              /* The DOM order never changes — words, then screen — so the read
+                 order and the screen-reader order stay the same on every step.
+                 Only the columns swap. */
+              .belt-step-flip .belt-step-words { grid-column: 2; grid-row: 1; }
+              .belt-step-flip .belt-step-screen { grid-column: 1; grid-row: 1; }
             }
-            return <BeltStep key={s.n} n={s.n} t={s.t} d={s.d} />;
-          })}
+          `}</style>
         </div>
       </Section>
 
@@ -1028,7 +1224,11 @@ export function PricingPage() {
                 <span style={{ fontSize: '1rem', color: colors.textMuted, fontWeight: 500 }}> a week</span>
               </div>
               <div style={{ fontSize: '0.875rem', color: colors.textSecondary, marginTop: 8 }}>
-                Billed {PRICE} a month. Cancel any time, in one click.
+                {/* Just the billing fact. The cancel terms were here too, which
+                    put an exit ramp in the same breath as the price and one
+                    line above the button. They are answered in full in the FAQ,
+                    where somebody looking for them will look. */}
+                Billed {PRICE} a month.
               </div>
               <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: colors.success, marginTop: 8 }}>
                 Free for your first {TRIAL_DAYS} days
@@ -1049,8 +1249,56 @@ export function PricingPage() {
         </div>
       </Section>
 
+      {/* 8 — the one number that changes everything, on its own */}
+      <Section id="did-you-know">
+        <div style={{ maxWidth: spacing.containerReadable, margin: '0 auto' }}>
+          {/*
+            This data used to live inside step five of the belt, folded under a
+            mock, three quarters of the way down a section about mechanism. It
+            is the strongest single fact on the page and it was being read as a
+            caption. On its own, under its own heading, it is the argument.
+          */}
+          <h2
+            style={{
+              fontFamily: typeTokens.display,
+              fontSize: 'clamp(2rem, 6vw, 3.25rem)',
+              fontWeight: 500,
+              lineHeight: 1.1,
+              letterSpacing: '-0.025em',
+              color: colors.textPrimary,
+              margin: '0 0 20px',
+              fontVariationSettings: "'SOFT' 50, 'WONK' 1",
+            }}
+          >
+            Did you know?
+          </h2>
+
+          <p
+            style={{
+              fontSize: 'clamp(1.0625rem, 2.2vw, 1.25rem)',
+              color: colors.textPrimary,
+              lineHeight: 1.65,
+              margin: '0 0 32px',
+            }}
+          >
+            Our data showed an increase in call backs when follow ups were sent.{' '}
+            <span style={{ background: colors.highlight, padding: '0 5px', fontWeight: 600 }}>
+              Roughly one out of five successful applications became two in three
+            </span>{' '}
+            in the best case scenarios.
+          </p>
+
+          <FollowUpGrid />
+
+          <p style={{ fontSize: '0.9375rem', color: colors.textSecondary, lineHeight: 1.65, margin: '14px 0 0' }}>
+            Our own applications, split by whether a follow-up went out. It is a small sample and both denominators are
+            printed above, because a response rate without one is a number nobody should believe.
+          </p>
+        </div>
+      </Section>
+
       {/* FAQ */}
-      <Section>
+      <Section alt>
         <div style={{ maxWidth: spacing.containerReadable, margin: '0 auto' }}>
           <H2>Questions</H2>
           <div style={{ marginTop: 24 }}>
