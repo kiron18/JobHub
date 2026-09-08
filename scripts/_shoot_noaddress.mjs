@@ -37,6 +37,8 @@ const SEED = JSON.stringify({
 
 /** Set to null to photograph the other failure: no domain at all. */
 const DOMAIN = process.env.CAPTURE_DOMAIN === 'none' ? null : (process.env.CAPTURE_DOMAIN || 'bcec.com.au');
+/** Set CAPTURE_ADDRESS to photograph the state where a send is one tap. */
+const ADDRESS = process.env.CAPTURE_ADDRESS || null;
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -65,7 +67,9 @@ const run = async () => {
     contentType: 'application/json',
     body: JSON.stringify({
       source: 'search', domain: DOMAIN,
-      slots: { talent: null, hiringManager: null, teamInsider: null },
+      slots: ADDRESS
+        ? { talent: { name: 'Growth Workplace Design enquiries', email: ADDRESS, position: null, department: null, verification: null, why: ['A shared inbox at this employer, not a person.'] }, hiringManager: null, teamInsider: null }
+        : { talent: null, hiringManager: null, teamInsider: null },
       rejected: [], candidates: [], hiringManager: null, hiringManagerTitle: null,
       salutation: 'Dear Hiring Manager', highlights: [], companySize: null,
     }),
@@ -82,16 +86,15 @@ const run = async () => {
   await wait(5000);
 
   const seen = await p.evaluate(() => {
-    const el = Array.from(document.querySelectorAll('p')).find((e) => /found the company at|could not work out|Looking for someone|did not finish/i.test(e.textContent || ''));
-    const subj = Array.from(document.querySelectorAll('span')).find((e) => /^EMAIL SUBJECT$/i.test((e.textContent || '').trim()));
-    if (!el) return { notice: false };
-    return {
-      notice: true,
-      text: el.textContent.trim().slice(0, 90),
-      aboveSubject: subj ? el.getBoundingClientRect().top < subj.getBoundingClientRect().top : null,
-    };
+    const btns = Array.from(document.querySelectorAll('button'))
+      .filter((b) => /follow-up|LinkedIn note|Draft the email/i.test(b.textContent || ''))
+      .map((b) => ({ label: b.textContent.trim(), primary: getComputedStyle(b).borderStyle === 'none' }));
+    const links = Array.from(document.querySelectorAll('a'))
+      .filter((a) => /Find someone|Look up/i.test(a.textContent || ''))
+      .map((a) => a.textContent.trim());
+    return { buttons: btns, links };
   });
-  console.log('no-address notice:', JSON.stringify(seen));
+  console.log('card:', JSON.stringify(seen, null, 1));
 
   for (let n = 0; n < 5; n++) {
     await p.screenshot({ path: path.join(OUT, `noaddress-${n}.png`) });

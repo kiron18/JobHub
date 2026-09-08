@@ -26,23 +26,15 @@
  */
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Check, ChevronDown, ChevronUp, Copy, Linkedin, Mail, Search } from 'lucide-react';
+import { ChevronDown, ChevronUp, Linkedin, Mail, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../../lib/api';
 import { warm } from '../../lib/theme/warmTokens';
-import { LINKEDIN_NOTE_LIMIT, buildOutreachMessages } from '../../lib/outreachFill';
+import { buildOutreachMessages } from '../../lib/outreachFill';
 import { resolveContact, isGenericAddress } from '../../lib/contactSlots';
 import { useIsMobile } from '../../hooks/useIsMobile';
-import OutreachSendCard from './OutreachSendCard';
-
-/**
- * Placeholders are written in [brackets] so they survive a copy to plain text.
- * Two regexes on purpose: a global one to split on, and a non-global one to
- * test with. Calling .test() repeatedly on a global regex walks its lastIndex
- * and returns alternating answers, which would highlight every second blank.
- */
-const PLACEHOLDER_SPLIT = /(\[[^\]]+\])/g;
-const IS_PLACEHOLDER = /^\[[^\]]+\]$/;
+import { clientForAddress, composeUrl, fitBody } from '../../lib/composeHandoff';
+import { CONTACT_DISCLAIMER } from './OutreachSendCard';
 
 /**
  * Who to message, best odds first.
@@ -67,130 +59,6 @@ const TARGETS = [
         detail: 'Hardest to reach, best to reach. Search the company plus the team, and look for "Manager" or "Lead".',
     },
 ];
-
-/** Render a template with any remaining blanks visibly marked. */
-function TemplateBody({ text }: { text: string }) {
-    return (
-        <>
-            {text.split(PLACEHOLDER_SPLIT).map((part, i) =>
-                IS_PLACEHOLDER.test(part) ? (
-                    <strong
-                        key={i}
-                        style={{
-                            background: 'rgba(197, 160, 89, 0.22)',
-                            color: warm.colors.textPrimary,
-                            borderRadius: 3,
-                            padding: '1px 3px',
-                            fontWeight: 700,
-                        }}
-                    >
-                        {part}
-                    </strong>
-                ) : (
-                    <span key={i}>{part}</span>
-                ),
-            )}
-        </>
-    );
-}
-
-function TemplateCard({
-    label,
-    icon,
-    text,
-    charLimit,
-    needsEdit,
-}: {
-    label: string;
-    icon: React.ReactNode;
-    text: string;
-    charLimit?: number;
-    /** True while the message still has a blank the candidate has to fill. */
-    needsEdit?: boolean;
-}) {
-    const [copied, setCopied] = useState(false);
-    const isMobile = useIsMobile();
-    const overLimit = charLimit ? text.length > charLimit : false;
-
-    const handleCopy = async () => {
-        await navigator.clipboard.writeText(text);
-        setCopied(true);
-        toast.success(needsEdit
-            ? 'Copied. Fill in the highlighted bits before you send'
-            : 'Copied. Give it a read before you send');
-        setTimeout(() => setCopied(false), 1800);
-    };
-
-    return (
-        <div style={{
-            background: warm.colors.bgSurface,
-            border: `1px solid ${warm.colors.borderWhisper}`,
-            borderRadius: 12,
-            /* 16 a side plus the card this sits in plus the page gutter is three
-               insets deep, which is what left the message about 28 characters a
-               line on a phone. See warm.measure. */
-            padding: isMobile ? '12px 12px 12px' : 16,
-        }}>
-            <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                marginBottom: 10, gap: 10, flexWrap: 'wrap',
-            }}>
-                <span style={{
-                    display: 'flex', alignItems: 'center', gap: 6,
-                    fontSize: 11, fontWeight: 800, textTransform: 'uppercase',
-                    letterSpacing: '0.1em', color: warm.colors.accentPetrol,
-                    whiteSpace: 'nowrap',
-                }}>
-                    {icon}
-                    {label}
-                </span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {charLimit && (
-                        <span style={{
-                            fontSize: 11,
-                            fontWeight: 600,
-                            color: overLimit ? warm.colors.danger : warm.colors.textMuted,
-                        }}>
-                            {text.length} / {charLimit}
-                        </span>
-                    )}
-                    <button
-                        onClick={handleCopy}
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: 4,
-                            fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 6,
-                            border: `1px solid ${copied ? warm.colors.success : warm.colors.borderWhisper}`,
-                            background: copied ? 'rgba(42,157,111,0.10)' : 'transparent',
-                            color: copied ? warm.colors.success : warm.colors.textSecondary,
-                            cursor: 'pointer',
-                            whiteSpace: 'nowrap',
-                        }}
-                    >
-                        {copied ? <Check size={11} /> : <Copy size={11} />}
-                        {copied ? 'Copied' : 'Copy'}
-                    </button>
-                </div>
-            </div>
-            <p style={{
-                margin: 0,
-                background: warm.colors.bgAlt,
-                borderRadius: 8,
-                /* Vertical inset only on a phone: the panel it sits in already
-                   supplies the side one, and stacking both is what narrowed the
-                   message to three words a line. */
-                padding: isMobile ? '10px 0' : 12,
-                paddingLeft: isMobile ? 0 : 12,
-                fontSize: isMobile ? 14.5 : 13,
-                lineHeight: 1.65,
-                color: warm.colors.textPrimary,
-                whiteSpace: 'pre-wrap',
-                overflowWrap: 'anywhere',
-            }}>
-                <TemplateBody text={text} />
-            </p>
-        </div>
-    );
-}
 
 export function PostApplyOutreach({
     jobTitle,
@@ -244,7 +112,7 @@ export function PostApplyOutreach({
       to exactly what this card was before: the drafts, and instructions for
       finding an address by hand.
     */
-    const { data: contact, isLoading: contactLoading, isError: contactFailed } = useQuery({
+    const { data: contact } = useQuery({
         queryKey: ['outreach-contact', company, jobTitle],
         // Not gated on the banner any more: the drafts are always on screen,
         // so the address they are addressed to has to be looked up regardless.
@@ -303,7 +171,54 @@ export function PostApplyOutreach({
         dateApplied,
         discoveredContactName: greetByName,
     });
-    const hasBlanks = t.linkedInNeedsPitch || t.emailNeedsPitch;
+    /*
+      Which of the two goes first is decided by which one is FINISHED.
+
+      With an address, mailing is one tap and done. Without one it opens a
+      window with an empty To line, which is a job rather than an action, and
+      the LinkedIn note is then the only thing on the card that works straight
+      away. So the order follows the work remaining, not a fixed opinion about
+      which channel is better.
+    */
+    const sendTo = sendable?.addresses[0]?.address ?? null;
+    const primaryIsEmail = Boolean(sendTo);
+    const client = clientForAddress(userEmail);
+    const clientName = client === 'gmail' ? 'Gmail' : client === 'outlook' ? 'Outlook' : null;
+    const mailLabel = sendTo
+        ? `Send the follow-up${clientName ? ` in ${clientName}` : ''}`
+        : 'Draft the email anyway';
+
+    function openMail() {
+        // An empty `to` is deliberate and valid on all three targets: compose
+        // opens with the cursor in the address line and everything else
+        // written. A placeholder would be worse — anything in that field is a
+        // real recipient, so it either delivers to a stranger or bounces.
+        const url = composeUrl({ to: sendTo ?? '', subject: t.subject, body: t.email }, client);
+        window.open(url, '_blank', 'noopener');
+        if (fitBody(t.email).truncated) {
+            toast('The last paragraphs were too long for a compose link. Paste the rest before you send.');
+        } else if (t.emailNeedsPitch) {
+            toast('Fill in the [bracketed] line before you send it.');
+        }
+    }
+
+    async function copyNote() {
+        try {
+            await navigator.clipboard.writeText(t.linkedIn);
+            /*
+              The clipboard is invisible, which is the whole problem with
+              collapsing a draft behind a copy button: an untouched
+              "[One line on why this role fits you.]" goes to a recruiter and
+              nobody saw it happen. The email path does not need this because
+              the compose window shows the body.
+            */
+            toast.success(t.linkedInNeedsPitch
+                ? 'Copied. Fill in the [bracketed] line, then paste it into your connection request.'
+                : 'Copied. Paste it into your LinkedIn connection request.');
+        } catch {
+            toast.error('Could not copy. Long-press the note to select it instead.');
+        }
+    }
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -439,159 +354,83 @@ export function PostApplyOutreach({
         </div>
 
         {/*
-            The messages, on the page rather than behind the banner.
+            Two buttons and two links, and nothing else.
 
-            This is the task. Everything above it is the reason for the task,
-            and a reason that hides the task is not doing its job.
+            This was three cards holding an address field, a subject field, a
+            nine-row textarea and three copy buttons, all of it on screen at
+            once at the end of a flow whose whole job was already done. Nobody
+            edits a draft they did not ask to see. What they do is act on it, so
+            the drafts live inside the actions now and the card is four things
+            instead of forty lines.
+
+            The two channels are not symmetrical and the buttons are not either.
+            Email has a compose deep link, so its button OPENS a filled window.
+            LinkedIn has no URL that pre-fills a connection note, so its button
+            can only put the text on the clipboard and say where to paste it.
+            That asymmetry is the platform's, not a design choice.
         */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={{
-                background: 'rgba(197, 160, 89, 0.12)',
-                border: '1px solid rgba(197, 160, 89, 0.35)',
-                borderRadius: 8,
-                padding: '10px 14px',
-            }}>
-                <p style={{ margin: 0, fontSize: 13, color: warm.colors.textPrimary, lineHeight: 1.6 }}>
-                    {hasBlanks ? (
-                        <>
-                            Fill every highlighted blank before you send. A recruiter spots an
-                            untouched template instantly.
-                        </>
-                    ) : (
-                        <>
-                            Filled in from your cover letter and ready to send. Read it once, and
-                            change the evidence if it is not what you would have led with.
-                        </>
-                    )}
-                </p>
-            </div>
-
-            {/*
-                With an address we can hand them a filled compose window, which
-                is the whole point. Without one the three copy-out cards are
-                still the best available, so nothing regresses on the two
-                employers in three where discovery finds nobody.
-            */}
-            {sendable ? (
-                <OutreachSendCard
-                    personName={sendable.name}
-                    personTitle={sendable.title}
-                    company={company ?? null}
-                    addresses={sendable.addresses}
-                    draft={{ subject: t.subject, body: t.email }}
-                    userEmail={userEmail ?? null}
-                    linkedInNote={t.linkedIn}
-                />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {primaryIsEmail ? (
+                <>
+                    <ActionButton
+                        tone="primary"
+                        icon={<Mail size={16} />}
+                        label={mailLabel}
+                        onClick={openMail}
+                        note={sendTo
+                            ? `Opens ${clientName ?? 'your email'} to ${sendTo}. It sends from your address.`
+                            : undefined}
+                    />
+                    <ActionButton
+                        tone="secondary"
+                        icon={<Linkedin size={16} />}
+                        label="Copy the LinkedIn note"
+                        onClick={copyNote}
+                    />
+                </>
             ) : (
                 <>
-                    <TemplateCard
-                        label="LinkedIn note"
-                        icon={<Linkedin size={12} />}
-                        text={t.linkedIn}
-                        charLimit={LINKEDIN_NOTE_LIMIT}
-                        needsEdit={t.linkedInNeedsPitch}
+                    <ActionButton
+                        tone="primary"
+                        icon={<Linkedin size={16} />}
+                        label="Copy the LinkedIn note"
+                        onClick={copyNote}
+                        note="Paste it into a connection request. No address needed, and it is the one that gets answered more often."
                     />
-
-                    {/*
-                        Where the address would have been.
-
-                        Without this the two outcomes render identically: an
-                        address we found sits above the subject line inside the
-                        send card, and an address we did NOT find is simply
-                        absent, so the screen goes straight from the LinkedIn
-                        note to "Email subject" and the reader is left deciding
-                        whether the lookup failed or they missed it. It did fail,
-                        for about two employers in three, and that is a fact
-                        about the employer rather than an error — so it says so
-                        plainly and hands over the way to finish the job by hand.
-                    */}
-                    <div style={{
-                        background: warm.colors.bgSurface,
-                        border: `1px dashed ${warm.colors.borderDefined}`,
-                        borderRadius: 12,
-                        padding: isMobile ? 12 : 16,
-                    }}>
-                        <p style={{
-                            margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: 6,
-                            fontSize: 11, fontWeight: 800, textTransform: 'uppercase',
-                            letterSpacing: '0.1em', color: warm.colors.textMuted,
-                        }}>
-                            <Mail size={12} /> Email address
-                        </p>
-                        <p style={{
-                            margin: 0, fontSize: isMobile ? 14 : 13, lineHeight: 1.6,
-                            color: warm.colors.textSecondary,
-                        }}>
-                            {contactLoading ? (
-                                <>Looking for someone to send this to&hellip;</>
-                            ) : contactFailed ? (
-                                <>The lookup did not finish, so there is nothing to fill in here.
-                                    The LinkedIn note above needs no address at all.</>
-                            ) : domain ? (
-                                /*
-                                  The useful failure. We know the employer's domain, we
-                                  just could not put a name to anyone there, so the
-                                  candidate is one LinkedIn search away from an address
-                                  rather than starting from nothing. Real case, 8 Sep 2026:
-                                  bcec.com.au resolved first try, and the directory held
-                                  thirteen addresses at that domain with nobody in HR or
-                                  marketing. Saying "we could not find an address" threw
-                                  away the half we did find.
-                                */
-                                <>
-                                    We found the company at{' '}
-                                    <strong style={{ color: warm.colors.textPrimary, fontWeight: 600 }}>{domain}</strong>
-                                    {' '}but no one there we could put a name to, and no shared inbox
-                                    either. Pick someone off LinkedIn and try their name at{' '}
-                                    <strong style={{ color: warm.colors.textPrimary, fontWeight: 600 }}>
-                                        @{domain}
-                                    </strong>.
-                                </>
-                            ) : (
-                                <>
-                                    We could not work out this employer&rsquo;s website, so there is no
-                                    address to build from. The LinkedIn note above needs no email at all,
-                                    and it is the one that gets answered more often anyway.
-                                </>
-                            )}
-                        </p>
-
-                        {/* The next step, not just the news. */}
-                        {!contactLoading && company && (
-                            <a
-                                href={`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(company)}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{
-                                    display: 'inline-flex', alignItems: 'center', gap: 6,
-                                    marginTop: 10, minHeight: 44,
-                                    fontSize: 13.5, fontWeight: 700,
-                                    color: warm.colors.accentPetrol, textDecoration: 'none',
-                                }}
-                            >
-                                <Search size={14} /> Find someone at {company}
-                            </a>
-                        )}
-                    </div>
-
-                    <TemplateCard
-                        label="Email subject"
-                        icon={<Mail size={12} />}
-                        text={t.subject}
-                    />
-
-                    <TemplateCard
-                        label="Email body"
-                        icon={<Mail size={12} />}
-                        text={t.email}
-                        needsEdit={t.emailNeedsPitch}
+                    <ActionButton
+                        tone="secondary"
+                        icon={<Mail size={16} />}
+                        label="Draft the email anyway"
+                        onClick={openMail}
+                        note="Opens with everything written and the To line empty, for once you have found an address."
                     />
                 </>
             )}
 
-            <p style={{ margin: 0, fontSize: 12, color: warm.colors.textMuted, lineHeight: 1.6 }}>
-                Neither message asks for anything. That is deliberate: the first one with no
-                request in it is the one that gets answered.
+            {/* Quieter, because finding a person is the step BEFORE the two
+                above rather than a third thing to choose between. */}
+            <div style={{
+                display: 'flex', flexDirection: 'column', gap: 2,
+                marginTop: 2, paddingLeft: 2,
+            }}>
+                {company && (
+                    <FindLink
+                        href={`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(company)}`}
+                        label={`Find someone at ${company}`}
+                    />
+                )}
+                {!sendTo && domain && (
+                    <FindLink
+                        href={`https://hunter.io/search/${encodeURIComponent(domain)}`}
+                        label={`Look up ${domain} on Hunter`}
+                    />
+                )}
+            </div>
+
+            <p style={{ margin: '2px 0 0', fontSize: 11.5, lineHeight: 1.5, color: warm.colors.textMuted }}>
+                {sendTo
+                    ? CONTACT_DISCLAIMER
+                    : 'Neither message asks for anything. That is deliberate: the first one with no request in it is the one that gets answered.'}
             </p>
         </div>
         </div>
@@ -599,3 +438,69 @@ export function PostApplyOutreach({
 }
 
 export default PostApplyOutreach;
+
+/* -- The two shapes the card is made of ----------------------------------- */
+
+/**
+ * One action, its label, and one line saying what happens when it is pressed.
+ *
+ * The note is not decoration. These buttons open somebody's mail client or
+ * write to their clipboard, and a button whose effect you only discover after
+ * pressing it is the reason people do not press buttons.
+ */
+function ActionButton({ tone, icon, label, note, onClick }: {
+    tone: 'primary' | 'secondary';
+    icon: React.ReactNode;
+    label: string;
+    note?: string;
+    onClick: () => void;
+}) {
+    const primary = tone === 'primary';
+    return (
+        <div>
+            <button
+                type="button"
+                onClick={onClick}
+                style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9,
+                    width: '100%', minHeight: 48, padding: '13px 18px',
+                    fontFamily: 'inherit', fontSize: 15, fontWeight: 700,
+                    letterSpacing: '-0.01em',
+                    color: primary ? warm.colors.textOnDeep : warm.colors.textPrimary,
+                    background: primary ? warm.colors.accentPetrol : warm.colors.bgSurface,
+                    border: primary ? 'none' : `1px solid ${warm.colors.borderDefined}`,
+                    borderRadius: 12, cursor: 'pointer',
+                    boxShadow: primary ? '0 1px 2px rgba(16,24,40,0.06), 0 6px 18px rgba(18,87,196,0.20)' : 'none',
+                }}
+            >
+                {icon}{label}
+            </button>
+            {note && (
+                <p style={{
+                    margin: '6px 2px 0', fontSize: 12, lineHeight: 1.5,
+                    color: warm.colors.textMuted,
+                }}>
+                    {note}
+                </p>
+            )}
+        </div>
+    );
+}
+
+/** Where to go when the card cannot hand over a person. Deliberately quiet. */
+function FindLink({ href, label }: { href: string; label: string }) {
+    return (
+        <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                minHeight: 44, fontSize: 13.5, fontWeight: 600,
+                color: warm.colors.accentPetrol, textDecoration: 'none',
+            }}
+        >
+            <Search size={14} /> {label}
+        </a>
+    );
+}
