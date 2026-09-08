@@ -193,7 +193,7 @@ export function PostApplyOutreach({
         // opens with the cursor in the address line and everything else
         // written. A placeholder would be worse — anything in that field is a
         // real recipient, so it either delivers to a stranger or bounces.
-        const url = composeUrl({ to: sendTo ?? '', subject: t.subject, body: t.email }, client);
+        const url = composeUrl({ to: sendTo ?? '', subject: t.subject, body: t.email }, client, userEmail);
         window.open(url, '_blank', 'noopener');
         if (fitBody(t.email).truncated) {
             toast('The last paragraphs were too long for a compose link. Paste the rest before you send.');
@@ -354,80 +354,102 @@ export function PostApplyOutreach({
         </div>
 
         {/*
-            Two buttons and two links, and nothing else.
+            Two channels, side by side, in one panel.
 
-            This was three cards holding an address field, a subject field, a
-            nine-row textarea and three copy buttons, all of it on screen at
-            once at the end of a flow whose whole job was already done. Nobody
-            edits a draft they did not ask to see. What they do is act on it, so
-            the drafts live inside the actions now and the card is four things
-            instead of forty lines.
+            They used to be two full-width buttons stacked with their
+            explanatory notes between them, which read as a queue: do this, then
+            below it do that. They are not a queue. They are the same message
+            going out by two routes and most people will pick one, so they are
+            laid out as a choice — equal width, equal weight, one card each,
+            with the recommended one carrying the filled button.
 
             The two channels are not symmetrical and the buttons are not either.
             Email has a compose deep link, so its button OPENS a filled window.
             LinkedIn has no URL that pre-fills a connection note, so its button
             can only put the text on the clipboard and say where to paste it.
             That asymmetry is the platform's, not a design choice.
-        */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {primaryIsEmail ? (
-                <>
-                    <ActionButton
-                        tone="primary"
-                        icon={<Mail size={16} />}
-                        label={mailLabel}
-                        onClick={openMail}
-                        note={sendTo
-                            ? `Opens ${clientName ?? 'your email'} to ${sendTo}. It sends from your address.`
-                            : undefined}
-                    />
-                    <ActionButton
-                        tone="secondary"
-                        icon={<Linkedin size={16} />}
-                        label="Copy the LinkedIn note"
-                        onClick={copyNote}
-                    />
-                </>
-            ) : (
-                <>
-                    <ActionButton
-                        tone="primary"
-                        icon={<Linkedin size={16} />}
-                        label="Copy the LinkedIn note"
-                        onClick={copyNote}
-                        note="Paste it into a connection request. No address needed, and it is the one that gets answered more often."
-                    />
-                    <ActionButton
-                        tone="secondary"
-                        icon={<Mail size={16} />}
-                        label="Draft the email anyway"
-                        onClick={openMail}
-                        note="Opens with everything written and the To line empty, for once you have found an address."
-                    />
-                </>
-            )}
 
-            {/* Quieter, because finding a person is the step BEFORE the two
-                above rather than a third thing to choose between. */}
+            Below them, quieter, is where to go and FIND the person — the step
+            before both of these, not a third option beside them.
+        */}
+        <div
+            style={{
+                border: `1px solid ${warm.colors.borderDefined}`,
+                background: warm.colors.bgSurface,
+                borderRadius: 12,
+                padding: isMobile ? 14 : 18,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 14,
+            }}
+        >
             <div style={{
-                display: 'flex', flexDirection: 'column', gap: 2,
-                marginTop: 2, paddingLeft: 2,
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+                gap: isMobile ? 10 : 14,
             }}>
-                {company && (
-                    <FindLink
-                        href={`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(company)}`}
-                        label={`Find someone at ${company}`}
-                    />
-                )}
-                {!sendTo && domain && (
-                    <FindLink
-                        href={`https://hunter.io/search/${encodeURIComponent(domain)}`}
-                        label={`Look up ${domain} on Hunter`}
-                    />
+                {primaryIsEmail ? (
+                    <>
+                        <ActionCard
+                            tone="primary"
+                            icon={<Mail size={16} />}
+                            label={mailLabel}
+                            onClick={openMail}
+                            note={sendTo
+                                ? `Opens ${clientName ?? 'your email'} to ${sendTo}, from your address.`
+                                : undefined}
+                        />
+                        <ActionCard
+                            tone="secondary"
+                            icon={<Linkedin size={16} />}
+                            label="Copy the LinkedIn note"
+                            onClick={copyNote}
+                            note="Paste it into a connection request."
+                        />
+                    </>
+                ) : (
+                    <>
+                        <ActionCard
+                            tone="primary"
+                            icon={<Linkedin size={16} />}
+                            label="Copy the LinkedIn note"
+                            onClick={copyNote}
+                            note="No address needed, and it is the one that gets answered more often."
+                        />
+                        <ActionCard
+                            tone="secondary"
+                            icon={<Mail size={16} />}
+                            label="Draft the email anyway"
+                            onClick={openMail}
+                            note="Everything written, To line empty, for once you have found an address."
+                        />
+                    </>
                 )}
             </div>
 
-            <p style={{ margin: '2px 0 0', fontSize: 11.5, lineHeight: 1.5, color: warm.colors.textMuted }}>
+            {(company || (!sendTo && domain)) && (
+                <div style={{
+                    display: 'flex', flexWrap: 'wrap', alignItems: 'center',
+                    gap: isMobile ? 0 : 18,
+                    paddingTop: 4,
+                    borderTop: `1px solid ${warm.colors.borderWhisper}`,
+                }}>
+                    {company && (
+                        <FindLink
+                            href={`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(company)}`}
+                            label={`Find someone at ${company}`}
+                        />
+                    )}
+                    {!sendTo && domain && (
+                        <FindLink
+                            href={`https://hunter.io/search/${encodeURIComponent(domain)}`}
+                            label={`Look up ${domain} on Hunter`}
+                        />
+                    )}
+                </div>
+            )}
+
+            <p style={{ margin: 0, fontSize: 11.5, lineHeight: 1.5, color: warm.colors.textMuted }}>
                 {sendTo
                     ? CONTACT_DISCLAIMER
                     : 'Neither message asks for anything. That is deliberate: the first one with no request in it is the one that gets answered.'}
@@ -442,13 +464,19 @@ export default PostApplyOutreach;
 /* -- The two shapes the card is made of ----------------------------------- */
 
 /**
- * One action, its label, and one line saying what happens when it is pressed.
+ * One channel: its button, and one line saying what pressing it does.
  *
  * The note is not decoration. These buttons open somebody's mail client or
  * write to their clipboard, and a button whose effect you only discover after
  * pressing it is the reason people do not press buttons.
+ *
+ * The two cards sit in a grid, so the note has to be inside the card rather
+ * than under it: with them side by side and the notes below, a one-line note
+ * next to a two-line one leaves the buttons at different heights. `margin-top:
+ * auto` on the note pins both buttons to the top of their card and lets the
+ * notes hang at whatever length they are.
  */
-function ActionButton({ tone, icon, label, note, onClick }: {
+function ActionCard({ tone, icon, label, note, onClick }: {
     tone: 'primary' | 'secondary';
     icon: React.ReactNode;
     label: string;
@@ -457,15 +485,19 @@ function ActionButton({ tone, icon, label, note, onClick }: {
 }) {
     const primary = tone === 'primary';
     return (
-        <div>
+        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
             <button
                 type="button"
                 onClick={onClick}
                 style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9,
-                    width: '100%', minHeight: 48, padding: '13px 18px',
-                    fontFamily: 'inherit', fontSize: 15, fontWeight: 700,
+                    width: '100%', minHeight: 48, padding: '13px 16px',
+                    fontFamily: 'inherit', fontSize: 14.5, fontWeight: 700,
                     letterSpacing: '-0.01em',
+                    /* The label is the one thing that must not be clipped, and
+                       "Send the follow-up in Gmail" is a long one in half a
+                       card. It wraps rather than truncating. */
+                    lineHeight: 1.3, textAlign: 'center',
                     color: primary ? warm.colors.textOnDeep : warm.colors.textPrimary,
                     background: primary ? warm.colors.accentPetrol : warm.colors.bgSurface,
                     border: primary ? 'none' : `1px solid ${warm.colors.borderDefined}`,
@@ -473,12 +505,15 @@ function ActionButton({ tone, icon, label, note, onClick }: {
                     boxShadow: primary ? '0 1px 2px rgba(16,24,40,0.06), 0 6px 18px rgba(18,87,196,0.20)' : 'none',
                 }}
             >
-                {icon}{label}
+                <span style={{ flexShrink: 0, display: 'inline-flex' }}>{icon}</span>
+                {label}
             </button>
             {note && (
                 <p style={{
-                    margin: '6px 2px 0', fontSize: 12, lineHeight: 1.5,
+                    margin: '8px 2px 0', fontSize: 12, lineHeight: 1.5,
                     color: warm.colors.textMuted,
+                    /* Breaks a long address rather than widening the column. */
+                    overflowWrap: 'anywhere',
                 }}>
                     {note}
                 </p>
@@ -487,7 +522,7 @@ function ActionButton({ tone, icon, label, note, onClick }: {
     );
 }
 
-/** Where to go when the card cannot hand over a person. Deliberately quiet. */
+/** Where to go and find the person. The step before both buttons, so: quiet. */
 function FindLink({ href, label }: { href: string; label: string }) {
     return (
         <a
@@ -500,7 +535,7 @@ function FindLink({ href, label }: { href: string; label: string }) {
                 color: warm.colors.accentPetrol, textDecoration: 'none',
             }}
         >
-            <Search size={14} /> {label}
+            <Search size={14} style={{ flexShrink: 0 }} /> {label}
         </a>
     );
 }
