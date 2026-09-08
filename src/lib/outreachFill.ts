@@ -125,7 +125,12 @@ export function formatPersonName(name?: string | null): string | undefined {
  * the sentence was worth quoting. Without it this would happily return "At
  * Australian Events", which fits and says nothing.
  */
-export function condenseToClause(sentence: string, budget: number): string | null {
+export function condenseToClause(
+    sentence: string,
+    budget: number,
+    opts: { requireFigure?: boolean } = {},
+): string | null {
+    const requireFigure = opts.requireFigure !== false;
     const text = sentence.replace(/[.!?]+$/, '').trim();
 
     // Where a clause can be severed. Commas are the obvious ones, but the
@@ -153,7 +158,7 @@ export function condenseToClause(sentence: string, budget: number): string | nul
         if (
             candidate.length <= budget &&
             candidate.length >= MIN_CONDENSED_LINE &&
-            /[\d%$]/.test(candidate)
+            (!requireFigure || /[\d%$]/.test(candidate))
         ) {
             return candidate;
         }
@@ -209,14 +214,42 @@ export function evidenceParagraph(body: string[]): string | null {
  * half-thought in a connection request is worse than a blank the candidate
  * fills in themselves, which is what the budget was freed up for.
  */
-export function shortPitchLine(body: string[], budget: number): string | null {
+/**
+ * Sentences that open a cover letter and say nothing a connection request has
+ * not already said by existing. Every one of these appeared verbatim as a
+ * "pitch" during the 8 Sep 2026 pass before they were excluded.
+ */
+const NO_ARGUMENT = /^(i am writing|i would like to (be considered|apply|express)|i am applying|i wish to apply|i am excited|i am interested|please (accept|find)|with reference to|in response to)/i;
+
+export function shortPitchLine(
+    body: string[],
+    budget: number,
+    opts: { avoid?: Array<string | null | undefined> } = {},
+): string | null {
     if (budget < MIN_PITCH_LINE) return null;
+
+    /*
+      A line that repeats the role or the employer is not a pitch.
+      "Hi there, I've just applied for the Marketing & Bid Coordinator role at
+      Growth Workplace Design. I am writing to apply for the Marketing & Bid
+      Coordinator role at Growth Workplace Design." is what came out before this
+      existed, because a cover letter's first sentence is almost always the one
+      sentence the opener has already covered.
+    */
+    const avoid = (opts.avoid ?? [])
+        .map((v) => (v ?? '').trim().toLowerCase())
+        .filter((v) => v.length >= 4);
+    const saysSomethingNew = (line: string) => {
+        const l = line.toLowerCase();
+        return !NO_ARGUMENT.test(line.trim()) && !avoid.some((a) => l.includes(a));
+    };
 
     const candidates = body
         .slice(0, 2)
         .map(cleanProse)
         .flatMap(sentences)
-        .filter((s) => s.length >= MIN_PITCH_LINE && s.length <= budget);
+        .filter((s) => s.length >= MIN_PITCH_LINE && s.length <= budget)
+        .filter(saysSomethingNew);
 
     // Digits, percentages and dollar figures only. Spelled-out numbers were
     // tempting, but "one" and "half" appear in ordinary prose often enough that
@@ -239,8 +272,50 @@ export function shortPitchLine(body: string[], budget: number): string | null {
         if (condensed) return condensed;
     }
 
-    // 3. Anything that fits, which is better than leaving the blank.
-    return candidates.length > 0 ? longest(candidates) : null;
+    // 3. Anything that fits as written.
+    if (candidates.length > 0) return longest(candidates);
+
+    /*
+      4. Anything at all, cut back to a whole clause.
+
+      Without this the function returns null for most cover letters ever
+      written, and the note ships with "[One line on why this role fits you.]"
+      in it. Measured on a perfectly ordinary letter, 8 Sep 2026: the budget is
+      about 103 characters once the opener has taken its share, and the first
+      two paragraphs were single sentences of 208 and 245. Tier 1 needs one
+      under the budget, tier 2 needs a figure, tier 3 was re-reading tier 1's
+      empty list. Nothing fires, every time, unless the candidate happens to
+      write short sentences with numbers in them.
+
+      The docblock's rule still holds: no clipped half-thoughts. This does not
+      truncate, it severs at a clause boundary the same way tier 2 does, and
+      MIN_CONDENSED_LINE keeps it from degenerating into three words. Dropping
+      the figure requirement is the whole difference, and the figure was only
+      ever a PREFERENCE — it earns a sentence the right to be cut down, it was
+      never meant to be the price of admission.
+    */
+    /*
+      The EVIDENCE paragraph first, then the hook.
+
+      `all` is paragraphs one and two in order, and paragraph one is the hook —
+      which is where "I am writing to apply for X at Y" lives. Reading it first
+      meant the least useful sentence in the letter won simply by being first.
+      Paragraph two is where the argument is, so it gets first refusal here.
+    */
+    const evidenceFirst = [
+        ...sentences(cleanProse(body[1] ?? '')),
+        ...sentences(cleanProse(body[0] ?? '')),
+    ];
+
+    for (const sentence of evidenceFirst) {
+        const condensed = condenseToClause(sentence, budget, { requireFigure: false });
+        if (condensed && saysSomethingNew(condensed)) return condensed;
+    }
+
+    // Nothing in the letter argues for this candidate in the space available.
+    // The blank is correct here: a sentence that says nothing is worse than one
+    // the candidate writes themselves, which is what the space was freed up for.
+    return null;
 }
 
 // ── Contact name ────────────────────────────────────────────────────────────
@@ -502,11 +577,29 @@ export function buildOutreachMessages(input: OutreachInput): OutreachMessages {
     // sentence cost 39 of 200 characters to say what a connection request from
     // a stranger already says by existing, and it was the reason there was no
     // room left for the one line that actually argues for the candidate.
-    const opener = `Hi ${greeting}, I've just applied for ${applicationFor}`;
+    /*
+      The LinkedIn note does NOT name the employer. The email does.
+
+      This note is going to somebody who works there, and telling them the name
+      of their own company costs 25 of the 200 characters LinkedIn allows. That
+      is a quarter of the budget spent on the one fact the reader is certain of,
+      and it was coming straight out of the only line that argues for the
+      candidate: with the company named, the pitch had about 103 characters to
+      land in, which is under the length of an ordinary cover letter sentence,
+      so the note shipped with "[One line on why this role fits you.]" in it for
+      most letters ever written.
+
+      The email keeps the full form. It can be long, and it can reach a
+      recruitment agency handling several employers at once, where the name is
+      the thing that says which application this is about.
+    */
+    const opener = `Hi ${greeting}, I've just applied for ${describeApplication(role, null)}`;
     const full = (pitch: string) => `${opener}. ${pitch}`.trimEnd();
 
     const pitchLine = letter
-        ? shortPitchLine(letter.body, LINKEDIN_NOTE_LIMIT - full('').length - 1)
+        ? shortPitchLine(letter.body, LINKEDIN_NOTE_LIMIT - full('').length - 1, {
+            avoid: [role, input.company],
+        })
         : null;
 
     // Longest form that fits, shortest that says something honest as the floor.

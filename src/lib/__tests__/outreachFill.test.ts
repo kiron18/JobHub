@@ -202,17 +202,84 @@ describe('buildOutreachMessages', () => {
         expect(m.linkedIn.length).toBeLessThanOrEqual(LINKEDIN_NOTE_LIMIT);
     });
 
-    it('drops sentences rather than ship a note LinkedIn will silently refuse to send', () => {
+    it('spends its characters on the role and the argument, not on the reader\'s own employer', () => {
         const m = buildOutreachMessages({
             ...base,
             role: 'Senior Business Systems Analyst, Enterprise Transformation',
             company: 'Commonwealth Scientific and Industrial Research Organisation',
         });
         expect(m.linkedIn.length).toBeLessThanOrEqual(LINKEDIN_NOTE_LIMIT);
-        // The role and the employer are the two facts the note exists to carry,
-        // so they are the last things to go.
+
+        // The role stays. It is what the note is about.
         expect(m.linkedIn).toContain('Enterprise Transformation');
-        expect(m.linkedIn).toContain('Commonwealth Scientific');
+
+        /*
+          The employer does NOT, and this test used to assert the opposite.
+          The note goes to somebody who works there, so naming their own company
+          back to them buys nothing and, at 60 characters, buys it expensively:
+          with the name in, this note had no room left for a pitch line at all
+          and shipped the bare fact of the application. The argument is the only
+          part a connection request cannot convey by existing, so it is the part
+          that gets the space.
+
+          The email still names the employer. It has room, and it can reach an
+          agency running several vacancies at once, where the name is what says
+          which application this is.
+        */
+        expect(m.linkedIn).not.toContain('Commonwealth Scientific');
+        expect(m.email).toContain('Commonwealth Scientific');
+
+        // And the space bought something: the quantified line from the letter.
+        expect(m.linkedIn).toContain('nine days');
+        expect(m.linkedInNeedsPitch).toBe(false);
+    });
+
+    it('fills the pitch line from an ordinary cover letter with no numbers in it', () => {
+        /*
+          The case that shipped. Every sentence in a normal letter runs to two
+          or three times the space the note has, and before this the extractor
+          wanted one between 40 characters and the budget, or one carrying a
+          figure. Neither exists in most letters, so the note went out reading
+          "[One line on why this role fits you.]" and the candidate pasted it
+          into a connection request without noticing.
+        */
+        const m = buildOutreachMessages({
+            ...base,
+            role: 'Marketing & Bid Coordinator',
+            company: 'Growth Workplace Design',
+            coverLetter: [
+                'Dear Hiring Manager,',
+                '',
+                'I am writing to apply for the Marketing & Bid Coordinator role at Growth Workplace Design, where my experience coordinating submissions maps onto what this role asks for.',
+                '',
+                'In my most recent position I coordinated end-to-end tender submissions across a portfolio of commercial clients, managing deadlines and collating technical content from four internal teams.',
+                '',
+                'Best regards,',
+                'Priya Nair',
+            ].join('\n'),
+        });
+        expect(m.linkedInNeedsPitch).toBe(false);
+        expect(m.linkedIn).not.toContain('[');
+        expect(m.linkedIn.length).toBeLessThanOrEqual(LINKEDIN_NOTE_LIMIT);
+        // From the EVIDENCE paragraph, not the hook. The hook is the sentence
+        // that repeats what the opener has already said.
+        expect(m.linkedIn).toContain('tender submissions');
+    });
+
+    it('leaves the blank when the letter genuinely argues nothing', () => {
+        // A sentence that says nothing is worse than one the candidate writes,
+        // which is what the space was freed up for. This is not a failure.
+        const m = buildOutreachMessages({
+            ...base,
+            coverLetter: [
+                'Dear Hiring Manager,',
+                '',
+                'I would like to be considered for this position because I believe I would be a good fit.',
+                '',
+                'I am excited about this opportunity and would welcome the chance to discuss it further.',
+            ].join('\n'),
+        });
+        expect(m.linkedInNeedsPitch).toBe(true);
     });
 
     it('addresses the role rather than inventing a name', () => {
