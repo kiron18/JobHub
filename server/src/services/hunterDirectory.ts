@@ -101,7 +101,7 @@ function toPerson(e: any): DirectoryPerson {
  */
 export async function fetchDirectory(
     domain: string,
-    opts: { department?: string } = {},
+    opts: { department?: string; type?: 'personal' | 'generic' } = {},
 ): Promise<Directory | null> {
     const key = hunterKey();
     if (!key || !domain) return null;
@@ -112,6 +112,7 @@ export async function fetchDirectory(
                 domain,
                 limit: DIRECTORY_PAGE_SIZE,
                 ...(opts.department ? { department: opts.department } : {}),
+                ...(opts.type ? { type: opts.type } : {}),
                 api_key: key,
             },
             timeout: 15000,
@@ -340,6 +341,59 @@ export async function fetchDirectoryTargeted(domain: string, role: string): Prom
     // company's, so the small-employer rule would read "4 people in HR" as a
     // four-person company. The free count knows the real total, so use it.
     return count ? { ...directory, total: Math.max(count.total, directory.total) } : directory;
+}
+
+/**
+ * Shared inboxes, best first.
+ *
+ * `recruit@` beats `info@` beats `boxoffice@`, and the order is a list rather
+ * than a score because every one of these is a judgement about who reads the
+ * mailbox, not a measurement. A recruitment inbox is read by the people who
+ * decide; a general enquiries one is read by somebody who can forward it; the
+ * rest are read by a department with no interest in an application.
+ */
+const INBOX_PREFERENCE = [
+    /^(recruit|recruitment|careers?|jobs|hiring|hr|people|talent)/i,
+    /^(info|hello|contact|enquir|inquir|admin|reception|office|mail)/i,
+];
+
+/**
+ * The best shared inbox at a domain, or null.
+ *
+ * Why this exists: the directory hunts for a PERSON, and when it finds none the
+ * card used to say "no address" while the same domain had a staffed
+ * recruitment inbox on it. Real case, 8 Sep 2026 — Brisbane Convention and
+ * Exhibition Centre. Hunter held thirteen addresses at bcec.com.au and nobody
+ * in HR or marketing, so every slot came back empty, and one call away sat
+ * `recruit@bcec.com.au`.
+ *
+ * A shared inbox is a worse contact than a named person and a far better one
+ * than nothing. `confidenceNote('generic')` in the frontend says so plainly
+ * rather than dressing it up: certain to be monitored, less likely to be
+ * answered personally.
+ *
+ * Costs one search. It is spent only where the alternative is showing the
+ * candidate a dead end, and `HUNTER_GENERIC_FALLBACK=false` turns it off.
+ */
+export async function fetchSharedInbox(domain: string): Promise<DirectoryPerson | null> {
+    if (process.env.HUNTER_GENERIC_FALLBACK === 'false') return null;
+
+    const directory = await fetchDirectory(domain, { type: 'generic' });
+    if (!directory?.people.length) return null;
+
+    const usable = directory.people.filter(
+        (p) => p.email && p.verification !== 'invalid',
+    );
+    if (!usable.length) return null;
+
+    for (const tier of INBOX_PREFERENCE) {
+        const hit = usable.find((p) => tier.test(p.email.split('@')[0] ?? ''));
+        if (hit) return hit;
+    }
+    // Nothing recognisable. A department mailbox is still a mailbox, but only
+    // when Hunter is reasonably sure of it: a low-confidence guess at a shared
+    // address is the kind of thing that bounces in front of an employer.
+    return usable.find((p) => (p.confidence ?? 0) >= 70) ?? null;
 }
 
 /**

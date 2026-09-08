@@ -4,7 +4,7 @@ import { searchSerper, scrapeUrl, snippetsToText, type SerperResult } from '../s
 import { callLLMWithRetry } from '../utils/callLLMWithRetry';
 import { parseLLMJson } from '../utils/parseLLMResponse';
 import { fillSlots, filterContact, type OutreachRole } from '../services/contactFilter';
-import { fetchDirectoryTargeted } from '../services/hunterDirectory';
+import { fetchDirectoryTargeted, fetchSharedInbox } from '../services/hunterDirectory';
 import { pickFromDirectory, type Pick, type Slots } from '../services/directoryPick';
 import { findSiteContact } from '../services/siteContact';
 import { verifySlots } from '../services/verifySlots';
@@ -660,6 +660,65 @@ router.post('/company', authenticate, async (req, res) => {
                 ? { ...slots.team_insider.candidate, why: slots.team_insider.notes }
                 : null,
         };
+
+        /*
+          The last resort, and the difference between a dead end and a send.
+
+          Everything above hunts for a PERSON, and when every pass comes back
+          empty this route had nothing to offer at all: the search path's
+          candidates carry a name and a title and NO ADDRESS, so a card built
+          from them has no send button on it, only three boxes to copy out by
+          hand. Meanwhile the employer very often has a staffed inbox sitting on
+          the domain we already resolved. Real case, 8 Sep 2026 — Brisbane
+          Convention and Exhibition Centre: thirteen addresses at bcec.com.au,
+          nobody in HR or marketing so every slot came back empty, and
+          `recruit@bcec.com.au` was one call away.
+
+          It returns as its own source rather than being folded into the search
+          result, for the same reason `site` does: this is an ADDRESS, and the
+          search slots are a different shape that cannot hold one.
+
+          It goes in `talent`, the slot the frontend labels as the
+          reach-a-recruiter one, and it is named for what it is rather than
+          dressed up as a person. PostApplyOutreach greets a generic address
+          with "Dear Hiring Manager" on purpose, and confidenceNote('generic')
+          tells the candidate plainly that a shared inbox is certain to be read
+          and less likely to be answered personally.
+
+          One search, spent only where the alternative was showing nothing.
+        */
+        const foundNobody = !searchOut.talent && !searchOut.hiringManager && !searchOut.teamInsider;
+        if (foundNobody && domain && directoryEnabled()) {
+            const inbox = await fetchSharedInbox(domain);
+            if (inbox) {
+                const slot: Pick = {
+                    name: `${company} enquiries`,
+                    email: inbox.email,
+                    position: null,
+                    department: inbox.department,
+                    verification: inbox.verification,
+                    why: [
+                        'A shared inbox at this employer, not a person.',
+                        'Nobody here could be matched to a name, so this is the address most likely to be read.',
+                    ],
+                };
+                const inboxOut = { talent: slot, hiringManager: null, teamInsider: null };
+                logLookup(company, 'inbox', domain, inboxOut, startedAt);
+                return res.json({
+                    source: 'inbox',
+                    domain,
+                    slots: inboxOut,
+                    rejected,
+                    candidates: [],
+                    hiringManager: null,
+                    hiringManagerTitle: null,
+                    // Never a name: nobody is called Recruitment.
+                    salutation: salutationFor(undefined),
+                    highlights,
+                    companySize,
+                });
+            }
+        }
 
         logLookup(company, 'search', domain, searchOut, startedAt);
 

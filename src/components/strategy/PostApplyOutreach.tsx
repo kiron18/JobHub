@@ -541,10 +541,10 @@ export function PostApplyOutreach({
                                 <>
                                     We found the company at{' '}
                                     <strong style={{ color: warm.colors.textPrimary, fontWeight: 600 }}>{domain}</strong>
-                                    {' '}but not a person to send this to. Pick someone off LinkedIn and
-                                    their address is almost always{' '}
+                                    {' '}but no one there we could put a name to, and no shared inbox
+                                    either. Pick someone off LinkedIn and try their name at{' '}
                                     <strong style={{ color: warm.colors.textPrimary, fontWeight: 600 }}>
-                                        firstname.lastname@{domain}
+                                        @{domain}
                                     </strong>.
                                 </>
                             ) : (
