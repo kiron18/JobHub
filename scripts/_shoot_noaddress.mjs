@@ -35,6 +35,9 @@ const SEED = JSON.stringify({
   sc: false,
 });
 
+/** Set to null to photograph the other failure: no domain at all. */
+const DOMAIN = process.env.CAPTURE_DOMAIN === 'none' ? null : (process.env.CAPTURE_DOMAIN || 'bcec.com.au');
+
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const run = async () => {
@@ -61,7 +64,7 @@ const run = async () => {
     status: 200,
     contentType: 'application/json',
     body: JSON.stringify({
-      source: 'search', domain: null,
+      source: 'search', domain: DOMAIN,
       slots: { talent: null, hiringManager: null, teamInsider: null },
       rejected: [], candidates: [], hiringManager: null, hiringManagerTitle: null,
       salutation: 'Dear Hiring Manager', highlights: [], companySize: null,
@@ -79,7 +82,7 @@ const run = async () => {
   await wait(5000);
 
   const seen = await p.evaluate(() => {
-    const el = Array.from(document.querySelectorAll('p')).find((e) => /could not find an address|Looking for someone/i.test(e.textContent || ''));
+    const el = Array.from(document.querySelectorAll('p')).find((e) => /found the company at|could not work out|Looking for someone|did not finish/i.test(e.textContent || ''));
     const subj = Array.from(document.querySelectorAll('span')).find((e) => /^EMAIL SUBJECT$/i.test((e.textContent || '').trim()));
     if (!el) return { notice: false };
     return {

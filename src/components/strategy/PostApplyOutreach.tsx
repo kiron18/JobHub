@@ -257,13 +257,23 @@ export function PostApplyOutreach({
                 role: jobTitle,
                 jdText: jobDescription ? jobDescription.slice(0, 8000) : undefined,
             });
-            return resolveContact(data);
+            /*
+              The domain is kept even when no person is found, because it is the
+              difference between the two failures. Resolving bcec.com.au and
+              then finding nobody in HR or marketing is a very different thing
+              to never working out who the employer is, and only the first can
+              tell the candidate that the address they want almost certainly
+              ends in @bcec.com.au.
+            */
+            return { contact: resolveContact(data), domain: (data?.domain as string | null) ?? null };
         },
     });
 
     // A name with no address cannot fill a compose window, so the card only
     // replaces the manual instructions when it can actually do better.
-    const sendable = contact && contact.addresses.length > 0 ? contact : null;
+    const found = contact?.contact ?? null;
+    const domain = contact?.domain ?? null;
+    const sendable = found && found.addresses.length > 0 ? found : null;
 
     /*
       Greet the person whose mailbox we are about to fill.
@@ -514,17 +524,54 @@ export function PostApplyOutreach({
                         }}>
                             {contactLoading ? (
                                 <>Looking for someone to send this to&hellip;</>
+                            ) : contactFailed ? (
+                                <>The lookup did not finish, so there is nothing to fill in here.
+                                    The LinkedIn note above needs no address at all.</>
+                            ) : domain ? (
+                                /*
+                                  The useful failure. We know the employer's domain, we
+                                  just could not put a name to anyone there, so the
+                                  candidate is one LinkedIn search away from an address
+                                  rather than starting from nothing. Real case, 8 Sep 2026:
+                                  bcec.com.au resolved first try, and the directory held
+                                  thirteen addresses at that domain with nobody in HR or
+                                  marketing. Saying "we could not find an address" threw
+                                  away the half we did find.
+                                */
+                                <>
+                                    We found the company at{' '}
+                                    <strong style={{ color: warm.colors.textPrimary, fontWeight: 600 }}>{domain}</strong>
+                                    {' '}but not a person to send this to. Pick someone off LinkedIn and
+                                    their address is almost always{' '}
+                                    <strong style={{ color: warm.colors.textPrimary, fontWeight: 600 }}>
+                                        firstname.lastname@{domain}
+                                    </strong>.
+                                </>
                             ) : (
                                 <>
-                                    {contactFailed
-                                        ? 'The lookup did not complete, so there is no address here.'
-                                        : <>We could not find an address for {company || 'this employer'}.</>}
-                                    {' '}Send the LinkedIn note above instead, or find the address
-                                    yourself: the pattern is usually firstname.lastname@ their domain,
-                                    and the name is on the company&rsquo;s LinkedIn people tab.
+                                    We could not work out this employer&rsquo;s website, so there is no
+                                    address to build from. The LinkedIn note above needs no email at all,
+                                    and it is the one that gets answered more often anyway.
                                 </>
                             )}
                         </p>
+
+                        {/* The next step, not just the news. */}
+                        {!contactLoading && company && (
+                            <a
+                                href={`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(company)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                                    marginTop: 10, minHeight: 44,
+                                    fontSize: 13.5, fontWeight: 700,
+                                    color: warm.colors.accentPetrol, textDecoration: 'none',
+                                }}
+                            >
+                                <Search size={14} /> Find someone at {company}
+                            </a>
+                        )}
                     </div>
 
                     <TemplateCard
