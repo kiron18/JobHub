@@ -31,12 +31,28 @@ import axios from 'axios';
 
 const ENDPOINT = 'https://serpapi.com/search.json';
 
-/** Read at call time so dotenv has had its chance. */
-function serpapiKey(): string {
-    const k = process.env.SERPAPI_API_KEY;
+/**
+ * The key, read at call time so dotenv has had its chance.
+ *
+ * Exported, and it accepts both names, because for a while this one vendor was
+ * read under two of them: `serpapi.ts` and the health endpoint looked for
+ * SERPAPI_API_KEY while `jobFeed.ts` and the admin expense panel looked for
+ * SERPAPI_KEY. Only the first is actually set, so the job-feed contact search
+ * and the admin balance readout were both quietly dead — the panel that exists
+ * to tell you a key is missing was itself the thing reading the wrong key.
+ *
+ * SERPAPI_API_KEY is the name. The other is accepted so that an environment
+ * already carrying it does not break on deploy, and it can go once no
+ * deployment sets it.
+ */
+export function serpApiKey(): string {
+    const k = process.env.SERPAPI_API_KEY || process.env.SERPAPI_KEY;
     if (!k) console.warn('[serpapi] SERPAPI_API_KEY not set, search skipped');
     return k || '';
 }
+
+/** Kept for the call sites in this file. */
+const serpapiKey = serpApiKey;
 
 export interface OrganicResult {
     title: string;

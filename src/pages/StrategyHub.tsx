@@ -29,7 +29,7 @@ import { jdMentionsSelectionCriteria } from '../lib/selectionCriteria';
 import { extractJobFacts } from '../lib/extractJobFacts';
 import { classifyPaste, isSubmittable, pasteHint } from '../lib/seekLink';
 import { buildSeekSearchUrl } from '../lib/seekSearchUrl';
-import { browseRoleLabel } from '../lib/roleLabel';
+import { browseRoleLabel, ROLE_BUDGET } from '../lib/roleLabel';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { HowToCopyJobAd } from '../components/strategy/HowToCopyJobAd';
 
@@ -188,7 +188,9 @@ function AnalysisHeroCard() {
     });
     const seekUrl = buildSeekSearchUrl(profileLite?.targetRole, profileLite?.targetCity);
     // Case, rung and length are all handled in one place now. See lib/roleLabel.
-    const roleLabel = browseRoleLabel(profileLite?.targetRole);
+    // The button budget, not the row one: this sits beside a second button and
+    // has to hold one line down to 320px.
+    const roleLabel = browseRoleLabel(profileLite?.targetRole, ROLE_BUDGET.button);
 
     const trimmed = jd.trim();
     // A Seek link is ~35 characters, well under the old 50-character floor, so
@@ -542,9 +544,15 @@ function AnalysisHeroCard() {
                            is the button they need, and next to a solid petrol
                            primary a bare outline reads as the disabled one. */
                         boxShadow: `0 0 0 3px ${warm.colors.accentPetrol}14`,
-                        /* The label is capped by browseRoleLabel, so it always
-                           fits on one line and never has to wrap. */
-                        whiteSpace: 'nowrap',
+                        /* Two lines is an ugly button. Off the side of the card
+                           is a broken one, which is what white-space:nowrap
+                           turned a slightly-too-long label into. The budget in
+                           ROLE_BUDGET.button is what normally keeps this to one
+                           line; wrapping is the floor under it when something
+                           gets through, and minWidth lets the flex item shrink
+                           to its container instead of pushing past it. */
+                        minWidth: 0,
+                        textAlign: 'center',
                         transition: 'border-color 200ms, background 200ms, box-shadow 200ms',
                     }}
                     onMouseEnter={(e) => {
@@ -570,6 +578,7 @@ function AnalysisHeroCard() {
                         display: 'inline-flex',
                         alignItems: 'center',
                         justifyContent: 'center',
+                        minWidth: 0,
                         gap: 6,
                         padding: '12px 22px',
                         fontSize: 14,

@@ -7,6 +7,7 @@ import { callClaude } from '../services/llm';
 import { sendFridayBriefEmail } from '../services/email';
 import { EXEMPT_EMAILS } from './stripe';
 import { supabase } from '../lib/supabase';
+import { serpApiKey } from '../services/serpapi';
 
 const router = Router();
 
@@ -516,7 +517,7 @@ async function fetchApify(): Promise<Partial<ExpenseEntry>> {
 
 async function fetchSerpApi(): Promise<Partial<ExpenseEntry>> {
   try {
-    const res = await fetch(`https://serpapi.com/account.json?api_key=${process.env.SERPAPI_KEY}`);
+    const res = await fetch(`https://serpapi.com/account.json?api_key=${serpApiKey()}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json() as any;
     const monthly = json?.searches_per_month ?? null;

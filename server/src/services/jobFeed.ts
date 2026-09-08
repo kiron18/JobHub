@@ -2,6 +2,7 @@ import axios from 'axios';
 import { prisma } from '../index';
 import { buildSeekClusterKey, buildEntryLevelSearchTerm, fetchSeekJobsForCluster } from './seekScraper';
 import { deduplicateJobs } from '../utils/deduplicateJobs';
+import { serpApiKey } from './serpapi';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -193,7 +194,7 @@ export async function findAddressee(
   }
 
   // Step 2: SerpAPI search
-  const SERPAPI_KEY = process.env.SERPAPI_KEY;
+  const SERPAPI_KEY = serpApiKey();
   if (!SERPAPI_KEY) return null;
 
   try {

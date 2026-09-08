@@ -34,7 +34,18 @@ const router = Router();
 function contactDiscoveryConfig() {
     return {
         enabled: (process.env.COMPANY_RESEARCH_ENABLED ?? '').toLowerCase() === 'true',
-        serpapiKey: Boolean(process.env.SERPAPI_API_KEY),
+        /*
+          BOTH search vendors, because the pipeline uses both and reporting one
+          of them hid a real outage. routes/research.ts runs its people searches
+          through Serper; services/employerDomain.ts resolves the employer's
+          website through SerpApi. On 8 Sep 2026 staging reported
+          `serpapiKey: true` and looked healthy while every contact lookup came
+          back empty, because the missing key was the OTHER one — the log said
+          "[serper] SERPER_API_KEY not set" three times a lookup and the health
+          endpoint had no opinion about it.
+        */
+        serpapiKey: Boolean(process.env.SERPAPI_API_KEY || process.env.SERPAPI_KEY),
+        serperKey: Boolean(process.env.SERPER_API_KEY),
         hunterKey: Boolean(process.env.HUNTER_API_KEY),
     };
 }

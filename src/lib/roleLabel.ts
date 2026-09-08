@@ -38,13 +38,27 @@ const TRAILING_RUNGS = [
 const REDUNDANT_TAIL = ['job', 'jobs', 'role', 'roles', 'position', 'positions', 'vacancy', 'vacancies'];
 
 /**
- * Where a label stops being a category and starts being a paragraph.
+ * How many characters the ROLE gets, per place the label is printed.
  *
- * 24 is the width of "marketing communications", which is about the longest
- * thing that still reads as the NAME of a field rather than as the title of one
- * specific advertised job.
+ * A budget rather than one constant, because the constraint is never the role
+ * on its own — it is the whole rendered sentence in the box it has to fit.
+ * "Browse ___ jobs" spends 12 characters before the role gets any, so a 24
+ * character role is a 36 character line, and at 14px semibold that is 492px of
+ * button. No phone is 492px wide. Shipped exactly that on 8 Sep 2026: the pair
+ * of buttons on the dashboard ran off the right of the card at every width
+ * under 620, because the cap had been applied to the role and the promise not
+ * to wrap had been made about the sentence.
+ *
+ * So each caller says how much room it actually has, and the numbers below are
+ * measured at 320px — the narrowest phone still in use — not estimated.
+ * scripts/_widthcheck.mjs is what measures them.
  */
-const MAX_LABEL_CHARS = 24;
+export const ROLE_BUDGET = {
+  /** "Browse ___ jobs" on a button that has to hold one line on a 320px phone. */
+  button: 16,
+  /** A full-width row with the sentence and nothing else competing for it. */
+  row: 24,
+} as const;
 
 /** Below two words a label stops naming a craft: "communications", not "officer". */
 const MIN_LABEL_WORDS = 2;
@@ -98,31 +112,41 @@ function dropTail(words: string[]): string[] {
  * officer", and what survives is always a true generalisation of what they
  * typed rather than a fragment of it.
  */
-function fitLength(words: string[]): string[] {
+function fitLength(words: string[], maxChars: number): string[] {
   let out = words;
-  while (out.join(' ').length > MAX_LABEL_CHARS && out.length > MIN_LABEL_WORDS) {
+  while (out.join(' ').length > maxChars && out.length > MIN_LABEL_WORDS) {
     out = out.slice(1);
   }
   // Never start on a joining word, whatever the length worked out to.
   while (out.length > 1 && LEADING_CONNECTIVES.includes(out[0].toLowerCase())) {
     out = out.slice(1);
   }
-  // A two-word label that is still too long is two long words. Nothing left to
-  // cut that would not destroy the meaning, so it is printed as it is.
+  // Down to two words and still over budget means two long words. One of them
+  // is the craft and the other qualifies it, so the qualifier goes and a single
+  // word carries the label: "Browse communications jobs" beats a line that runs
+  // off the screen, and beats an ellipsis in the middle of a sentence.
+  if (out.join(' ').length > maxChars && out.length > 1) out = out.slice(-1);
   return out;
 }
 
 /**
  * The role as it should read inside "Browse ___ jobs".
  *
+ * `maxChars` is the room the caller has for the role itself — see ROLE_BUDGET,
+ * and pass one of its members rather than a bare number, so the reason for the
+ * size stays attached to it.
+ *
  * Returns GENERIC_ROLE_LABEL when there is nothing usable, so the caller's
  * sentence still reads ("Browse more jobs") rather than collapsing.
  */
-export function browseRoleLabel(targetRole?: string | null): string {
+export function browseRoleLabel(
+  targetRole?: string | null,
+  maxChars: number = ROLE_BUDGET.row,
+): string {
   const trimmed = (targetRole ?? '').trim().replace(/\s+/g, ' ');
   if (!trimmed) return GENERIC_ROLE_LABEL;
 
-  const words = fitLength(dropTail(normaliseCase(trimmed).split(' ')));
+  const words = fitLength(dropTail(normaliseCase(trimmed).split(' ')), maxChars);
   const label = words.join(' ').replace(/[\s,;:|/–—-]+$/, '').trim();
 
   return label.length >= 2 ? label : GENERIC_ROLE_LABEL;

@@ -3,7 +3,7 @@ import { ExternalLink } from 'lucide-react';
 import api from '../../lib/api';
 import { warm } from '../../lib/theme/warmTokens';
 import { buildSeekSearchUrl } from '../../lib/seekSearchUrl';
-import { browseRoleLabel } from '../../lib/roleLabel';
+import { browseRoleLabel, ROLE_BUDGET } from '../../lib/roleLabel';
 import type { JobFeedItem } from '../jobs/JobCard';
 
 interface ApplyFeedStripProps {
@@ -36,9 +36,9 @@ export function ApplyFeedStrip(_props: ApplyFeedStripProps) {
   });
 
   const seekUrl = buildSeekSearchUrl(profile?.targetRole, profile?.targetCity);
-  // Same label rule as the browse button on the dashboard: case, rung and
-  // length all settled in one place. See lib/roleLabel.
-  const roleLabel = browseRoleLabel(profile?.targetRole);
+  // Same label rule as the browse button on the dashboard, with the wider
+  // budget: this is a full-width row with nothing beside it. See lib/roleLabel.
+  const roleLabel = browseRoleLabel(profile?.targetRole, ROLE_BUDGET.row);
 
   return (
     <div style={{ marginBottom: 18 }}>

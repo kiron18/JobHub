@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { browseRoleLabel, stripRung, GENERIC_ROLE_LABEL } from '../roleLabel';
+import { browseRoleLabel, stripRung, GENERIC_ROLE_LABEL, ROLE_BUDGET } from '../roleLabel';
 
 describe('browseRoleLabel', () => {
   it('lowercases a badly-cased role — the bug that shipped', () => {
@@ -38,11 +38,40 @@ describe('browseRoleLabel', () => {
       .toBe('campaign manager');
   });
 
-  it('never cuts below two words', () => {
-    // Two long words is as short as it gets: one word would name a field, not
-    // a job, and the label has to stay a search someone recognises.
-    expect(browseRoleLabel('Telecommunications Administrator'))
-      .toBe('telecommunications administrator');
+  it('prefers two words, and gives one up rather than overflow', () => {
+    // Two words is the shape a label wants, and it keeps them whenever they
+    // fit. Two words that do NOT fit the caller's stated room is a button that
+    // runs off the side of the card, so the qualifier goes and the craft stays
+    // — head-final, the same rule the trimming above follows. The search URL
+    // is still built from the full stored role, so nothing is actually lost.
+    expect(browseRoleLabel('Occupational Therapist')).toBe('occupational therapist');
+    expect(browseRoleLabel('Telecommunications Administrator')).toBe('administrator');
+    expect(browseRoleLabel('Occupational Therapist', ROLE_BUDGET.button)).toBe('therapist');
+  });
+
+  it('fits the button budget, which is the whole sentence and not just the role', () => {
+    // "Browse ___ jobs" spends 12 characters before the role gets any. This is
+    // the case that shipped a button 492px wide onto a 390px phone.
+    const cases = [
+      'Marketing Communications Intern',
+      'Marketing Communications and Engagement Officer',
+      'Senior Digital Marketing Campaign Manager',
+      'Telecommunications Administrator',
+      'Data Analyst',
+      'AI Engineer',
+    ];
+    for (const role of cases) {
+      const label = browseRoleLabel(role, ROLE_BUDGET.button);
+      expect(label.length).toBeLessThanOrEqual(ROLE_BUDGET.button);
+      expect(`Browse ${label} jobs`.length).toBeLessThanOrEqual(ROLE_BUDGET.button + 12);
+    }
+  });
+
+  it('keeps the roomier budget where there is room', () => {
+    expect(browseRoleLabel('Marketing Communications Intern', ROLE_BUDGET.row))
+      .toBe('marketing communications');
+    expect(browseRoleLabel('Marketing Communications Intern', ROLE_BUDGET.button))
+      .toBe('communications');
   });
 
   it('leaves a label that already fits completely alone', () => {
