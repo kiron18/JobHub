@@ -190,6 +190,7 @@ export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan
                   {isPaid ? 'Before you go' : 'Account & billing'}
                 </p>
                 {(!isPaid || step === 'reasons') && (
+                <>
                 <h2 style={{ fontSize: 20, fontWeight: 600, letterSpacing: '-0.02em', color: textMain, margin: 0, lineHeight: 1.3 }}>
                   {isPaid ? 'Most people see results in weeks 2–3.' : 'View your plan and billing details'}
                 </h2>
@@ -198,6 +199,7 @@ export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan
                     ? "You're closer than you think. What's making you consider leaving?"
                     : 'Check your subscription status, switch plans, or update your billing information.'}
                 </p>
+                </>
                 )}
               </div>
               <button
