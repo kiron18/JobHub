@@ -29,8 +29,7 @@ export const EXEMPT_EMAILS = [
  * end means a signup that does not exist yet, which means a new plus tag every
  * run. An exact-match list misses all of them.
  */
-export const COMP_EMAILS = [
-  'yornorik281@gmail.com',
+export const COMP_EMAILS: string[] = [
 ];
 
 /**
