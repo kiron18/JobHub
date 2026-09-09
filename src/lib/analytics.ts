@@ -142,12 +142,12 @@ export function trackJobSavedFromFeed() {
 
 // ── Conversion ────────────────────────────────────────────────────────────────
 
-export function trackUpgradeModalOpened(trigger: string) {
-  posthog.capture('upgrade_modal_opened', { trigger });
+export function trackUpgradeModalOpened(trigger: string, paywallVariant?: string) {
+  posthog.capture('upgrade_modal_opened', { trigger, paywall_variant: paywallVariant });
 }
 
-export function trackCheckoutStarted(plan: string) {
-  posthog.capture('checkout_started', { plan });
+export function trackCheckoutStarted(plan: string, paywallVariant?: string) {
+  posthog.capture('checkout_started', { plan, paywall_variant: paywallVariant });
 }
 
 export function trackFreeLimitHit(feature: string) {

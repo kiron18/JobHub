@@ -31,6 +31,7 @@ import { SALES_PAGE_URL } from '../../lib/salesPage';
 import { splitAtFirstSection } from '../../lib/resumeHead';
 import { embeddedCheckoutEnabled } from '../../lib/embeddedCheckout';
 import { EmbeddedCheckoutPanel } from './EmbeddedCheckoutPanel';
+import { getPaywallVariant } from '../../lib/paywallVariant';
 
 const C = warm.colors;
 const EASE = [0.25, 1, 0.5, 1] as const;
@@ -171,11 +172,27 @@ const OFFER_SCRIM = 'rgba(15,32,56,0.18)';
  * somebody who has been rejected forty times costs more than it earns. If a
  * real one ever exists (a price rise, a cohort date), it can be said plainly.
  */
-const OFFER = {
-  title: 'Unlock access to your dream job today.',
-  subtitle:
-    'Unlimited high quality personalised applications sent in minutes that guarantee you getting hired.',
+/**
+ * The headline and subhead, split by A/B variant — everything below this is
+ * the same offer either way, said in a different order. `a_value` leads with
+ * the price and the value stack, the original. `b_trial` leads with the free
+ * week instead and pushes $250/mo down to a secondary line; see the price
+ * block below, which is the other half of that swap.
+ */
+const VARIANT_COPY = {
+  a_value: {
+    title: 'Unlock access to your dream job today.',
+    subtitle:
+      'Unlimited high quality personalised applications sent in minutes that guarantee you getting hired.',
+  },
+  b_trial: {
+    title: 'Try it free for 7 days.',
+    subtitle:
+      'Every tailored resume, cover letter and outreach message — free for a week. Cancel any time before day 7 and you pay nothing.',
+  },
+} as const;
 
+const OFFER = {
   /*
    * Anchored values, one line each, every one a thing that is actually built.
    * If a line is ever cut from the product, cut it from here the same day: a
@@ -259,6 +276,14 @@ interface Props {
 }
 
 export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Props) {
+  /*
+   * Assigned once per browser (see paywallVariant.ts) and read once here, not
+   * re-rolled on every render or every time this gate reopens, so a candidate
+   * who closes it and pastes another job sees the same offer twice, not a
+   * coin flip each time.
+   */
+  const [variant] = useState(getPaywallVariant);
+  const copy = VARIANT_COPY[variant];
   const [phase, setPhase] = useState<'boot' | 'print' | 'offer' | 'paying'>('boot');
   const [line, setLine] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -382,9 +407,9 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
 
   useEffect(() => {
     if (phase !== 'offer') return;
-    trackUpgradeModalOpened('generation');
+    trackUpgradeModalOpened('generation', variant);
     trackFreeLimitHit('generation');
-  }, [phase]);
+  }, [phase, variant]);
 
   /*
    * `premium` is the $250/month recurring price this modal advertises. It is
@@ -395,7 +420,7 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
   const PLAN = 'premium';
 
   async function checkout() {
-    trackCheckoutStarted(PLAN);
+    trackCheckoutStarted(PLAN, variant);
 
     /*
      * In-page payment, when it is switched on.
@@ -693,10 +718,10 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
                 fontSize: 'clamp(22px, 4.2vw, 28px)', letterSpacing: '-0.02em',
                 lineHeight: 1.22, color: C.textPrimary,
               }}>
-                {OFFER.title}
+                {copy.title}
               </h2>
               <p style={{ margin: '0 0 18px', fontSize: 15.5, lineHeight: 1.6, color: C.textSecondary }}>
-                {OFFER.subtitle}
+                {copy.subtitle}
               </p>
 
               <ul style={{ listStyle: 'none', margin: '0 0 10px', padding: 0, display: 'grid', gap: 9 }}>
@@ -736,21 +761,52 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
                     {OFFER.stackTotal}
                   </span>
                 </div>
-                <p style={{
-                  margin: '2px 0 0', fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em',
-                  color: C.textPrimary, fontVariantNumeric: 'tabular-nums',
-                }}>
-                  {OFFER.price}
-                </p>
-                <p style={{ margin: 0, fontSize: 13.5, color: C.textMuted }}>{OFFER.anchor}</p>
-                {/* The risk reversal sits with the number it reverses, not down
-                    by the button, because the hesitation happens here. */}
-                <p style={{
-                  margin: '6px 0 0', fontSize: 14, fontWeight: 700, lineHeight: 1.45,
-                  color: C.success,
-                }}>
-                  {OFFER.trial}
-                </p>
+                {/*
+                  The same three facts (price, anchor, trial terms), reordered
+                  by variant. a_value leads with $250/mo, the trial is the
+                  reassurance underneath. b_trial leads with the free week —
+                  that is the whole pitch of the variant — and the price
+                  becomes the secondary line, still stated in full, never
+                  hidden: "free" without the number next to it is the
+                  misleading version.
+                */}
+                {variant === 'b_trial' ? (
+                  <>
+                    <p style={{
+                      margin: '2px 0 0', fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em',
+                      color: C.textPrimary,
+                    }}>
+                      Free for 7 days
+                    </p>
+                    <p style={{ margin: 0, fontSize: 13.5, color: C.textMuted, fontVariantNumeric: 'tabular-nums' }}>
+                      {OFFER.price} after your trial ends — {OFFER.anchor}
+                    </p>
+                    <p style={{
+                      margin: '6px 0 0', fontSize: 14, fontWeight: 700, lineHeight: 1.45,
+                      color: C.success,
+                    }}>
+                      Cancel any time before day 7 and you are not charged.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p style={{
+                      margin: '2px 0 0', fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em',
+                      color: C.textPrimary, fontVariantNumeric: 'tabular-nums',
+                    }}>
+                      {OFFER.price}
+                    </p>
+                    <p style={{ margin: 0, fontSize: 13.5, color: C.textMuted }}>{OFFER.anchor}</p>
+                    {/* The risk reversal sits with the number it reverses, not
+                        down by the button, because the hesitation happens here. */}
+                    <p style={{
+                      margin: '6px 0 0', fontSize: 14, fontWeight: 700, lineHeight: 1.45,
+                      color: C.success,
+                    }}>
+                      {OFFER.trial}
+                    </p>
+                  </>
+                )}
               </div>
 
               <p style={{
