@@ -601,7 +601,13 @@ router.post('/:id/start-apply', async (req: any, res: any) => {
     const userEmail = (req.user?.email ?? '').toLowerCase();
     const profile = await prisma.candidateProfile.findUnique({
       where: { userId },
-      select: { id: true, plan: true, planStatus: true, dashboardAccess: true, trialEndDate: true },
+      // accessExpiresAt is selected because isPaidOrExempt reads it. Left out,
+      // a client inside a year they have paid for looks like a trial user to
+      // the cap below and gets throttled at 10 applications a day.
+      select: {
+        id: true, plan: true, planStatus: true, dashboardAccess: true,
+        trialEndDate: true, accessExpiresAt: true,
+      },
     });
     if (!profile) return res.status(404).json({ error: 'Profile not found' });
 

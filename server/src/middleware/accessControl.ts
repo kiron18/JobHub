@@ -37,10 +37,33 @@ export function denyPayload(access: AccessResult, feature: string): Record<strin
   return { error: `${feature} limit reached`, upgradeRequired: true, remaining: 0 };
 }
 
-// True when the user should have unlimited feature access: an explicit grant,
-// a live paid plan, or an active 7-day trial (free plan with a future trialEndDate).
+/**
+ * Inside a window somebody has already paid for.
+ *
+ * `accessExpiresAt` is a promise about a DATE, and it deliberately outranks
+ * everything the subscription is doing. A client who paid for a year and whose
+ * card then stops recurring in month four has not stopped being owed the year;
+ * a three-month bundle is a single payment with no recurrence at all, so its
+ * `plan` and `planStatus` say nothing useful about whether access is still
+ * owed. Only the date does.
+ *
+ * This is why it survives cancellation. `customer.subscription.deleted` writes
+ * plan=free, planStatus=cancelled, dashboardAccess=false, and does not touch
+ * accessExpiresAt — so the window keeps running underneath a cancelled
+ * subscription, which is exactly the intent.
+ *
+ * A billing hold still outranks it. That is checked by both callers below.
+ */
+export function withinPaidWindow(p: AccessProfileLike): boolean {
+  return p.accessExpiresAt != null && p.accessExpiresAt > new Date();
+}
+
+// True when the user should have unlimited feature access: a paid-for window,
+// an explicit grant, a live paid plan, or an active 7-day trial (free plan with
+// a future trialEndDate).
 export function hasActiveAccess(p: AccessProfileLike): boolean {
   if (isOnBillingHold(p)) return false;
+  if (withinPaidWindow(p)) return true;
   if (p.dashboardAccess === true) return true;
   const plan = p.plan ?? 'free';
   const planStatus = p.planStatus ?? 'active';
@@ -53,8 +76,13 @@ export function hasActiveAccess(p: AccessProfileLike): boolean {
 // trial). Used to exempt paying customers from the trial-only daily cap so they
 // are never throttled. Trial-by-default users (free plan + trialEndDate) are NOT
 // paid, so the cap still applies to them.
+//
+// A paid-for window counts here for the same reason it counts above: somebody
+// inside a year they bought is a paying customer, and throttling them with a
+// cost guard aimed at free trials would be charging them for our own caution.
 export function isPaidOrExempt(p: AccessProfileLike, email?: string | null): boolean {
   if (hasComplimentaryAccess(email)) return true;
+  if (withinPaidWindow(p)) return true;
   if (p.dashboardAccess === true) return true;
   const plan = p.plan ?? 'free';
   const planStatus = p.planStatus ?? 'active';

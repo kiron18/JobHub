@@ -36,7 +36,7 @@ vi.mock('../routes/stripe', () => ({
   },
 }));
 
-import { hasActiveAccess, isOnBillingHold, denyPayload, checkAccess } from './accessControl';
+import { hasActiveAccess, isOnBillingHold, isPaidOrExempt, denyPayload, checkAccess } from './accessControl';
 import { isGateEnforced } from '../config/accessGate';
 
 /* ── The gate ────────────────────────────────────────────────────────────────
@@ -194,6 +194,68 @@ describe('hasActiveAccess', () => {
   });
   it('false for a plain free user with no trial', () => {
     expect(hasActiveAccess({ plan: 'free', planStatus: 'active', trialEndDate: null, dashboardAccess: false, accessExpiresAt: null })).toBe(false);
+  });
+});
+
+/* ── The paid-for window ─────────────────────────────────────────────────────
+   accessExpiresAt is a promise about a date, made to eight clients on 9 Sep
+   2026: a year of access from the day their first payment cleared. What these
+   assert is that the promise survives everything that might otherwise revoke
+   it — a finished three-month bundle, a cancelled subscription, a grant being
+   withdrawn — because every one of those happens NORMALLY at the end of a
+   program and none of them means the year is over.                           */
+describe('a window somebody has paid for', () => {
+  const future = new Date(Date.now() + 200 * 86_400_000);
+  const past = new Date(Date.now() - 86_400_000);
+
+  it('grants access on its own, with no plan and no grant', () => {
+    expect(hasActiveAccess({ plan: 'free', planStatus: 'active', dashboardAccess: false, accessExpiresAt: future })).toBe(true);
+  });
+
+  // The exact shape customer.subscription.deleted leaves behind: it writes
+  // plan=free, planStatus=cancelled, dashboardAccess=false, and does NOT touch
+  // accessExpiresAt. A client who paid for a year in month one must not lose it
+  // in month four because the recurring charge stopped.
+  it('survives a cancelled subscription', () => {
+    expect(hasActiveAccess({
+      plan: 'free', planStatus: 'cancelled', dashboardAccess: false, accessExpiresAt: future,
+    })).toBe(true);
+  });
+
+  it('survives an expired plan with the grant withdrawn', () => {
+    expect(hasActiveAccess({
+      plan: 'free', planStatus: 'expired', dashboardAccess: false, trialEndDate: past, accessExpiresAt: future,
+    })).toBe(true);
+  });
+
+  it('stops the day it runs out', () => {
+    expect(hasActiveAccess({ plan: 'free', planStatus: 'cancelled', dashboardAccess: false, accessExpiresAt: past })).toBe(false);
+  });
+
+  // A hold is money owed right now. It has to outrank a window that was paid
+  // for earlier, or it stops being a lever at all.
+  it('does not survive a billing hold', () => {
+    expect(hasActiveAccess({ plan: 'monthly', accessExpiresAt: future, billingHoldAt: new Date() })).toBe(false);
+  });
+
+  // The daily cap is a cost guard aimed at free trials. Somebody inside a year
+  // they bought is not a free trial.
+  it('exempts them from the trial daily cap', () => {
+    expect(isPaidOrExempt({ plan: 'free', planStatus: 'cancelled', dashboardAccess: false, accessExpiresAt: future })).toBe(true);
+    expect(isPaidOrExempt({ plan: 'free', planStatus: 'cancelled', dashboardAccess: false, accessExpiresAt: past })).toBe(false);
+  });
+
+  it('and the gate lets them through', async () => {
+    process.env.FREE_TIER_GATE = 'on';
+    profileRow = {
+      plan: 'free', planStatus: 'cancelled', accessExpiresAt: future, trialEndDate: null,
+      dashboardAccess: false, billingHoldAt: null, billingHoldInvoiceUrl: null,
+      freeGenerationsUsed: 99, freeAnalysesUsed: 99, freeJobSearchesUsed: 99, freeMatchScoresUsed: 99,
+    };
+    updates.length = 0;
+    expect(await checkAccess('u', 'generation', 'client@example.com')).toEqual({ allowed: true });
+    expect(updates).toEqual([]);
+    delete process.env.FREE_TIER_GATE;
   });
 });
 
