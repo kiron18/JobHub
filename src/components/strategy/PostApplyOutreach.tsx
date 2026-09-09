@@ -26,7 +26,7 @@
  */
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, ChevronUp, Linkedin, Mail, Search } from 'lucide-react';
+import { ChevronDown, ChevronUp, Linkedin, Loader2, Mail, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../../lib/api';
 import { warm } from '../../lib/theme/warmTokens';
@@ -112,7 +112,7 @@ export function PostApplyOutreach({
       to exactly what this card was before: the drafts, and instructions for
       finding an address by hand.
     */
-    const { data: contact } = useQuery({
+    const { data: contact, isFetching: lookingUpContact } = useQuery({
         queryKey: ['outreach-contact', company, jobTitle],
         // Not gated on the banner any more: the drafts are always on screen,
         // so the address they are addressed to has to be looked up regardless.
@@ -184,9 +184,21 @@ export function PostApplyOutreach({
     const primaryIsEmail = Boolean(sendTo);
     const client = clientForAddress(userEmail);
     const clientName = client === 'gmail' ? 'Gmail' : client === 'outlook' ? 'Outlook' : null;
-    const mailLabel = sendTo
-        ? `Send the follow-up${clientName ? ` in ${clientName}` : ''}`
-        : 'Draft the email anyway';
+    /*
+      Three states, and the middle one used to be missing.
+
+      The lookup takes ten or twenty seconds, and while it was running the card
+      rendered the SAME thing it renders when the lookup has finished and found
+      nobody: "Draft the email anyway", under a note explaining that the To line
+      will be empty. So for the whole time it was working, the card was telling
+      people it had already failed — and "anyway" is a word that only means
+      anything if you already know what it is in spite of.
+    */
+    const mailLabel = lookingUpContact
+        ? 'Looking for an address…'
+        : sendTo
+            ? `Send the follow-up${clientName ? ` in ${clientName}` : ''}`
+            : 'Draft the email without an address';
 
     function openMail() {
         // An empty `to` is deliberate and valid on all three targets: compose
@@ -418,10 +430,15 @@ export function PostApplyOutreach({
                         />
                         <ActionCard
                             tone="secondary"
-                            icon={<Mail size={16} />}
-                            label="Draft the email anyway"
+                            icon={lookingUpContact
+                                ? <Loader2 size={16} className="animate-spin" />
+                                : <Mail size={16} />}
+                            label={mailLabel}
+                            busy={lookingUpContact}
                             onClick={openMail}
-                            note="Everything written, To line empty, for once you have found an address."
+                            note={lookingUpContact
+                                ? `Checking whether anyone at ${company || 'this employer'} is reachable.`
+                                : 'Everything written, To line empty, for once you have found an address.'}
                         />
                     </>
                 )}
@@ -476,11 +493,13 @@ export default PostApplyOutreach;
  * auto` on the note pins both buttons to the top of their card and lets the
  * notes hang at whatever length they are.
  */
-function ActionCard({ tone, icon, label, note, onClick }: {
+function ActionCard({ tone, icon, label, note, busy, onClick }: {
     tone: 'primary' | 'secondary';
     icon: React.ReactNode;
     label: string;
     note?: string;
+    /** Work is still running. Reads as waiting, and cannot be pressed. */
+    busy?: boolean;
     onClick: () => void;
 }) {
     const primary = tone === 'primary';
@@ -489,6 +508,8 @@ function ActionCard({ tone, icon, label, note, onClick }: {
             <button
                 type="button"
                 onClick={onClick}
+                disabled={busy}
+                aria-busy={busy || undefined}
                 style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9,
                     width: '100%', minHeight: 48, padding: '13px 16px',
@@ -501,8 +522,9 @@ function ActionCard({ tone, icon, label, note, onClick }: {
                     color: primary ? warm.colors.textOnDeep : warm.colors.textPrimary,
                     background: primary ? warm.colors.accentPetrol : warm.colors.bgSurface,
                     border: primary ? 'none' : `1px solid ${warm.colors.borderDefined}`,
-                    borderRadius: 12, cursor: 'pointer',
-                    boxShadow: primary ? '0 1px 2px rgba(16,24,40,0.06), 0 6px 18px rgba(18,87,196,0.20)' : 'none',
+                    borderRadius: 12, cursor: busy ? 'progress' : 'pointer',
+                    opacity: busy ? 0.72 : 1,
+                    boxShadow: primary && !busy ? '0 1px 2px rgba(16,24,40,0.06), 0 6px 18px rgba(18,87,196,0.20)' : 'none',
                 }}
             >
                 <span style={{ flexShrink: 0, display: 'inline-flex' }}>{icon}</span>
