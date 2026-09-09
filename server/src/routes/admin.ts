@@ -629,11 +629,18 @@ async function buildExpensesData(): Promise<ExpensesResponse> {
 
 // GET /api/admin/posthog-stats
 router.get('/posthog-stats', authenticate, requireAdmin, async (_req, res) => {
-  const key = process.env.POSTHOG_PERSONAL_API_KEY;
-  const projectId = process.env.POSTHOG_PROJECT_ID;
+  // Accepts either env var name — Railway/local .env have historically been
+  // set as POSTHOG_API_KEY, which this endpoint never actually read, so this
+  // has been silently 503ing. Not renaming the Railway var: fixing it here is
+  // additive and does not require touching production config to take effect.
+  const key = process.env.POSTHOG_PERSONAL_API_KEY || process.env.POSTHOG_API_KEY;
+  // POSTHOG_PROJECT_ID has been set to the full project URL rather than the
+  // numeric id the query URL below needs — pull the digits out of either form.
+  const rawProjectId = process.env.POSTHOG_PROJECT_ID;
+  const projectId = rawProjectId?.match(/\d+/)?.[0];
 
   if (!key || !projectId) {
-    return res.status(503).json({ error: 'PostHog not configured — set POSTHOG_PERSONAL_API_KEY and POSTHOG_PROJECT_ID in Railway env vars' });
+    return res.status(503).json({ error: 'PostHog not configured — set POSTHOG_PERSONAL_API_KEY (or POSTHOG_API_KEY) and POSTHOG_PROJECT_ID in Railway env vars' });
   }
 
   async function hogql(query: string): Promise<any> {
@@ -660,7 +667,10 @@ router.get('/posthog-stats', authenticate, requireAdmin, async (_req, res) => {
     const [events7d, onboardingSteps, docTypes, features, cancelReasons, activeUsers] = await Promise.allSettled([
       hogql(`SELECT event, count() as cnt FROM events WHERE timestamp >= now() - interval 7 day GROUP BY event ORDER BY cnt DESC LIMIT 20`),
       hogql(`SELECT properties.step, count() as cnt FROM events WHERE event = 'onboarding_step_viewed' AND timestamp >= now() - interval 30 day GROUP BY properties.step ORDER BY cnt DESC`),
-      hogql(`SELECT properties.type, count() as cnt FROM events WHERE event = 'document_generated' AND timestamp >= now() - interval 30 day GROUP BY properties.type ORDER BY cnt DESC`),
+      // Was `properties.type` — document_generated has always carried
+      // `doc_type` (see trackDocumentGenerated in src/lib/analytics.ts), so
+      // this column was silently empty for every row.
+      hogql(`SELECT properties.doc_type, count() as cnt FROM events WHERE event = 'document_generated' AND timestamp >= now() - interval 30 day GROUP BY properties.doc_type ORDER BY cnt DESC`),
       hogql(`SELECT properties.feature, count() as cnt FROM events WHERE event = 'feature_opened' AND timestamp >= now() - interval 30 day GROUP BY properties.feature ORDER BY cnt DESC`),
       hogql(`SELECT properties.reason, count() as cnt FROM events WHERE event = 'cancellation_reason_selected' GROUP BY properties.reason ORDER BY cnt DESC`),
       hogql(`SELECT count(distinct person_id) as cnt FROM events WHERE timestamp >= now() - interval 7 day`),

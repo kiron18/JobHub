@@ -48,6 +48,7 @@ import {
 import { MustKeep, describeRetention } from '../services/retentionGate';
 import { targetRoleSeed } from '../lib/targetRoleSeed';
 import { assertResumeSource, ResumeSourceError } from '../lib/resumeSourceGate';
+import { captureServerEvent } from '../lib/posthogServer';
 
 const router = Router();
 
@@ -520,7 +521,16 @@ router.post('/finish', authenticate, async (req: AuthRequest, res: Response) => 
         to: email,
         firstName: session.firstName,
         resumeMarkdown: session.resumeCleanText,
-      }).catch((err) => console.warn('[welcome/finish] resume email failed (non-fatal):', err?.message));
+      }).then(() => {
+        captureServerEvent({ distinctId: userId, event: 'resume_email_sent' });
+      }).catch((err) => {
+        console.warn('[welcome/finish] resume email failed (non-fatal):', err?.message);
+        captureServerEvent({
+          distinctId: userId,
+          event: 'resume_email_failed',
+          properties: { error_type: 'send_failed', stage: 'welcome_email' },
+        });
+      });
     }
 
     res.json({ ok: true });

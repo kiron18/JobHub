@@ -15,6 +15,46 @@ export function initAnalytics() {
     persistence: 'localStorage+cookie',
     // Don't track anonymous sessions — wait for identify()
     bootstrap: {},
+    // Session replay: mask anything that can carry resume contents, answers or
+    // credentials. `[data-ph-mask]` is the opt-in hook — see the resume paper
+    // and question inputs in WelcomePage/StepperWorkspace, which carry it.
+    // Password fields are masked by posthog-js itself regardless of this config.
+    session_recording: {
+      maskTextSelector: '[data-ph-mask]',
+      maskInputOptions: { password: true },
+    },
+  });
+}
+
+// ── Acquisition source ────────────────────────────────────────────────────────
+// One bucket per campaign so "Instagram vs LinkedIn" is a straight breakdown
+// instead of everyone reconciling utm_source spellings by hand. utm_source
+// wins when present; otherwise inferred from the referrer. Registered as a
+// SESSION super-property (register, not register_once) so it rides on every
+// event for this visit, and PostHog's own $initial_utm_source /
+// $initial_referrer already carry the true first-touch onto the person once
+// they identify — this is the human-readable label next to that raw data.
+function resolveAcquisitionSource(): string {
+  const params = new URLSearchParams(window.location.search);
+  const utmSource = (params.get('utm_source') || '').toLowerCase();
+  if (utmSource.includes('instagram') || utmSource === 'ig') return 'Instagram';
+  if (utmSource.includes('linkedin')) return 'LinkedIn';
+  if (utmSource.includes('google')) return 'Google';
+  if (utmSource) return 'Other';
+
+  const ref = (document.referrer || '').toLowerCase();
+  if (ref.includes('instagram.com')) return 'Instagram';
+  if (ref.includes('linkedin.com')) return 'LinkedIn';
+  if (ref.includes('google.')) return 'Google';
+  if (!ref) return 'Direct';
+  return 'Other';
+}
+
+/** Call once at boot, after initAnalytics(). Safe to call with no PostHog key. */
+export function registerAcquisitionSource() {
+  posthog.register({
+    acquisition_source: resolveAcquisitionSource(),
+    landing_page: window.location.pathname,
   });
 }
 
@@ -252,4 +292,103 @@ export function trackFreeResourceDownloaded(slug: string, fileLabel: string) {
 
 export function trackFreeResourceRegistered(slug: string, challenge: string) {
   posthog.capture('free_resource_registered', { slug, challenge });
+}
+
+// ── Question-level drop-off (the 8-10 welcome questions) ─────────────────────
+// The step-level welcome_step_viewed funnel cannot say WHICH question loses
+// people — everyone answering 0 of 6 and everyone answering 5 of 6 both just
+// show up as "reached brief, never reached roles". These pair up so a funnel
+// built on resume_question_started -> resume_question_completed, broken down
+// by question_index, makes that visible. Abandonment is inferred from a
+// started with no matching completed — no separate "abandoned" event, per spec.
+
+export function trackResumeQuestionStarted(questionIndex: number, questionId: string, questionType: string) {
+  posthog.capture('resume_question_started', {
+    question_index: questionIndex,
+    question_id: questionId,
+    question_type: questionType,
+  });
+}
+
+export function trackResumeQuestionCompleted(
+  questionIndex: number,
+  questionId: string,
+  questionType: string,
+  timeOnQuestionMs: number,
+  whetherSuggestionWasUsed: boolean,
+  skipped: boolean,
+) {
+  posthog.capture('resume_question_completed', {
+    question_index: questionIndex,
+    question_id: questionId,
+    question_type: questionType,
+    time_on_question_ms: timeOnQuestionMs,
+    whether_suggestion_was_used: whetherSuggestionWasUsed,
+    skipped,
+  });
+}
+
+/**
+ * The welcome flow's email step already fires welcome_step_viewed('email') on
+ * arrival; this is the actual submit, which the brief calls out separately
+ * (view vs. submit is exactly the gap that matters on a form step). Domain
+ * only, never the full address — see the brief's explicit privacy note.
+ */
+export function trackEmailSubmitted(email: string) {
+  const domain = email.split('@')[1]?.toLowerCase() || 'unknown';
+  posthog.capture('email_submitted', { email_domain: domain });
+}
+
+// ── Job matching (/check) ─────────────────────────────────────────────────────
+// FitCheckPage is the live "paste a job, see if you should apply" screen —
+// MatchEngine.tsx/match_analysis_run is dead code (unrouted since StrategyHub
+// replaced the old dashboard) and was left alone rather than reused here.
+
+export function trackJobMatchStarted() {
+  posthog.capture('job_match_started');
+}
+
+export function trackJobMatchCompleted(matchScore: number, band: string, outcome: string, targetRole?: string | null, targetLocation?: string | null) {
+  posthog.capture('job_match_completed', {
+    match_score: matchScore,
+    band,
+    outcome,
+    target_role: targetRole ?? undefined,
+    target_location: targetLocation ?? undefined,
+  });
+}
+
+export function trackJobsDashboardViewed() {
+  posthog.capture('jobs_dashboard_viewed');
+}
+
+// ── Apply flow ─────────────────────────────────────────────────────────────
+
+export function trackApplyStarted(applicationType: 'workspace' | 'preview_gate', jobMatchScore?: number | null) {
+  posthog.capture('apply_started', {
+    application_type: applicationType,
+    job_match_score: jobMatchScore ?? undefined,
+  });
+}
+
+/**
+ * Additive to trackUpgradeModalOpened, not a replacement — that event already
+ * covers "an upgrade prompt appeared" across every surface that shows one.
+ * This is the specific one from the brief: the paywall inside the apply
+ * animation, with the properties the brief asks to break it down by.
+ */
+export function trackPaywallViewed(paywallPosition: string, triggerStage: string) {
+  posthog.capture('paywall_viewed', { paywall_position: paywallPosition, trigger_stage: triggerStage });
+}
+
+// ── Technical failures (kept apart from behavioural abandonment) ─────────────
+// welcome_step_failed already covers upload/build/finish in the welcome flow.
+// These cover the surfaces that had no failure signal at all.
+
+export function trackJobMatchFailed(errorType: string, errorCode: string | number | undefined, retryCount = 0) {
+  posthog.capture('job_match_failed', { error_type: errorType, error_code: errorCode ?? undefined, stage: 'job_match', retry_count: retryCount });
+}
+
+export function trackApplicationFailed(stage: string, errorType: string, errorCode: string | number | undefined, retryCount = 0) {
+  posthog.capture('application_failed', { stage, error_type: errorType, error_code: errorCode ?? undefined, retry_count: retryCount });
 }

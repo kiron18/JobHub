@@ -28,6 +28,7 @@ import { warm } from '../lib/theme/warmTokens';
 import { jdMentionsSelectionCriteria } from '../lib/selectionCriteria';
 import { extractJobFacts } from '../lib/extractJobFacts';
 import { classifyPaste, isSubmittable, pasteHint } from '../lib/seekLink';
+import { trackJobsDashboardViewed } from '../lib/analytics';
 import { buildSeekSearchUrl } from '../lib/seekSearchUrl';
 import { browseRoleLabel, ROLE_BUDGET } from '../lib/roleLabel';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -720,6 +721,11 @@ function PipelineGlance({ jobs }: { jobs: JobLite[] }) {
 // ─── StrategyHub ────────────────────────────────────────────────────────────
 
 export function StrategyHub() {
+    // This is the "jobs dashboard" of the brief's user journey — StrategyHub
+    // replaced the old Dashboard/MatchEngine route on `/`. Fired once per
+    // mount, not per profile/jobs refetch.
+    useEffect(() => { trackJobsDashboardViewed(); }, []);
+
     const { data: profile } = useQuery<ProfileLite>({
         queryKey: ['profile'],
         queryFn: async () => {

@@ -26,6 +26,7 @@ import { classifyPaste } from '../lib/seekLink';
 import { jdMentionsSelectionCriteria } from '../lib/selectionCriteria';
 import { FitReportView, type FitReport } from '../components/fit/FitReportView';
 import { ApplyPreviewGate } from '../components/fit/ApplyPreviewGate';
+import { trackJobMatchStarted, trackJobMatchCompleted, trackJobMatchFailed, trackApplyStarted } from '../lib/analytics';
 
 const C = warm.colors;
 
@@ -85,17 +86,21 @@ export default function FitCheckPage() {
 
   const runCheck = async (payload: { jobDescription?: string; url?: string }) => {
     setChecking(true);
+    trackJobMatchStarted();
     try {
       const { data } = await api.post<CheckResponse>('/fit/check', payload);
       setResult(data);
+      trackJobMatchCompleted(data.report.fit, data.report.band, data.report.outcome, profile?.targetRole, profile?.targetCity);
     } catch (err: any) {
       // A missing resume is the one failure with a fix the person can act on,
-      // so it goes somewhere rather than showing a red box.
+      // so it goes somewhere rather than showing a red box. Not a technical
+      // failure — the product worked, they just have not uploaded yet.
       if (err?.response?.data?.needsResume) {
         toast.error('Upload your resume first, then check a job.');
         navigate('/');
         return;
       }
+      trackJobMatchFailed(err?.code === 'ECONNABORTED' ? 'timeout' : 'request_failed', err?.response?.status);
       toast.error(err?.response?.data?.error ?? 'That did not go through. Try again.');
     } finally {
       setChecking(false);
@@ -168,7 +173,11 @@ export default function FitCheckPage() {
 
   const goToApply = (companyOverride?: string) => {
     if (!result) return;
+    // Free accounts get tracked as apply_started inside ApplyPreviewGate's own
+    // mount, not here — this call is the fork where they never reach the
+    // workspace at all, so it must not fire before we know which branch runs.
     if (isFree) { setGating(true); return; }
+    trackApplyStarted('workspace', result.report.fit);
     // What the server read, not what sits in the box: pasting a Seek link
     // would otherwise send the generator a URL instead of a job advert.
     const jobDescription = result.jobDescription || trimmed || incoming?.jobDescription || '';

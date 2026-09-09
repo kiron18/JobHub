@@ -7,6 +7,7 @@ import { onboardPaidCustomer } from '../services/onboarding';
 import { raiseSkoolUpgrade } from '../services/skoolUpgrade';
 import { recordLeadSignal } from '../services/salesLead';
 import { accessExpiryFromNow, PAID_ACCESS_DAYS } from '../lib/accessWindow';
+import { captureServerEvent, idempotencyUuid } from '../lib/posthogServer';
 
 export const EXEMPT_EMAILS = [
   'kamiproject2021@gmail.com',
@@ -262,6 +263,20 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
             },
           });
           console.log(`[stripe/webhook] ${PAID_ACCESS_DAYS}-day access granted to userId=${userId}, expires=${accessExpiresAt.toISOString()}`);
+          // The one-time pass has no invoice — this checkout IS the charge, so
+          // it is the only place this plan's payment_completed can fire.
+          // Subscriptions are captured at invoice.payment_succeeded instead,
+          // because a trialing subscription reaches this branch charged $0.
+          captureServerEvent({
+            distinctId: userId,
+            event: 'payment_completed',
+            properties: {
+              product: 'three_month',
+              price: typeof session.amount_total === 'number' ? session.amount_total / 100 : undefined,
+              currency: session.currency ?? undefined,
+            },
+            uuid: idempotencyUuid(`checkout:${session.id}`),
+          });
         } else {
           // Monthly or annual subscription — may be in trial
           let trialEndDate: Date | null = null;
@@ -455,6 +470,16 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
           plan: profile.plan,
           subscriptionId: subId,
         }).catch(() => {});
+        captureServerEvent({
+          distinctId: profile.userId,
+          event: 'payment_failed',
+          properties: {
+            error_type: isFirstPayment ? 'trial_conversion_failed' : 'renewal_failed',
+            stage: 'payment',
+            product: profile.plan,
+          },
+          uuid: idempotencyUuid(`invoice_failed:${invoice.id}`),
+        });
         break;
       }
 
@@ -488,6 +513,19 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
           plan: profile.plan,
           subscriptionId: subId,
         }).catch(() => {});
+        // The real money-moved moment for every subscription plan, trialing or
+        // not — see the checkout.session.completed branch above for why
+        // one-time purchases capture there instead.
+        captureServerEvent({
+          distinctId: profile.userId,
+          event: 'payment_completed',
+          properties: {
+            product: profile.plan,
+            price: typeof invoice.amount_paid === 'number' ? invoice.amount_paid / 100 : undefined,
+            currency: invoice.currency ?? undefined,
+          },
+          uuid: idempotencyUuid(`invoice:${invoice.id}`),
+        });
         break;
       }
 

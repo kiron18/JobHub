@@ -15,7 +15,7 @@
  * as markdown via ReactMarkdown. Inline editing is out of scope for this
  * commit; users copy or download for now.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -52,6 +52,7 @@ import { applauseFor, type Applause } from '../lib/applause';
 import { applyWorkspaceCopy } from './applyWorkspaceCopy';
 import { extractReactText } from '../lib/extractReactText';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { trackDocumentGenerated, trackApplicationFailed } from '../lib/analytics';
 
 interface ResumeTip {
   bulletKey: string;
@@ -784,6 +785,8 @@ function DocumentStep({
 
     const navigate = useNavigate();
     const isCoverLetter = stepId === 'cover-letter';
+    /** Retries per step, for application_failed's retry_count. Not reset across steps on purpose — a fresh mount is a fresh session. */
+    const generationAttemptsRef = useRef<Record<string, number>>({});
 
     // ── Finish application: marks applied on the backend and returns to workspace.
     const handleFinishApplication = async () => {
@@ -903,6 +906,10 @@ function DocumentStep({
     };
 
     const runGeneration = async () => {
+        // hasDraft, read before generation starts, is exactly "was there already
+        // a document here" — the regenerate flag document_generated asks for.
+        const isRegenerate = hasDraft;
+        generationAttemptsRef.current[stepId] = (generationAttemptsRef.current[stepId] ?? 0) + 1;
         setGenerating(true);
         // Declared out here so the catch below can name the call that failed.
         let endpoint = `/generate/${stepId}`;
@@ -956,6 +963,7 @@ function DocumentStep({
                 estimatedPages: pages ?? undefined,
             });
             setHasDraft(true);
+            trackDocumentGenerated(stepId, isRegenerate);
         } catch (err: any) {
             // "Generation failed. Please retry." was the answer to every
             // failure here, which meant a 400 for a missing field, an expired
@@ -975,6 +983,12 @@ function DocumentStep({
             toast.error(msg);
             // The console line is the one a screenshot can carry back to us.
             console.error(`[generate:${stepId}] ${endpoint}`, { status, serverMsg, err });
+            trackApplicationFailed(
+                stepId,
+                timedOut ? 'timeout' : status === 402 ? 'quota' : !status ? 'network' : 'server_error',
+                status,
+                generationAttemptsRef.current[stepId] - 1,
+            );
         } finally {
             setGenerating(false);
         }
@@ -1350,12 +1364,14 @@ function DocumentStep({
                 {generating || (generationStatus === 'generating' && !content) ? (
                     <GenerationProgress docType={stepId === 'cover-letter' ? 'cover-letter' : stepId === 'selection-criteria' ? 'selection-criteria' : 'resume'} />
                 ) : editing ? (
+                    <div data-ph-mask>
                     <MarkdownDocEditor
                         value={editBuffer}
                         onChange={setEditBuffer}
                         onBlur={() => commitEdit()}
                         ariaLabel={`Edit ${stepLabel}`}
                     />
+                    </div>
                 ) : content ? (
                     <>
                         {/*
@@ -1372,8 +1388,11 @@ function DocumentStep({
                             more: it is the A4 page, scaled to fit, with the
                             loupe and the full-screen reader behind a press and
                             a tap. Desktop renders exactly what it always did.
-                            See components/shared/DocumentPaper.
+                            See components/shared/DocumentPaper. data-ph-mask on
+                            the wrapper: this is generated resume/cover-letter/SC
+                            content, kept out of session replay same as /welcome.
                         */}
+                        <div data-ph-mask>
                         <DocumentPaper
                             className="prose prose-invert max-w-none"
                             readerTitle={stepLabel}
@@ -1394,6 +1413,7 @@ function DocumentStep({
                         >
                             <ReactMarkdown components={markdownComponents as any}>{content}</ReactMarkdown>
                         </DocumentPaper>
+                        </div>
                         {/* Live word counter — SC only */}
                         {isSC && (
                             <div style={{

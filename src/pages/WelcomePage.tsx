@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import api from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { trackWelcomeStep, trackWelcomeFailed, trackWelcomeCompleted } from '../lib/analytics';
+import { trackWelcomeStep, trackWelcomeFailed, trackWelcomeCompleted, trackResumeQuestionStarted, trackResumeQuestionCompleted, trackEmailSubmitted } from '../lib/analytics';
 import { colors, type as T } from '../components/landing/tokens';
 import { MarkdownDocEditor, FormattingHelp } from '../components/MarkdownDocEditor';
 import { DocumentPaper } from '../components/shared/DocumentPaper';
@@ -154,6 +154,16 @@ export const WelcomePage: React.FC = () => {
   // step writes to, so the two ways of answering are interchangeable.
   const [openQ, setOpenQ] = useState<string | null>(null);
   const [inlineDraft, setInlineDraft] = useState('');
+  /** When each question was opened, for resume_question_completed's time_on_question_ms. */
+  const questionStartRef = useRef<Record<string, number>>({});
+  function startQuestionTimer(q: IntakeQuestion, index: number) {
+    questionStartRef.current[q.id] = Date.now();
+    trackResumeQuestionStarted(index, q.id, q.kind);
+  }
+  function questionElapsedMs(id: string): number {
+    const started = questionStartRef.current[id];
+    return started ? Date.now() - started : 0;
+  }
 
   const [cleanResume, setCleanResume] = useState('');
   /** Real page count of the rendered PDF, from the server. Null if it could not render. */
@@ -284,6 +294,7 @@ export const WelcomePage: React.FC = () => {
     setOpenCard('need');
     setOpenQ(q.id);
     setInlineDraft(answers[q.id]?.value ?? '');
+    startQuestionTimer(q, first);
     // The panel opens below the tiles, so bring it into view rather than
     // leaving them looking at a button that appeared to do nothing.
     window.setTimeout(() => {
@@ -302,9 +313,10 @@ export const WelcomePage: React.FC = () => {
     const next: Answers = { ...answers, [q.id]: { status: 'unknown', value: '' } };
     setAnswers(next);
     setInlineDraft('');
+    trackResumeQuestionCompleted(questions.indexOf(q), q.id, q.kind, questionElapsedMs(q.id), false, true);
     const following = questions.find(x => !next[x.id]);
     setOpenQ(following?.id ?? null);
-    if (following) setInlineDraft(next[following.id]?.value ?? '');
+    if (following) { setInlineDraft(next[following.id]?.value ?? ''); startQuestionTimer(following, questions.indexOf(following)); }
   }
 
   /** Save an answer given on the diagnosis screen, without leaving it. */
@@ -314,6 +326,7 @@ export const WelcomePage: React.FC = () => {
     setAnswers(prev => ({ ...prev, [q.id]: { status: 'answered', value: v } }));
     setOpenQ(null);
     setInlineDraft('');
+    trackResumeQuestionCompleted(questions.indexOf(q), q.id, q.kind, questionElapsedMs(q.id), q.ranges.includes(v), false);
   }
 
   // Roles are asked after the questions, immediately before the rebuild, because
@@ -425,6 +438,7 @@ export const WelcomePage: React.FC = () => {
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(addr)) { toast.error('Enter a valid email address.'); return; }
     if (password.length < PASSWORD_MIN) { toast.error(`Your password needs at least ${PASSWORD_MIN} characters.`); return; }
 
+    trackEmailSubmitted(addr);
     setSending(true);
     /*
      * Raised BEFORE the credentials go up, because the window it covers opens
@@ -755,7 +769,7 @@ export const WelcomePage: React.FC = () => {
                           </a>
                         </span>
                       </p>
-                      {questions.map(q => (
+                      {questions.map((q, qi) => (
                         <QuestionRow
                           key={q.id}
                           question={q}
@@ -767,6 +781,7 @@ export const WelcomePage: React.FC = () => {
                             const next = openQ === q.id ? null : q.id;
                             setOpenQ(next);
                             setInlineDraft(next ? (answers[q.id]?.value ?? '') : '');
+                            if (next) startQuestionTimer(q, qi);
                           }}
                           onSave={value => saveInline(q, value)}
                           onSkip={() => skipInline(q)}
@@ -1072,7 +1087,7 @@ export const WelcomePage: React.FC = () => {
           copy mounted last. The wrapper is what is actually on screen, which is
           the height the editor should open at anyway.
         */}
-        <div ref={paperRef}>
+        <div ref={paperRef} data-ph-mask>
         <DocumentPaper
           className="bank-paper"
           style={{ position: 'relative' }}

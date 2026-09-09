@@ -26,7 +26,7 @@ import { toast } from 'sonner';
 import api from '../../lib/api';
 import { warm } from '../../lib/theme/warmTokens';
 import { type as landingType } from '../landing/tokens';
-import { trackUpgradeModalOpened, trackCheckoutStarted, trackFreeLimitHit } from '../../lib/analytics';
+import { trackUpgradeModalOpened, trackCheckoutStarted, trackFreeLimitHit, trackPaywallViewed, trackApplyStarted } from '../../lib/analytics';
 import { SALES_PAGE_URL } from '../../lib/salesPage';
 import { splitAtFirstSection } from '../../lib/resumeHead';
 import { embeddedCheckoutEnabled } from '../../lib/embeddedCheckout';
@@ -276,6 +276,11 @@ interface Props {
 }
 
 export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Props) {
+  // The gate mounting IS the free-tier "apply" attempt — see FitCheckPage's
+  // goToApply, which renders this in place of navigating to /apply. Fired once
+  // per mount, not per re-render.
+  useEffect(() => { trackApplyStarted('preview_gate'); }, []);
+
   /*
    * Assigned once per browser (see paywallVariant.ts) and read once here, not
    * re-rolled on every render or every time this gate reopens, so a candidate
@@ -409,6 +414,7 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
     if (phase !== 'offer') return;
     trackUpgradeModalOpened('generation', variant);
     trackFreeLimitHit('generation');
+    trackPaywallViewed('apply_generation_preview', 'preview_gate_seal');
   }, [phase, variant]);
 
   /*
@@ -473,6 +479,7 @@ export function ApplyPreviewGate({ resumeMarkdown, role, company, onClose }: Pro
       */}
       <div
         aria-hidden
+        data-ph-mask
         style={{
           position: 'absolute', inset: 0,
           /*

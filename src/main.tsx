@@ -4,9 +4,10 @@ import { createRoot } from 'react-dom/client'
 import { Analytics } from '@vercel/analytics/react'
 import './index.css'
 import App from './App.tsx'
-import { initAnalytics } from './lib/analytics'
+import { initAnalytics, registerAcquisitionSource } from './lib/analytics'
 
 initAnalytics();
+registerAcquisitionSource();
 
 // Keep Railway server warm — ping every 4 minutes to prevent cold-start CORS failures
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
