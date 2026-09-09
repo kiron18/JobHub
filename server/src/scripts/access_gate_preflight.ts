@@ -60,9 +60,22 @@ async function main() {
   const now = new Date();
   const soon = new Date(now.getTime() + SOON_DAYS * 86_400_000);
 
-  /** The same decision checkAccess makes, minus the free-counter step. */
+  /*
+    hasActiveAccess, copied rather than imported, and it must be kept in step
+    with middleware/accessControl.ts.
+
+    Importing the real one would be better and cannot be done: accessControl
+    takes `prisma` from ../index, which is the Express entry point, so a script
+    that imports it boots the whole server and never returns.
+
+    It HAS drifted once already — this clause did not exist until accessExpiresAt
+    became the senior signal, and without it the preflight cheerfully reported
+    that eight paying clients were about to lose access. If you change the rule
+    over there, change it here.
+  */
   const keepsUnlimited = (p: (typeof rows)[number]) => {
     if (p.billingHoldAt != null) return false;
+    if (p.accessExpiresAt != null && p.accessExpiresAt > now) return true;
     if (p.dashboardAccess === true) return true;
     const plan = p.plan ?? 'free';
     const status = p.planStatus ?? 'active';
