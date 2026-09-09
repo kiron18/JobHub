@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { isGateEnforced } from '../config/accessGate';
 
 const router = Router();
 
@@ -59,6 +60,16 @@ router.get('/', (req, res) => {
             ?? 'unknown',
         uptimeSeconds: Math.round(process.uptime()),
         contactDiscovery: contactDiscoveryConfig(),
+        /*
+          Whether free accounts are being limited right now.
+
+          FREE_TIER_GATE is the one variable that decides whether a signed-in
+          free account gets five generations or an unlimited product, and it can
+          be changed in Railway without a deploy — which means the commit above
+          does NOT tell you which mode is live. This does. A boolean only: it
+          says which of two documented modes is running and nothing else.
+        */
+        freeTierGate: isGateEnforced() ? 'enforced' : 'paused',
     });
 });
 

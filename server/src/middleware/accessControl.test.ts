@@ -1,4 +1,22 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+/*
+  checkAccess reads the profile, so the client has to be stubbed. The mock is
+  per-test: each case sets ONE profile and asserts what the gate does with it.
+  `updates` records every write, because the three-month downgrade is the one
+  path here that changes a customer's row and it must not fire by accident.
+*/
+const updates: unknown[] = [];
+let profileRow: Record<string, unknown> | null = null;
+
+vi.mock('../index', () => ({
+  prisma: {
+    candidateProfile: {
+      findUnique: async () => profileRow,
+      update: async (args: unknown) => { updates.push(args); return {}; },
+    },
+  },
+}));
 
 // Mock the stripe import before importing the module under test. Importing it
 // for real would construct the Stripe client at module load and need a key.
@@ -18,7 +36,145 @@ vi.mock('../routes/stripe', () => ({
   },
 }));
 
-import { hasActiveAccess, isOnBillingHold, denyPayload } from './accessControl';
+import { hasActiveAccess, isOnBillingHold, denyPayload, checkAccess } from './accessControl';
+import { isGateEnforced } from '../config/accessGate';
+
+/* ── The gate ────────────────────────────────────────────────────────────────
+   These are the tests that stand between a paying client and being locked out
+   of something they have paid for. On 9 Sep 2026 every one of the eight paying
+   accounts was carrying dashboardAccess=true, so that is the case that matters
+   most, and it is asserted in both modes.                                    */
+describe('the free-tier gate', () => {
+  const FUTURE = new Date(Date.now() + 30 * 86_400_000);
+  const PAST = new Date(Date.now() - 86_400_000);
+
+  const profile = (over: Record<string, unknown> = {}) => ({
+    plan: 'free', planStatus: 'active', accessExpiresAt: null, trialEndDate: null,
+    dashboardAccess: false, billingHoldAt: null, billingHoldInvoiceUrl: null,
+    freeGenerationsUsed: 0, freeAnalysesUsed: 0, freeJobSearchesUsed: 0, freeMatchScoresUsed: 0,
+    ...over,
+  });
+
+  beforeEach(() => { updates.length = 0; profileRow = null; delete process.env.FREE_TIER_GATE; });
+  afterEach(() => { delete process.env.FREE_TIER_GATE; });
+
+  const enforce = () => { process.env.FREE_TIER_GATE = 'on'; };
+
+  describe('the switch itself', () => {
+    it('is paused when the variable is unset, which is what deploying it does', () => {
+      expect(isGateEnforced()).toBe(false);
+    });
+    it('is paused for anything that is not "on"', () => {
+      for (const v of ['', 'off', 'false', 'true', 'ON!', 'yes']) {
+        process.env.FREE_TIER_GATE = v;
+        expect(isGateEnforced()).toBe(false);
+      }
+    });
+    it('is enforced for "on", however it is cased or spaced', () => {
+      for (const v of ['on', 'ON', ' On ']) {
+        process.env.FREE_TIER_GATE = v;
+        expect(isGateEnforced()).toBe(true);
+      }
+    });
+  });
+
+  describe('nobody who is paying is interrupted', () => {
+    it('an explicit grant keeps unlimited access with the gate on', async () => {
+      enforce();
+      profileRow = profile({ dashboardAccess: true });
+      expect(await checkAccess('u', 'generation', 'client@example.com')).toEqual({ allowed: true });
+      expect(updates).toEqual([]);
+    });
+    it('a live monthly plan keeps unlimited access with the gate on', async () => {
+      enforce();
+      profileRow = profile({ plan: 'monthly', planStatus: 'active' });
+      expect(await checkAccess('u', 'generation', 'client@example.com')).toEqual({ allowed: true });
+    });
+    it('a trialing plan keeps unlimited access', async () => {
+      enforce();
+      profileRow = profile({ plan: 'premium', planStatus: 'trialing' });
+      expect(await checkAccess('u', 'generation', 'client@example.com')).toEqual({ allowed: true });
+    });
+    it('an unexpired three-month bundle keeps access and is never downgraded', async () => {
+      enforce();
+      profileRow = profile({ plan: 'three_month', accessExpiresAt: FUTURE, dashboardAccess: true });
+      expect(await checkAccess('u', 'generation', 'client@example.com')).toEqual({ allowed: true });
+      expect(updates).toEqual([]);
+    });
+    it('a three-month bundle with no end date is not treated as expired', async () => {
+      enforce();
+      profileRow = profile({ plan: 'three_month', accessExpiresAt: null, dashboardAccess: true });
+      expect(await checkAccess('u', 'generation', 'client@example.com')).toEqual({ allowed: true });
+      expect(updates).toEqual([]);
+    });
+    it('the owner never touches the database at all', async () => {
+      enforce();
+      profileRow = null; // a read would throw on `.plan` of null if one happened
+      expect(await checkAccess('u', 'generation', 'kiron@example.com')).toEqual({ allowed: true });
+    });
+  });
+
+  describe('with the gate paused, which is how it ships', () => {
+    it('a plain free account is unlimited', async () => {
+      profileRow = profile({ freeGenerationsUsed: 99 });
+      expect(await checkAccess('u', 'generation', 'free@example.com')).toEqual({ allowed: true });
+      expect(updates).toEqual([]);
+    });
+    it('an expired three-month bundle is NOT downgraded while paused', async () => {
+      profileRow = profile({ plan: 'three_month', accessExpiresAt: PAST, dashboardAccess: true });
+      expect(await checkAccess('u', 'generation', 'client@example.com')).toEqual({ allowed: true });
+      expect(updates).toEqual([]);
+    });
+    // The one denial that has to survive the pause: it exists to withhold
+    // access from a paying client whose payment failed.
+    it('a billing hold still bites', async () => {
+      profileRow = profile({ dashboardAccess: true, billingHoldAt: new Date(), billingHoldInvoiceUrl: 'https://inv' });
+      expect(await checkAccess('u', 'generation', 'client@example.com'))
+        .toEqual({ allowed: false, reason: 'BILLING_HOLD', payUrl: 'https://inv' });
+    });
+  });
+
+  describe('with the gate enforced', () => {
+    it('a free account under the cap is allowed, and the counter moves', async () => {
+      enforce();
+      profileRow = profile({ freeGenerationsUsed: 2 });
+      expect(await checkAccess('u', 'generation', 'free@example.com')).toEqual({ allowed: true, remaining: 2 });
+      expect(updates).toEqual([{ where: { userId: 'u' }, data: { freeGenerationsUsed: { increment: 1 } } }]);
+    });
+    it('a free account at the cap is denied, and the counter does not move', async () => {
+      enforce();
+      profileRow = profile({ freeGenerationsUsed: 5 });
+      expect(await checkAccess('u', 'generation', 'free@example.com'))
+        .toEqual({ allowed: false, upgradeRequired: true, remaining: 0 });
+      expect(updates).toEqual([]);
+    });
+    it('counts each feature separately', async () => {
+      enforce();
+      profileRow = profile({ freeGenerationsUsed: 5, freeAnalysesUsed: 0 });
+      expect((await checkAccess('u', 'analysis', 'free@example.com')).allowed).toBe(true);
+    });
+    it('an expired trial falls back to the free limits', async () => {
+      enforce();
+      profileRow = profile({ trialEndDate: PAST, freeGenerationsUsed: 5 });
+      expect((await checkAccess('u', 'generation', 'free@example.com')).allowed).toBe(false);
+    });
+    it('an expired three-month bundle is downgraded once, then metered', async () => {
+      enforce();
+      profileRow = profile({ plan: 'three_month', planStatus: 'active', accessExpiresAt: PAST, dashboardAccess: true });
+      const r = await checkAccess('u', 'generation', 'client@example.com');
+      expect(r.allowed).toBe(true);
+      expect(updates[0]).toEqual({
+        where: { userId: 'u' },
+        data: { plan: 'free', planStatus: 'expired', dashboardAccess: false },
+      });
+    });
+    it('a missing profile is denied rather than waved through', async () => {
+      enforce();
+      profileRow = null;
+      expect((await checkAccess('u', 'generation', 'nobody@example.com')).allowed).toBe(false);
+    });
+  });
+});
 
 describe('hasActiveAccess', () => {
   const future = new Date(Date.now() + 86_400_000);

@@ -1,5 +1,6 @@
 import { prisma } from '../index';
 import { hasComplimentaryAccess } from '../routes/stripe';
+import { isGateEnforced } from '../config/accessGate';
 
 export type FeatureType = 'generation' | 'analysis' | 'job_search' | 'match_score';
 
@@ -67,12 +68,12 @@ const FREE_LIMITS: Record<FeatureType, number> = {
   match_score: 1,
 };
 
-const COUNTER_FIELD: Record<FeatureType, string> = {
+const COUNTER_FIELD = {
   generation: 'freeGenerationsUsed',
   analysis: 'freeAnalysesUsed',
   job_search: 'freeJobSearchesUsed',
   match_score: 'freeMatchScoresUsed',
-};
+} as const satisfies Record<FeatureType, string>;
 
 export interface AccessResult {
   allowed: boolean;
@@ -83,31 +84,21 @@ export interface AccessResult {
 }
 
 export async function checkAccess(
-  _userId: string,
-  _featureType: FeatureType,
-  _userEmail: string
+  userId: string,
+  featureType: FeatureType,
+  userEmail: string
 ): Promise<AccessResult> {
-  // A billing hold is checked ABOVE the PAYMENTS PAUSED switch below. That
-  // switch opens the product to everyone during the pricing rework, so a hold
-  // placed underneath it would do nothing at all. This is the one denial that
-  // still has to bite while payments are otherwise ungated, and it only ever
-  // applies to the handful of profiles explicitly put on hold.
-  const held = await prisma.candidateProfile.findUnique({
-    where: { userId: _userId },
-    select: { billingHoldAt: true, billingHoldInvoiceUrl: true },
-  });
-  if (held && isOnBillingHold(held, _userEmail)) {
-    return { allowed: false, reason: 'BILLING_HOLD', payUrl: held.billingHoldInvoiceUrl };
-  }
+  // Owner and complimentary accounts never meet a limit, in either mode, and
+  // never need the database read below to find that out.
+  if (hasComplimentaryAccess(userEmail)) return { allowed: true };
 
-  // PAYMENTS PAUSED: unlimited access for all users during pricing rework
-  return { allowed: true };
+  /*
+    One read, not two.
 
-  /* ORIGINAL CODE - restore when payments resume
-  if (hasComplimentaryAccess(userEmail)) {
-    return { allowed: true };
-  }
-
+    The paused version read the profile twice on every generation — once for
+    the billing hold and once, in the commented-out body, for everything else.
+    Every field either branch needs is selected here.
+  */
   const profile = await prisma.candidateProfile.findUnique({
     where: { userId },
     select: {
@@ -116,6 +107,8 @@ export async function checkAccess(
       accessExpiresAt: true,
       trialEndDate: true,
       dashboardAccess: true,
+      billingHoldAt: true,
+      billingHoldInvoiceUrl: true,
       freeGenerationsUsed: true,
       freeAnalysesUsed: true,
       freeJobSearchesUsed: true,
@@ -125,13 +118,33 @@ export async function checkAccess(
 
   if (!profile) return { allowed: false, reason: 'Profile not found' };
 
-  const plan = profile.plan ?? 'free';
-  const planStatus = profile.planStatus ?? 'active';
+  /*
+    A hold is checked ABOVE the pause switch, and it is the only denial that
+    survives the gate being off. It exists to withhold access from a paying
+    client whose payment failed, so it has to bite whatever mode the product is
+    in, and it only ever applies to profiles explicitly put on hold.
+  */
+  if (isOnBillingHold(profile, userEmail)) {
+    return { allowed: false, reason: 'BILLING_HOLD', payUrl: profile.billingHoldInvoiceUrl };
+  }
 
-  // 3-month bundle: check expiry
+  if (!isGateEnforced()) return { allowed: true };
+
+  const plan = profile.plan ?? 'free';
+
+  /*
+    The three-month bundle is the one plan that ends on a date rather than on a
+    cancellation, so its expiry is checked here and nowhere else. An expired
+    bundle is written down as expired the first time anybody notices, because
+    leaving it `active` means every later read has to re-derive the same fact.
+
+    Note what this costs the moment the gate is switched on: any bundle whose
+    accessExpiresAt has already passed is downgraded on that client's next
+    request. Check for those BEFORE turning the gate on. On 9 Sep 2026 there
+    was one, and two more inside a fortnight.
+  */
   if (plan === 'three_month') {
     if (profile.accessExpiresAt && profile.accessExpiresAt < new Date()) {
-      // Auto-downgrade
       await prisma.candidateProfile.update({
         where: { userId },
         data: { plan: 'free', planStatus: 'expired', dashboardAccess: false },
@@ -141,20 +154,20 @@ export async function checkAccess(
     return { allowed: true };
   }
 
-  // Active trial or paid plan: unlimited feature access.
-  if (hasActiveAccess(profile)) {
-    return { allowed: true };
-  }
+  // A live paid plan, an explicit grant, or an unexpired trial.
+  if (hasActiveAccess(profile)) return { allowed: true };
 
-  // Expired/cancelled paid plan → treat as free
+  // Expired or cancelled: they are a free account again, with free limits.
   return checkFree(userId, featureType, profile);
-  */
 }
+
+/** The four counters, as checkFree needs to read them. */
+type FreeCounters = Record<(typeof COUNTER_FIELD)[FeatureType], number | null>;
 
 async function checkFree(
   userId: string,
   featureType: FeatureType,
-  profile: Record<string, any>
+  profile: FreeCounters,
 ): Promise<AccessResult> {
   const limit = FREE_LIMITS[featureType];
   const field = COUNTER_FIELD[featureType];
