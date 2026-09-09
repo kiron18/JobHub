@@ -20,7 +20,8 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
 
 // ── Booking destination ───────────────────────────────────────────────────────
 // Live Calendly for Aussie Grad Careers (30 min strategy call, weekdays 3-5pm).
-const BOOKING_URL = 'https://calendly.com/kiron-aussiegradcareers';
+// Exported: ManageSubscriptionModal's pre-cancel screen points "Reach out" here too.
+export const BOOKING_URL = 'https://calendly.com/kiron-aussiegradcareers';
 
 const EASE = [0.25, 1, 0.5, 1] as const;
 

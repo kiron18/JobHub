@@ -168,6 +168,17 @@ export function trackCancellationPortalOpened() {
   posthog.capture('cancellation_portal_opened');
 }
 
+/** The pre-cancel letter's primary button: booking a call instead of leaving. */
+export function trackCancellationReachOutClicked() {
+  posthog.capture('cancellation_reach_out_clicked');
+}
+
+/** The pre-cancel letter's quiet exit: "I think I'll call it quits", moving
+ * on to the reason picker rather than opening the portal directly. */
+export function trackCancellationIntroDismissed() {
+  posthog.capture('cancellation_intro_dismissed');
+}
+
 // ── Landing page funnel ───────────────────────────────────────────────────────
 
 export function trackLandingViewed(variant: string) {

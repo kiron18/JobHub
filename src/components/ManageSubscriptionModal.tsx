@@ -4,11 +4,28 @@ import { X, ArrowRight, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../lib/api';
 import { warm } from '../lib/theme/warmTokens';
+import { BOOKING_URL } from '../pages/BookCallPage';
 import {
   trackManageSubscriptionOpened,
   trackCancellationReasonSelected,
   trackCancellationPortalOpened,
+  trackCancellationReachOutClicked,
+  trackCancellationIntroDismissed,
 } from '../lib/analytics';
+
+/**
+ * Kiron's own words to someone about to cancel, said once, before the reason
+ * picker. Grammar cleaned up only — do not rewrite this, it is deliberately
+ * not house copy.
+ */
+const INTRO_LETTER = [
+  "Hey, if you're feeling like you're up against a brick wall, and no matter what you do the situation does not change, then you need to hear this.",
+  "I genuinely get it, because before I systematised this process, I sat with every client and heard their story. I heard your story. I don't have the time to use this. I'm not getting any responses. I'm getting depressed.",
+  "If you need a chat, use the link below and send me a mail with a time of your choosing, and let's see how we can solve this together. I am committed to seeing you live your dreams out in this country, and that starts with achieving this first goal of getting hired.",
+  "Most people won't tell you this, but getting your first gig in this country is the hardest challenge you will face, because it is the one that will teach you perseverance.",
+  "I want you to do what's best for you three months from now. The money won't matter. It usually never does. We don't regret a few hundred dollars spent here and there. We regret the shots we failed to take, the opportunities we did not pursue, and the dreams we did not dare to dream.",
+  "It's slow right now, but that's not a sign to stop.",
+];
 
 interface Props {
   isOpen: boolean;
@@ -88,9 +105,20 @@ const slideDown = {
 export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan, planStatus: _planStatus }) => {
   const [selected, setSelected] = useState<ReasonKey | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  /**
+   * The two hoops. A paying account opens on 'intro' — the letter — every
+   * time, and only reaches the reason picker by choosing "I think I'll call
+   * it quits". That is the friction: readable in one sitting, never buried,
+   * but it is not a single click to the portal either.
+   */
+  const [step, setStep] = useState<'intro' | 'reasons'>('intro');
 
   useEffect(() => {
-    if (isOpen) trackManageSubscriptionOpened();
+    if (isOpen) {
+      trackManageSubscriptionOpened();
+      setStep('intro');
+      setSelected(null);
+    }
   }, [isOpen]);
 
   const bg        = warm.colors.bgSurface;
@@ -158,9 +186,10 @@ export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan
             {/* Header */}
             <div style={{ padding: '24px 24px 0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
               <div>
-                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: isPaid ? warm.colors.accentPetrol : warm.colors.accentPetrol, marginBottom: 6 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: warm.colors.accentPetrol, marginBottom: 6 }}>
                   {isPaid ? 'Before you go' : 'Account & billing'}
                 </p>
+                {(!isPaid || step === 'reasons') && (
                 <h2 style={{ fontSize: 20, fontWeight: 600, letterSpacing: '-0.02em', color: textMain, margin: 0, lineHeight: 1.3 }}>
                   {isPaid ? 'Most people see results in weeks 2–3.' : 'View your plan and billing details'}
                 </h2>
@@ -169,6 +198,7 @@ export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan
                     ? "You're closer than you think. What's making you consider leaving?"
                     : 'Check your subscription status, switch plans, or update your billing information.'}
                 </p>
+                )}
               </div>
               <button
                 onClick={onClose}
@@ -179,8 +209,57 @@ export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan
               </button>
             </div>
 
-            {/* Video placeholder + reason selector — only for paid users */}
-            {isPaid && (
+            {/*
+              Step 1 of the two paid-cancellation hoops: the letter, read in
+              full before anything about "cancel" is on screen. Two ways
+              forward — book a call, or say explicitly that you want to keep
+              going to the reason picker.
+            */}
+            {isPaid && step === 'intro' && (
+              <div style={{ padding: '14px 24px 24px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {INTRO_LETTER.map((para, i) => (
+                    <p key={i} style={{ margin: 0, fontSize: 14, lineHeight: 1.65, color: textMain }}>
+                      {para}
+                    </p>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => {
+                    trackCancellationReachOutClicked();
+                    window.open(BOOKING_URL, '_blank', 'noopener,noreferrer');
+                  }}
+                  style={{
+                    width: '100%', marginTop: 20, padding: '13px 16px',
+                    borderRadius: 10, border: 'none',
+                    background: warm.colors.accentPetrol, color: '#fff',
+                    fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                    minHeight: 44,
+                  }}
+                >
+                  Reach out
+                </button>
+
+                <div style={{ textAlign: 'center', marginTop: 14 }}>
+                  <button
+                    onClick={() => {
+                      trackCancellationIntroDismissed();
+                      setStep('reasons');
+                    }}
+                    style={{
+                      background: 'none', border: 'none', padding: 4, cursor: 'pointer',
+                      fontFamily: 'inherit', fontSize: 13, color: textMuted, textDecoration: 'underline',
+                    }}
+                  >
+                    I think I'll call it quits
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Video placeholder + reason selector — step 2, only for paid users */}
+            {isPaid && step === 'reasons' && (
               <>
             <div style={{ margin: '18px 24px 0', borderRadius: 10, background: cardBg, border: `1px solid ${border}`, height: 52, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
               <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(99,102,241,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -259,7 +338,8 @@ export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan
             </>
             )}
 
-            {/* Footer actions */}
+            {/* Footer actions — step 2 (or the free view, which has no step 1) */}
+            {(!isPaid || step === 'reasons') && (
             <div style={{ padding: '18px 24px 24px', display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
               <div style={{ height: 1, background: border, marginBottom: 2 }} />
 
@@ -301,6 +381,7 @@ export const ManageSubscriptionModal: React.FC<Props> = ({ isOpen, onClose, plan
                 Keep my account
               </button>
             </div>
+            )}
           </motion.div>
         </motion.div>
       )}

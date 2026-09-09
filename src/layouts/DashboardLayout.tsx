@@ -16,6 +16,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../lib/api';
 import { warm } from '../lib/theme/warmTokens';
+import { ManageSubscriptionModal } from '../components/ManageSubscriptionModal';
 
 const COLLAPSED_WIDTH = 72;
 const EXPANDED_WIDTH = 240;
@@ -59,8 +60,9 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
     const isTouch = useIsTouch();
     const location = useLocation();
 
-    // Profile prefetch — used implicitly by downstream queries
-    useQuery({
+    // Profile prefetch — also feeds the Manage subscription entry below, which
+    // needs plan/planStatus to decide whether to show the cancel letter.
+    const { data: profile } = useQuery({
         queryKey: ['profile'],
         queryFn: async () => {
             const { data } = await api.get('/profile');
@@ -68,6 +70,8 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
         },
         staleTime: 5 * 60 * 1000,
     });
+
+    const [manageSubOpen, setManageSubOpen] = useState(false);
 
     const { data: followUpCount } = useQuery({
         queryKey: ['follow-up-count'],
@@ -334,6 +338,19 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                                 Account
                             </p>
                             <p className="text-xs truncate" style={{ color: warmT.textMuted }}>{user?.email}</p>
+                            {/*
+                              The entry point the Cancellation Policy page has
+                              promised since April ("go to Settings, click
+                              Manage subscription") without one existing
+                              anywhere in the app. This is that button.
+                            */}
+                            <button
+                                onClick={() => setManageSubOpen(true)}
+                                className="text-xs underline mt-0.5"
+                                style={{ color: warmT.textMuted }}
+                            >
+                                Manage subscription
+                            </button>
                         </motion.div>
                     )}
                 </AnimatePresence>
@@ -513,6 +530,13 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                     page it was a permanent reminder that things might be going
                     badly, under screens where they were going fine. */}
             </main>
+
+            <ManageSubscriptionModal
+                isOpen={manageSubOpen}
+                onClose={() => setManageSubOpen(false)}
+                plan={profile?.plan ?? 'free'}
+                planStatus={profile?.planStatus ?? 'active'}
+            />
         </div>
     );
 };
