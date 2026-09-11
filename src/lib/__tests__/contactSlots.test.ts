@@ -34,6 +34,10 @@ describe('confidenceOf', () => {
     it('calls a shared inbox generic even when it verifies', () => {
         expect(confidenceOf('careers@acme.com.au', 'valid')).toBe('generic');
     });
+
+    it('ranks a job-ad-named contact above anything Hunter found on its own', () => {
+        expect(confidenceOf('sarah.chen@acme.com.au', 'jd')).toBe('jd');
+    });
 });
 
 describe('resolveContact', () => {

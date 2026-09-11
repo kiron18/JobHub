@@ -123,7 +123,7 @@ export function composeUrl(draft: ComposeDraft, client: MailClient, account?: st
 }
 
 /** How confident we are that this address reaches a real, relevant human. */
-export type AddressConfidence = 'published' | 'verified' | 'constructed' | 'generic';
+export type AddressConfidence = 'jd' | 'published' | 'verified' | 'constructed' | 'generic';
 
 export interface AddressOption {
     address: string;
@@ -137,6 +137,9 @@ export interface AddressOption {
 /**
  * Order the addresses we can offer, safest first.
  *
+ * `jd` leads because the employer named this address themselves for this
+ * exact role, which beats anything inferred from a directory or a search.
+ *
  * A generic `careers@` outranks a constructed personal address on purpose.
  * The constructed one is a hypothesis that will be silently accepted by any
  * catch-all domain and read by nobody, while the role inbox is certain to be
@@ -144,10 +147,11 @@ export interface AddressOption {
  * wrong-but-real person beats being delivered to no one.
  */
 const CONFIDENCE_ORDER: Record<AddressConfidence, number> = {
-    published: 0,
-    verified: 1,
-    generic: 2,
-    constructed: 3,
+    jd: 0,
+    published: 1,
+    verified: 2,
+    generic: 3,
+    constructed: 4,
 };
 
 export function rankAddresses(options: AddressOption[]): AddressOption[] {
@@ -162,6 +166,8 @@ export function rankAddresses(options: AddressOption[]): AddressOption[] {
  */
 export function confidenceNote(confidence: AddressConfidence): string {
     switch (confidence) {
+        case 'jd':
+            return 'Named in the job ad as the contact for this role. Not a guess.';
         case 'published':
             // Covers both an address printed by the employer and one Hunter
             // has observed in the wild. Neither is a guess, and neither is a

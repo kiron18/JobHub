@@ -112,14 +112,15 @@ describe('rankAddresses', () => {
         expect(ranked.map(o => o.address)).toEqual(['careers@acme.com.au', 's.chen@acme.com.au']);
     });
 
-    it('puts a published address first of all', () => {
+    it('puts a job-ad-named contact first of all, ahead of a published address', () => {
         const ranked = rankAddresses([
             opt('careers@acme.com.au', 'generic'),
             opt('guess@acme.com.au', 'constructed'),
             opt('real.person@acme.com.au', 'published'),
             opt('checked@acme.com.au', 'verified'),
+            opt('named@acme.com.au', 'jd'),
         ]);
-        expect(ranked.map(o => o.confidence)).toEqual(['published', 'verified', 'generic', 'constructed']);
+        expect(ranked.map(o => o.confidence)).toEqual(['jd', 'published', 'verified', 'generic', 'constructed']);
     });
 
     it('does not mutate what it was given', () => {

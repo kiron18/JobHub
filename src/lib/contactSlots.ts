@@ -74,12 +74,17 @@ export function isGenericAddress(address: string): boolean {
 /**
  * How much to trust an address, from where it came and whether it was checked.
  *
- * A Hunter directory record is an address Hunter has SEEN, not one it built,
- * which is why it never lands on `constructed`. Verification promotes it, and
- * a shared inbox is called what it is regardless of either.
+ * `jd` is its own tier, ahead of everything Hunter returns: the employer
+ * named this address for this exact role, so it is not a guess about who the
+ * right person is the way every Hunter pick still is, however good the
+ * mailbox check on it comes back. A Hunter directory record is an address
+ * Hunter has SEEN, not one it built, which is why it never lands on
+ * `constructed`. Verification promotes it, and a shared inbox is called what
+ * it is regardless of either.
  */
 export function confidenceOf(address: string, verification: string | null | undefined): AddressConfidence {
     if (isGenericAddress(address)) return 'generic';
+    if (verification === 'jd') return 'jd';
     if (verification === 'valid') return 'verified';
     return 'published';
 }
@@ -154,7 +159,7 @@ export function withFallbackInbox(
             ...contact.addresses,
             {
                 address,
-                confidence: isGenericAddress(address) ? 'generic' : 'published',
+                confidence: isGenericAddress(address) ? 'generic' : 'jd',
                 label: 'Shared inbox from the job ad',
                 why: ['Printed in the job ad itself.'],
             },

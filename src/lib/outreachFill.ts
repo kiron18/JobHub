@@ -490,6 +490,19 @@ export interface OutreachInput {
      * called Info.
      */
     discoveredContactName?: string | null;
+    /**
+     * How sure we are the address is right, from the same scale the send
+     * card shows the candidate.
+     *
+     * Only `jd` drops the "wrong person" hedge: the employer themselves
+     * named this address as the contact for this exact role, so there is no
+     * guess left to hedge about. `published` and `verified` describe how
+     * trustworthy the MAILBOX is (found online, or confirmed to exist), but
+     * they still come from us matching a Hunter directory pick to this role
+     * ourselves. That match is a guess even when the address turns out to be
+     * real, so both keep the hedge, same as `constructed`/`generic`.
+     */
+    contactConfidence?: 'jd' | 'published' | 'verified' | 'constructed' | 'generic' | null;
 }
 
 export interface OutreachMessages {
@@ -614,11 +627,20 @@ export function buildOutreachMessages(input: OutreachInput): OutreachMessages {
 
     const pitchParagraph = letter ? evidenceParagraph(letter.body) : null;
 
+    // Only a contact the job ad itself named is not a guess about the right
+    // person. A Hunter pick, published or verified, is still us matching a
+    // directory record to this role ourselves, so it keeps the hedge.
+    const confident = input.contactConfidence === 'jd';
+    const wrongPersonLine = confident
+        ? ''
+        : `If you're not the right person for this one, I'd be grateful for a pointer to who is.\n\n`;
+
     const email =
         `${emailGreeting}\n\n` +
         `I applied for ${applicationFor} on ${applied} and wanted to introduce myself directly.\n\n` +
         `${pitchParagraph ?? PITCH_PARAGRAPH_BLANK}\n\n` +
-        `If you're not the right person for this one, I'd be grateful for a pointer to who is.\n\n` +
+        wrongPersonLine +
+        `I've attached my resume as well.\n\n` +
         `Best regards,\n${signature}`;
 
     return {

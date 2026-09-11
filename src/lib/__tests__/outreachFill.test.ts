@@ -315,6 +315,26 @@ describe('buildOutreachMessages', () => {
         const m = buildOutreachMessages(base);
         expect(`${m.linkedIn}${m.subject}${m.email}`).not.toMatch(/[—–]/);
     });
+
+    it('always tells the reader a resume is attached, since no compose link can attach one for them', () => {
+        const m = buildOutreachMessages(base);
+        expect(m.email).toContain("I've attached my resume as well.");
+    });
+
+    it('hedges "wrong person" whenever the match to this role is still our guess', () => {
+        // `published` and `verified` say the MAILBOX is trustworthy, not that
+        // matching it to this role wasn't a guess on our part, so they keep
+        // the hedge same as an outright guess.
+        for (const contactConfidence of ['constructed', 'generic', 'published', 'verified', undefined] as const) {
+            const m = buildOutreachMessages({ ...base, contactConfidence });
+            expect(m.email).toContain("If you're not the right person for this one");
+        }
+    });
+
+    it('drops the "wrong person" hedge only when the job ad itself named the contact', () => {
+        const m = buildOutreachMessages({ ...base, contactConfidence: 'jd' });
+        expect(m.email).not.toContain("If you're not the right person for this one");
+    });
 });
 
 describe('formatPersonName', () => {
