@@ -26,7 +26,7 @@
  */
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, ChevronUp, Linkedin, Loader2, Mail, Search } from 'lucide-react';
+import { ChevronDown, ChevronUp, Download, Linkedin, Loader2, Mail, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../../lib/api';
 import { warm } from '../../lib/theme/warmTokens';
@@ -67,7 +67,11 @@ export function PostApplyOutreach({
     jobDescription,
     candidateName,
     dateApplied,
-    userEmail,
+    signInEmail,
+    resumeEmail,
+    savedFromEmail,
+    onSaveFromEmail,
+    resumeContent,
 }: {
     jobTitle?: string;
     company?: string;
@@ -77,8 +81,16 @@ export function PostApplyOutreach({
     candidateName?: string;
     /** ISO date the application was logged to the tracker. */
     dateApplied?: string;
-    /** The address they signed up with. Decides which compose window opens. */
-    userEmail?: string;
+    /** The address they signed in with. One candidate for "send from". */
+    signInEmail?: string | null;
+    /** Whatever address was parsed off their resume. The other candidate. */
+    resumeEmail?: string | null;
+    /** The address they've already picked, if they've picked one before. */
+    savedFromEmail?: string | null;
+    /** Persists a pick so this card never has to ask again. */
+    onSaveFromEmail?: (email: string) => void;
+    /** The finished, edited resume, for the "download to attach" button. */
+    resumeContent?: string;
 }) {
     /*
       Closed, because the drafts are no longer inside it.
@@ -102,6 +114,50 @@ export function PostApplyOutreach({
     */
     const [whoOpen, setWhoOpen] = useState(false);
     const isMobile = useIsMobile();
+
+    /*
+      Which address the compose window opens as, and whether the candidate
+      still needs to be asked.
+
+      Two real candidates: the address they signed in with, and whatever
+      address was parsed off their resume (often the same, sometimes not).
+      Asking is only worth it when those two disagree, or when the guess is
+      a resume they printed with an old job's address on it — the picker
+      still offers a free-text way out either way. Once `onSaveFromEmail`
+      fires the choice is persisted on the profile, so this never asks twice.
+      `pendingFrom` makes the pick feel instant rather than waiting on the
+      profile refetch to come back.
+    */
+    const [pendingFrom, setPendingFrom] = useState<string | null>(null);
+    const [pickingFrom, setPickingFrom] = useState(false);
+    const [customFrom, setCustomFrom] = useState('');
+    const emailOptions = Array.from(new Set(
+        [signInEmail, resumeEmail]
+            .filter((e): e is string => !!e && e.trim().length > 0)
+            .map((e) => e.trim()),
+    ));
+    const savedFrom = pendingFrom ?? savedFromEmail ?? null;
+    const needsPick = !savedFrom && emailOptions.length > 1;
+    const fromEmail = savedFrom || emailOptions[0] || undefined;
+
+    function pickFrom(address: string) {
+        const trimmed = address.trim();
+        if (!trimmed) return;
+        setPendingFrom(trimmed);
+        setPickingFrom(false);
+        setCustomFrom('');
+        onSaveFromEmail?.(trimmed);
+    }
+
+    async function handleDownloadResume() {
+        if (!resumeContent) return;
+        try {
+            const { exportPdf } = await import('../../lib/exportPdf');
+            await exportPdf(resumeContent, 'resume', candidateName || '', jobTitle, company);
+        } catch {
+            toast.error('Could not download the resume. Try again from the resume step.');
+        }
+    }
 
     /*
       Who to write to.
@@ -170,6 +226,7 @@ export function PostApplyOutreach({
         candidateName,
         dateApplied,
         discoveredContactName: greetByName,
+        contactConfidence: sendable?.addresses[0]?.confidence ?? null,
     });
     /*
       Which of the two goes first is decided by which one is FINISHED.
@@ -182,7 +239,7 @@ export function PostApplyOutreach({
     */
     const sendTo = sendable?.addresses[0]?.address ?? null;
     const primaryIsEmail = Boolean(sendTo);
-    const client = clientForAddress(userEmail);
+    const client = clientForAddress(fromEmail);
     const clientName = client === 'gmail' ? 'Gmail' : client === 'outlook' ? 'Outlook' : null;
     /*
       Three states, and the middle one used to be missing.
@@ -205,7 +262,7 @@ export function PostApplyOutreach({
         // opens with the cursor in the address line and everything else
         // written. A placeholder would be worse — anything in that field is a
         // real recipient, so it either delivers to a stranger or bounces.
-        const url = composeUrl({ to: sendTo ?? '', subject: t.subject, body: t.email }, client, userEmail);
+        const url = composeUrl({ to: sendTo ?? '', subject: t.subject, body: t.email }, client, fromEmail);
         window.open(url, '_blank', 'noopener');
         if (fitBody(t.email).truncated) {
             toast('The last paragraphs were too long for a compose link. Paste the rest before you send.');
@@ -395,6 +452,82 @@ export function PostApplyOutreach({
                 gap: 14,
             }}
         >
+            {/*
+                Which mailbox "your address" above actually means.
+
+                Shown once, as a choice, only when there are two real
+                candidates that disagree (sign-in address vs. whatever the
+                resume happens to list). Picking either persists it to the
+                profile via onSaveFromEmail, so it is never asked again on any
+                device — just a quiet "Sending from X · Change" line after.
+            */}
+            {(needsPick || pickingFrom) ? (
+                <div style={{
+                    display: 'flex', flexDirection: 'column', gap: 8,
+                    paddingBottom: 12, borderBottom: `1px solid ${warm.colors.borderWhisper}`,
+                }}>
+                    <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: warm.colors.textPrimary }}>
+                        Which email do you send from?
+                    </p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {emailOptions.map((opt) => (
+                            <button
+                                key={opt}
+                                onClick={() => pickFrom(opt)}
+                                style={{
+                                    padding: '7px 12px', fontSize: 12.5, fontWeight: 600,
+                                    color: warm.colors.textPrimary, background: warm.colors.bgAlt,
+                                    border: `1px solid ${warm.colors.borderWhisper}`,
+                                    borderRadius: 8, cursor: 'pointer', wordBreak: 'break-all',
+                                }}
+                            >
+                                {opt}
+                            </button>
+                        ))}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                        <input
+                            value={customFrom}
+                            onChange={(e) => setCustomFrom(e.target.value)}
+                            placeholder="Or type a different address"
+                            aria-label="A different email address"
+                            style={{
+                                flex: 1, minWidth: 0, padding: '9px 11px', fontSize: 12.5,
+                                fontFamily: 'inherit', color: warm.colors.textPrimary,
+                                background: warm.colors.bgSurface, border: `1px solid ${warm.colors.borderWhisper}`,
+                                borderRadius: 8, outline: 'none',
+                            }}
+                        />
+                        <button
+                            onClick={() => pickFrom(customFrom)}
+                            disabled={!customFrom.trim()}
+                            style={{
+                                padding: '9px 14px', fontSize: 12.5, fontWeight: 700,
+                                color: warm.colors.textOnDeep, background: warm.colors.accentPetrol,
+                                border: 'none', borderRadius: 8,
+                                cursor: customFrom.trim() ? 'pointer' : 'default',
+                                opacity: customFrom.trim() ? 1 : 0.5,
+                            }}
+                        >
+                            Use this
+                        </button>
+                    </div>
+                </div>
+            ) : fromEmail ? (
+                <p style={{ margin: 0, fontSize: 11.5, color: warm.colors.textMuted }}>
+                    Sending from {fromEmail}.{' '}
+                    <button
+                        onClick={() => setPickingFrom(true)}
+                        style={{
+                            padding: 0, fontSize: 11.5, fontWeight: 600, color: warm.colors.accentPetrol,
+                            background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline',
+                        }}
+                    >
+                        Change
+                    </button>
+                </p>
+            ) : null}
+
             <div style={{
                 display: 'grid',
                 gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
@@ -443,6 +576,28 @@ export function PostApplyOutreach({
                     </>
                 )}
             </div>
+
+            {/*
+                No mailto: or compose deep link can attach a file for us —
+                every mail provider blocks that on purpose, so the draft
+                just asks the candidate to do it. This is the one-click
+                version of doing it: the exact PDF the email says is
+                attached, already in Downloads by the time they reach the
+                attach dialog.
+            */}
+            {resumeContent && (
+                <button
+                    onClick={handleDownloadResume}
+                    style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                        alignSelf: 'flex-start', padding: 0,
+                        fontSize: 12.5, fontWeight: 600, color: warm.colors.accentPetrol,
+                        background: 'none', border: 'none', cursor: 'pointer',
+                    }}
+                >
+                    <Download size={13} /> Download resume to attach
+                </button>
+            )}
 
             {(company || (!sendTo && domain)) && (
                 <div style={{

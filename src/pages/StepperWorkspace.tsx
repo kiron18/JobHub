@@ -15,7 +15,7 @@
  * as markdown via ReactMarkdown. Inline editing is out of scope for this
  * commit; users copy or download for now.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -1648,6 +1648,19 @@ function TrackStep({
     const candidateName = (profile?.name && String(profile.name).trim()) || 'Application';
     const queryClient = useQueryClient();
 
+    // Persists the outreach send-from pick so PostApplyOutreach never asks
+    // again on any device. Updates the cached profile optimistically —
+    // PostApplyOutreach also tracks its own pending value, so the button
+    // click feels instant either way, but this keeps the rest of the page
+    // (and a reopened workspace) in sync without a refetch.
+    const saveOutreachFromEmail = useCallback((email: string) => {
+        queryClient.setQueryData(['profile', 'lite-for-apply'], (old: any) =>
+            old ? { ...old, outreachFromEmail: email } : old);
+        api.patch('/profile', { outreachFromEmail: email }).catch(() => {
+            toast.error('Could not save that email. It will ask again next time.');
+        });
+    }, [queryClient]);
+
     // Auto-save the application on mount. One-shot per workspaceKey using a
     // local flag so revisiting the step doesn't duplicate the row. The flag
     // holds the date it saved rather than a bare '1', because the outreach
@@ -1918,20 +1931,21 @@ function TrackStep({
                 candidateName={profile?.name ? String(profile.name).trim() : undefined}
                 dateApplied={savedAt}
                 /*
-                  The profile email first, the sign-in email second.
+                  Two guesses and a confirmed pick, in that order of trust.
 
-                  This decides which compose window opens, and the profile's
-                  email is whatever was on the resume we parsed — often blank,
-                  and blank means everyone falls through to a bare mailto:,
-                  which does nothing at all for somebody reading Gmail in a
-                  browser tab. The address they signed in with is always there
-                  and is the one their mail actually lives at.
+                  The sign-in address is always real, but it is still a guess
+                  at which mailbox they compose in — the resume's printed
+                  email is the other guess, and the two disagree often enough
+                  (a Workspace address on the resume, a personal Gmail signed
+                  in) that PostApplyOutreach asks once and saves the answer to
+                  outreachFromEmail below. This prop is only the fallback pair
+                  it picks between; the saved answer wins once one exists.
                 */
-                userEmail={
-                    (profile?.email ? String(profile.email).trim() : '')
-                    || user?.email
-                    || undefined
-                }
+                signInEmail={user?.email || undefined}
+                resumeEmail={profile?.email ? String(profile.email).trim() : undefined}
+                savedFromEmail={profile?.outreachFromEmail || undefined}
+                onSaveFromEmail={saveOutreachFromEmail}
+                resumeContent={resumeDraft?.content ?? undefined}
             />
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 4 }}>

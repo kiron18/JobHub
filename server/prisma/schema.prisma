@@ -18,6 +18,12 @@ model CandidateProfile {
   userId                       String            @unique
   name                         String?
   email                        String?           @unique
+  /// The address the candidate has explicitly chosen to send outreach mail
+  /// from, picked once in the outreach card and reused after that without
+  /// asking again. Distinct from `email` (whatever address happened to be
+  /// printed on the resume) and the sign-in address (from auth, not stored
+  /// here): both are guesses, this is a confirmed choice.
+  outreachFromEmail            String?
   /// When the "add this buyer to Skool Premium" task was raised. Skool has no
   /// API, so the grant itself is a manual toggle; this exists so a Stripe
   /// webhook retry cannot raise the same task twice. An admin task that arrives
