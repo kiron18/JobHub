@@ -274,26 +274,14 @@ export const CoachDashboard: React.FC = () => {
                                             <div style={{ flex: '1 1 280px' }}>
                                                 <SectionLabel>Override goals (applies immediately)</SectionLabel>
                                                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
-                                                    <span style={{ fontSize: 12, color: warm.colors.textSecondary }}>Apps</span>
+                                                    <span style={{ fontSize: 12, color: warm.colors.textSecondary }}>Apps/day</span>
                                                     <input type="number" min={1} max={100} value={override.appGoal}
                                                         onChange={e => setOverride(o => ({ ...o, appGoal: parseInt(e.target.value, 10) || 1 }))}
                                                         style={miniInput} />
-                                                    <select value={override.appGoalType}
-                                                        onChange={e => setOverride(o => ({ ...o, appGoalType: e.target.value }))}
-                                                        style={miniInput}>
-                                                        <option value="daily">/day</option>
-                                                        <option value="weekly">/week</option>
-                                                    </select>
-                                                    <span style={{ fontSize: 12, color: warm.colors.textSecondary }}>Outreach</span>
+                                                    <span style={{ fontSize: 12, color: warm.colors.textSecondary }}>Outreach/day</span>
                                                     <input type="number" min={1} max={100} value={override.outreachGoal}
                                                         onChange={e => setOverride(o => ({ ...o, outreachGoal: parseInt(e.target.value, 10) || 1 }))}
                                                         style={miniInput} />
-                                                    <select value={override.outreachGoalType}
-                                                        onChange={e => setOverride(o => ({ ...o, outreachGoalType: e.target.value }))}
-                                                        style={miniInput}>
-                                                        <option value="daily">/day</option>
-                                                        <option value="weekly">/week</option>
-                                                    </select>
                                                     <button
                                                         onClick={() => overrideMutation.mutate({ userId: m.userId })}
                                                         disabled={overrideMutation.isPending}

@@ -5,7 +5,7 @@ import { warm } from '../../lib/theme/warmTokens';
 export function DailyProgressBar() {
   const { data } = useQuery({
     queryKey: ['tracker-goal'],
-    queryFn: async () => (await api.get('/tracker/goal')).data as { goalType: 'daily' | 'weekly'; goal: number; applied: number },
+    queryFn: async () => (await api.get('/tracker/goal')).data as { goal: number; applied: number },
     staleTime: 30_000,
   });
   const applied = data?.applied ?? 0;
@@ -15,7 +15,7 @@ export function DailyProgressBar() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: warm.colors.textSecondary }}>
-        <span>{data?.goalType === 'weekly' ? "This week's applications" : "Today's applications"}</span>
+        <span>Today's applications</span>
         <span style={{ fontWeight: 700, color: warm.colors.textPrimary }}>
           {applied} of {goal}{over ? ` ✓ +${applied - goal}` : ''}
         </span>

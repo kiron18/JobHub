@@ -84,9 +84,9 @@ export async function getCloseoutState(userId: string): Promise<CloseoutState> {
   ]);
 
   const appliedToday = countDistinctJobs(rows);
-  // Weekly-goal candidates have no daily target of their own, so the
-  // close-out falls back to the program's daily floor for "a day's work".
-  const goal = settings.appGoalType === 'daily' ? settings.appGoal : DAILY_STREAK_FLOOR;
+  // Weekly goals are retired (see goals.ts) — promoteAndGetSettings always
+  // returns a daily goal, so it's always the day's real target.
+  const goal = settings.appGoal;
   const seenToday = profile?.closeoutSeenDate?.getTime() === today.getTime();
 
   return { eligible: !seenToday && appliedToday >= goal, appliedToday, goal, dailyStreak };

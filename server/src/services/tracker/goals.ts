@@ -4,15 +4,21 @@ import { countDistinctJobs, SENT_APPLICATION_FILTER } from './metricHelpers';
 
 /**
  * Accountability rules for the AGC program.
- * Floors are the bare minimum a member can set for themselves (5-day week):
- * applications 5/day or 20/week, outreach 4/day or 20/week.
- * Goal changes are locked: 14-day cooldown between changes and at most
- * 3 changes in any rolling 90-day window. Non-coach changes take effect
- * the following Monday (AEST) so nobody can lower a goal mid-week to dodge a miss.
+ * Floor is the bare minimum a member can set for themselves: applications
+ * 5/day, outreach 4/day. Goal changes are locked: 14-day cooldown between
+ * changes and at most 3 changes in any rolling 90-day window. Non-coach
+ * changes take effect the following Monday (AEST) so nobody can lower a
+ * goal mid-week to dodge a miss.
+ *
+ * Weekly-type goals (bank the week, catch up whenever) were retired — if you
+ * can't make it on a day, you can't make it on a day. Only 'daily' remains
+ * settable; 'weekly' still appears in the GoalType union and in goal-change
+ * history purely to render old records correctly, and promoteAndGetSettings
+ * self-heals any profile still on one to its daily equivalent.
  */
 export const GOAL_RULES = {
-  application: { dailyMin: 5, weeklyMin: 20 },
-  outreach: { dailyMin: 4, weeklyMin: 20 },
+  application: { dailyMin: 5 },
+  outreach: { dailyMin: 4 },
   maxGoal: 100,
   cooldownDays: 14,
   windowDays: 90,
@@ -101,11 +107,33 @@ export async function promoteAndGetSettings(userId: string): Promise<GoalSetting
       dailyOutreachGoal: true, outreachGoalType: true,
     },
   });
+
+  // Weekly goals are retired. A profile still parked on one (from before the
+  // change) is converted to its daily equivalent the first time it's read —
+  // same lazy-promotion approach as the goal-change queue above, no backfill
+  // script needed.
+  if (profile?.applicationGoalType === 'weekly' || profile?.outreachGoalType === 'weekly') {
+    const appGoal = profile.applicationGoalType === 'weekly'
+      ? Math.max(GOAL_RULES.application.dailyMin, Math.round((profile.dailyApplicationGoal ?? 5) / 5))
+      : profile.dailyApplicationGoal ?? 5;
+    const outreachGoal = profile.outreachGoalType === 'weekly'
+      ? Math.max(GOAL_RULES.outreach.dailyMin, Math.round((profile.dailyOutreachGoal ?? 4) / 5))
+      : profile.dailyOutreachGoal ?? 4;
+    await prisma.candidateProfile.update({
+      where: { userId },
+      data: {
+        dailyApplicationGoal: appGoal, applicationGoalType: 'daily',
+        dailyOutreachGoal: outreachGoal, outreachGoalType: 'daily',
+      },
+    });
+    return { appGoal, appGoalType: 'daily', outreachGoal, outreachGoalType: 'daily' };
+  }
+
   return {
     appGoal: profile?.dailyApplicationGoal ?? 5,
-    appGoalType: profile?.applicationGoalType === 'weekly' ? 'weekly' : 'daily',
+    appGoalType: 'daily',
     outreachGoal: profile?.dailyOutreachGoal ?? 4,
-    outreachGoalType: profile?.outreachGoalType === 'weekly' ? 'weekly' : 'daily',
+    outreachGoalType: 'daily',
   };
 }
 
@@ -325,8 +353,8 @@ export class GoalChangeError extends Error {
 
 function validateSettings(input: GoalSettings): void {
   for (const t of [input.appGoalType, input.outreachGoalType]) {
-    if (t !== 'daily' && t !== 'weekly') {
-      throw new GoalChangeError(400, { error: 'goalType must be daily or weekly' });
+    if (t !== 'daily') {
+      throw new GoalChangeError(400, { error: 'Weekly goals were retired — only daily goals are settable now.' });
     }
   }
   for (const g of [input.appGoal, input.outreachGoal]) {
@@ -334,17 +362,17 @@ function validateSettings(input: GoalSettings): void {
       throw new GoalChangeError(400, { error: `goals must be whole numbers up to ${GOAL_RULES.maxGoal}` });
     }
   }
-  const appMin = input.appGoalType === 'daily' ? GOAL_RULES.application.dailyMin : GOAL_RULES.application.weeklyMin;
+  const appMin = GOAL_RULES.application.dailyMin;
   if (input.appGoal < appMin) {
     throw new GoalChangeError(400, {
-      error: `Application goal can't go below the program minimum of ${appMin} per ${input.appGoalType === 'daily' ? 'day' : 'week'}`,
+      error: `Application goal can't go below the program minimum of ${appMin} per day`,
       floor: appMin,
     });
   }
-  const outMin = input.outreachGoalType === 'daily' ? GOAL_RULES.outreach.dailyMin : GOAL_RULES.outreach.weeklyMin;
+  const outMin = GOAL_RULES.outreach.dailyMin;
   if (input.outreachGoal < outMin) {
     throw new GoalChangeError(400, {
-      error: `Outreach goal can't go below the program minimum of ${outMin} per ${input.outreachGoalType === 'daily' ? 'day' : 'week'}`,
+      error: `Outreach goal can't go below the program minimum of ${outMin} per day`,
       floor: outMin,
     });
   }

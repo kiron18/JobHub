@@ -5,9 +5,7 @@ import { toast } from 'sonner';
 import api from '../../lib/api';
 import { warm } from '../../lib/theme/warmTokens';
 
-type GoalType = 'daily' | 'weekly';
-
-interface GoalSide { goal: number; goalType: GoalType; done: number; }
+interface GoalSide { goal: number; done: number; }
 
 interface GoalState {
     application: GoalSide;
@@ -22,8 +20,8 @@ interface GoalState {
         outreachPace: number;
     };
     pending: {
-        appGoal: number; appGoalType: GoalType;
-        outreachGoal: number; outreachGoalType: GoalType;
+        appGoal: number;
+        outreachGoal: number;
         effectiveAt: string;
     } | null;
     changes: {
@@ -36,8 +34,8 @@ interface GoalState {
     };
     streak: number;
     floors: {
-        application: { dailyMin: number; weeklyMin: number };
-        outreach: { dailyMin: number; weeklyMin: number };
+        application: { dailyMin: number };
+        outreach: { dailyMin: number };
         maxGoal: number;
     };
 }
@@ -49,12 +47,11 @@ function fmtDate(iso: string): string {
 const ProgressRow: React.FC<{ label: string; side: GoalSide }> = ({ label, side }) => {
     const pct = Math.min(side.done / Math.max(side.goal, 1), 1) * 100;
     const hit = side.done >= side.goal;
-    const periodLabel = side.goalType === 'weekly' ? 'this week' : 'today';
     return (
         <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
                 <span style={{ fontSize: 12.5, color: warm.colors.textSecondary }}>
-                    {label} {periodLabel}
+                    {label} today
                 </span>
                 <span style={{ fontSize: 14, fontWeight: 800, color: hit ? warm.colors.success : warm.colors.textPrimary }}>
                     {side.done} of {side.goal}{side.done > side.goal ? ` ✓ +${side.done - side.goal}` : ''}
@@ -69,24 +66,6 @@ const ProgressRow: React.FC<{ label: string; side: GoalSide }> = ({ label, side 
         </div>
     );
 };
-
-const typeToggle = (value: GoalType, onChange: (t: GoalType) => void) => (
-    <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: `1px solid ${warm.colors.borderDefined}` }}>
-        {(['daily', 'weekly'] as const).map(t => (
-            <button
-                key={t}
-                onClick={() => onChange(t)}
-                style={{
-                    padding: '5px 12px', fontSize: 11, fontWeight: 700, border: 'none', cursor: 'pointer',
-                    background: value === t ? warm.colors.accentPetrol : 'transparent',
-                    color: value === t ? 'white' : warm.colors.textSecondary,
-                }}
-            >
-                {t === 'daily' ? 'Daily' : 'Weekly'}
-            </button>
-        ))}
-    </div>
-);
 
 const numInput = (value: number, onChange: (n: number) => void) => (
     <input
@@ -107,9 +86,7 @@ export const GoalCard: React.FC = () => {
     const queryClient = useQueryClient();
     const [editing, setEditing] = useState(false);
     const [confirming, setConfirming] = useState(false);
-    const [appType, setAppType] = useState<GoalType>('daily');
     const [appCount, setAppCount] = useState(5);
-    const [outType, setOutType] = useState<GoalType>('daily');
     const [outCount, setOutCount] = useState(4);
 
     const { data } = useQuery({
@@ -121,8 +98,8 @@ export const GoalCard: React.FC = () => {
     const saveMutation = useMutation({
         mutationFn: async () =>
             (await api.post('/tracker/goals', {
-                appGoal: appCount, appGoalType: appType,
-                outreachGoal: outCount, outreachGoalType: outType,
+                appGoal: appCount, appGoalType: 'daily',
+                outreachGoal: outCount, outreachGoalType: 'daily',
             })).data as GoalState,
         onSuccess: updated => {
             queryClient.setQueryData(['tracker-goals'], updated);
@@ -147,13 +124,13 @@ export const GoalCard: React.FC = () => {
     if (!data) return null;
 
     const locked = Boolean(data.changes.nextAllowedAt);
-    const appFloor = appType === 'daily' ? data.floors.application.dailyMin : data.floors.application.weeklyMin;
-    const outFloor = outType === 'daily' ? data.floors.outreach.dailyMin : data.floors.outreach.weeklyMin;
+    const appFloor = data.floors.application.dailyMin;
+    const outFloor = data.floors.outreach.dailyMin;
     const belowFloor = appCount < appFloor || outCount < outFloor;
 
     const startEditing = () => {
-        setAppType(data.application.goalType); setAppCount(data.application.goal);
-        setOutType(data.outreach.goalType); setOutCount(data.outreach.goal);
+        setAppCount(data.application.goal);
+        setOutCount(data.outreach.goal);
         setConfirming(false);
         setEditing(true);
     };
@@ -214,24 +191,22 @@ export const GoalCard: React.FC = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
                         <span style={{ width: 88, fontSize: 12, fontWeight: 700, color: warm.colors.textSecondary }}>Applications</span>
-                        {typeToggle(appType, t => { setAppType(t); setConfirming(false); })}
                         {numInput(appCount, n => { setAppCount(n); setConfirming(false); })}
                         <span style={{ fontSize: 11, color: warm.colors.textMuted }}>
-                            min {appFloor} per {appType === 'daily' ? 'day' : 'week'}
+                            per day, min {appFloor}
                         </span>
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
                         <span style={{ width: 88, fontSize: 12, fontWeight: 700, color: warm.colors.textSecondary }}>Outreach</span>
-                        {typeToggle(outType, t => { setOutType(t); setConfirming(false); })}
                         {numInput(outCount, n => { setOutCount(n); setConfirming(false); })}
                         <span style={{ fontSize: 11, color: warm.colors.textMuted }}>
-                            min {outFloor} per {outType === 'daily' ? 'day' : 'week'}
+                            per day, min {outFloor}
                         </span>
                     </div>
 
                     {belowFloor && (
                         <p style={{ margin: 0, fontSize: 11.5, fontWeight: 600, color: '#B0563C' }}>
-                            Goals can't go below the program minimum ({appFloor} applications, {outFloor} outreach per {appType === 'daily' ? 'day' : 'week'}).
+                            Goals can't go below the program minimum ({appFloor} applications, {outFloor} outreach per day).
                         </p>
                     )}
 
@@ -274,9 +249,6 @@ export const GoalCard: React.FC = () => {
                             Cancel
                         </button>
                     </div>
-                    <p style={{ margin: 0, fontSize: 11, color: warm.colors.textMuted, lineHeight: 1.5 }}>
-                        Pick daily if your week is even. Pick weekly if you do shift work — hit the number whenever your hours allow.
-                    </p>
                 </div>
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -297,7 +269,7 @@ export const GoalCard: React.FC = () => {
                         {data.pending && (
                             <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: warm.colors.accentPetrol }}>
                                 <CalendarClock size={11} />
-                                From Mon {fmtDate(data.pending.effectiveAt)}: {data.pending.appGoal}/{data.pending.appGoalType === 'daily' ? 'day' : 'wk'} apps, {data.pending.outreachGoal}/{data.pending.outreachGoalType === 'daily' ? 'day' : 'wk'} outreach
+                                From Mon {fmtDate(data.pending.effectiveAt)}: {data.pending.appGoal}/day apps, {data.pending.outreachGoal}/day outreach
                             </span>
                         )}
                     </div>

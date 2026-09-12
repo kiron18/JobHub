@@ -30,17 +30,15 @@ export async function getDailyProgress(userId: string): Promise<{ appliedToday: 
 export const mondayAEST = mondayAESTShared;
 
 export async function getGoalProgress(userId: string): Promise<{
-  goalType: 'daily' | 'weekly'; goal: number; applied: number;
+  goal: number; applied: number;
 }> {
   const settings = await promoteAndGetSettings(userId);
-  const goalType = settings.appGoalType;
   const goal = settings.appGoal;
-  const since = goalType === 'weekly' ? mondayAEST() : todayAEST();
   const rows = await prisma.jobApplication.findMany({
-    where: { userId, ...SENT_APPLICATION_FILTER, dateApplied: { gte: tokenToInstant(since) } },
+    where: { userId, ...SENT_APPLICATION_FILTER, dateApplied: { gte: tokenToInstant(todayAEST()) } },
     select: { sourceUrl: true, id: true },
   });
-  return { goalType, goal, applied: countDistinctJobs(rows) };
+  return { goal, applied: countDistinctJobs(rows) };
 }
 
 export async function getActivity(userId: string, days = 365): Promise<Array<{ date: string; count: number }>> {

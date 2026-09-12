@@ -22,12 +22,12 @@ import { EASE, DUR, SPRING, prefersReducedMotion } from '../../lib/theme/motion'
    instruction.
 */
 
-interface GoalSide { goal: number; goalType: 'daily' | 'weekly'; done: number }
+interface GoalSide { goal: number; done: number }
 interface GoalState { application: GoalSide; outreach: GoalSide }
 
-/** A daily goal is stated per day; the week's target is five of them. */
+/** Goals are stated per day; the week's target is five of them. */
 function weeklyTarget(side: GoalSide): number {
-  return side.goalType === 'weekly' ? side.goal : side.goal * 5;
+  return side.goal * 5;
 }
 
 export function WeekGlance() {

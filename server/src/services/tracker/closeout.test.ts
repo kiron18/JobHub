@@ -2,7 +2,9 @@ import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('../../index', () => ({
   prisma: {
-    candidateProfile: { findUnique: vi.fn(), updateMany: vi.fn() },
+    // update: promoteAndGetSettings self-heals a legacy weekly-goal profile
+    // by writing its daily equivalent back — see goals.test.ts for that path.
+    candidateProfile: { findUnique: vi.fn(), updateMany: vi.fn(), update: vi.fn() },
     jobApplication: { findMany: vi.fn() },
     goalChange: { findFirst: vi.fn(), updateMany: vi.fn() },
   },
@@ -121,7 +123,7 @@ describe('getCloseoutState', () => {
     expect(state.eligible).toBe(false);
   });
 
-  it('falls back to the daily floor for weekly-goal candidates', async () => {
+  it('uses the self-healed daily equivalent for a profile still on a legacy weekly goal', async () => {
     const { m, prisma } = await mod();
     (prisma.candidateProfile.findUnique as any).mockResolvedValue({
       dailyApplicationGoal: 20, applicationGoalType: 'weekly',
@@ -133,6 +135,7 @@ describe('getCloseoutState', () => {
       Array.from({ length: 5 }, (_, i) => app(0, { sourceUrl: `a${i}` })),
     );
     const state = await m.getCloseoutState('u1');
+    // 20/week -> round(20/5) = 4, raised to the 5/day floor.
     expect(state.goal).toBe(5);
     expect(state.eligible).toBe(true);
   });
