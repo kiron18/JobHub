@@ -21,9 +21,14 @@ async function mod() {
   return { m, prisma };
 }
 
-function app(daysAgo: number, opts: { sourceUrl?: string } = {}) {
+function app(daysAgo: number, opts: { sourceUrl?: string; userId?: string } = {}) {
   const d = new Date(TODAY.getTime() - daysAgo * 86400000);
-  return { id: `id-${daysAgo}-${opts.sourceUrl ?? ''}`, sourceUrl: opts.sourceUrl ?? `url-${daysAgo}`, dateApplied: d };
+  return {
+    id: `id-${daysAgo}-${opts.sourceUrl ?? ''}`,
+    userId: opts.userId ?? 'u1',
+    sourceUrl: opts.sourceUrl ?? `url-${daysAgo}`,
+    dateApplied: d,
+  };
 }
 
 describe('computeDailyStreak', () => {
@@ -69,6 +74,22 @@ describe('computeDailyStreak', () => {
     (prisma.jobApplication.findMany as any).mockResolvedValue(rows);
     // Only 4 distinct jobs today — below the floor of 5.
     expect(await m.computeDailyStreak('u1')).toBe(0);
+  });
+});
+
+describe('computeDailyStreakBatch', () => {
+  it('computes each user\'s streak independently from one query', async () => {
+    const { m, prisma } = await mod();
+    const rows = [
+      ...Array.from({ length: 5 }, (_, i) => app(0, { sourceUrl: `a${i}`, userId: 'u1' })),
+      ...Array.from({ length: 5 }, (_, i) => app(1, { sourceUrl: `b${i}`, userId: 'u1' })),
+      ...Array.from({ length: 2 }, (_, i) => app(0, { sourceUrl: `c${i}`, userId: 'u2' })), // below floor
+    ];
+    (prisma.jobApplication.findMany as any).mockResolvedValue(rows);
+    const result = await m.computeDailyStreakBatch(['u1', 'u2', 'u3']);
+    expect(result.get('u1')).toBe(2);
+    expect(result.get('u2')).toBe(0);
+    expect(result.get('u3')).toBe(0); // no rows at all for this user
   });
 });
 

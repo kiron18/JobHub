@@ -352,4 +352,73 @@ router.post('/nudges/run', async (req, res) => {
     }
 });
 
+/**
+ * Manual leaderboard entries: real clients tracked outside the app (not yet
+ * on JobHub, or onboarded elsewhere) that the coach still wants visible and
+ * ranking on the cohort leaderboard. See routes/leaderboard.ts for how these
+ * merge with computed rows, and schema.prisma's ManualLeaderboardEntry for
+ * the privacy note on displayName.
+ */
+router.get('/leaderboard', async (_req, res) => {
+    try {
+        const rows = await prisma.manualLeaderboardEntry.findMany({ orderBy: { createdAt: 'asc' } });
+        res.json(rows);
+    } catch (e) {
+        console.error('[coach/leaderboard:list]', e);
+        res.status(500).json({ error: 'failed' });
+    }
+});
+
+router.post('/leaderboard', async (req, res) => {
+    try {
+        const { displayName, applications, outreach, interviews, offers, currentStreak, isPlaceholder } = req.body ?? {};
+        if (!displayName || !String(displayName).trim()) return res.status(400).json({ error: 'displayName required' });
+        const row = await prisma.manualLeaderboardEntry.create({
+            data: {
+                displayName: String(displayName).trim(),
+                applications: Math.max(0, Math.round(Number(applications) || 0)),
+                outreach: Math.max(0, Math.round(Number(outreach) || 0)),
+                interviews: Math.max(0, Math.round(Number(interviews) || 0)),
+                offers: Math.max(0, Math.round(Number(offers) || 0)),
+                currentStreak: Math.max(0, Math.round(Number(currentStreak) || 0)),
+                isPlaceholder: Boolean(isPlaceholder),
+            },
+        });
+        res.json(row);
+    } catch (e) {
+        console.error('[coach/leaderboard:create]', e);
+        res.status(500).json({ error: 'failed' });
+    }
+});
+
+router.patch('/leaderboard/:id', async (req, res) => {
+    try {
+        const { displayName, applications, outreach, interviews, offers, currentStreak, isPlaceholder, active } = req.body ?? {};
+        const data: Record<string, unknown> = {};
+        if (displayName !== undefined) data.displayName = String(displayName).trim();
+        if (applications !== undefined) data.applications = Math.max(0, Math.round(Number(applications) || 0));
+        if (outreach !== undefined) data.outreach = Math.max(0, Math.round(Number(outreach) || 0));
+        if (interviews !== undefined) data.interviews = Math.max(0, Math.round(Number(interviews) || 0));
+        if (offers !== undefined) data.offers = Math.max(0, Math.round(Number(offers) || 0));
+        if (currentStreak !== undefined) data.currentStreak = Math.max(0, Math.round(Number(currentStreak) || 0));
+        if (isPlaceholder !== undefined) data.isPlaceholder = Boolean(isPlaceholder);
+        if (active !== undefined) data.active = Boolean(active);
+        const row = await prisma.manualLeaderboardEntry.update({ where: { id: req.params.id }, data });
+        res.json(row);
+    } catch (e) {
+        console.error('[coach/leaderboard:update]', e);
+        res.status(500).json({ error: 'failed' });
+    }
+});
+
+router.delete('/leaderboard/:id', async (req, res) => {
+    try {
+        await prisma.manualLeaderboardEntry.delete({ where: { id: req.params.id } });
+        res.json({ ok: true });
+    } catch (e) {
+        console.error('[coach/leaderboard:delete]', e);
+        res.status(500).json({ error: 'failed' });
+    }
+});
+
 export default router;

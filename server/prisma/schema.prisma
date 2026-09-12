@@ -891,6 +891,27 @@ model PauseWeek {
   @@unique([userId, weekStart])
 }
 
+// A real client the coach tracks outside the app (e.g. not yet on JobHub, or
+// onboarded through another channel) but wants visible on the cohort
+// leaderboard. Coach-entered and coach-maintained via /admin/coach/leaderboard —
+// see routes/coach.ts. displayName should already be in the app's privacy
+// format ("First L.") since it is shown to every other member.
+model ManualLeaderboardEntry {
+  id            String   @id @default(uuid())
+  displayName   String
+  applications  Int      @default(0)
+  outreach      Int      @default(0)
+  interviews    Int      @default(0)
+  offers        Int      @default(0)
+  currentStreak Int      @default(0)
+  // True while real numbers haven't been supplied yet — lets the coach panel
+  // flag which rows still need a real update instead of losing track of them.
+  isPlaceholder Boolean  @default(false)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
 enum LocalExperienceType {
   VOLUNTEERING
   TEMP_WORK

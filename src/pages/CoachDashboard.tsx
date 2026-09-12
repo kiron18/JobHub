@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import api from '../lib/api';
 import { warm } from '../lib/theme/warmTokens';
 import { QualityControlPanel } from '../components/coach/QualityControlPanel';
+import { ManualLeaderboardPanel } from '../components/coach/ManualLeaderboardPanel';
 
 interface WeekCell { weekStart: string; applications: number; outreach: number; paused: boolean; hit: boolean; }
 
@@ -125,6 +126,8 @@ export const CoachDashboard: React.FC = () => {
                     </button>
                 </div>
             </div>
+
+            <ManualLeaderboardPanel />
 
             {isLoading ? (
                 <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}>

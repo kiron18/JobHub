@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Trophy, Search, Loader2, PartyPopper, CheckCircle2 } from 'lucide-react';
+import { Trophy, Search, Loader2, PartyPopper, CheckCircle2, Flame } from 'lucide-react';
 import api from '../lib/api';
 import { warm } from '../lib/theme/warmTokens';
 
@@ -13,6 +13,7 @@ interface LeaderboardEntry {
     interviews: number;
     offers: number;
     points: number;
+    currentStreak: number;
     /** A pace marker, not a member. Shown in the board, never ranked. */
     isExample?: boolean;
     goalHit: boolean;
@@ -87,8 +88,8 @@ export const LeaderboardPage: React.FC = () => {
                         Who's putting in the work
                     </h1>
                     <p style={{ margin: '4px 0 0', fontSize: 13, color: warm.colors.textSecondary }}>
-                        One point per application, one per outreach. Interviews and offers are shown but
-                        do not score: the board ranks the work you control, not the replies you get.
+                        Ranked by daily streak, not volume — five a day for ten days beats fifty in one.
+                        Interviews and offers are shown but do not score: outcomes aren't something effort guarantees.
                     </p>
                 </div>
                 {you && (
@@ -98,7 +99,9 @@ export const LeaderboardPage: React.FC = () => {
                     }}>
                         <div style={{ fontSize: 11, fontWeight: 700, color: warm.colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Your rank</div>
                         <div style={{ fontSize: 22, fontWeight: 900, color: warm.colors.textPrimary }}>
-                            #{you.rank} <span style={{ fontSize: 13, fontWeight: 700, color: warm.colors.textSecondary }}>· {you.points} pts</span>
+                            #{you.rank} <span style={{ fontSize: 13, fontWeight: 700, color: warm.colors.textSecondary }}>
+                                · {you.currentStreak}-day streak · {you.points} pts
+                            </span>
                         </div>
                     </div>
                 )}
@@ -193,7 +196,7 @@ export const LeaderboardPage: React.FC = () => {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                         <thead>
                             <tr style={{ borderBottom: `1px solid ${warm.colors.borderWhisper}` }}>
-                                {['#', 'Member', 'Apps', 'Outreach', 'Interviews', 'Offers', period === 'week' ? 'On target' : '', 'Points'].map((h, i) => (
+                                {['#', 'Member', 'Streak', 'Apps', 'Outreach', 'Interviews', 'Offers', period === 'week' ? 'On target' : '', 'Points'].map((h, i) => (
                                     <th key={i} style={{
                                         padding: '10px 14px', textAlign: i <= 1 ? 'left' : 'center',
                                         fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em',
@@ -237,6 +240,9 @@ export const LeaderboardPage: React.FC = () => {
                                             color: warm.colors.textMuted, fontStyle: 'normal',
                                         }}>target</span>}
                                     </td>
+                                    <td style={{ padding: '10px 14px', textAlign: 'center', fontWeight: e.currentStreak > 0 ? 800 : 400, color: e.currentStreak > 0 ? '#C4713A' : warm.colors.textMuted }}>
+                                        {e.currentStreak > 0 ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Flame size={11} />{e.currentStreak}</span> : '—'}
+                                    </td>
                                     <td style={{ padding: '10px 14px', textAlign: 'center', color: warm.colors.textSecondary }}>{e.applications}</td>
                                     <td style={{ padding: '10px 14px', textAlign: 'center', color: warm.colors.textSecondary }}>{e.outreach}</td>
                                     <td style={{ padding: '10px 14px', textAlign: 'center', fontWeight: e.interviews > 0 ? 800 : 400, color: e.interviews > 0 ? '#C4713A' : warm.colors.textMuted }}>
@@ -257,7 +263,7 @@ export const LeaderboardPage: React.FC = () => {
                             ))}
                             {filtered.length === 0 && (
                                 <tr>
-                                    <td colSpan={8} style={{ padding: 30, textAlign: 'center', color: warm.colors.textMuted }}>
+                                    <td colSpan={9} style={{ padding: 30, textAlign: 'center', color: warm.colors.textMuted }}>
                                         {search ? 'No members match that search.' : 'No activity on the board yet — first application gets the top spot.'}
                                     </td>
                                 </tr>

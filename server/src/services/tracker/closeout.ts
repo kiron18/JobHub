@@ -30,6 +30,19 @@ function isWeekendToken(token: Date): boolean {
   return day === 0 || day === 6;
 }
 
+/** Consecutive floor-clearing days ending today, from a day -> distinct-jobs-that-day map. */
+function streakFromByDay(byDay: Map<string, Set<string>>, today: Date, days: number): number {
+  let streak = 0;
+  for (let i = 0; i < days; i++) {
+    const dayToken = new Date(today.getTime() - i * DAY_MS);
+    if (isWeekendToken(dayToken)) continue;
+    const count = byDay.get(dayToken.toISOString())?.size ?? 0;
+    if (count >= DAILY_STREAK_FLOOR) streak++;
+    else break;
+  }
+  return streak;
+}
+
 /**
  * Consecutive AEST calendar days, ending today, that cleared the daily
  * floor. Weekends are skipped rather than breaking the streak, matching the
@@ -52,15 +65,38 @@ export async function computeDailyStreak(userId: string, days = 60): Promise<num
     byDay.get(key)!.add(jobKey(r));
   }
 
-  let streak = 0;
-  for (let i = 0; i < days; i++) {
-    const dayToken = new Date(today.getTime() - i * DAY_MS);
-    if (isWeekendToken(dayToken)) continue;
-    const count = byDay.get(dayToken.toISOString())?.size ?? 0;
-    if (count >= DAILY_STREAK_FLOOR) streak++;
-    else break;
+  return streakFromByDay(byDay, today, days);
+}
+
+/**
+ * Same as computeDailyStreak, for every user in one query set — for the
+ * leaderboard, which needs everyone's streak at once rather than one
+ * round trip per row (same batching approach as getWeeklyCountsBatch).
+ */
+export async function computeDailyStreakBatch(userIds: string[], days = 60): Promise<Map<string, number>> {
+  const today = todayAEST();
+  const firstDay = new Date(today.getTime() - (days - 1) * DAY_MS);
+
+  const rows = await prisma.jobApplication.findMany({
+    where: { userId: { in: userIds }, ...SENT_APPLICATION_FILTER, dateApplied: { gte: tokenToInstant(firstDay) } },
+    select: { userId: true, sourceUrl: true, id: true, dateApplied: true },
+  });
+
+  const byUserByDay = new Map<string, Map<string, Set<string>>>();
+  for (const r of rows) {
+    if (!r.dateApplied) continue;
+    if (!byUserByDay.has(r.userId)) byUserByDay.set(r.userId, new Map());
+    const byDay = byUserByDay.get(r.userId)!;
+    const key = appliedToken(r.dateApplied).toISOString();
+    if (!byDay.has(key)) byDay.set(key, new Set());
+    byDay.get(key)!.add(jobKey(r));
   }
-  return streak;
+
+  const out = new Map<string, number>();
+  for (const userId of userIds) {
+    out.set(userId, streakFromByDay(byUserByDay.get(userId) ?? new Map(), today, days));
+  }
+  return out;
 }
 
 export interface CloseoutState {

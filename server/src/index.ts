@@ -249,6 +249,22 @@ async function ensureColumns() {
       CREATE INDEX IF NOT EXISTS "OutreachLog_userId_idx" ON "OutreachLog"("userId");
     `);
     await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "ManualLeaderboardEntry" (
+        "id" TEXT NOT NULL,
+        "displayName" TEXT NOT NULL,
+        "applications" INTEGER NOT NULL DEFAULT 0,
+        "outreach" INTEGER NOT NULL DEFAULT 0,
+        "interviews" INTEGER NOT NULL DEFAULT 0,
+        "offers" INTEGER NOT NULL DEFAULT 0,
+        "currentStreak" INTEGER NOT NULL DEFAULT 0,
+        "isPlaceholder" BOOLEAN NOT NULL DEFAULT false,
+        "active" BOOLEAN NOT NULL DEFAULT true,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "ManualLeaderboardEntry_pkey" PRIMARY KEY ("id")
+      );
+    `);
+    await prisma.$executeRawUnsafe(`
       ALTER TABLE "CandidateProfile"
         ADD COLUMN IF NOT EXISTS "achievementCountAtDerivation" INTEGER,
         ADD COLUMN IF NOT EXISTS "identityCards" JSONB,

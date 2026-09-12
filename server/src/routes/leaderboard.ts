@@ -3,13 +3,12 @@ import { prisma } from '../index';
 import { authenticate, type AuthRequest } from '../middleware/auth';
 import { getRealUserIds } from './admin';
 import { countDistinctJobs, SENT_APPLICATION_FILTER } from '../services/tracker/metricHelpers';
+import { computeDailyStreakBatch } from '../services/tracker/closeout';
 import {
     mondayAEST,
     tokenToInstant,
-    computeStreak,
     weeklyEquivalent,
     getWeeklyCountsBatch,
-    WEEKLY_MINIMUM,
     type GoalType,
 } from '../services/tracker/goals';
 
@@ -24,28 +23,37 @@ const router = Router();
  * with a permanently dead column reads as broken software, which is the last
  * thing you want in front of a paying cohort.
  *
- * Both of the things that were broken are gone rather than fixed. The streak
- * column no longer exists, and the weekly bonus no longer scores. What is left
- * is two numbers everybody actually generates.
+ * The old streak is gone, but a new one replaced it: the daily application
+ * streak from services/tracker/closeout.ts (5/day, weekends skipped), which
+ * members actually earn in practice. That is now what ranks the board — see
+ * the ranking note below.
  */
 
 router.use(authenticate);
 
 /**
- * Leaderboard scoring: one point per application, one per outreach.
+ * Leaderboard ranking: current daily streak, first.
  *
- * Interviews used to be worth 15 and offers 40, which meant the board ranked
- * people by outcomes they do not control. Two members can do identical work all
- * week and finish 40 points apart because one employer happened to reply. That
- * is demoralising for the person who did everything right, and it rewards luck.
+ * Volume alone used to be the sort key (one point per application, one per
+ * outreach), which rewarded exactly the thing this program doesn't want:
+ * someone who blasts 50 applications in one manic day outranked someone doing
+ * 5 a day, every day, for two weeks straight. Ranking by streak instead means
+ * consistency wins by construction — the 50-in-a-day person gets one day of
+ * streak credit, same as the 5-in-a-day person got that day.
  *
- * So points are effort, and effort only. Interviews and offers still show on
- * the board, in their own columns, because seeing somebody land one is the best
- * motivation on the page. They just do not move the ranking.
+ * Points (still one per application, one per outreach) are kept as the
+ * tie-break and still shown in their own column, because total effort is
+ * real information — it just shouldn't be the thing that decides #1.
+ *
+ * Interviews and offers still show on the board and still do not rank it:
+ * two members can do identical work and land 40 points apart in outcomes
+ * because one employer happened to reply. That's demoralising for whoever did
+ * everything right, and it rewards luck rather than effort.
  */
 const POINTS = { application: 1, outreach: 1 } as const;
 const DAY_MS = 86400000;
 const STREAK_WEEKS = 26;
+const DAILY_STREAK_DAYS = 60;
 
 function displayName(name: string | null, email: string | null): string {
     const n = (name ?? '').trim();
@@ -66,6 +74,8 @@ export interface LeaderboardEntry {
     interviews: number;
     offers: number;
     points: number;
+    /** Current daily application streak — see services/tracker/closeout.ts. This ranks the board. */
+    currentStreak: number;
     goalHit: boolean;
     /**
      * A pace marker rather than a member. Rendered in the board but never
@@ -106,8 +116,31 @@ function paceEntries(): LeaderboardEntry[] {
         interviews: 0,
         offers: 0,
         points: p.applications * POINTS.application + p.outreach * POINTS.outreach,
+        currentStreak: 0,
         goalHit: true,
         isExample: true,
+    }));
+}
+
+/**
+ * Real clients the coach tracks outside the app, entered and kept up to date
+ * through /admin/coach/leaderboard (see routes/coach.ts). These rank fully
+ * alongside computed rows — they are real people, just not measured from
+ * JobHub's own activity tables.
+ */
+async function manualEntries(): Promise<LeaderboardEntry[]> {
+    const rows = await prisma.manualLeaderboardEntry.findMany({ where: { active: true } });
+    return rows.map(r => ({
+        rank: 0,
+        name: r.displayName,
+        isYou: false,
+        applications: r.applications,
+        outreach: r.outreach,
+        interviews: r.interviews,
+        offers: r.offers,
+        points: r.applications * POINTS.application + r.outreach * POINTS.outreach,
+        currentStreak: r.currentStreak,
+        goalHit: false,
     }));
 }
 
@@ -121,7 +154,7 @@ router.get('/', async (req: any, res: any) => {
         const userIds = await getRealUserIds();
         if (userIds.length === 0) return res.json({ period, weekStart: monday.toISOString().slice(0, 10), entries: [], highlights: [] });
 
-        const [profiles, weeklyMap, appRows, outreachCounts, milestoneRows, recentInterviews] = await Promise.all([
+        const [profiles, weeklyMap, dailyStreakMap, manualRows, appRows, outreachCounts, milestoneRows, recentInterviews] = await Promise.all([
             prisma.candidateProfile.findMany({
                 where: { userId: { in: userIds } },
                 select: {
@@ -131,6 +164,9 @@ router.get('/', async (req: any, res: any) => {
                 },
             }),
             getWeeklyCountsBatch(userIds, STREAK_WEEKS),
+            computeDailyStreakBatch(userIds, DAILY_STREAK_DAYS),
+            // Manual entries are a "this week" cohort feature, same as pace rows.
+            period === 'week' ? manualEntries() : Promise.resolve([]),
             period === 'all'
                 ? prisma.jobApplication.findMany({
                     where: { userId: { in: userIds }, ...SENT_APPLICATION_FILTER },
@@ -226,15 +262,18 @@ router.get('/', async (req: any, res: any) => {
                 interviews: milestones.interviews,
                 offers: milestones.offers,
                 points,
+                currentStreak: dailyStreakMap.get(userId) ?? 0,
                 goalHit,
             });
         }
 
-        // Pace rows sit in the ordering so you can see where you fall against
-        // them, but they never take a rank number: a target is not in the race.
-        const withPace = period === 'week' ? [...entries, ...paceEntries()] : entries;
+        // Manual rows (real clients tracked outside the app) rank fully
+        // alongside computed ones. Pace rows sit in the ordering too, so you
+        // can see where you fall against them, but never take a rank number —
+        // a target is not in the race.
+        const withPace = period === 'week' ? [...entries, ...manualRows, ...paceEntries()] : entries;
         withPace.sort((a, b) =>
-            b.points - a.points || b.interviews - a.interviews || b.applications - a.applications || a.name.localeCompare(b.name));
+            b.currentStreak - a.currentStreak || b.points - a.points || b.interviews - a.interviews || b.applications - a.applications || a.name.localeCompare(b.name));
 
         let rank = 0;
         for (const e of withPace) {
