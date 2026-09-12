@@ -455,11 +455,14 @@ export function PostApplyOutreach({
             {/*
                 Which mailbox "your address" above actually means.
 
-                Shown once, as a choice, only when there are two real
-                candidates that disagree (sign-in address vs. whatever the
-                resume happens to list). Picking either persists it to the
-                profile via onSaveFromEmail, so it is never asked again on any
-                device — just a quiet "Sending from X · Change" line after.
+                Shown as a choice up front only when the two guesses (sign-in
+                address vs. whatever the resume lists) disagree. Otherwise it
+                collapses to a quiet "Sending from X · Change" line — but
+                Change is always there, even with zero or one guess, because
+                the real address might be neither: a personal inbox they keep
+                off both the resume and the sign-up. Picking any of them, or
+                typing one, persists it via onSaveFromEmail so it's never
+                asked again on any device.
             */}
             {(needsPick || pickingFrom) ? (
                 <div style={{
@@ -513,9 +516,9 @@ export function PostApplyOutreach({
                         </button>
                     </div>
                 </div>
-            ) : fromEmail ? (
+            ) : (
                 <p style={{ margin: 0, fontSize: 11.5, color: warm.colors.textMuted }}>
-                    Sending from {fromEmail}.{' '}
+                    {fromEmail ? <>Sending from {fromEmail}.{' '}</> : null}
                     <button
                         onClick={() => setPickingFrom(true)}
                         style={{
@@ -523,10 +526,10 @@ export function PostApplyOutreach({
                             background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline',
                         }}
                     >
-                        Change
+                        {fromEmail ? 'Change' : 'Set the email you send from'}
                     </button>
                 </p>
-            ) : null}
+            )}
 
             <div style={{
                 display: 'grid',
