@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     LayoutDashboard,
@@ -201,7 +201,14 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
 
     const sidebarContent = (showLabels: boolean) => (
         <>
-            <div className="flex items-center gap-3 mb-10 px-2">
+            {/* The logo is the home button — '/' is "New application", already
+                the app's actual home (see the nav comment below), it just had
+                no way back to it besides the sidebar item itself. */}
+            <Link
+                to="/"
+                onClick={() => isTouch && setDrawerOpen(false)}
+                className="flex items-center gap-3 mb-10 px-2"
+            >
                 <img
                     src="/Logo.svg"
                     alt="JobReady"
@@ -221,7 +228,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                         </motion.h1>
                     )}
                 </AnimatePresence>
-            </div>
+            </Link>
 
             <nav className="flex-1 space-y-1.5">
                 {navItems.map((item) => {
@@ -435,18 +442,20 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                     >
                         <Menu size={20} />
                     </button>
-                    <img
-                        src="/Logo.svg"
-                        alt=""
-                        aria-hidden
-                        className="w-7 h-7 rounded-lg flex-shrink-0 object-contain"
-                    />
-                    <span
-                        className="font-bold tracking-tight"
-                        style={{ color: warmT.text, fontSize: 16 }}
-                    >
-                        JobReady
-                    </span>
+                    <Link to="/" className="flex items-center gap-2">
+                        <img
+                            src="/Logo.svg"
+                            alt=""
+                            aria-hidden
+                            className="w-7 h-7 rounded-lg flex-shrink-0 object-contain"
+                        />
+                        <span
+                            className="font-bold tracking-tight"
+                            style={{ color: warmT.text, fontSize: 16 }}
+                        >
+                            JobReady
+                        </span>
+                    </Link>
                 </header>
             )}
 
