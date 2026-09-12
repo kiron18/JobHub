@@ -11,6 +11,8 @@ import {
     mondayAEST as mondayAESTShared,
     tokenToInstant,
 } from '../services/tracker/goals';
+import { getMilestoneState, ackMilestone } from '../services/tracker/milestones';
+import { getCloseoutState, ackCloseout } from '../services/tracker/closeout';
 
 export async function getDailyProgress(userId: string): Promise<{ appliedToday: number; goal: number }> {
   // promoteAndGetSettings applies any goal change that has become effective.
@@ -108,6 +110,38 @@ router.post('/goals', async (req: any, res: any) => {
     console.error('[tracker/goals:set]', e); res.status(500).json({ error: 'failed' });
   }
 });
+// Hundred-applications milestone: interview rate by matched-job tag, shown
+// once per milestone crossed. Never eligible again once acknowledged.
+router.get('/milestone', async (req: any, res: any) => {
+  try { res.json(await getMilestoneState(req.user.id)); }
+  catch (e) { console.error('[tracker/milestone]', e); res.status(500).json({ error: 'failed' }); }
+});
+router.post('/milestone/ack', async (req: any, res: any) => {
+  try {
+    // The milestone to ack comes from the server's own computed state, not
+    // the request body — a client can't skip ahead to a milestone it hasn't
+    // actually reached.
+    const state = await getMilestoneState(req.user.id);
+    if (state.eligible) await ackMilestone(req.user.id, state.milestone);
+    res.json(await getMilestoneState(req.user.id));
+  } catch (e) { console.error('[tracker/milestone:ack]', e); res.status(500).json({ error: 'failed' }); }
+});
+// Daily close-out: fires once per AEST day, the moment the day's goal is
+// met, so a session ends with a real full stop instead of fizzling out.
+router.get('/closeout', async (req: any, res: any) => {
+  try { res.json(await getCloseoutState(req.user.id)); }
+  catch (e) { console.error('[tracker/closeout]', e); res.status(500).json({ error: 'failed' }); }
+});
+router.post('/closeout/ack', async (req: any, res: any) => {
+  try {
+    // Same server-truth pattern as milestone/ack: the client can't force an
+    // early close-out for a day it hasn't actually met its goal on.
+    const state = await getCloseoutState(req.user.id);
+    if (state.eligible) await ackCloseout(req.user.id);
+    res.json(await getCloseoutState(req.user.id));
+  } catch (e) { console.error('[tracker/closeout:ack]', e); res.status(500).json({ error: 'failed' }); }
+});
+
 export default router;
 
 // ── Local Experience Log ─────────────────────────────────────────────────────

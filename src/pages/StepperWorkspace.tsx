@@ -1702,6 +1702,10 @@ function TrackStep({
                 // The bar on the hub reads the same endpoint. Without this it
                 // keeps showing the count from before this application.
                 queryClient.invalidateQueries({ queryKey: ['tracker-goal'] });
+                // Lets the globally-mounted DailyCloseOut check right away
+                // instead of waiting out its own poll interval — this is the
+                // application that might have just finished the day.
+                queryClient.invalidateQueries({ queryKey: ['tracker-closeout'] });
             };
             try {
                 // Every application now starts at the fit check, which already

@@ -10,6 +10,7 @@ import { OnboardingGate } from './components/OnboardingGate';
 import { useWelcomeHandoff } from './lib/welcomeHandoff';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CelebrationHost } from './components/shared/Celebration';
+import { DailyCloseOut } from './components/tracker/DailyCloseOut';
 import { warm } from './lib/theme/warmTokens';
 
 const ApplicationTracker   = React.lazy(() => import('./components/ApplicationTracker').then(m => ({ default: m.ApplicationTracker })));
@@ -658,6 +659,8 @@ function App() {
           />
           {/* Fired from anywhere via celebrate(). See src/lib/feedback.ts. */}
           <CelebrationHost />
+          {/* Once-a-day close-out — see src/components/tracker/DailyCloseOut.tsx. */}
+          <DailyCloseOut />
         </AuthProvider>
       </QueryClientProvider>
     </ThemeProvider>

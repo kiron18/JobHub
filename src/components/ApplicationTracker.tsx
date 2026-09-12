@@ -26,6 +26,7 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import { ActivityHeatmap } from './tracker/ActivityHeatmap';
 import { OutreachTracker } from './linkedin/OutreachTracker';
 import { GoalCard } from './tracker/GoalCard';
+import { MilestoneCard } from './tracker/MilestoneCard';
 
 const PRIORITY_ORDER: Record<string, number> = { DREAM: 0, TARGET: 1, BACKUP: 2 };
 
@@ -276,6 +277,7 @@ export const ApplicationTracker: React.FC = () => {
             {trackerTab === 'applications' && (
               <>
             <GoalCard />
+            <MilestoneCard />
 
             {!isLoading && <FollowUpNudge jobs={jobs} />}
             {!isLoading && <ThankYouNudge jobs={jobs} />}

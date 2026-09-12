@@ -112,6 +112,12 @@ model CandidateProfile {
   applicationGoalType          String    @default("daily")
   dailyOutreachGoal            Int       @default(4)
   outreachGoalType             String    @default("daily")
+  // Highest hundred-applications milestone (100, 200, ...) already shown to
+  // this candidate. Only ever moves forward — see services/tracker/milestones.ts.
+  applicationMilestoneSeen     Int       @default(0)
+  // AEST calendar-day token (midnight UTC) of the last day the daily
+  // close-out was shown. Gates it to once per day — see services/tracker/closeout.ts.
+  closeoutSeenDate              DateTime?
   documentsUpdatedAt           DateTime?
   // When we last sent this candidate a follow-up nudge email. Throttles the
   // reminder to one per person every 4 days instead of one per application.
