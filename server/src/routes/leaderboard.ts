@@ -9,6 +9,7 @@ import {
     tokenToInstant,
     weeklyEquivalent,
     getWeeklyCountsBatch,
+    WEEKLY_MINIMUM,
     type GoalType,
 } from '../services/tracker/goals';
 
@@ -55,6 +56,30 @@ const DAY_MS = 86400000;
 const STREAK_WEEKS = 26;
 const DAILY_STREAK_DAYS = 60;
 
+/**
+ * The board is capped at ten ranked names, and a name only takes one of those
+ * ten spots by actually clearing a volume floor for the board it's on. The
+ * point is competitiveness without deception: someone doing little should
+ * never see themselves (or a real client) sitting in the top ten, because
+ * that tells them they're already doing fine when they aren't. Below-floor
+ * members still get their true rank in "Your rank" — they just don't
+ * decorate the shared board.
+ *
+ * Week's floor is the existing program minimum. All-time's is a first pass —
+ * eight weeks of that same minimum, i.e. sustained rather than one hot week.
+ * Tune freely; it's just this constant.
+ */
+const TOP_TEN_SIZE = 10;
+const ALL_TIME_MINIMUM = {
+    applications: WEEKLY_MINIMUM.applications * 8,
+    outreach: WEEKLY_MINIMUM.outreach * 8,
+} as const;
+
+function meetsVolumeFloor(e: Pick<LeaderboardEntry, 'applications' | 'outreach'>, period: 'week' | 'all'): boolean {
+    const floor = period === 'week' ? WEEKLY_MINIMUM : ALL_TIME_MINIMUM;
+    return e.applications >= floor.applications && e.outreach >= floor.outreach;
+}
+
 function displayName(name: string | null, email: string | null): string {
     const n = (name ?? '').trim();
     if (n) {
@@ -79,7 +104,7 @@ export interface LeaderboardEntry {
     goalHit: boolean;
     /**
      * A pace marker rather than a member. Rendered in the board but never
-     * ranked against, and always labelled. See PACE_ROWS.
+     * ranked against, and always labelled. See PACE_ROWS_WEEK / PACE_ROWS_ALL.
      */
     isExample?: boolean;
 }
@@ -99,15 +124,22 @@ export interface LeaderboardEntry {
  *
  * Both numbers are real. 20 and 20 is the program minimum enforced in
  * services/tracker/goals.ts. The strong week is what the top of the board
- * has actually looked like.
+ * has actually looked like. The all-time pair scales the same two figures
+ * to ALL_TIME_MINIMUM's eight-week window rather than reusing the weekly
+ * ones out of context.
  */
-const PACE_ROWS: Array<{ name: string; applications: number; outreach: number }> = [
+const PACE_ROWS_WEEK: Array<{ name: string; applications: number; outreach: number }> = [
     { name: 'A strong week', applications: 35, outreach: 30 },
-    { name: 'Program minimum', applications: 20, outreach: 20 },
+    { name: 'Program minimum', applications: WEEKLY_MINIMUM.applications, outreach: WEEKLY_MINIMUM.outreach },
+];
+const PACE_ROWS_ALL: Array<{ name: string; applications: number; outreach: number }> = [
+    { name: 'A strong stretch', applications: 280, outreach: 240 },
+    { name: 'Program minimum', applications: ALL_TIME_MINIMUM.applications, outreach: ALL_TIME_MINIMUM.outreach },
 ];
 
-function paceEntries(): LeaderboardEntry[] {
-    return PACE_ROWS.map(p => ({
+function paceEntries(period: 'week' | 'all'): LeaderboardEntry[] {
+    const rows = period === 'week' ? PACE_ROWS_WEEK : PACE_ROWS_ALL;
+    return rows.map(p => ({
         rank: 0,
         name: p.name,
         isYou: false,
@@ -125,8 +157,8 @@ function paceEntries(): LeaderboardEntry[] {
 /**
  * Real clients the coach tracks outside the app, entered and kept up to date
  * through /admin/coach/leaderboard (see routes/coach.ts). These rank fully
- * alongside computed rows — they are real people, just not measured from
- * JobHub's own activity tables.
+ * alongside computed rows on both boards — they are real people, just not
+ * measured from JobHub's own activity tables.
  */
 async function manualEntries(): Promise<LeaderboardEntry[]> {
     const rows = await prisma.manualLeaderboardEntry.findMany({ where: { active: true } });
@@ -165,8 +197,7 @@ router.get('/', async (req: any, res: any) => {
             }),
             getWeeklyCountsBatch(userIds, STREAK_WEEKS),
             computeDailyStreakBatch(userIds, DAILY_STREAK_DAYS),
-            // Manual entries are a "this week" cohort feature, same as pace rows.
-            period === 'week' ? manualEntries() : Promise.resolve([]),
+            manualEntries(),
             period === 'all'
                 ? prisma.jobApplication.findMany({
                     where: { userId: { in: userIds }, ...SENT_APPLICATION_FILTER },
@@ -268,10 +299,10 @@ router.get('/', async (req: any, res: any) => {
         }
 
         // Manual rows (real clients tracked outside the app) rank fully
-        // alongside computed ones. Pace rows sit in the ordering too, so you
-        // can see where you fall against them, but never take a rank number —
-        // a target is not in the race.
-        const withPace = period === 'week' ? [...entries, ...manualRows, ...paceEntries()] : entries;
+        // alongside computed ones, on both boards. Pace rows sit in the
+        // ordering too, so you can see where you fall against them, but never
+        // take a rank number — a target is not in the race.
+        const withPace = [...entries, ...manualRows, ...paceEntries(period)];
         withPace.sort((a, b) =>
             b.currentStreak - a.currentStreak || b.points - a.points || b.interviews - a.interviews || b.applications - a.applications || a.name.localeCompare(b.name));
 
@@ -280,8 +311,29 @@ router.get('/', async (req: any, res: any) => {
             if (e.isExample) continue;
             e.rank = ++rank;
         }
+
+        // The visible board: top ten ranked names that actually clear the
+        // volume floor, plus the pace rows for reference (they don't count
+        // against the cap — see meetsVolumeFloor above). Someone below the
+        // floor, or ranked past ten, keeps their real rank (used by "Your
+        // rank" below) but doesn't get a row here — unless it's the viewer's
+        // own row, which is always pinned in so they can see where they
+        // stand, not just that they didn't make it.
+        const board: LeaderboardEntry[] = [];
+        let shown = 0;
+        for (const e of withPace) {
+            if (e.isExample) { board.push(e); continue; }
+            if (shown >= TOP_TEN_SIZE || !meetsVolumeFloor(e, period)) continue;
+            board.push(e);
+            shown++;
+        }
+        if (!board.some(e => e.isYou)) {
+            const mine = withPace.find(e => e.isYou);
+            if (mine) board.push(mine);
+        }
+
         entries.length = 0;
-        entries.push(...withPace);
+        entries.push(...board);
 
         const highlights = recentInterviews.map(r => {
             const p = profileByUser.get(r.userId);

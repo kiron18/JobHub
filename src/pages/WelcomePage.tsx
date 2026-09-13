@@ -976,6 +976,9 @@ export const WelcomePage: React.FC = () => {
               ? `Hey ${firstName}, check out your new and improved resume!`
               : 'Check out your new and improved resume!'}
           </Display>
+          <p style={{ fontFamily: T.body, fontSize: 13.5, color: colors.textMuted, margin: '4px 0 0' }}>
+            Download on the next page
+          </p>
         </div>
 
         {/*

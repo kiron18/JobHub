@@ -274,8 +274,11 @@ export const LeaderboardPage: React.FC = () => {
             )}
 
             <p style={{ margin: '12px 4px 0', fontSize: 11.5, color: warm.colors.textMuted }}>
-                Week runs Monday to Sunday (AEST). The two italic rows are targets, not members:
-                the program minimum is 20 applications and 20 outreach a week.
+                Top ten only, and everyone on it is clearing the program minimum for this board —
+                {period === 'week' ? ' 20 applications and 20 outreach for the week' : ' 160 applications and 160 outreach over time'}.
+                Below that, you still see your own rank above, just not a row on the shared board — we're not
+                going to tell you you're competitive when you're not. Week runs Monday to Sunday (AEST).
+                The two italic rows are targets, not members.
             </p>
         </div>
     );
