@@ -11,8 +11,8 @@ datasource db {
 model CandidateProfile {
   // Browser-extension auth. Long-lived and revocable, because a Supabase JWT
   // expires and an extension cannot re-authenticate on its own. Hash only.
-  extensionTokenHash      String?   @unique
-  extensionTokenCreatedAt DateTime?
+  extensionTokenHash           String?           @unique
+  extensionTokenCreatedAt      DateTime?
   id                           String            @id @default(uuid())
   answerBankIntake             AnswerBankIntake?
   userId                       String            @unique
@@ -77,26 +77,26 @@ model CandidateProfile {
   dashboardAccessRequested     Boolean           @default(false)
   skoolJoined                  Boolean           @default(false)
   skoolCommunityEmail          String?
-  stripeCustomerId       String?
-  stripeSubscriptionId   String?
-  subscriptionStatus     String?
-  plan                   String    @default("free")
-  planStatus             String    @default("active")
-  trialEndDate           DateTime?
-  accessExpiresAt        DateTime?
+  stripeCustomerId             String?
+  stripeSubscriptionId         String?
+  subscriptionStatus           String?
+  plan                         String            @default("free")
+  planStatus                   String            @default("active")
+  trialEndDate                 DateTime?
+  accessExpiresAt              DateTime?
   /// Set when an installment has failed and this client's access is held until
   /// they pay. Deliberately separate from planStatus: past_due describes what
   /// Stripe thinks, this describes what we decided to do about it, and the two
   /// are not always the same call.
-  billingHoldAt          DateTime?
+  billingHoldAt                DateTime?
   /// The Stripe hosted invoice link the held client is sent to. Stored so the
   /// banner and the 402 body can both point at the exact unpaid invoice rather
   /// than dumping them in a generic billing portal.
-  billingHoldInvoiceUrl  String?
-  freeGenerationsUsed    Int       @default(0)
-  freeAnalysesUsed       Int       @default(0)
-  freeJobSearchesUsed    Int       @default(0)
-  freeMatchScoresUsed    Int       @default(0)
+  billingHoldInvoiceUrl        String?
+  freeGenerationsUsed          Int               @default(0)
+  freeAnalysesUsed             Int               @default(0)
+  freeJobSearchesUsed          Int               @default(0)
+  freeMatchScoresUsed          Int               @default(0)
   achievementCountAtDerivation Int?
   identityCards                Json?
   identityCardsUpdatedAt       DateTime?
@@ -108,16 +108,16 @@ model CandidateProfile {
   resumeFilename               String?
   coverLetterFilename          String?
   coverLetterFilename2         String?
-  dailyApplicationGoal         Int       @default(5)
-  applicationGoalType          String    @default("daily")
-  dailyOutreachGoal            Int       @default(4)
-  outreachGoalType             String    @default("daily")
+  dailyApplicationGoal         Int               @default(5)
+  applicationGoalType          String            @default("daily")
+  dailyOutreachGoal            Int               @default(4)
+  outreachGoalType             String            @default("daily")
   // Highest hundred-applications milestone (100, 200, ...) already shown to
   // this candidate. Only ever moves forward — see services/tracker/milestones.ts.
-  applicationMilestoneSeen     Int       @default(0)
+  applicationMilestoneSeen     Int               @default(0)
   // AEST calendar-day token (midnight UTC) of the last day the daily
   // close-out was shown. Gates it to once per day — see services/tracker/closeout.ts.
-  closeoutSeenDate              DateTime?
+  closeoutSeenDate             DateTime?
   documentsUpdatedAt           DateTime?
   // When we last sent this candidate a follow-up nudge email. Throttles the
   // reminder to one per person every 4 days instead of one per application.
@@ -134,8 +134,8 @@ model CandidateProfile {
   languages                    Language[]
   resumeVersions               ResumeVersion[]
   volunteering                 Volunteering[]
-  contactId                    String?   @unique
-  contact                      Contact?       @relation(fields: [contactId], references: [id])
+  contactId                    String?           @unique
+  contact                      Contact?          @relation(fields: [contactId], references: [id])
 }
 
 model ResumeVersion {
@@ -235,62 +235,68 @@ model Achievement {
 }
 
 model JobApplication {
-  id                  String            @id @default(uuid())
-  userId              String
-  candidateProfileId  String
-  title               String
+  id                   String            @id @default(uuid())
+  userId               String
+  candidateProfileId   String
+  title                String
   // Nullable on purpose. A great many Australian ads never name the hiring
   // employer (agency listings, "The Company is a well-established..."), and the
   // extractor is built to return null rather than guess. Storing a placeholder
   // string here laundered that honest null into something downstream read as a
   // real name, which is how a follow-up email came to be addressed to
   // "Unknown company". Null means we do not know; it is never a name.
-  company             String?
+  company              String?
   // The recruitment agency that posted the ad, when the ad names one but not
   // the employer behind it. For those listings the agency recruiter IS the
   // right person to follow up with, so this is a contact, not a consolation.
-  agency              String?
-  description         String
-  sourceUrl           String?
-  dateApplied         DateTime?
-  status              ApplicationStatus @default(SAVED)
-  createdAt           DateTime          @default(now())
-  updatedAt           DateTime          @updatedAt
-  notes               String?
-  priority            JobPriority?
-  closingDate         DateTime?
-  blueprintJson       Json?
-  australianFlags     Json?
-  dimensions          Json?
-  matchedIdentityCard String?
-  overallGrade        String?
-  followUpSentAt      DateTime?
-  followUpDismissedAt DateTime?
-  interviewReachedAt  DateTime?
-  offerReachedAt      DateTime?
+  agency               String?
+  description          String
+  sourceUrl            String?
+  dateApplied          DateTime?
+  status               ApplicationStatus @default(SAVED)
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  notes                String?
+  priority             JobPriority?
+  closingDate          DateTime?
+  blueprintJson        Json?
+  australianFlags      Json?
+  dimensions           Json?
+  matchedIdentityCard  String?
+  overallGrade         String?
+  followUpSentAt       DateTime?
+  followUpDismissedAt  DateTime?
+  interviewReachedAt   DateTime?
+  offerReachedAt       DateTime?
   /// When the interview actually is. Asked for at the moment somebody claims
   /// one, because a date is a question a real interviewee answers instantly
   /// and a fabricator has to invent, which makes it a better gate than a
   /// warning nobody reads. It also lets the prep know whether it is writing
   /// for tomorrow or for a fortnight away.
-  interviewAt         DateTime?
-  companyIntel        Json?
+  interviewAt          DateTime?
+  companyIntel         Json?
   /// Which round this prep is for: recruiter_screen, hiring_manager, panel,
   /// technical, final. A screening call and a final panel are different
   /// conversations, and generating one document for both is what made the old
   /// prep generic. Null means it has not been chosen yet.
-  interviewStage      String?
+  interviewStage       String?
   /// The free tier's fit check: the whole FitReport object as returned, so the
   /// result screen can be reopened without paying for the call twice.
   /// Deliberately separate from `dimensions`/`overallGrade`, which are the
   /// paid MatchEngine's output and answer a different question.
-  fitReport           Json?
+  fitReport            Json?
   /// The report's headline number, lifted out so a job list can sort and show
   /// it without deserialising every row's JSON.
-  fitScore            Int?
-  fitCheckedAt        DateTime?
-  documents           Document[]
-  candidateProfile    CandidateProfile  @relation(fields: [candidateProfileId], references: [id])
+  fitScore             Int?
+  fitCheckedAt         DateTime?
+  /// The real address, pasted back in by hand after the ad only gave us a
+  /// blanked-out one (Seek shows "****@domain.com" until you click it — we
+  /// cannot click it for them, see fitReport's maskedContactDomain). Null
+  /// until they paste it, and null forever on a job whose ad never masked
+  /// anything in the first place.
+  revealedContactEmail String?
+  documents            Document[]
+  candidateProfile     CandidateProfile  @relation(fields: [candidateProfileId], references: [id])
 
   @@index([userId])
   @@index([candidateProfileId])
@@ -321,14 +327,14 @@ model OutreachLog {
   // OutreachMessage (which records what was actually sent) so a user can log
   // at connection-request time and come back to the drafts days later, once
   // the person accepts. Without these, closing the tab lost the drafts.
-  connectionNote   String            @default("")
-  followUpDraft    String            @default("")
-  directAskDraft   String            @default("")
+  connectionNote  String   @default("")
+  followUpDraft   String   @default("")
+  directAskDraft  String   @default("")
   // The 3-4 week re-contact: arrives long after the thread went quiet, asks
   // for nothing, and reports something the candidate actually did off the back
   // of the person's advice. Most referrals come from this message, not the call.
-  reContactDraft   String            @default("")
-  draftsUpdatedAt  DateTime          @default(now())
+  reContactDraft  String   @default("")
+  draftsUpdatedAt DateTime @default(now())
 
   @@index([userId])
 }
@@ -346,31 +352,31 @@ model OutreachMessage {
 }
 
 model JobFeedItem {
-  id                   String           @id @default(uuid())
-  userId               String
-  feedDate             DateTime         @db.Date
-  title                String
-  company              String
-  location             String?
-  salary               String?
-  description          String
-  bullets              Json?
-  sourceUrl            String
-  sourcePlatform       String
-  postedAt             DateTime?
-  suggestedAddressee   String?
-  addresseeTitle       String?
-  addresseeConfidence  String?
-  addresseeSource      String?
-  matchScore           Int?
-  matchDetails         Json?
-  isRead               Boolean          @default(false)
-  isSaved              Boolean          @default(false)
-  skipped              Boolean          @default(false)
-  skippedAt            DateTime?
-  createdAt            DateTime         @default(now())
-  updatedAt            DateTime         @updatedAt
-  candidateProfile     CandidateProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  id                  String           @id @default(uuid())
+  userId              String
+  feedDate            DateTime         @db.Date
+  title               String
+  company             String
+  location            String?
+  salary              String?
+  description         String
+  bullets             Json?
+  sourceUrl           String
+  sourcePlatform      String
+  postedAt            DateTime?
+  suggestedAddressee  String?
+  addresseeTitle      String?
+  addresseeConfidence String?
+  addresseeSource     String?
+  matchScore          Int?
+  matchDetails        Json?
+  isRead              Boolean          @default(false)
+  isSaved             Boolean          @default(false)
+  skipped             Boolean          @default(false)
+  skippedAt           DateTime?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  candidateProfile    CandidateProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
 
   @@index([userId, feedDate])
 }
@@ -403,25 +409,25 @@ model SeekJobCache {
 }
 
 model Document {
-  id               String             @id @default(uuid())
-  userId           String
-  title            String?
-  jobApplicationId String?
-  type             DocumentType
-  content          String
-  edited           Boolean            @default(false)
-  templateConfig   Json?
-  qualitySignals   Json?
+  id                 String             @id @default(uuid())
+  userId             String
+  title              String?
+  jobApplicationId   String?
+  type               DocumentType
+  content            String
+  edited             Boolean            @default(false)
+  templateConfig     Json?
+  qualitySignals     Json?
   // Fingerprint of the advert this document was generated against. Generation
   // and the tracker row are created by two separate calls, so without this
   // there is nothing to join them on and the document stays orphaned, which
   // is why 97% of them had no application attached.
   jobDescriptionHash String?
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
-  jobApplication   JobApplication?    @relation(fields: [jobApplicationId], references: [id])
-  feedback         DocumentFeedback[]
-  qcReviews        DocumentQcReview[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  jobApplication     JobApplication?    @relation(fields: [jobApplicationId], references: [id])
+  feedback           DocumentFeedback[]
+  qcReviews          DocumentQcReview[]
 
   @@index([userId])
   @@index([jobApplicationId])
@@ -532,8 +538,8 @@ model FridayBrief {
 }
 
 model Sponsor {
-  id               String             @id @default(uuid())
-  cleanName        String             @unique
+  id               String      @id @default(uuid())
+  cleanName        String      @unique
   rawName          String
   website          String?
   careersUrl       String?
@@ -544,7 +550,7 @@ model Sponsor {
   industry         String?
   locations        String[]
   hiringProfile    String?
-  tier             SponsorTier        @default(standard)
+  tier             SponsorTier @default(standard)
   // From the ABN Bulk Extract (ABR, free). Null where the sponsor's name on the
   // Home Affairs list could not be matched to an ABR entity.
   abn              String?
@@ -555,8 +561,8 @@ model Sponsor {
   // only human-meaningful name we have: 'THE TRUSTEE FOR A & J GANDHI FAMILY TRUST'
   // is really 'BOMBAY BY NIGHT'.
   tradingName      String?
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 
   @@index([industry])
   @@index([tier])
@@ -582,8 +588,8 @@ model SponsorLead {
 }
 
 model SponsorJob {
-  id                String   @id @default(uuid())
-  sourceUrl         String   @unique
+  id                String    @id @default(uuid())
+  sourceUrl         String    @unique
   title             String
   company           String
   normalizedCompany String
@@ -599,8 +605,8 @@ model SponsorJob {
   negationPhraseHit Boolean
   matchedPhrases    Json?
   scanQuery         String
-  firstSeenAt       DateTime @default(now())
-  lastSeenAt        DateTime @updatedAt
+  firstSeenAt       DateTime  @default(now())
+  lastSeenAt        DateTime  @updatedAt
   feedDate          String
 
   @@index([confidence])
@@ -609,23 +615,23 @@ model SponsorJob {
 }
 
 model Contact {
-  id              String    @id @default(uuid())
-  email           String    @unique
-  firstName       String?
-  lastName        String?
-  source          String    @default("manual")
-  metadata        Json?
-  emailOptIn      Boolean   @default(true)
-  unsubscribedAt  DateTime?
-  lastActivityAt  DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id             String    @id @default(uuid())
+  email          String    @unique
+  firstName      String?
+  lastName       String?
+  source         String    @default("manual")
+  metadata       Json?
+  emailOptIn     Boolean   @default(true)
+  unsubscribedAt DateTime?
+  lastActivityAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  tags              ContactTag[]
-  sequences         ContactSequence[]
-  emailSends        EmailSend[]
-  notes             ContactNote[]
-  candidateProfile  CandidateProfile?
+  tags             ContactTag[]
+  sequences        ContactSequence[]
+  emailSends       EmailSend[]
+  notes            ContactNote[]
+  candidateProfile CandidateProfile?
 }
 
 model ContactNote {
@@ -635,6 +641,7 @@ model ContactNote {
   createdAt DateTime @default(now())
 
   contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
   @@index([contactId])
 }
 
@@ -667,8 +674,8 @@ model EmailTemplate {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  steps     SequenceStep[]
-  emailSends  EmailSend[]
+  steps      SequenceStep[]
+  emailSends EmailSend[]
 }
 
 model EmailSequence {
@@ -679,9 +686,9 @@ model EmailSequence {
   active      Boolean  @default(true)
   createdAt   DateTime @default(now())
 
-  steps SequenceStep[]
-  contactSequences  ContactSequence[]
-  emailSends        EmailSend[]
+  steps            SequenceStep[]
+  contactSequences ContactSequence[]
+  emailSends       EmailSend[]
 }
 
 model SequenceStep {
@@ -692,8 +699,8 @@ model SequenceStep {
   templateId String
   createdAt  DateTime @default(now())
 
-  sequence EmailSequence  @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
-  template EmailTemplate  @relation(fields: [templateId], references: [id])
+  sequence EmailSequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  template EmailTemplate @relation(fields: [templateId], references: [id])
 
   @@unique([sequenceId, stepOrder])
   @@index([sequenceId])
@@ -701,16 +708,16 @@ model SequenceStep {
 }
 
 model ContactSequence {
-  id                String    @id @default(uuid())
-  contactId         String
-  sequenceId        String
-  currentStep       Int       @default(0)
-  completed         Boolean   @default(false)
-  lastStepSentAt    DateTime?
-  enrolledAt        DateTime  @default(now())
-  completedAt       DateTime?
-  unenrolledAt      DateTime?
-  unenrolledReason  String?
+  id               String    @id @default(uuid())
+  contactId        String
+  sequenceId       String
+  currentStep      Int       @default(0)
+  completed        Boolean   @default(false)
+  lastStepSentAt   DateTime?
+  enrolledAt       DateTime  @default(now())
+  completedAt      DateTime?
+  unenrolledAt     DateTime?
+  unenrolledReason String?
 
   contact  Contact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
   sequence EmailSequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
@@ -720,23 +727,23 @@ model ContactSequence {
 }
 
 model EmailSend {
-  id              String   @id @default(uuid())
-  contactId       String
-  sequenceId      String?
-  sequenceStepId  String?
-  templateId      String?
-  broadcastId     String?
-  resendEmailId   String?
-  subject         String
-  fromEmail       String
-  toEmail         String
-  sentAt          DateTime @default(now())
+  id             String   @id @default(uuid())
+  contactId      String
+  sequenceId     String?
+  sequenceStepId String?
+  templateId     String?
+  broadcastId    String?
+  resendEmailId  String?
+  subject        String
+  fromEmail      String
+  toEmail        String
+  sentAt         DateTime @default(now())
 
-  contact     Contact        @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  sequence    EmailSequence?  @relation(fields: [sequenceId], references: [id])
-  template    EmailTemplate?  @relation(fields: [templateId], references: [id])
-  opens       EmailOpen[]
-  clicks      EmailClick[]
+  contact  Contact        @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  sequence EmailSequence? @relation(fields: [sequenceId], references: [id])
+  template EmailTemplate? @relation(fields: [templateId], references: [id])
+  opens    EmailOpen[]
+  clicks   EmailClick[]
 
   @@index([contactId, sentAt])
   @@index([sentAt])
@@ -750,6 +757,7 @@ model EmailOpen {
   ipAddress   String?
 
   emailSend EmailSend @relation(fields: [emailSendId], references: [id], onDelete: Cascade)
+
   @@index([emailSendId])
 }
 
@@ -762,19 +770,20 @@ model EmailClick {
   ipAddress   String?
 
   emailSend EmailSend @relation(fields: [emailSendId], references: [id], onDelete: Cascade)
+
   @@index([emailSendId])
 }
 
 model Broadcast {
-  id        String   @id @default(uuid())
-  name      String
-  subject   String
-  bodyText  String?
-  bodyHtml  String?
+  id             String    @id @default(uuid())
+  name           String
+  subject        String
+  bodyText       String?
+  bodyHtml       String?
   targetCriteria Json?
-  status    String   @default("draft")
-  sentAt    DateTime?
-  createdAt DateTime @default(now())
+  status         String    @default("draft")
+  sentAt         DateTime?
+  createdAt      DateTime  @default(now())
 }
 
 model Job {
@@ -797,6 +806,7 @@ model Job {
   lastSeenAt          DateTime    @updatedAt
   feedDate            String
   sources             JobSource[]
+
   @@index([normalizedCompany])
   @@index([feedDate])
   @@index([lowRelevance])
@@ -811,6 +821,7 @@ model JobSource {
   sourceUrl   String
   sourceJobId String?
   seenAt      DateTime @default(now())
+
   @@unique([source, sourceUrl])
   @@index([jobId])
 }
@@ -859,10 +870,10 @@ model SourceResult {
   errorMessage String?
   latencyMs    Int          @default(0)
   creditsUsed  Int          @default(0)
+
   @@index([runId])
   @@index([source])
 }
-
 
 model GoalChange {
   id               String    @id @default(uuid())
@@ -954,8 +965,8 @@ model NudgeLog {
 // would throw away work the visitor spent ten minutes on. Rows are claimed at
 // /welcome/finish and swept after 7 days.
 model WelcomeSession {
-  id                 String   @id @default(uuid())
-  token              String   @unique
+  id                 String    @id @default(uuid())
+  token              String    @unique
   resumeOriginalText String
   resumeFilename     String?
   firstName          String?
@@ -976,10 +987,10 @@ model WelcomeSession {
   resumeEditedAt     DateTime?
   // Rebuilds attempted on this session. /welcome/build is anonymous and costs an
   // LLM call, so it is capped per session rather than left open.
-  buildCount         Int      @default(0)
+  buildCount         Int       @default(0)
   claimedByUserId    String?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   @@index([createdAt])
 }
@@ -991,10 +1002,10 @@ model WelcomeSession {
 /// session, and a new question must never mean a new migration on the day of
 /// the call. The export endpoint flattens whatever keys it finds.
 model SessionRegistration {
-  id     String @id @default(cuid())
-  name   String
-  email  String @unique
-  phone  String?
+  id    String  @id @default(cuid())
+  name  String
+  email String  @unique
+  phone String?
 
   answers Json
 
@@ -1004,14 +1015,14 @@ model SessionRegistration {
   /// guess a question's type from the shape of the answers.
   questionSchema Json?
 
-  resumeText     String?
-  resumeFilename String?
+  resumeText       String?
+  resumeFilename   String?
   /// The original bytes. Kept because the ATS structural check has to inspect
   /// the real document: a DOCX is a zip of XML, and its text boxes and tables
   /// are invisible once the file has been flattened to text. Capped at 5MB by
   /// the upload middleware.
-  resumeFile     Bytes?
-  resumeMimetype String?
+  resumeFile       Bytes?
+  resumeMimetype   String?
   /// Set only when they take the "I can't upload right now" escape. Their
   /// reason is kept because it is itself a qualifying signal.
   resumeSkipReason String?
@@ -1089,8 +1100,8 @@ model SessionFloorQuestion {
 /// account. Exists so the nightly sweep has a memory: without it the same
 /// unresolved payer generated a fresh admin alert every single night.
 model UnmatchedPayment {
-  id               String    @id @default(uuid())
-  email            String    @unique
+  id               String  @id @default(uuid())
+  email            String  @unique
   plan             String?
   amount           Float?
   /// Human-readable Stripe provenance, e.g. "one-off charge ch_123 ($500.00)".
@@ -1133,9 +1144,9 @@ model SalesLead {
   company     String?
 
   /// Lead, Registered, Attended, Pitched, Client, Dead.
-  stage  String @default("Lead")
+  stage       String  @default("Lead")
   /// Where they came from: linkedin-import, free-resource, session.
-  source String @default("linkedin-import")
+  source      String  @default("linkedin-import")
   /// Which free asset brought them in, when that is how they arrived.
   sourceAsset String?
 
@@ -1186,9 +1197,9 @@ model SalesLead {
 /// reason: the candidate can edit their resume mid-intake, and the questions
 /// must not move when they do.
 model AnswerBankIntake {
-  id                 String             @id @default(cuid())
-  userId             String             @unique
-  candidateProfileId String             @unique
+  id                 String            @id @default(cuid())
+  userId             String            @unique
+  candidateProfileId String            @unique
   /// The resume text as it was when the plan was built. Never updated in place.
   resumeSnapshot     String
   /// Turns on the industry-specific themes (lab, health, trades, finance, education).
@@ -1196,11 +1207,11 @@ model AnswerBankIntake {
   /// The full Plan from services/answerBank/intake: seeds, gaps and questions.
   plan               Json
   /// Index into plan.script.questions. Where they pick up when they come back.
-  cursor             Int                @default(0)
-  startedAt          DateTime           @default(now())
+  cursor             Int               @default(0)
+  startedAt          DateTime          @default(now())
   completedAt        DateTime?
-  updatedAt          DateTime           @updatedAt
-  candidateProfile   CandidateProfile   @relation(fields: [candidateProfileId], references: [id], onDelete: Cascade)
+  updatedAt          DateTime          @updatedAt
+  candidateProfile   CandidateProfile  @relation(fields: [candidateProfileId], references: [id], onDelete: Cascade)
   entries            AnswerBankEntry[]
 }
 
@@ -1264,7 +1275,7 @@ model AnswerBankEntry {
 /// candidate ever does write to one of these. It defaults to UNSENT and stays
 /// there until something real happens.
 model ContactDiscovery {
-  id               String    @id @default(uuid())
+  id               String  @id @default(uuid())
   userId           String
   jobApplicationId String?
   /// Nullable for the same reason JobApplication.company is: a great many ads
@@ -1277,37 +1288,37 @@ model ContactDiscovery {
   /// a domain read out of the ad's own redacted address is evidence, one
   /// picked off a search result is a guess, and they should never be counted
   /// together when measuring.
-  domain           String?
-  domainSource     DomainSource?
+  domain       String?
+  domainSource DomainSource?
 
-  slot             ContactSlot
-  personName       String
+  slot        ContactSlot
+  personName  String
   /// Their function, which is the field whose absence let an Investment &
   /// Economic Development Coordinator be proposed for a data role.
-  personTitle      String?
-  nameSource       ContactSource
+  personTitle String?
+  nameSource  ContactSource
 
   /// Null is the normal case and not a failure. A constructed address is
   /// recorded as CONSTRUCTED and must never be presented as confirmed.
-  email            String?
-  emailSource      EmailSource?
+  email        String?
+  emailSource  EmailSource?
   /// The shape used to build it, e.g. "f.last". Recorded per row so a pattern
   /// that turns out to be wrong can be traced to everything it produced.
-  emailPattern     String?
+  emailPattern String?
   /// Hunter's status where we paid for one, "mx" where only the domain's mail
   /// server was checked, null where nothing was verified at all.
-  verification     String?
+  verification String?
 
   /// Filled in by a human reviewing the pick. This is the column the whole
   /// table exists for: it is the only place "was this the right person" has
   /// ever been recordable, and it is answerable from one search.
-  reviewVerdict    ReviewVerdict @default(UNREVIEWED)
-  reviewNote       String?
-  reviewedAt       DateTime?
+  reviewVerdict ReviewVerdict @default(UNREVIEWED)
+  reviewNote    String?
+  reviewedAt    DateTime?
 
-  outcome          ContactOutcome @default(UNSENT)
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  outcome   ContactOutcome @default(UNSENT)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
 
   @@index([userId])
   @@index([domain])

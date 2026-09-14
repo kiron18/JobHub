@@ -248,6 +248,9 @@ export default function FitCheckPage() {
               onCheckAnother={checkAnother}
               targetCity={profile?.targetCity}
               saved
+              onSaveContactEmail={async (email) => {
+                await api.patch(`/jobs/${result.jobId}`, { revealedContactEmail: email });
+              }}
             />
             {employerAsk !== null && (
               <EmployerAsk

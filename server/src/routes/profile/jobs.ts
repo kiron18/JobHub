@@ -166,7 +166,13 @@ router.post('/jobs', authenticate, async (req, res) => {
 router.patch('/jobs/:id', authenticate, async (req, res) => {
     const { id } = req.params as any;
     const userId = (req as any).user.id;
-    const { status, dateApplied, notes, priority, closingDate, interviewAt } = req.body;
+    const { status, dateApplied, notes, priority, closingDate, interviewAt, revealedContactEmail } = req.body;
+
+    if (revealedContactEmail !== undefined && revealedContactEmail !== null && revealedContactEmail !== '') {
+        if (typeof revealedContactEmail !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(revealedContactEmail.trim())) {
+            return res.status(400).json({ error: 'That does not look like a valid email address.' });
+        }
+    }
 
     try {
         // Fetch current status before update so we can detect a genuine transition.
@@ -226,6 +232,9 @@ router.patch('/jobs/:id', authenticate, async (req, res) => {
                 ...(notes !== undefined && { notes }),
                 ...(priority !== undefined && { priority: priority || null }),
                 ...(closingDate !== undefined && { closingDate: closingDate ? new Date(closingDate) : null }),
+                ...(revealedContactEmail !== undefined && {
+                    revealedContactEmail: revealedContactEmail ? revealedContactEmail.trim().toLowerCase() : null,
+                }),
             },
             include: { documents: true }
         });
