@@ -38,9 +38,22 @@ const URL_HOST = /https?:\/\/([A-Za-z0-9.-]+\.[A-Za-z]{2,})/g;
  * the name, which is how an ad naming its Investment & Economic Development
  * Coordinator produced a contact with no function attached, and a contact with
  * no function cannot be judged against the role.
+ *
+ * The trigger word is matched in either case by hand (`[Cc]ontact`, not a
+ * blanket `/i` flag) because a blanket flag would also blur the [A-Z]/[a-z]
+ * classes below that exist specifically to tell a real name from an ALL-CAPS
+ * acronym. Real case, CHDC: "Contact CHDC CEO Peter Dowling on ..." — capital
+ * C because it opens the sentence, which the old case-sensitive-only trigger
+ * never matched at all, so the ad's own named contact was silently discarded
+ * every time "Contact" happened to start a sentence rather than sit mid-clause.
+ *
+ * The optional ALL-CAPS filler right after the trigger absorbs "CHDC CEO" —
+ * an acronym, or a title, or both, sitting between the trigger and the name —
+ * without loosening the name pattern itself, which still requires proper
+ * TitleCase and so still can't mistake an acronym for a person.
  */
 const NAMED_CONTACT =
-    /(?:contact|contacting|enquiries to|enquiries can be directed to|queries to|speak (?:to|with)|reach out to|please call)\s+((?:[A-Z][a-z'’-]+\s+){1,2}[A-Z][a-z'’-]+)\s*(?:,|–|—|-|\bon\b|\bat\b)?\s*([A-Z][A-Za-z&,'’\- ]{3,60})?/g;
+    /(?:[Cc]ontact|[Cc]ontacting|[Ee]nquiries to|[Ee]nquiries can be directed to|[Qq]ueries to|[Ss]peak (?:to|with)|[Rr]each out to|[Pp]lease call)\b(?:\s+[A-Z]{2,8}\b){0,3}\s+((?:[A-Z][a-z'’-]+\s+){1,2}[A-Z][a-z'’-]+)\s*(?:,|–|—|-|\bon\b|\bat\b)?\s*([A-Z][A-Za-z&,'’\- ]{3,60})?/g;
 
 /** Local parts that reach a role rather than a named person. */
 const GENERIC_LOCAL =

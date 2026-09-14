@@ -80,6 +80,24 @@ describe('the named contact keeps its title', () => {
         expect(c.personName).toBe('Sarah Chen');
         expect(c.personTitle).toBeNull();
     });
+
+    // Real ad, CHDC: "Contact" opened the sentence (capital C), and the
+    // company's own acronym plus the title sat between the trigger word and
+    // the name. Both broke the old regex — case-sensitivity dropped every
+    // sentence-initial "Contact", and there was no room for "CHDC CEO" between
+    // the trigger and "Peter Dowling" — so the ad's explicitly named contact
+    // was silently discarded and the pipeline fell through to Hunter/the
+    // site's generic inbox instead.
+    it('finds the name past a sentence-initial trigger and an acronym+title', () => {
+        const c = readJdContact(
+            "To Apply: Please do not use the 'Quick Apply' button before reading this section. " +
+            'It is important that you request a copy of the Position Description (PD) before applying. ' +
+            'Contact CHDC CEO Peter Dowling on ••••@chdc.com.au to request a copy.',
+        );
+        expect(c.personName).toBe('Peter Dowling');
+        expect(c.domain).toBe('chdc.com.au');
+        expect(c.domainSource).toBe('JD_REDACTED');
+    });
 });
 
 describe('isGenericLocal', () => {
