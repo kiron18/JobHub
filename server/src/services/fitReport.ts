@@ -34,6 +34,7 @@ import { normalizeEmDashes } from '../lib/styleLint';
 import { scrubInjection } from './scrubInjection';
 import { detectWorkRights } from '../lib/workRights';
 import { detectSeniorityGap } from '../lib/seniorityGap';
+import { readJdContact } from './jdContact';
 
 /** Validated in the eval. Overridable without a deploy, per house rule. */
 const FIT_MODEL = process.env.FIT_MODEL || undefined;
@@ -71,6 +72,33 @@ export interface FitReport {
    * verdict or the next step. Null unless the gap is wide and the ad is open.
    */
   seniority: string | null;
+  /**
+   * Anything the ad demands of HOW you apply, beyond a normal resume and
+   * cover letter — email a named person first, use the company's own form
+   * instead of Quick Apply, put a specific word in the cover letter, answer a
+   * screening question the ad buries in the middle of a paragraph. These are
+   * pass/fail: an ad that says "applications that don't reference the PD will
+   * not be considered" rejects a perfect resume for skipping a step that has
+   * nothing to do with fit, so it cannot be left for the candidate to notice
+   * on their own on the fifth read of a five-hundred-word ad. Read from the
+   * model rather than a fixed phrase list, because employers do not all say
+   * "before applying" — they say it as a mid-sentence aside, as a bracketed
+   * note, as a line under "To Apply:", in whatever words they used that day.
+   * Empty array when the ad just wants a normal application.
+   */
+  applyInstructions: string[];
+  /**
+   * The domain of a Seek-style masked address in the ad ("****@acme.com.au")
+   * when that is all the ad gives — never when a full address is present,
+   * since then there is nothing to ask for. Deterministic, from the same
+   * regex read `readJdContact` already does for contact discovery, not the
+   * model: we know for a fact the ad has a blanked-out email, so this fires
+   * every time regardless of what the model notices. We cannot click the
+   * reveal ourselves (it is a real browser interaction on Seek's page, not
+   * something sitting in the HTML we fetch) so the fastest path is asking
+   * the applicant to do the one click we can't.
+   */
+  maskedContactDomain: string | null;
 }
 
 export interface FitRequirement {
@@ -188,7 +216,8 @@ Return ONLY valid JSON:
   "youHave": ["2 to 3 things that genuinely count here"],
   "missing": ["up to 3 things the ad wants that they do not show"],
   "outcome": "apply" if this job is worth their time, "search" if it is not,
-  "searchRoles": ["when outcome is search, 2 to 3 role titles they could win today. Empty array otherwise."]
+  "searchRoles": ["when outcome is search, 2 to 3 role titles they could win today. Empty array otherwise."],
+  "applyInstructions": ["anything the ad tells the applicant to DO that is not 'submit a resume and cover letter' — email a named person before applying, use the employer's own site instead of a quick-apply button, mention a specific word or phrase somewhere in the application, answer a specific question, attach a specific document. State it as an instruction to the applicant, in plain English, e.g. 'Email Peter Dowling at chdc.com.au to request the Position Description before applying — the ad says applications without it will not be considered.' These are often buried mid-paragraph, worded however that employer felt like wording them, and sometimes exist just to filter out people who did not read the ad closely. Do not include ordinary asks like 'submit your resume' or 'apply via Seek'. Empty array if there is nothing unusual."]
 }
 `.trim();
 }
@@ -257,6 +286,8 @@ export function normaliseFitReport(raw: unknown): FitReport {
     // put here is discarded: this field is a fact about the ad, not a judgement.
     workRights: null,
     seniority: null,
+    applyInstructions: cleanList(r.applyInstructions, 3),
+    maskedContactDomain: null,
   };
 }
 
@@ -310,12 +341,14 @@ export async function runFitReport(
 
   const notice = detectWorkRights(jd);
   const seniority = detectSeniorityGap(jd, candidateYears ?? null);
+  const adContact = readJdContact(jd);
 
   return {
     report: {
       ...normaliseFitReport(parsed),
       workRights: notice?.sentence ?? null,
       seniority: seniority?.sentence ?? null,
+      maskedContactDomain: adContact.domainSource === 'JD_REDACTED' ? adContact.domain : null,
     },
     requirements,
     flagged,

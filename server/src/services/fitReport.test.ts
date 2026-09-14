@@ -206,3 +206,45 @@ describe('work rights on the report', () => {
     expect(r.workRights).toBeNull();
   });
 });
+
+describe('apply instructions — unlike work rights, this one IS the model', () => {
+  // Real ad, CHDC: "Contact CHDC CEO Peter Dowling on ••••@chdc.com.au to
+  // request a copy of the PD. Applications that have not referred to the PD
+  // will not be considered." A candidate can be a perfect fit and still get
+  // rejected for skipping this, so it has to survive normalisation rather
+  // than being treated as just more model chatter.
+  it('keeps whatever the model reports, unlike the deterministic facts', () => {
+    const r = normaliseFitReport({
+      fit: 70,
+      applyInstructions: ['Email Peter Dowling at chdc.com.au to request the PD before applying.'],
+    });
+    expect(r.applyInstructions).toEqual([
+      'Email Peter Dowling at chdc.com.au to request the PD before applying.',
+    ]);
+  });
+
+  it('defaults to empty rather than null or undefined', () => {
+    expect(normaliseFitReport({ fit: 70 }).applyInstructions).toEqual([]);
+    expect(normaliseFitReport({}).applyInstructions).toEqual([]);
+  });
+
+  it('caps the list at three like every other list on this report', () => {
+    const r = normaliseFitReport({ fit: 70, applyInstructions: ['a', 'b', 'c', 'd', 'e'] });
+    expect(r.applyInstructions).toHaveLength(3);
+  });
+});
+
+describe('buildFitPrompt asks for apply instructions', () => {
+  it('tells the model to read for how-to-apply instructions, not just fit', () => {
+    const prompt = buildFitPrompt([{ section: '', text: 'x' }], 'r');
+    expect(prompt).toContain('applyInstructions');
+    expect(prompt).toContain('Email Peter Dowling');
+  });
+});
+
+describe('maskedContactDomain — deterministic, never from the model', () => {
+  it('discards whatever the model sends, same rule as work rights', () => {
+    const r = normaliseFitReport({ fit: 70, maskedContactDomain: 'the-model-made-this-up.com' });
+    expect(r.maskedContactDomain).toBeNull();
+  });
+});

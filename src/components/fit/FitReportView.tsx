@@ -19,7 +19,7 @@
  */
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, Check, ChevronDown, ChevronUp, Clock, Info, Search, X } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Check, ChevronDown, ChevronUp, Clock, Info, Search, X } from 'lucide-react';
 import { warm } from '../../lib/theme/warmTokens';
 import { useIsMobile } from '../../hooks/useIsMobile';
 
@@ -45,6 +45,20 @@ export interface FitReport {
    * server. Null unless the gap is wide and the ad is genuinely open to them.
    */
   seniority?: string | null;
+  /**
+   * Anything the ad demands of HOW to apply beyond a normal resume and cover
+   * letter — email someone first, skip Quick Apply, name-drop a specific word.
+   * A great fit score means nothing if this gets missed and the application
+   * is binned unread, so it renders above the verdict, not folded in with it.
+   */
+  applyInstructions?: string[];
+  /**
+   * The domain of a Seek-style masked address ("****@acme.com.au") when the
+   * ad has one and gives nothing more. Read straight off the ad on the
+   * server, never guessed. Null on every ad that either has no email at all
+   * or already gives a real one.
+   */
+  maskedContactDomain?: string | null;
 }
 
 interface Props {
@@ -57,6 +71,12 @@ interface Props {
   targetCity?: string | null;
   /** True once the job has been written to their tracker, which the check does. */
   saved?: boolean;
+  /**
+   * Saves the address they paste back after revealing it on the ad
+   * themselves. Only rendered when `report.maskedContactDomain` is set, so
+   * both are optional together.
+   */
+  onSaveContactEmail?: (email: string) => Promise<void>;
 }
 
 /**
@@ -193,6 +213,134 @@ function PrimaryButton({ onClick, href, children }: {
     : <button type="button" onClick={onClick} style={style}>{children}</button>;
 }
 
+/**
+ * Sits above the verdict, not beside it.
+ *
+ * `workRights` and `seniority` below are facts to weigh; this is a pass/fail
+ * gate the ad put in front of everything else. A 90/strong fit still gets
+ * binned unread if the ad says "email this person first" and the applicant
+ * never saw it — so it cannot read as calm as a Notice, or it gets skimmed
+ * past exactly like it was in the ad it came from.
+ */
+function ApplyInstructions({ items }: { items: string[] }) {
+  if (items.length === 0) return null;
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'flex-start', gap: 12,
+      padding: '15px 17px',
+      background: C.accentGoldSoft,
+      border: `1px solid ${C.accentGold}55`,
+      borderRadius: warm.radius.card,
+    }}>
+      <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: 1, color: C.accentGold }} />
+      <div style={{ minWidth: 0 }}>
+        <p style={{
+          margin: '0 0 6px', fontSize: 13, fontWeight: 800,
+          letterSpacing: '0.02em', color: C.accentGold, textTransform: 'uppercase',
+        }}>
+          Before you apply
+        </p>
+        <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {items.map((item, i) => (
+            <li key={i} style={{ fontSize: 14.5, lineHeight: 1.55, fontWeight: 600, color: C.textPrimary }}>
+              {item}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The ad has an email, but Seek blanks it out until a real click on the ad
+ * itself — something we cannot do for them, it is not sitting in the page
+ * source we read. So instead of pretending we found nothing, we say exactly
+ * what we found and hand them the one click that finishes the job.
+ */
+function MaskedContactCapture({ domain, onSave }: { domain: string; onSave: (email: string) => Promise<void> }) {
+  const [value, setValue] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [savedEmail, setSavedEmail] = useState<string | null>(null);
+
+  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+
+  const submit = async () => {
+    if (!valid || saving) return;
+    setSaving(true);
+    try {
+      await onSave(value.trim());
+      setSavedEmail(value.trim());
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'flex-start', gap: 12,
+      padding: '15px 17px',
+      background: C.accentGoldSoft,
+      border: `1px solid ${C.accentGold}55`,
+      borderRadius: warm.radius.card,
+    }}>
+      <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: 1, color: C.accentGold }} />
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <p style={{
+          margin: '0 0 6px', fontSize: 13, fontWeight: 800,
+          letterSpacing: '0.02em', color: C.accentGold, textTransform: 'uppercase',
+        }}>
+          Get us the real email
+        </p>
+        <p style={{ margin: '0 0 12px', fontSize: 14.5, lineHeight: 1.55, fontWeight: 600, color: C.textPrimary }}>
+          We found a hidden email on this ad (••••@{domain}). Click it on the original posting to reveal it, then paste it back in here.
+        </p>
+
+        {savedEmail ? (
+          <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 700, color: C.success }}>
+            <Check size={15} strokeWidth={3} /> Saved: {savedEmail}
+          </p>
+        ) : (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <input
+              type="email"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
+              placeholder={`name@${domain}`}
+              style={{
+                flex: '1 1 200px', minWidth: 0,
+                padding: '10px 12px',
+                fontSize: 14, fontFamily: 'inherit',
+                background: C.bgSurface,
+                border: `1px solid ${C.borderDefined}`,
+                borderRadius: warm.radius.input,
+                color: C.textPrimary,
+              }}
+            />
+            <button
+              type="button"
+              onClick={submit}
+              disabled={!valid || saving}
+              style={{
+                padding: '10px 16px',
+                fontSize: 14, fontWeight: 700, fontFamily: 'inherit',
+                background: valid ? C.accentGold : C.bgSurface,
+                color: valid ? '#fff' : C.textMuted,
+                border: `1px solid ${valid ? C.accentGold : C.borderDefined}`,
+                borderRadius: warm.radius.button,
+                cursor: valid && !saving ? 'pointer' : 'not-allowed',
+              }}
+            >
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** A flat statement of fact about the ad. Never a verdict, never an action. */
 function Notice({ children }: { children: React.ReactNode }) {
   return (
@@ -213,7 +361,7 @@ function Notice({ children }: { children: React.ReactNode }) {
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
-export function FitReportView({ report, onTailor, onCheckAnother, targetCity, saved }: Props) {
+export function FitReportView({ report, onTailor, onCheckAnother, targetCity, saved, onSaveContactEmail }: Props) {
   const isMobile = useIsMobile();
   /*
     The model's paragraph, closed on a phone.
@@ -280,6 +428,18 @@ export function FitReportView({ report, onTailor, onCheckAnother, targetCity, sa
           <p style={{ margin: 0, fontSize: 15, color: C.textMuted }}>{report.company}</p>
         )}
       </div>
+
+      {/*
+        Above the verdict on purpose. A fit score is about whether they can win
+        this job; this is about whether their application gets read at all, and
+        the ad's own rule is "no" for anyone who misses it. That outranks the
+        score.
+      */}
+      <ApplyInstructions items={report.applyInstructions ?? []} />
+
+      {report.maskedContactDomain && onSaveContactEmail && (
+        <MaskedContactCapture domain={report.maskedContactDomain} onSave={onSaveContactEmail} />
+      )}
 
       {/* The answer, and only the answer. */}
       <div style={{
