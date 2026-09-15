@@ -122,6 +122,12 @@ model CandidateProfile {
   // When we last sent this candidate a follow-up nudge email. Throttles the
   // reminder to one per person every 4 days instead of one per application.
   lastFollowUpNudgeAt          DateTime?
+  // E.164 number, optional opt-in for trial-challenge reminder messages.
+  // Unrelated to `phone` (whatever number was printed on the resume).
+  whatsappNumber               String?
+  // 0-23, AEST hour the candidate would prefer trial-challenge reminders to
+  // land. Null = no preference set; the reminder cron falls back to a default.
+  reminderTimePreferenceHour   Int?
   positioningStatement         Json?
   analysisCache                Json?
   achievements                 Achievement[]
@@ -946,6 +952,53 @@ model NudgeLog {
   sentAt    DateTime @default(now())
 
   @@unique([userId, kind, periodKey])
+}
+
+// The 3-day free-trial "challenge" that replaced ApplyPreviewGate's paywall
+// theatre: apply to N jobs inside a time window, escalating each day, to earn
+// the next day. One row per user. Deliberately separate from CandidateProfile's
+// plan/planStatus/trialEndDate fields, which describe the unrelated PAID
+// Stripe trial — conflating the two "trial" concepts was the exact mistake
+// this model exists to avoid.
+model TrialChallenge {
+  id               String              @id @default(uuid())
+  userId           String              @unique
+  // 0 = never started. 1/2/3 = the furthest day reached.
+  currentDay       Int                 @default(0)
+  // not_started | day_in_progress | day_passed_waiting | day_failed | forfeited | completed
+  status           String              @default("not_started")
+  windowStartedAt  DateTime?
+  windowEndsAt     DateTime?
+  // Flips true the moment a day's minimum is first crossed. One-way — never
+  // reset — and persists across every later day's window. Tracked only; not
+  // currently wired into linkedin.ts's access check (LinkedIn stays open for
+  // everyone while payments are paused — see requirePaid there).
+  linkedinUnlocked Boolean             @default(false)
+  // = the passed day's windowEndsAt, not "whenever we noticed". Anchors the
+  // forfeiture deadline to the window's real end, not to whenever the user
+  // next happens to reopen the app.
+  passedDayAt      DateTime?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  days             TrialChallengeDay[]
+
+  @@index([status, windowEndsAt])
+}
+
+model TrialChallengeDay {
+  id                String         @id @default(uuid())
+  trialChallengeId  String
+  day               Int
+  windowStartedAt   DateTime
+  windowEndsAt      DateTime
+  minimumRequired   Int
+  // null while running; "pass" | "fail" | "forfeited" once decided.
+  outcome           String?
+  crossedMinimumAt  DateTime?
+  decidedAt         DateTime?
+  trialChallenge    TrialChallenge @relation(fields: [trialChallengeId], references: [id])
+
+  @@unique([trialChallengeId, day])
 }
 
 // One anonymous run through /welcome. The entire resume rebuild (analysis,

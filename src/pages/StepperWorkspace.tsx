@@ -53,6 +53,7 @@ import { applyWorkspaceCopy } from './applyWorkspaceCopy';
 import { extractReactText } from '../lib/extractReactText';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { trackDocumentGenerated, trackApplicationFailed } from '../lib/analytics';
+import { useTrialChallengeState } from '../lib/trialChallenge';
 
 interface ResumeTip {
   bulletKey: string;
@@ -302,6 +303,21 @@ export function StepperWorkspace() {
         staleTime: 10 * 60 * 1000,
     });
     const profileName = (nameProfile?.name && String(nameProfile.name).trim()) || undefined;
+
+    // Direct/stale access guard: goToApply on /check only ever navigates here
+    // while a trial window is live, but a bookmarked or reopened /apply tab
+    // could still land a free account here with no window running (this was
+    // never previously possible — ApplyPreviewGate used to intercept every
+    // free account before it ever reached this page).
+    const isFreeAccount = nameProfile
+        ? (nameProfile.plan ?? 'free') === 'free' && !nameProfile.isAdmin && nameProfile.dashboardAccess !== true
+        : false;
+    const { data: trialState } = useTrialChallengeState();
+    useEffect(() => {
+        if (isFreeAccount && trialState && trialState.status !== 'day_in_progress') {
+            navigate('/check', { replace: true });
+        }
+    }, [isFreeAccount, trialState, navigate]);
 
     const workspaceKey = useMemo(() => workspaceKeyFor(jobDescription), [jobDescription]);
 

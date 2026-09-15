@@ -690,6 +690,47 @@ export async function sendTrialReminderEmail(to: string, name: string): Promise<
   });
 }
 
+/**
+ * "You've unlocked tomorrow, come finish it" — the unpaid trial-challenge
+ * reminder. Unrelated to sendTrialReminderEmail above, which is about the
+ * PAID Stripe trial ending; this is about the free-trial challenge's
+ * next-day window being forfeited if the candidate doesn't come back.
+ */
+export async function sendTrialChallengeReminderEmail(
+  to: string,
+  name: string,
+  day: number,
+  forfeitureDeadline: Date,
+): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[email] RESEND_API_KEY not set — skipping trial challenge reminder');
+    return;
+  }
+  const displayName = name || 'there';
+  const deadlineStr = forfeitureDeadline.toLocaleString('en-AU', {
+    timeZone: 'Australia/Sydney', dateStyle: 'full', timeStyle: 'short',
+  });
+  const appUrl = `${PUBLIC_APP_URL}/check`;
+  await resend.emails.send({
+    from: FROM_ADDRESS,
+    to,
+    subject: `Day ${day} is unlocked — don't lose it`,
+    text: [
+      `Hi ${displayName},`,
+      '',
+      `You passed yesterday's challenge — day ${day} is ready for you.`,
+      '',
+      `If you don't start it before ${deadlineStr} (AEST), it's gone for good.`,
+      '',
+      appUrl,
+      '',
+      'One hour. That\'s the whole ask.',
+      '',
+      'The Aussie Grad Careers team',
+    ].join('\n'),
+  });
+}
+
 export async function sendRoadmapEmail(
   to: string,
   firstName: string,

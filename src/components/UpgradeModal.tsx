@@ -5,13 +5,14 @@ import api from '../lib/api';
 import { trackUpgradeModalOpened, trackCheckoutStarted, trackFreeLimitHit } from '../lib/analytics';
 import { warm } from '../lib/theme/warmTokens';
 
-export type UpgradeTrigger = 'generation' | 'analysis' | 'job_search' | 'match_score';
+export type UpgradeTrigger = 'generation' | 'analysis' | 'job_search' | 'match_score' | 'trial_challenge';
 
 const TRIGGER_HEADLINES: Record<UpgradeTrigger, string> = {
   generation: "You've used your 5 free document generations",
   analysis: "You've used your 5 free job analyses",
   job_search: "You've used your free job feed search",
   match_score: "You've used your free match score",
+  trial_challenge: "That's your free trial",
 };
 
 interface Props {

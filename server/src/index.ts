@@ -23,6 +23,7 @@ import onboardingRouter from './routes/onboarding';
 import researchRouter from './routes/research';
 import feedbackRouter from './routes/feedback';
 import linkedinRouter from './routes/linkedin';
+import trialChallengeRouter from './routes/trialChallenge';
 import webhooksRouter from './routes/webhooks';
 import skoolRouter from './routes/skool';
 import jobFeedRouter from './routes/job-feed';
@@ -50,6 +51,7 @@ import { startGapReportCron } from './cron/gapReportCron';
 import { startAccountabilityCron } from './cron/accountabilityCron';
 import { startPaymentReconcileCron } from './cron/paymentReconcileCron';
 import { startFollowUpReminderCron } from './cron/followUpReminderCron';
+import { startTrialChallengeReminderCron } from './cron/trialChallengeReminderCron';
 import { analyzeRateLimit } from './middleware/analyzeRateLimit';
 import { ensureSponsorJobTable } from './db/ensureSponsorJobTable';
 import { ensureEmailTables } from './db/ensureEmailTables';
@@ -172,6 +174,7 @@ app.use('/api/onboarding', onboardingRouter);
 app.use('/api/research', researchRouter);
 app.use('/api/feedback', feedbackRouter);
 app.use('/api/linkedin', linkedinRouter);
+app.use('/api/trial-challenge', trialChallengeRouter);
 app.use('/api/webhooks', webhooksRouter);
 app.use('/api/skool', skoolRouter);
 app.use('/api/job-feed', jobFeedRouter);
@@ -305,7 +308,9 @@ async function ensureColumns() {
         ADD COLUMN IF NOT EXISTS "analysisCache" JSONB,
         ADD COLUMN IF NOT EXISTS "applicationGoalType" TEXT NOT NULL DEFAULT 'daily',
         ADD COLUMN IF NOT EXISTS "applicationMilestoneSeen" INTEGER NOT NULL DEFAULT 0,
-        ADD COLUMN IF NOT EXISTS "closeoutSeenDate" TIMESTAMP(3);
+        ADD COLUMN IF NOT EXISTS "closeoutSeenDate" TIMESTAMP(3),
+        ADD COLUMN IF NOT EXISTS "whatsappNumber" TEXT,
+        ADD COLUMN IF NOT EXISTS "reminderTimePreferenceHour" INTEGER;
     `);
     await prisma.$executeRawUnsafe(`
       ALTER TABLE "DiagnosticReport"
@@ -424,8 +429,10 @@ if (process.env.SKIP_SERVER === 'true') {
       startPaymentReconcileCron();
       startWorkshopReminderCron();
       startGapReportCron();
+      startTrialChallengeReminderCron();
       console.log('[cron] Trial reminder cron scheduled (10:00 UTC daily)');
       console.log('[cron] Follow-up reminder cron scheduled (09:00 UTC daily)');
       console.log('[cron] Payment reconciliation cron scheduled (11:00 UTC daily)');
+      console.log('[cron] Trial challenge reminder cron scheduled (hourly)');
   });
 }

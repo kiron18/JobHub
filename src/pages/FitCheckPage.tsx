@@ -25,8 +25,8 @@ import { warm } from '../lib/theme/warmTokens';
 import { classifyPaste } from '../lib/seekLink';
 import { jdMentionsSelectionCriteria } from '../lib/selectionCriteria';
 import { FitReportView, type FitReport } from '../components/fit/FitReportView';
-import { ApplyPreviewGate } from '../components/fit/ApplyPreviewGate';
 import { trackJobMatchStarted, trackJobMatchCompleted, trackJobMatchFailed, trackApplyStarted } from '../lib/analytics';
+import { useTrialChallengeState } from '../lib/trialChallenge';
 
 const C = warm.colors;
 
@@ -60,8 +60,13 @@ export default function FitCheckPage() {
   const incoming = (location.state ?? null) as IncomingJob | null;
 
   const [jd, setJd] = useState(incoming?.jobDescription ?? '');
-  /** True once a free account has asked us to write the application. */
-  const [gating, setGating] = useState(false);
+  // Whether a live trial-challenge window is running right now — the only
+  // condition under which a free account is allowed into /apply. When there's
+  // no live window, the globally-mounted TrialChallengeOverlay is already
+  // showing whichever screen applies (intro, pass, fail, forfeited), so
+  // goToApply below just declines to navigate rather than rendering anything
+  // itself — see components/trialChallenge/TrialChallengeOverlay.tsx.
+  const { data: trialState } = useTrialChallengeState();
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState<CheckResponse | null>(null);
   /**
@@ -173,10 +178,11 @@ export default function FitCheckPage() {
 
   const goToApply = (companyOverride?: string) => {
     if (!result) return;
-    // Free accounts get tracked as apply_started inside ApplyPreviewGate's own
-    // mount, not here — this call is the fork where they never reach the
-    // workspace at all, so it must not fire before we know which branch runs.
-    if (isFree) { setGating(true); return; }
+    // Free accounts only ever reach /apply while their trial-challenge window
+    // is actually running. Any other state (not started, waiting on tomorrow,
+    // failed, forfeited, completed) means TrialChallengeOverlay is already
+    // showing the right screen — this just declines to navigate.
+    if (isFree && trialState?.status !== 'day_in_progress') return;
     trackApplyStarted('workspace', result.report.fit);
     // What the server read, not what sits in the box: pasting a Seek link
     // would otherwise send the generator a URL instead of a job advert.
@@ -225,15 +231,6 @@ export default function FitCheckPage() {
       fontFamily: warm.type.fontBody,
       display: 'flex', flexDirection: 'column',
     }}>
-      {gating && (
-        <ApplyPreviewGate
-          resumeMarkdown={profile?.resumeRawText || profile?.resumeOriginalText || ''}
-          role={result?.report.jobTitle}
-          company={result?.report.company}
-          onClose={() => setGating(false)}
-        />
-      )}
-
       <div style={{
         width: '100%', maxWidth: 680, margin: '0 auto',
         /* No side padding on a phone: the shell already pads 16px, and adding

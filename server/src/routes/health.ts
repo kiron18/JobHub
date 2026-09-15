@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { isGateEnforced } from '../config/accessGate';
+import { isTrialChallengeEnabled } from '../config/trialChallengeGate';
 
 const router = Router();
 
@@ -70,6 +71,10 @@ router.get('/', (req, res) => {
           says which of two documented modes is running and nothing else.
         */
         freeTierGate: isGateEnforced() ? 'enforced' : 'paused',
+        // Orthogonal to freeTierGate above — this one governs the post-resume
+        // "Apply" fork (the 3-day trial challenge vs. the old ApplyPreviewGate),
+        // not generation/analysis/search counters.
+        trialChallengeGate: isTrialChallengeEnabled() ? 'enabled' : 'disabled',
     });
 });
 
