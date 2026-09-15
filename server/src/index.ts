@@ -324,7 +324,8 @@ async function ensureColumns() {
     // apply. Belt and braces, same as every other column above.
     await prisma.$executeRawUnsafe(`
       ALTER TABLE "WelcomeSession"
-        ADD COLUMN IF NOT EXISTS "resumeEditedAt" TIMESTAMP(3);
+        ADD COLUMN IF NOT EXISTS "resumeEditedAt" TIMESTAMP(3),
+        ADD COLUMN IF NOT EXISTS "fullName" TEXT;
     `);
     await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS "SponsorLead" (

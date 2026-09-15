@@ -181,6 +181,7 @@ router.post('/brief', ipRateLimit, optionalAuthenticate, handleUpload, async (re
         resumeOriginalText: text,
         resumeFilename: file.originalname ?? null,
         firstName: analysis.firstName || null,
+        fullName: analysis.fullName || null,
         currentRole: analysis.currentRole || null,
         brief: analysis.brief,
         questions: analysis.questions as any,
@@ -485,6 +486,13 @@ router.post('/finish', authenticate, async (req: AuthRequest, res: Response) => 
 
     const data = {
       email,
+      // Previously missing entirely — a resume upload never wrote the
+      // candidate's own name onto their profile, so a stale value (or one
+      // seeded by hand during testing) could sit there forever, uncorrected,
+      // and sign every future cover letter and follow-up email with a
+      // stranger's name. Always trust the resume just parsed, same as every
+      // other field in this object.
+      name: session.fullName || session.firstName || undefined,
       // The CLEAN resume is what every generation grounds on. This is the line
       // the entire intake exists to make true.
       resumeRawText: session.resumeCleanText,

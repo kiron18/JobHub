@@ -1012,6 +1012,11 @@ model WelcomeSession {
   resumeOriginalText String
   resumeFilename     String?
   firstName          String?
+  // The candidate's full name as their resume gives it (e.g. "Kaustubh
+  // Gurjar"), separate from firstName above (greeting copy only). Copied onto
+  // CandidateProfile.name at /finish — see the comment there for why that
+  // write previously never happened at all.
+  fullName           String?
   currentRole        String?
   brief              String?
   questions          Json?
