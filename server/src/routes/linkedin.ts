@@ -36,7 +36,12 @@ async function requirePaid(_req: AuthRequest, _res: any): Promise<boolean> {
   const planStatus = profile?.planStatus ?? 'active';
   const isPaid = plan !== 'free' && (planStatus === 'active' || planStatus === 'trialing' || planStatus === 'past_due');
   const isThreeMonth = plan === 'three_month' && profile?.accessExpiresAt && profile.accessExpiresAt > new Date();
-  if (!isPaid && !isThreeMonth) {
+  // When this is restored, also allow a free-trial-challenge candidate who has
+  // crossed their day's minimum — see hasLinkedinTrialAccess in
+  // services/trialChallenge/engine.ts. Don't drop this check when re-enabling
+  // the gate below, or the trial's LinkedIn unlock becomes a broken promise.
+  const hasTrialAccess = await hasLinkedinTrialAccess(req.user!.id);
+  if (!isPaid && !isThreeMonth && !hasTrialAccess) {
     res.status(402).json({
       error: 'upgrade_required',
       message: 'LinkedIn generation requires a paid plan.',

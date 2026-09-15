@@ -16,7 +16,7 @@ import { sendPaceNudgeEmail, sendWeeklyWrapEmail, sendCoachDigestEmail } from '.
 
 const DAY_MS = 86400000;
 
-export type NudgeKind = 'daily_pace' | 'weekly_wrap' | 'coach_digest';
+export type NudgeKind = 'daily_pace' | 'weekly_wrap' | 'coach_digest' | 'trial_challenge_reminder';
 
 /** Master switch — nothing is ever emailed unless this env var is exactly 'true'. */
 export function accountabilityEmailsEnabled(): boolean {
@@ -75,8 +75,8 @@ async function getMembers(): Promise<Member[]> {
     }));
 }
 
-/** True if this (userId, kind, periodKey) was already sent; otherwise records it. */
-async function claimNudge(userId: string, kind: NudgeKind, periodKey: string): Promise<boolean> {
+/** True if this (userId, kind, periodKey) was NOT already sent — and records it. False means it already went out this period. */
+export async function claimNudge(userId: string, kind: NudgeKind, periodKey: string): Promise<boolean> {
   try {
     await prisma.nudgeLog.create({ data: { userId, kind, periodKey } });
     return true;

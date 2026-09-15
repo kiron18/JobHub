@@ -11,6 +11,7 @@ import { useWelcomeHandoff } from './lib/welcomeHandoff';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CelebrationHost } from './components/shared/Celebration';
 import { DailyCloseOut } from './components/tracker/DailyCloseOut';
+import { TrialChallengeOverlay } from './components/trialChallenge/TrialChallengeOverlay';
 import { warm } from './lib/theme/warmTokens';
 
 const ApplicationTracker   = React.lazy(() => import('./components/ApplicationTracker').then(m => ({ default: m.ApplicationTracker })));
@@ -661,6 +662,9 @@ function App() {
           <CelebrationHost />
           {/* Once-a-day close-out — see src/components/tracker/DailyCloseOut.tsx. */}
           <DailyCloseOut />
+          {/* The 3-day free-trial challenge that replaced ApplyPreviewGate — no-op
+              when eligible is false (paid accounts, or TRIAL_CHALLENGE_ENABLED off). */}
+          <TrialChallengeOverlay />
         </AuthProvider>
       </QueryClientProvider>
     </ThemeProvider>
