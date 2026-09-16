@@ -16,21 +16,31 @@
  * the app is not enough on its own; nothing sends until that number
  * messages this bot itself.
  */
-import makeWASocket, {
-  DisconnectReason,
-  Browsers,
-  fetchLatestBaileysVersion,
-  BufferJSON,
-  initAuthCreds,
-  proto,
-  type WASocket,
-  type AuthenticationCreds,
-  type AuthenticationState,
-} from 'baileys';
 import pino from 'pino';
 import qrcodeTerminal from 'qrcode-terminal';
 import { prisma } from '../index';
 import { PUBLIC_APP_URL } from '../lib/appUrl';
+import type { WASocket, AuthenticationCreds, AuthenticationState } from 'baileys';
+
+/**
+ * baileys (and its whatsapp-rust-bridge dependency) is pure ESM with no
+ * CommonJS require support — `export { md5, hkdf } from 'whatsapp-rust-bridge'`
+ * inside baileys' own crypto.js can't be satisfied by Node's CJS resolver,
+ * because that package's package.json only declares an "import" export
+ * condition, no "require" one. This server has no "type": "module" (it's
+ * CommonJS throughout), and a plain top-level `import ... from 'baileys'`
+ * compiles down to a CJS `require('baileys')` — which crashed the ENTIRE
+ * server on boot the first time this shipped, before any of this file's own
+ * code ever ran, because requiring baileys transitively requires that
+ * ESM-only package. A dynamic `import()` is Node's actual sanctioned path
+ * from CommonJS into ESM and goes through the ESM loader instead, which DOES
+ * understand that package's "import" condition. Loaded once, memoised.
+ */
+let baileysModule: typeof import('baileys') | null = null;
+async function loadBaileys() {
+  if (!baileysModule) baileysModule = await import('baileys');
+  return baileysModule;
+}
 
 // Baileys is chatty at info level. Set WHATSAPP_DEBUG=1 when diagnosing a
 // pairing problem; everything else stays quiet.
@@ -60,6 +70,8 @@ let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
  * every single deploy.
  */
 async function usePostgresAuthState() {
+  const { BufferJSON, initAuthCreds, proto } = await loadBaileys();
+
   const readData = async (file: string): Promise<any> => {
     const row = await prisma.whatsAppSession.findUnique({ where: { key: AUTH_KEY_PREFIX + file } });
     if (!row) return null;
@@ -198,6 +210,7 @@ export async function startWhatsApp(): Promise<void> {
   connecting = true;
 
   try {
+    const { default: makeWASocket, DisconnectReason, Browsers, fetchLatestBaileysVersion } = await loadBaileys();
     const { state, saveCreds } = await usePostgresAuthState();
     const { version } = await fetchLatestBaileysVersion();
 
