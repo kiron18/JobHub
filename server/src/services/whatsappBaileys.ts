@@ -54,7 +54,6 @@ const AUTH_KEY_PREFIX = 'authstate:';
 const CONFIRM_TEXT = "You're set. I'll message you here the moment your next day unlocks.";
 const NO_MATCH_TEXT =
   "Thanks for messaging! To get trial reminders, enter this number on the app's day-pass screen first, then text START again.";
-const START_WORDS = new Set(['start', 'ready', 'apply']);
 
 let sock: WASocket | null = null;
 let connecting = false;
@@ -172,11 +171,13 @@ async function sendThrottled(socketRef: WASocket, jid: string, text: string): Pr
 
 /**
  * The only place a phone number gets promoted to "may receive automated
- * reminders" — and only because it messaged in first. `whatsappNumber` is
- * validated as E.164 with a leading '+' at the point the candidate types it
- * into the app (see routes/trialChallenge.ts), and a WhatsApp JID's number
- * part is that same digit string with no '+' — so the match is a direct
- * string comparison, no fuzzy normalisation needed.
+ * reminders" — and only because it messaged in first. There's nothing to
+ * type or copy on the candidate's end: the app's wa.me link/QR pre-fills
+ * "START &lt;code&gt;", so one tap opens WhatsApp with everything already in
+ * the compose box. The code (not a phone number typed into a form) is what
+ * matches this message back to the right profile — and the phone number
+ * itself is captured right here, straight off the inbound message, which is
+ * more reliable than anything a candidate could type in anyway.
  */
 async function handleIncoming(socketRef: WASocket, msg: any): Promise<void> {
   if (msg.key?.fromMe) return;
@@ -184,10 +185,12 @@ async function handleIncoming(socketRef: WASocket, msg: any): Promise<void> {
   if (!remoteJid || !remoteJid.endsWith('@s.whatsapp.net')) return; // ignore groups/broadcast/status
 
   const text: string = (msg.message?.conversation || msg.message?.extendedTextMessage?.text || '').trim();
-  if (!START_WORDS.has(text.toLowerCase())) return; // only ever react to the actual keyword, never anything else they send
+  const match = /^start\s+([a-z0-9]{4,10})$/i.exec(text);
+  if (!match) return; // only ever react to the actual "START <code>" pattern, never anything else they send
 
+  const code = match[1].toUpperCase();
   const senderE164 = `+${remoteJid.split('@')[0]}`;
-  const profile = await prisma.candidateProfile.findFirst({ where: { whatsappNumber: senderE164 } });
+  const profile = await prisma.candidateProfile.findFirst({ where: { whatsappOptInCode: code } });
 
   if (!profile) {
     await sendThrottled(socketRef, remoteJid, NO_MATCH_TEXT);
@@ -196,7 +199,7 @@ async function handleIncoming(socketRef: WASocket, msg: any): Promise<void> {
 
   await prisma.candidateProfile.updateMany({
     where: { id: profile.id, whatsappVerifiedAt: null },
-    data: { whatsappVerifiedAt: new Date() },
+    data: { whatsappVerifiedAt: new Date(), whatsappNumber: senderE164 },
   });
   await sendThrottled(socketRef, remoteJid, CONFIRM_TEXT);
 }

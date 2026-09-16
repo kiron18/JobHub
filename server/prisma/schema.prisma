@@ -122,18 +122,25 @@ model CandidateProfile {
   // When we last sent this candidate a follow-up nudge email. Throttles the
   // reminder to one per person every 4 days instead of one per application.
   lastFollowUpNudgeAt          DateTime?
-  // E.164 number, optional opt-in for trial-challenge reminder messages.
-  // Unrelated to `phone` (whatever number was printed on the resume).
+  // E.164 number, captured automatically the moment this candidate's own
+  // phone texts the opt-in code in — never typed into the app. Unrelated to
+  // `phone` (whatever number was printed on the resume).
   whatsappNumber               String?
   // 0-23, AEST hour the candidate would prefer trial-challenge reminders to
   // land. Null = no preference set; the reminder cron falls back to a default.
   reminderTimePreferenceHour   Int?
-  // Set the instant this candidate's own number texts "START" to the WhatsApp
-  // bot — never by typing a number into the app alone. The reminder cron only
-  // ever sends WhatsApp to a profile with this set: automated outbound only
-  // goes to a number that messaged in first, never a cold blast to whatever
-  // was typed into a form. See services/whatsappBaileys.ts.
+  // Set the instant this candidate's own number texts "START <code>" to the
+  // WhatsApp bot. The reminder cron only ever sends WhatsApp to a profile
+  // with this set: automated outbound only goes to a number that messaged in
+  // first, never a cold blast to whatever was typed into a form. See
+  // services/whatsappBaileys.ts.
   whatsappVerifiedAt           DateTime?
+  // Short random code embedded in the wa.me link/QR shown on the pass
+  // screen ("START AB3F9K"). Generated once, lazily, the first time it's
+  // needed. This — not a phone number typed into a form — is how an inbound
+  // "START" text gets matched back to the right profile: the candidate never
+  // has to type or copy anything, the link/QR does it in one tap.
+  whatsappOptInCode            String?   @unique
   positioningStatement         Json?
   analysisCache                Json?
   achievements                 Achievement[]

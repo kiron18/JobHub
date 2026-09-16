@@ -5,14 +5,15 @@ import {
   isEligibleForTrial,
   resolveTrialState,
   beginDay,
+  getOrCreateWhatsappOptInCode,
   TrialChallengeError,
 } from '../services/trialChallenge/engine';
 import { isTrialChallengeEnabled } from '../config/trialChallengeGate';
 
 const router = Router();
 
-/** E.164-ish: a plus, then 7-15 digits. Loose on purpose — this only gates a WhatsApp send attempt, not a signup. */
-const E164_RE = /^\+[1-9]\d{6,14}$/;
+/** The number the trial's WhatsApp bot links as — see services/whatsappBaileys.ts. */
+const WHATSAPP_TRIAL_NUMBER = '61422769597';
 
 router.get('/state', authenticate, async (req: AuthRequest, res) => {
   const userId = req.user!.id;
@@ -35,13 +36,20 @@ router.get('/state', authenticate, async (req: AuthRequest, res) => {
   }
 
   const state = await resolveTrialState(userId);
+  // The WhatsApp opt-in link/QR needs this any time the candidate is
+  // eligible, not only once they've reached a pass screen, so it's generated
+  // here rather than in a separate call.
+  const optInCode = await getOrCreateWhatsappOptInCode(userId);
+  const whatsappOptInLink = `https://wa.me/${WHATSAPP_TRIAL_NUMBER}?text=${encodeURIComponent(`START ${optInCode}`)}`;
+
   if (!state) {
     return res.json({
       eligible: true, status: 'not_started', currentDay: 0, windowEndsAt: null,
       minimumRequired: 0, appliedThisWindow: 0, linkedinUnlocked: false, forfeitureDeadline: null,
+      whatsappOptInLink,
     });
   }
-  res.json(state);
+  res.json({ ...state, whatsappOptInLink });
 });
 
 router.post('/begin', authenticate, async (req: AuthRequest, res) => {
@@ -62,31 +70,22 @@ router.post('/begin', authenticate, async (req: AuthRequest, res) => {
   }
 });
 
+// The phone number itself is never taken here — it's captured automatically
+// off the inbound "START <code>" WhatsApp message (see whatsappBaileys.ts).
+// This only ever sets the candidate's preferred reminder hour.
 router.post('/whatsapp-opt-in', authenticate, async (req: AuthRequest, res) => {
   const userId = req.user!.id;
-  const { whatsappNumber, reminderTimePreferenceHour } = req.body as {
-    whatsappNumber?: string;
-    reminderTimePreferenceHour?: number;
-  };
+  const { reminderTimePreferenceHour } = req.body as { reminderTimePreferenceHour?: number };
 
-  if (whatsappNumber !== undefined && whatsappNumber !== '' && !E164_RE.test(whatsappNumber)) {
-    return res.status(400).json({ error: 'invalid_whatsapp_number' });
-  }
   if (
-    reminderTimePreferenceHour !== undefined &&
-    (!Number.isInteger(reminderTimePreferenceHour) || reminderTimePreferenceHour < 0 || reminderTimePreferenceHour > 23)
+    reminderTimePreferenceHour === undefined ||
+    !Number.isInteger(reminderTimePreferenceHour) ||
+    reminderTimePreferenceHour < 0 || reminderTimePreferenceHour > 23
   ) {
     return res.status(400).json({ error: 'invalid_reminder_hour' });
   }
 
-  await prisma.candidateProfile.update({
-    where: { userId },
-    data: {
-      ...(whatsappNumber !== undefined ? { whatsappNumber: whatsappNumber || null } : {}),
-      ...(reminderTimePreferenceHour !== undefined ? { reminderTimePreferenceHour } : {}),
-    },
-  });
-
+  await prisma.candidateProfile.update({ where: { userId }, data: { reminderTimePreferenceHour } });
   res.json({ ok: true });
 });
 

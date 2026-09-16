@@ -19,6 +19,8 @@ export interface TrialChallengeState {
   appliedThisWindow: number;
   linkedinUnlocked: boolean;
   forfeitureDeadline: string | null;
+  /** wa.me link pre-filled with "START &lt;code&gt;" — one tap opens WhatsApp ready to send, nothing to type. */
+  whatsappOptInLink?: string;
 }
 
 export const TRIAL_CHALLENGE_QUERY_KEY = ['trial-challenge-state'];
@@ -53,7 +55,7 @@ export function useBeginTrialDay() {
 
 export function useTrialWhatsappOptIn() {
   return useMutation({
-    mutationFn: async (payload: { whatsappNumber?: string; reminderTimePreferenceHour?: number }) =>
+    mutationFn: async (payload: { reminderTimePreferenceHour: number }) =>
       (await api.post('/trial-challenge/whatsapp-opt-in', payload)).data,
   });
 }

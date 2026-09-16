@@ -40,6 +40,7 @@ export function TrialChallengeOverlay() {
           forfeitureDeadline={data.forfeitureDeadline}
           onBegin={() => begin.mutate()}
           beginning={begin.isPending}
+          whatsappOptInLink={data.whatsappOptInLink}
         />
       );
     case 'day_in_progress':

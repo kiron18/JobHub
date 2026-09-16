@@ -237,4 +237,36 @@ export async function hasLinkedinTrialAccess(userId: string): Promise<boolean> {
   return trial?.linkedinUnlocked ?? false;
 }
 
+// Excludes visually ambiguous characters (0/O, 1/I/L) since a candidate might
+// occasionally need to read this off a screen rather than tap the link/QR.
+const OPT_IN_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+function generateOptInCode(length = 6): string {
+  let out = '';
+  for (let i = 0; i < length; i++) out += OPT_IN_CODE_CHARS[Math.floor(Math.random() * OPT_IN_CODE_CHARS.length)];
+  return out;
+}
+
+/**
+ * The code embedded in the wa.me link/QR shown on the pass screen
+ * ("START AB3F9K") — this, not a phone number typed into a form, is how an
+ * inbound WhatsApp message gets matched back to the right profile. One tap
+ * opens WhatsApp pre-filled and sends; the candidate never types or copies
+ * anything. Generated once and reused on every later read.
+ */
+export async function getOrCreateWhatsappOptInCode(userId: string): Promise<string> {
+  const existing = await prisma.candidateProfile.findUnique({ where: { userId }, select: { whatsappOptInCode: true } });
+  if (existing?.whatsappOptInCode) return existing.whatsappOptInCode;
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const code = generateOptInCode();
+    try {
+      await prisma.candidateProfile.update({ where: { userId }, data: { whatsappOptInCode: code } });
+      return code;
+    } catch {
+      // Unique collision — vanishingly unlikely at 6 chars from a 32-char alphabet. Retry with a fresh code.
+    }
+  }
+  throw new Error('Could not generate a unique WhatsApp opt-in code');
+}
+
 export { DAY_RULES };

@@ -20,6 +20,7 @@ const noop = () => {};
 
 const FIVE_MIN_FROM_NOW = new Date(Date.now() + 5 * 60_000).toISOString();
 const TWO_DAYS_FROM_NOW = new Date(Date.now() + 2 * 24 * 60 * 60_000).toISOString();
+const MOCK_WHATSAPP_LINK = 'https://wa.me/61422769597?text=START%20AB3F9K';
 
 interface FrameProps {
   title: string;
@@ -80,7 +81,7 @@ export default function TrialChallengePreview() {
       </Frame>
 
       <Frame title="Day 1 passed -> Day 2 available (with WhatsApp opt-in ask)">
-        <TrialDayPassScreen passedDay={1} forfeitureDeadline={TWO_DAYS_FROM_NOW} onBegin={noop} beginning={false} />
+        <TrialDayPassScreen passedDay={1} forfeitureDeadline={TWO_DAYS_FROM_NOW} onBegin={noop} beginning={false} whatsappOptInLink={MOCK_WHATSAPP_LINK} />
       </Frame>
 
       <Frame title="Day 2 passed -> Day 3 available (no WhatsApp ask — day 1 only)">

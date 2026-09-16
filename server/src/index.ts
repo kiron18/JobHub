@@ -336,7 +336,8 @@ async function ensureColumns() {
         ADD COLUMN IF NOT EXISTS "closeoutSeenDate" TIMESTAMP(3),
         ADD COLUMN IF NOT EXISTS "whatsappNumber" TEXT,
         ADD COLUMN IF NOT EXISTS "reminderTimePreferenceHour" INTEGER,
-        ADD COLUMN IF NOT EXISTS "whatsappVerifiedAt" TIMESTAMP(3);
+        ADD COLUMN IF NOT EXISTS "whatsappVerifiedAt" TIMESTAMP(3),
+        ADD COLUMN IF NOT EXISTS "whatsappOptInCode" TEXT;
     `);
     await prisma.$executeRawUnsafe(`
       ALTER TABLE "DiagnosticReport"
