@@ -621,8 +621,16 @@ router.post('/checkout', authenticate, async (req: AuthRequest, res: Response) =
       // Embedded takes a return_url and REFUSES success_url/cancel_url; hosted
       // is the other way round. Stripe errors on the wrong pair, so this is not
       // a style choice.
+      // Stripe retired ui_mode 'embedded' — every embedded checkout attempt
+      // was failing with "The ui_mode value `embedded` is no longer
+      // supported. Use `embedded_page` instead." (confirmed directly against
+      // the live API), caught by the try/catch below and surfaced to the
+      // candidate as the generic "Could not open the payment form" error.
+      // `embedded` here is still our own internal request-body flag
+      // (EmbeddedCheckoutPanel.tsx's uiMode: 'embedded') — only the value
+      // actually sent to Stripe's API changes.
       ...(embedded
-        ? { ui_mode: 'embedded', return_url: `${APP_URL}/?payment=success&session_id={CHECKOUT_SESSION_ID}` }
+        ? { ui_mode: 'embedded_page', return_url: `${APP_URL}/?payment=success&session_id={CHECKOUT_SESSION_ID}` }
         : { success_url: `${APP_URL}/?payment=success`, cancel_url: `${APP_URL}/pricing` }),
     };
 
