@@ -561,7 +561,7 @@ function App() {
                   <TrialChallengePreview />
                 </React.Suspense>
               } />
-              <Route path="/visa-sponsors" element={<VisaSponsorsRoute />} />
+              <Route path="/visa-sponsors/*" element={<VisaSponsorsRoute />} />
               <Route path="/anim-test" element={
                 <React.Suspense fallback={null}>
                   <AnimationTest />
