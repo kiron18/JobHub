@@ -38,6 +38,13 @@ function Frame({ title, children }: FrameProps) {
       <div style={{
         position: 'relative', height: 640, border: `2px dashed ${C.borderDefined}`,
         borderRadius: 12, overflow: 'hidden', background: '#fff',
+        // The real screens use position:fixed (correct in the live app,
+        // where they cover the whole page). Nested plainly, "fixed" ignores
+        // this box entirely and pins to the browser viewport instead, so
+        // every frame overlaps the same spot and only the last one shows.
+        // Any transform on an ancestor makes it the containing block for a
+        // fixed descendant instead of the viewport — this is that hack.
+        transform: 'translateZ(0)',
       }}>
         <div style={{ position: 'absolute', inset: 0 }}>
           {children}
