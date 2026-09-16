@@ -17,10 +17,18 @@ interface Props {
 export function TrialDayPassScreen({ passedDay, forfeitureDeadline, onBegin, beginning }: Props) {
   const nextDay = passedDay + 1;
   const rule = ruleForDay(nextDay);
-  const [whatsappSubmitted, setWhatsappSubmitted] = useState(false);
+  const [whatsappDismissed, setWhatsappDismissed] = useState(false);
+  // Set once the number is saved — but that alone never turns reminders on.
+  // Nothing sends until this exact number texts the keyword in itself; see
+  // server/src/services/whatsappBaileys.ts for why automated outbound only
+  // ever follows an inbound message, never the other way round.
+  const [numberSaved, setNumberSaved] = useState(false);
   const [whatsapp, setWhatsapp] = useState('');
   const [hour, setHour] = useState('9');
   const optIn = useTrialWhatsappOptIn();
+
+  const WHATSAPP_TRIAL_DISPLAY = '+61 422 769 597';
+  const WHATSAPP_TRIAL_WA_ME = 'https://wa.me/61422769597?text=START';
 
   const deadlineStr = new Date(forfeitureDeadline).toLocaleString('en-AU', {
     timeZone: 'Australia/Sydney', dateStyle: 'full', timeStyle: 'short',
@@ -29,7 +37,7 @@ export function TrialDayPassScreen({ passedDay, forfeitureDeadline, onBegin, beg
   const submitWhatsapp = () => {
     optIn.mutate(
       { whatsappNumber: whatsapp || undefined, reminderTimePreferenceHour: Number(hour) },
-      { onSettled: () => setWhatsappSubmitted(true) },
+      { onSettled: () => setNumberSaved(true) },
     );
   };
 
@@ -48,9 +56,11 @@ export function TrialDayPassScreen({ passedDay, forfeitureDeadline, onBegin, beg
           <p style={{ margin: '4px 0 0', fontSize: 13.5, color: C.textSecondary }}>Miss it and the rest of the trial is gone for good.</p>
         </div>
 
-        {passedDay === 1 && !whatsappSubmitted && (
+        {passedDay === 1 && !whatsappDismissed && !numberSaved && (
           <div style={{ background: C.bgSurface, border: `1px solid ${C.borderDefined}`, borderRadius: 14, padding: 18, textAlign: 'left', marginBottom: 20 }}>
-            <p style={{ margin: '0 0 10px', fontSize: 13.5, fontWeight: 700, color: C.textPrimary }}>Want a reminder so you don't forget?</p>
+            <p style={{ margin: '0 0 10px', fontSize: 13.5, fontWeight: 700, color: C.textPrimary }}>
+              Want a reminder so you don't forget? <span style={{ color: C.textMuted, fontWeight: 600 }}>(Beta)</span>
+            </p>
             <input
               type="tel" placeholder="WhatsApp number, e.g. +61412345678" value={whatsapp}
               onChange={e => setWhatsapp(e.target.value)}
@@ -68,14 +78,35 @@ export function TrialDayPassScreen({ passedDay, forfeitureDeadline, onBegin, beg
               onClick={submitWhatsapp} disabled={optIn.isPending || !whatsapp}
               style={{ width: '100%', padding: 11, borderRadius: 10, border: 'none', background: C.accentPetrol, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: !whatsapp ? 0.6 : 1 }}
             >
-              {optIn.isPending ? '...' : 'Send me a reminder'}
+              {optIn.isPending ? '...' : 'Save my number'}
             </button>
             <button
-              onClick={() => setWhatsappSubmitted(true)}
+              onClick={() => setWhatsappDismissed(true)}
               style={{ width: '100%', marginTop: 8, padding: 8, borderRadius: 10, border: 'none', background: 'transparent', color: C.textMuted, fontSize: 13, cursor: 'pointer', textDecoration: 'underline' }}
             >
               No thanks
             </button>
+          </div>
+        )}
+
+        {passedDay === 1 && numberSaved && (
+          <div style={{ background: 'rgba(15,118,110,0.08)', border: '1px solid rgba(15,118,110,0.25)', borderRadius: 14, padding: 18, textAlign: 'left', marginBottom: 20 }}>
+            <p style={{ margin: '0 0 6px', fontSize: 13.5, fontWeight: 700, color: C.textPrimary }}>
+              One more step — text us to turn it on <span style={{ color: C.textMuted, fontWeight: 600 }}>(Beta)</span>
+            </p>
+            <p style={{ margin: '0 0 12px', fontSize: 13, color: C.textSecondary, lineHeight: 1.5 }}>
+              Reminders only start once you message us first — that's what keeps this from being spam.
+              Text <strong>START</strong> to <strong>{WHATSAPP_TRIAL_DISPLAY}</strong>.
+            </p>
+            <a
+              href={WHATSAPP_TRIAL_WA_ME} target="_blank" rel="noopener noreferrer"
+              style={{
+                display: 'block', textAlign: 'center', width: '100%', padding: 11, borderRadius: 10,
+                background: C.accentPetrol, color: '#fff', fontSize: 14, fontWeight: 700, textDecoration: 'none',
+              }}
+            >
+              Open WhatsApp and send START
+            </a>
           </div>
         )}
 

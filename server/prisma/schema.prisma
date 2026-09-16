@@ -128,6 +128,12 @@ model CandidateProfile {
   // 0-23, AEST hour the candidate would prefer trial-challenge reminders to
   // land. Null = no preference set; the reminder cron falls back to a default.
   reminderTimePreferenceHour   Int?
+  // Set the instant this candidate's own number texts "START" to the WhatsApp
+  // bot — never by typing a number into the app alone. The reminder cron only
+  // ever sends WhatsApp to a profile with this set: automated outbound only
+  // goes to a number that messaged in first, never a cold blast to whatever
+  // was typed into a form. See services/whatsappBaileys.ts.
+  whatsappVerifiedAt           DateTime?
   positioningStatement         Json?
   analysisCache                Json?
   achievements                 Achievement[]
@@ -963,6 +969,19 @@ model NudgeLog {
   sentAt    DateTime @default(now())
 
   @@unique([userId, kind, periodKey])
+}
+
+// Baileys' auth state, one row per key (mirrors useMultiFileAuthState's
+// one-file-per-key shape exactly, just backed by Postgres instead of local
+// disk — Railway's filesystem is ephemeral across redeploys, a local
+// .wa_auth/ folder would be wiped on every deploy and force a re-pair every
+// time). "creds" holds the single credentials row; "app-state-sync-key-*"
+// etc. hold the many signal-protocol key entries Baileys reads/writes in
+// bulk. See services/whatsappBaileys.ts.
+model WhatsAppSession {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
 }
 
 // The 3-day free-trial "challenge" that replaced ApplyPreviewGate's paywall

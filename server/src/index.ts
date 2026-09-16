@@ -52,6 +52,7 @@ import { startAccountabilityCron } from './cron/accountabilityCron';
 import { startPaymentReconcileCron } from './cron/paymentReconcileCron';
 import { startFollowUpReminderCron } from './cron/followUpReminderCron';
 import { startTrialChallengeReminderCron } from './cron/trialChallengeReminderCron';
+import { startWhatsApp } from './services/whatsappBaileys';
 import { analyzeRateLimit } from './middleware/analyzeRateLimit';
 import { ensureSponsorJobTable } from './db/ensureSponsorJobTable';
 import { ensureEmailTables } from './db/ensureEmailTables';
@@ -334,7 +335,8 @@ async function ensureColumns() {
         ADD COLUMN IF NOT EXISTS "applicationMilestoneSeen" INTEGER NOT NULL DEFAULT 0,
         ADD COLUMN IF NOT EXISTS "closeoutSeenDate" TIMESTAMP(3),
         ADD COLUMN IF NOT EXISTS "whatsappNumber" TEXT,
-        ADD COLUMN IF NOT EXISTS "reminderTimePreferenceHour" INTEGER;
+        ADD COLUMN IF NOT EXISTS "reminderTimePreferenceHour" INTEGER,
+        ADD COLUMN IF NOT EXISTS "whatsappVerifiedAt" TIMESTAMP(3);
     `);
     await prisma.$executeRawUnsafe(`
       ALTER TABLE "DiagnosticReport"
@@ -459,5 +461,6 @@ if (process.env.SKIP_SERVER === 'true') {
       console.log('[cron] Follow-up reminder cron scheduled (09:00 UTC daily)');
       console.log('[cron] Payment reconciliation cron scheduled (11:00 UTC daily)');
       console.log('[cron] Trial challenge reminder cron scheduled (hourly)');
+      startWhatsApp().catch((err) => console.error('[whatsapp] failed to start:', err?.message));
   });
 }

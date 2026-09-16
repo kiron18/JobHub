@@ -1,7 +1,7 @@
 import cron from 'node-cron';
 import { prisma } from '../index';
 import { sendTrialChallengeReminderEmail } from '../services/email';
-import { sendTrialChallengeReminderWhatsApp } from '../services/whatsapp';
+import { sendTrialChallengeReminderWhatsApp } from '../services/whatsappBaileys';
 import { todayAEST } from '../services/jobFeed';
 import { claimNudge } from '../services/accountability/nudges';
 import { forfeitureDeadline } from '../services/trialChallenge/engine';
@@ -46,7 +46,10 @@ export function startTrialChallengeReminderCron(): void {
 
         const profile = await prisma.candidateProfile.findUnique({
           where: { userId: t.userId },
-          select: { email: true, name: true, whatsappNumber: true, reminderTimePreferenceHour: true },
+          select: {
+            email: true, name: true, whatsappNumber: true,
+            whatsappVerifiedAt: true, reminderTimePreferenceHour: true,
+          },
         });
         if (!profile?.email) continue;
 
@@ -62,7 +65,10 @@ export function startTrialChallengeReminderCron(): void {
         } catch (err: any) {
           console.error(`[trialChallengeReminder] email failed for ${profile.email}:`, err.message);
         }
-        if (profile.whatsappNumber) {
+        // Only ever a candidate who has actually texted the bot and been
+        // verified — never a cold send to a number that was just typed into
+        // a form. See services/whatsappBaileys.ts for why.
+        if (profile.whatsappNumber && profile.whatsappVerifiedAt) {
           try {
             await sendTrialChallengeReminderWhatsApp(profile.whatsappNumber, {
               '1': profile.name || 'there',
