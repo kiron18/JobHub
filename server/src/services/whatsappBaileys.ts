@@ -201,6 +201,11 @@ async function handleIncoming(socketRef: WASocket, msg: any): Promise<void> {
   await sendThrottled(socketRef, remoteJid, CONFIRM_TEXT);
 }
 
+// The number this bot links as. Digits only, country code first, no '+' —
+// exactly what requestPairingCode expects. Defaults to the trial's own
+// advertised number so nothing extra has to be set for the common case.
+const PAIRING_NUMBER = (process.env.WHATSAPP_PAIRING_NUMBER || '61422769597').replace(/[^\d]/g, '');
+
 /**
  * Opens (or re-opens) the WhatsApp connection. Safe to call more than once —
  * a live socket or an in-flight connection attempt short-circuits.
@@ -213,14 +218,18 @@ export async function startWhatsApp(): Promise<void> {
     const { default: makeWASocket, DisconnectReason, Browsers, fetchLatestBaileysVersion } = await loadBaileys();
     const { state, saveCreds } = await usePostgresAuthState();
     const { version } = await fetchLatestBaileysVersion();
+    // creds.me is only ever populated once WhatsApp has actually approved a
+    // link — not the moment a socket is created, and not creds.registered
+    // either (that only gets set by the pairing-code flow itself, so
+    // checking it here would refuse to ask for a code the very first time).
+    const alreadyPaired = Boolean((state.creds as any)?.me?.id);
 
     const newSock = makeWASocket({
       version,
       auth: state,
       logger: waLogger,
       // A stock browser identity — a custom name here is a known cause of
-      // pairing-code requests failing outright (not used here, QR only, but
-      // cheap insurance either way).
+      // requestPairingCode failing outright.
       browser: Browsers.ubuntu('Chrome'),
       // Leave the phone as the "primary" so its own notifications keep
       // arriving normally.
@@ -228,6 +237,24 @@ export async function startWhatsApp(): Promise<void> {
       syncFullHistory: false,
       getMessage: async () => undefined,
     });
+
+    // QR codes rendered into log text turned out to be unscannable in
+    // practice — timestamps, log-viewer chrome and terminal font quirks
+    // distort the image past what a phone camera can read, confirmed by a
+    // real attempt that regenerated a fresh QR every ~20s for over two
+    // minutes without ever linking. A pairing code is plain text: read it
+    // off the log, type it into WhatsApp (Settings -> Linked Devices ->
+    // Link with phone number instead), nothing to scan.
+    if (!alreadyPaired) {
+      setTimeout(async () => {
+        try {
+          const code = await newSock.requestPairingCode(PAIRING_NUMBER);
+          console.log(`[whatsapp] Pairing code for +${PAIRING_NUMBER}: ${code} — enter this in WhatsApp -> Settings -> Linked Devices -> Link with phone number instead.`);
+        } catch (err: any) {
+          console.error('[whatsapp] pairing code request failed:', err?.message);
+        }
+      }, 3000); // the socket needs a moment on the wire before it can request a code
+    }
 
     newSock.ev.on('creds.update', saveCreds);
 
