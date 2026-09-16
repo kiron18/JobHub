@@ -4,10 +4,19 @@ import { isPaidOrExempt } from '../../middleware/accessControl';
 import { isTrialChallengeTestMode } from '../../config/trialChallengeGate';
 import { DAY_RULES, LAST_DAY, ruleForDay, DayRule, TrialChallengeStatus } from './rules';
 
-/** Real minutes normally; the same number in SECONDS under TRIAL_CHALLENGE_TEST_MODE, so a whole day's window is a couple of minutes instead of half an hour-plus. */
+/**
+ * Real minutes normally; compressed 6x under TRIAL_CHALLENGE_TEST_MODE (30
+ * real minutes -> 5 test minutes), not shrunk to raw seconds. A single real
+ * resume + cover letter generation in this environment takes 40-45 seconds on
+ * its own (LLM round trips) — a 30-SECOND window, tried first, made even one
+ * application structurally impossible to finish in time, let alone the two
+ * required, and looked like a broken app rather than a fast test. 6x still
+ * turns 30/45/60 real minutes into 5/7.5/10 test minutes — the whole 3-day arc
+ * in under 25 minutes — while leaving real room to actually generate.
+ */
 function windowDurationMs(rule: DayRule): number {
-  const unitMs = isTrialChallengeTestMode() ? 1_000 : 60_000;
-  return rule.windowMinutes * unitMs;
+  const speedup = isTrialChallengeTestMode() ? 6 : 1;
+  return (rule.windowMinutes * 60_000) / speedup;
 }
 
 export interface TrialState {

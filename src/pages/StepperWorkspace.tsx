@@ -313,8 +313,19 @@ export function StepperWorkspace() {
         ? (nameProfile.plan ?? 'free') === 'free' && !nameProfile.isAdmin && nameProfile.dashboardAccess !== true
         : false;
     const { data: trialState } = useTrialChallengeState();
+    // Checked once, on the first read, not on every poll. This page is
+    // reached by the shared trial-challenge query too (every ~12s while a
+    // window is live), and a candidate legitimately mid-generation when the
+    // window happens to run out must never be yanked out from under
+    // themselves — that read as "the button doesn't work" in testing, not as
+    // an access-control gate. Once in, a free account stays in until they
+    // navigate away themselves; goToApply on /check is what stops them
+    // getting back in for a day that isn't running.
+    const trialGateChecked = useRef(false);
     useEffect(() => {
-        if (isFreeAccount && trialState && trialState.status !== 'day_in_progress') {
+        if (trialGateChecked.current || !trialState) return;
+        trialGateChecked.current = true;
+        if (isFreeAccount && trialState.status !== 'day_in_progress') {
             navigate('/check', { replace: true });
         }
     }, [isFreeAccount, trialState, navigate]);
