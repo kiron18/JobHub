@@ -21,20 +21,25 @@
 /** Roughly where mail clients and browsers start truncating a URL. */
 export const MAX_BODY_CHARS = 1800;
 
-export type MailClient = 'gmail' | 'outlook' | 'default';
+export type MailClient = 'gmail' | 'outlook' | 'yahoo' | 'default';
 
 /**
  * Which compose window to open, from the address they signed up with.
  *
- * Guessing wrong is a dead button rather than a wrong send: a `mailto:` link
- * does nothing at all for someone reading webmail in a browser with no handler
- * registered, and they get no error explaining why.
+ * Guessing wrong used to be a dead button: a `mailto:` link does nothing at
+ * all for someone reading webmail with no desktop handler registered (a real
+ * Yahoo Mail signup hit exactly this — the "default" mailto path silently
+ * failed to open anything). Every provider recognised here gets a real
+ * https:// compose URL instead, which works in any browser with no handler
+ * needed. `default` is now only for whatever's left over, and even that path
+ * is opened more reliably — see openMail's use of location.href.
  */
 export function clientForAddress(address: string | null | undefined): MailClient {
     const domain = (address || '').split('@')[1]?.toLowerCase() ?? '';
     if (!domain) return 'default';
     if (/^(gmail\.com|googlemail\.com)$/.test(domain)) return 'gmail';
     if (/^(outlook\.|hotmail\.|live\.|msn\.)/.test(domain)) return 'outlook';
+    if (/^(yahoo\.|ymail\.com|rocketmail\.com)/.test(domain)) return 'yahoo';
     return 'default';
 }
 
@@ -109,6 +114,15 @@ export function composeUrl(draft: ComposeDraft, client: MailClient, account?: st
         q.set('subject', draft.subject);
         q.set('body', body);
         return `https://outlook.live.com/mail/0/deeplink/compose?${q.toString()}`;
+    }
+
+    if (client === 'yahoo') {
+        q.set('to', draft.to);
+        q.set('subj', draft.subject);
+        q.set('body', body);
+        if (draft.cc) q.set('cc', draft.cc);
+        if (draft.bcc) q.set('bcc', draft.bcc);
+        return `https://compose.mail.yahoo.com/?${q.toString()}`;
     }
 
     // mailto encodes its own parameters, and URLSearchParams renders a space

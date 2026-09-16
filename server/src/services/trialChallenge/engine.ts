@@ -1,7 +1,14 @@
 import { prisma } from '../../index';
 import { SENT_APPLICATION_FILTER } from '../tracker/metricHelpers';
 import { isPaidOrExempt } from '../../middleware/accessControl';
-import { DAY_RULES, LAST_DAY, ruleForDay, TrialChallengeStatus } from './rules';
+import { isTrialChallengeTestMode } from '../../config/trialChallengeGate';
+import { DAY_RULES, LAST_DAY, ruleForDay, DayRule, TrialChallengeStatus } from './rules';
+
+/** Real minutes normally; the same number in SECONDS under TRIAL_CHALLENGE_TEST_MODE, so a whole day's window is a couple of minutes instead of half an hour-plus. */
+function windowDurationMs(rule: DayRule): number {
+  const unitMs = isTrialChallengeTestMode() ? 1_000 : 60_000;
+  return rule.windowMinutes * unitMs;
+}
 
 export interface TrialState {
   eligible: boolean;
@@ -148,7 +155,10 @@ export async function resolveTrialState(userId: string): Promise<TrialState | nu
     }
   }
 
-  if (status === 'day_passed_waiting' && passedDayAt && now >= forfeitureDeadline(passedDayAt)) {
+  if (
+    status === 'day_passed_waiting' && passedDayAt &&
+    !isTrialChallengeTestMode() && now >= forfeitureDeadline(passedDayAt)
+  ) {
     status = 'forfeited';
     await prisma.trialChallenge.update({ where: { id: trial.id }, data: { status } });
   }
@@ -161,6 +171,9 @@ export async function resolveTrialState(userId: string): Promise<TrialState | nu
     minimumRequired: rule?.minimum ?? 0,
     appliedThisWindow,
     linkedinUnlocked,
+    // Still computed (and shown) in test mode — only the forfeitureDeadline
+    // ENFORCEMENT above is skipped, so the pass screen keeps rendering
+    // normally instead of vanishing for lack of a deadline to show.
     forfeitureDeadline: status === 'day_passed_waiting' && passedDayAt ? forfeitureDeadline(passedDayAt) : null,
   };
 }
@@ -172,7 +185,7 @@ export async function beginDay(userId: string): Promise<TrialState> {
   if (!existing) {
     const rule = ruleForDay(1)!;
     const windowStartedAt = new Date();
-    const windowEndsAt = new Date(windowStartedAt.getTime() + rule.windowMinutes * 60_000);
+    const windowEndsAt = new Date(windowStartedAt.getTime() + windowDurationMs(rule));
     const trial = await prisma.trialChallenge.create({
       data: { userId, currentDay: 1, status: 'day_in_progress', windowStartedAt, windowEndsAt },
     });
@@ -186,7 +199,7 @@ export async function beginDay(userId: string): Promise<TrialState> {
   if (!state || state.status !== 'day_passed_waiting') {
     throw new TrialChallengeError('No day available to begin', state?.status ?? 'not_started');
   }
-  if (state.forfeitureDeadline && new Date() >= state.forfeitureDeadline) {
+  if (!isTrialChallengeTestMode() && state.forfeitureDeadline && new Date() >= state.forfeitureDeadline) {
     throw new TrialChallengeError('This trial was forfeited', 'forfeited');
   }
 
@@ -197,7 +210,7 @@ export async function beginDay(userId: string): Promise<TrialState> {
   }
 
   const windowStartedAt = new Date();
-  const windowEndsAt = new Date(windowStartedAt.getTime() + rule.windowMinutes * 60_000);
+  const windowEndsAt = new Date(windowStartedAt.getTime() + windowDurationMs(rule));
 
   await prisma.trialChallenge.update({
     where: { id: existing.id },

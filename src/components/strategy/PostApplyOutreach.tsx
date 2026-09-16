@@ -26,7 +26,7 @@
  */
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, ChevronUp, Download, Linkedin, Loader2, Mail, Search } from 'lucide-react';
+import { ChevronDown, ChevronUp, Download, Loader2, Mail, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../../lib/api';
 import { warm } from '../../lib/theme/warmTokens';
@@ -238,9 +238,8 @@ export function PostApplyOutreach({
       which channel is better.
     */
     const sendTo = sendable?.addresses[0]?.address ?? null;
-    const primaryIsEmail = Boolean(sendTo);
     const client = clientForAddress(fromEmail);
-    const clientName = client === 'gmail' ? 'Gmail' : client === 'outlook' ? 'Outlook' : null;
+    const clientName = client === 'gmail' ? 'Gmail' : client === 'outlook' ? 'Outlook' : client === 'yahoo' ? 'Yahoo' : null;
     /*
       Three states, and the middle one used to be missing.
 
@@ -263,29 +262,23 @@ export function PostApplyOutreach({
         // written. A placeholder would be worse — anything in that field is a
         // real recipient, so it either delivers to a stranger or bounces.
         const url = composeUrl({ to: sendTo ?? '', subject: t.subject, body: t.email }, client, fromEmail);
-        window.open(url, '_blank', 'noopener');
+        if (client === 'default') {
+            // A real https:// URL (gmail/outlook/yahoo) is a normal page and
+            // window.open is right for it. mailto: is not a page — it's a
+            // handoff to whatever desktop app is registered for it — and
+            // window.open frequently just leaves a blank tab behind without
+            // ever making that handoff. location.href is the reliable way to
+            // trigger it; a Yahoo signup hit exactly this failure before
+            // Yahoo got its own compose URL above, and any remaining provider
+            // without one (a work domain, iCloud, etc.) still needs this.
+            window.location.href = url;
+        } else {
+            window.open(url, '_blank', 'noopener');
+        }
         if (fitBody(t.email).truncated) {
             toast('The last paragraphs were too long for a compose link. Paste the rest before you send.');
         } else if (t.emailNeedsPitch) {
             toast('Fill in the [bracketed] line before you send it.');
-        }
-    }
-
-    async function copyNote() {
-        try {
-            await navigator.clipboard.writeText(t.linkedIn);
-            /*
-              The clipboard is invisible, which is the whole problem with
-              collapsing a draft behind a copy button: an untouched
-              "[One line on why this role fits you.]" goes to a recruiter and
-              nobody saw it happen. The email path does not need this because
-              the compose window shows the body.
-            */
-            toast.success(t.linkedInNeedsPitch
-                ? 'Copied. Fill in the [bracketed] line, then paste it into your connection request.'
-                : 'Copied. Paste it into your LinkedIn connection request.');
-        } catch {
-            toast.error('Could not copy. Long-press the note to select it instead.');
         }
     }
 
@@ -531,54 +524,46 @@ export function PostApplyOutreach({
                 </p>
             )}
 
+            {/*
+                The drafted email, visible on the page rather than hidden
+                behind a click. It used to only appear inside whatever mail
+                client the button opened — this shows it here first, plainly,
+                so there's something to read before there's something to send.
+            */}
             <div style={{
-                display: 'grid',
-                gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
-                gap: isMobile ? 10 : 14,
+                border: `1px solid ${warm.colors.borderWhisper}`,
+                borderRadius: 10,
+                background: warm.colors.bgAlt,
+                padding: 14,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
             }}>
-                {primaryIsEmail ? (
-                    <>
-                        <ActionCard
-                            tone="primary"
-                            icon={<Mail size={16} />}
-                            label={mailLabel}
-                            onClick={openMail}
-                            note={sendTo
-                                ? `Opens ${clientName ?? 'your email'} to ${sendTo}, from your address.`
-                                : undefined}
-                        />
-                        <ActionCard
-                            tone="secondary"
-                            icon={<Linkedin size={16} />}
-                            label="Copy the LinkedIn note"
-                            onClick={copyNote}
-                            note="Paste it into a connection request."
-                        />
-                    </>
-                ) : (
-                    <>
-                        <ActionCard
-                            tone="primary"
-                            icon={<Linkedin size={16} />}
-                            label="Copy the LinkedIn note"
-                            onClick={copyNote}
-                            note="No address needed, and it is the one that gets answered more often."
-                        />
-                        <ActionCard
-                            tone="secondary"
-                            icon={lookingUpContact
-                                ? <Loader2 size={16} className="animate-spin" />
-                                : <Mail size={16} />}
-                            label={mailLabel}
-                            busy={lookingUpContact}
-                            onClick={openMail}
-                            note={lookingUpContact
-                                ? `Checking whether anyone at ${company || 'this employer'} is reachable.`
-                                : 'Everything written, To line empty, for once you have found an address.'}
-                        />
-                    </>
-                )}
+                <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: warm.colors.textPrimary }}>
+                    Subject: {t.subject}
+                </p>
+                <p style={{
+                    margin: 0, fontSize: 13, lineHeight: 1.6, color: warm.colors.textSecondary,
+                    whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                }}>
+                    {t.email}
+                </p>
             </div>
+
+            <ActionCard
+                tone="primary"
+                icon={lookingUpContact
+                    ? <Loader2 size={16} className="animate-spin" />
+                    : <Mail size={16} />}
+                label={mailLabel}
+                busy={lookingUpContact}
+                onClick={openMail}
+                note={sendTo
+                    ? `Opens ${clientName ?? 'your email'} to ${sendTo}, from your address.`
+                    : lookingUpContact
+                        ? `Checking whether anyone at ${company || 'this employer'} is reachable.`
+                        : 'Everything written, To line empty, for once you have found an address.'}
+            />
 
             {/*
                 No mailto: or compose deep link can attach a file for us —
