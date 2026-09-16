@@ -146,11 +146,35 @@ if (isDev) {
   };
 }
 
-// Request timing log (stdout only — works in both envs)
+/*
+  Every 5xx response, reported to Sentry — not just uncaught crashes.
+
+  Sentry was initialized and setupExpressErrorHandler was wired below, but
+  that only ever catches an error that propagates UNHANDLED to Express. Every
+  route in this codebase (stripe/checkout included) catches its own error and
+  answers with a normal res.status(500).json(...), which Express sees as a
+  successful request — Sentry never saw it. The Stripe embedded-checkout
+  outage was invisible here for exactly that reason: it logged to stdout,
+  which nobody was watching, and never once alerted anyone.
+
+  This captures the response body a route already builds for the error (most
+  shapes are `{ error: '...' }` or similar) so the Sentry event is actionable
+  without needing every catch block individually rewritten.
+*/
 app.use((req, res, next) => {
+    const originalJson = res.json.bind(res);
+    let capturedBody: unknown;
+    res.json = (body: unknown) => { capturedBody = body; return originalJson(body); };
+
     const start = Date.now();
     res.on('finish', () => {
         console.log(`${req.method} ${req.url} ${res.statusCode} ${Date.now() - start}ms`);
+        if (res.statusCode >= 500) {
+            Sentry.captureMessage(`${req.method} ${req.originalUrl ?? req.url} -> ${res.statusCode}`, {
+                level: 'error',
+                extra: { body: capturedBody },
+            });
+        }
     });
     next();
 });
