@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import { warm } from '../lib/theme/warmTokens';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { useTrialChallengeState } from '../lib/trialChallenge';
 
 const PREV_COUNT_KEY    = 'jobhub_sent_count_prev';
 const CELEBRATED_KEY    = 'jobhub_first_application_celebrated';
@@ -43,16 +44,24 @@ export function FirstApplicationCelebration() {
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
 
+  // Paused for trial-challenge accounts: the trial's own screens are the
+  // flow for that cohort, and this stacking on top of them read as a
+  // popup-on-popup pile-up during testing.
+  const { data: trial } = useTrialChallengeState();
+  const suppressedForTrial = !!trial?.eligible;
+
   const { data } = useQuery<SentCountResponse>({
     queryKey: ['jobs', 'sent-count', 'celebration'],
     queryFn: async () => (await api.get('/jobs/sent-count')).data,
     staleTime: 30 * 1000,
     refetchOnWindowFocus: true,
+    enabled: !suppressedForTrial,
   });
 
   const count = data?.count ?? null;
 
   useEffect(() => {
+    if (suppressedForTrial) return;
     if (count === null) return;
     if (typeof window === 'undefined') return;
 
@@ -69,7 +78,7 @@ export function FirstApplicationCelebration() {
     }
 
     window.localStorage.setItem(PREV_COUNT_KEY, String(count));
-  }, [count]);
+  }, [count, suppressedForTrial]);
 
   function close() {
     setOpen(false);

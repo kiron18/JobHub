@@ -17,3 +17,5 @@ export const DAY_RULES: readonly DayRule[] = [
 export function ruleForDay(day: number): DayRule | undefined {
   return DAY_RULES.find(r => r.day === day);
 }
+
+export const LAST_DAY = DAY_RULES[DAY_RULES.length - 1].day;

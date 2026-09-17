@@ -5,6 +5,7 @@ import {
   isEligibleForTrial,
   resolveTrialState,
   beginDay,
+  resetTrial,
   getOrCreateWhatsappOptInCode,
   TrialChallengeError,
 } from '../services/trialChallenge/engine';
@@ -23,7 +24,7 @@ router.get('/state', authenticate, async (req: AuthRequest, res) => {
     // ApplyPreviewGate behaviour untouched. Nothing else in this route runs.
     return res.json({
       eligible: false, status: 'not_started', currentDay: 0, windowEndsAt: null,
-      minimumRequired: 0, appliedThisWindow: 0, linkedinUnlocked: false, forfeitureDeadline: null,
+      minimumRequired: 0, appliedThisWindow: 0, linkedinUnlocked: false, forfeitureDeadline: null, resetUsed: false,
     });
   }
 
@@ -31,7 +32,7 @@ router.get('/state', authenticate, async (req: AuthRequest, res) => {
   if (!eligible) {
     return res.json({
       eligible: false, status: 'not_started', currentDay: 0, windowEndsAt: null,
-      minimumRequired: 0, appliedThisWindow: 0, linkedinUnlocked: false, forfeitureDeadline: null,
+      minimumRequired: 0, appliedThisWindow: 0, linkedinUnlocked: false, forfeitureDeadline: null, resetUsed: false,
     });
   }
 
@@ -46,7 +47,7 @@ router.get('/state', authenticate, async (req: AuthRequest, res) => {
     return res.json({
       eligible: true, status: 'not_started', currentDay: 0, windowEndsAt: null,
       minimumRequired: 0, appliedThisWindow: 0, linkedinUnlocked: false, forfeitureDeadline: null,
-      whatsappOptInLink,
+      resetUsed: false, whatsappOptInLink,
     });
   }
   res.json({ ...state, whatsappOptInLink });
@@ -66,6 +67,24 @@ router.post('/begin', authenticate, async (req: AuthRequest, res) => {
       return res.status(409).json({ error: err.code, message: err.message });
     }
     console.error('[trial-challenge] begin failed:', err);
+    res.status(500).json({ error: 'internal_error' });
+  }
+});
+
+router.post('/reset', authenticate, async (req: AuthRequest, res) => {
+  if (!isTrialChallengeEnabled()) return res.status(403).json({ error: 'not_enabled' });
+  const userId = req.user!.id;
+  const eligible = await isEligibleForTrial(userId, req.user!.email);
+  if (!eligible) return res.status(403).json({ error: 'not_eligible' });
+
+  try {
+    const state = await resetTrial(userId);
+    res.json(state);
+  } catch (err) {
+    if (err instanceof TrialChallengeError) {
+      return res.status(409).json({ error: err.code, message: err.message });
+    }
+    console.error('[trial-challenge] reset failed:', err);
     res.status(500).json({ error: 'internal_error' });
   }
 });

@@ -1,6 +1,7 @@
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { motion } from 'framer-motion';
 import { warm } from '../../lib/theme/warmTokens';
+import { TrialDayProgress } from './TrialDayProgress';
 
 const C = warm.colors;
 
@@ -22,6 +23,9 @@ export function TrialDayIntro({ windowMinutes, minimum, onBegin, beginning }: Pr
         initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
         style={{ width: '100%', maxWidth: 480, margin: 'auto', textAlign: 'center' }}
       >
+        <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'center' }}>
+          <TrialDayProgress currentDay={1} />
+        </div>
         <div style={{ width: 200, height: 200, margin: '0 auto -8px' }}>
           <DotLottieReact src="/Assets/trial-challenge/rocket.lottie" loop autoplay />
         </div>

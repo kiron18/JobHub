@@ -1,4 +1,6 @@
-import { useTrialChallengeState, useBeginTrialDay } from '../../lib/trialChallenge';
+import { useLocation } from 'react-router-dom';
+import { useTrialChallengeState, useBeginTrialDay, useResetTrialChallenge } from '../../lib/trialChallenge';
+import { useProfile } from '../../hooks/useProfile';
 import { ruleForDay } from '../../lib/trialChallengeRules';
 import { TrialDayIntro } from './TrialDayIntro';
 import { TrialDayPassScreen } from './TrialDayPassScreen';
@@ -13,11 +15,28 @@ import { TrialDayEndScreen } from './TrialDayEndScreen';
  *
  * Replaces ApplyPreviewGate for free users. ApplyPreviewGate.tsx itself is
  * left in place, unused, in case it's wanted elsewhere later.
+ *
+ * Excluded on /dev/* : those are copy/layout preview pages for work in
+ * progress, and a real account's real trial state has no business covering
+ * them with a fixed overlay — that's what sent someone reviewing an unrelated
+ * dev preview straight into their own stuck "day failed" screen.
+ *
+ * Also excluded until onboarding is complete: this is a sibling of <Routes>
+ * so it renders on every page including the OnboardingGate/intake screens,
+ * and trial eligibility only checks plan/payment status, not onboarding
+ * state. Without this, a brand-new free account can see the Day 1 intro (or
+ * a stuck day-end screen) stacked on top of the "complete your profile" form
+ * before they've so much as entered a resume.
  */
 export function TrialChallengeOverlay() {
+  const { pathname } = useLocation();
   const { data } = useTrialChallengeState();
+  const { profile } = useProfile();
   const begin = useBeginTrialDay();
+  const reset = useResetTrialChallenge();
 
+  if (pathname.startsWith('/dev/')) return null;
+  if (!profile?.hasCompletedOnboarding) return null;
   if (!data || !data.eligible) return null;
 
   switch (data.status) {
@@ -47,6 +66,7 @@ export function TrialChallengeOverlay() {
       if (!data.windowEndsAt) return null;
       return (
         <TrialWindowBar
+          currentDay={data.currentDay}
           windowEndsAt={data.windowEndsAt}
           appliedThisWindow={data.appliedThisWindow}
           minimumRequired={data.minimumRequired}
@@ -62,6 +82,9 @@ export function TrialChallengeOverlay() {
           currentDay={data.currentDay}
           appliedThisWindow={data.appliedThisWindow}
           minimumRequired={data.minimumRequired}
+          resetUsed={data.resetUsed}
+          onReset={() => reset.mutate()}
+          resetting={reset.isPending}
         />
       );
     default:

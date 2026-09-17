@@ -8,6 +8,7 @@ import { EASE, SPRING, prefersReducedMotion } from '../../lib/theme/motion';
 import { haptic } from '../../lib/feedback';
 import { closeoutLineFor } from '../../lib/closeoutLines';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTrialChallengeState } from '../../lib/trialChallenge';
 
 /* ── DailyCloseOut ─────────────────────────────────────────────────────
    The Duolingo/Wordle moment: once the day's applications are actually
@@ -39,19 +40,25 @@ export function DailyCloseOut() {
   const [visible, setVisible] = useState(false);
   const reduced = prefersReducedMotion();
 
+  // Paused for trial-challenge accounts: the 3-day arc is its own closed
+  // loop, and stacking a second "day done" popup on top of the trial's own
+  // screens read as a popup-on-popup pile-up during testing.
+  const { data: trial } = useTrialChallengeState();
+  const suppressedForTrial = !!trial?.eligible;
+
   const { data } = useQuery({
     queryKey: ['tracker-closeout'],
     queryFn: async () => (await api.get('/tracker/closeout')).data as CloseoutState,
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && !suppressedForTrial,
     staleTime: 60_000,
   });
 
   useEffect(() => {
-    if (data?.eligible) {
+    if (data?.eligible && !suppressedForTrial) {
       haptic('success');
       setVisible(true);
     }
-  }, [data?.eligible]);
+  }, [data?.eligible, suppressedForTrial]);
 
   const ackMutation = useMutation({
     mutationFn: async () => (await api.post('/tracker/closeout/ack')).data as CloseoutState,

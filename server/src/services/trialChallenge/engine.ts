@@ -28,6 +28,8 @@ export interface TrialState {
   appliedThisWindow: number;
   linkedinUnlocked: boolean;
   forfeitureDeadline: Date | null;
+  /** True once the one free restart-from-Day-1 has been spent. */
+  resetUsed: boolean;
 }
 
 export class TrialChallengeError extends Error {
@@ -184,7 +186,49 @@ export async function resolveTrialState(userId: string): Promise<TrialState | nu
     // ENFORCEMENT above is skipped, so the pass screen keeps rendering
     // normally instead of vanishing for lack of a deadline to show.
     forfeitureDeadline: status === 'day_passed_waiting' && passedDayAt ? forfeitureDeadline(passedDayAt) : null,
+    resetUsed: trial.resetUsed,
   };
+}
+
+/**
+ * The one free restart-from-Day-1, spent here. Only callable from a terminal
+ * "missed it" state (day_failed or forfeited, never day_failed's sibling
+ * `completed`, since finishing the trial is not a miss to recover from) and
+ * only once per trial. Wipes the day history clean rather than layering a
+ * second attempt on top of it, so `resolveTrialState` reads the restarted
+ * day-1 row the same way it reads a first attempt.
+ */
+export async function resetTrial(userId: string): Promise<TrialState> {
+  const trial = await prisma.trialChallenge.findUnique({ where: { userId } });
+  if (!trial) throw new TrialChallengeError('No trial to reset', 'not_started');
+  if (trial.resetUsed) throw new TrialChallengeError('The free restart has already been used', 'reset_used');
+  if (trial.status !== 'day_failed' && trial.status !== 'forfeited') {
+    throw new TrialChallengeError('Nothing to reset', trial.status);
+  }
+
+  const rule = ruleForDay(1)!;
+  const windowStartedAt = new Date();
+  const windowEndsAt = new Date(windowStartedAt.getTime() + windowDurationMs(rule));
+
+  await prisma.$transaction([
+    prisma.trialChallengeDay.deleteMany({ where: { trialChallengeId: trial.id } }),
+    prisma.trialChallenge.update({
+      where: { id: trial.id },
+      data: {
+        currentDay: 1,
+        status: 'day_in_progress',
+        windowStartedAt,
+        windowEndsAt,
+        passedDayAt: null,
+        resetUsed: true,
+      },
+    }),
+    prisma.trialChallengeDay.create({
+      data: { trialChallengeId: trial.id, day: 1, windowStartedAt, windowEndsAt, minimumRequired: rule.minimum },
+    }),
+  ]);
+
+  return (await resolveTrialState(userId))!;
 }
 
 /** Starts a window. The only place the clock is ever set running. */

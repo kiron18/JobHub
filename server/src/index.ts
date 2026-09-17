@@ -68,7 +68,15 @@ import emailBroadcastRouter from './email/admin/broadcastRoutes';
 import emailAnalyticsRouter from './email/admin/analyticsRoutes';
 import { runWithRequestContext } from './lib/requestContext';
 
-dotenv.config();
+// Two calls, not one with a path array. Several modules imported above
+// (services/llm.ts, lib/supabase.ts, services/vector.ts) call bare
+// dotenv.config() at their own top level, and ES imports are hoisted, so
+// those already loaded plain .env into process.env before this line ever
+// runs. override:true here is what lets .env.local's values win over that
+// head start; the second call then only fills in whatever .env.local didn't
+// set, at the normal override:false.
+dotenv.config({ path: '.env.local', override: true });
+dotenv.config({ path: '.env' });
 
 Sentry.init({
   dsn: process.env.SENTRY_DSN,
@@ -373,6 +381,10 @@ async function ensureColumns() {
         "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
     `);
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "TrialChallenge"
+        ADD COLUMN IF NOT EXISTS "resetUsed" BOOLEAN NOT NULL DEFAULT false;
+    `);
     await ensureSponsorJobTable(prisma);
     await ensureEmailTables(prisma);
     await ensureQcReviewTable(prisma);
@@ -462,6 +474,13 @@ if (process.env.SKIP_SERVER === 'true') {
       console.log('[cron] Follow-up reminder cron scheduled (09:00 UTC daily)');
       console.log('[cron] Payment reconciliation cron scheduled (11:00 UTC daily)');
       console.log('[cron] Trial challenge reminder cron scheduled (hourly)');
-      startWhatsApp().catch((err) => console.error('[whatsapp] failed to start:', err?.message));
+      // Staging/production already hold a live, paired WhatsApp session. A second
+      // Baileys connection from a local run would fight over the same linked-device
+      // session and could break the pairing, so only start it on Railway.
+      if (process.env.RAILWAY_PROJECT_ID) {
+        startWhatsApp().catch((err) => console.error('[whatsapp] failed to start:', err?.message));
+      } else {
+        console.log('[whatsapp] skipped, not running on Railway');
+      }
   });
 }

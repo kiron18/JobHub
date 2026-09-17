@@ -1015,6 +1015,9 @@ model TrialChallenge {
   // forfeiture deadline to the window's real end, not to whenever the user
   // next happens to reopen the app.
   passedDayAt      DateTime?
+  // One free restart-from-Day-1 per trial, instead of a hard stop on a missed
+  // window. Flips true the moment it's spent — never reset back.
+  resetUsed        Boolean             @default(false)
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
   days             TrialChallengeDay[]

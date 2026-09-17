@@ -4,6 +4,8 @@ import { warm } from '../../lib/theme/warmTokens';
 import { useTrialWhatsappOptIn } from '../../lib/trialChallenge';
 import { ruleForDay } from '../../lib/trialChallengeRules';
 import { Step } from './TrialDayIntro';
+import { TrialDayProgress } from './TrialDayProgress';
+import { TrialOutreachPrompt } from './TrialOutreachPrompt';
 
 const C = warm.colors;
 
@@ -48,6 +50,9 @@ export function TrialDayPassScreen({ passedDay, forfeitureDeadline, onBegin, beg
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 5000, background: C.bgCanvas, overflowY: 'auto', display: 'flex', padding: '48px 24px', boxSizing: 'border-box' }}>
       <div style={{ width: '100%', maxWidth: 480, margin: 'auto', textAlign: 'center' }}>
+        <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'center' }}>
+          <TrialDayProgress currentDay={nextDay} />
+        </div>
         <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.success, margin: '0 0 8px' }}>
           Day {passedDay} passed
         </p>
@@ -66,7 +71,7 @@ export function TrialDayPassScreen({ passedDay, forfeitureDeadline, onBegin, beg
               Want a reminder so you don't forget? <span style={{ color: C.textMuted, fontWeight: 600 }}>(Beta)</span>
             </p>
             <p style={{ margin: '0 0 14px', fontSize: 13, color: C.textSecondary, lineHeight: 1.5 }}>
-              One tap opens WhatsApp with everything already filled in — just hit send.
+              One tap opens WhatsApp with everything already filled in, just hit send.
               Reminders only start once you do, so this can never turn into spam.
             </p>
 
@@ -90,7 +95,7 @@ export function TrialDayPassScreen({ passedDay, forfeitureDeadline, onBegin, beg
                 marginBottom: 8,
               }}
             >
-              Open WhatsApp — everything's filled in
+              Open WhatsApp, everything's filled in
             </a>
 
             {!showHourPicker && !hourSaved && (
@@ -132,6 +137,8 @@ export function TrialDayPassScreen({ passedDay, forfeitureDeadline, onBegin, beg
           </div>
         )}
 
+        {nextDay === 2 && <TrialOutreachPrompt />}
+
         {rule && (
           <div style={{ background: C.bgSurface, border: `1px solid ${C.borderDefined}`, borderRadius: 16, padding: 22, textAlign: 'left', marginBottom: 24 }}>
             <p style={{ fontSize: 12.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: C.textMuted, margin: '0 0 14px' }}>
@@ -140,7 +147,7 @@ export function TrialDayPassScreen({ passedDay, forfeitureDeadline, onBegin, beg
             <Step n={1} text={`${rule.windowMinutes} minutes, whenever you're ready.`} />
             {rule.minimum > 0
               ? <Step n={2} text={`Apply to ${rule.minimum} jobs to keep going.`} last />
-              : <Step n={2} text="No target today — use the time however you like." last />}
+              : <Step n={2} text="No target today, use the time however you like." last />}
           </div>
         )}
 

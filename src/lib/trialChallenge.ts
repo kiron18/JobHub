@@ -19,6 +19,8 @@ export interface TrialChallengeState {
   appliedThisWindow: number;
   linkedinUnlocked: boolean;
   forfeitureDeadline: string | null;
+  /** True once the one free restart-from-Day-1 has been spent. */
+  resetUsed: boolean;
   /** wa.me link pre-filled with "START &lt;code&gt;" — one tap opens WhatsApp ready to send, nothing to type. */
   whatsappOptInLink?: string;
 }
@@ -49,6 +51,14 @@ export function useBeginTrialDay() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => (await api.post('/trial-challenge/begin')).data as TrialChallengeState,
+    onSuccess: (data) => queryClient.setQueryData(TRIAL_CHALLENGE_QUERY_KEY, data),
+  });
+}
+
+export function useResetTrialChallenge() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => (await api.post('/trial-challenge/reset')).data as TrialChallengeState,
     onSuccess: (data) => queryClient.setQueryData(TRIAL_CHALLENGE_QUERY_KEY, data),
   });
 }
