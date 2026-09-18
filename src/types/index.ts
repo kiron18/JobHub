@@ -1,5 +1,6 @@
 export interface CandidateProfile {
     id: string;
+    hasCompletedOnboarding?: boolean;
     name?: string;
     email?: string;
     phone?: string;

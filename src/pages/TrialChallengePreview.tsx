@@ -69,14 +69,14 @@ export default function TrialChallengePreview() {
 
       <Frame title="Day in progress — window bar (minimum not yet met)">
         <div style={{ position: 'relative', height: '100%', background: C.bgCanvas }}>
-          <TrialWindowBar windowEndsAt={FIVE_MIN_FROM_NOW} appliedThisWindow={0} minimumRequired={2} linkedinUnlocked={false} />
+          <TrialWindowBar currentDay={1} windowEndsAt={FIVE_MIN_FROM_NOW} appliedThisWindow={0} minimumRequired={2} linkedinUnlocked={false} />
           <p style={{ padding: '80px 24px 0', color: C.textMuted, fontSize: 13 }}>(rest of /apply renders underneath this bar)</p>
         </div>
       </Frame>
 
       <Frame title="Day in progress — minimum just crossed (LinkedIn unlock toast)">
         <div style={{ position: 'relative', height: '100%', background: C.bgCanvas }}>
-          <TrialWindowBar windowEndsAt={FIVE_MIN_FROM_NOW} appliedThisWindow={2} minimumRequired={2} linkedinUnlocked={true} />
+          <TrialWindowBar currentDay={1} windowEndsAt={FIVE_MIN_FROM_NOW} appliedThisWindow={2} minimumRequired={2} linkedinUnlocked={true} />
         </div>
       </Frame>
 
@@ -89,15 +89,15 @@ export default function TrialChallengePreview() {
       </Frame>
 
       <Frame title="Day failed (minimum not met when window closed)">
-        <TrialDayEndScreen variant="day_failed" currentDay={1} appliedThisWindow={0} minimumRequired={2} />
+        <TrialDayEndScreen variant="day_failed" currentDay={1} appliedThisWindow={0} minimumRequired={2} resetUsed={false} onReset={noop} resetting={false} />
       </Frame>
 
       <Frame title="Forfeited (didn't come back before the deadline)">
-        <TrialDayEndScreen variant="forfeited" currentDay={1} appliedThisWindow={0} minimumRequired={2} />
+        <TrialDayEndScreen variant="forfeited" currentDay={1} appliedThisWindow={0} minimumRequired={2} resetUsed={true} onReset={noop} resetting={false} />
       </Frame>
 
       <Frame title="Completed (finished day 3 — the open hour, no target)">
-        <TrialDayEndScreen variant="completed" currentDay={3} appliedThisWindow={1} minimumRequired={0} />
+        <TrialDayEndScreen variant="completed" currentDay={3} appliedThisWindow={1} minimumRequired={0} resetUsed={true} onReset={noop} resetting={false} />
       </Frame>
     </div>
   );
