@@ -71,6 +71,64 @@ export async function sendAccessRequestNotification(params: {
   });
 }
 
+/**
+ * "Mail me if shit goes down again" — the gap UptimeRobot doesn't cover.
+ *
+ * UptimeRobot (see the three monitors on kiron182@gmail.com) catches the site
+ * or API being fully unreachable. It never catches a route that answers with
+ * its own 500 — the health check still returns 200, so nothing trips. That's
+ * exactly how the OpenRouter-credit 402 and the trial-challenge dead-end both
+ * went unnoticed until a client hit them. Sentry.captureMessage below already
+ * records every 5xx (see the middleware in index.ts), but SENTRY_DSN was
+ * never actually set on either Railway environment, so nothing was reading
+ * those events either. This is the direct line until that's plugged in.
+ *
+ * Cooldown, not a queue: an outage produces a burst of 500s from the same
+ * cause, and mailing once per request during that burst is the failure mode
+ * this exists to prevent, not the thing it exists to do. One email per
+ * cooldown window names the first failure and how many followed; Railway's
+ * own log stream is still the place to read the rest. Per-process only — this
+ * resets on a redeploy, which just means a fresh deploy gets its own first
+ * warning, not silence.
+ */
+const ERROR_ALERT_COOLDOWN_MS = 10 * 60 * 1000;
+let lastErrorAlertAt = 0;
+let suppressedSinceLastAlert = 0;
+
+export function alertOnServerError(params: { method: string; url: string; status: number; body: unknown }): void {
+  if (!process.env.RESEND_API_KEY) return; // same silent-skip as every other sender here
+  const now = Date.now();
+  if (now - lastErrorAlertAt < ERROR_ALERT_COOLDOWN_MS) {
+    suppressedSinceLastAlert += 1;
+    return;
+  }
+  const suppressedNote = suppressedSinceLastAlert > 0
+    ? `${suppressedSinceLastAlert} more 5xx response${suppressedSinceLastAlert === 1 ? '' : 's'} followed in the next ${Math.round(ERROR_ALERT_COOLDOWN_MS / 60000)} minutes, not each mailed separately.`
+    : 'First 5xx seen since this cooldown started.';
+  lastErrorAlertAt = now;
+  suppressedSinceLastAlert = 0;
+
+  const { method, url, status, body } = params;
+  let bodyText: string;
+  try { bodyText = JSON.stringify(body, null, 2); } catch { bodyText = String(body); }
+
+  resend.emails.send({
+    from: FROM_ADDRESS,
+    to: ADMIN_EMAIL,
+    subject: `[JobHub] ${status} on ${method} ${url}`,
+    text: [
+      `${method} ${url} -> ${status}`,
+      '',
+      'Response body:',
+      bodyText,
+      '',
+      suppressedNote,
+      '',
+      'Railway logs: https://railway.com/project/90ab3119-8aa0-406f-876c-2a579144c690',
+    ].join('\n'),
+  }).catch((err) => console.error('[email] server-error alert failed to send:', err));
+}
+
 export async function sendFridayBriefEmail(script: string, reportCount: number, weekLabel: string): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
     console.warn('[email] RESEND_API_KEY not set — skipping Friday Brief email');

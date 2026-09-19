@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
 import { prisma } from './db';
+import { alertOnServerError } from './services/email';
 export { prisma };
 
 // Routers
@@ -182,6 +183,16 @@ app.use((req, res, next) => {
             Sentry.captureMessage(`${req.method} ${req.originalUrl ?? req.url} -> ${res.statusCode}`, {
                 level: 'error',
                 extra: { body: capturedBody },
+            });
+            // Sentry has no DSN configured on either Railway environment right
+            // now, so nothing above actually reaches anyone — this is the part
+            // that does. See alertOnServerError's own comment for why it exists
+            // and why it's cooldown-gated rather than one email per request.
+            alertOnServerError({
+                method: req.method,
+                url: req.originalUrl ?? req.url,
+                status: res.statusCode,
+                body: capturedBody,
             });
         }
     });
