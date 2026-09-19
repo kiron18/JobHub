@@ -25,6 +25,7 @@ import { warm } from '../lib/theme/warmTokens';
 import { classifyPaste } from '../lib/seekLink';
 import { jdMentionsSelectionCriteria } from '../lib/selectionCriteria';
 import { FitReportView, type FitReport } from '../components/fit/FitReportView';
+import { ApplyPreviewGate } from '../components/fit/ApplyPreviewGate';
 import { trackJobMatchStarted, trackJobMatchCompleted, trackJobMatchFailed, trackApplyStarted } from '../lib/analytics';
 import { useTrialChallengeState } from '../lib/trialChallenge';
 
@@ -67,6 +68,14 @@ export default function FitCheckPage() {
   // goToApply below just declines to navigate rather than rendering anything
   // itself — see components/trialChallenge/TrialChallengeOverlay.tsx.
   const { data: trialState } = useTrialChallengeState();
+  // True once a free account has asked us to write the application while the
+  // trial challenge itself is off (TRIAL_CHALLENGE_ENABLED unset, as it is on
+  // production right now) or this account isn't eligible for it. This is the
+  // fallback goToApply had before the trial challenge existed, and it must
+  // stay wired: trialState?.eligible === false looks identical to "still
+  // loading" and to "genuinely mid-trial", so without this branch a free
+  // account gets no path to /apply at all — see git history on this file.
+  const [gating, setGating] = useState(false);
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState<CheckResponse | null>(null);
   /**
@@ -178,11 +187,22 @@ export default function FitCheckPage() {
 
   const goToApply = (companyOverride?: string) => {
     if (!result) return;
-    // Free accounts only ever reach /apply while their trial-challenge window
-    // is actually running. Any other state (not started, waiting on tomorrow,
-    // failed, forfeited, completed) means TrialChallengeOverlay is already
-    // showing the right screen — this just declines to navigate.
-    if (isFree && trialState?.status !== 'day_in_progress') return;
+    if (isFree) {
+      if (trialState?.eligible) {
+        // Free accounts only ever reach /apply while their trial-challenge
+        // window is actually running. Any other state (not started, waiting
+        // on tomorrow, failed, forfeited, completed) means TrialChallengeOverlay
+        // is already showing the right screen — this just declines to navigate.
+        if (trialState.status !== 'day_in_progress') return;
+      } else {
+        // Trial challenge is off, or this account isn't eligible for it
+        // (TRIAL_CHALLENGE_ENABLED unset, as on production right now). Fall
+        // back to the paywall gate that ran this fork before the trial
+        // challenge existed, rather than leaving the button doing nothing.
+        setGating(true);
+        return;
+      }
+    }
     trackApplyStarted('workspace', result.report.fit);
     // What the server read, not what sits in the box: pasting a Seek link
     // would otherwise send the generator a URL instead of a job advert.
@@ -231,6 +251,15 @@ export default function FitCheckPage() {
       fontFamily: warm.type.fontBody,
       display: 'flex', flexDirection: 'column',
     }}>
+      {gating && (
+        <ApplyPreviewGate
+          resumeMarkdown={profile?.resumeRawText || profile?.resumeOriginalText || ''}
+          role={result?.report.jobTitle}
+          company={result?.report.company}
+          onClose={() => setGating(false)}
+        />
+      )}
+
       <div style={{
         width: '100%', maxWidth: 680, margin: '0 auto',
         /* No side padding on a phone: the shell already pads 16px, and adding
