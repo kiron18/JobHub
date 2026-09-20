@@ -276,6 +276,79 @@ router.get('/overview', async (_req, res) => {
 });
 
 /**
+ * GET /api/admin/coach/member/:userId/activity
+ * Day-by-day applications and outreach from sign-up to today (AEST), plus the
+ * member's pause weeks and current goals. Loaded when a coach row is expanded.
+ */
+router.get('/member/:userId/activity', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const profile = await prisma.candidateProfile.findUnique({
+            where: { userId },
+            select: {
+                createdAt: true,
+                dailyApplicationGoal: true, applicationGoalType: true,
+                dailyOutreachGoal: true, outreachGoalType: true,
+            },
+        });
+        if (!profile) return res.status(404).json({ error: 'not found' });
+
+        const [appRows, outreachRows, pauses] = await Promise.all([
+            prisma.jobApplication.findMany({
+                where: { userId, ...SENT_APPLICATION_FILTER, dateApplied: { not: null } },
+                select: { sourceUrl: true, id: true, dateApplied: true },
+            }),
+            prisma.outreachLog.findMany({ where: { userId }, select: { createdAt: true } }),
+            prisma.pauseWeek.findMany({ where: { userId }, select: { weekStart: true } }),
+        ]);
+
+        const AEST_OFFSET_MS = 10 * 3600 * 1000;
+        const dayKey = (token: Date) => token.toISOString().slice(0, 10);
+        const apps = new Map<string, Set<string>>();
+        for (const r of appRows) {
+            const k = dayKey(appliedToken(r.dateApplied!));
+            if (!apps.has(k)) apps.set(k, new Set());
+            apps.get(k)!.add(r.sourceUrl ?? `__id:${r.id}`);
+        }
+        const outreach = new Map<string, number>();
+        for (const r of outreachRows) {
+            const k = dayKey(new Date(Math.floor((r.createdAt.getTime() + AEST_OFFSET_MS) / DAY_MS) * DAY_MS));
+            outreach.set(k, (outreach.get(k) ?? 0) + 1);
+        }
+
+        // Start at the Monday of the sign-up week, or the first recorded activity
+        // if that is earlier (members imported with history).
+        const signup = new Date(Math.floor((profile.createdAt.getTime() + AEST_OFFSET_MS) / DAY_MS) * DAY_MS);
+        const firstActive = [...apps.keys(), ...outreach.keys()].sort()[0];
+        let start = firstActive && new Date(`${firstActive}T00:00:00.000Z`) < signup ? new Date(`${firstActive}T00:00:00.000Z`) : signup;
+        start = new Date(start.getTime() - ((start.getUTCDay() + 6) % 7) * DAY_MS);
+        const thisMonday = mondayAEST();
+        const end = new Date(thisMonday.getTime() + 6 * DAY_MS);
+
+        const days: Array<{ date: string; applications: number; outreach: number }> = [];
+        for (let t = start.getTime(); t <= end.getTime(); t += DAY_MS) {
+            const k = dayKey(new Date(t));
+            days.push({ date: k, applications: apps.get(k)?.size ?? 0, outreach: outreach.get(k) ?? 0 });
+        }
+
+        const perDay = (goal: number, type: string) => (type === 'weekly' ? goal / 5 : goal);
+        res.json({
+            signupDate: dayKey(signup),
+            thisWeekStart: dayKey(thisMonday),
+            days,
+            pauseWeeks: pauses.map(p => dayKey(p.weekStart)).sort(),
+            goals: {
+                appPerDay: perDay(profile.dailyApplicationGoal, profile.applicationGoalType),
+                outreachPerDay: perDay(profile.dailyOutreachGoal, profile.outreachGoalType),
+            },
+        });
+    } catch (e) {
+        console.error('[coach/member-activity]', e);
+        res.status(500).json({ error: 'failed' });
+    }
+});
+
+/**
  * POST /api/admin/coach/pause { userId, weekStart: 'yyyy-mm-dd', reason?, remove? }
  * Grants (or removes) a pause week — that week is skipped by miss/streak logic.
  */
