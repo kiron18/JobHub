@@ -1495,7 +1495,7 @@ export const WelcomePage: React.FC = () => {
           </motion.a>
         )}
       </AnimatePresence>
-      <Shell wide onWash>
+      <Shell wide onWash footer={step === 'upload' ? <HowItWorksArticle onStart={() => document.getElementById('agc-front-door')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} /> : undefined}>
       {/* The first screen keeps its own full-height, centred composition now
           that the article sits under it: the Shell only centres content that
           is shorter than the viewport, so without this the card would jump
@@ -1537,20 +1537,6 @@ export const WelcomePage: React.FC = () => {
       <div style={{ textAlign: 'center' }}>
         <BrandLockup tight={isMobile} />
         <Display tight={isMobile}>Land your first role in Australia with a data backed system.</Display>
-        {/* Sits under the headline, where the question it answers is raised.
-            Still opens the explainer in a new tab until the popup copy exists. */}
-        <p style={{ margin: isMobile ? '8px 0 0' : '10px 0 0' }}>
-          <a
-            href={`#${HOW_IT_WORKS_ID}`}
-            onClick={e => {
-              e.preventDefault();
-              document.getElementById(HOW_IT_WORKS_ID)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }}
-            style={{ ...quietLinkStyle, display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}
-          >
-            Find out how <ChevronDown size={14} aria-hidden />
-          </a>
-        </p>
       </div>
 
       <AnimatePresence mode="wait">
@@ -1618,16 +1604,22 @@ export const WelcomePage: React.FC = () => {
       <p style={{ fontFamily: T.display, fontStyle: 'italic', textAlign: 'center', fontSize: isMobile ? 15 : 'clamp(15px, 1.9vw, 17.5px)', lineHeight: 1.5, color: colors.accentPetrol, maxWidth: 560, margin: isMobile ? '16px auto 0' : '22px auto 0' }}>
         High quality applications consistently personalised to every job.
       </p>
+      <p style={{ margin: isMobile ? '12px 0 0' : '14px 0 0', textAlign: 'center' }}>
+        <a
+          href={`#${HOW_IT_WORKS_ID}`}
+          onClick={e => {
+            e.preventDefault();
+            const el = document.getElementById(HOW_IT_WORKS_ID);
+            const scroller = el?.closest('[data-shell-scroll]') as HTMLElement | null;
+            if (el && scroller) scroller.scrollTo({ top: el.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop, behavior: 'smooth' });
+          }}
+          style={{ ...quietLinkStyle, display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}
+        >
+          Find out how <ChevronDown size={14} aria-hidden />
+        </a>
+      </p>
       </div>
       </div>
-      {step === 'upload' && (
-        <>
-          <HowItWorksArticle
-            onStart={() => document.getElementById('agc-front-door')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-          />
-          <div style={{ height: 40 }} aria-hidden />
-        </>
-      )}
       </Shell>
     </>
   );
@@ -2535,18 +2527,23 @@ function BrandLockup({ tight }: { tight?: boolean }) {
  * screen puts the testimonial marquee there). Everything else keeps the flat
  * canvas it has always had.
  */
-function Shell({ children, wide, onWash }: { children: React.ReactNode; wide?: boolean; onWash?: boolean }) {
+function Shell({ children, wide, onWash, footer }: { children: React.ReactNode; wide?: boolean; onWash?: boolean; footer?: React.ReactNode }) {
   const isMobile = useIsMobile();
   return (
     /* 48px of vertical air and 24 a side is right for a 720px card floating in
        a desktop window. On a 390px phone the card is the width of the screen,
        so the same insets are 96px of height and 48px of width taken off a
        screen that has neither to give. */
-    <div style={{ position: 'relative', zIndex: 1, height: '100dvh', overflowY: 'auto', background: onWash ? 'transparent' : colors.bgCanvas, display: 'flex', padding: isMobile ? '16px 14px' : '48px 24px', boxSizing: 'border-box' }}>
+    <div data-shell-scroll style={{ position: 'relative', zIndex: 1, height: '100dvh', overflowY: 'auto', background: onWash ? 'transparent' : colors.bgCanvas, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: '1 0 auto', display: 'flex', padding: isMobile ? '16px 14px' : '48px 24px', boxSizing: 'border-box' }}>
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}
         style={{ width: '100%', maxWidth: wide ? 720 : 520, margin: 'auto' }}>
         {children}
       </motion.div>
+      </div>
+      {/* A plain white band the full width of the page, so long-form copy is
+          not floating over the marquee. */}
+      {footer && <div style={{ background: '#fff', padding: isMobile ? '0 20px' : '0 24px', borderTop: `1px solid ${PANEL_BORDER}` }}>{footer}</div>}
     </div>
   );
 }
