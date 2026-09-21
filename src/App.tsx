@@ -268,6 +268,30 @@ function BillingHoldBanner({ payUrl }: { payUrl?: string | null }) {
   );
 }
 
+/**
+ * Contact lookup runs on Hunter, whose monthly allowance resets on the 30th.
+ * Removes itself on that date, so there is nothing to remember to delete.
+ */
+const CONTACT_LOOKUP_BACK_ON = new Date('2026-09-30T00:00:00');
+
+function ContactLookupBanner() {
+  if (new Date() >= CONTACT_LOOKUP_BACK_ON) return null;
+  return (
+    <a
+      href="https://hunter.io"
+      target="_blank"
+      rel="noopener noreferrer"
+      role="status"
+      style={{
+        display: 'block', background: '#1e3a8a', color: '#fff', padding: '10px 20px',
+        textAlign: 'center', fontSize: 14, lineHeight: 1.4, textDecoration: 'none',
+      }}
+    >
+      Contact lookup is temporarily unavailable while our email provider refreshes. It will be back on the 30th.
+    </a>
+  );
+}
+
 function DashboardGate({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const { data: profile, isLoading } = useQuery({
@@ -329,6 +353,7 @@ function DashboardGate({ children }: { children: React.ReactNode }) {
       {/* A billing hold is NOT part of the paused-payments rework — it is an
           explicit, per-client pause and stays live while the rest is off. */}
       {profile?.billingHoldAt && <BillingHoldBanner payUrl={profile.billingHoldInvoiceUrl} />}
+      <ContactLookupBanner />
       {children}
     </>
   );
