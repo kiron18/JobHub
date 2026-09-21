@@ -18,6 +18,7 @@ import { stripRung } from '../lib/roleLabel';
 import { suggestCuts } from '../lib/resumeCuts';
 import { SALES_PAGE_URL } from '../lib/salesPage';
 import { beginWelcomeHandoff, endWelcomeHandoff } from '../lib/welcomeHandoff';
+import { HowItWorksArticle, HOW_IT_WORKS_ID } from '../components/welcome/HowItWorksArticle';
 
 // The resume is built BEFORE we ask for an email — they see the finished thing,
 // then decide to save it. Email/code only appear if they aren't already signed in.
@@ -1495,6 +1496,11 @@ export const WelcomePage: React.FC = () => {
         )}
       </AnimatePresence>
       <Shell wide onWash>
+      {/* The first screen keeps its own full-height, centred composition now
+          that the article sits under it: the Shell only centres content that
+          is shorter than the viewport, so without this the card would jump
+          to the top the moment the page became scrollable. */}
+      <div id="agc-front-door" style={{ minHeight: isMobile ? 'calc(100dvh - 32px)' : 'calc(100dvh - 96px)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
       {isMobile && step === 'upload' && !file && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
           <a
@@ -1530,7 +1536,21 @@ export const WelcomePage: React.FC = () => {
       }}>
       <div style={{ textAlign: 'center' }}>
         <BrandLockup tight={isMobile} />
-        <Display tight={isMobile}>Find out what's costing you interviews.</Display>
+        <Display tight={isMobile}>Land your first role in Australia with a data backed system.</Display>
+        {/* Sits under the headline, where the question it answers is raised.
+            Still opens the explainer in a new tab until the popup copy exists. */}
+        <p style={{ margin: isMobile ? '8px 0 0' : '10px 0 0' }}>
+          <a
+            href={`#${HOW_IT_WORKS_ID}`}
+            onClick={e => {
+              e.preventDefault();
+              document.getElementById(HOW_IT_WORKS_ID)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}
+            style={{ ...quietLinkStyle, display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}
+          >
+            Find out how <ChevronDown size={14} aria-hidden />
+          </a>
+        </p>
       </div>
 
       <AnimatePresence mode="wait">
@@ -1598,24 +1618,16 @@ export const WelcomePage: React.FC = () => {
       <p style={{ fontFamily: T.display, fontStyle: 'italic', textAlign: 'center', fontSize: isMobile ? 15 : 'clamp(15px, 1.9vw, 17.5px)', lineHeight: 1.5, color: colors.accentPetrol, maxWidth: 560, margin: isMobile ? '16px auto 0' : '22px auto 0' }}>
         High quality applications consistently personalised to every job.
       </p>
-      {/* Deliberately quieter than the promise above it, and a new tab. This is
-          the only screen whose whole job is getting the file into the box, so a
-          second thing to click must not compete with the dropzone and must not
-          navigate them away from it. */}
-      <p style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        gap: 14, flexWrap: 'wrap', margin: '10px 0 0',
-      }}>
-        <a
-          href={POSITIONING_EXPLAINER_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={quietLinkStyle}
-        >
-          Find out how
-        </a>
-      </p>
       </div>
+      </div>
+      {step === 'upload' && (
+        <>
+          <HowItWorksArticle
+            onStart={() => document.getElementById('agc-front-door')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          />
+          <div style={{ height: 40 }} aria-hidden />
+        </>
+      )}
       </Shell>
     </>
   );
