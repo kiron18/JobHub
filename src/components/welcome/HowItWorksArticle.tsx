@@ -12,7 +12,7 @@ import { MockWindow, MockFitReport, MockTracker } from '../landing/pricing/AppMo
  * there is no price, no plan and no checkout anywhere in it: it argues, shows
  * the proof, and hands the reader back to the dropzone at the top of the page.
  *
- * Copy is the founder's article, trimmed for a two minute read. Sentences that
+ * Copy is the founder's article, word for word. Sentences that
  * carry the weight sit on a line of their own, at a larger size, because
  * they land harder that way than inside a paragraph.
  *
@@ -24,29 +24,41 @@ export const HOW_IT_WORKS_ID = 'how-it-works';
 
 const MSG = (n: string) => encodeURI(`/Assets/testimonials/messages/${n}.png`);
 
-interface CloudItem { src: string; alt: string }
+interface CloudItem {
+  src: string;
+  alt: string;
+  /** Spans both columns of the cloud. */
+  wide?: boolean;
+  /** Shows only the middle band of an image with a lot of empty page around the message. */
+  crop?: string;
+  rotate: number;
+}
 
+/* 31 (11) is a full 1920x1080 grab of an inbox with the message in the middle
+   third, so it is cropped to that band. */
 const PAIN_CLOUD: CloudItem[] = [
-  { src: MSG('8'), alt: 'A message: this is what I always get, I am really losing out on hope, with a rejection email attached' },
-  { src: MSG('6'), alt: 'A message: I need a solution, I have been in a job I dislike for more than two years' },
-  { src: MSG('7'), alt: 'A message: contemplating whether I chose the right degree' },
+  { src: MSG('31 (11)'), wide: true, crop: '1920 / 800', rotate: -1, alt: 'A generic rejection email: due to the high volume of applications we are only able to respond to successful applicants' },
+  { src: MSG('8'), rotate: 1.2, alt: 'A message: this is what I always get, I am really losing out on hope, with a rejection email attached' },
+  { src: MSG('6'), rotate: -1.2, alt: 'A message: I need a solution, I have been in a job I dislike for more than two years' },
+  { src: MSG('7'), wide: true, rotate: 0.6, alt: 'A message: contemplating whether I chose the right degree' },
 ];
 
 const WIN_CLOUD: CloudItem[] = [
-  { src: MSG('2'), alt: 'A message: I have got a job as a Technical BA, thank you for your support' },
-  { src: MSG('3'), alt: 'A message from a client' },
-  { src: MSG('10'), alt: 'A message from a client' },
+  { src: MSG('2'), wide: true, rotate: -0.8, alt: 'A message: I have got a job as a Technical BA, thank you for your support' },
+  { src: MSG('3'), rotate: 1.2, alt: 'A message from a client' },
+  { src: MSG('10'), rotate: -1.2, alt: 'A message from a client' },
+  { src: MSG('5'), wide: true, rotate: 0.6, alt: 'A message from a client' },
 ];
 
-const STEPS = [
-  { t: 'Optimise your resume', d: 'Set up your core profile once. We clean up and position your resume before you start applying.' },
-  { t: 'Find relevant jobs', d: 'Browse suitable roles and move into the application workflow in one click.' },
-  { t: 'Check eligibility', d: 'Know whether the role is worth your time before you invest in the application.' },
-  { t: 'Build the application', d: 'A role-specific resume and cover letter, written from the job description and your profile.' },
-  { t: 'Evaluate it like a hiring manager', d: 'Review it before you send it. Fix the obvious weaknesses instead of blindly pressing Apply.' },
-  { t: 'Contact the right person', d: 'A relevant recruiter, hiring manager or team member, with a personalised message already drafted.' },
-  { t: 'Track and follow up', d: 'Every application is tracked. After seven days you are reminded to follow up, with the message ready.' },
-] as const;
+const STEPS: { t: string; d: string[]; after?: string[] }[] = [
+  { t: 'Optimise your resume', d: ['Set up your core profile once. We help you clean up and position your resume before you start applying.'] },
+  { t: 'Find relevant jobs', d: ['Browse suitable roles and move into the application workflow with a single click.'] },
+  { t: 'Check eligibility', d: ['Quickly determine whether the role is worth your time before you invest in the application.'] },
+  { t: 'Build the application', d: ['Generate a role-specific resume and cover letter based on the job description and your profile.'] },
+  { t: 'Evaluate it like a hiring manager', d: ['Review the application before sending it. Fix obvious weaknesses instead of blindly pressing Apply.'] },
+  { t: 'Contact the right person', d: ['After applying, the system helps identify a relevant recruiter, hiring manager or team member and drafts a personalised outreach message.', 'Application + outreach.', 'Two actions working together.'] },
+  { t: 'Track and follow up', d: ['Every application is tracked.', "After seven days, you're reminded to follow up, with a message already prepared.", 'Then you repeat.'] },
+];
 
 const FLOW = ['Find', 'Check', 'Tailor', 'Evaluate', 'Apply', 'Reach out', 'Follow up'] as const;
 
@@ -78,21 +90,27 @@ function Lines({ children, style }: { children: string[]; style?: React.CSSPrope
 function Cloud({ items, caption }: { items: CloudItem[]; caption: string }) {
   return (
     <figure style={{ margin: 'clamp(30px, 5vw, 44px) 0 0' }}>
-      <div style={{ display: 'grid', gap: 14, justifyItems: 'center' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, alignItems: 'center' }}>
         {items.map(it => (
           <div
             key={it.src}
             style={{
-              width: '100%', maxWidth: 520, borderRadius: 12, overflow: 'hidden',
+              gridColumn: it.wide ? '1 / -1' : undefined,
+              transform: `rotate(${it.rotate}deg)`,
+              borderRadius: 10, overflow: 'hidden',
               border: `1px solid ${colors.borderDefined}`, background: '#fff',
               boxShadow: '0 1px 2px rgba(26,24,20,0.05), 0 10px 24px -16px rgba(26,24,20,0.35)',
+              aspectRatio: it.crop,
             }}
           >
-            <img src={it.src} alt={it.alt} loading="lazy" draggable={false} style={{ display: 'block', width: '100%', height: 'auto' }} />
+            <img
+              src={it.src} alt={it.alt} loading="lazy" draggable={false}
+              style={{ display: 'block', width: '100%', height: it.crop ? '100%' : 'auto', objectFit: 'cover' }}
+            />
           </div>
         ))}
       </div>
-      <figcaption style={{ fontFamily: T.body, fontSize: 13, color: colors.textMuted, textAlign: 'center', marginTop: 14 }}>
+      <figcaption style={{ fontFamily: T.body, fontSize: 13, color: colors.textMuted, textAlign: 'center', marginTop: 16 }}>
         {caption}
       </figcaption>
     </figure>
@@ -119,40 +137,44 @@ export function HowItWorksArticle({ onStart }: { onStart: () => void }) {
       </h2>
 
       <p style={prose}>Getting your first job in Australia as a migrant can feel like a black box.</p>
-      <Lines>{['You apply.', 'You wait.', 'You get a generic rejection, or worse, nothing.']}</Lines>
+      <Lines>{['You apply.', 'You wait.', 'You get a generic rejection.', 'Or worse, you hear nothing.']}</Lines>
 
       <p style={prose}>Then you start guessing.</p>
-      <Lines style={{ fontWeight: 500 }}>{['Did my resume pass the ATS?', 'Was my English good enough?', 'Was it my accent, or my lack of Australian experience?']}</Lines>
-      <p style={{ ...line, color: colors.accentPetrol }}>Maybe. But you usually never find out.</p>
+      <Lines style={{ fontWeight: 500 }}>{['Did my resume pass the ATS?', 'Was I qualified?', 'Was my English good enough?', 'Was it my nationality?', 'My accent?', 'My lack of Australian experience?']}</Lines>
+      <Lines style={{ color: colors.accentPetrol }}>{['Maybe.', "But you usually don't know.", "And that's the problem."]}</Lines>
 
       <Cloud items={PAIN_CLOUD} caption="Real messages and emails, names removed." />
 
       <div style={section}>
-        <h3 style={h2}>The market is not built to give you feedback.</h3>
-        <p style={prose}>One role can attract hundreds of applications. Many are cut for missing the basics.</p>
+        <h3 style={h2}>The job market is not designed to give you feedback.</h3>
+        <p style={prose}>Hiring managers and recruiters can receive hundreds of applications for a single role.</p>
         <p style={prose}>
-          The rest are compared on relevance, positioning, timing, referrals, and sometimes simply who
-          got noticed. Even a strong candidate can miss out.
+          Many applications are eliminated because they don't meet basic requirements. The remaining
+          candidates are compared on experience, relevance, positioning, timing, referrals, and sometimes
+          simply who happened to get noticed.
         </p>
-        <div style={{ marginTop: 26 }}>
-          <p style={{ ...line, margin: 0 }}>So the answer is not to apply harder.</p>
-          <p style={{ ...line, color: colors.accentPetrol }}>It is to build a better system.</p>
-        </div>
+        <p style={prose}>That means even a genuinely strong candidate can miss out.</p>
+        <p style={{ ...prose, marginTop: 26 }}>So the answer isn't simply:</p>
+        <p style={{ ...line, fontSize: 'clamp(24px, 4vw, 30px)' }}>"Apply harder."</p>
+        <p style={{ ...line, color: colors.accentPetrol }}>It's to build a better system.</p>
       </div>
 
       <div style={section}>
-        <h3 style={h2}>Two levers you control.</h3>
-        <p style={prose}>Hiring happens three ways:</p>
-        <Lines style={{ fontWeight: 500 }}>{['You apply.', 'Someone refers you.', 'A company finds you.']}</Lines>
-        <p style={prose}>For most people breaking into the Australian market, the first two are yours to pull.</p>
+        <h3 style={h2}>Most hiring happens through three paths</h3>
+        <Lines>{['1. You apply directly.', '2. Someone refers you.', '3. A company finds you.']}</Lines>
         <p style={prose}>
-          Your job is to get a high-quality application in front of the right employer, then give the
-          right person a reason to notice you.
+          For most people trying to break into the Australian market, the first two are the levers you
+          can actively control.
+        </p>
+        <p style={prose}>That means your job is simple:</p>
+        <p style={{ ...line, color: colors.accentPetrol, lineHeight: 1.35 }}>
+          Get a high-quality application in front of the right employer, then create a reason for the
+          right person to notice you.
         </p>
       </div>
 
       <div style={section}>
-        <h3 style={h2}>That is what Aussie Grad Careers automates.</h3>
+        <h3 style={h2}>That's exactly what Aussie Grad Careers automates.</h3>
         <ol style={{ listStyle: 'none', margin: '8px 0 0', padding: 0 }}>
           {STEPS.map((s, i) => (
             <li key={s.t} className="hiw-step">
@@ -165,7 +187,9 @@ export function HowItWorksArticle({ onStart }: { onStart: () => void }) {
               </span>
               <span>
                 <span style={{ display: 'block', fontFamily: T.body, fontSize: 17, fontWeight: 600, color: colors.textPrimary }}>{s.t}</span>
-                <span style={{ display: 'block', fontFamily: T.body, fontSize: 15.5, lineHeight: 1.55, color: colors.textSecondary, marginTop: 3 }}>{s.d}</span>
+                {s.d.map(d => (
+                  <span key={d} style={{ display: 'block', fontFamily: T.body, fontSize: 15.5, lineHeight: 1.55, color: colors.textSecondary, marginTop: 3 }}>{d}</span>
+                ))}
               </span>
             </li>
           ))}
@@ -178,10 +202,10 @@ export function HowItWorksArticle({ onStart }: { onStart: () => void }) {
       </div>
 
       <div style={section}>
-        <h3 style={h2}>The result: a repeatable workflow.</h3>
+        <h3 style={h2}>The result?</h3>
         <p style={prose}>
-          Instead of an hour fighting with ChatGPT and wondering what to do next, you run the same loop
-          every time.
+          Instead of spending an hour fighting with ChatGPT, rewriting prompts and wondering what to do
+          next, you have a repeatable workflow.
         </p>
         <ol className="hiw-flow" aria-label="The workflow">
           {FLOW.map((f, i) => (
@@ -195,11 +219,21 @@ export function HowItWorksArticle({ onStart }: { onStart: () => void }) {
             </React.Fragment>
           ))}
         </ol>
-        <p style={line}>Once your profile is set up, a high-quality application can take about five minutes.</p>
-        <p style={{ ...prose, marginTop: 14 }}>The point is not to apply to everything.</p>
+        <p style={line}>A high-quality application can become a ~5-minute workflow once your profile is set up.</p>
+        <p style={{ ...prose, marginTop: 14 }}>
+          Do that consistently and your job search stops depending entirely on motivation.
+        </p>
+      </div>
+
+      <div style={section}>
+        <h3 style={h2}>The point isn't to apply to everything.</h3>
         <p style={prose}>
-          It is to make more high-quality attempts, in less time, while more of the right people learn
-          you are interested.
+          It's to make more high-quality attempts, in less time, while systematically increasing the
+          number of people who know you're interested.
+        </p>
+        <p style={prose}>
+          Use your saved time to build projects, improve your skills, meet people, or actually enjoy
+          living in Australia.
         </p>
 
         <Cloud items={WIN_CLOUD} caption="Messages from people we have worked with, names removed." />
@@ -207,10 +241,10 @@ export function HowItWorksArticle({ onStart }: { onStart: () => void }) {
 
       <blockquote style={{
         margin: 'clamp(44px, 7vw, 68px) 0 44px', padding: '4px 0 4px 20px', borderLeft: `3px solid ${colors.accentGold}`,
-        fontFamily: T.display, fontStyle: 'italic', fontSize: 'clamp(20px, 3vw, 25px)', lineHeight: 1.4, color: colors.accentPetrol,
+        fontFamily: T.display, fontWeight: 600, fontSize: 'clamp(20px, 3vw, 25px)', lineHeight: 1.4, color: colors.accentPetrol,
       }}>
-        Do not build your job search around motivation.<br />
-        Build it around a system you can run even on your worst day.
+        Don't build your job search around motivation.<br />
+        Build it around a system you can execute even on your worst day.
       </blockquote>
 
       <div style={{ textAlign: 'center' }}>
