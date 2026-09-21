@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { motion } from 'framer-motion';
@@ -371,13 +371,19 @@ function LandingPageOrExisting() {
 }
 
 /*
- * /visa-sponsors is a public marketing page AND a sidebar destination, and it
- * was only ever the first. Signed out it is the standalone page it always was.
- * Signed in it goes through the protected tree, where the dashboard Routes
- * carry it, so the sidebar comes with it instead of vanishing.
+ * /visa-sponsors is a public marketing page AND a sidebar destination. Signed
+ * out it is the standalone page. Signed in it falls through to the protected
+ * tree, where the dashboard Routes carry it with the sidebar. This must live
+ * inside the "/*" route, not its own "/visa-sponsors/*" route: a nested Routes
+ * matches against the remainder after the parent splat, so under its own splat
+ * the remainder was empty, "/visa-sponsors" never matched, and signed-in users
+ * landed on the dashboard catch-all.
  */
-function VisaSponsorsRoute() {
+function VisaSponsorsPublicGate({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  const { pathname } = useLocation();
+  const isVisa = pathname === '/visa-sponsors' || pathname.startsWith('/visa-sponsors/');
+  if (!isVisa) return <>{children}</>;
   if (loading) return null;
   if (!user) {
     return (
@@ -386,13 +392,7 @@ function VisaSponsorsRoute() {
       </React.Suspense>
     );
   }
-  return (
-    <ProtectedRoute>
-      <OnboardingGate>
-        <ReportOrDashboard />
-      </OnboardingGate>
-    </ProtectedRoute>
-  );
+  return <>{children}</>;
 }
 
 function ReportOrDashboard() {
@@ -561,7 +561,6 @@ function App() {
                   <TrialChallengePreview />
                 </React.Suspense>
               } />
-              <Route path="/visa-sponsors/*" element={<VisaSponsorsRoute />} />
               <Route path="/anim-test" element={
                 <React.Suspense fallback={null}>
                   <AnimationTest />
@@ -634,11 +633,13 @@ function App() {
 
               {/* Protected Application Routes */}
               <Route path="/*" element={
-                <ProtectedRoute>
-                  <OnboardingGate>
-                    <ReportOrDashboard />
-                  </OnboardingGate>
-                </ProtectedRoute>
+                <VisaSponsorsPublicGate>
+                  <ProtectedRoute>
+                    <OnboardingGate>
+                      <ReportOrDashboard />
+                    </OnboardingGate>
+                  </ProtectedRoute>
+                </VisaSponsorsPublicGate>
               } />
             </Routes>
             {/* Sibling of Routes, inside Router: needs useLocation() to skip
