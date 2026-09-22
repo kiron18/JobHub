@@ -106,7 +106,8 @@ export default function EngagementPreview() {
   const [quizKey, setQuizKey] = useState(0);
 
   return (
-    <div style={{ padding: '32px 24px', maxWidth: 1000, margin: '0 auto', background: '#f4f4f4', minHeight: '100vh', fontFamily: warm.type.fontBody }}>
+    <div style={{ height: '100dvh', overflowY: 'auto', overflowX: 'hidden', background: '#f4f4f4' }}>
+    <div style={{ padding: '32px 24px', maxWidth: 1000, margin: '0 auto', fontFamily: warm.type.fontBody }}>
       <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>Engagement kit — every piece</h1>
       <p style={{ fontSize: 13, color: C.textMuted, marginBottom: 32, maxWidth: 640 }}>
         Mock data + local state only. Nothing here calls the real API. All copy below is placeholder —
@@ -229,6 +230,7 @@ export default function EngagementPreview() {
           subtitle={SPLASH_CONFIG[splash].subtitle}
         />
       )}
+    </div>
     </div>
   );
 }
