@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Flame, Check, X as XIcon } from 'lucide-react';
+import { Flame, Check, X as XIcon, Hand } from 'lucide-react';
 import { warm } from '../../lib/theme/warmTokens';
 import { EASE, SPRING, prefersReducedMotion } from '../../lib/theme/motion';
 import { haptic } from '../../lib/feedback';
@@ -43,12 +43,19 @@ export interface PostApplicationPopupProps {
   streak?: number;
   /** Pass a fixed question to control it (previews); omit for the bank. */
   question?: QuizQuestion;
+  /** Past this many in a day, the popup stops celebrating and says why. */
+  cap?: number;
 }
 
 export const PostApplicationPopup: React.FC<PostApplicationPopupProps> = ({
-  open, onClose, count, goal, streak = 0, question,
+  open, onClose, count, goal, streak = 0, question, cap = 10,
 }) => {
   const reduced = prefersReducedMotion();
+  /* Past the cap this stops being a celebration. It says why, and unlike
+     every other popup in this app it does not dismiss on a click-away:
+     the one moment worth making somebody read is the one telling them to
+     stop, so it takes a deliberate button press to leave. */
+  const overCap = count > cap;
 
   /* The moment is identified by which application this is — so the line
      and the question are drawn once per filed application and stay put
@@ -68,18 +75,18 @@ export const PostApplicationPopup: React.FC<PostApplicationPopupProps> = ({
 
   useEffect(() => {
     if (!open) return;
-    haptic('success');
+    if (!overCap) haptic('success');
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' || e.key === 'Enter') onClose(); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+  }, [open, onClose, overCap]);
 
   return (
     <AnimatePresence>
       {open && (
         <motion.div
           key="post-application-backdrop"
-          onClick={onClose}
+          onClick={overCap ? undefined : onClose}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -92,9 +99,10 @@ export const PostApplicationPopup: React.FC<PostApplicationPopupProps> = ({
         >
           <motion.div
             key="post-application-card"
-            /* Deliberately NOT stopping propagation: a click anywhere,
-               the card included, closes. The only children that swallow
-               their click are the three answer buttons. */
+            /* Under the cap this deliberately does NOT stop propagation:
+               a click anywhere, the card included, closes. Over the cap it
+               does, so the only way out is the button. */
+            onClick={overCap ? e => e.stopPropagation() : undefined}
             initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.9, y: 14 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.15, ease: EASE.in } }}
@@ -107,9 +115,51 @@ export const PostApplicationPopup: React.FC<PostApplicationPopupProps> = ({
               boxShadow: warm.shadow.lifted,
               padding: '26px 24px 18px',
               fontFamily: warm.type.fontBody,
-              cursor: 'pointer',
+              cursor: overCap ? 'default' : 'pointer',
             }}
           >
+          {overCap ? (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
+                <span style={{
+                  width: 46, height: 46, borderRadius: '50%', background: warm.colors.accentGoldSoft,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Hand size={22} color={warm.colors.accentGold} />
+                </span>
+              </div>
+              <p style={{
+                margin: '0 0 10px', textAlign: 'center', fontSize: 19, fontWeight: 800,
+                color: warm.colors.textPrimary, letterSpacing: '-0.02em',
+              }}>
+                Ten a day is the ceiling, on purpose
+              </p>
+              <p style={{ margin: '0 0 10px', fontSize: 13, lineHeight: 1.6, color: warm.colors.textSecondary }}>
+                That one still counts — we log every application. We just stop
+                celebrating past ten, because this was never a volume game. Past
+                ten in a sitting the quality starts to slide, and the mental
+                drain is what makes tomorrow the day you skip.
+              </p>
+              <p style={{
+                margin: '0 0 18px', padding: '11px 13px', borderRadius: 10,
+                background: warm.colors.bgAlt, border: `1px solid ${warm.colors.borderWhisper}`,
+                fontSize: 13, lineHeight: 1.55, fontWeight: 600, color: warm.colors.textPrimary,
+              }}>
+                Ten a day for ten days beats fifty in one day and nothing for the next nine.
+              </p>
+              <button
+                onClick={onClose}
+                style={{
+                  width: '100%', padding: '12px 20px', borderRadius: 10, border: 'none',
+                  background: warm.colors.accentPetrol, color: '#fff',
+                  fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                }}
+              >
+                Got it
+              </button>
+            </>
+          ) : (
+          <>
             {/* The tick — drawn on, one bloom, same gesture as the old pill. */}
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
               <span style={{ position: 'relative', width: 46, height: 46 }}>
@@ -218,6 +268,8 @@ export const PostApplicationPopup: React.FC<PostApplicationPopupProps> = ({
             <p style={{ margin: '14px 0 0', textAlign: 'center', fontSize: 11, color: warm.colors.textMuted }}>
               Click anywhere to close
             </p>
+          </>
+          )}
           </motion.div>
         </motion.div>
       )}

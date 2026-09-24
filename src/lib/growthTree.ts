@@ -33,8 +33,13 @@ export interface Branch {
   color: string;
 }
 
-export interface LeafSlot { x: number; y: number; rot: number; birth: number; }
-export interface FruitSlot { x: number; y: number; rot: number; scale: number; birth: number; }
+/* A leaf is attached to a branch, not to a point in space: `along` is how
+   far up that branch it sits (0..1) and `offset` is how far to the side.
+   The renderer resolves that against however much of the branch has grown
+   so far, so a leaf rides its twig outward as the twig extends and can
+   appear the moment the branch starts growing rather than when it stops. */
+export interface LeafSlot { branch: number; along: number; offset: number; rot: number; birth: number; ordinal: number; }
+export interface FruitSlot { branch: number; dx: number; dy: number; rot: number; scale: number; birth: number; }
 export interface FlowerSlot { x: number; y: number; stemLen: number; rot: number; scale: number; }
 
 export type FruitSpecies = 'apple' | 'banana' | 'pineapple' | 'mango' | 'orange' | 'grapes';
@@ -55,11 +60,31 @@ export const BASE_X = 300;
 export const BASE_Y = 580;
 const UP = -Math.PI / 2;
 const MAX_DEPTH = 6;
-const GROW_START = 0.03;
-const CANOPY_STEP = 0.09;
-export const BRANCH_DUR = 0.12;
+
+/* ── The growth schedule ──────────────────────────────────────────────
+   The skeleton grows fast and finishes early — every branch is out by
+   about day 30 — and the remaining sixty days are spent filling that
+   skeleton with leaves. That split is the whole point: the branches are
+   time passing, which the user does not control, and the leaves are
+   applications, which they do.
+
+   It used to be the other way round: the deepest twigs were not born
+   until t≈0.69 (day 62), so a member on day 18 with 38 applications had
+   7 leaf slots in existence out of 5,796 and a tree that looked dead.
+   Nothing about a bare tree on day 18 was true — they had done the work.
+
+   Keep GROW_START + limb spread + MAX_DEPTH*CANOPY_STEP + BRANCH_DUR
+   comfortably under 1, or the outermost twigs never finish growing. */
+const GROW_START = 0;
+const CANOPY_STEP = 0.055;
+export const BRANCH_DUR = 0.06;
 const SLOTS_PER_BRANCH = 7;
-export const LEAF_RENDER_SCALE = 1.2;
+/** Branches thinner than this carry leaves. The woody limbs stay bare. */
+const LEAF_BEARING_WIDTH = 12;
+/** Births within this much of each other count as the same cohort when
+ *  deciding which slots fill first. See the sort in buildTree. */
+const COHORT_BUCKET = 0.05;
+export const LEAF_RENDER_SCALE = 0.85;
 const FIT_MARGIN = 14;
 
 export const SYMBOL_BOX: Record<string, [number, number, number, number]> = {
@@ -124,7 +149,7 @@ export function buildTree(seedNum: number): GrowthTree {
   const rng = mulberry32(seedNum >>> 0);
   const branches: Branch[] = [];
   let leafSlots: LeafSlot[] = [];
-  const finalTips: { x: number; y: number; birth: number }[] = [];
+  const fruitTips: { branch: number; birth: number }[] = [];
 
   const barkHue = 22 + rng() * 20, barkSat = 30 + rng() * 16;
   const leafHue = 96 + rng() * 40, leafSat = 42 + rng() * 20, leafLight = 40 + rng() * 10;
@@ -144,34 +169,39 @@ export function buildTree(seedNum: number): GrowthTree {
     const a = clampAngle(angle + sway);
     const x2 = x + Math.cos(a) * len, y2 = y + Math.sin(a) * len;
     const lightness = 30 + (depth / MAX_DEPTH) * 30;
+    const branchIndex = branches.length;
     branches.push({
       x1: x, y1: y, x2, y2, width, birth,
       color: `hsl(${barkHue.toFixed(1)} ${barkSat.toFixed(1)}% ${lightness.toFixed(1)}%)`,
     });
 
-    // Leaves sit ON this branch, offset a few units to either side, born
-    // once the segment finishes growing. Only thin outer twigs carry
-    // leaves, which concentrates the leaf budget so a full application
-    // count reads as a dense canopy instead of being diluted thin.
-    const leafBirth = birth + BRANCH_DUR;
-    if (width < 9) {
-      const bdx = x2 - x, bdy = y2 - y;
-      const blen = Math.sqrt(bdx * bdx + bdy * bdy) || 1;
-      const perpX = -bdy / blen, perpY = bdx / blen;
+    // Leaves sit ON this branch, a fraction along it and a few units to
+    // one side, and they become available as soon as the branch starts
+    // growing — the renderer places them against however much of it has
+    // grown. Only the thinner wood carries leaves, so the trunk and the
+    // two main limbs stay bare.
+    if (width < LEAF_BEARING_WIDTH) {
       for (let s = 0; s < SLOTS_PER_BRANCH; s++) {
-        const along = 0.28 + rng() * 0.68;
-        const bx = x + bdx * along, by = y + bdy * along;
-        const side = rng() < 0.5 ? -1 : 1;
-        const off = 2.5 + rng() * 6.5;
-        leafSlots.push({ x: bx + perpX * off * side, y: by + perpY * off * side, rot: rng() * 360, birth: leafBirth });
+        leafSlots.push({
+          branch: branchIndex,
+          along: 0.28 + rng() * 0.68,
+          offset: (3 + rng() * 11) * (rng() < 0.5 ? -1 : 1),
+          rot: rng() * 360,
+          birth,
+          ordinal: s,
+        });
       }
+      /* Every leaf-bearing branch can also hold fruit, not just the
+         outermost tips. Interviews are rare and hard-won, and the tips
+         are the last thing to grow — restricting fruit to them meant the
+         first interview before day 16 showed up nowhere at all. Sorted by
+         birth later, so an early interview hangs on the inner wood that
+         exists and a late one goes out to the tips. */
+      fruitTips.push({ branch: branchIndex, birth });
     }
 
     const nextBirth = birth + CANOPY_STEP;
-    if (depth >= MAX_DEPTH || len < 15) {
-      finalTips.push({ x: x2, y: y2, birth: leafBirth });
-      return;
-    }
+    if (depth >= MAX_DEPTH || len < 15) return;
     const nChildren: number = rng() < 0.32 ? 3 : 2;
     const spread = 0.38 + rng() * 0.22;
     for (let i = 0; i < nChildren; i++) {
@@ -204,23 +234,47 @@ export function buildTree(seedNum: number): GrowthTree {
     const limbAngle = clampAngle(trunkAngle + (rng() - 0.5) * 2.6);
     const limbLen = armLen * (0.45 + rng() * 0.55);
     const limbWidth = 7.5 + rng() * 3.5;
-    const limbBirth = GROW_START + (li / extraCount) * 0.15 + rng() * 0.03;
+    const limbBirth = GROW_START + (li / extraCount) * 0.06 + rng() * 0.015;
     const startFrac = 0.7 + rng() * 0.3;
     const startX = BASE_X + (forkX - BASE_X) * startFrac;
     const startY = BASE_Y + (forkY - BASE_Y) * startFrac;
     growCanopy(startX, startY, limbAngle, limbLen, limbWidth, 1, limbBirth);
   }
 
-  leafSlots = seededShuffle(leafSlots, rng);
+  /* Shuffled so a cohort of leaves scatters over the canopy, then stably
+     sorted into time buckets so the slots are handed out innermost-first.
+     The renderer takes the first N it can see, so leaf number one always
+     lands on wood that already exists.
 
-  let fruitSlots: FruitSlot[] = finalTips.map(node => ({
-    x: node.x + (rng() - 0.5) * 14,
-    y: node.y + (rng() - 0.5) * 10 + 4,
+     Ordered round-robin — every branch's first slot, then every branch's
+     second, and so on — rather than branch by branch. Sorting on birth
+     alone put the first 38 leaves onto 8 branches at five and six deep,
+     which at leaf size reads as five green blobs rather than a canopy.
+     Taking one slot per branch first spreads those same 38 leaves over 38
+     separate twigs.
+
+     Within an ordinal the key is a BUCKETED birth, not the raw value:
+     every branch starts at a slightly different moment, so the raw value
+     is a total order that would re-introduce branch-by-branch filling.
+     Bucketing puts everything that appears around the same time on equal
+     footing and lets the shuffle scatter across it, while still handing
+     out the inner wood before the tips. */
+  const bucket = (birth: number) => Math.floor(birth / COHORT_BUCKET);
+  leafSlots = seededShuffle(leafSlots, rng)
+    .sort((a, b) => (a.ordinal - b.ordinal) || (bucket(a.birth) - bucket(b.birth)));
+
+  let fruitSlots: FruitSlot[] = fruitTips.map(node => ({
+    branch: node.branch,
+    dx: (rng() - 0.5) * 14,
+    dy: (rng() - 0.5) * 10 + 4,
     rot: (rng() - 0.5) * 40,
     scale: 2.1 + rng() * 0.5,
     birth: node.birth,
   }));
-  fruitSlots = seededShuffle(fruitSlots, rng);
+  // Same ordering as the leaves, and for a stronger reason: interviews are
+  // rare and hard-won, so the first one has to be visible the day it
+  // lands, not held back until the tip it was assigned to grows in.
+  fruitSlots = seededShuffle(fruitSlots, rng).sort((a, b) => bucket(a.birth) - bucket(b.birth));
 
   // A streak grows small flowers in the grass, not on the tree itself —
   // one species per seed, like the fruit, so a streak marker is a
@@ -251,6 +305,29 @@ export function buildTree(seedNum: number): GrowthTree {
   };
 }
 
+/**
+ * Where a leaf sits, given how much of its branch has grown.
+ *
+ * @param grown 0..1 — the fraction of the branch currently drawn. The leaf
+ *   is placed at `along` of THAT much, so it rides the twig outward as the
+ *   twig extends instead of hanging in space ahead of it.
+ */
+export function leafPoint(
+  branch: Branch,
+  slot: { along: number; offset: number },
+  grown: number,
+): { x: number; y: number } {
+  const ex = branch.x1 + (branch.x2 - branch.x1) * grown;
+  const ey = branch.y1 + (branch.y2 - branch.y1) * grown;
+  const bdx = ex - branch.x1, bdy = ey - branch.y1;
+  const blen = Math.sqrt(bdx * bdx + bdy * bdy) || 1;
+  const perpX = -bdy / blen, perpY = bdx / blen;
+  return {
+    x: branch.x1 + bdx * slot.along + perpX * slot.offset,
+    y: branch.y1 + bdy * slot.along + perpY * slot.offset,
+  };
+}
+
 export function stageName(t: number): string {
   if (t < 0.03) return 'Bare Sapling';
   if (t < 0.20) return 'Budding';
@@ -275,8 +352,16 @@ export function computeFitScale(tree: GrowthTree): number {
     acc(b.x1, b.y1, (b.baseWidth ?? b.width) / 2);
     acc(b.x2, b.y2, b.width / 2);
   });
-  tree.leafSlots.forEach(s => acc(s.x, s.y, 11));
-  tree.fruitSlots.forEach(s => acc(s.x, s.y, 9));
+  // Slots are branch-relative now, so measure them where they end up when
+  // their branch is fully grown — that is the tree's widest extent.
+  tree.leafSlots.forEach(s => {
+    const p = leafPoint(tree.branches[s.branch], s, 1);
+    acc(p.x, p.y, 11);
+  });
+  tree.fruitSlots.forEach(s => {
+    const b = tree.branches[s.branch];
+    acc(b.x2 + s.dx, b.y2 + s.dy, 9);
+  });
   if (!isFinite(minX)) return 1;
   const availLeft = BASE_X - FIT_MARGIN;
   const availRight = 600 - FIT_MARGIN - BASE_X;

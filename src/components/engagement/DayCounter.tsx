@@ -2,13 +2,15 @@ import React from 'react';
 import { warm } from '../../lib/theme/warmTokens';
 
 /* ── DayCounter ────────────────────────────────────────────────────────
-   "Day 18 / 90" with the week underneath it as seven small dots — the
-   top-right cluster from the reference.
+   "Day 18 / 90" with the week under it — the top-right cluster.
 
-   The dots are the same seven days WeekStrip shows on the live dashboard,
-   at a size that sits under a chip instead of competing with the page.
-   A day is one of four states rather than a filled/empty box, which is
-   what makes a light day read as a light day instead of a miss:
+   The week was 6px dots with no labels, which was decoration rather than
+   information: you could not tell which dot was which day, or read the
+   difference between a light day and a missed one. It is now labelled
+   S M T W T F S over dots big enough to carry a colour.
+
+   A day is one of four states rather than filled-or-empty, so a day with
+   two applications does not look identical to a day with none:
      none      nothing logged
      partial   something, under the goal
      goal      goal met
@@ -17,12 +19,14 @@ import { warm } from '../../lib/theme/warmTokens';
 
 export type DayState = 'none' | 'partial' | 'goal' | 'over' | 'future';
 
-const DOT_COLOR: Record<DayState, string> = {
-  none: warm.colors.borderDefined,
-  partial: `${warm.colors.accentPetrol}55`,
-  goal: warm.colors.accentPetrol,
-  over: warm.colors.accentGoldBright,
-  future: 'transparent',
+const LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+const DOT: Record<DayState, { bg: string; border: string }> = {
+  none: { bg: 'transparent', border: warm.colors.borderDefined },
+  partial: { bg: `${warm.colors.accentPetrol}40`, border: 'transparent' },
+  goal: { bg: warm.colors.accentPetrol, border: 'transparent' },
+  over: { bg: warm.colors.accentGoldBright, border: 'transparent' },
+  future: { bg: 'transparent', border: warm.colors.borderWhisper },
 };
 
 export interface DayCounterProps {
@@ -32,30 +36,46 @@ export interface DayCounterProps {
   of?: number;
   /** Seven states, Sunday first. */
   week: DayState[];
+  /** Index 0-6 of today, for the ring. */
+  todayIndex?: number;
 }
 
-export const DayCounter: React.FC<DayCounterProps> = ({ day, of = 90, week }) => (
-  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+export const DayCounter: React.FC<DayCounterProps> = ({ day, of = 90, week, todayIndex }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10, flexShrink: 0 }}>
     <span style={{
-      padding: '3px 10px', borderRadius: 7,
+      padding: '4px 11px', borderRadius: 7,
       background: warm.colors.bgAlt, border: `1px solid ${warm.colors.borderWhisper}`,
       fontSize: 13, fontWeight: 700, color: warm.colors.textPrimary,
       fontVariantNumeric: 'tabular-nums', letterSpacing: '0.04em', whiteSpace: 'nowrap',
     }}>
       Day {day} / {of}
     </span>
-    <div style={{ display: 'flex', gap: 5 }} aria-label="This week">
-      {week.map((state, i) => (
-        <span
-          key={i}
-          style={{
-            width: 6, height: 6, borderRadius: '50%',
-            background: DOT_COLOR[state],
-            border: state === 'future' ? `1px solid ${warm.colors.borderWhisper}` : 'none',
-            boxSizing: 'border-box',
-          }}
-        />
-      ))}
+
+    <div>
+      <p style={{ ...warm.text.micro, margin: '0 0 6px', color: warm.colors.textMuted }}>This week</p>
+      <div style={{ display: 'flex', gap: 8 }}>
+        {week.map((state, i) => (
+          <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <span style={{
+              fontSize: 10, fontWeight: 700, lineHeight: 1,
+              color: i === todayIndex ? warm.colors.accentPetrol : warm.colors.textMuted,
+            }}>
+              {LETTERS[i]}
+            </span>
+            <span
+              title={state === 'future' ? 'Not yet' : state}
+              style={{
+                width: 16, height: 16, borderRadius: '50%',
+                background: DOT[state].bg,
+                border: i === todayIndex
+                  ? `2px solid ${warm.colors.accentPetrol}`
+                  : `1.5px solid ${DOT[state].border}`,
+                boxSizing: 'border-box',
+              }}
+            />
+          </div>
+        ))}
+      </div>
     </div>
   </div>
 );

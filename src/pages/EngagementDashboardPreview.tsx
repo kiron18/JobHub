@@ -23,11 +23,11 @@ import { useState } from 'react';
 import { ChevronDown, ChevronRight, ExternalLink, Clock } from 'lucide-react';
 import { DashboardLayout } from '../layouts/DashboardLayout';
 import { warm } from '../lib/theme/warmTokens';
-import { PulsingBrainIcon } from '../components/engagement/PulsingBrainIcon';
 import { BrainPopup } from '../components/engagement/BrainPopup';
+import { StreakHeading } from '../components/engagement/StreakHeading';
 import { TodaysRitual } from '../components/engagement/TodaysRitual';
 import { DayCounter, type DayState } from '../components/engagement/DayCounter';
-import { MissionRail } from '../components/engagement/MissionRail';
+import { ApplicationSquares, SQUARE_CAP } from '../components/engagement/ApplicationSquares';
 import { PostApplicationPopup } from '../components/engagement/PostApplicationPopup';
 
 const C = warm.colors;
@@ -61,21 +61,19 @@ export default function EngagementDashboardPreview() {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: 28, flexWrap: 'wrap' }}>
         {/* ── The content column ─────────────────────────────────────── */}
         <div style={{ flex: '1 1 520px', maxWidth: 600, minWidth: 0 }}>
-          <h1 style={{
-            margin: '0 0 10px', fontSize: 26, fontWeight: 700, letterSpacing: '-0.018em',
-            color: C.textPrimary, lineHeight: 1.2,
-          }}>
-            Challenge - {STREAK} day streak{' '}
-            <PulsingBrainIcon streak={STREAK} onClick={() => setBrainOpen(true)} size={20} variant="inline" />
-          </h1>
-          <div style={{ height: 1, background: C.borderWhisper, marginBottom: 12 }} />
+          <StreakHeading streak={STREAK} onBrainClick={() => setBrainOpen(true)} />
 
-          <div style={{ marginBottom: 26 }}>
+          <div style={{ marginBottom: 14 }}>
             <TodaysRitual
               line={`Apply to ${DAILY_GOAL} roles matching your profile`}
               detail="Pulled from your target-role list. Takes about 12 minutes."
               done={filedToday >= DAILY_GOAL}
             />
+          </div>
+
+          {/* One square per application. Ten is the ceiling on purpose. */}
+          <div style={{ marginBottom: 26 }}>
+            <ApplicationSquares filed={filedToday} />
           </div>
 
           {/* Stand-in for AnalysisHeroCard — the real paste card. */}
@@ -128,20 +126,15 @@ export default function EngagementDashboardPreview() {
           </div>
 
           <p style={{ margin: '22px 0 0', fontSize: 11, color: C.textMuted }}>
-            Preview · "Check eligibility" files a mock application: the rail rises, today's dot
-            advances, and the one popup fires. Press it a few times to hear the line change as the
-            count climbs past {DAILY_GOAL}.
+            Preview · "Check eligibility" files a mock application: a square fills, today's dot
+            advances, and the one popup fires. Press it past {SQUARE_CAP} to see the squares stop
+            celebrating and the quality note appear instead.
           </p>
         </div>
 
-        {/* ── The Day chip, with the week as dots ────────────────────── */}
+        {/* ── The Day chip, with the week under it ───────────────────── */}
         <div style={{ paddingTop: 6 }}>
-          <DayCounter day={PROGRAM_DAY} of={90} week={week} />
-        </div>
-
-        {/* ── The mission rail ───────────────────────────────────────── */}
-        <div style={{ paddingTop: 4 }}>
-          <MissionRail done={filedToday} goal={DAILY_GOAL} />
+          <DayCounter day={PROGRAM_DAY} of={90} week={week} todayIndex={4} />
         </div>
       </div>
 

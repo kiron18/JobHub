@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useRef } from 'react';
 import {
   BASE_X, BASE_Y, BRANCH_DUR, LEAF_RENDER_SCALE, SYMBOL_BOX,
-  buildTree, clamp, computeFitScale, easeOutCubic, stageName,
+  buildTree, clamp, computeFitScale, easeOutCubic, leafPoint, stageName,
   type GrowthTree, type TreePersona,
 } from '../../lib/growthTree';
 
@@ -213,13 +213,20 @@ export function TreeAvatar({ seed, day, applications, interviews, streak, absenc
     const leafBrightness = 1 + sleepFactor * 0.22 - streakFactor * 0.02;
     leavesG.style.filter = `saturate(${leafSaturate.toFixed(2)}) brightness(${leafBrightness.toFixed(2)})`;
 
-    tree.branches.forEach(b => {
+    /* How much of each branch is drawn right now, kept so the leaves and
+       fruit hanging off it can be placed against the wood that actually
+       exists rather than where the branch will eventually end. -1 means
+       the branch has not started. */
+    const grown = new Float64Array(tree.branches.length).fill(-1);
+
+    tree.branches.forEach((b, bi) => {
       let e2 = 1;
       if (b.birth !== null) {
         const raw = (t - b.birth) / BRANCH_DUR;
         if (raw <= 0) return;
         e2 = easeOutCubic(raw);
       }
+      grown[bi] = e2;
       const x2 = b.x1 + (b.x2 - b.x1) * e2, y2 = b.y1 + (b.y2 - b.y1) * e2;
       if (b.taper) {
         const tdx = x2 - b.x1, tdy = y2 - b.y1;
@@ -242,25 +249,36 @@ export function TreeAvatar({ seed, day, applications, interviews, streak, absenc
     let newestLeafPos: { x: number; y: number } | null = null;
     let shownLeaves = 0;
     let lastLeafEl: SVGGElement | null = null;
-    for (let i = 0; i < applications && i < tree.leafSlots.length; i++) {
+    /* Walk every slot and take the first `applications` whose branch is on
+       screen, rather than taking the first `applications` slots and
+       dropping the ones that are not. The old form spent the whole budget
+       on branches that had not grown — 38 applications rendered as zero
+       leaves on day 18. */
+    for (let i = 0; i < tree.leafSlots.length && shownLeaves < applications; i++) {
       const slot = tree.leafSlots[i];
-      if (t < slot.birth) continue;
-      const use = makeUse(uid, 'leafShape', slot.x, slot.y, slot.rot, LEAF_RENDER_SCALE);
+      const g = grown[slot.branch];
+      if (g < 0) continue;
+      const p = leafPoint(tree.branches[slot.branch], slot, g);
+      const use = makeUse(uid, 'leafShape', p.x, p.y, slot.rot, LEAF_RENDER_SCALE);
       use.setAttribute('class', 'gt-leaf');
       use.setAttribute('fill', tree.leafColor);
       leavesG.appendChild(use);
       shownLeaves++;
       lastLeafEl = use;
-      newestLeafPos = { x: slot.x, y: slot.y };
+      newestLeafPos = p;
     }
     if (lastLeafEl) (lastLeafEl.firstChild as SVGGElement).classList.add('gt-leaf-newest');
 
     let shownFruit = 0;
     let lastFruitEl: SVGGElement | null = null;
-    for (let fi = 0; fi < interviews && fi < tree.fruitSlots.length; fi++) {
+    for (let fi = 0; fi < tree.fruitSlots.length && shownFruit < interviews; fi++) {
       const fslot = tree.fruitSlots[fi];
-      if (t < fslot.birth) continue;
-      const fuse = makeUse(uid, `fruit-${tree.species}`, fslot.x, fslot.y, fslot.rot, fslot.scale);
+      const fg = grown[fslot.branch];
+      if (fg < 0) continue;
+      const fb = tree.branches[fslot.branch];
+      const fx0 = fb.x1 + (fb.x2 - fb.x1) * fg + fslot.dx;
+      const fy0 = fb.y1 + (fb.y2 - fb.y1) * fg + fslot.dy;
+      const fuse = makeUse(uid, `fruit-${tree.species}`, fx0, fy0, fslot.rot, fslot.scale);
       fuse.setAttribute('class', 'gt-fruit');
       fruitsG.appendChild(fuse);
       shownFruit++;
