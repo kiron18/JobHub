@@ -1,18 +1,17 @@
 /**
  * /dev/engagement-dashboard — the dashboard as the reference draws it.
  *
- * Layout, left to right: the content column (heading with the brain icon
- * in it, the ritual line, then the real paste and follow-up cards), the
- * Day chip with the week as seven dots under it, and the vertical
- * "Today's Mission" rail.
+ * Layout: the content column (heading with the brain icon in it, the
+ * ritual line, the row of application squares, then the paste and
+ * follow-up cards) with the Day chip and this week's dots to its right.
  *
  * The horizontal "Today's applications X of 5" bar and the big S M T W T
- * F S squares that live on production are deliberately NOT here: this
- * layout carries the same two numbers in the Day chip's dots and in the
- * mission rail instead, which is the change being previewed.
+ * F S squares that live on production are deliberately NOT here: the same
+ * two numbers are carried by the square row and the Day chip's dots
+ * instead, which is the change being previewed.
  *
  * Everything is local state — "Check eligibility" files a mock
- * application, which raises the rail, advances today's dot, and fires the
+ * application, which fills a square, advances today's dot, and fires the
  * one post-application popup. The paste and follow-up cards are visual
  * stand-ins for AnalysisHeroCard / StaleApplicationsCard so the new
  * pieces are judged in their real surroundings.
@@ -25,9 +24,10 @@ import { DashboardLayout } from '../layouts/DashboardLayout';
 import { warm } from '../lib/theme/warmTokens';
 import { BrainPopup } from '../components/engagement/BrainPopup';
 import { StreakHeading } from '../components/engagement/StreakHeading';
-import { TodaysRitual, TARGET_MIN } from '../components/engagement/TodaysRitual';
+import { TodaysRitual } from '../components/engagement/TodaysRitual';
 import { DayCounter, type DayState } from '../components/engagement/DayCounter';
-import { ApplicationSquares, SQUARE_CAP } from '../components/engagement/ApplicationSquares';
+import { ApplicationSquares } from '../components/engagement/ApplicationSquares';
+import { TARGET_MIN, TARGET_MAX, effectiveTarget } from '../lib/dailyTarget';
 import { PostApplicationPopup } from '../components/engagement/PostApplicationPopup';
 
 const C = warm.colors;
@@ -47,8 +47,12 @@ export default function EngagementDashboardPreview() {
   const [brainOpen, setBrainOpen] = useState(false);
   const [filedToday, setFiledToday] = useState(0);
   const [popupOpen, setPopupOpen] = useState(false);
-  const [target, setTarget] = useState(TARGET_MIN);
+  const [committedTarget, setCommittedTarget] = useState(TARGET_MIN);
   const [targetLocked, setTargetLocked] = useState(false);
+
+  // The committed number is a floor: doing more than you planned raises it,
+  // up to the ceiling.
+  const target = effectiveTarget(committedTarget, filedToday);
 
   const week: DayState[] = ['goal', 'over', 'partial', 'goal', todayState(filedToday, target), 'future', 'future'];
 
@@ -67,15 +71,16 @@ export default function EngagementDashboardPreview() {
           <div style={{ marginBottom: 14 }}>
             <TodaysRitual
               target={target}
+              filed={filedToday}
               locked={targetLocked}
-              onTargetChange={setTarget}
+              onTargetChange={setCommittedTarget}
               onSet={() => setTargetLocked(true)}
               detail="Pulled from your target-role list."
             />
           </div>
 
-          {/* One square per application, as many squares as the target. */}
-          <div style={{ marginBottom: 26 }}>
+          {/* One square per application, the row growing with the target. */}
+          <div style={{ marginBottom: 28 }}>
             <ApplicationSquares filed={filedToday} target={target} />
           </div>
 
@@ -87,13 +92,13 @@ export default function EngagementDashboardPreview() {
             <button style={{
               display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14,
               background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-              color: C.accentPetrol, fontSize: 13.5, fontWeight: 700,
+              color: C.accentPetrol, ...warm.text.small, fontWeight: warm.weight.bold,
             }}>
               <ChevronDown size={16} /> What exactly should I copy?
             </button>
             <div style={{
               height: 130, borderRadius: 10, border: `1px solid ${C.borderDefined}`,
-              padding: '13px 15px', marginBottom: 18, fontSize: 14, color: C.textMuted,
+              padding: '13px 15px', marginBottom: 18, ...warm.text.body, color: C.textMuted,
             }}>
               Paste the job description here, or a Seek link...
             </div>
@@ -101,7 +106,7 @@ export default function EngagementDashboardPreview() {
               <span style={{
                 display: 'inline-flex', alignItems: 'center', gap: 7, padding: '11px 18px',
                 borderRadius: 10, border: `1px solid ${C.borderDefined}`,
-                fontSize: 13.5, fontWeight: 700, color: C.textPrimary,
+                ...warm.text.small, fontWeight: warm.weight.bold, color: C.textPrimary,
               }}>
                 Browse coordinator jobs <ExternalLink size={14} />
               </span>
@@ -110,7 +115,7 @@ export default function EngagementDashboardPreview() {
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 5, padding: '11px 18px',
                   borderRadius: 10, border: 'none', cursor: 'pointer',
-                  background: C.accentPetrol, color: '#fff', fontSize: 13.5, fontWeight: 700,
+                  background: C.accentPetrol, color: C.textOnDeep, ...warm.text.small, fontWeight: warm.weight.bold,
                 }}
               >
                 Check eligibility <ChevronRight size={16} />
@@ -123,14 +128,14 @@ export default function EngagementDashboardPreview() {
             <p style={{ ...warm.text.micro, margin: '0 0 6px', color: C.accentPetrol, display: 'flex', alignItems: 'center', gap: 6 }}>
               <Clock size={13} /> Follow up:
             </p>
-            <p style={{ margin: 0, fontSize: 13.5, color: C.textSecondary }}>
+            <p style={{ ...warm.text.small, margin: 0, color: C.textSecondary }}>
               Jobs you applied to over a week ago. Click follow up to get a pre-written email.
             </p>
           </div>
 
           <p style={{ margin: '22px 0 0', fontSize: 11, color: C.textMuted }}>
             Preview · "Check eligibility" files a mock application: a square fills, today's dot
-            advances, and the one popup fires. Press it past {SQUARE_CAP} to see the squares stop
+            advances, and the one popup fires. Press it past {TARGET_MAX} to see the squares stop
             celebrating and the quality note appear instead.
           </p>
         </div>

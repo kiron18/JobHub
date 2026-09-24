@@ -109,6 +109,11 @@ export const PostApplicationPopup: React.FC<PostApplicationPopupProps> = ({
             transition={reduced ? { duration: 0.12 } : SPRING.arrive}
             style={{
               width: '100%', maxWidth: 360,
+              /* The over-cap variant has no click-away, so if the card is
+                 ever taller than the window the "Got it" button is the
+                 only exit and it must stay reachable. Scroll the card,
+                 never the page behind it. */
+              maxHeight: '90dvh', overflowY: 'auto',
               background: warm.colors.bgSurface,
               border: `1px solid ${warm.colors.borderWhisper}`,
               borderRadius: warm.radius.card,
@@ -129,23 +134,35 @@ export const PostApplicationPopup: React.FC<PostApplicationPopupProps> = ({
                 </span>
               </div>
               <p style={{
-                margin: '0 0 10px', textAlign: 'center', fontSize: 19, fontWeight: 800,
-                color: warm.colors.textPrimary, letterSpacing: '-0.02em',
+                ...warm.text.h3, margin: '0 0 12px', textAlign: 'center',
+                fontWeight: warm.weight.bold, color: warm.colors.textPrimary,
               }}>
-                Ten a day is the ceiling, on purpose
+                That one counts. Here's why we stop at ten.
               </p>
-              <p style={{ margin: '0 0 10px', fontSize: 13, lineHeight: 1.6, color: warm.colors.textSecondary }}>
-                That one still counts — we log every application. We just stop
-                celebrating past ten, because this was never a volume game. Past
-                ten in a sitting the quality starts to slide, and the mental
-                drain is what makes tomorrow the day you skip.
+              <p style={{ ...warm.text.small, margin: '0 0 10px', lineHeight: 1.6, color: warm.colors.textSecondary }}>
+                Every application you send is logged — nothing is lost and
+                nothing is being taken away from you.
+              </p>
+              <p style={{ ...warm.text.small, margin: '0 0 14px', lineHeight: 1.6, color: warm.colors.textSecondary }}>
+                But the eleventh application of a sitting is almost never as good
+                as the first. The tailoring gets thinner, the research gets
+                skipped, and the tiredness that builds tonight is exactly what
+                turns tomorrow into a day off. That is how most searches die —
+                not from doing too little, but from one enormous day followed by
+                a week of nothing.
               </p>
               <p style={{
-                margin: '0 0 18px', padding: '11px 13px', borderRadius: 10,
-                background: warm.colors.bgAlt, border: `1px solid ${warm.colors.borderWhisper}`,
-                fontSize: 13, lineHeight: 1.55, fontWeight: 600, color: warm.colors.textPrimary,
+                margin: '0 0 14px', padding: '12px 14px', borderRadius: 10,
+                background: warm.colors.accentGoldSoft,
+                borderLeft: `3px solid ${warm.colors.accentGoldBright}`,
+                ...warm.text.small, lineHeight: 1.55,
+                fontWeight: warm.weight.semibold, color: warm.colors.textPrimary,
               }}>
-                Ten a day for ten days beats fifty in one day and nothing for the next nine.
+                Ten a day for ten days beats fifty today and nothing for the next nine.
+              </p>
+              <p style={{ ...warm.text.small, margin: '0 0 18px', lineHeight: 1.6, color: warm.colors.textSecondary }}>
+                Still got energy? Follow up on one you sent last week. That is
+                worth more than an eleventh application.
               </p>
               <button
                 onClick={onClose}

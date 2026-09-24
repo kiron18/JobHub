@@ -16,8 +16,9 @@ import { warm } from '../lib/theme/warmTokens';
 import { PulsingBrainIcon } from '../components/engagement/PulsingBrainIcon';
 import { BrainPopup } from '../components/engagement/BrainPopup';
 import { TreeAvatar } from '../components/engagement/TreeAvatar';
-import { TodaysRitual, TARGET_MIN } from '../components/engagement/TodaysRitual';
+import { TodaysRitual } from '../components/engagement/TodaysRitual';
 import { ApplicationSquares } from '../components/engagement/ApplicationSquares';
+import { TARGET_MIN, effectiveTarget } from '../lib/dailyTarget';
 import { PostApplicationPopup } from '../components/engagement/PostApplicationPopup';
 import { MomentSplash } from '../components/engagement/MomentSplash';
 
@@ -121,15 +122,20 @@ export default function EngagementPreview() {
         </SectionNote>
         <Panel>
           <TodaysRitual
-            target={target}
+            target={effectiveTarget(target, count)}
+            filed={count}
             locked={targetLocked}
             onTargetChange={setTarget}
             onSet={() => setTargetLocked(true)}
             detail="Pulled from your target-role list."
           />
           <div style={{ marginTop: 14 }}>
-            <ApplicationSquares filed={Math.min(count, target)} target={target} />
+            <ApplicationSquares filed={count} target={effectiveTarget(target, count)} />
           </div>
+          <p style={{ fontSize: 11, color: C.textMuted, marginTop: 10 }}>
+            Drag "Applications filed today" in section 3 past the target to watch the row
+            auto-raise, then past 10 to see the count turn.
+          </p>
         </Panel>
 
         {/* ── 3. The one popup ────────────────────────────────────────── */}
