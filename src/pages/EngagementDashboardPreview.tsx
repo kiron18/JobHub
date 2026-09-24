@@ -25,14 +25,13 @@ import { DashboardLayout } from '../layouts/DashboardLayout';
 import { warm } from '../lib/theme/warmTokens';
 import { BrainPopup } from '../components/engagement/BrainPopup';
 import { StreakHeading } from '../components/engagement/StreakHeading';
-import { TodaysRitual } from '../components/engagement/TodaysRitual';
+import { TodaysRitual, TARGET_MIN } from '../components/engagement/TodaysRitual';
 import { DayCounter, type DayState } from '../components/engagement/DayCounter';
 import { ApplicationSquares, SQUARE_CAP } from '../components/engagement/ApplicationSquares';
 import { PostApplicationPopup } from '../components/engagement/PostApplicationPopup';
 
 const C = warm.colors;
 
-const DAILY_GOAL = 5;
 const PROGRAM_DAY = 18;
 const STREAK = 4;
 
@@ -48,8 +47,10 @@ export default function EngagementDashboardPreview() {
   const [brainOpen, setBrainOpen] = useState(false);
   const [filedToday, setFiledToday] = useState(0);
   const [popupOpen, setPopupOpen] = useState(false);
+  const [target, setTarget] = useState(TARGET_MIN);
+  const [targetLocked, setTargetLocked] = useState(false);
 
-  const week: DayState[] = ['goal', 'over', 'partial', 'goal', todayState(filedToday, DAILY_GOAL), 'future', 'future'];
+  const week: DayState[] = ['goal', 'over', 'partial', 'goal', todayState(filedToday, target), 'future', 'future'];
 
   const fileApplication = () => {
     setFiledToday(n => n + 1);
@@ -65,15 +66,17 @@ export default function EngagementDashboardPreview() {
 
           <div style={{ marginBottom: 14 }}>
             <TodaysRitual
-              line={`Apply to ${DAILY_GOAL} roles matching your profile`}
-              detail="Pulled from your target-role list. Takes about 12 minutes."
-              done={filedToday >= DAILY_GOAL}
+              target={target}
+              locked={targetLocked}
+              onTargetChange={setTarget}
+              onSet={() => setTargetLocked(true)}
+              detail="Pulled from your target-role list."
             />
           </div>
 
-          {/* One square per application. Ten is the ceiling on purpose. */}
+          {/* One square per application, as many squares as the target. */}
           <div style={{ marginBottom: 26 }}>
-            <ApplicationSquares filed={filedToday} />
+            <ApplicationSquares filed={filedToday} target={target} />
           </div>
 
           {/* Stand-in for AnalysisHeroCard — the real paste card. */}
@@ -152,7 +155,7 @@ export default function EngagementDashboardPreview() {
         open={popupOpen}
         onClose={() => setPopupOpen(false)}
         count={filedToday}
-        goal={DAILY_GOAL}
+        goal={target}
         streak={STREAK}
       />
     </DashboardLayout>

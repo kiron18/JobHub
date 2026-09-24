@@ -16,7 +16,8 @@ import { warm } from '../lib/theme/warmTokens';
 import { PulsingBrainIcon } from '../components/engagement/PulsingBrainIcon';
 import { BrainPopup } from '../components/engagement/BrainPopup';
 import { TreeAvatar } from '../components/engagement/TreeAvatar';
-import { TodaysRitual } from '../components/engagement/TodaysRitual';
+import { TodaysRitual, TARGET_MIN } from '../components/engagement/TodaysRitual';
+import { ApplicationSquares } from '../components/engagement/ApplicationSquares';
 import { PostApplicationPopup } from '../components/engagement/PostApplicationPopup';
 import { MomentSplash } from '../components/engagement/MomentSplash';
 
@@ -61,6 +62,8 @@ export default function EngagementPreview() {
   const [count, setCount] = useState(1);
   const [postOpen, setPostOpen] = useState(false);
   const [splashOpen, setSplashOpen] = useState(false);
+  const [target, setTarget] = useState(TARGET_MIN);
+  const [targetLocked, setTargetLocked] = useState(false);
 
   const slider = (value: number, set: (n: number) => void, min: number, max: number) => (
     <input type="range" min={min} max={max} value={value} onChange={e => set(Number(e.target.value))} style={{ width: '100%', accentColor: C.accentPetrol }} />
@@ -111,10 +114,22 @@ export default function EngagementPreview() {
         </Panel>
 
         {/* ── 2. Ritual line ──────────────────────────────────────────── */}
-        <SectionTitle>2. The ritual line</SectionTitle>
-        <SectionNote>One line under the header. No button, no counter, no week strip — those already exist on the page.</SectionNote>
+        <SectionTitle>2. The ritual line, and today's target</SectionTitle>
+        <SectionNote>
+          Five to ten, set once a day, then locked. The squares below follow the number —
+          press Set to see it lock, then reload to unlock it again.
+        </SectionNote>
         <Panel>
-          <TodaysRitual line="Apply to 5 roles matching your profile" detail="Paste a job ad below to start. About 12 minutes." />
+          <TodaysRitual
+            target={target}
+            locked={targetLocked}
+            onTargetChange={setTarget}
+            onSet={() => setTargetLocked(true)}
+            detail="Pulled from your target-role list."
+          />
+          <div style={{ marginTop: 14 }}>
+            <ApplicationSquares filed={Math.min(count, target)} target={target} />
+          </div>
         </Panel>
 
         {/* ── 3. The one popup ────────────────────────────────────────── */}

@@ -19,11 +19,15 @@ import { EASE, SPRING, prefersReducedMotion } from '../../lib/theme/motion';
    and filling the seventh is not.
 */
 
+/** The hard ceiling, regardless of what anyone sets their target to.
+ *  Past this the popup stops celebrating and explains why. */
 export const SQUARE_CAP = 10;
 
 export interface ApplicationSquaresProps {
-  /** Applications filed today. May exceed SQUARE_CAP; squares just stay full. */
+  /** Applications filed today. May exceed the target; squares stay full. */
   filed: number;
+  /** How many squares to draw — today's target, TARGET_MIN..TARGET_MAX. */
+  target: number;
   size?: number;
 }
 
@@ -60,7 +64,7 @@ const Burst: React.FC<{ color: string }> = ({ color }) => (
   </>
 );
 
-export const ApplicationSquares: React.FC<ApplicationSquaresProps> = ({ filed, size = 26 }) => {
+export const ApplicationSquares: React.FC<ApplicationSquaresProps> = ({ filed, target, size = 26 }) => {
   const reduced = prefersReducedMotion();
   const green = warm.colors.success;
 
@@ -72,25 +76,26 @@ export const ApplicationSquares: React.FC<ApplicationSquaresProps> = ({ filed, s
   const [prevFiled, setPrevFiled] = useState(filed);
   const [burstAt, setBurstAt] = useState<number | null>(null);
   if (prevFiled !== filed) {
-    const isNewFill = filed > prevFiled && filed <= SQUARE_CAP;
+    const isNewFill = filed > prevFiled && filed <= target;
     setPrevFiled(filed);
     setBurstAt(isNewFill ? filed : null);
   }
 
-  const shown = Math.min(filed, SQUARE_CAP);
-  const overCap = filed > SQUARE_CAP;
+  const shown = Math.min(filed, target);
+  const overTarget = filed > target;
 
   return (
     <div
       style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}
       role="img"
-      aria-label={`${filed} application${filed === 1 ? '' : 's'} today${overCap ? `, ${SQUARE_CAP} shown` : ''}`}
+      aria-label={`${filed} application${filed === 1 ? '' : 's'} today of a ${target} target`}
     >
-      {Array.from({ length: SQUARE_CAP }, (_, i) => {
+      {Array.from({ length: target }, (_, i) => {
         const isFull = i < shown;
-        // Only the square that just landed bursts, and only inside the
-        // celebrated ten — the eleventh fills nothing and flashes nothing.
-        const isNewest = isFull && burstAt === i + 1 && !overCap && !reduced;
+        // Only the square that just landed bursts. Past the target there
+        // is no square left to fill, so nothing flashes — the popup does
+        // the talking from there.
+        const isNewest = isFull && burstAt === i + 1 && !overTarget && !reduced;
         return (
           <motion.div
             key={i}
