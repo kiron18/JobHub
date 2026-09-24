@@ -1,24 +1,21 @@
 /**
- * /dev/engagement-dashboard — the real dashboard (StrategyHub) with the
- * engagement changes on it, and nothing else changed.
+ * /dev/engagement-dashboard — the dashboard as the reference draws it.
  *
- * What is REAL on this page, rendered by the actual production components:
- *   - DailyProgressBar  ("Today's applications X of 5")
- *   - WeekStrip         (the S M T W T F S squares)
- * Both read their own endpoints and fall back to 0 of 5 exactly as the
- * live dashboard does, so the numbers here are not invented.
+ * Layout, left to right: the content column (heading with the brain icon
+ * in it, the ritual line, then the real paste and follow-up cards), the
+ * Day chip with the week as seven dots under it, and the vertical
+ * "Today's Mission" rail.
  *
- * What is NEW, and the entire point of this page:
- *   1. one ritual line under the header
- *   2. the pulsing brain icon beside the header, opening the tree popup
- *   3. one popup after an application is filed — congratulation (from the
- *      existing applause.ts lines) plus a quick quiz, in the same popup,
- *      click anywhere to dismiss
+ * The horizontal "Today's applications X of 5" bar and the big S M T W T
+ * F S squares that live on production are deliberately NOT here: this
+ * layout carries the same two numbers in the Day chip's dots and in the
+ * mission rail instead, which is the change being previewed.
  *
- * The paste card and follow-up card below are visual stand-ins for the
- * real AnalysisHeroCard / StaleApplicationsCard, present so the new pieces
- * are judged in their real surroundings. "Check eligibility" is wired to
- * fire the post-application popup so the moment can actually be felt.
+ * Everything is local state — "Check eligibility" files a mock
+ * application, which raises the rail, advances today's dot, and fires the
+ * one post-application popup. The paste and follow-up cards are visual
+ * stand-ins for AnalysisHeroCard / StaleApplicationsCard so the new
+ * pieces are judged in their real surroundings.
  *
  * Not linked from anywhere in the app's nav. Visit the URL directly.
  */
@@ -26,24 +23,33 @@ import { useState } from 'react';
 import { ChevronDown, ChevronRight, ExternalLink, Clock } from 'lucide-react';
 import { DashboardLayout } from '../layouts/DashboardLayout';
 import { warm } from '../lib/theme/warmTokens';
-import { DailyProgressBar } from '../components/jobs/DailyProgressBar';
-import { WeekStrip } from '../components/jobs/WeekStrip';
 import { PulsingBrainIcon } from '../components/engagement/PulsingBrainIcon';
 import { BrainPopup } from '../components/engagement/BrainPopup';
 import { TodaysRitual } from '../components/engagement/TodaysRitual';
+import { DayCounter, type DayState } from '../components/engagement/DayCounter';
+import { MissionRail } from '../components/engagement/MissionRail';
 import { PostApplicationPopup } from '../components/engagement/PostApplicationPopup';
 
 const C = warm.colors;
 
 const DAILY_GOAL = 5;
+const PROGRAM_DAY = 18;
+const STREAK = 4;
+
+/** Today's dot: nothing, something, the goal, or past it. */
+function todayState(done: number, goal: number): DayState {
+  if (done <= 0) return 'none';
+  if (done < goal) return 'partial';
+  if (done === goal) return 'goal';
+  return 'over';
+}
 
 export default function EngagementDashboardPreview() {
   const [brainOpen, setBrainOpen] = useState(false);
   const [filedToday, setFiledToday] = useState(0);
   const [popupOpen, setPopupOpen] = useState(false);
 
-  // Mock account behind the brain popup — stands in for /profile + /tracker.
-  const streak = 4;
+  const week: DayState[] = ['goal', 'over', 'partial', 'goal', todayState(filedToday, DAILY_GOAL), 'future', 'future'];
 
   const fileApplication = () => {
     setFiledToday(n => n + 1);
@@ -52,105 +58,101 @@ export default function EngagementDashboardPreview() {
 
   return (
     <DashboardLayout>
-      <div style={{ maxWidth: 720, margin: '0 auto' }}>
-        <p style={{ margin: '0 0 20px', fontSize: 11, color: C.textMuted, textAlign: 'center' }}>
-          Preview · the progress bar and week strip are the real components; the paste card below is a stand-in.
-        </p>
-
-        {/* Header: the real identity line, with the brain icon beside it. */}
-        <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 18 }}>
-          <p style={{
-            margin: 0, fontSize: 13, fontWeight: 600, letterSpacing: '0.04em',
-            textTransform: 'uppercase', color: C.textSecondary,
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: 28, flexWrap: 'wrap' }}>
+        {/* ── The content column ─────────────────────────────────────── */}
+        <div style={{ flex: '1 1 520px', maxWidth: 600, minWidth: 0 }}>
+          <h1 style={{
+            margin: '0 0 10px', fontSize: 26, fontWeight: 700, letterSpacing: '-0.018em',
+            color: C.textPrimary, lineHeight: 1.2,
           }}>
-            Agricultural Coordinator · Brisbane, Queensland
-          </p>
-          <PulsingBrainIcon streak={streak} onClick={() => setBrainOpen(true)} />
-        </header>
+            Challenge - {STREAK} day streak{' '}
+            <PulsingBrainIcon streak={STREAK} onClick={() => setBrainOpen(true)} size={20} variant="inline" />
+          </h1>
+          <div style={{ height: 1, background: C.borderWhisper, marginBottom: 12 }} />
 
-        {/* NEW: the one ritual line. */}
-        <div style={{ marginBottom: 20 }}>
-          <TodaysRitual
-            line={`Apply to ${DAILY_GOAL} roles matching your profile`}
-            detail="Paste a job ad below to start. About 12 minutes."
-          />
-        </div>
-
-        {/* UNCHANGED: the real progress bar and week strip, where they already sit. */}
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          gap: 20, flexWrap: 'wrap', marginBottom: 32,
-        }}>
-          <div style={{ flex: '0 1 240px', minWidth: 180 }}>
-            <DailyProgressBar />
+          <div style={{ marginBottom: 26 }}>
+            <TodaysRitual
+              line={`Apply to ${DAILY_GOAL} roles matching your profile`}
+              detail="Pulled from your target-role list. Takes about 12 minutes."
+              done={filedToday >= DAILY_GOAL}
+            />
           </div>
-          <WeekStrip />
-        </div>
 
-        {/* Stand-in for AnalysisHeroCard — the real paste card. */}
-        <div style={{
-          background: C.bgSurface, border: `1px solid ${C.borderWhisper}`,
-          borderRadius: 16, padding: '28px 32px', marginBottom: 32,
-        }}>
-          <button style={{
-            display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14,
-            background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-            color: C.accentPetrol, fontSize: 13.5, fontWeight: 700,
-          }}>
-            <ChevronDown size={16} /> What exactly should I copy?
-          </button>
+          {/* Stand-in for AnalysisHeroCard — the real paste card. */}
           <div style={{
-            height: 150, borderRadius: 10, border: `1px solid ${C.borderDefined}`,
-            background: C.bgSurface, padding: '14px 16px', marginBottom: 20,
-            fontSize: 14, color: C.textMuted,
+            background: C.bgSurface, border: `1px solid ${C.borderWhisper}`,
+            borderRadius: 16, padding: '24px 28px', marginBottom: 26,
           }}>
-            Paste the job description here, or a Seek link...
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: 7, padding: '12px 20px',
-              borderRadius: 10, border: `1px solid ${C.borderDefined}`, background: C.bgSurface,
-              fontSize: 14, fontWeight: 700, color: C.textPrimary,
+            <button style={{
+              display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14,
+              background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+              color: C.accentPetrol, fontSize: 13.5, fontWeight: 700,
             }}>
-              Browse coordinator jobs <ExternalLink size={14} />
-            </span>
-            <button
-              onClick={fileApplication}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 5, padding: '12px 20px',
-                borderRadius: 10, border: 'none', cursor: 'pointer',
-                background: C.accentPetrol, color: '#fff', fontSize: 14, fontWeight: 700,
-              }}
-            >
-              Check eligibility <ChevronRight size={16} />
+              <ChevronDown size={16} /> What exactly should I copy?
             </button>
+            <div style={{
+              height: 130, borderRadius: 10, border: `1px solid ${C.borderDefined}`,
+              padding: '13px 15px', marginBottom: 18, fontSize: 14, color: C.textMuted,
+            }}>
+              Paste the job description here, or a Seek link...
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 7, padding: '11px 18px',
+                borderRadius: 10, border: `1px solid ${C.borderDefined}`,
+                fontSize: 13.5, fontWeight: 700, color: C.textPrimary,
+              }}>
+                Browse coordinator jobs <ExternalLink size={14} />
+              </span>
+              <button
+                onClick={fileApplication}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5, padding: '11px 18px',
+                  borderRadius: 10, border: 'none', cursor: 'pointer',
+                  background: C.accentPetrol, color: '#fff', fontSize: 13.5, fontWeight: 700,
+                }}
+              >
+                Check eligibility <ChevronRight size={16} />
+              </button>
+            </div>
           </div>
+
+          {/* Stand-in for the follow-up card. */}
+          <div style={{ background: C.bgSurface, border: `1px solid ${C.borderWhisper}`, borderRadius: 16, padding: '18px 22px' }}>
+            <p style={{ ...warm.text.micro, margin: '0 0 6px', color: C.accentPetrol, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Clock size={13} /> Follow up:
+            </p>
+            <p style={{ margin: 0, fontSize: 13.5, color: C.textSecondary }}>
+              Jobs you applied to over a week ago. Click follow up to get a pre-written email.
+            </p>
+          </div>
+
+          <p style={{ margin: '22px 0 0', fontSize: 11, color: C.textMuted }}>
+            Preview · "Check eligibility" files a mock application: the rail rises, today's dot
+            advances, and the one popup fires. Press it a few times to hear the line change as the
+            count climbs past {DAILY_GOAL}.
+          </p>
         </div>
 
-        {/* Stand-in for the follow-up card. */}
-        <div style={{ background: C.bgSurface, border: `1px solid ${C.borderWhisper}`, borderRadius: 16, padding: '20px 24px' }}>
-          <p style={{ ...warm.text.micro, margin: '0 0 6px', color: C.accentPetrol, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Clock size={13} /> Follow up:
-          </p>
-          <p style={{ margin: 0, fontSize: 13.5, color: C.textSecondary }}>
-            Jobs you applied to over a week ago. Click follow up to get a pre-written email.
-          </p>
+        {/* ── The Day chip, with the week as dots ────────────────────── */}
+        <div style={{ paddingTop: 6 }}>
+          <DayCounter day={PROGRAM_DAY} of={90} week={week} />
         </div>
 
-        <p style={{ margin: '24px 0 0', fontSize: 11, color: C.textMuted, textAlign: 'center' }}>
-          "Check eligibility" fires the post-application popup — press it a few times to see the
-          line change as the count climbs toward {DAILY_GOAL}.
-        </p>
+        {/* ── The mission rail ───────────────────────────────────────── */}
+        <div style={{ paddingTop: 4 }}>
+          <MissionRail done={filedToday} goal={DAILY_GOAL} />
+        </div>
       </div>
 
       <BrainPopup
         open={brainOpen}
         onClose={() => setBrainOpen(false)}
         seed={1337}
-        programDay={58}
+        programDay={PROGRAM_DAY}
         interviews={3}
         absenceDays={0}
-        stats={{ applications: 38, outreach: 21, daysActive: 24, streak }}
+        stats={{ applications: 38, outreach: 21, daysActive: 24, streak: STREAK }}
       />
 
       <PostApplicationPopup
@@ -158,7 +160,7 @@ export default function EngagementDashboardPreview() {
         onClose={() => setPopupOpen(false)}
         count={filedToday}
         goal={DAILY_GOAL}
-        streak={streak}
+        streak={STREAK}
       />
     </DashboardLayout>
   );

@@ -29,13 +29,18 @@ export interface PulsingBrainIconProps {
   streak: number;
   onClick: () => void;
   size?: number;
+  /** 'chip' is the standalone circle. 'inline' is the bare glyph that sits
+   *  at the end of a heading, as in the reference — no disc, no border,
+   *  and the pulse is a soft halo behind the glyph instead of a ring. */
+  variant?: 'chip' | 'inline';
 }
 
-export const PulsingBrainIcon: React.FC<PulsingBrainIconProps> = ({ streak, onClick, size = 34 }) => {
+export const PulsingBrainIcon: React.FC<PulsingBrainIconProps> = ({ streak, onClick, size = 34, variant = 'chip' }) => {
   const tier = streakTier(streak);
   const color = TIER_COLOR[tier] ?? warm.colors.accentPetrol;
   const duration = TIER_DURATION_S[tier];
   const reduced = prefersReducedMotion();
+  const inline = variant === 'inline';
 
   return (
     <button
@@ -44,17 +49,20 @@ export const PulsingBrainIcon: React.FC<PulsingBrainIconProps> = ({ streak, onCl
       className="tap-target"
       style={{
         position: 'relative', width: size, height: size, borderRadius: '50%',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: `${color}15`, border: `1px solid ${color}30`, cursor: 'pointer', flexShrink: 0,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        background: inline ? 'transparent' : `${color}15`,
+        border: inline ? 'none' : `1px solid ${color}30`,
+        padding: 0, cursor: 'pointer', flexShrink: 0, verticalAlign: 'middle',
       }}
     >
       <span
         style={{
-          position: 'absolute', inset: 0, borderRadius: '50%', background: color, opacity: 0.35,
+          position: 'absolute', inset: inline ? -2 : 0, borderRadius: '50%', background: color,
+          opacity: inline ? 0.22 : 0.35,
           animation: reduced ? 'none' : `brain-pulse-ring ${duration}s ease-out infinite`,
         }}
       />
-      <Brain size={Math.round(size * 0.5)} color={color} style={{ position: 'relative', zIndex: 1 }} />
+      <Brain size={Math.round(size * (inline ? 0.86 : 0.5))} color={color} style={{ position: 'relative', zIndex: 1 }} />
       <style>{`
         @keyframes brain-pulse-ring {
           0% { transform: scale(0.85); opacity: 0.45; }
