@@ -28,6 +28,8 @@ export interface TreeAvatarProps {
   applications: number;
   /** Total interviews landed — one piece of fruit each. */
   interviews: number;
+  /** Total outreach sent — one blossom each. Blossom precedes fruit. */
+  outreach?: number;
   /** Consecutive active days. Grows flowers, saturates the canopy, lifts
    *  a warm halo. Continuous — for tiered UI copy see streakTier(). */
   streak: number;
@@ -176,7 +178,7 @@ function buildFace(
   }
 }
 
-export function TreeAvatar({ seed, day, applications, interviews, streak, absenceDays, size = 320, showCaption = true }: TreeAvatarProps) {
+export function TreeAvatar({ seed, day, applications, interviews, outreach = 0, streak, absenceDays, size = 320, showCaption = true }: TreeAvatarProps) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
   const tree = useMemo<GrowthTree>(() => buildTree(seed), [seed]);
   const fitScale = useMemo(() => computeFitScale(tree), [tree]);
@@ -185,6 +187,7 @@ export function TreeAvatar({ seed, day, applications, interviews, streak, absenc
   const treeWholeRef = useRef<SVGGElement>(null);
   const branchesRef = useRef<SVGGElement>(null);
   const leavesRef = useRef<SVGGElement>(null);
+  const blossomsRef = useRef<SVGGElement>(null);
   const fruitsRef = useRef<SVGGElement>(null);
   const faceRef = useRef<SVGGElement>(null);
   const flowersRef = useRef<SVGGElement>(null);
@@ -199,14 +202,15 @@ export function TreeAvatar({ seed, day, applications, interviews, streak, absenc
 
   useEffect(() => {
     const branchesG = branchesRef.current, leavesG = leavesRef.current, fruitsG = fruitsRef.current;
+    const blossomsG = blossomsRef.current;
     const faceG = faceRef.current, flowersG = flowersRef.current, glowG = glowRef.current, wholeG = treeWholeRef.current;
-    if (!branchesG || !leavesG || !fruitsG || !faceG || !flowersG || !glowG || !wholeG) return;
+    if (!branchesG || !leavesG || !fruitsG || !blossomsG || !faceG || !flowersG || !glowG || !wholeG) return;
 
     const t = clamp(day / 90, 0, 1);
     const streakFactor = clamp(streak / 10, 0, 1);
     const sleepFactor = clamp(absenceDays / 7, 0, 1);
 
-    [branchesG, leavesG, fruitsG, faceG, flowersG, glowG].forEach(g => { while (g.firstChild) g.removeChild(g.firstChild); });
+    [branchesG, leavesG, blossomsG, fruitsG, faceG, flowersG, glowG].forEach(g => { while (g.firstChild) g.removeChild(g.firstChild); });
     wholeG.classList.toggle('gt-sleepy', sleepFactor >= 0.5);
 
     const leafSaturate = (1 - sleepFactor * 0.82) * (1 + streakFactor * 0.55);
@@ -269,6 +273,21 @@ export function TreeAvatar({ seed, day, applications, interviews, streak, absenc
     }
     if (lastLeafEl) (lastLeafEl.firstChild as SVGGElement).classList.add('gt-leaf-newest');
 
+    let shownBlossom = 0;
+    let lastBlossomEl: SVGGElement | null = null;
+    for (let i = 0; i < tree.blossomSlots.length && shownBlossom < outreach; i++) {
+      const slot = tree.blossomSlots[i];
+      const g = grown[slot.branch];
+      if (g < 0) continue;
+      const p = leafPoint(tree.branches[slot.branch], slot, g);
+      const use = makeUse(uid, 'blossom', p.x, p.y, slot.rot, 1);
+      use.setAttribute('class', 'gt-blossom');
+      blossomsG.appendChild(use);
+      shownBlossom++;
+      lastBlossomEl = use;
+    }
+    if (lastBlossomEl) (lastBlossomEl.firstChild as SVGGElement).classList.add('gt-leaf-newest');
+
     let shownFruit = 0;
     let lastFruitEl: SVGGElement | null = null;
     for (let fi = 0; fi < tree.fruitSlots.length && shownFruit < interviews; fi++) {
@@ -320,11 +339,12 @@ export function TreeAvatar({ seed, day, applications, interviews, streak, absenc
     if (captionDayRef.current) captionDayRef.current.textContent = String(Math.floor(day));
     if (captionStageRef.current) captionStageRef.current.textContent = stageName(t);
     if (captionCountRef.current) {
-      captionCountRef.current.textContent = interviews > 0
-        ? `${shownFruit}/${interviews} fruit ripe · ${shownLeaves}/${applications} leaves shown`
-        : `${shownLeaves}/${applications} leaves shown`;
+      const parts = [`${shownLeaves}/${applications} leaves`];
+      if (outreach > 0) parts.push(`${shownBlossom}/${outreach} blossom`);
+      if (interviews > 0) parts.push(`${shownFruit}/${interviews} fruit`);
+      captionCountRef.current.textContent = parts.join(' · ');
     }
-  }, [tree, uid, day, applications, interviews, streak, absenceDays]);
+  }, [tree, uid, day, applications, interviews, outreach, streak, absenceDays]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
@@ -392,6 +412,17 @@ export function TreeAvatar({ seed, day, applications, interviews, streak, absenc
             </g>
             <circle cx="0" cy="0" r={1.7} fill="#F2C230" />
           </symbol>
+          {/* Outreach blossom. Five soft petals, deliberately unlike both
+              the leaves (green, pointed) and the grass flowers (the seed's
+              own species), so three different things never read as one. */}
+          <symbol id={`${uid}-blossom`} viewBox="-7 -7 14 14">
+            <g fill="#F4B8C8">
+              {[0, 72, 144, 216, 288].map(deg => (
+                <ellipse key={deg} rx={2.1} ry={3.4} transform={`rotate(${deg}) translate(0,-3.1)`} />
+              ))}
+            </g>
+            <circle cx="0" cy="0" r={1.8} fill="#F2C230" />
+          </symbol>
           <symbol id={`${uid}-leafShape`} viewBox="-9 -14 18 28">
             <path d="M0 -14 C 7 -11 8 3 0 14 C -8 3 -7 -11 0 -14 Z" />
             <path className="gt-leaf-vein" d="M0 -9 L0 9" stroke="rgba(0,0,0,0.16)" strokeWidth={1} fill="none" />
@@ -441,6 +472,7 @@ export function TreeAvatar({ seed, day, applications, interviews, streak, absenc
             <g ref={branchesRef} />
             <g ref={faceRef} />
             <g ref={leavesRef} />
+            <g ref={blossomsRef} />
             <g ref={fruitsRef} />
           </g>
         </g>

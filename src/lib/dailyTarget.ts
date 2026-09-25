@@ -38,3 +38,22 @@ export function effectiveTarget(committed: number, filed: number): number {
 export function pastCeiling(filed: number): number {
   return Math.max(0, filed - TARGET_MAX);
 }
+
+/* ── The one-time commit explainer ────────────────────────────────────
+   Shown on the very first Set, ever, and never again: a dialog that
+   appears every morning stops being a commitment and becomes a doorway
+   you shove through without reading.
+
+   Browser-local for now. Server-backed this belongs on the profile, so
+   it survives a new device — seeing the explainer again two months in
+   would be a small insult.
+*/
+const COMMIT_SEEN_KEY = 'jobhub_target_commit_explained_v1';
+
+export function hasSeenCommitExplainer(): boolean {
+  try { return localStorage.getItem(COMMIT_SEEN_KEY) === 'true'; } catch { return false; }
+}
+
+export function markCommitExplainerSeen(): void {
+  try { localStorage.setItem(COMMIT_SEEN_KEY, 'true'); } catch { /* private mode, no harm */ }
+}

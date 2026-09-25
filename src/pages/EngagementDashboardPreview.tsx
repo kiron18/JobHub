@@ -27,8 +27,11 @@ import { StreakHeading } from '../components/engagement/StreakHeading';
 import { TodaysRitual } from '../components/engagement/TodaysRitual';
 import { DayCounter, type DayState } from '../components/engagement/DayCounter';
 import { ApplicationSquares } from '../components/engagement/ApplicationSquares';
-import { TARGET_MIN, TARGET_MAX, effectiveTarget } from '../lib/dailyTarget';
+import {
+  TARGET_MIN, TARGET_MAX, effectiveTarget, hasSeenCommitExplainer, markCommitExplainerSeen,
+} from '../lib/dailyTarget';
 import { PostApplicationPopup } from '../components/engagement/PostApplicationPopup';
+import { TargetCommitDialog, TargetUndoDialog } from '../components/engagement/TargetDialogs';
 
 const C = warm.colors;
 
@@ -49,6 +52,27 @@ export default function EngagementDashboardPreview() {
   const [popupOpen, setPopupOpen] = useState(false);
   const [committedTarget, setCommittedTarget] = useState(TARGET_MIN);
   const [targetLocked, setTargetLocked] = useState(false);
+  const [undoAvailable, setUndoAvailable] = useState(true);
+  const [commitDialog, setCommitDialog] = useState(false);
+  const [undoDialog, setUndoDialog] = useState(false);
+
+  /* First Set ever gets the explainer; every Set after that is instant.
+     The flag is per browser here — server-backed it belongs beside the
+     daily target row. */
+  const handleSet = () => {
+    if (hasSeenCommitExplainer()) setTargetLocked(true);
+    else setCommitDialog(true);
+  };
+  const confirmCommit = () => {
+    markCommitExplainerSeen();
+    setCommitDialog(false);
+    setTargetLocked(true);
+  };
+  const confirmUndo = () => {
+    setUndoDialog(false);
+    setUndoAvailable(false);
+    setTargetLocked(false);
+  };
 
   // The committed number is a floor: doing more than you planned raises it,
   // up to the ceiling.
@@ -73,8 +97,10 @@ export default function EngagementDashboardPreview() {
               target={target}
               filed={filedToday}
               locked={targetLocked}
+              undoAvailable={undoAvailable}
               onTargetChange={setCommittedTarget}
-              onSet={() => setTargetLocked(true)}
+              onSet={handleSet}
+              onUndo={() => setUndoDialog(true)}
               detail="Pulled from your target-role list."
             />
           </div>
@@ -153,7 +179,14 @@ export default function EngagementDashboardPreview() {
         programDay={PROGRAM_DAY}
         interviews={3}
         absenceDays={0}
-        stats={{ applications: 38, outreach: 21, daysActive: 24, streak: STREAK }}
+        stats={{ applications: 38, outreach: 21, daysActive: 14, streak: STREAK }}
+      />
+
+      <TargetCommitDialog open={commitDialog} target={committedTarget} onConfirm={confirmCommit} />
+      <TargetUndoDialog
+        open={undoDialog}
+        onConfirm={confirmUndo}
+        onCancel={() => setUndoDialog(false)}
       />
 
       <PostApplicationPopup

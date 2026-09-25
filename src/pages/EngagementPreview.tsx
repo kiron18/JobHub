@@ -65,6 +65,7 @@ export default function EngagementPreview() {
   const [splashOpen, setSplashOpen] = useState(false);
   const [target, setTarget] = useState(TARGET_MIN);
   const [targetLocked, setTargetLocked] = useState(false);
+  const [undoAvailable, setUndoAvailable] = useState(true);
 
   const slider = (value: number, set: (n: number) => void, min: number, max: number) => (
     <input type="range" min={min} max={max} value={value} onChange={e => set(Number(e.target.value))} style={{ width: '100%', accentColor: C.accentPetrol }} />
@@ -93,7 +94,7 @@ export default function EngagementPreview() {
                 <PulsingBrainIcon streak={streak} onClick={() => setPopupOpen(true)} />
               </div>
               <div style={{ padding: '28px 18px', borderRadius: 14, background: C.bgAlt, border: `1px solid ${C.borderWhisper}`, display: 'flex', justifyContent: 'center' }}>
-                <TreeAvatar seed={seed} day={programDay} applications={applications} interviews={interviews} streak={streak} absenceDays={absenceDays} size={300} />
+                <TreeAvatar seed={seed} day={programDay} applications={applications} interviews={interviews} outreach={outreach} streak={streak} absenceDays={absenceDays} size={300} />
               </div>
             </div>
             <aside>
@@ -125,8 +126,10 @@ export default function EngagementPreview() {
             target={effectiveTarget(target, count)}
             filed={count}
             locked={targetLocked}
+            undoAvailable={undoAvailable}
             onTargetChange={setTarget}
             onSet={() => setTargetLocked(true)}
+            onUndo={() => { setTargetLocked(false); setUndoAvailable(false); }}
             detail="Pulled from your target-role list."
           />
           <div style={{ marginTop: 14 }}>

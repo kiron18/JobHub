@@ -39,6 +39,11 @@ export interface Branch {
    so far, so a leaf rides its twig outward as the twig extends and can
    appear the moment the branch starts growing rather than when it stops. */
 export interface LeafSlot { branch: number; along: number; offset: number; rot: number; birth: number; ordinal: number; }
+/* Outreach hangs on the tree as blossom. The metaphor is the honest one:
+   blossom is what comes before fruit, exactly as a conversation is what
+   comes before an interview. A tree heavy with leaves and no blossom is a
+   member sending applications into a void, and it should look like that. */
+export type BlossomSlot = LeafSlot;
 export interface FruitSlot { branch: number; dx: number; dy: number; rot: number; scale: number; birth: number; }
 export interface FlowerSlot { x: number; y: number; stemLen: number; rot: number; scale: number; }
 
@@ -48,6 +53,7 @@ export type FlowerSpecies = 'dandelion' | 'marigold' | 'daisy';
 export interface GrowthTree {
   branches: Branch[];
   leafSlots: LeafSlot[];
+  blossomSlots: BlossomSlot[];
   fruitSlots: FruitSlot[];
   flowerSlots: FlowerSlot[];
   leafColor: string;
@@ -79,6 +85,8 @@ const GROW_START = 0;
 const CANOPY_STEP = 0.055;
 export const BRANCH_DUR = 0.06;
 const SLOTS_PER_BRANCH = 7;
+/** Blossom is rarer than leaf, so fewer slots per branch. */
+const BLOSSOM_SLOTS_PER_BRANCH = 2;
 /** Branches thinner than this carry leaves. The woody limbs stay bare. */
 const LEAF_BEARING_WIDTH = 12;
 /** Births within this much of each other count as the same cohort when
@@ -98,6 +106,7 @@ export const SYMBOL_BOX: Record<string, [number, number, number, number]> = {
   'flower-dandelion': [-6, -6, 12, 12],
   'flower-marigold': [-6, -6, 12, 12],
   'flower-daisy': [-6, -6, 12, 12],
+  blossom: [-7, -7, 14, 14],
 };
 
 const FRUIT_SPECIES: FruitSpecies[] = ['apple', 'banana', 'pineapple', 'mango', 'orange', 'grapes'];
@@ -149,6 +158,7 @@ export function buildTree(seedNum: number): GrowthTree {
   const rng = mulberry32(seedNum >>> 0);
   const branches: Branch[] = [];
   let leafSlots: LeafSlot[] = [];
+  let blossomSlots: BlossomSlot[] = [];
   const fruitTips: { branch: number; birth: number }[] = [];
 
   const barkHue = 22 + rng() * 20, barkSat = 30 + rng() * 16;
@@ -191,6 +201,17 @@ export function buildTree(seedNum: number): GrowthTree {
           ordinal: s,
         });
       }
+      for (let s = 0; s < BLOSSOM_SLOTS_PER_BRANCH; s++) {
+        blossomSlots.push({
+          branch: branchIndex,
+          along: 0.34 + rng() * 0.6,
+          offset: (4 + rng() * 10) * (rng() < 0.5 ? -1 : 1),
+          rot: rng() * 360,
+          birth,
+          ordinal: s,
+        });
+      }
+
       /* Every leaf-bearing branch can also hold fruit, not just the
          outermost tips. Interviews are rare and hard-won, and the tips
          are the last thing to grow — restricting fruit to them meant the
@@ -262,6 +283,8 @@ export function buildTree(seedNum: number): GrowthTree {
   const bucket = (birth: number) => Math.floor(birth / COHORT_BUCKET);
   leafSlots = seededShuffle(leafSlots, rng)
     .sort((a, b) => (a.ordinal - b.ordinal) || (bucket(a.birth) - bucket(b.birth)));
+  blossomSlots = seededShuffle(blossomSlots, rng)
+    .sort((a, b) => (a.ordinal - b.ordinal) || (bucket(a.birth) - bucket(b.birth)));
 
   let fruitSlots: FruitSlot[] = fruitTips.map(node => ({
     branch: node.branch,
@@ -299,7 +322,7 @@ export function buildTree(seedNum: number): GrowthTree {
   };
 
   return {
-    branches, leafSlots, fruitSlots, flowerSlots,
+    branches, leafSlots, blossomSlots, fruitSlots, flowerSlots,
     leafColor: `hsl(${leafHue.toFixed(1)} ${leafSat.toFixed(1)}% ${leafLight.toFixed(1)}%)`,
     species, flowerSpecies, persona,
   };

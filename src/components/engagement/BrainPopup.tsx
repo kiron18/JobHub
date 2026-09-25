@@ -126,6 +126,7 @@ export const BrainPopup: React.FC<BrainPopupProps> = ({ open, onClose, seed, pro
                 day={programDay}
                 applications={stats.applications}
                 interviews={interviews}
+                outreach={stats.outreach}
                 streak={stats.streak}
                 absenceDays={absenceDays}
                 size={220}
@@ -140,7 +141,9 @@ export const BrainPopup: React.FC<BrainPopupProps> = ({ open, onClose, seed, pro
             </div>
 
             <p style={{ margin: '14px 0 0', fontSize: 11.5, lineHeight: 1.55, color: warm.colors.textMuted, textAlign: 'center' }}>
-              Every application is a leaf. Every interview is fruit. A streak grows flowers and keeps the canopy bright — miss a week and it fades, but never dies.
+              Applications are leaves. Outreach is blossom — and blossom is what comes before
+              fruit, which is every interview. A streak grows flowers in the grass and keeps the
+              canopy bright; go quiet and it fades, but it never dies.
             </p>
           </motion.div>
         </motion.div>
