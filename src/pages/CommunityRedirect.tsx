@@ -29,7 +29,7 @@ const SKOOL_URL =
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
 
 /** Where the click came from. Unknown is a real answer worth counting. */
-const KNOWN_SOURCES = ['confirm', 'chat', 'email', 'dm', 'post', 'profile', 'app', 'receipts'];
+const KNOWN_SOURCES = ['confirm', 'chat', 'email', 'dm', 'post', 'profile', 'app', 'receipts', 'classroom'];
 
 export default function CommunityRedirect() {
   useEffect(() => {

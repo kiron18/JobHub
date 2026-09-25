@@ -392,3 +392,15 @@ export function trackJobMatchFailed(errorType: string, errorCode: string | numbe
 export function trackApplicationFailed(stage: string, errorType: string, errorCode: string | number | undefined, retryCount = 0) {
   posthog.capture('application_failed', { stage, error_type: errorType, error_code: errorCode ?? undefined, retry_count: retryCount });
 }
+
+// ── Classroom (/classroom, public) ────────────────────────────────────────────
+// Opened vs marked-done per module is the drop-off curve for the course. A
+// module many people open and few finish is the one to re-cut, not re-promote.
+
+export function trackClassroomModuleOpened(slug: string) {
+  posthog.capture('classroom_module_opened', { slug });
+}
+
+export function trackClassroomModuleDone(slug: string) {
+  posthog.capture('classroom_module_done', { slug });
+}

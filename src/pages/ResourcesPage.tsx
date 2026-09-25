@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, ShieldCheck, Building2, HeartHandshake, ArrowRight } from 'lucide-react';
+import { Mail, ShieldCheck, Building2, HeartHandshake, ArrowRight, GraduationCap } from 'lucide-react';
 import { warm } from '../lib/theme/warmTokens';
 import { rise, stagger, SPRING, t, DUR } from '../lib/theme/motion';
 
@@ -24,6 +24,13 @@ interface Resource {
 }
 
 const RESOURCES: Resource[] = [
+  {
+    to: '/classroom',
+    icon: GraduationCap,
+    title: 'Classroom',
+    body: 'The full course in eight short modules: resume, cover letters, LinkedIn, networking, interviews, and how it all runs as one system.',
+    cue: 'Learning how hiring in Australia actually works, one module at a time',
+  },
   {
     to: '/email-templates',
     icon: Mail,

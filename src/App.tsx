@@ -87,6 +87,7 @@ const VisaSponsorsPage = React.lazy(() =>
 const SessionSignupPage = React.lazy(() => import('./pages/SessionSignupPage'));
 const ClaimPage = React.lazy(() => import('./pages/ClaimPage'));
 const FreeResourcePage = React.lazy(() => import('./pages/FreeResourcePage'));
+const ClassroomPage = React.lazy(() => import('./pages/ClassroomPage'));
 const GapReportPage = React.lazy(() => import('./pages/GapReportPage'));
 const CommunityRedirect = React.lazy(() => import('./pages/CommunityRedirect'));
 const BookCallPage = React.lazy(() =>
@@ -609,6 +610,18 @@ function App() {
               <Route path="/free/:slug" element={
                 <React.Suspense fallback={null}>
                   <FreeResourcePage />
+                </React.Suspense>
+              } />
+              {/* The free course. Public: the videos are on YouTube anyway, and
+                  this is the page they link back to. */}
+              <Route path="/classroom" element={
+                <React.Suspense fallback={null}>
+                  <ClassroomPage />
+                </React.Suspense>
+              } />
+              <Route path="/classroom/:slug" element={
+                <React.Suspense fallback={null}>
+                  <ClassroomPage />
                 </React.Suspense>
               } />
               {/* Dropped in the Meet chat partway through the session. Only
