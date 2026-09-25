@@ -92,7 +92,12 @@ const LEAF_BEARING_WIDTH = 12;
 /** Births within this much of each other count as the same cohort when
  *  deciding which slots fill first. See the sort in buildTree. */
 const COHORT_BUCKET = 0.05;
-export const LEAF_RENDER_SCALE = 0.85;
+/* Leaf/blossom render scale. These were 0.85 and 1.0, which at the 220px
+   the popup renders the tree into came out as specks — the canopy read as
+   noise rather than as leaves. Sized up until each one is individually
+   legible at popup size without the canopy turning into a solid mass. */
+export const LEAF_RENDER_SCALE = 1.35;
+export const BLOSSOM_RENDER_SCALE = 1.5;
 const FIT_MARGIN = 14;
 
 export const SYMBOL_BOX: Record<string, [number, number, number, number]> = {
@@ -307,7 +312,7 @@ export function buildTree(seedNum: number): GrowthTree {
   for (let fs = 0; fs < MAX_FLOWER_SLOTS; fs++) {
     let fsx = BASE_X + (rng() - 0.5) * 168;
     if (Math.abs(fsx - BASE_X) < 20) fsx += fsx < BASE_X ? -22 : 22;
-    flowerSlots.push({ x: fsx, y: BASE_Y + 6 + rng() * 16, stemLen: 9 + rng() * 6, rot: (rng() - 0.5) * 24, scale: 1.3 + rng() * 0.6 });
+    flowerSlots.push({ x: fsx, y: BASE_Y + 6 + rng() * 16, stemLen: 11 + rng() * 7, rot: (rng() - 0.5) * 24, scale: 1.9 + rng() * 0.8 });
   }
   flowerSlots = seededShuffle(flowerSlots, rng);
 

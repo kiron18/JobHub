@@ -1,7 +1,8 @@
-import React from 'react';
-import { Minus, Plus, Lock, RotateCcw } from 'lucide-react';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Minus, Plus, Lock, RotateCcw, Info } from 'lucide-react';
 import { warm } from '../../lib/theme/warmTokens';
-import { DUR, t } from '../../lib/theme/motion';
+import { DUR, EASE, shake, t } from '../../lib/theme/motion';
 import { TARGET_MIN, TARGET_MAX } from '../../lib/dailyTarget';
 
 /* ── TodaysRitual ──────────────────────────────────────────────────────
@@ -68,15 +69,78 @@ const StepButton: React.FC<{
   </button>
 );
 
+/* The ceiling explainer. It only exists once someone has actually pushed
+   against the limit — showing it from the start would be answering a
+   question nobody has asked yet. Every further press shakes it, because
+   the press did something even though the number did not move. */
+const CeilingNote: React.FC<{ bumps: number }> = ({ bumps }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <span style={{ position: 'relative', display: 'inline-flex' }}>
+      <motion.button
+        type="button"
+        aria-label={`Why ${TARGET_MAX} is the maximum`}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        onClick={() => setOpen(o => !o)}
+        /* Remounted on every bump so the shake replays rather than
+           playing once and sitting still for later presses. */
+        key={bumps}
+        variants={shake}
+        initial="still"
+        animate="shake"
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          width: 20, height: 20, padding: 0, borderRadius: '50%',
+          border: 'none', background: 'transparent',
+          color: warm.colors.accentGold, cursor: 'help', flexShrink: 0,
+        }}
+      >
+        <Info size={16} />
+      </motion.button>
+      <AnimatePresence>
+        {open && (
+          <motion.span
+            role="tooltip"
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 2, transition: { duration: DUR.instant } }}
+            transition={{ duration: DUR.fast, ease: EASE.out }}
+            style={{
+              position: 'absolute', top: 'calc(100% + 8px)', left: -8, zIndex: 20,
+              width: 250, padding: '10px 12px', borderRadius: 10,
+              background: warm.colors.bgDeep, color: warm.colors.textOnDeep,
+              ...warm.text.small, lineHeight: 1.5, fontWeight: warm.weight.regular,
+              boxShadow: warm.shadow.lifted, pointerEvents: 'none',
+            }}
+          >
+            Ten is the daily maximum. This program runs on high-quality applications
+            sent consistently — not on blasting out a hundred in one day, which is
+            how quality drops and momentum dies.
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </span>
+  );
+};
+
 export const TodaysRitual: React.FC<TodaysRitualProps> = ({
   target, filed, locked, undoAvailable, onTargetChange, onSet, onUndo, detail,
 }) => {
   const overCeiling = filed > TARGET_MAX;
+  /* Counts presses of + that had nowhere to go. Drives the shake, and its
+     first increment is what reveals the note at all. */
+  const [bumps, setBumps] = useState(0);
+  const atCeiling = target >= TARGET_MAX;
   // You cannot un-apply, so the floor of the stepper rises with the work
   // already done.
   const floor = Math.max(TARGET_MIN, Math.min(filed, TARGET_MAX));
   const canDown = !locked && target > floor;
-  const canUp = !locked && target < TARGET_MAX;
+  // Pressable at the ceiling on purpose: a dead button teaches nothing,
+  // so the press bumps the note instead of moving the number.
+  const canUp = !locked;
 
   return (
     <div>
@@ -99,6 +163,7 @@ export const TodaysRitual: React.FC<TodaysRitualProps> = ({
         </p>
       ) : (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          {atCeiling && bumps > 0 && <CeilingNote bumps={bumps} />}
           <span style={{ ...warm.text.body, fontWeight: warm.weight.semibold, color: warm.colors.textPrimary }}>Apply to</span>
 
           {locked ? (
@@ -122,7 +187,11 @@ export const TodaysRitual: React.FC<TodaysRitualProps> = ({
               }}>
                 {target}
               </span>
-              <StepButton label="One more role" enabled={canUp} onClick={() => onTargetChange(target + 1)}>
+              <StepButton
+                label={atCeiling ? `${TARGET_MAX} is the daily maximum` : 'One more role'}
+                enabled={canUp}
+                onClick={() => (atCeiling ? setBumps(b => b + 1) : onTargetChange(target + 1))}
+              >
                 <Plus size={13} />
               </StepButton>
             </span>

@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, Briefcase, CalendarDays, Flame } from 'lucide-react';
+import { X, Leaf, Flower2, CalendarDays, Flame } from 'lucide-react';
 import { warm } from '../../lib/theme/warmTokens';
 import { TreeAvatar } from './TreeAvatar';
 import { streakTier, type StreakTier } from '../../lib/growthTree';
@@ -129,13 +129,13 @@ export const BrainPopup: React.FC<BrainPopupProps> = ({ open, onClose, seed, pro
                 outreach={stats.outreach}
                 streak={stats.streak}
                 absenceDays={absenceDays}
-                size={220}
+                size={250}
               />
             </div>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              <StatCard icon={<Briefcase size={12} />} label="Applications" value={stats.applications} color={warm.colors.accentPetrol} />
-              <StatCard icon={<Send size={12} />} label="Outreach" value={stats.outreach} color={warm.colors.accentPetrol} />
+              <StatCard icon={<Leaf size={12} />} label="Applications" value={stats.applications} color="#4E8B4A" />
+              <StatCard icon={<Flower2 size={12} />} label="Outreach" value={stats.outreach} color="#D98BA4" />
               <StatCard icon={<CalendarDays size={12} />} label="Days active" value={stats.daysActive} color={warm.colors.accentPetrol} />
               <StatCard icon={<Flame size={12} />} label="Streak" value={stats.streak} color={TIER_COLOR[tier]} />
             </div>

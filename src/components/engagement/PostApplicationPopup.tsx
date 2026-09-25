@@ -137,33 +137,35 @@ export const PostApplicationPopup: React.FC<PostApplicationPopupProps> = ({
                 ...warm.text.h3, margin: '0 0 12px', textAlign: 'center',
                 fontWeight: warm.weight.bold, color: warm.colors.textPrimary,
               }}>
-                That one counts. Here's why we stop at ten.
+                Great job — you've sent ten high-quality applications
               </p>
-              <p style={{ ...warm.text.small, margin: '0 0 10px', lineHeight: 1.6, color: warm.colors.textSecondary }}>
-                Every application you send is logged — nothing is lost and
-                nothing is being taken away from you.
+              <p style={{ ...warm.text.small, margin: '0 0 12px', lineHeight: 1.6, color: warm.colors.textSecondary }}>
+                We're pausing your counter here. The system is built on high-quality
+                applications sent consistently, and in our experience this is where
+                fatigue starts setting in — the tailoring gets thinner, the research
+                gets skipped, and the tiredness that builds tonight is exactly what
+                turns tomorrow into a day off.
               </p>
               <p style={{ ...warm.text.small, margin: '0 0 14px', lineHeight: 1.6, color: warm.colors.textSecondary }}>
-                But the eleventh application of a sitting is almost never as good
-                as the first. The tailoring gets thinner, the research gets
-                skipped, and the tiredness that builds tonight is exactly what
-                turns tomorrow into a day off. That is how most searches die —
-                not from doing too little, but from one enormous day followed by
-                a week of nothing.
+                You may feel fine right now, but powering through more than you need to
+                can leave you emotionally drained in three days — which is not where we
+                want you to be.
               </p>
               <p style={{
-                margin: '0 0 14px', padding: '12px 14px', borderRadius: 10,
-                background: warm.colors.accentGoldSoft,
-                borderLeft: `3px solid ${warm.colors.accentGoldBright}`,
-                ...warm.text.small, lineHeight: 1.55,
-                fontWeight: warm.weight.semibold, color: warm.colors.textPrimary,
+                ...warm.text.small, margin: '0 0 8px',
+                fontWeight: warm.weight.bold, color: warm.colors.textPrimary,
               }}>
-                Ten a day for ten days beats fifty today and nothing for the next nine.
+                Still got energy and drive? Try one of these.
               </p>
-              <p style={{ ...warm.text.small, margin: '0 0 18px', lineHeight: 1.6, color: warm.colors.textSecondary }}>
-                Still got energy? Follow up on one you sent last week. That is
-                worth more than an eleventh application.
-              </p>
+              <ul style={{
+                ...warm.text.small, margin: '0 0 18px', paddingLeft: 18,
+                lineHeight: 1.7, color: warm.colors.textSecondary,
+              }}>
+                <li>Follow up on older applications</li>
+                <li>Find networking events near you</li>
+                <li>Reconnect with your university professors</li>
+                <li>Record a one-minute video to attach to cover letters and stand out</li>
+              </ul>
               <button
                 onClick={onClose}
                 style={{
@@ -229,9 +231,21 @@ export const PostApplicationPopup: React.FC<PostApplicationPopupProps> = ({
             {/* The quiz. Same moment, below a hairline — never its own screen. */}
             <div style={{ borderTop: `1px solid ${warm.colors.borderWhisper}`, paddingTop: 14 }}>
               <p style={{ ...warm.text.micro, margin: '0 0 8px', color: warm.colors.accentGoldBright }}>
-                While you're here
+                Pop quiz
               </p>
-              <p style={{ margin: '0 0 10px', fontSize: 13.5, fontWeight: 700, lineHeight: 1.4, color: warm.colors.textPrimary }}>
+              {/* The setting, before the question. A question with no
+                  setting makes the reader guess whether this is about a
+                  resume, a cover letter or a phone screen. */}
+              <p style={{
+                ...warm.text.small, margin: '0 0 4px',
+                fontWeight: warm.weight.semibold, color: warm.colors.textMuted,
+              }}>
+                {quiz.context}
+              </p>
+              <p style={{
+                ...warm.text.small, margin: '0 0 10px',
+                fontWeight: warm.weight.bold, lineHeight: 1.45, color: warm.colors.textPrimary,
+              }}>
                 {quiz.prompt}
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

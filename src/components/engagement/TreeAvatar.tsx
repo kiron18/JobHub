@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef } from 'react';
 import {
-  BASE_X, BASE_Y, BRANCH_DUR, LEAF_RENDER_SCALE, SYMBOL_BOX,
+  BASE_X, BASE_Y, BRANCH_DUR, LEAF_RENDER_SCALE, BLOSSOM_RENDER_SCALE, SYMBOL_BOX,
   buildTree, clamp, computeFitScale, easeOutCubic, leafPoint, stageName,
   type GrowthTree, type TreePersona,
 } from '../../lib/growthTree';
@@ -280,7 +280,7 @@ export function TreeAvatar({ seed, day, applications, interviews, outreach = 0, 
       const g = grown[slot.branch];
       if (g < 0) continue;
       const p = leafPoint(tree.branches[slot.branch], slot, g);
-      const use = makeUse(uid, 'blossom', p.x, p.y, slot.rot, 1);
+      const use = makeUse(uid, 'blossom', p.x, p.y, slot.rot, BLOSSOM_RENDER_SCALE);
       use.setAttribute('class', 'gt-blossom');
       blossomsG.appendChild(use);
       shownBlossom++;

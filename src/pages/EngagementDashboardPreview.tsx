@@ -19,8 +19,9 @@
  * Not linked from anywhere in the app's nav. Visit the URL directly.
  */
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, ExternalLink, Clock } from 'lucide-react';
+import { ChevronRight, ExternalLink, Clock } from 'lucide-react';
 import { DashboardLayout } from '../layouts/DashboardLayout';
+import { HowToCopyJobAd } from '../components/strategy/HowToCopyJobAd';
 import { warm } from '../lib/theme/warmTokens';
 import { BrainPopup } from '../components/engagement/BrainPopup';
 import { StreakHeading } from '../components/engagement/StreakHeading';
@@ -115,13 +116,11 @@ export default function EngagementDashboardPreview() {
             background: C.bgSurface, border: `1px solid ${C.borderWhisper}`,
             borderRadius: 16, padding: '24px 28px', marginBottom: 26,
           }}>
-            <button style={{
-              display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14,
-              background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-              color: C.accentPetrol, ...warm.text.small, fontWeight: warm.weight.bold,
-            }}>
-              <ChevronDown size={16} /> What exactly should I copy?
-            </button>
+            {/* The real component, not a mock button — it plays the Seek
+                selection animation, which the stand-in did not. */}
+            <div style={{ marginBottom: 14 }}>
+              <HowToCopyJobAd />
+            </div>
             <div style={{
               height: 130, borderRadius: 10, border: `1px solid ${C.borderDefined}`,
               padding: '13px 15px', marginBottom: 18, ...warm.text.body, color: C.textMuted,
