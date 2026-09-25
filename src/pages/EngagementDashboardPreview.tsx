@@ -33,6 +33,7 @@ import {
 } from '../lib/dailyTarget';
 import { PostApplicationPopup } from '../components/engagement/PostApplicationPopup';
 import { TargetCommitDialog, TargetUndoDialog } from '../components/engagement/TargetDialogs';
+import { useDailyTarget } from '../hooks/useDailyTarget';
 
 const C = warm.colors;
 
@@ -49,40 +50,63 @@ function todayState(done: number, goal: number): DayState {
 
 export default function EngagementDashboardPreview() {
   const [brainOpen, setBrainOpen] = useState(false);
-  const [filedToday, setFiledToday] = useState(0);
   const [popupOpen, setPopupOpen] = useState(false);
-  const [committedTarget, setCommittedTarget] = useState(TARGET_MIN);
-  const [targetLocked, setTargetLocked] = useState(false);
-  const [undoAvailable, setUndoAvailable] = useState(true);
   const [commitDialog, setCommitDialog] = useState(false);
   const [undoDialog, setUndoDialog] = useState(false);
 
-  /* First Set ever gets the explainer; every Set after that is instant.
-     The flag is per browser here — server-backed it belongs beside the
-     daily target row. */
-  const handleSet = () => {
-    if (hasSeenCommitExplainer()) setTargetLocked(true);
-    else setCommitDialog(true);
+  /* Wired to the real endpoints when there is a session, and falling back
+     to local state when there is not — so this page demonstrates the flow
+     to a logged-out viewer and genuinely exercises the server for a
+     logged-in one. The banner says which you are looking at, because
+     "is this actually wired up?" is exactly the question a preview should
+     not leave you guessing about. */
+  const live = useDailyTarget();
+  const wired = !!live.data;
+
+  const [localCommitted, setLocalCommitted] = useState(TARGET_MIN);
+  const [localLocked, setLocalLocked] = useState(false);
+  const [localUndo, setLocalUndo] = useState(true);
+  const [localFiled, setLocalFiled] = useState(0);
+  const [localExplainerSeen, setLocalExplainerSeen] = useState(hasSeenCommitExplainer);
+
+  const committedTarget = wired ? (live.data!.committed ?? live.data!.min) : localCommitted;
+  const targetLocked = wired ? live.data!.locked : localLocked;
+  const undoAvailable = wired ? live.data!.undoAvailable : localUndo;
+  const filedToday = wired ? live.data!.filedToday : localFiled;
+  const explainerSeen = wired ? live.data!.explainerSeen : localExplainerSeen;
+  const target = wired ? live.data!.target : effectiveTarget(localCommitted, localFiled);
+
+  const setCommittedTarget = (n: number) => {
+    // While unlocked the number is just a dial; only Set commits it, so
+    // this stays local even when wired.
+    setLocalCommitted(n);
   };
+  const pendingTarget = wired ? localCommitted : committedTarget;
+
+  const commit = () => {
+    if (wired) live.setTarget.mutate(pendingTarget);
+    else setLocalLocked(true);
+  };
+  const handleSet = () => (explainerSeen ? commit() : setCommitDialog(true));
   const confirmCommit = () => {
-    markCommitExplainerSeen();
     setCommitDialog(false);
-    setTargetLocked(true);
+    if (wired) live.markExplainerSeen.mutate();
+    else { markCommitExplainerSeen(); setLocalExplainerSeen(true); }
+    commit();
   };
   const confirmUndo = () => {
     setUndoDialog(false);
-    setUndoAvailable(false);
-    setTargetLocked(false);
+    if (wired) live.useUndo.mutate();
+    else { setLocalUndo(false); setLocalLocked(false); }
   };
-
-  // The committed number is a floor: doing more than you planned raises it,
-  // up to the ceiling.
-  const target = effectiveTarget(committedTarget, filedToday);
 
   const week: DayState[] = ['goal', 'over', 'partial', 'goal', todayState(filedToday, target), 'future', 'future'];
 
+  /* Mock filing. When wired, the real count comes from the server and
+     this only opens the popup — a preview button must not invent
+     applications in someone's actual tracker. */
   const fileApplication = () => {
-    setFiledToday(n => n + 1);
+    if (!wired) setLocalFiled(n => n + 1);
     setPopupOpen(true);
   };
 
@@ -91,6 +115,23 @@ export default function EngagementDashboardPreview() {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: 28, flexWrap: 'wrap' }}>
         {/* ── The content column ─────────────────────────────────────── */}
         <div style={{ flex: '1 1 520px', maxWidth: 600, minWidth: 0 }}>
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 7, marginBottom: 14,
+            padding: '5px 11px', borderRadius: 999,
+            background: wired ? C.successSoft : C.accentGoldSoft,
+            border: `1px solid ${wired ? C.success : C.accentGoldBright}33`,
+          }}>
+            <span style={{
+              width: 7, height: 7, borderRadius: '50%',
+              background: wired ? C.success : C.accentGoldBright,
+            }} />
+            <span style={{ ...warm.text.small, fontWeight: warm.weight.semibold, color: C.textSecondary }}>
+              {wired
+                ? `Live — today's target is coming from your account (${filedToday} sent today)`
+                : live.isLoading ? 'Checking for a session…' : 'Demo — sign in to drive this from your real account'}
+            </span>
+          </div>
+
           <StreakHeading streak={STREAK} onBrainClick={() => setBrainOpen(true)} />
 
           <div style={{ marginBottom: 14 }}>
@@ -181,7 +222,7 @@ export default function EngagementDashboardPreview() {
         stats={{ applications: 38, outreach: 21, daysActive: 14, streak: STREAK }}
       />
 
-      <TargetCommitDialog open={commitDialog} target={committedTarget} onConfirm={confirmCommit} />
+      <TargetCommitDialog open={commitDialog} target={pendingTarget} onConfirm={confirmCommit} />
       <TargetUndoDialog
         open={undoDialog}
         onConfirm={confirmUndo}

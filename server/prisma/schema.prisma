@@ -109,6 +109,9 @@ model CandidateProfile {
   coverLetterFilename          String?
   coverLetterFilename2         String?
   dailyApplicationGoal         Int               @default(5)
+  /// Set the first time the daily-target commit explainer is shown. On the
+  /// profile, not in browser storage, so a new device does not replay it.
+  commitExplainerSeenAt        DateTime?
   applicationGoalType          String            @default("daily")
   dailyOutreachGoal            Int               @default(4)
   outreachGoalType             String            @default("daily")
@@ -909,6 +912,28 @@ model GoalChange {
 
   @@index([userId, createdAt])
   @@index([userId, effectiveAt])
+}
+
+/// How many applications a member committed to for one AEST day.
+///
+/// Sits on top of the program goal in services/tracker/goals.ts and never
+/// replaces it: the floor here IS that goal, so today's target can never be
+/// used to dodge a miss. Raises are automatic and lowering is not offered;
+/// `undoUsed` is the single per-day escape hatch.
+model DailyTarget {
+  id          String   @id @default(uuid())
+  userId      String
+  /// AEST midnight-UTC token, same convention as todayAEST().
+  date        DateTime
+  target      Int
+  /// True once committed. The day's undo flips it back exactly once.
+  locked      Boolean  @default(true)
+  undoUsed    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId, date])
 }
 
 model PauseWeek {

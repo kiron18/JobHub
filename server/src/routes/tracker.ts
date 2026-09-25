@@ -11,8 +11,15 @@ import {
     mondayAEST as mondayAESTShared,
     tokenToInstant,
 } from '../services/tracker/goals';
+import {
+  getDailyTargetState, setDailyTarget, useDailyUndo, markCommitExplainerSeen, DailyTargetError,
+} from '../services/tracker/dailyTarget';
 import { getMilestoneState, ackMilestone } from '../services/tracker/milestones';
 import { getCloseoutState, ackCloseout } from '../services/tracker/closeout';
+import { getOrCreateWhatsappOptInCode } from '../services/trialChallenge/engine';
+
+/** The number the WhatsApp bot links as — same one the trial challenge uses. */
+const WHATSAPP_COACH_NUMBER = '61422769597';
 
 export async function getDailyProgress(userId: string): Promise<{ appliedToday: number; goal: number }> {
   // promoteAndGetSettings applies any goal change that has become effective.
@@ -85,6 +92,39 @@ router.post('/goal', async (req: any, res: any) => {
   }
 });
 
+/* ── Today's target ───────────────────────────────────────────────────
+   Distinct from the goals endpoints above and deliberately so: the goal
+   is the program's standard and changes rarely, today's target is what
+   the member committed to this morning. See services/tracker/dailyTarget.
+*/
+router.get('/daily-target', async (req: any, res: any) => {
+  try { res.json(await getDailyTargetState(req.user.id)); }
+  catch (e) { console.error('[tracker/daily-target]', e); res.status(500).json({ error: 'failed' }); }
+});
+
+router.post('/daily-target', async (req: any, res: any) => {
+  try { res.json(await setDailyTarget(req.user.id, req.body?.target)); }
+  catch (e) {
+    if (e instanceof DailyTargetError) return res.status(e.status).json(e.payload);
+    console.error('[tracker/daily-target:set]', e); res.status(500).json({ error: 'failed' });
+  }
+});
+
+/** Spends the day's single undo and unlocks the number for one more set. */
+router.post('/daily-target/undo', async (req: any, res: any) => {
+  try { res.json(await useDailyUndo(req.user.id)); }
+  catch (e) {
+    if (e instanceof DailyTargetError) return res.status(e.status).json(e.payload);
+    console.error('[tracker/daily-target:undo]', e); res.status(500).json({ error: 'failed' });
+  }
+});
+
+/** Records that the one-time commit explainer has been shown. */
+router.post('/daily-target/explainer-seen', async (req: any, res: any) => {
+  try { await markCommitExplainerSeen(req.user.id); res.json({ ok: true }); }
+  catch (e) { console.error('[tracker/daily-target:explainer]', e); res.status(500).json({ error: 'failed' }); }
+});
+
 // Full goal state: both goals, weekly pacing, pending change, lock status, streak.
 router.get('/goals', async (req: any, res: any) => {
   try { res.json(await getGoalState(req.user.id)); }
@@ -138,6 +178,23 @@ router.post('/closeout/ack', async (req: any, res: any) => {
     if (state.eligible) await ackCloseout(req.user.id);
     res.json(await getCloseoutState(req.user.id));
   } catch (e) { console.error('[tracker/closeout:ack]', e); res.status(500).json({ error: 'failed' }); }
+});
+
+// WhatsApp coach check-in opt-in. The wa.me link/QR is generic — same code +
+// number the trial challenge uses — the phone number itself is only ever
+// captured off the inbound "START <code>" text, never typed in here. See
+// services/whatsappBaileys.ts.
+router.get('/whatsapp', async (req: any, res: any) => {
+  try {
+    const [optInCode, profile] = await Promise.all([
+      getOrCreateWhatsappOptInCode(req.user.id),
+      prisma.candidateProfile.findUnique({ where: { userId: req.user.id }, select: { whatsappVerifiedAt: true } }),
+    ]);
+    res.json({
+      verified: !!profile?.whatsappVerifiedAt,
+      whatsappOptInLink: `https://wa.me/${WHATSAPP_COACH_NUMBER}?text=${encodeURIComponent(`START ${optInCode}`)}`,
+    });
+  } catch (e) { console.error('[tracker/whatsapp]', e); res.status(500).json({ error: 'failed' }); }
 });
 
 export default router;
