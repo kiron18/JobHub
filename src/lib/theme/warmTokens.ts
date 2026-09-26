@@ -77,6 +77,12 @@ export const warm = {
     /** One family. A second one was doing nothing but adding weight. */
     fontDisplay: "'Geist', -apple-system, 'Segoe UI', system-ui, sans-serif",
     fontBody:    "'Geist', -apple-system, 'Segoe UI', system-ui, sans-serif",
+    /** The one exception, and it earns it: scores. Rounded and friendly,
+     *  the way a game writes a number you are meant to want to grow. Used
+     *  for the streak count and nothing else — the moment it turns up in
+     *  body copy the app stops looking like a tool. Same family the growth
+     *  tree was designed in. */
+    fontGame:    "'Fredoka', 'Geist', -apple-system, system-ui, sans-serif",
   },
   spacing: {
     xs: 4, sm: 8, md: 16, lg: 24, xl: 32, xxl: 48, xxxl: 64,

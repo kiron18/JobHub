@@ -4,6 +4,7 @@ import { X, Leaf, Flower2, CalendarDays, Flame } from 'lucide-react';
 import { warm } from '../../lib/theme/warmTokens';
 import { TreeAvatar } from './TreeAvatar';
 import { streakTier, type StreakTier } from '../../lib/growthTree';
+import { StreakNumber } from './StreakNumber';
 
 /* ── BrainPopup ────────────────────────────────────────────────────────
    Opens from the pulsing brain icon. Same modal shell as
@@ -104,6 +105,8 @@ export const BrainPopup: React.FC<BrainPopupProps> = ({ open, onClose, seed, pro
               <X size={16} />
             </button>
 
+            {/* The streak is the score, so it is shown as one — see
+                StreakNumber for why this beat the atmospheric options. */}
             <div style={{ textAlign: 'center', marginBottom: 4 }}>
               <span style={{
                 display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: 999,
@@ -112,11 +115,8 @@ export const BrainPopup: React.FC<BrainPopupProps> = ({ open, onClose, seed, pro
               }}>
                 <Flame size={11} /> {TIER_LABEL[tier]}
               </span>
-              <h2 id="brain-popup-title" style={{
-                margin: '10px 0 0', fontFamily: warm.type.fontDisplay, fontSize: 19, fontWeight: 700,
-                color: warm.colors.textPrimary, letterSpacing: '-0.02em',
-              }}>
-                {stats.streak > 0 ? `${stats.streak}-day streak` : 'Your growth tree'}
+              <h2 id="brain-popup-title" style={{ margin: '12px 0 0' }}>
+                <StreakNumber streak={stats.streak} />
               </h2>
             </div>
 
@@ -137,7 +137,6 @@ export const BrainPopup: React.FC<BrainPopupProps> = ({ open, onClose, seed, pro
               <StatCard icon={<Leaf size={12} />} label="Applications" value={stats.applications} color="#4E8B4A" />
               <StatCard icon={<Flower2 size={12} />} label="Outreach" value={stats.outreach} color="#D98BA4" />
               <StatCard icon={<CalendarDays size={12} />} label="Days active" value={stats.daysActive} color={warm.colors.accentPetrol} />
-              <StatCard icon={<Flame size={12} />} label="Streak" value={stats.streak} color={TIER_COLOR[tier]} />
             </div>
 
             <p style={{ margin: '14px 0 0', fontSize: 11.5, lineHeight: 1.55, color: warm.colors.textMuted, textAlign: 'center' }}>
