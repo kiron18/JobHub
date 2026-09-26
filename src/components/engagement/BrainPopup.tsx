@@ -134,9 +134,9 @@ export const BrainPopup: React.FC<BrainPopupProps> = ({ open, onClose, seed, pro
             </div>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              <StatCard icon={<Leaf size={12} />} label="Applications" value={stats.applications} color="#4E8B4A" />
-              <StatCard icon={<Flower2 size={12} />} label="Outreach" value={stats.outreach} color="#D98BA4" />
-              <StatCard icon={<CalendarDays size={12} />} label="Days active" value={stats.daysActive} color={warm.colors.accentPetrol} />
+              <StatCard icon={<Leaf size={14} strokeWidth={1.6} fill="#4E8B4A" />} label="Applications" value={stats.applications} color="#4E8B4A" />
+              <StatCard icon={<Flower2 size={14} strokeWidth={2} />} label="Outreach" value={stats.outreach} color="#D98BA4" />
+              <StatCard icon={<CalendarDays size={14} strokeWidth={2.4} />} label="Days active" value={stats.daysActive} color={warm.colors.accentPetrol} />
             </div>
 
             <p style={{ margin: '14px 0 0', fontSize: 11.5, lineHeight: 1.55, color: warm.colors.textMuted, textAlign: 'center' }}>

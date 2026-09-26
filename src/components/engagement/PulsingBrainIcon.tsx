@@ -66,15 +66,29 @@ export const PulsingBrainIcon: React.FC<PulsingBrainIconProps> = ({ streak, onCl
         padding: 0, cursor: 'pointer', flexShrink: 0, verticalAlign: 'middle',
       }}
     >
-      {/* The gradient the strokes are painted with. Zero-sized on purpose:
-          it exists only to be referenced by url() below. */}
-      <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden focusable="false">
+      <Brain
+        size={Math.round(size * (inline ? 0.86 : 0.5))}
+        /* Paint the strokes with the gradient, naming a solid fallback
+           after it: if the paint server cannot resolve for any reason the
+           icon is still drawn in blue rather than vanishing. */
+        color={`url(#${gradId}) ${c1}`}
+        style={{
+          position: 'relative', zIndex: 1,
+          // The glow breathes, and every fifth second the whole glyph
+          // gives one small nod. Both live in the same keyframe so they
+          // can never drift apart.
+          animation: reduced ? 'none' : `brain-alive-${animId} 5s ease-in-out infinite`,
+          filter: `drop-shadow(0 0 4px ${c1}70)`,
+        }}
+      >
+        {/* The defs live INSIDE the icon's own <svg>. They used to sit in
+            a separate zero-sized svg beside it, and a paint server
+            referenced across document fragments is not reliably resolved —
+            which is why the brain kept coming out flat grey. */}
         <defs>
-          {/* spreadMethod="repeat" tiles the blue-gold-blue ramp, and the
+          {/* spreadMethod="repeat" tiles the blue-gold-blue ramp and the
               transform slides it by exactly one tile, so the flow along
-              the strokes is seamless and always covers the glyph. An
-              earlier version swept x1/x2 across the shape instead, which
-              left the icon painted flat for most of the cycle. */}
+              the strokes is seamless and always covers the glyph. */}
           <linearGradient
             id={gradId}
             x1="0" y1="0" x2="0.6" y2="0.35"
@@ -96,20 +110,7 @@ export const PulsingBrainIcon: React.FC<PulsingBrainIconProps> = ({ streak, onCl
             )}
           </linearGradient>
         </defs>
-      </svg>
-
-      <Brain
-        size={Math.round(size * (inline ? 0.86 : 0.5))}
-        color={`url(#${gradId})`}
-        style={{
-          position: 'relative', zIndex: 1,
-          // The glow breathes, and every fifth second the whole glyph
-          // gives one small nod. Both live in the same keyframe so they
-          // can never drift apart.
-          animation: reduced ? 'none' : `brain-alive-${animId} 5s ease-in-out infinite`,
-          filter: `drop-shadow(0 0 4px ${c1}70)`,
-        }}
-      />
+      </Brain>
 
       <style>{`
         @keyframes brain-alive-${animId} {

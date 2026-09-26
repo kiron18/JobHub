@@ -158,8 +158,11 @@ export const PostApplicationPopup: React.FC<PostApplicationPopupProps> = ({
                 Still got energy and drive? Try one of these.
               </p>
               <ul style={{
-                ...warm.text.small, margin: '0 0 18px', paddingLeft: 18,
+                ...warm.text.small, margin: '0 0 18px', paddingLeft: 20,
                 lineHeight: 1.7, color: warm.colors.textSecondary,
+                /* Explicit: the global preflight sets list-style:none on
+                   every ul, so a bare <ul> renders as unmarked lines. */
+                listStyle: 'disc outside',
               }}>
                 <li>Follow up on older applications</li>
                 <li>Find networking events near you</li>
