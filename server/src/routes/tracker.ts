@@ -14,6 +14,7 @@ import {
 import {
   getDailyTargetState, setDailyTarget, useDailyUndo, DailyTargetError,
 } from '../services/tracker/dailyTarget';
+import { getEngagementSummary } from '../services/tracker/engagement';
 import { getMilestoneState, ackMilestone } from '../services/tracker/milestones';
 import { getCloseoutState, ackCloseout } from '../services/tracker/closeout';
 import { getOrCreateWhatsappOptInCode } from '../services/trialChallenge/engine';
@@ -90,6 +91,12 @@ router.post('/goal', async (req: any, res: any) => {
     if (e instanceof GoalChangeError) return res.status(e.status).json(e.payload);
     console.error('[tracker/goal:set]', e); res.status(500).json({ error: 'failed' });
   }
+});
+
+/** Everything the dashboard's engagement strip needs, in one round trip. */
+router.get('/engagement', async (req: any, res: any) => {
+  try { res.json(await getEngagementSummary(req.user.id)); }
+  catch (e) { console.error('[tracker/engagement]', e); res.status(500).json({ error: 'failed' }); }
 });
 
 /* ── Today's target ───────────────────────────────────────────────────

@@ -21,8 +21,6 @@ import { StaleApplicationsCard } from '../components/strategy/StaleApplicationsC
 import { FirstApplicationCelebration } from '../components/FirstApplicationCelebration';
 import { EligibilityIntroModal } from '../components/EligibilityIntroModal';
 import type { JobFeedItem } from '../components/jobs/JobCard';
-import { DailyProgressBar } from '../components/jobs/DailyProgressBar';
-import { WeekStrip } from '../components/jobs/WeekStrip';
 import { warm } from '../lib/theme/warmTokens';
 import { jdMentionsSelectionCriteria } from '../lib/selectionCriteria';
 import { extractJobFacts } from '../lib/extractJobFacts';
@@ -32,6 +30,7 @@ import { buildSeekSearchUrl } from '../lib/seekSearchUrl';
 import { browseRoleLabel, ROLE_BUDGET } from '../lib/roleLabel';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { HowToCopyJobAd } from '../components/strategy/HowToCopyJobAd';
+import { EngagementStrip } from '../components/engagement/EngagementStrip';
 
 /** Detect whether a job description mentions selection criteria. */
 // Lives in its own module so the dashboard, the fit check and the stepper all
@@ -766,16 +765,8 @@ export function StrategyHub() {
                     progress meter on a file download. Short and centred, with
                     the week beside it, it reads as a scoreboard instead.
                 */}
-                <DimPeer style={{ marginBottom: 32 }}>
-                    <div style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        gap: 20, flexWrap: 'wrap',
-                    }}>
-                        <div style={{ flex: '0 1 240px', minWidth: 180 }}>
-                            <DailyProgressBar />
-                        </div>
-                        <WeekStrip />
-                    </div>
+                <DimPeer>
+                    <EngagementStrip />
                 </DimPeer>
 
                 {/* Paste/Apply section — the only way a job enters the flow */}

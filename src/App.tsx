@@ -9,7 +9,11 @@ import { DashboardLayout } from './layouts/DashboardLayout';
 import { OnboardingGate } from './components/OnboardingGate';
 import { useWelcomeHandoff } from './lib/welcomeHandoff';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { CelebrationHost } from './components/shared/Celebration';
+/* The post-application popup replaces CelebrationHost's sidebar pill:
+   one event, one thing happening. Celebration.tsx is left in the tree —
+   the styleguide still demonstrates it, and it is how we put the pill
+   back if a full popup turns out to be too much at ten a day. */
+import { PostApplicationHost } from './components/engagement/PostApplicationHost';
 import { DailyCloseOut } from './components/tracker/DailyCloseOut';
 import { TrialChallengeOverlay } from './components/trialChallenge/TrialChallengeOverlay';
 import { warm } from './lib/theme/warmTokens';
@@ -694,7 +698,7 @@ function App() {
             }}
           />
           {/* Fired from anywhere via celebrate(). See src/lib/feedback.ts. */}
-          <CelebrationHost />
+          <PostApplicationHost />
           {/* Once-a-day close-out — see src/components/tracker/DailyCloseOut.tsx. */}
           <DailyCloseOut />
         </AuthProvider>
