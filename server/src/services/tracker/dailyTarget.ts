@@ -84,14 +84,21 @@ export function effectiveTarget(committed: number, filedToday: number, max: numb
 
 export async function getDailyTargetState(userId: string): Promise<DailyTargetState> {
   const today = todayAEST();
-  const [row, filedToday, bounds, profile] = await Promise.all([
+  /* "Have they seen the explainer?" is the same question as "have they
+     ever committed a target?", so it is derived rather than stored.
+     It used to be a column on CandidateProfile, and that was a bad call:
+     CandidateProfile is read by /profile with a bare `include`, so Prisma
+     selects every scalar on it. When the migration adding the column did
+     not land on staging, every profile read threw and the whole app went
+     down with "We could not reach your account" — a feature that had not
+     even been switched on yet. A new column on a hot table couples the
+     entire app to one migration; keeping this inside DailyTarget means a
+     missing migration can only ever break this feature. */
+  const [row, filedToday, bounds, everCommitted] = await Promise.all([
     prisma.dailyTarget.findUnique({ where: { userId_date: { userId, date: today } } }),
     countFiledToday(userId),
     loadBounds(userId),
-    prisma.candidateProfile.findUnique({
-      where: { userId },
-      select: { commitExplainerSeenAt: true },
-    }),
+    prisma.dailyTarget.count({ where: { userId } }),
   ]);
 
   const committed = row?.target ?? null;
@@ -103,7 +110,7 @@ export async function getDailyTargetState(userId: string): Promise<DailyTargetSt
     filedToday,
     min: bounds.min,
     max: bounds.max,
-    explainerSeen: Boolean(profile?.commitExplainerSeenAt),
+    explainerSeen: everCommitted > 0,
   };
 }
 
@@ -170,18 +177,4 @@ export async function useDailyUndo(userId: string): Promise<DailyTargetState> {
     data: { locked: false, undoUsed: true },
   });
   return getDailyTargetState(userId);
-}
-
-/**
- * Records that the one-time commit explainer has been shown.
- *
- * On the profile rather than in browser storage on purpose: being shown
- * the "here is how committing works" dialog again two months in, because
- * you opened the app on a new laptop, is a small insult.
- */
-export async function markCommitExplainerSeen(userId: string): Promise<void> {
-  await prisma.candidateProfile.updateMany({
-    where: { userId, commitExplainerSeenAt: null },
-    data: { commitExplainerSeenAt: new Date() },
-  });
 }

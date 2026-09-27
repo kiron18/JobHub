@@ -109,9 +109,12 @@ model CandidateProfile {
   coverLetterFilename          String?
   coverLetterFilename2         String?
   dailyApplicationGoal         Int               @default(5)
-  /// Set the first time the daily-target commit explainer is shown. On the
-  /// profile, not in browser storage, so a new device does not replay it.
-  commitExplainerSeenAt        DateTime?
+  /// Day 1 of this member's 90-day challenge. Null until the challenge is
+  /// assigned; the WhatsApp check-ins only mention "Day N of 90" once set.
+  challengeStartedAt           DateTime?
+  /// Set when the WhatsApp check-in welcome (how it works, why typing your
+  /// answer matters) has been sent, so it only ever goes out once.
+  coachWelcomedAt              DateTime?
   applicationGoalType          String            @default("daily")
   dailyOutreachGoal            Int               @default(4)
   outreachGoalType             String            @default("daily")
@@ -1510,4 +1513,28 @@ enum ContactOutcome {
   SENT
   BOUNCED
   REPLIED
+}
+
+/// Every message in the paid-member WhatsApp check-in, both directions. Feeds
+/// the reply cap ("one answer per prompt"), the welcome-once rule and the
+/// weekly digest of what members said.
+model CoachMessage {
+  id        String   @id @default(uuid())
+  userId    String
+  /// 'out' (we sent it) or 'in' (they sent it).
+  direction String
+  /// out: morning | evening | welcome | reply | distress_reply. in: reply.
+  kind      String
+  body      String
+  /// in only: normal | low | distress | bot_question | off_topic.
+  category  String?
+  /// in only: the classroom module the reply pointed at, if any.
+  topic     String?
+  /// True when a person should look at this (distress, or anything the
+  /// system could not classify safely).
+  flagged   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([flagged, createdAt])
 }

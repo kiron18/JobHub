@@ -90,8 +90,9 @@ export default function EngagementDashboardPreview() {
   const handleSet = () => (explainerSeen ? commit() : setCommitDialog(true));
   const confirmCommit = () => {
     setCommitDialog(false);
-    if (wired) live.markExplainerSeen.mutate();
-    else { markCommitExplainerSeen(); setLocalExplainerSeen(true); }
+    // Wired, "seen" is derived server-side from having ever committed a
+    // target, so confirming and committing is all it takes.
+    if (!wired) { markCommitExplainerSeen(); setLocalExplainerSeen(true); }
     commit();
   };
   const confirmUndo = () => {

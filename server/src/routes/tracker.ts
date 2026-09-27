@@ -12,7 +12,7 @@ import {
     tokenToInstant,
 } from '../services/tracker/goals';
 import {
-  getDailyTargetState, setDailyTarget, useDailyUndo, markCommitExplainerSeen, DailyTargetError,
+  getDailyTargetState, setDailyTarget, useDailyUndo, DailyTargetError,
 } from '../services/tracker/dailyTarget';
 import { getMilestoneState, ackMilestone } from '../services/tracker/milestones';
 import { getCloseoutState, ackCloseout } from '../services/tracker/closeout';
@@ -117,12 +117,6 @@ router.post('/daily-target/undo', async (req: any, res: any) => {
     if (e instanceof DailyTargetError) return res.status(e.status).json(e.payload);
     console.error('[tracker/daily-target:undo]', e); res.status(500).json({ error: 'failed' });
   }
-});
-
-/** Records that the one-time commit explainer has been shown. */
-router.post('/daily-target/explainer-seen', async (req: any, res: any) => {
-  try { await markCommitExplainerSeen(req.user.id); res.json({ ok: true }); }
-  catch (e) { console.error('[tracker/daily-target:explainer]', e); res.status(500).json({ error: 'failed' }); }
 });
 
 // Full goal state: both goals, weekly pacing, pending change, lock status, streak.

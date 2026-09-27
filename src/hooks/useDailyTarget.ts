@@ -67,13 +67,5 @@ export function useDailyTarget(enabled = true) {
     onError: e => onError(e, 'Could not undo today\'s target.'),
   });
 
-  const markExplainerSeen = useMutation({
-    mutationFn: async () => (await api.post('/tracker/daily-target/explainer-seen')).data,
-    onSuccess: () => qc.invalidateQueries({ queryKey: DAILY_TARGET_KEY }),
-    // Silent on failure: the dialog has already been read, and nagging
-    // about a bookkeeping call is worse than showing it once more.
-    onError: () => { /* noop */ },
-  });
-
-  return { ...query, setTarget, useUndo, markExplainerSeen };
+  return { ...query, setTarget, useUndo };
 }

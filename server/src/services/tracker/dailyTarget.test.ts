@@ -5,7 +5,7 @@ vi.mock('../../index', () => ({
     candidateProfile: { findUnique: vi.fn(), updateMany: vi.fn(), update: vi.fn() },
     jobApplication: { findMany: vi.fn() },
     goalChange: { findFirst: vi.fn(), updateMany: vi.fn() },
-    dailyTarget: { findUnique: vi.fn(), upsert: vi.fn(), update: vi.fn() },
+    dailyTarget: { findUnique: vi.fn(), upsert: vi.fn(), update: vi.fn(), count: vi.fn() },
   },
 }));
 
@@ -23,18 +23,15 @@ function setup(prisma: any, opts: {
   goal?: number;
   filed?: number;
   row?: { target: number; locked: boolean; undoUsed: boolean } | null;
-  explainerSeenAt?: Date | null;
+  everCommitted?: number;
 } = {}) {
-  const { goal = 5, filed = 0, row = null, explainerSeenAt = null } = opts;
+  const { goal = 5, filed = 0, row = null, everCommitted = 0 } = opts;
   prisma.goalChange.findFirst.mockResolvedValue(null);
-  prisma.candidateProfile.findUnique.mockImplementation(({ select }: any) =>
-    Promise.resolve(select?.commitExplainerSeenAt !== undefined
-      ? { commitExplainerSeenAt: explainerSeenAt }
-      : {
-          dailyApplicationGoal: goal, applicationGoalType: 'daily',
-          dailyOutreachGoal: 4, outreachGoalType: 'daily',
-        }),
-  );
+  prisma.candidateProfile.findUnique.mockResolvedValue({
+    dailyApplicationGoal: goal, applicationGoalType: 'daily',
+    dailyOutreachGoal: 4, outreachGoalType: 'daily',
+  });
+  prisma.dailyTarget.count.mockResolvedValue(everCommitted);
   prisma.jobApplication.findMany.mockResolvedValue(
     Array.from({ length: filed }, (_, i) => ({ id: `j${i}`, sourceUrl: `url-${i}` })),
   );
@@ -159,13 +156,18 @@ describe('useDailyUndo', () => {
   });
 });
 
-describe('markCommitExplainerSeen', () => {
-  it('only ever stamps the first time', async () => {
+describe('explainerSeen', () => {
+  it('is false before they have ever committed a target', async () => {
     const { m, prisma } = await mod();
-    prisma.candidateProfile.updateMany.mockResolvedValue({ count: 1 });
-    await m.markCommitExplainerSeen('u1');
-    expect(prisma.candidateProfile.updateMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { userId: 'u1', commitExplainerSeenAt: null },
-    }));
+    setup(prisma, { everCommitted: 0 });
+    expect((await m.getDailyTargetState('u1')).explainerSeen).toBe(false);
+  });
+
+  it('is true once any target has ever been committed', async () => {
+    const { m, prisma } = await mod();
+    // Derived rather than stored — see the note in getDailyTargetState for
+    // why this is not a column on CandidateProfile.
+    setup(prisma, { everCommitted: 3 });
+    expect((await m.getDailyTargetState('u1')).explainerSeen).toBe(true);
   });
 });
