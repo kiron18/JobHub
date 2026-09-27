@@ -388,21 +388,21 @@ export function TreeAvatar({ seed, day, applications, interviews, outreach = 0, 
             <stop offset="100%" stopColor="#F5B93C" stopOpacity={0} />
           </radialGradient>
           <symbol id={`${uid}-flower-dandelion`} viewBox="-6 -6 12 12">
-            <g stroke="#F6D34A" strokeWidth={1.6} strokeLinecap="round">
+            <g stroke="#FFC400" strokeWidth={1.6} strokeLinecap="round">
               <line x1="0" y1="0" x2="0" y2="-4.2" /><line x1="0" y1="0" x2="3" y2="-3" />
               <line x1="0" y1="0" x2="4.2" y2="0" /><line x1="0" y1="0" x2="3" y2="3" />
               <line x1="0" y1="0" x2="0" y2="4.2" /><line x1="0" y1="0" x2="-3" y2="3" />
               <line x1="0" y1="0" x2="-4.2" y2="0" /><line x1="0" y1="0" x2="-3" y2="-3" />
             </g>
-            <circle cx="0" cy="0" r={1.8} fill="#E8A62A" />
+            <circle cx="0" cy="0" r={1.8} fill="#E08600" />
           </symbol>
           <symbol id={`${uid}-flower-marigold`} viewBox="-6 -6 12 12">
-            <g fill="#E8791E">
+            <g fill="#F26B00">
               {[0, 60, 120, 180, 240, 300].map(deg => (
                 <ellipse key={deg} rx={1.6} ry={2.3} transform={`rotate(${deg}) translate(0,-2.4)`} />
               ))}
             </g>
-            <circle cx="0" cy="0" r={1.6} fill="#B8501A" />
+            <circle cx="0" cy="0" r={1.6} fill="#9E3D00" />
           </symbol>
           <symbol id={`${uid}-flower-daisy`} viewBox="-6 -6 12 12">
             <g fill="#FFFFFF">
@@ -410,7 +410,7 @@ export function TreeAvatar({ seed, day, applications, interviews, outreach = 0, 
                 <ellipse key={deg} rx={1.1} ry={3.1} transform={`rotate(${deg}) translate(0,-3)`} />
               ))}
             </g>
-            <circle cx="0" cy="0" r={1.7} fill="#F2C230" />
+            <circle cx="0" cy="0" r={1.7} fill="#FFB300" />
           </symbol>
           {/* Outreach blossom. Five soft petals, deliberately unlike both
               the leaves (green, pointed) and the grass flowers (the seed's
@@ -421,7 +421,7 @@ export function TreeAvatar({ seed, day, applications, interviews, outreach = 0, 
                 <ellipse key={deg} rx={2.1} ry={3.4} transform={`rotate(${deg}) translate(0,-3.1)`} />
               ))}
             </g>
-            <circle cx="0" cy="0" r={1.8} fill="#F2C230" />
+            <circle cx="0" cy="0" r={1.8} fill="#FFB300" />
           </symbol>
           <symbol id={`${uid}-leafShape`} viewBox="-9 -14 18 28">
             <path d="M0 -14 C 7 -11 8 3 0 14 C -8 3 -7 -11 0 -14 Z" />

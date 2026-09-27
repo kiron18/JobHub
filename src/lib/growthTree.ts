@@ -166,8 +166,13 @@ export function buildTree(seedNum: number): GrowthTree {
   let blossomSlots: BlossomSlot[] = [];
   const fruitTips: { branch: number; birth: number }[] = [];
 
-  const barkHue = 22 + rng() * 20, barkSat = 30 + rng() * 16;
-  const leafHue = 96 + rng() * 40, leafSat = 42 + rng() * 20, leafLight = 40 + rng() * 10;
+  /* The canopy is the backdrop, not the subject. Wood and leaves are
+     deliberately desaturated so the things that are rare and worth
+     noticing — fruit for an interview, flowers for a streak — carry the
+     only strong colour in the picture. An application is common; an
+     interview is not, and the tree should not weight them the same. */
+  const barkHue = 22 + rng() * 20, barkSat = 14 + rng() * 8;
+  const leafHue = 96 + rng() * 40, leafSat = 26 + rng() * 12, leafLight = 46 + rng() * 10;
   const species = FRUIT_SPECIES[Math.floor(rng() * FRUIT_SPECIES.length)];
 
   const trunkLen = 82 + rng() * 14;
@@ -296,7 +301,7 @@ export function buildTree(seedNum: number): GrowthTree {
     dx: (rng() - 0.5) * 14,
     dy: (rng() - 0.5) * 10 + 4,
     rot: (rng() - 0.5) * 40,
-    scale: 2.1 + rng() * 0.5,
+    scale: 2.9 + rng() * 0.6,
     birth: node.birth,
   }));
   // Same ordering as the leaves, and for a stronger reason: interviews are
@@ -312,7 +317,7 @@ export function buildTree(seedNum: number): GrowthTree {
   for (let fs = 0; fs < MAX_FLOWER_SLOTS; fs++) {
     let fsx = BASE_X + (rng() - 0.5) * 168;
     if (Math.abs(fsx - BASE_X) < 20) fsx += fsx < BASE_X ? -22 : 22;
-    flowerSlots.push({ x: fsx, y: BASE_Y + 6 + rng() * 16, stemLen: 11 + rng() * 7, rot: (rng() - 0.5) * 24, scale: 1.9 + rng() * 0.8 });
+    flowerSlots.push({ x: fsx, y: BASE_Y + 6 + rng() * 16, stemLen: 13 + rng() * 8, rot: (rng() - 0.5) * 24, scale: 2.8 + rng() * 1 });
   }
   flowerSlots = seededShuffle(flowerSlots, rng);
 
