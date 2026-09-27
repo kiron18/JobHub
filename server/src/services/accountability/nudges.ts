@@ -16,7 +16,9 @@ import { sendPaceNudgeEmail, sendWeeklyWrapEmail, sendCoachDigestEmail } from '.
 
 const DAY_MS = 86400000;
 
-export type NudgeKind = 'daily_pace' | 'weekly_wrap' | 'coach_digest' | 'trial_challenge_reminder';
+export type NudgeKind =
+  | 'daily_pace' | 'weekly_wrap' | 'coach_digest' | 'trial_challenge_reminder'
+  | 'coach_checkin_am' | 'coach_checkin_pm';
 
 /** Master switch — nothing is ever emailed unless this env var is exactly 'true'. */
 export function accountabilityEmailsEnabled(): boolean {

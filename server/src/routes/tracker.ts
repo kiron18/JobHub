@@ -13,6 +13,10 @@ import {
 } from '../services/tracker/goals';
 import { getMilestoneState, ackMilestone } from '../services/tracker/milestones';
 import { getCloseoutState, ackCloseout } from '../services/tracker/closeout';
+import { getOrCreateWhatsappOptInCode } from '../services/trialChallenge/engine';
+
+/** The number the WhatsApp bot links as — same one the trial challenge uses. */
+const WHATSAPP_COACH_NUMBER = '61422769597';
 
 export async function getDailyProgress(userId: string): Promise<{ appliedToday: number; goal: number }> {
   // promoteAndGetSettings applies any goal change that has become effective.
@@ -138,6 +142,23 @@ router.post('/closeout/ack', async (req: any, res: any) => {
     if (state.eligible) await ackCloseout(req.user.id);
     res.json(await getCloseoutState(req.user.id));
   } catch (e) { console.error('[tracker/closeout:ack]', e); res.status(500).json({ error: 'failed' }); }
+});
+
+// WhatsApp coach check-in opt-in. The wa.me link/QR is generic — same code +
+// number the trial challenge uses — the phone number itself is only ever
+// captured off the inbound "START <code>" text, never typed in here. See
+// services/whatsappBaileys.ts.
+router.get('/whatsapp', async (req: any, res: any) => {
+  try {
+    const [optInCode, profile] = await Promise.all([
+      getOrCreateWhatsappOptInCode(req.user.id),
+      prisma.candidateProfile.findUnique({ where: { userId: req.user.id }, select: { whatsappVerifiedAt: true } }),
+    ]);
+    res.json({
+      verified: !!profile?.whatsappVerifiedAt,
+      whatsappOptInLink: `https://wa.me/${WHATSAPP_COACH_NUMBER}?text=${encodeURIComponent(`START ${optInCode}`)}`,
+    });
+  } catch (e) { console.error('[tracker/whatsapp]', e); res.status(500).json({ error: 'failed' }); }
 });
 
 export default router;
