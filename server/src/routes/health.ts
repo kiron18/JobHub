@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { prisma } from '../index';
 import { isGateEnforced } from '../config/accessGate';
 import { isTrialChallengeEnabled } from '../config/trialChallengeGate';
 
@@ -52,7 +53,28 @@ function contactDiscoveryConfig() {
     };
 }
 
-router.get('/', (req, res) => {
+/*
+  Whether a migration has actually reached this database.
+
+  scripts/migrate-safe.js deliberately swallows a failed or timed-out
+  `prisma migrate deploy` and starts the app anyway, so a deploy can report
+  a fresh commit while the schema behind it is older. That gap is not
+  theoretical: on 27 Sep 2026 a column added to CandidateProfile never
+  landed, and because /profile reads that table with a bare include, every
+  profile read 500'd and the whole app was unreachable while health said
+  "ok". Asking the database a cheap question is the difference between
+  knowing and guessing.
+*/
+async function schemaReady(): Promise<Record<string, boolean>> {
+    const check = async (fn: () => Promise<unknown>) => {
+        try { await fn(); return true; } catch { return false; }
+    };
+    return {
+        dailyTarget: await check(() => prisma.dailyTarget.findFirst({ select: { id: true } })),
+    };
+}
+
+router.get('/', async (req, res) => {
     res.json({
         status: 'ok',
         timestamp: new Date().toISOString(),
@@ -75,6 +97,9 @@ router.get('/', (req, res) => {
         // "Apply" fork (the 3-day trial challenge vs. the old ApplyPreviewGate),
         // not generation/analysis/search counters.
         trialChallengeGate: isTrialChallengeEnabled() ? 'enabled' : 'disabled',
+        // False means the table is missing and the feature that needs it is
+        // silently degraded, whatever the commit above says.
+        schema: await schemaReady(),
     });
 });
 
