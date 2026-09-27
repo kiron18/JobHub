@@ -52,6 +52,7 @@ import { startAccountabilityCron } from './cron/accountabilityCron';
 import { startPaymentReconcileCron } from './cron/paymentReconcileCron';
 import { startFollowUpReminderCron } from './cron/followUpReminderCron';
 import { startTrialChallengeReminderCron } from './cron/trialChallengeReminderCron';
+import { startCoachCheckinCron } from './cron/coachCheckinCron';
 import { startWhatsApp } from './services/whatsappBaileys';
 import { analyzeRateLimit } from './middleware/analyzeRateLimit';
 import { ensureSponsorJobTable } from './db/ensureSponsorJobTable';
@@ -345,7 +346,24 @@ async function ensureColumns() {
         ADD COLUMN IF NOT EXISTS "whatsappNumber" TEXT,
         ADD COLUMN IF NOT EXISTS "reminderTimePreferenceHour" INTEGER,
         ADD COLUMN IF NOT EXISTS "whatsappVerifiedAt" TIMESTAMP(3),
-        ADD COLUMN IF NOT EXISTS "whatsappOptInCode" TEXT;
+        ADD COLUMN IF NOT EXISTS "whatsappOptInCode" TEXT,
+        ADD COLUMN IF NOT EXISTS "challengeStartedAt" TIMESTAMP(3),
+        ADD COLUMN IF NOT EXISTS "coachWelcomedAt" TIMESTAMP(3);
+    `);
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "CoachMessage" (
+        "id" TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+        "userId" TEXT NOT NULL,
+        "direction" TEXT NOT NULL,
+        "kind" TEXT NOT NULL,
+        "body" TEXT NOT NULL,
+        "category" TEXT,
+        "topic" TEXT,
+        "flagged" BOOLEAN NOT NULL DEFAULT false,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS "CoachMessage_userId_createdAt_idx" ON "CoachMessage"("userId", "createdAt");
+      CREATE INDEX IF NOT EXISTS "CoachMessage_flagged_createdAt_idx" ON "CoachMessage"("flagged", "createdAt");
     `);
     await prisma.$executeRawUnsafe(`
       ALTER TABLE "DiagnosticReport"
@@ -470,10 +488,12 @@ if (process.env.SKIP_SERVER === 'true') {
       startWorkshopReminderCron();
       startGapReportCron();
       startTrialChallengeReminderCron();
+      startCoachCheckinCron();
       console.log('[cron] Trial reminder cron scheduled (10:00 UTC daily)');
       console.log('[cron] Follow-up reminder cron scheduled (09:00 UTC daily)');
       console.log('[cron] Payment reconciliation cron scheduled (11:00 UTC daily)');
       console.log('[cron] Trial challenge reminder cron scheduled (hourly)');
+      console.log('[cron] Coach check-in cron scheduled (hourly, AM/PM slots)');
       // Staging/production already hold a live, paired WhatsApp session. A second
       // Baileys connection from a local run would fight over the same linked-device
       // session and could break the pairing, so only start it on Railway.

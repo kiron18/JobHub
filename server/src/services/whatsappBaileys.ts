@@ -20,6 +20,7 @@ import pino from 'pino';
 import qrcodeTerminal from 'qrcode-terminal';
 import { prisma } from '../index';
 import { PUBLIC_APP_URL } from '../lib/appUrl';
+import { handleCoachReply } from './coachCheckin/replies';
 import type { WASocket, AuthenticationCreds, AuthenticationState } from 'baileys';
 
 /**
@@ -52,8 +53,10 @@ const DAILY_CAP = Number(process.env.WHATSAPP_DAILY_CAP || 60);
 
 const AUTH_KEY_PREFIX = 'authstate:';
 const CONFIRM_TEXT = "You're set. I'll message you here the moment your next day unlocks.";
+const COACH_CONFIRM_TEXT =
+  "You're set. I'll check in here each morning and evening on your applications. Reply STOP any time to switch it off.";
 const NO_MATCH_TEXT =
-  "Thanks for messaging! To get trial reminders, enter this number on the app's day-pass screen first, then text START again.";
+  "Thanks for messaging! To get reminders, enter this number on the app first, then text START again.";
 
 let sock: WASocket | null = null;
 let connecting = false;
@@ -185,8 +188,36 @@ async function handleIncoming(socketRef: WASocket, msg: any): Promise<void> {
   if (!remoteJid || !remoteJid.endsWith('@s.whatsapp.net')) return; // ignore groups/broadcast/status
 
   const text: string = (msg.message?.conversation || msg.message?.extendedTextMessage?.text || '').trim();
+
+  // STOP works for anyone already verified, from whichever number they
+  // texted in with — the promise made in both confirm texts above.
+  if (/^stop$/i.test(text)) {
+    const senderE164 = `+${remoteJid.split('@')[0]}`;
+    const { count } = await prisma.candidateProfile.updateMany({
+      where: { whatsappNumber: senderE164, whatsappVerifiedAt: { not: null } },
+      data: { whatsappVerifiedAt: null, whatsappNumber: null },
+    });
+    if (count > 0) await sendThrottled(socketRef, remoteJid, "You're unsubscribed. Text START again any time to turn reminders back on.");
+    return;
+  }
+
   const match = /^start\s+([a-z0-9]{4,10})$/i.exec(text);
-  if (!match) return; // only ever react to the actual "START <code>" pattern, never anything else they send
+  if (!match) {
+    // Anything else is only ever answered for a verified, paying member
+    // replying to a check-in. Unknown numbers and free users get silence.
+    if (!text) return;
+    const senderE164 = `+${remoteJid.split('@')[0]}`;
+    const member = await prisma.candidateProfile.findFirst({
+      where: { whatsappNumber: senderE164, whatsappVerifiedAt: { not: null }, plan: { not: 'free' } },
+      select: { userId: true },
+    });
+    if (!member) return;
+    for (const reply of await handleCoachReply(member.userId, text)) {
+      await sendThrottled(socketRef, remoteJid, reply);
+      await incrementSentToday();
+    }
+    return;
+  }
 
   const code = match[1].toUpperCase();
   const senderE164 = `+${remoteJid.split('@')[0]}`;
@@ -201,7 +232,9 @@ async function handleIncoming(socketRef: WASocket, msg: any): Promise<void> {
     where: { id: profile.id, whatsappVerifiedAt: null },
     data: { whatsappVerifiedAt: new Date(), whatsappNumber: senderE164 },
   });
-  await sendThrottled(socketRef, remoteJid, CONFIRM_TEXT);
+  // Paid members get the coach check-in framing; everyone else (trial) keeps
+  // the day-pass framing — same opt-in flow, different confirmation copy.
+  await sendThrottled(socketRef, remoteJid, profile.plan && profile.plan !== 'free' ? COACH_CONFIRM_TEXT : CONFIRM_TEXT);
 }
 
 // The number this bot links as. Digits only, country code first, no '+' —
@@ -332,4 +365,27 @@ export async function sendTrialChallengeReminderWhatsApp(
 
   await sendThrottled(sock, jid, text);
   await incrementSentToday();
+}
+
+/**
+ * Sends arbitrary pre-built text (the paid-member morning/evening coach
+ * check-in — see services/coachCheckin). Same rule as the trial sender
+ * above: only ever call this for a profile with whatsappVerifiedAt already
+ * set by the caller. Returns false (not thrown) when nothing was sent, so
+ * the cron can leave the nudge unclaimed and retry next hour instead of
+ * silently losing it.
+ */
+export async function sendCoachWhatsApp(to: string, text: string): Promise<boolean> {
+  if (!sock) {
+    console.warn('[whatsapp] not connected — skipping coach check-in');
+    return false;
+  }
+  if ((await sentTodayCount()) >= DAILY_CAP) {
+    console.warn(`[whatsapp] daily cap of ${DAILY_CAP} reached — skipping coach check-in`);
+    return false;
+  }
+  const jid = `${to.replace(/^\+/, '')}@s.whatsapp.net`;
+  await sendThrottled(sock, jid, text);
+  await incrementSentToday();
+  return true;
 }
