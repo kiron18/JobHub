@@ -1,5 +1,4 @@
 import React, { useId } from 'react';
-import { Brain } from 'lucide-react';
 import { warm } from '../../lib/theme/warmTokens';
 import { prefersReducedMotion } from '../../lib/theme/motion';
 import { streakTier, type StreakTier } from '../../lib/growthTree';
@@ -8,21 +7,21 @@ import { streakTier, type StreakTier } from '../../lib/growthTree';
    The entry point to BrainPopup, sitting at the end of the heading.
 
    The expanding ring it used to throw is gone — a halo snapping outward
-   every two seconds beside a heading is a notification badge, and it read
-   as one. What is left is the icon itself being alive: the stroke is a
-   gradient that flows along the lines, the whole glyph carries a soft
-   glow that breathes, and roughly once every five seconds it gives one
-   small pulse. The shapes are untouched; only the colour moves.
+   every two seconds beside a heading is a notification badge and read as
+   one. What is left is the icon being alive: a blue-into-gold gradient
+   flowing along the strokes, a soft glow that breathes, and one small
+   pulse roughly every five seconds. The shapes are lucide's Brain,
+   untouched; only the colour moves.
 
-   Streak tier changes the colours and the tempo, so the icon previews the
-   state of the tree behind it rather than speaking its own language.
+   Why this draws its own <svg> instead of using <Brain> from lucide:
+   lucide's Icon renders `children` AFTER the icon's paths, so a <defs>
+   passed as a child lands below the paths that reference it, and the
+   gradient would not resolve — the icon came out flat grey three times
+   running. Owning the <svg> puts <defs> first, where a paint server has
+   to be. The paths below are lucide's brain iconNode verbatim, so the
+   glyph is identical to every other icon in the app.
 */
 
-/* Blue into gold and back, always — the brain is meant to look alive and
-   worth pressing, so the palette does not get duller as the streak gets
-   better. An earlier pass tied the colours to the tier and a silver
-   streak painted the icon grey, which is the opposite of a reward. The
-   tier changes the tempo and the brightness instead. */
 const FLOW_A = warm.colors.accentPetrol;
 const FLOW_B = warm.colors.accentGoldBright;
 
@@ -30,6 +29,18 @@ const FLOW_B = warm.colors.accentGoldBright;
 const FLOW_S: Record<StreakTier, number> = { none: 4.5, bronze: 3.8, silver: 3.2, gold: 2.4 };
 /** How hard the glow sits under the glyph. */
 const GLOW: Record<StreakTier, number> = { none: 0.45, bronze: 0.6, silver: 0.75, gold: 1 };
+
+/** lucide `brain` iconNode, verbatim. */
+const BRAIN_PATHS = [
+  'M12 18V5',
+  'M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4',
+  'M17.598 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5',
+  'M17.997 5.125a4 4 0 0 1 2.526 5.77',
+  'M18 18a4 4 0 0 0 2-7.464',
+  'M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517',
+  'M6 18a4 4 0 0 1-2-7.464',
+  'M6.003 5.125a4 4 0 0 0-2.526 5.77',
+];
 
 export interface PulsingBrainIconProps {
   streak: number;
@@ -48,10 +59,9 @@ export const PulsingBrainIcon: React.FC<PulsingBrainIconProps> = ({ streak, onCl
   const reduced = prefersReducedMotion();
   const inline = variant === 'inline';
 
-  // Namespaced so several brains on one page keep their own gradient and
-  // their own keyframes (the glow strength differs by tier).
   const animId = useId().replace(/[^a-zA-Z0-9]/g, '');
   const gradId = `brain-flow-${animId}`;
+  const glyph = Math.round(size * (inline ? 0.86 : 0.5));
 
   return (
     <button
@@ -66,29 +76,25 @@ export const PulsingBrainIcon: React.FC<PulsingBrainIconProps> = ({ streak, onCl
         padding: 0, cursor: 'pointer', flexShrink: 0, verticalAlign: 'middle',
       }}
     >
-      <Brain
-        size={Math.round(size * (inline ? 0.86 : 0.5))}
-        /* Paint the strokes with the gradient, naming a solid fallback
-           after it: if the paint server cannot resolve for any reason the
-           icon is still drawn in blue rather than vanishing. */
-        color={`url(#${gradId}) ${c1}`}
+      <svg
+        width={glyph}
+        height={glyph}
+        viewBox="0 0 24 24"
+        fill="none"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+        focusable="false"
         style={{
-          position: 'relative', zIndex: 1,
-          // The glow breathes, and every fifth second the whole glyph
-          // gives one small nod. Both live in the same keyframe so they
-          // can never drift apart.
+          position: 'relative', zIndex: 1, flexShrink: 0, display: 'block',
           animation: reduced ? 'none' : `brain-alive-${animId} 5s ease-in-out infinite`,
-          filter: `drop-shadow(0 0 4px ${c1}70)`,
         }}
       >
-        {/* The defs live INSIDE the icon's own <svg>. They used to sit in
-            a separate zero-sized svg beside it, and a paint server
-            referenced across document fragments is not reliably resolved —
-            which is why the brain kept coming out flat grey. */}
         <defs>
           {/* spreadMethod="repeat" tiles the blue-gold-blue ramp and the
-              transform slides it by exactly one tile, so the flow along
-              the strokes is seamless and always covers the glyph. */}
+              transform slides it by exactly one tile, so the flow is
+              seamless and the glyph is never left unpainted. */}
           <linearGradient
             id={gradId}
             x1="0" y1="0" x2="0.6" y2="0.35"
@@ -110,7 +116,13 @@ export const PulsingBrainIcon: React.FC<PulsingBrainIconProps> = ({ streak, onCl
             )}
           </linearGradient>
         </defs>
-      </Brain>
+        {/* Solid colour named after the url(), so a paint server that fails
+            to resolve leaves a blue brain rather than an invisible or
+            inherited-grey one. */}
+        <g stroke={`url(#${gradId}) ${c1}`}>
+          {BRAIN_PATHS.map(d => <path key={d} d={d} />)}
+        </g>
+      </svg>
 
       <style>{`
         @keyframes brain-alive-${animId} {
