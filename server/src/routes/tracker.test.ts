@@ -9,6 +9,11 @@ vi.mock('../index', () => ({
   }
 }));
 
+// The WhatsApp opt-in route pulls the trial engine, whose import chain reaches
+// the Stripe and email routes and constructs Resend at load. None of that is
+// under test here.
+vi.mock('../services/trialChallenge/engine', () => ({ getOrCreateWhatsappOptInCode: vi.fn() }));
+
 vi.mock('../services/jobFeed', () => ({
   todayAEST: () => new Date('2026-06-17T00:00:00+10:00')
 }));
