@@ -5,6 +5,8 @@
  * POST /email-cover-letter      Condense cover letter into email body + subject
  * POST /profile-advisor         Grade profile A-D with 5 prioritised improvements
  * POST /notes-actions           Extract follow-up action items from job notes
+ * POST /video-script            Under-a-minute video cover letter script, one line per clip
+ * POST /video-script/personalise Per-company opener for that script, from a job ad
  */
 import { Router } from 'express';
 import { prisma } from '../index';
@@ -12,6 +14,7 @@ import { authenticate } from '../middleware/auth';
 import { analyzeRateLimit } from '../middleware/analyzeRateLimit';
 import { callLLM, callClaude } from '../services/llm';
 import { parseLLMJson } from '../utils/parseLLMResponse';
+import { writeVideoScript, writePersonalisedLines } from '../services/videoScript';
 
 const router = Router();
 router.use(authenticate, analyzeRateLimit);
@@ -426,6 +429,76 @@ Return JSON only:
     } catch (err: any) {
         console.error('[Follow-up Email] Error:', err.message);
         res.status(500).json({ error: 'Failed to write the follow-up.' });
+    }
+});
+
+// Video cover letter V1: a generic master script the candidate shoots once;
+// the page personalises the opener per company. See services/videoScript.ts.
+router.post('/video-script', async (req: any, res: any) => {
+    try {
+        const userId = req.user.id;
+        const profile = await prisma.candidateProfile.findUnique({
+            where: { userId },
+            select: { name: true, targetCity: true, resumeRawText: true },
+        });
+        if (!profile) return res.status(404).json({ error: 'Profile not found.' });
+        if (!profile.resumeRawText || profile.resumeRawText.trim().length < 200) {
+            return res.status(400).json({ error: 'NO_RESUME' });
+        }
+
+        const script = await writeVideoScript({ ...profile, resumeRawText: profile.resumeRawText });
+        return res.json(script);
+    } catch (err: any) {
+        console.error('[Video Script] Error:', err.message);
+        res.status(500).json({ error: 'Failed to write the script.' });
+    }
+});
+
+// The per-company opener for the video cover letter, from a pasted job ad or a
+// job already in their tracker.
+router.post('/video-script/personalise', async (req: any, res: any) => {
+    try {
+        const userId = req.user.id;
+        const { jobApplicationId, jobDescription, masterLines } = req.body as {
+            jobApplicationId?: string; jobDescription?: string; masterLines?: string[];
+        };
+
+        const profile = await prisma.candidateProfile.findUnique({
+            where: { userId },
+            select: { name: true, resumeRawText: true },
+        });
+        if (!profile) return res.status(404).json({ error: 'Profile not found.' });
+        if (!profile.resumeRawText || profile.resumeRawText.trim().length < 200) {
+            return res.status(400).json({ error: 'NO_RESUME' });
+        }
+
+        let ad = (jobDescription || '').trim();
+        let role: string | null = null;
+        let company: string | null = null;
+        if (jobApplicationId) {
+            const job = await prisma.jobApplication.findFirst({
+                where: { id: jobApplicationId, candidateProfile: { userId } },
+                select: { title: true, company: true, description: true },
+            });
+            if (!job) return res.status(404).json({ error: 'Application not found.' });
+            ad = (job.description || '').trim();
+            role = job.title || null;
+            company = job.company || null;
+        }
+        if (ad.length < 150) return res.status(400).json({ error: 'NO_AD' });
+
+        const result = await writePersonalisedLines({
+            name: profile.name,
+            resumeRawText: profile.resumeRawText,
+            jobDescription: ad,
+            role,
+            company,
+            masterLines: Array.isArray(masterLines) ? masterLines.filter(l => typeof l === 'string').slice(0, 12) : [],
+        });
+        return res.json(result);
+    } catch (err: any) {
+        console.error('[Video Script Personalise] Error:', err.message);
+        res.status(500).json({ error: 'Failed to personalise the script.' });
     }
 });
 

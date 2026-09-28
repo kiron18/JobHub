@@ -58,6 +58,9 @@ const EmailAnalytics = React.lazy(() =>
 const AdminQuality = React.lazy(() =>
   import('./pages/AdminQuality').then(m => ({ default: m.AdminQuality }))
 );
+const VideoCoverLetterPage = React.lazy(() =>
+  import('./pages/VideoCoverLetterPage').then(m => ({ default: m.VideoCoverLetterPage }))
+);
 const MindsetPage = React.lazy(() =>
   import('./pages/MindsetPage').then(m => ({ default: m.MindsetPage }))
 );
@@ -540,6 +543,7 @@ function ReportOrDashboard() {
                 {/* Job feed removed — app runs on pasted jobs. Stray links to /jobs land on the dashboard. */}
                 <Route path="/jobs" element={<Navigate to="/" replace />} />
                 <Route path="/mindset" element={<MindsetPage />} />
+                <Route path="/video-cover-letter" element={<VideoCoverLetterPage />} />
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/admin/coach" element={<CoachDashboard />} />
                 <Route path="/admin/funnel" element={<AdminFunnel />} />
