@@ -1,4 +1,5 @@
 import React from 'react';
+import { Snowflake } from 'lucide-react';
 import { warm } from '../../lib/theme/warmTokens';
 
 /* ── DayCounter ────────────────────────────────────────────────────────
@@ -15,9 +16,10 @@ import { warm } from '../../lib/theme/warmTokens';
      partial   something, under the goal
      goal      goal met
      over      past the goal
+     frozen    missed, but a streak freeze covered it
 */
 
-export type DayState = 'none' | 'partial' | 'goal' | 'over' | 'future';
+export type DayState = 'none' | 'partial' | 'goal' | 'over' | 'future' | 'frozen';
 
 const LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
@@ -27,6 +29,12 @@ const DOT: Record<DayState, { bg: string; border: string }> = {
   goal: { bg: warm.colors.accentPetrol, border: 'transparent' },
   over: { bg: warm.colors.accentGoldBright, border: 'transparent' },
   future: { bg: 'transparent', border: warm.colors.borderWhisper },
+  frozen: { bg: '#DDF0FB', border: '#7CC4EE' },
+};
+
+const TITLE: Record<DayState, string> = {
+  none: 'Nothing logged', partial: 'Under your goal', goal: 'Goal met',
+  over: 'Past your goal', future: 'Not yet', frozen: 'Missed, streak freeze used',
 };
 
 export interface DayCounterProps {
@@ -63,16 +71,19 @@ export const DayCounter: React.FC<DayCounterProps> = ({ day, of = 90, week, toda
               {LETTERS[i]}
             </span>
             <span
-              title={state === 'future' ? 'Not yet' : state}
+              title={TITLE[state]}
               style={{
                 width: 16, height: 16, borderRadius: '50%',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 background: DOT[state].bg,
                 border: i === todayIndex
                   ? `2px solid ${warm.colors.accentPetrol}`
                   : `1.5px solid ${DOT[state].border}`,
                 boxSizing: 'border-box',
               }}
-            />
+            >
+              {state === 'frozen' && <Snowflake size={10} color="#2B8FCB" strokeWidth={2.6} />}
+            </span>
           </div>
         ))}
       </div>

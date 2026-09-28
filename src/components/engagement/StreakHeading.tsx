@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Snowflake } from 'lucide-react';
 import { warm } from '../../lib/theme/warmTokens';
 import { EASE, prefersReducedMotion } from '../../lib/theme/motion';
 import { PulsingBrainIcon } from './PulsingBrainIcon';
@@ -35,10 +36,20 @@ function nextMilestone(streak: number): number | null {
 
 export interface StreakHeadingProps {
   streak: number;
+  /** Streak freezes in hand. Undefined hides the chip (older server). */
+  freezes?: number;
+  /** Today already counted. False with a live streak means it is at risk. */
+  todayDone?: boolean;
+  /** Applications that count a day toward the streak. */
+  floor?: number;
   onBrainClick: () => void;
 }
 
-export const StreakHeading: React.FC<StreakHeadingProps> = ({ streak, onBrainClick }) => {
+const FREEZE_HELP =
+  'Streak freezes: a missed weekday uses one automatically, so your streak survives. ' +
+  'You earn one for every 5 days in a row and can hold 2.';
+
+export const StreakHeading: React.FC<StreakHeadingProps> = ({ streak, freezes, todayDone, floor, onBrainClick }) => {
   const reduced = prefersReducedMotion();
   const milestone = nextMilestone(streak);
   const [nudgeVisible, setNudgeVisible] = useState(false);
@@ -63,6 +74,29 @@ export const StreakHeading: React.FC<StreakHeadingProps> = ({ streak, onBrainCli
         {heading}{' '}
         <PulsingBrainIcon streak={streak} onClick={onBrainClick} size={20} variant="inline" />
       </h1>
+
+      {freezes !== undefined && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', margin: '-2px 0 10px' }}>
+          <span
+            title={FREEZE_HELP}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: 999,
+              fontSize: 12.5, fontWeight: 700, lineHeight: 1.4,
+              background: freezes > 0 ? '#E6F4FC' : warm.colors.bgAlt,
+              color: freezes > 0 ? '#1F7AB0' : warm.colors.textMuted,
+              border: `1px solid ${freezes > 0 ? '#BFE3F7' : warm.colors.borderWhisper}`,
+            }}
+          >
+            <Snowflake size={13} strokeWidth={2.4} />
+            {freezes === 0 ? 'No streak freezes' : `${freezes} streak freeze${freezes === 1 ? '' : 's'}`}
+          </span>
+          {streak > 0 && todayDone === false && floor !== undefined && (
+            <span style={{ fontSize: 12.5, fontWeight: 600, color: warm.colors.accentGoldBright }}>
+              Send {floor} today to make it {streak + 1} days
+            </span>
+          )}
+        </div>
+      )}
 
       <AnimatePresence>
         {nudgeVisible && milestone !== null && (

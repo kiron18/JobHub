@@ -31,6 +31,10 @@ import { WeekStrip } from '../jobs/WeekStrip';
 
 export interface EngagementSummary {
   streak: number;
+  /** Optional so an older server build still renders. */
+  streakFreezes?: number;
+  streakTodayDone?: boolean;
+  streakFloor?: number;
   programDay: number;
   programLength: number;
   applications: number;
@@ -105,7 +109,13 @@ export function EngagementStrip() {
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 24, flexWrap: 'wrap', marginBottom: 32 }}>
       <div style={{ flex: '1 1 380px', minWidth: 0 }}>
-        <StreakHeading streak={summary.streak} onBrainClick={() => setBrainOpen(true)} />
+        <StreakHeading
+          streak={summary.streak}
+          freezes={summary.streakFreezes}
+          todayDone={summary.streakTodayDone}
+          floor={summary.streakFloor}
+          onBrainClick={() => setBrainOpen(true)}
+        />
 
         <div style={{ marginBottom: 14 }}>
           <TodaysRitual

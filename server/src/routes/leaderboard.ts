@@ -54,7 +54,6 @@ router.use(authenticate);
 const POINTS = { application: 1, outreach: 1 } as const;
 const DAY_MS = 86400000;
 const STREAK_WEEKS = 26;
-const DAILY_STREAK_DAYS = 60;
 
 /**
  * The board is capped at ten ranked names, and a name only takes one of those
@@ -196,7 +195,7 @@ router.get('/', async (req: any, res: any) => {
                 },
             }),
             getWeeklyCountsBatch(userIds, STREAK_WEEKS),
-            computeDailyStreakBatch(userIds, DAILY_STREAK_DAYS),
+            computeDailyStreakBatch(userIds),
             manualEntries(),
             period === 'all'
                 ? prisma.jobApplication.findMany({

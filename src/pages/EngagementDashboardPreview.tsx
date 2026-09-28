@@ -102,7 +102,7 @@ export default function EngagementDashboardPreview() {
     else { setLocalUndo(false); setLocalLocked(false); }
   };
 
-  const week: DayState[] = ['goal', 'over', 'partial', 'goal', todayState(filedToday, target), 'future', 'future'];
+  const week: DayState[] = ['goal', 'over', 'frozen', 'goal', todayState(filedToday, target), 'future', 'future'];
 
   /* Mock filing. When wired, the real count comes from the server and
      this only opens the popup — a preview button must not invent
@@ -141,7 +141,7 @@ export default function EngagementDashboardPreview() {
               mock because it has no server to talk to. */}
           {wired ? <EngagementStrip /> : (
             <>
-              <StreakHeading streak={STREAK} onBrainClick={() => setBrainOpen(true)} />
+              <StreakHeading streak={STREAK} freezes={1} todayDone={filedToday >= 5} floor={5} onBrainClick={() => setBrainOpen(true)} />
 
               <div style={{ marginBottom: 14 }}>
                 <TodaysRitual

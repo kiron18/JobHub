@@ -77,6 +77,57 @@ describe('computeDailyStreak', () => {
   });
 });
 
+describe('streak freezes (Duolingo rules)', () => {
+  // TODAY is Wed 9 Sep. Working days back from it: 1 Tue, 2 Mon, 5 Fri,
+  // 6 Thu, 7 Wed, 8 Tue, 9 Mon, 12 Fri, 13 Thu ...
+  const full = (daysAgo: number) =>
+    Array.from({ length: 5 }, (_, i) => app(daysAgo, { sourceUrl: `d${daysAgo}-${i}` }));
+
+  it('a missed working day spends the starting freeze and keeps the streak', async () => {
+    const { m, prisma } = await mod();
+    // Thu, Fri cleared; Mon missed; Tue cleared.
+    (prisma.jobApplication.findMany as any).mockResolvedValue([6, 5, 1].flatMap(full));
+    const s = await m.computeStreakState('u1');
+    expect(s.streak).toBe(3);
+    expect(s.freezes).toBe(0);
+    expect(s.frozenDays).toEqual([new Date(TODAY.getTime() - 2 * 86400000).toISOString()]);
+  });
+
+  it('resets once there is no freeze left', async () => {
+    const { m, prisma } = await mod();
+    // Fri cleared, Mon and Tue both missed: one freeze covers Mon, Tue breaks it.
+    (prisma.jobApplication.findMany as any).mockResolvedValue(full(5));
+    const s = await m.computeStreakState('u1');
+    expect(s.streak).toBe(0);
+  });
+
+  it('earns a freeze every five cleared days, holding at most two', async () => {
+    const { m, prisma } = await mod();
+    // Ten cleared working days in a row up to yesterday: 1 + 2 earned, capped at 2.
+    (prisma.jobApplication.findMany as any).mockResolvedValue([1, 2, 5, 6, 7, 8, 9, 12, 13, 14].flatMap(full));
+    const s = await m.computeStreakState('u1');
+    expect(s.streak).toBe(10);
+    expect(s.freezes).toBe(2);
+  });
+
+  it('never spends a freeze when there is no streak to protect', async () => {
+    const { m, prisma } = await mod();
+    (prisma.jobApplication.findMany as any).mockResolvedValue([]);
+    const s = await m.computeStreakState('u1');
+    expect(s.freezes).toBe(1);
+    expect(s.frozenDays).toEqual([]);
+  });
+
+  it('an unfinished today is at risk, not a break', async () => {
+    const { m, prisma } = await mod();
+    (prisma.jobApplication.findMany as any).mockResolvedValue([2, 1].flatMap(full));
+    const s = await m.computeStreakState('u1');
+    expect(s.streak).toBe(2);
+    expect(s.todayDone).toBe(false);
+    expect(s.freezes).toBe(1);
+  });
+});
+
 describe('computeDailyStreakBatch', () => {
   it('computes each user\'s streak independently from one query', async () => {
     const { m, prisma } = await mod();

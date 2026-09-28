@@ -1,7 +1,7 @@
 import { prisma } from '../../index';
 import { todayAEST } from '../jobFeed';
 import { countDistinctJobs, SENT_APPLICATION_FILTER, isSentStatus } from './metricHelpers';
-import { computeDailyStreak } from './closeout';
+import { computeStreakState, DAILY_STREAK_FLOOR } from './closeout';
 import { tokenToInstant } from './goals';
 
 /**
@@ -20,18 +20,26 @@ import { tokenToInstant } from './goals';
 const DAY_MS = 86400000;
 const PROGRAM_DAYS = 90;
 /** Sunday-first, matching WeekStrip and the client's DayCounter. */
-export type DayState = 'none' | 'partial' | 'goal' | 'over' | 'future';
+export type DayState = 'none' | 'partial' | 'goal' | 'over' | 'future' | 'frozen';
 
 export interface EngagementSummary {
   /** Consecutive days clearing the floor. The program goal decides this,
    *  never the member's own daily target — see dailyTarget.ts. */
   streak: number;
+  /** Streak freezes in hand (Duolingo rules, see closeout.ts). */
+  streakFreezes: number;
+  /** Today already cleared the floor. False = the streak is at risk today. */
+  streakTodayDone: boolean;
+  /** Applications in a day that count it toward the streak. */
+  streakFloor: number;
   /** 1-based day of the 90-day program. */
   programDay: number;
   programLength: number;
   /** Applications actually sent, all time, de-duplicated by source URL. */
   applications: number;
-  /** Reached interview or beyond. */
+  /** Reached interview at any point, whatever happened after. An interview
+   *  is a tag on an application, never a separate pile: ten applications
+   *  with three interviews is 10 and 3, not 7 and 3. */
   interviews: number;
   outreach: number;
   /** Distinct days with at least one application sent. */
@@ -66,8 +74,8 @@ export async function getEngagementSummary(userId: string): Promise<EngagementSu
   const today = todayAEST();
   const sunday = new Date(today.getTime() - today.getUTCDay() * DAY_MS);
 
-  const [streak, profile, jobs, outreach] = await Promise.all([
-    computeDailyStreak(userId),
+  const [streakState, profile, jobs, outreach] = await Promise.all([
+    computeStreakState(userId),
     prisma.candidateProfile.findUnique({
       where: { userId },
       // Explicit select, always. A bare include on this table is what took
@@ -76,7 +84,7 @@ export async function getEngagementSummary(userId: string): Promise<EngagementSu
     }),
     prisma.jobApplication.findMany({
       where: { userId, ...SENT_APPLICATION_FILTER },
-      select: { sourceUrl: true, id: true, status: true, dateApplied: true },
+      select: { sourceUrl: true, id: true, status: true, dateApplied: true, interviewReachedAt: true },
     }),
     prisma.outreachLog.count({ where: { userId } }),
   ]);
@@ -92,7 +100,9 @@ export async function getEngagementSummary(userId: string): Promise<EngagementSu
   const programDay = Math.min(PROGRAM_DAYS, Math.max(1, elapsed + 1));
 
   const applications = countDistinctJobs(jobs);
-  const interviews = jobs.filter(j => j.status === 'INTERVIEW' || j.status === 'OFFER').length;
+  const interviews = jobs.filter(j =>
+    j.interviewReachedAt !== null || j.status === 'INTERVIEW' || j.status === 'OFFER',
+  ).length;
 
   // Bucket by AEST day for both the week strip and the active-day count.
   const perDay = new Map<number, number>();
@@ -103,13 +113,18 @@ export async function getEngagementSummary(userId: string): Promise<EngagementSu
   }
   const daysActive = perDay.size;
 
+  const frozen = new Set(streakState.frozenDays.map(k => new Date(k).getTime()));
   const week: DayState[] = Array.from({ length: 7 }, (_, i) => {
     const d = sunday.getTime() + i * DAY_MS;
+    if (frozen.has(d)) return 'frozen';
     return dayState(perDay.get(d) ?? 0, goal, d > today.getTime());
   });
 
   return {
-    streak,
+    streak: streakState.streak,
+    streakFreezes: streakState.freezes,
+    streakTodayDone: streakState.todayDone,
+    streakFloor: DAILY_STREAK_FLOOR,
     programDay,
     programLength: PROGRAM_DAYS,
     applications,

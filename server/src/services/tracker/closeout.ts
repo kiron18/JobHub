@@ -30,25 +30,84 @@ function isWeekendToken(token: Date): boolean {
   return day === 0 || day === 6;
 }
 
-/** Consecutive floor-clearing days ending today, from a day -> distinct-jobs-that-day map. */
-function streakFromByDay(byDay: Map<string, Set<string>>, today: Date, days: number): number {
-  let streak = 0;
-  for (let i = 0; i < days; i++) {
-    const dayToken = new Date(today.getTime() - i * DAY_MS);
-    if (isWeekendToken(dayToken)) continue;
-    const count = byDay.get(dayToken.toISOString())?.size ?? 0;
-    if (count >= DAILY_STREAK_FLOOR) streak++;
-    else break;
-  }
-  return streak;
+/**
+ * Streak freezes, Duolingo rules:
+ *   - a missed working day spends a freeze automatically, and the streak
+ *     survives it without growing;
+ *   - no freeze left, the streak resets to zero;
+ *   - a freeze is only spent protecting a live streak, never on a day when
+ *     there was nothing to protect;
+ *   - everyone starts with one, earns one for every FREEZE_EARN_EVERY days
+ *     cleared in a row, and holds at most FREEZE_MAX;
+ *   - today is never a miss while it is still today. It counts the moment
+ *     the floor is cleared, and until then the streak is "at risk", not gone.
+ * Weekends neither count nor break, as before.
+ *
+ * Derived from application history alone, replayed from the start of the
+ * window, so there is no freeze inventory to store or drift out of step.
+ */
+export const FREEZE_START = 1;
+export const FREEZE_EARN_EVERY = 5;
+export const FREEZE_MAX = 2;
+
+/** How far back the replay starts. Covers the whole 90-day program. */
+const STREAK_WINDOW_DAYS = 120;
+
+export interface StreakState {
+  streak: number;
+  /** Freezes in hand right now. */
+  freezes: number;
+  /** ISO day tokens that a freeze covered. */
+  frozenDays: string[];
+  /** Today already cleared the floor. False means the streak is at risk. */
+  todayDone: boolean;
 }
 
-/**
- * Consecutive AEST calendar days, ending today, that cleared the daily
- * floor. Weekends are skipped rather than breaking the streak, matching the
- * 5-day working week the program's weekly minimums are built on.
- */
-export async function computeDailyStreak(userId: string, days = 60): Promise<number> {
+function streakStateFromByDay(byDay: Map<string, Set<string>>, today: Date, days: number): StreakState {
+  let streak = 0;
+  let freezes = FREEZE_START;
+  let run = 0;
+  const frozenDays: string[] = [];
+  let todayDone = false;
+
+  const cleared = () => {
+    streak++;
+    run++;
+    if (run % FREEZE_EARN_EVERY === 0) freezes = Math.min(FREEZE_MAX, freezes + 1);
+  };
+
+  for (let i = days - 1; i >= 0; i--) {
+    const dayToken = new Date(today.getTime() - i * DAY_MS);
+    const key = dayToken.toISOString();
+    const met = (byDay.get(key)?.size ?? 0) >= DAILY_STREAK_FLOOR;
+
+    if (i === 0) {
+      if (met) { cleared(); todayDone = true; }
+      break;
+    }
+    if (isWeekendToken(dayToken)) continue;
+
+    if (met) cleared();
+    else if (streak > 0 && freezes > 0) { freezes--; frozenDays.push(key); }
+    else { streak = 0; run = 0; }
+  }
+
+  return { streak, freezes, frozenDays, todayDone };
+}
+
+function byDayFromRows(rows: Array<{ sourceUrl: string | null; id: string; dateApplied: Date | null }>): Map<string, Set<string>> {
+  const byDay = new Map<string, Set<string>>();
+  for (const r of rows) {
+    if (!r.dateApplied) continue;
+    const key = appliedToken(r.dateApplied).toISOString();
+    if (!byDay.has(key)) byDay.set(key, new Set());
+    byDay.get(key)!.add(jobKey(r));
+  }
+  return byDay;
+}
+
+/** The streak with its freezes, for the engagement strip. */
+export async function computeStreakState(userId: string, days = STREAK_WINDOW_DAYS): Promise<StreakState> {
   const today = todayAEST();
   const firstDay = new Date(today.getTime() - (days - 1) * DAY_MS);
 
@@ -57,15 +116,16 @@ export async function computeDailyStreak(userId: string, days = 60): Promise<num
     select: { sourceUrl: true, id: true, dateApplied: true },
   });
 
-  const byDay = new Map<string, Set<string>>();
-  for (const r of rows) {
-    if (!r.dateApplied) continue;
-    const key = appliedToken(r.dateApplied).toISOString();
-    if (!byDay.has(key)) byDay.set(key, new Set());
-    byDay.get(key)!.add(jobKey(r));
-  }
+  return streakStateFromByDay(byDayFromRows(rows), today, days);
+}
 
-  return streakFromByDay(byDay, today, days);
+/**
+ * Consecutive working days that cleared the daily floor, with freezes
+ * applied (see streakStateFromByDay). Weekends are skipped rather than
+ * breaking the streak, matching the program's 5-day working week.
+ */
+export async function computeDailyStreak(userId: string, days = STREAK_WINDOW_DAYS): Promise<number> {
+  return (await computeStreakState(userId, days)).streak;
 }
 
 /**
@@ -73,7 +133,7 @@ export async function computeDailyStreak(userId: string, days = 60): Promise<num
  * leaderboard, which needs everyone's streak at once rather than one
  * round trip per row (same batching approach as getWeeklyCountsBatch).
  */
-export async function computeDailyStreakBatch(userIds: string[], days = 60): Promise<Map<string, number>> {
+export async function computeDailyStreakBatch(userIds: string[], days = STREAK_WINDOW_DAYS): Promise<Map<string, number>> {
   const today = todayAEST();
   const firstDay = new Date(today.getTime() - (days - 1) * DAY_MS);
 
@@ -94,7 +154,7 @@ export async function computeDailyStreakBatch(userIds: string[], days = 60): Pro
 
   const out = new Map<string, number>();
   for (const userId of userIds) {
-    out.set(userId, streakFromByDay(byUserByDay.get(userId) ?? new Map(), today, days));
+    out.set(userId, streakStateFromByDay(byUserByDay.get(userId) ?? new Map(), today, days).streak);
   }
   return out;
 }

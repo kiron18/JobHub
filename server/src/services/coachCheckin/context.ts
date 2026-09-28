@@ -37,7 +37,7 @@ export async function getCheckinContext(userId: string): Promise<CheckinContext>
     }),
     promoteAndGetSettings(userId),
     countFiledToday(userId),
-    computeDailyStreakBatch([userId], 60),
+    computeDailyStreakBatch([userId]),
   ]);
 
   return {
