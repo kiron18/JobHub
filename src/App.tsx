@@ -109,6 +109,7 @@ const AnimationTest = React.lazy(() =>
 // Design review surface. Unlisted, renders no user data, imported by nothing else.
 const StyleGuidePage = React.lazy(() => import('./pages/styleguide/StyleGuidePage'));
 const TrialChallengePreview = React.lazy(() => import('./pages/TrialChallengePreview'));
+const InterviewPrepRedesignPreview = React.lazy(() => import('./pages/InterviewPrepRedesignPreview'));
 const EngagementPreview = React.lazy(() => import('./pages/EngagementPreview'));
 const EngagementDashboardPreview = React.lazy(() => import('./pages/EngagementDashboardPreview'));
 
@@ -595,6 +596,11 @@ function App() {
               <Route path="/dev/trial-preview" element={
                 <React.Suspense fallback={null}>
                   <TrialChallengePreview />
+                </React.Suspense>
+              } />
+              <Route path="/dev/interview-prep-redesign" element={
+                <React.Suspense fallback={null}>
+                  <InterviewPrepRedesignPreview />
                 </React.Suspense>
               } />
               <Route path="/dev/engagement-preview" element={
