@@ -35,6 +35,11 @@ export interface JobApplication {
      * hiring_manager, panel, technical or final. Null until one is chosen.
      */
     interviewStage?: string | null;
+    /** Stamped when the application first reaches interview, and kept if it
+     *  is later rejected. This is what makes an interview a tag on an
+     *  application rather than a separate pile. */
+    interviewReachedAt?: string | null;
+    offerReachedAt?: string | null;
 }
 
 export const PRIORITY_CONFIG: Record<NonNullable<JobPriority>, { label: string; dot: string; border: string; bg: string; text: string }> = {

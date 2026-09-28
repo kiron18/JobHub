@@ -223,6 +223,16 @@ export const ApplicationTracker: React.FC = () => {
         REJECTED: jobs.filter(j => j.status === 'REJECTED').length,
     };
 
+    /* The headline numbers. An interview is a tag on an application, never
+       a separate pile: ten applications with three interviews reads 10 and
+       3, not 7 and 3. `counts` above stays per-status because the filter
+       tabs need exactly that. */
+    const totals = {
+        applied: jobs.filter(j => j.status !== 'SAVED').length,
+        interviews: jobs.filter(j => !!j.interviewReachedAt || j.status === 'INTERVIEW' || j.status === 'OFFER').length,
+        offers: jobs.filter(j => !!j.offerReachedAt || j.status === 'OFFER').length,
+    };
+
     const followUpDue = jobs.filter(j => {
         const days = daysSinceApplied(j.dateApplied);
         return j.status === 'APPLIED' && days !== null && days >= 7;
@@ -303,10 +313,10 @@ export const ApplicationTracker: React.FC = () => {
                 borderRadius: 14, overflow: 'hidden',
             }}>
                 {[
-                    { label: 'Total', value: counts.ALL, color: warm.colors.textPrimary },
-                    { label: 'Applied', value: counts.APPLIED, color: warm.colors.accentPetrol },
-                    { label: 'Interviews', value: counts.INTERVIEW, color: warm.colors.accentGold, rate: counts.APPLIED > 0 ? `${Math.round((counts.INTERVIEW / Math.max(counts.APPLIED + counts.INTERVIEW, 1)) * 100)}%` : null },
-                    { label: 'Offers', value: counts.OFFER, color: counts.OFFER > 0 ? warm.colors.success : warm.colors.textMuted, icon: Trophy, rate: counts.INTERVIEW > 0 && counts.OFFER > 0 ? `${Math.round((counts.OFFER / counts.INTERVIEW) * 100)}%` : null },
+                    { label: 'Saved', value: counts.SAVED, color: warm.colors.textPrimary },
+                    { label: 'Applied', value: totals.applied, color: warm.colors.accentPetrol },
+                    { label: 'Interviews', value: totals.interviews, color: warm.colors.accentGold, rate: totals.applied > 0 && totals.interviews > 0 ? `${Math.round((totals.interviews / totals.applied) * 100)}%` : null },
+                    { label: 'Offers', value: totals.offers, color: totals.offers > 0 ? warm.colors.success : warm.colors.textMuted, icon: Trophy, rate: totals.interviews > 0 && totals.offers > 0 ? `${Math.round((totals.offers / totals.interviews) * 100)}%` : null },
                     { label: 'Follow-up Due', value: followUpDue, color: followUpDue > 0 ? warm.colors.accentGold : warm.colors.textMuted, icon: Clock, highlight: followUpDue > 0 },
                 ].map((stat, i) => (
                     <div key={i} style={{
@@ -336,8 +346,13 @@ export const ApplicationTracker: React.FC = () => {
             </div>
 
             {/* Pipeline Funnel — only shown when there are active applications */}
-            {counts.APPLIED + counts.INTERVIEW + counts.OFFER > 0 && (
-                <PipelineFunnel counts={counts} />
+            {totals.applied > 0 && (
+                <PipelineFunnel counts={{
+                    APPLIED: totals.applied,
+                    INTERVIEW: totals.interviews,
+                    OFFER: totals.offers,
+                    REJECTED: counts.REJECTED,
+                }} />
             )}
 
             {/* Add Job Manually */}
