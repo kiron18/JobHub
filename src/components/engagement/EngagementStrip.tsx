@@ -57,10 +57,27 @@ export function EngagementStrip() {
   if (!summary || !live.data) return null;
   const t = live.data;
 
-  // The stepper is a dial until Set commits it, so the pending value is
-  // local and the committed one comes back from the server.
-  const shown = pending ?? t.committed ?? t.min;
-  const commit = () => live.setTarget.mutate(shown);
+  /* The stepper is a dial until Set commits it: `pending` holds what the
+     member has dialled, the server holds what they have committed to.
+
+     The displayed number MUST be the dialled one while unlocked. An
+     earlier version rendered the server's value here and wired the
+     buttons to `pending`, so pressing + changed state nothing was showing
+     and the stepper looked broken.
+
+     Once locked there is nothing to dial and the server's effective
+     target — already auto-raised past what has been sent — is the truth.
+     While unlocked the same raise is applied locally so the number can
+     never sit below work already done. */
+  const dialled = pending ?? t.committed ?? t.min;
+  const shown = t.locked
+    ? t.target
+    : Math.min(t.max, Math.max(dialled, t.filedToday));
+
+  // Drop the dial once the server has taken the value, so a stale local
+  // number cannot survive a commit or an undo.
+  const clearPending = () => setPending(null);
+  const commit = () => live.setTarget.mutate(shown, { onSuccess: clearPending });
 
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 24, flexWrap: 'wrap', marginBottom: 32 }}>
@@ -69,7 +86,7 @@ export function EngagementStrip() {
 
         <div style={{ marginBottom: 14 }}>
           <TodaysRitual
-            target={t.target}
+            target={shown}
             filed={t.filedToday}
             locked={t.locked}
             undoAvailable={t.undoAvailable}
@@ -80,7 +97,7 @@ export function EngagementStrip() {
           />
         </div>
 
-        <ApplicationSquares filed={t.filedToday} target={t.target} />
+        <ApplicationSquares filed={t.filedToday} target={shown} />
       </div>
 
       <div style={{ paddingTop: 4 }}>
@@ -114,7 +131,7 @@ export function EngagementStrip() {
       />
       <TargetUndoDialog
         open={undoDialog}
-        onConfirm={() => { setUndoDialog(false); live.useUndo.mutate(); }}
+        onConfirm={() => { setUndoDialog(false); live.useUndo.mutate(undefined, { onSuccess: clearPending }); }}
         onCancel={() => setUndoDialog(false)}
       />
     </div>

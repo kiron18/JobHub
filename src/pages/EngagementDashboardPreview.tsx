@@ -33,6 +33,7 @@ import {
 } from '../lib/dailyTarget';
 import { PostApplicationPopup } from '../components/engagement/PostApplicationPopup';
 import { TargetCommitDialog, TargetUndoDialog } from '../components/engagement/TargetDialogs';
+import { EngagementStrip } from '../components/engagement/EngagementStrip';
 import { useDailyTarget } from '../hooks/useDailyTarget';
 
 const C = warm.colors;
@@ -133,25 +134,33 @@ export default function EngagementDashboardPreview() {
             </span>
           </div>
 
-          <StreakHeading streak={STREAK} onBrainClick={() => setBrainOpen(true)} />
+          {/* Signed in, this renders the REAL component the dashboard uses,
+              not a copy of it. The copy is what caused the stepper to look
+              dead once it was wired: two implementations of the same dial,
+              and only one of them got fixed. Demo mode below keeps its own
+              mock because it has no server to talk to. */}
+          {wired ? <EngagementStrip /> : (
+            <>
+              <StreakHeading streak={STREAK} onBrainClick={() => setBrainOpen(true)} />
 
-          <div style={{ marginBottom: 14 }}>
-            <TodaysRitual
-              target={target}
-              filed={filedToday}
-              locked={targetLocked}
-              undoAvailable={undoAvailable}
-              onTargetChange={setCommittedTarget}
-              onSet={handleSet}
-              onUndo={() => setUndoDialog(true)}
-              detail="Pulled from your target-role list."
-            />
-          </div>
+              <div style={{ marginBottom: 14 }}>
+                <TodaysRitual
+                  target={target}
+                  filed={filedToday}
+                  locked={targetLocked}
+                  undoAvailable={undoAvailable}
+                  onTargetChange={setCommittedTarget}
+                  onSet={handleSet}
+                  onUndo={() => setUndoDialog(true)}
+                  detail="Pulled from your target-role list."
+                />
+              </div>
 
-          {/* One square per application, the row growing with the target. */}
-          <div style={{ marginBottom: 28 }}>
-            <ApplicationSquares filed={filedToday} target={target} />
-          </div>
+              <div style={{ marginBottom: 28 }}>
+                <ApplicationSquares filed={filedToday} target={target} />
+              </div>
+            </>
+          )}
 
           {/* Stand-in for AnalysisHeroCard — the real paste card. */}
           <div style={{
@@ -207,10 +216,13 @@ export default function EngagementDashboardPreview() {
           </p>
         </div>
 
-        {/* ── The Day chip, with the week under it ───────────────────── */}
-        <div style={{ paddingTop: 6 }}>
-          <DayCounter day={PROGRAM_DAY} of={90} week={week} todayIndex={4} />
-        </div>
+        {/* Demo only. EngagementStrip carries its own Day chip and week,
+            so rendering this alongside it put two of each on the page. */}
+        {!wired && (
+          <div style={{ paddingTop: 6 }}>
+            <DayCounter day={PROGRAM_DAY} of={90} week={week} todayIndex={4} />
+          </div>
+        )}
       </div>
 
       <BrainPopup
