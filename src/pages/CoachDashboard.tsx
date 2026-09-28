@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import api from '../lib/api';
 import { warm } from '../lib/theme/warmTokens';
 import { QualityControlPanel } from '../components/coach/QualityControlPanel';
+import { MemberActivity } from '../components/coach/MemberActivity';
 import { ManualLeaderboardPanel } from '../components/coach/ManualLeaderboardPanel';
 
 interface WeekCell { weekStart: string; applications: number; outreach: number; paused: boolean; hit: boolean; }
@@ -221,7 +222,8 @@ export const CoachDashboard: React.FC = () => {
                                 {/* Detail panel */}
                                 {isOpen && (
                                     <div style={{ padding: '0 16px 16px', borderTop: `1px solid ${warm.colors.borderWhisper}` }}>
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, paddingTop: 14 }}>
+                                        <MemberActivity userId={m.userId} />
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, paddingTop: 20, marginTop: 20, borderTop: `1px solid ${warm.colors.borderWhisper}` }}>
                                             {/* Goals + history */}
                                             <div style={{ flex: '1 1 260px' }}>
                                                 <SectionLabel>Goals</SectionLabel>

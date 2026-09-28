@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { motion } from 'framer-motion';
@@ -275,6 +275,30 @@ function BillingHoldBanner({ payUrl }: { payUrl?: string | null }) {
   );
 }
 
+/**
+ * Contact lookup runs on Hunter, whose monthly allowance resets on the 30th.
+ * Removes itself on that date, so there is nothing to remember to delete.
+ */
+const CONTACT_LOOKUP_BACK_ON = new Date('2026-09-30T00:00:00');
+
+function ContactLookupBanner() {
+  if (new Date() >= CONTACT_LOOKUP_BACK_ON) return null;
+  return (
+    <a
+      href="https://hunter.io"
+      target="_blank"
+      rel="noopener noreferrer"
+      role="status"
+      style={{
+        display: 'block', background: '#1e3a8a', color: '#fff', padding: '10px 20px',
+        textAlign: 'center', fontSize: 14, lineHeight: 1.4, textDecoration: 'none',
+      }}
+    >
+      Contact lookup is temporarily unavailable while our email provider refreshes. It will be back on the 30th.
+    </a>
+  );
+}
+
 function DashboardGate({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const { data: profile, isLoading } = useQuery({
@@ -336,6 +360,7 @@ function DashboardGate({ children }: { children: React.ReactNode }) {
       {/* A billing hold is NOT part of the paused-payments rework — it is an
           explicit, per-client pause and stays live while the rest is off. */}
       {profile?.billingHoldAt && <BillingHoldBanner payUrl={profile.billingHoldInvoiceUrl} />}
+      <ContactLookupBanner />
       {children}
     </>
   );
@@ -378,13 +403,19 @@ function LandingPageOrExisting() {
 }
 
 /*
- * /visa-sponsors is a public marketing page AND a sidebar destination, and it
- * was only ever the first. Signed out it is the standalone page it always was.
- * Signed in it goes through the protected tree, where the dashboard Routes
- * carry it, so the sidebar comes with it instead of vanishing.
+ * /visa-sponsors is a public marketing page AND a sidebar destination. Signed
+ * out it is the standalone page. Signed in it falls through to the protected
+ * tree, where the dashboard Routes carry it with the sidebar. This must live
+ * inside the "/*" route, not its own "/visa-sponsors/*" route: a nested Routes
+ * matches against the remainder after the parent splat, so under its own splat
+ * the remainder was empty, "/visa-sponsors" never matched, and signed-in users
+ * landed on the dashboard catch-all.
  */
-function VisaSponsorsRoute() {
+function VisaSponsorsPublicGate({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  const { pathname } = useLocation();
+  const isVisa = pathname === '/visa-sponsors' || pathname.startsWith('/visa-sponsors/');
+  if (!isVisa) return <>{children}</>;
   if (loading) return null;
   if (!user) {
     return (
@@ -393,13 +424,7 @@ function VisaSponsorsRoute() {
       </React.Suspense>
     );
   }
-  return (
-    <ProtectedRoute>
-      <OnboardingGate>
-        <ReportOrDashboard />
-      </OnboardingGate>
-    </ProtectedRoute>
-  );
+  return <>{children}</>;
 }
 
 function ReportOrDashboard() {
@@ -578,7 +603,6 @@ function App() {
                   <EngagementDashboardPreview />
                 </React.Suspense>
               } />
-              <Route path="/visa-sponsors/*" element={<VisaSponsorsRoute />} />
               <Route path="/anim-test" element={
                 <React.Suspense fallback={null}>
                   <AnimationTest />
@@ -663,11 +687,13 @@ function App() {
 
               {/* Protected Application Routes */}
               <Route path="/*" element={
-                <ProtectedRoute>
-                  <OnboardingGate>
-                    <ReportOrDashboard />
-                  </OnboardingGate>
-                </ProtectedRoute>
+                <VisaSponsorsPublicGate>
+                  <ProtectedRoute>
+                    <OnboardingGate>
+                      <ReportOrDashboard />
+                    </OnboardingGate>
+                  </ProtectedRoute>
+                </VisaSponsorsPublicGate>
               } />
             </Routes>
             {/* Sibling of Routes, inside Router: needs useLocation() to skip
