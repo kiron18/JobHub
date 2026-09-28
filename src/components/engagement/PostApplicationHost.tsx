@@ -4,6 +4,7 @@ import api from '../../lib/api';
 import { onCelebrate } from '../../lib/feedback';
 import { useDailyTarget, DAILY_TARGET_KEY } from '../../hooks/useDailyTarget';
 import { PostApplicationPopup } from './PostApplicationPopup';
+import { CelebrationHost } from '../shared/Celebration';
 
 /* ── PostApplicationHost ───────────────────────────────────────────────
    Listens for a filed application and shows the one popup.
@@ -43,7 +44,11 @@ export function PostApplicationHost() {
     setOpen(true);
   }), [qc]);
 
-  if (!data) return null;
+  /* No daily-target data means the popup cannot say "7 of 10", so the old
+     sidebar pill takes the moment instead. Filing an application must
+     always be acknowledged by something; the one thing this must never do
+     is fail quietly and leave the act unmarked. */
+  if (!data) return <CelebrationHost />;
 
   return (
     <PostApplicationPopup

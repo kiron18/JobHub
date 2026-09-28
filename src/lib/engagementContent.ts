@@ -54,6 +54,9 @@ export interface Fact {
   /** The hook. Two to six words. */
   headline: string;
   body: string;
+  /** 'craft' is how the process works. 'mindset' is how to survive it.
+   *  The eyebrow changes so the two never blur into one voice. */
+  tone?: 'craft' | 'mindset';
 }
 
 export const FACTS: Fact[] = [
@@ -93,6 +96,50 @@ export const FACTS: Fact[] = [
   { id: "local-experience",
     headline: "Local experience can be built, not waited for",
     body: "Volunteering, a short contract or a community project all count as Australian experience on a resume. ‘No local experience’ is usually a gap of a few weeks, not a wall." },
+
+  /* ── Endurance ──────────────────────────────────────────────────────
+     The search is long, mostly unrewarded in the middle, and the part
+     that makes people quit is not difficulty but meaninglessness — weeks
+     of effort with no signal back. These exist to keep somebody in the
+     game on the day nothing lands. No false comfort and no promises
+     about timing: the honest version is more durable than the cheerful
+     one, because the cheerful one stops being believable in week six. */
+  { id: "luck-surface", tone: "mindset",
+    headline: "Luck has a surface area",
+    body: "Most jobs are found through a conversation that was not planned to be about a job. You cannot make luck arrive, but every message you send widens the area it can land on." },
+  { id: "effort-controllable", tone: "mindset",
+    headline: "Control the input, not the outcome",
+    body: "You do not control who replies, who is already shortlisted, or which role is quietly filled. You control how many went out and how good each one was. Judge your week on that." },
+  { id: "rejection-meaning", tone: "mindset",
+    headline: "A rejection is rarely about worth",
+    body: "It usually means someone matched the ad more closely, applied earlier, or already knew the team. Almost none of that is a verdict on you, and reading it as one is the fastest way to stop applying." },
+  { id: "skill-not-lottery", tone: "mindset",
+    headline: "This is a skill, not a lottery",
+    body: "Your fortieth application is genuinely better than your fourth: you read ads faster, you tailor quicker, you interview calmer. That improvement is invisible from the inside and real from the outside." },
+  { id: "first-role-hardest", tone: "mindset",
+    headline: "The first Australian role is the hardest",
+    body: "The first one asks you to prove local experience you have not been allowed to build yet. The second and third do not. If this feels disproportionately hard, that is because it is, and it is temporary." },
+  { id: "compare-timeline", tone: "mindset",
+    headline: "Their timeline is not yours",
+    body: "Someone in your cohort landing in week three tells you nothing about week twelve. Different field, different visa, different market. Comparison is the one input here with no upside." },
+  { id: "identity-separate", tone: "mindset",
+    headline: "You are not the search",
+    body: "Being unemployed is a situation, not an identity. People who keep those separate apply longer, interview better, and recover from a bad week in a day instead of a fortnight." },
+  { id: "bad-week", tone: "mindset",
+    headline: "A bad week does not undo the month",
+    body: "Consistency is measured over the whole stretch, not the last three days. The tree does not lose its leaves because you had a quiet Tuesday, and neither does your progress." },
+  { id: "rest-is-work", tone: "mindset",
+    headline: "Rest is part of the work",
+    body: "Applications written while exhausted are worse and you already know it. Stopping at your target is not slacking; it is what makes tomorrow possible, and tomorrow is where most of the remaining chances are." },
+  { id: "name-the-feeling", tone: "mindset",
+    headline: "Name it and it gets smaller",
+    body: "Saying to someone ‘I have had nine rejections and I feel like giving up’ reliably takes some weight out of it. Carrying it silently reliably does not." },
+  { id: "progress-invisible", tone: "mindset",
+    headline: "Most progress is invisible until it is not",
+    body: "Nothing visibly changes for weeks, and then a conversation turns into an interview and an interview turns into an offer. The work that made that possible happened on the days that felt pointless." },
+  { id: "one-yes", tone: "mindset",
+    headline: "You need one yes",
+    body: "Not a good ratio, not a high reply rate. One. Every no is an elimination, and the only way to fail is to stop before the one arrives." },
 ];
 
 export function pickFact(): Fact {

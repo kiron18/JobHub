@@ -8,6 +8,8 @@ import { ApplicationSquares } from './ApplicationSquares';
 import { DayCounter, type DayState } from './DayCounter';
 import { BrainPopup } from './BrainPopup';
 import { TargetCommitDialog, TargetUndoDialog } from './TargetDialogs';
+import { DailyProgressBar } from '../jobs/DailyProgressBar';
+import { WeekStrip } from '../jobs/WeekStrip';
 
 /* ── EngagementStrip ───────────────────────────────────────────────────
    The top of the real dashboard: the streak heading with the brain in it,
@@ -46,7 +48,7 @@ export function EngagementStrip() {
   const [undoDialog, setUndoDialog] = useState(false);
   const [pending, setPending] = useState<number | null>(null);
 
-  const { data: summary } = useQuery({
+  const { data: summary, isError: summaryFailed } = useQuery({
     queryKey: ['tracker-engagement'],
     queryFn: async () => (await api.get('/tracker/engagement')).data as EngagementSummary,
     staleTime: 60_000,
@@ -54,6 +56,27 @@ export function EngagementStrip() {
   });
   const live = useDailyTarget();
 
+  /* If either query fails — most plausibly because a migration has not
+     reached this database — fall back to the bar and week strip this
+     replaced rather than rendering nothing. Without this, a missing
+     DailyTarget table silently removes today's progress from every
+     dashboard, which is a worse outcome than the feature simply not
+     being there yet. Loading renders nothing, because a flash of the old
+     bar before the new strip is its own kind of broken. */
+  const failed = live.isError || summaryFailed;
+  if (failed) {
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        gap: 20, flexWrap: 'wrap', marginBottom: 32,
+      }}>
+        <div style={{ flex: '0 1 240px', minWidth: 180 }}>
+          <DailyProgressBar />
+        </div>
+        <WeekStrip />
+      </div>
+    );
+  }
   if (!summary || !live.data) return null;
   const t = live.data;
 

@@ -314,7 +314,7 @@ export const PostApplicationPopup: React.FC<PostApplicationPopupProps> = ({
               ) : fact && (
                 <>
                   <p style={{ ...warm.text.micro, margin: '0 0 8px', color: warm.colors.accentGoldBright }}>
-                    Quick fact
+                    {fact.tone === 'mindset' ? 'Worth remembering' : 'Quick fact'}
                   </p>
                   <p style={{
                     ...warm.text.small, margin: '0 0 6px',

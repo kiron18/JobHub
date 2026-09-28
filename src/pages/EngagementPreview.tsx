@@ -21,6 +21,7 @@ import { ApplicationSquares } from '../components/engagement/ApplicationSquares'
 import { TARGET_MIN, effectiveTarget } from '../lib/dailyTarget';
 import { PostApplicationPopup } from '../components/engagement/PostApplicationPopup';
 import { MomentSplash } from '../components/engagement/MomentSplash';
+import { EngagementStrip } from '../components/engagement/EngagementStrip';
 
 const C = warm.colors;
 
@@ -139,6 +140,17 @@ export default function EngagementPreview() {
             Drag "Applications filed today" in section 3 past the target to watch the row
             auto-raise, then past 10 to see the count turn.
           </p>
+        </Panel>
+
+        {/* ── 2b. The real strip ──────────────────────────────────────── */}
+        <SectionTitle>2b. The live strip, exactly as the dashboard renders it</SectionTitle>
+        <SectionNote>
+          The real component against the real endpoints. Signed out, or if a migration has
+          not reached the database, it falls back to the progress bar and week strip it
+          replaced rather than leaving the dashboard with nothing.
+        </SectionNote>
+        <Panel>
+          <EngagementStrip />
         </Panel>
 
         {/* ── 3. The one popup ────────────────────────────────────────── */}
