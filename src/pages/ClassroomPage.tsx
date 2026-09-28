@@ -22,8 +22,8 @@
    ──────────────────────────────────────────────────────────────────────────── */
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, Navigate, Link } from 'react-router-dom';
-import { Check, Play, Download, ArrowRight, Clock, Users } from 'lucide-react';
-import { CLASSROOM, findModule, formatTime, type ClassroomModule } from '../config/classroom';
+import { Check, Play, Download, ArrowRight, Clock, Users, Compass } from 'lucide-react';
+import { CLASSROOM, WALKTHROUGH, findModule, formatTime, type ClassroomModule } from '../config/classroom';
 import { FREE_RESOURCES } from '../config/freeResources';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { trackClassroomModuleOpened, trackClassroomModuleDone } from '../lib/analytics';
@@ -83,25 +83,28 @@ export default function ClassroomPage() {
   const [seek, setSeek] = useState<{ at: number; n: number } | null>(null);
 
   const mod = useMemo(() => findModule(slug), [slug]);
+  const isWalk = slug === WALKTHROUGH.slug;
 
   useEffect(() => {
     if (mod) trackClassroomModuleOpened(mod.slug);
+    if (isWalk) trackClassroomModuleOpened(WALKTHROUGH.slug);
     setSeek(null);
-  }, [mod]);
+  }, [mod, isWalk]);
 
   // /classroom on its own picks up where you left off.
   if (!slug) {
     const next = CORE.find((m) => !done.has(m.slug)) ?? CORE[0];
     return <Navigate to={`/classroom/${next.slug}`} replace />;
   }
-  if (!mod) return <Navigate to="/classroom" replace />;
+  if (!mod && !isWalk) return <Navigate to="/classroom" replace />;
 
   const order = [...CORE, ...BONUS];
-  const nextMod = order[order.indexOf(mod) + 1] ?? null;
-  const isDone = done.has(mod.slug);
+  const nextMod = mod ? order[order.indexOf(mod) + 1] ?? null : null;
+  const isDone = mod ? done.has(mod.slug) : false;
   const coreDone = CORE.filter((m) => done.has(m.slug)).length;
 
   const toggleDone = () => {
+    if (!mod) return;
     const nextSet = new Set(done);
     if (isDone) {
       nextSet.delete(mod.slug);
@@ -114,12 +117,13 @@ export default function ClassroomPage() {
     if (!isDone && nextMod) navigate(`/classroom/${nextMod.slug}`);
   };
 
-  const resources = mod.resources
+  const resources = (mod?.resources ?? [])
     .map((s) => FREE_RESOURCES.find((r) => r.slug === s))
     .filter((r): r is NonNullable<typeof r> => Boolean(r));
 
-  const src = mod.youtubeId
-    ? `https://www.youtube-nocookie.com/embed/${mod.youtubeId}?rel=0&modestbranding=1` +
+  const videoId = isWalk ? WALKTHROUGH.youtubeId : mod?.youtubeId ?? '';
+  const src = videoId
+    ? `https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1` +
       (seek ? `&start=${seek.at}&autoplay=1` : '')
     : '';
 
@@ -127,6 +131,28 @@ export default function ClassroomPage() {
     <nav aria-label="Modules" style={{
       background: C.alt, border: `1px solid ${C.line}`, borderRadius: 14, padding: 8,
     }}>
+      <Link
+        to={`/classroom/${WALKTHROUGH.slug}`}
+        aria-current={isWalk ? 'page' : undefined}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', marginBottom: 6,
+          borderRadius: 10, textDecoration: 'none',
+          background: isWalk ? C.bg : 'transparent',
+          boxShadow: isWalk ? '0 1px 3px rgba(15,36,56,0.08)' : 'none',
+        }}
+      >
+        <span style={{
+          width: 26, height: 26, flexShrink: 0, borderRadius: 99,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          background: isWalk ? C.gold : C.goldTint, color: isWalk ? '#fff' : C.gold,
+        }}>
+          <Compass size={14} strokeWidth={2.2} />
+        </span>
+        <span style={{ flex: 1, fontSize: 14, color: isWalk ? C.ink : C.ink2, fontWeight: isWalk ? 600 : 500 }}>
+          Walkthrough
+        </span>
+        <span style={{ fontSize: 12, color: C.ink3 }}>{WALKTHROUGH.minutes}m</span>
+      </Link>
       <div style={{
         padding: '10px 12px 12px', fontSize: 13, color: C.ink2,
         display: 'flex', alignItems: 'center', gap: 10,
@@ -140,7 +166,7 @@ export default function ClassroomPage() {
         </span>
       </div>
       {[...CORE, ...BONUS].map((m) => {
-        const current = m.slug === mod.slug;
+        const current = m.slug === mod?.slug;
         const ticked = done.has(m.slug);
         return (
           <Link
@@ -189,12 +215,27 @@ export default function ClassroomPage() {
         borderBottom: `1px solid ${C.line}`, padding: isMobile ? '14px 16px' : '16px 32px',
         display: 'flex', alignItems: 'center', gap: 12,
       }}>
-        <Link to="/" style={{ textDecoration: 'none', color: C.ink, fontWeight: 600, fontSize: 15 }}>
+        <Link to="/" style={{ textDecoration: 'none', color: C.ink, fontWeight: 600, fontSize: 15, whiteSpace: 'nowrap' }}>
           Aussie Grad Careers
         </Link>
-        <span style={{ color: C.ink3 }}>/</span>
-        <Link to="/classroom" style={{ textDecoration: 'none', color: C.ink2, fontSize: 15 }}>
-          Classroom
+        {!isMobile && (
+          <>
+            <span style={{ color: C.ink3 }}>/</span>
+            <Link to="/classroom" style={{ textDecoration: 'none', color: C.ink2, fontSize: 15 }}>
+              Classroom
+            </Link>
+          </>
+        )}
+        <Link
+          to={`/classroom/${WALKTHROUGH.slug}`}
+          style={{
+            marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '7px 14px', borderRadius: 99, textDecoration: 'none',
+            fontSize: 14, fontWeight: 600,
+            background: isWalk ? C.gold : C.goldTint, color: isWalk ? '#fff' : C.gold,
+          }}
+        >
+          <Compass size={15} /> Walkthrough
         </Link>
       </header>
 
@@ -205,6 +246,84 @@ export default function ClassroomPage() {
         gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) 340px',
         alignItems: 'start',
       }}>
+        {isWalk ? (
+          <main style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 13, color: C.ink3, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <span style={{ color: C.gold, fontWeight: 600 }}>Walkthrough</span>
+              <Clock size={13} /> {WALKTHROUGH.minutes} min
+            </div>
+            <h1 style={{
+              fontFamily: DISPLAY, fontWeight: 500, margin: '0 0 8px',
+              fontSize: isMobile ? 26 : 34, lineHeight: 1.15, letterSpacing: '-0.01em',
+            }}>
+              {WALKTHROUGH.title}
+            </h1>
+            <p style={{ margin: '0 0 20px', fontSize: 16, lineHeight: 1.55, color: C.ink2 }}>
+              {WALKTHROUGH.hook}
+            </p>
+            <div style={{
+              position: 'relative', aspectRatio: '16 / 9', borderRadius: 14, overflow: 'hidden', background: C.deep,
+            }}>
+              <iframe
+                key={seek ? `${seek.at}-${seek.n}` : 'start'}
+                src={src}
+                title={WALKTHROUGH.title}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }}
+              />
+            </div>
+
+            <section style={{ marginTop: 28 }}>
+              <h2 style={{ fontSize: 15, fontWeight: 600, margin: '0 0 12px' }}>How to run it, step by step</h2>
+              <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 10 }}>
+                {WALKTHROUGH.steps.map((st, i) => (
+                  <li key={st.title} style={{
+                    display: 'flex', gap: 14, padding: 16, borderRadius: 12,
+                    border: `1px solid ${C.line}`, background: C.bg,
+                  }}>
+                    <span style={{
+                      width: 28, height: 28, flexShrink: 0, borderRadius: 99, background: C.blue, color: '#fff',
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700,
+                    }}>
+                      {i + 1}
+                    </span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: 'block', fontSize: 15.5, fontWeight: 600, color: C.ink }}>{st.title}</span>
+                      <span style={{ display: 'block', marginTop: 4, fontSize: 14.5, lineHeight: 1.5, color: C.ink2 }}>
+                        {st.detail}
+                      </span>
+                      {st.at !== null && (
+                        <button
+                          onClick={() => setSeek((sk) => ({ at: st.at as number, n: (sk?.n ?? 0) + 1 }))}
+                          style={{
+                            marginTop: 8, padding: '4px 10px', borderRadius: 99, cursor: 'pointer',
+                            border: `1px solid ${C.line}`, background: C.blueTint, color: C.blue,
+                            fontFamily: BODY, fontSize: 12.5, fontWeight: 600,
+                            display: 'inline-flex', alignItems: 'center', gap: 5,
+                          }}
+                        >
+                          <Play size={11} /> Watch at {formatTime(st.at)}
+                        </button>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </section>
+
+            <Link
+              to="/"
+              style={{
+                marginTop: 24, display: 'inline-flex', alignItems: 'center', gap: 8,
+                padding: '11px 18px', borderRadius: 10, textDecoration: 'none',
+                fontSize: 15, fontWeight: 600, background: C.blue, color: '#fff',
+              }}
+            >
+              Open JobHub <ArrowRight size={16} />
+            </Link>
+          </main>
+        ) : mod && (
         <main style={{ minWidth: 0 }}>
           <div style={{
             fontSize: 13, color: C.ink3, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8,
@@ -350,6 +469,7 @@ export default function ClassroomPage() {
             </section>
           )}
         </main>
+        )}
 
         <aside style={{ display: 'grid', gap: 16, position: isMobile ? 'static' : 'sticky', top: 24 }}>
           {list}

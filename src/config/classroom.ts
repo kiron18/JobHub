@@ -250,3 +250,65 @@ export function formatTime(sec: number): string {
 export function youtubeChapters(m: ClassroomModule): string {
   return m.chapters.map((c) => `${formatTime(c.at)} ${c.label}`).join('\n');
 }
+
+/* ── Walkthrough ─────────────────────────────────────────────────────────────
+   The system run once, end to end, inside JobHub. Its own section, reached from
+   the top-right link. Each step carries the moment in the video where it
+   happens, so the written list doubles as chapters.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+export interface WalkthroughStep {
+  at: number | null;
+  title: string;
+  detail: string;
+}
+
+export const WALKTHROUGH = {
+  slug: 'walkthrough',
+  title: 'Walkthrough: one application, start to finish',
+  hook: 'The whole system run once inside JobHub, from a job ad to a tailored resume, cover letter and tracked application. About three minutes.',
+  minutes: 4,
+  youtubeId: 'Nw4V0ZicYKw',
+  steps: [
+    {
+      at: 0,
+      title: 'Copy the whole job ad',
+      detail: 'Find a role on Seek, LinkedIn or a company site. Select the ad from the title to the very bottom and copy it.',
+    },
+    {
+      at: t(0, 20),
+      title: 'Paste it into JobHub and press Check eligibility',
+      detail: 'Go to your dashboard, paste the ad in, and press the button.',
+    },
+    {
+      at: t(0, 27),
+      title: 'Read the answer',
+      detail: '"Worth applying" means go. "Worth applying once the resume is written for this ad" means go, and let JobHub tailor it. "Not this one" means skip it, unless you really want it.',
+    },
+    {
+      at: t(1, 26),
+      title: 'Check your resume',
+      detail: 'It is written for this ad in about a minute. Read it once. Only press Edit if something is wrong. Its job is to get you past the first gate, nothing more. Then Save & continue.',
+    },
+    {
+      at: t(2, 6),
+      title: 'Check your cover letter',
+      detail: 'Add the hiring manager\'s name if you found it. Make sure the first paragraph says why you want this job. Then Save & continue.',
+    },
+    {
+      at: t(3, 0),
+      title: 'It is already in your tracker',
+      detail: 'Nothing to log by hand. Send the application on the company\'s own site where you can, not Easy Apply.',
+    },
+    {
+      at: null,
+      title: 'Follow up after 10 business days',
+      detail: 'No reply? Send the short follow-up email from your tracker. Most people never do, which is your advantage.',
+    },
+    {
+      at: null,
+      title: 'Do it again tomorrow',
+      detail: 'Pick a daily number you can actually hit and hit it every day. A few good applications a day beats a burst and a burnout.',
+    },
+  ] as WalkthroughStep[],
+};
