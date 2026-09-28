@@ -28,10 +28,12 @@ interface ShellProps {
   onConfirm: () => void;
   cancelLabel?: string;
   onCancel?: () => void;
+  /** The confirm round-trips, so it has to look like it is working. */
+  busy?: boolean;
 }
 
 const Shell: React.FC<ShellProps> = ({
-  open, icon, title, children, confirmLabel, onConfirm, cancelLabel, onCancel,
+  open, icon, title, children, confirmLabel, onConfirm, cancelLabel, onCancel, busy = false,
 }) => {
   const reduced = prefersReducedMotion();
 
@@ -98,15 +100,17 @@ const Shell: React.FC<ShellProps> = ({
               <button
                 type="button"
                 onClick={onConfirm}
+                disabled={busy}
                 className="tap-target"
                 style={{
                   width: '100%', padding: '12px 20px', borderRadius: 10, border: 'none',
                   background: warm.colors.accentPetrol, color: warm.colors.textOnDeep,
-                  ...warm.text.body, fontWeight: warm.weight.bold, cursor: 'pointer',
-                  transition: t(['background-color'], DUR.fast),
+                  ...warm.text.body, fontWeight: warm.weight.bold,
+                  cursor: busy ? 'progress' : 'pointer', opacity: busy ? 0.75 : 1,
+                  transition: t(['background-color', 'opacity'], DUR.fast),
                 }}
               >
-                {confirmLabel}
+                {busy ? 'Working…' : confirmLabel}
               </button>
               {cancelLabel && onCancel && (
                 <button
@@ -141,9 +145,11 @@ export const TargetCommitDialog: React.FC<{
   open: boolean;
   target: number;
   onConfirm: () => void;
-}> = ({ open, target, onConfirm }) => (
+  busy?: boolean;
+}> = ({ open, target, onConfirm, busy }) => (
   <Shell
     open={open}
+    busy={busy}
     icon={<Handshake size={22} color={warm.colors.accentPetrol} />}
     title="This is a promise to yourself"
     confirmLabel={`Commit to ${target} today`}
@@ -178,9 +184,11 @@ export const TargetUndoDialog: React.FC<{
   open: boolean;
   onConfirm: () => void;
   onCancel: () => void;
-}> = ({ open, onConfirm, onCancel }) => (
+  busy?: boolean;
+}> = ({ open, onConfirm, onCancel, busy }) => (
   <Shell
     open={open}
+    busy={busy}
     icon={<RotateCcw size={22} color={warm.colors.accentPetrol} />}
     title="Use today's one undo?"
     confirmLabel="Yes, unlock it"

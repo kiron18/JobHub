@@ -5,7 +5,7 @@ import { warm } from '../../lib/theme/warmTokens';
 import { EASE, SPRING, prefersReducedMotion } from '../../lib/theme/motion';
 import { haptic } from '../../lib/feedback';
 import { applauseFor } from '../../lib/applause';
-import { pickQuizQuestion, type QuizQuestion } from '../../lib/engagementContent';
+import { pickQuizQuestion, pickFact, type QuizQuestion } from '../../lib/engagementContent';
 
 /* ── PostApplicationPopup ──────────────────────────────────────────────
    THE popup. One per filed application, and the only thing that fires at
@@ -62,16 +62,26 @@ export const PostApplicationPopup: React.FC<PostApplicationPopupProps> = ({
      while the popup is up, including through its exit animation. Deriving
      them from `open` instead would blank the card the instant it starts
      closing, and resetting them in an effect would cascade a render. */
-  const moment = useMemo(() => ({
-    applause: applauseFor(count, goal),
-    quiz: question ?? pickQuizQuestion(),
-  }), [count, goal, question]);
-  const { applause, quiz } = moment;
+  /* Alternating by application number rather than at random, so nobody
+     gets four quizzes in a row and nobody gets four facts. Odd-numbered
+     applications ask a question, even-numbered ones tell you something —
+     the same moment in two shapes, which is what stops it going stale
+     over several hundred showings. A fixed `question` (previews) forces
+     the quiz. */
+  const moment = useMemo(() => {
+    const askQuiz = Boolean(question) || count % 2 === 1;
+    return {
+      applause: applauseFor(count, goal),
+      quiz: askQuiz ? (question ?? pickQuizQuestion()) : null,
+      fact: askQuiz ? null : pickFact(),
+    };
+  }, [count, goal, question]);
+  const { applause, quiz, fact } = moment;
 
   // The answer belongs to a specific question, so a new question clears it
   // without anything having to remember to.
   const [answer, setAnswer] = useState<{ qid: string; index: number } | null>(null);
-  const picked = answer && answer.qid === quiz.id ? answer.index : null;
+  const picked = quiz && answer && answer.qid === quiz.id ? answer.index : null;
 
   useEffect(() => {
     if (!open) return;
@@ -231,72 +241,92 @@ export const PostApplicationPopup: React.FC<PostApplicationPopupProps> = ({
               </div>
             )}
 
-            {/* The quiz. Same moment, below a hairline — never its own screen. */}
+            {/* One of two shapes below the hairline: a question to answer,
+                or something worth knowing. Never both, never neither. */}
             <div style={{ borderTop: `1px solid ${warm.colors.borderWhisper}`, paddingTop: 14 }}>
-              <p style={{ ...warm.text.micro, margin: '0 0 8px', color: warm.colors.accentGoldBright }}>
-                Pop quiz
-              </p>
-              {/* The setting, before the question. A question with no
-                  setting makes the reader guess whether this is about a
-                  resume, a cover letter or a phone screen. */}
-              <p style={{
-                ...warm.text.small, margin: '0 0 4px',
-                fontWeight: warm.weight.semibold, color: warm.colors.textMuted,
-              }}>
-                {quiz.context}
-              </p>
-              <p style={{
-                ...warm.text.small, margin: '0 0 10px',
-                fontWeight: warm.weight.bold, lineHeight: 1.45, color: warm.colors.textPrimary,
-              }}>
-                {quiz.prompt}
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {quiz.choices.map((choice, i) => {
-                  const answered = picked !== null;
-                  const isPicked = picked === i;
-                  const isCorrect = !!choice.correct;
-                  let border: string = warm.colors.borderWhisper;
-                  let bg: string = warm.colors.bgAlt;
-                  let icon: React.ReactNode = null;
-                  if (answered && isCorrect) {
-                    border = warm.colors.success; bg = warm.colors.successSoft;
-                    icon = <Check size={13} color={warm.colors.success} />;
-                  } else if (answered && isPicked && !isCorrect) {
-                    border = warm.colors.danger; bg = warm.colors.dangerSoft;
-                    icon = <XIcon size={13} color={warm.colors.danger} />;
-                  }
-                  return (
-                    <button
-                      key={i}
-                      onClick={e => { e.stopPropagation(); if (picked === null) setAnswer({ qid: quiz.id, index: i }); }}
-                      disabled={answered}
-                      style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
-                        textAlign: 'left', padding: '8px 11px', borderRadius: 9,
-                        border: `1.5px solid ${border}`, background: bg,
-                        cursor: answered ? 'default' : 'pointer',
-                        fontSize: 12, fontWeight: 600, color: warm.colors.textPrimary,
-                      }}
+              {quiz ? (
+                <>
+  <p style={{ ...warm.text.micro, margin: '0 0 8px', color: warm.colors.accentGoldBright }}>
+                  Pop quiz
+                </p>
+                {/* The setting, before the question. A question with no
+                    setting makes the reader guess whether this is about a
+                    resume, a cover letter or a phone screen. */}
+                <p style={{
+                  ...warm.text.small, margin: '0 0 4px',
+                  fontWeight: warm.weight.semibold, color: warm.colors.textMuted,
+                }}>
+                  {quiz.context}
+                </p>
+                <p style={{
+                  ...warm.text.small, margin: '0 0 10px',
+                  fontWeight: warm.weight.bold, lineHeight: 1.45, color: warm.colors.textPrimary,
+                }}>
+                  {quiz.prompt}
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {quiz.choices.map((choice, i) => {
+                    const answered = picked !== null;
+                    const isPicked = picked === i;
+                    const isCorrect = !!choice.correct;
+                    let border: string = warm.colors.borderWhisper;
+                    let bg: string = warm.colors.bgAlt;
+                    let icon: React.ReactNode = null;
+                    if (answered && isCorrect) {
+                      border = warm.colors.success; bg = warm.colors.successSoft;
+                      icon = <Check size={13} color={warm.colors.success} />;
+                    } else if (answered && isPicked && !isCorrect) {
+                      border = warm.colors.danger; bg = warm.colors.dangerSoft;
+                      icon = <XIcon size={13} color={warm.colors.danger} />;
+                    }
+                    return (
+                      <button
+                        key={i}
+                        onClick={e => { e.stopPropagation(); if (picked === null) setAnswer({ qid: quiz.id, index: i }); }}
+                        disabled={answered}
+                        style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                          textAlign: 'left', padding: '8px 11px', borderRadius: 9,
+                          border: `1.5px solid ${border}`, background: bg,
+                          cursor: answered ? 'default' : 'pointer',
+                          fontSize: 12, fontWeight: 600, color: warm.colors.textPrimary,
+                        }}
+                      >
+                        <span>{choice.text}</span>
+                        {icon}
+                      </button>
+                    );
+                  })}
+                </div>
+                <AnimatePresence>
+                  {picked !== null && (
+                    <motion.p
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      style={{ margin: '9px 0 0', fontSize: 11.5, lineHeight: 1.5, color: warm.colors.textSecondary, overflow: 'hidden' }}
                     >
-                      <span>{choice.text}</span>
-                      {icon}
-                    </button>
-                  );
-                })}
-              </div>
-              <AnimatePresence>
-                {picked !== null && (
-                  <motion.p
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    style={{ margin: '9px 0 0', fontSize: 11.5, lineHeight: 1.5, color: warm.colors.textSecondary, overflow: 'hidden' }}
-                  >
-                    {quiz.explain}
-                  </motion.p>
-                )}
-              </AnimatePresence>
+                      {quiz.explain}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+                </>
+              ) : fact && (
+                <>
+                  <p style={{ ...warm.text.micro, margin: '0 0 8px', color: warm.colors.accentGoldBright }}>
+                    Quick fact
+                  </p>
+                  <p style={{
+                    ...warm.text.small, margin: '0 0 6px',
+                    fontWeight: warm.weight.bold, lineHeight: 1.4, color: warm.colors.textPrimary,
+                  }}>
+                    {fact.headline}
+                  </p>
+                  <p style={{ ...warm.text.small, margin: 0, lineHeight: 1.6, color: warm.colors.textSecondary }}>
+                    {fact.body}
+                  </p>
+                </>
+              )}
             </div>
 
             <p style={{ margin: '14px 0 0', textAlign: 'center', fontSize: 11, color: warm.colors.textMuted }}>

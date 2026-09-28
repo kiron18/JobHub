@@ -44,19 +44,59 @@ export function pickNoRepeat<T>(storageKey: string, pool: T[], idOf: (item: T) =
   return chosen;
 }
 
-export const TIPS: string[] = [
-  'Lead your cover letter with the outcome you would deliver, not your job title.',
-  'A tailored first line beats a whole generic paragraph.',
-  'Apply within 48 hours of a posting going live — you are competing with fewer people.',
-  'Turn "responsible for X" into "did X, which caused Y".',
-  'A short follow-up after five business days rarely hurts, and sometimes works.',
-  'Mirror two or three exact phrases from the ad in your first paragraph.',
-  'One specific number in a bullet does more than three adjectives.',
-  'If the ad names a tool you have used once, name it back. Once is experience.',
+/* Facts alternate with the quiz so the popup is not the same shape every
+   time. Deliberately no invented statistics: everything here is either
+   how the process demonstrably works or a craft point that can be acted
+   on tonight. A fabricated "73% of recruiters…" would be worse than
+   useless — it is the kind of thing a member repeats in an interview. */
+export interface Fact {
+  id: string;
+  /** The hook. Two to six words. */
+  headline: string;
+  body: string;
+}
+
+export const FACTS: Fact[] = [
+  { id: "ats-exact-words",
+    headline: "Screens match words, not meaning",
+    body: "Keyword screens look for the ad’s phrasing, not a synonym. If the ad says ‘stakeholder engagement’, those two words need to appear somewhere true on your resume. ‘Talking to clients’ will not match it." },
+  { id: "first-line",
+    headline: "The first line does most of the work",
+    body: "Most cover letters are skimmed, not read. Whatever is in your opening sentence is the part that definitely gets seen, so it should answer the ad rather than introduce you." },
+  { id: "numbers",
+    headline: "A number ends the argument",
+    body: "‘Improved reporting’ invites a follow-up question. ‘Cut month-end reporting from five days to two’ does not. One figure per bullet is enough." },
+  { id: "recency",
+    headline: "Early applications meet a fresher reader",
+    body: "Shortlists often fill before an ad closes, and the fiftieth application of the week gets less attention than the fifth. Applying while a role is new beats polishing for another day." },
+  { id: "referral",
+    headline: "A name beats a portal",
+    body: "An application that arrives with someone inside saying ‘I spoke to them’ is handled differently from one that arrives alone. That is what the outreach half of this program is for." },
+  { id: "gaps",
+    headline: "Gaps are normal, silence is not",
+    body: "A gap with one honest line next to it stops being a question. A gap with nothing next to it becomes the thing the interviewer quietly wonders about the whole time." },
+  { id: "rejection-timing",
+    headline: "A rejection is not a closed door",
+    body: "Runner-ups get called when the first choice declines, or when the next role opens. Answering a rejection well is one of the cheapest things you can do." },
+  { id: "tailoring-cost",
+    headline: "Tailoring is twenty minutes, not two hours",
+    body: "Matching the ad’s language, naming the outcome they asked for, and checking the employer’s name is right covers most of the gap between a generic application and a tailored one." },
+  { id: "interview-prep",
+    headline: "Three stories cover most interviews",
+    body: "A problem you solved, a time you worked with someone difficult, and something you got wrong. Nearly every behavioural question is one of those three wearing a different hat." },
+  { id: "follow-up",
+    headline: "One follow-up, not three",
+    body: "A single short note after about a week reads as interest. Repeated chasing reads as something else, and it is the only part of this that can actively cost you." },
+  { id: "volume-trap",
+    headline: "Consistency beats bursts",
+    body: "Ten a day for ten days reaches the same number of employers as fifty in one day, except you are still standing at the end of it and each one was better." },
+  { id: "local-experience",
+    headline: "Local experience can be built, not waited for",
+    body: "Volunteering, a short contract or a community project all count as Australian experience on a resume. ‘No local experience’ is usually a gap of a few weeks, not a wall." },
 ];
 
-export function pickTip(): string {
-  return pickNoRepeat('jobhub_moment_tips_seen_v1', TIPS, t => t);
+export function pickFact(): Fact {
+  return pickNoRepeat('jobhub_facts_seen_v1', FACTS, f => f.id);
 }
 
 export interface QuizQuestion {

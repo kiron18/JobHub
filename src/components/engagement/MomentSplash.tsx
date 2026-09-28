@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { type LucideIcon, Lightbulb } from 'lucide-react';
 import { warm } from '../../lib/theme/warmTokens';
 import { EASE, SPRING, prefersReducedMotion } from '../../lib/theme/motion';
-import { pickTip } from '../../lib/engagementContent';
+import { pickFact } from '../../lib/engagementContent';
 
 /* ── MomentSplash ──────────────────────────────────────────────────────
    Generalizes TrialDayIntro's "Congrats!" screen so any milestone can use
@@ -35,7 +35,7 @@ export const MomentSplash: React.FC<MomentSplashProps> = ({
   open, onContinue, icon: Icon, eyebrow, title, subtitle, ctaLabel = 'Continue', tip,
 }) => {
   const reduced = prefersReducedMotion();
-  const shownTip = tip ?? (open ? pickTip() : '');
+  const shownTip = tip ?? (open ? pickFact().body : '');
 
   useEffect(() => {
     if (!open) return;

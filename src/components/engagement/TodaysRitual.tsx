@@ -35,12 +35,31 @@ export interface TodaysRitualProps {
   locked: boolean;
   /** False once the day's single undo has been spent. */
   undoAvailable: boolean;
+  /** Set or Undo is in flight. Both round-trip to the server, and a
+   *  button that sits there looking untouched for half a second reads as
+   *  broken — the second press people make is on a control that already
+   *  fired. */
+  busy?: 'set' | 'undo' | null;
   onTargetChange: (n: number) => void;
   onSet: () => void;
   onUndo: () => void;
   /** One clause of context under the line. */
   detail?: string;
 }
+
+/** A control that round-trips needs to show it is working. */
+const Spinner: React.FC = () => (
+  <span
+    aria-hidden
+    style={{
+      width: 11, height: 11, borderRadius: '50%', display: 'inline-block',
+      border: '2px solid currentColor', borderTopColor: 'transparent',
+      animation: 'ritual-spin 0.7s linear infinite',
+    }}
+  >
+    <style>{'@keyframes ritual-spin{to{transform:rotate(360deg)}}'}</style>
+  </span>
+);
 
 const StepButton: React.FC<{
   label: string;
@@ -119,6 +138,9 @@ const CeilingNote: React.FC<{ bumps: number }> = ({ bumps }) => {
             Ten is the daily maximum. This program runs on high-quality applications
             sent consistently — not on blasting out a hundred in one day, which is
             how quality drops and momentum dies.
+            {' '}You can still apply for more than ten. It is not a strategy we
+            actively endorse: we have seen it lead to a sense of hopelessness and
+            apathy. Check the Resources section for other ways to use that time.
           </motion.span>
         )}
       </AnimatePresence>
@@ -127,7 +149,7 @@ const CeilingNote: React.FC<{ bumps: number }> = ({ bumps }) => {
 };
 
 export const TodaysRitual: React.FC<TodaysRitualProps> = ({
-  target, filed, locked, undoAvailable, onTargetChange, onSet, onUndo, detail,
+  target, filed, locked, undoAvailable, busy = null, onTargetChange, onSet, onUndo, detail,
 }) => {
   const overCeiling = filed > TARGET_MAX;
   /* Counts presses of + that had nowhere to go. Drives the shake, and its
@@ -205,15 +227,20 @@ export const TodaysRitual: React.FC<TodaysRitualProps> = ({
             <button
               type="button"
               onClick={onSet}
+              disabled={busy === 'set'}
               className="tap-target"
               style={{
-                padding: '5px 15px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '5px 15px', borderRadius: 8, border: 'none',
+                cursor: busy === 'set' ? 'progress' : 'pointer',
                 background: warm.colors.accentPetrol, color: warm.colors.textOnDeep,
                 ...warm.text.small, fontWeight: warm.weight.bold,
-                transition: t(['background-color'], DUR.fast),
+                opacity: busy === 'set' ? 0.75 : 1,
+                transition: t(['background-color', 'opacity'], DUR.fast),
               }}
             >
-              Set
+              {busy === 'set' && <Spinner />}
+              {busy === 'set' ? 'Setting' : 'Set'}
             </button>
           ) : undoAvailable && (
             /* The day's one undo. It is deliberately quiet — an outlined
@@ -222,17 +249,20 @@ export const TodaysRitual: React.FC<TodaysRitualProps> = ({
             <button
               type="button"
               onClick={onUndo}
+              disabled={busy === 'undo'}
               className="tap-target"
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 5,
-                padding: '4px 12px', borderRadius: 8, cursor: 'pointer',
+                padding: '4px 12px', borderRadius: 8,
+                cursor: busy === 'undo' ? 'progress' : 'pointer',
                 border: `1px solid ${warm.colors.borderDefined}`, background: 'transparent',
                 color: warm.colors.textMuted,
                 ...warm.text.small, fontWeight: warm.weight.semibold,
                 transition: t(['color', 'border-color'], DUR.fast),
               }}
             >
-              <RotateCcw size={12} /> Undo
+              {busy === 'undo' ? <Spinner /> : <RotateCcw size={12} />}
+              {busy === 'undo' ? 'Unlocking' : 'Undo'}
             </button>
           )}
         </div>

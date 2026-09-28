@@ -90,6 +90,7 @@ export function EngagementStrip() {
             filed={t.filedToday}
             locked={t.locked}
             undoAvailable={t.undoAvailable}
+            busy={live.setTarget.isPending ? 'set' : live.useUndo.isPending ? 'undo' : null}
             onTargetChange={setPending}
             onSet={() => (t.explainerSeen ? commit() : setCommitDialog(true))}
             onUndo={() => setUndoDialog(true)}
@@ -127,10 +128,12 @@ export function EngagementStrip() {
       <TargetCommitDialog
         open={commitDialog}
         target={shown}
+        busy={live.setTarget.isPending}
         onConfirm={() => { setCommitDialog(false); commit(); }}
       />
       <TargetUndoDialog
         open={undoDialog}
+        busy={live.useUndo.isPending}
         onConfirm={() => { setUndoDialog(false); live.useUndo.mutate(undefined, { onSuccess: clearPending }); }}
         onCancel={() => setUndoDialog(false)}
       />
