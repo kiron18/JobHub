@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, ShieldCheck, Building2, HeartHandshake, ArrowRight, GraduationCap } from 'lucide-react';
+import { Mail, ShieldCheck, Building2, HeartHandshake, ArrowRight, GraduationCap, Video } from 'lucide-react';
 import { warm } from '../lib/theme/warmTokens';
 import { rise, stagger, SPRING, t, DUR } from '../lib/theme/motion';
 
@@ -37,6 +37,13 @@ const RESOURCES: Resource[] = [
     title: 'Templates',
     body: 'Written and ready. Pick the situation, copy it, fill in the two blanks and send.',
     cue: 'Chasing a recruiter who has gone quiet',
+  },
+  {
+    to: '/video-cover-letter',
+    icon: Video,
+    title: 'Video cover letter',
+    body: 'A one-minute video to send with your application. Your script is written for you, and the opening changes for each company.',
+    cue: 'Standing out for a role you really want',
   },
   {
     to: '/visa-sponsors',
