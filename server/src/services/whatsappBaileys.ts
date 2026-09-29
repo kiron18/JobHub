@@ -21,6 +21,7 @@ import qrcodeTerminal from 'qrcode-terminal';
 import { prisma } from '../index';
 import { PUBLIC_APP_URL } from '../lib/appUrl';
 import { handleCoachReply } from './coachCheckin/replies';
+import { coachCheckinsEnabled } from './coachCheckin/flags';
 import type { WASocket, AuthenticationCreds, AuthenticationState } from 'baileys';
 
 /**
@@ -205,7 +206,12 @@ async function handleIncoming(socketRef: WASocket, msg: any): Promise<void> {
   if (!match) {
     // Anything else is only ever answered for a verified, paying member
     // replying to a check-in. Unknown numbers and free users get silence.
-    if (!text) return;
+    //
+    // And nothing at all while check-ins are switched off. This number is
+    // Kiron's own WhatsApp, where clients also write to him directly; with
+    // the feature off, the bot must not auto-reply (distress, "is this a
+    // bot") or log those conversations.
+    if (!text || !coachCheckinsEnabled()) return;
     const senderE164 = `+${remoteJid.split('@')[0]}`;
     const member = await prisma.candidateProfile.findFirst({
       where: { whatsappNumber: senderE164, whatsappVerifiedAt: { not: null }, plan: { not: 'free' } },

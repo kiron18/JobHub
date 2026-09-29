@@ -16,10 +16,7 @@ export interface CheckinRunResult {
   skipped: Array<{ email: string; reason: string }>;
 }
 
-/** Master switch. Nothing goes out on a schedule unless this is exactly 'true'. */
-export function coachCheckinsEnabled(): boolean {
-  return process.env.COACH_CHECKINS_ENABLED === 'true';
-}
+export { coachCheckinsEnabled } from './flags';
 
 /**
  * Optional allowlist for testing: COACH_CHECKINS_ONLY_EMAILS=a@x.com,b@y.com
