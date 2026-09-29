@@ -27,6 +27,7 @@ import { ActivityHeatmap } from './tracker/ActivityHeatmap';
 import { OutreachTracker } from './linkedin/OutreachTracker';
 import { GoalCard } from './tracker/GoalCard';
 import { WhatsAppCoachCard } from './tracker/WhatsAppCoachCard';
+import { WHATSAPP_VISIBLE } from '../lib/features';
 import { MilestoneCard } from './tracker/MilestoneCard';
 
 const PRIORITY_ORDER: Record<string, number> = { DREAM: 0, TARGET: 1, BACKUP: 2 };
@@ -287,7 +288,7 @@ export const ApplicationTracker: React.FC = () => {
 
             {trackerTab === 'applications' && (
               <>
-            <WhatsAppCoachCard />
+            {WHATSAPP_VISIBLE && <WhatsAppCoachCard />}
             <GoalCard />
             <MilestoneCard />
 

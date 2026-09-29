@@ -6,6 +6,7 @@ import { TrialDayIntro } from './TrialDayIntro';
 import { TrialDayPassScreen } from './TrialDayPassScreen';
 import { TrialWindowBar } from './TrialWindowBar';
 import { TrialDayEndScreen } from './TrialDayEndScreen';
+import { WHATSAPP_VISIBLE } from '../../lib/features';
 
 /**
  * Mounted once, globally (see App.tsx, next to DailyCloseOut) — same reasoning
@@ -59,7 +60,7 @@ export function TrialChallengeOverlay() {
           forfeitureDeadline={data.forfeitureDeadline}
           onBegin={() => begin.mutate()}
           beginning={begin.isPending}
-          whatsappOptInLink={data.whatsappOptInLink}
+          whatsappOptInLink={WHATSAPP_VISIBLE ? data.whatsappOptInLink : undefined}
         />
       );
     case 'day_in_progress':
