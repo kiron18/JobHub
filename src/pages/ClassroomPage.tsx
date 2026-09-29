@@ -26,7 +26,7 @@ import { Check, Play, Download, ArrowRight, Clock, Users, Compass } from 'lucide
 import { CLASSROOM, WALKTHROUGH, findModule, formatTime, type ClassroomModule } from '../config/classroom';
 import { FREE_RESOURCES } from '../config/freeResources';
 import { useIsMobile } from '../hooks/useIsMobile';
-import { trackClassroomModuleOpened, trackClassroomModuleDone } from '../lib/analytics';
+import { trackClassroomModuleOpened, trackClassroomModuleDone, trackFreeResourceDownloaded } from '../lib/analytics';
 
 const C = {
   bg: '#FFFFFF',
@@ -48,6 +48,10 @@ const BODY = "'Geist', -apple-system, 'Segoe UI', system-ui, sans-serif";
 
 const DONE_KEY = 'agc.classroom.done';
 const CORE = CLASSROOM.filter((m) => m.n >= 0);
+/** Every file the course hands over, in course order, once each. */
+const ALL_FILES = FREE_RESOURCES
+  .flatMap((r) => r.files.map((f) => ({ slug: r.slug, ...f })))
+  .filter((f, i, all) => all.findIndex((g) => g.href === f.href) === i);
 const BONUS = CLASSROOM.filter((m) => m.n < 0);
 
 function readDone(): Set<string> {
@@ -65,6 +69,37 @@ function writeDone(done: Set<string>) {
   } catch {
     /* private window or blocked storage: the ticks just won't survive a reload */
   }
+}
+
+/* Downloads are direct here (Kiron, 2026-09-30): someone watching the course
+   has already chosen to learn, so the file is handed over without the email
+   step the /free pages ask for. Same files, same URLs. */
+
+/** "Starter Kit (PDF)" + "/free/starter-kit.pdf" -> "Starter Kit - Aussie Grad Careers.pdf" */
+function downloadName(label: string, href: string): string {
+  const ext = href.split('.').pop() ?? 'pdf';
+  return `${label.replace(/\s*\([^)]*\)\s*$/, '').trim()} - Aussie Grad Careers.${ext}`;
+}
+
+function fileKind(href: string): string {
+  const ext = (href.split('.').pop() ?? '').toLowerCase();
+  return ext === 'docx' ? 'Word' : ext === 'xlsx' ? 'Excel' : ext === 'pdf' ? 'PDF' : ext.toUpperCase();
+}
+
+function DownloadButton({ slug, label, href }: { slug: string; label: string; href: string }) {
+  return (
+    <a
+      href={href}
+      download={downloadName(label, href)}
+      onClick={() => trackFreeResourceDownloaded(`classroom:${slug}`, label)}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 14px', borderRadius: 10,
+        background: C.blue, color: '#fff', textDecoration: 'none', fontSize: 14, fontWeight: 600,
+      }}
+    >
+      <Download size={15} /> {label.replace(/\s*\([^)]*\)\s*$/, '')} <span style={{ opacity: 0.75, fontWeight: 500 }}>{fileKind(href)}</span>
+    </a>
+  );
 }
 
 function moduleLabel(m: ClassroomModule): string {
@@ -443,27 +478,18 @@ export default function ClassroomPage() {
               <h2 style={{ fontSize: 15, fontWeight: 600, margin: '0 0 10px' }}>Free downloads for this module</h2>
               <div style={{ display: 'grid', gap: 10 }}>
                 {resources.map((r) => (
-                  <Link
+                  <div
                     key={r.slug}
-                    to={`/free/${r.slug}`}
-                    style={{
-                      display: 'flex', gap: 14, alignItems: 'flex-start', padding: 16,
-                      border: `1px solid ${C.line}`, borderRadius: 12, textDecoration: 'none',
-                    }}
+                    style={{ padding: 16, border: `1px solid ${C.line}`, borderRadius: 12 }}
                   >
-                    <span style={{
-                      width: 36, height: 36, flexShrink: 0, borderRadius: 10, background: C.blueTint,
-                      color: C.blue, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      <Download size={17} />
+                    <span style={{ display: 'block', fontSize: 16, fontWeight: 600, color: C.ink }}>{r.name}</span>
+                    <span style={{ display: 'block', marginTop: 3, fontSize: 14, lineHeight: 1.45, color: C.ink2 }}>
+                      {r.promise}
                     </span>
-                    <span style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ display: 'block', fontSize: 15, fontWeight: 600, color: C.ink }}>{r.name}</span>
-                      <span style={{ display: 'block', marginTop: 3, fontSize: 13.5, lineHeight: 1.45, color: C.ink2 }}>
-                        {r.promise}
-                      </span>
-                    </span>
-                  </Link>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+                      {r.files.map((f) => <DownloadButton key={f.href} slug={r.slug} label={f.label} href={f.href} />)}
+                    </div>
+                  </div>
                 ))}
               </div>
             </section>
@@ -473,6 +499,27 @@ export default function ClassroomPage() {
 
         <aside style={{ display: 'grid', gap: 16, position: isMobile ? 'static' : 'sticky', top: 24 }}>
           {list}
+          <details style={{ border: `1px solid ${C.line}`, borderRadius: 14, padding: '12px 16px' }}>
+            <summary style={{ cursor: 'pointer', fontSize: 14, fontWeight: 600, color: C.ink }}>
+              All downloads ({ALL_FILES.length})
+            </summary>
+            <ul style={{ listStyle: 'none', margin: '10px 0 0', padding: 0, display: 'grid', gap: 2 }}>
+              {ALL_FILES.map(({ slug, label, href }) => (
+                <li key={href}>
+                  <a
+                    href={href}
+                    download={downloadName(label, href)}
+                    onClick={() => trackFreeResourceDownloaded(`classroom:${slug}`, label)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', fontSize: 13.5, color: C.ink2, textDecoration: 'none' }}
+                  >
+                    <Download size={14} color={C.blue} style={{ flexShrink: 0 }} />
+                    <span style={{ flex: 1 }}>{label.replace(/\s*\([^)]*\)\s*$/, '')}</span>
+                    <span style={{ fontSize: 12, color: C.ink3 }}>{fileKind(href)}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </details>
           <a
             href="/community?src=classroom"
             style={{
