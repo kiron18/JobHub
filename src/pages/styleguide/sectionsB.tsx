@@ -6,6 +6,7 @@ import { Input } from '../../components/shared/Input';
 import { Checkbox, Toggle } from '../../components/shared/FormControls';
 import { SkeletonCard } from '../../components/shared/Skeleton';
 import { celebrate } from '../../lib/feedback';
+import { EditGlowButton } from '../../components/apply/EditGlowButton';
 import { proposed as P } from './proposed';
 import { Section, Item, Pin, Spec, Stage, CHROME } from './kit';
 import { NextButton, Spinner } from './specimens';
@@ -808,7 +809,45 @@ rather than not appearing at all.`}</Spec>
           </Stage>
         }
       />
+
+      <EditButtonItem />
     </Section>
+  );
+}
+
+/** 17.5: the Edit button on a finished draft, with its first-time glow and pop-up. */
+function EditButtonItem() {
+  const [editing, setEditing] = useState(false);
+  const [run, setRun] = useState(0);
+  const replay = () => {
+    try { localStorage.removeItem('jobhub_edit_used'); localStorage.removeItem('jobhub_edit_intro_seen'); } catch { /* noop */ }
+    setEditing(false);
+    setRun(r => r + 1);
+  };
+  return (
+    <Item
+      n="17.5"
+      title="Edit, the one way to change a finished draft"
+      note="Regenerate is gone from a finished draft. Until someone has used Edit once, its border shimmers; the first draft they ever see also gets the pop-up. Press Replay to see it as a first-time user."
+      verdict="Edit becomes a real button with a blue and gold shimmer until first use, then a plain one. A failed draft keeps a Try again button."
+      now={
+        <Stage>
+          <div style={{ position: 'relative', height: 120, background: warm.colors.bgAlt, borderRadius: 10, border: `1px solid ${warm.colors.borderWhisper}` }}>
+            <span style={{ position: 'absolute', top: 12, right: 16, fontSize: 12, fontWeight: 600, color: warm.colors.textMuted, textDecoration: 'underline', textUnderlineOffset: 4 }}>Edit</span>
+            <span style={{ position: 'absolute', bottom: 12, right: 16, fontSize: 13, fontWeight: 600, color: warm.colors.textSecondary, border: `1px solid ${warm.colors.borderWhisper}`, borderRadius: 8, padding: '6px 12px' }}>Regenerate</span>
+          </div>
+        </Stage>
+      }
+      next={
+        <Stage>
+          <div key={run} style={{ position: 'relative', minHeight: 300, background: warm.colors.bgAlt, borderRadius: 10, border: `1px solid ${warm.colors.borderWhisper}`, padding: '64px 20px 20px' }}>
+            <EditGlowButton editing={editing} onToggle={() => setEditing(e => !e)} docLabel="resume" />
+            <p style={{ margin: 0, fontSize: 13, color: warm.colors.textMuted }}>Your tailored resume sits here.</p>
+          </div>
+          <div style={{ marginTop: 12 }}><Button size="sm" variant="secondary" label="Replay as a first-time user" onClick={replay} /></div>
+        </Stage>
+      }
+    />
   );
 }
 

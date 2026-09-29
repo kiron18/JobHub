@@ -16,6 +16,7 @@
  * commit; users copy or download for now.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { EditGlowButton } from '../components/apply/EditGlowButton';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -54,6 +55,14 @@ import { extractReactText } from '../lib/extractReactText';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { trackDocumentGenerated, trackApplicationFailed } from '../lib/analytics';
 import { useTrialChallengeState } from '../lib/trialChallenge';
+
+/**
+ * Regenerate on a finished draft. Off since 2026-09-29 (Kiron): a new draft
+ * throws away what was right with what was wrong, and Edit is faster and is
+ * where the document becomes the person's own. A draft that FAILED still gets
+ * "Try again". Turn this on only if whole-draft regeneration comes back.
+ */
+const REGENERATE_FINISHED_DRAFT = false;
 
 interface ResumeTip {
   bulletKey: string;
@@ -1338,30 +1347,13 @@ function DocumentStep({
                 minHeight: 280,
                 overflow: 'auto',
             }}>
-                {/* Edit toggle — top-right underline */}
+                {/* Edit is the way to change a finished draft. See EditGlowButton. */}
                 {hasDraft && !generating && (
-                    <button
-                        onClick={handleEditToggle}
-                        style={{
-                            position: 'absolute',
-                            top: 12,
-                            right: 16,
-                            background: 'transparent',
-                            border: 'none',
-                            color: editing ? warm.colors.accentGold : warm.colors.textMuted,
-                            fontSize: 12,
-                            fontWeight: 600,
-                            letterSpacing: '0.02em',
-                            textDecoration: 'underline',
-                            textUnderlineOffset: 4,
-                            cursor: 'pointer',
-                            padding: 0,
-                            zIndex: 1,
-                        }}
-                        title={editing ? 'Save edits' : 'Edit inline'}
-                    >
-                        {editing ? 'Done' : 'Edit'}
-                    </button>
+                    <EditGlowButton
+                        editing={editing}
+                        onToggle={handleEditToggle}
+                        docLabel={isSC ? 'response' : isCoverLetter ? 'cover letter' : 'resume'}
+                    />
                 )}
 
                 {stepId === 'resume' && resumeTips.length > 0 && !editing && (
@@ -1369,7 +1361,7 @@ function DocumentStep({
                         onClick={() => setShowTips(t => !t)}
                         style={{
                             position: 'absolute',
-                            top: 38,
+                            top: 56,
                             right: 16,
                             background: showTips ? 'rgba(217, 119, 6, 0.15)' : 'transparent',
                             border: `1px solid ${showTips ? warm.colors.accentGold : 'rgba(255,255,255,0.15)'}`,
@@ -1462,7 +1454,7 @@ function DocumentStep({
                             {isSC
                                 ? 'Paste the selection criteria above, then Generate. We will write a STAR response per criterion, drawing on your achievement bank.'
                                 : generationStatus === 'error'
-                                    ? 'That draft didn\'t come through. Use Regenerate to try again.'
+                                    ? 'That draft didn\'t come through. Press Try again below.'
                                     : 'Preparing this document…'}
                         </p>
                     </div>
@@ -1517,7 +1509,7 @@ function DocumentStep({
                     )}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    {hasDraft && (
+                    {REGENERATE_FINISHED_DRAFT && hasDraft && (
                         <button
                             onClick={() => generate(true)}
                             disabled={generating}
@@ -1582,9 +1574,9 @@ function DocumentStep({
                             onClick={() => generate(false)}
                             disabled={generating}
                             style={primaryButtonStyle(generating)}
-                            title="Regenerate this document"
+                            title="Try generating this document again"
                         >
-                            {generating ? (<><Loader2 size={14} className="animate-spin" /> Generating…</>) : (<><RefreshCw size={13} /> Regenerate</>)}
+                            {generating ? (<><Loader2 size={14} className="animate-spin" /> Generating…</>) : (<><RefreshCw size={13} /> Try again</>)}
                         </button>
                     )}
                     {hasDraft && (
