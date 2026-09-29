@@ -2,6 +2,7 @@ import { prisma } from '../../index';
 import { todayAEST } from '../jobFeed';
 import { countDistinctJobs, SENT_APPLICATION_FILTER } from './metricHelpers';
 import { GOAL_RULES, promoteAndGetSettings, tokenToInstant, appliedToken } from './goals';
+import { OUTREACH_PER_MISSING_APPLICATION } from './dailyTarget';
 
 /**
  * The daily close-out: once the day's applications are actually done, say so
@@ -63,7 +64,14 @@ export interface StreakState {
   todayDone: boolean;
 }
 
-function streakStateFromByDay(byDay: Map<string, Set<string>>, today: Date, days: number): StreakState {
+/**
+ * On a day switched to outreach ("No more good roles today", dailyTarget.ts)
+ * every two outreach messages count as one application toward the floor.
+ * Keyed by the same ISO day token as byDay.
+ */
+type SwapCredit = Map<string, number>;
+
+function streakStateFromByDay(byDay: Map<string, Set<string>>, today: Date, days: number, credit: SwapCredit = new Map()): StreakState {
   let streak = 0;
   let freezes = FREEZE_START;
   let run = 0;
@@ -79,7 +87,7 @@ function streakStateFromByDay(byDay: Map<string, Set<string>>, today: Date, days
   for (let i = days - 1; i >= 0; i--) {
     const dayToken = new Date(today.getTime() - i * DAY_MS);
     const key = dayToken.toISOString();
-    const met = (byDay.get(key)?.size ?? 0) >= DAILY_STREAK_FLOOR;
+    const met = (byDay.get(key)?.size ?? 0) + (credit.get(key) ?? 0) >= DAILY_STREAK_FLOOR;
 
     if (i === 0) {
       if (met) { cleared(); todayDone = true; }
@@ -106,17 +114,54 @@ function byDayFromRows(rows: Array<{ sourceUrl: string | null; id: string; dateA
   return byDay;
 }
 
+/**
+ * Swap credit per user per day. Read defensively: if the swap columns are
+ * ever missing (a migration that did not land), the streak falls back to
+ * applications only instead of taking the dashboard and leaderboard down.
+ */
+async function loadSwapCredit(userIds: string[], firstDay: Date): Promise<Map<string, SwapCredit>> {
+  const out = new Map<string, SwapCredit>();
+  try {
+    const swaps = await prisma.dailyTarget.findMany({
+      where: { userId: { in: userIds }, date: { gte: firstDay }, swappedAt: { not: null } },
+      select: { userId: true, date: true },
+    });
+    if (swaps.length === 0) return out;
+    const logs = await prisma.outreachLog.findMany({
+      where: { userId: { in: [...new Set(swaps.map(s => s.userId))] }, createdAt: { gte: tokenToInstant(firstDay) } },
+      select: { userId: true, createdAt: true },
+    });
+    const perDay = new Map<string, number>();
+    for (const l of logs) {
+      const k = `${l.userId}|${appliedToken(l.createdAt).toISOString()}`;
+      perDay.set(k, (perDay.get(k) ?? 0) + 1);
+    }
+    for (const s of swaps) {
+      const day = s.date.toISOString();
+      const credit = Math.floor((perDay.get(`${s.userId}|${day}`) ?? 0) / OUTREACH_PER_MISSING_APPLICATION);
+      if (!out.has(s.userId)) out.set(s.userId, new Map());
+      out.get(s.userId)!.set(day, credit);
+    }
+  } catch (err) {
+    console.warn('[streak] swap credit unavailable, counting applications only:', (err as Error)?.message);
+  }
+  return out;
+}
+
 /** The streak with its freezes, for the engagement strip. */
 export async function computeStreakState(userId: string, days = STREAK_WINDOW_DAYS): Promise<StreakState> {
   const today = todayAEST();
   const firstDay = new Date(today.getTime() - (days - 1) * DAY_MS);
 
-  const rows = await prisma.jobApplication.findMany({
-    where: { userId, ...SENT_APPLICATION_FILTER, dateApplied: { gte: tokenToInstant(firstDay) } },
-    select: { sourceUrl: true, id: true, dateApplied: true },
-  });
+  const [rows, credit] = await Promise.all([
+    prisma.jobApplication.findMany({
+      where: { userId, ...SENT_APPLICATION_FILTER, dateApplied: { gte: tokenToInstant(firstDay) } },
+      select: { sourceUrl: true, id: true, dateApplied: true },
+    }),
+    loadSwapCredit([userId], firstDay),
+  ]);
 
-  return streakStateFromByDay(byDayFromRows(rows), today, days);
+  return streakStateFromByDay(byDayFromRows(rows), today, days, credit.get(userId));
 }
 
 /**
@@ -137,10 +182,13 @@ export async function computeDailyStreakBatch(userIds: string[], days = STREAK_W
   const today = todayAEST();
   const firstDay = new Date(today.getTime() - (days - 1) * DAY_MS);
 
-  const rows = await prisma.jobApplication.findMany({
-    where: { userId: { in: userIds }, ...SENT_APPLICATION_FILTER, dateApplied: { gte: tokenToInstant(firstDay) } },
-    select: { userId: true, sourceUrl: true, id: true, dateApplied: true },
-  });
+  const [rows, credit] = await Promise.all([
+    prisma.jobApplication.findMany({
+      where: { userId: { in: userIds }, ...SENT_APPLICATION_FILTER, dateApplied: { gte: tokenToInstant(firstDay) } },
+      select: { userId: true, sourceUrl: true, id: true, dateApplied: true },
+    }),
+    loadSwapCredit(userIds, firstDay),
+  ]);
 
   const byUserByDay = new Map<string, Map<string, Set<string>>>();
   for (const r of rows) {
@@ -154,7 +202,7 @@ export async function computeDailyStreakBatch(userIds: string[], days = STREAK_W
 
   const out = new Map<string, number>();
   for (const userId of userIds) {
-    out.set(userId, streakStateFromByDay(byUserByDay.get(userId) ?? new Map(), today, days).streak);
+    out.set(userId, streakStateFromByDay(byUserByDay.get(userId) ?? new Map(), today, days, credit.get(userId)).streak);
   }
   return out;
 }

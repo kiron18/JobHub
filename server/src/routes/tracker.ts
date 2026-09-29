@@ -12,8 +12,9 @@ import {
     tokenToInstant,
 } from '../services/tracker/goals';
 import {
-  getDailyTargetState, setDailyTarget, useDailyUndo, DailyTargetError,
+  getDailyTargetState, setDailyTarget, useDailyUndo, swapToOutreach, DailyTargetError,
 } from '../services/tracker/dailyTarget';
+import { getTodaySessionLog, saveSessionLog, SessionLogError } from '../services/tracker/sessionLog';
 import { getEngagementSummary } from '../services/tracker/engagement';
 import { getMilestoneState, ackMilestone } from '../services/tracker/milestones';
 import { getCloseoutState, ackCloseout } from '../services/tracker/closeout';
@@ -123,6 +124,29 @@ router.post('/daily-target/undo', async (req: any, res: any) => {
   catch (e) {
     if (e instanceof DailyTargetError) return res.status(e.status).json(e.payload);
     console.error('[tracker/daily-target:undo]', e); res.status(500).json({ error: 'failed' });
+  }
+});
+
+/** "No more good roles today": the rest of today's number becomes outreach. */
+router.post('/daily-target/swap', async (req: any, res: any) => {
+  try { res.json(await swapToOutreach(req.user.id)); }
+  catch (e) {
+    if (e instanceof DailyTargetError) return res.status(e.status).json(e.payload);
+    console.error('[tracker/daily-target:swap]', e); res.status(500).json({ error: 'failed' });
+  }
+});
+
+/** The evening check-out, today's entry. */
+router.get('/session-log', async (req: any, res: any) => {
+  try { res.json(await getTodaySessionLog(req.user.id)); }
+  catch (e) { console.error('[tracker/session-log]', e); res.status(500).json({ error: 'failed' }); }
+});
+
+router.post('/session-log', async (req: any, res: any) => {
+  try { res.json(await saveSessionLog(req.user.id, req.body ?? {})); }
+  catch (e) {
+    if (e instanceof SessionLogError) return res.status(e.status).json({ error: e.message });
+    console.error('[tracker/session-log:save]', e); res.status(500).json({ error: 'failed' });
   }
 });
 

@@ -7,6 +7,8 @@ vi.mock('../../index', () => ({
     candidateProfile: { findUnique: vi.fn(), updateMany: vi.fn(), update: vi.fn() },
     jobApplication: { findMany: vi.fn() },
     goalChange: { findFirst: vi.fn(), updateMany: vi.fn() },
+    dailyTarget: { findMany: vi.fn().mockResolvedValue([]) },
+    outreachLog: { findMany: vi.fn().mockResolvedValue([]) },
   },
 }));
 
@@ -125,6 +127,31 @@ describe('streak freezes (Duolingo rules)', () => {
     expect(s.streak).toBe(2);
     expect(s.todayDone).toBe(false);
     expect(s.freezes).toBe(1);
+  });
+});
+
+describe('a day switched to outreach', () => {
+  it('counts two outreach messages as one application toward the floor', async () => {
+    const { m, prisma } = await mod();
+    const yesterday = new Date(TODAY.getTime() - 86400000);
+    // Yesterday: 3 applications, then switched to outreach and messaged 4 people.
+    (prisma.jobApplication.findMany as any).mockResolvedValue(
+      Array.from({ length: 3 }, (_, i) => app(1, { sourceUrl: `y${i}` })),
+    );
+    (prisma as any).dailyTarget.findMany.mockResolvedValueOnce([{ userId: 'u1', date: yesterday }]);
+    (prisma as any).outreachLog.findMany.mockResolvedValueOnce(
+      Array.from({ length: 4 }, () => ({ userId: 'u1', createdAt: new Date(yesterday.getTime() + 2 * 3600000) })),
+    );
+    const s = await m.computeStreakState('u1');
+    expect(s.streak).toBe(1);
+    expect(s.freezes).toBe(1);
+  });
+
+  it('falls back to applications only if the swap data cannot be read', async () => {
+    const { m, prisma } = await mod();
+    (prisma.jobApplication.findMany as any).mockResolvedValue([]);
+    (prisma as any).dailyTarget.findMany.mockRejectedValueOnce(new Error('column "swappedAt" does not exist'));
+    expect((await m.computeStreakState('u1')).streak).toBe(0);
   });
 });
 

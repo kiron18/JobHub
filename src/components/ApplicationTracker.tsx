@@ -40,7 +40,9 @@ function daysSinceApplied(dateApplied: string | null): number | null {
 
 export const ApplicationTracker: React.FC = () => {
     const isMobile = useIsMobile();
-    const [trackerTab, setTrackerTab] = useState<'applications' | 'outreach'>('applications');
+    // ?tab=outreach opens straight on outreach (the dashboard's "Log outreach" link).
+    const [trackerTab, setTrackerTab] = useState<'applications' | 'outreach'>(() =>
+        new URLSearchParams(window.location.search).get('tab') === 'outreach' ? 'outreach' : 'applications');
     const queryClient = useQueryClient();
     const [filterStatus, setFilterStatus] = useState<ApplicationStatus | 'ALL' | 'SKIPPED'>('ALL');
     const [sortBy, setSortBy] = useState<SortBy>('match');

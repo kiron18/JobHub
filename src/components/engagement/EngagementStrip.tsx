@@ -1,5 +1,10 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { MorningCommit } from './MorningCommit';
+import { Modal } from '../shared/Modal';
+import { useTrialChallengeState } from '../../lib/trialChallenge';
+import { warm } from '../../lib/theme/warmTokens';
 import api from '../../lib/api';
 import { useDailyTarget } from '../../hooks/useDailyTarget';
 import { StreakHeading } from './StreakHeading';
@@ -51,6 +56,10 @@ export function EngagementStrip() {
   const [commitDialog, setCommitDialog] = useState(false);
   const [undoDialog, setUndoDialog] = useState(false);
   const [pending, setPending] = useState<number | null>(null);
+  const [swapDialog, setSwapDialog] = useState(false);
+  // The trial challenge runs its own day (its own number and window), so the
+  // morning commit stays out of its way, the same rule DailyCloseOut follows.
+  const { data: trial } = useTrialChallengeState();
 
   const { data: summary, isError: summaryFailed } = useQuery({
     queryKey: ['tracker-engagement'],
@@ -106,6 +115,26 @@ export function EngagementStrip() {
   const clearPending = () => setPending(null);
   const commit = () => live.setTarget.mutate(shown, { onSuccess: clearPending });
 
+  /* Morning: nothing on the dashboard until today has a number. */
+  if (!t.locked && !trial?.eligible) {
+    return (
+      <MorningCommit
+        min={t.min}
+        max={t.max}
+        initial={t.committed ?? t.target}
+        filedToday={t.filedToday}
+        streak={summary.streak}
+        programDay={summary.programDay}
+        programLength={summary.programLength}
+        busy={live.setTarget.isPending}
+        onCommit={n => live.setTarget.mutate(n, { onSuccess: clearPending })}
+      />
+    );
+  }
+
+  const canSwap = t.locked && t.swapped === false && t.done === false && t.filedToday < t.target;
+  const missing = Math.max(0, t.target - t.filedToday);
+
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 24, flexWrap: 'wrap', marginBottom: 32 }}>
       <div style={{ flex: '1 1 380px', minWidth: 0 }}>
@@ -132,6 +161,30 @@ export function EngagementStrip() {
         </div>
 
         <ApplicationSquares filed={t.filedToday} target={shown} />
+
+        {/* Option B: no more good roles today. */}
+        {canSwap && (
+          <button
+            onClick={() => setSwapDialog(true)}
+            style={{
+              marginTop: 10, padding: 0, background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: 14, fontWeight: 600, color: warm.colors.textMuted,
+              textDecoration: 'underline', textUnderlineOffset: 3,
+            }}
+          >
+            Run out of good roles today?
+          </button>
+        )}
+        {t.swapped && (
+          <p style={{ margin: '10px 0 0', fontSize: 15, color: warm.colors.textSecondary }}>
+            {t.done
+              ? <strong style={{ color: warm.colors.success }}>Done for today, with outreach. </strong>
+              : <>Outreach instead: <strong style={{ color: warm.colors.textPrimary }}>{t.outreachToday ?? 0} of {t.outreachNeeded ?? 0}</strong> messages. </>}
+            <Link to="/tracker?tab=outreach" style={{ color: warm.colors.accentPetrol, fontWeight: 600 }}>
+              Log outreach →
+            </Link>
+          </p>
+        )}
       </div>
 
       <div style={{ paddingTop: 4 }}>
@@ -157,6 +210,36 @@ export function EngagementStrip() {
           streak: summary.streak,
         }}
       />
+
+      <Modal
+        open={swapDialog}
+        onClose={() => setSwapDialog(false)}
+        title="No more good roles today?"
+        footer={
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <button
+              onClick={() => setSwapDialog(false)}
+              style={{ padding: '11px 16px', borderRadius: 10, border: `1px solid ${warm.colors.borderWhisper}`, background: 'transparent', fontSize: 15, fontWeight: 600, color: warm.colors.textSecondary, cursor: 'pointer' }}
+            >
+              Keep looking
+            </button>
+            <button
+              onClick={() => { setSwapDialog(false); live.swap.mutate(); }}
+              style={{ padding: '11px 16px', borderRadius: 10, border: 'none', background: warm.colors.accentPetrol, color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}
+            >
+              Switch to outreach
+            </button>
+          </div>
+        }
+      >
+        <p style={{ margin: '0 0 12px', fontSize: 16, lineHeight: 1.6, color: warm.colors.textSecondary }}>
+          Some days there just aren't enough roles worth a tailored application. That's fine, as long as the effort still goes somewhere.
+        </p>
+        <p style={{ margin: 0, fontSize: 16, lineHeight: 1.6, color: warm.colors.textPrimary }}>
+          Switch the {missing} application{missing === 1 ? '' : 's'} left for <strong>{missing * 2} outreach messages</strong> to people at companies you'd like to work for.
+          Send them and today still counts, streak included. You can only do this once a day.
+        </p>
+      </Modal>
 
       <TargetCommitDialog
         open={commitDialog}

@@ -11,12 +11,14 @@ import {
     Plus,
     Trophy,
     BookOpen,
-    MessagesSquare } from 'lucide-react';
+    MessagesSquare,
+    Moon } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../lib/api';
 import { warm } from '../lib/theme/warmTokens';
 import { ManageSubscriptionModal } from '../components/ManageSubscriptionModal';
+import { EveningCheckout } from '../components/engagement/EveningCheckout';
 
 const COLLAPSED_WIDTH = 72;
 const EXPANDED_WIDTH = 240;
@@ -72,6 +74,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
     });
 
     const [manageSubOpen, setManageSubOpen] = useState(false);
+    const [checkoutOpen, setCheckoutOpen] = useState(false);
 
     const { data: followUpCount } = useQuery({
         queryKey: ['follow-up-count'],
@@ -361,6 +364,21 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                         </motion.div>
                     )}
                 </AnimatePresence>
+                {/* The evening check-out. Always here, not only once the
+                    day's number is done: the bad days need closing too. */}
+                <button
+                    onClick={() => setCheckoutOpen(true)}
+                    className={`w-full flex items-center justify-center gap-2 rounded-lg font-bold transition-all ${isTouch ? "py-3.5" : "py-2.5"}`}
+                    style={{
+                        color: warm.colors.accentPetrol,
+                        background: warm.colors.accentPetrolSoft,
+                        fontSize: 14,
+                    }}
+                    title="End my day"
+                >
+                    <Moon size={16} className="flex-shrink-0" />
+                    {showLabels && <span>End my day</span>}
+                </button>
                 <button
                     onClick={() => signOut()}
                     className={`w-full flex items-center justify-center gap-2 rounded-lg text-xs font-bold transition-all border border-transparent hover:border-black/10 hover:bg-black/5 ${isTouch ? "py-3.5" : "py-2"}`}
@@ -539,6 +557,8 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                     page it was a permanent reminder that things might be going
                     badly, under screens where they were going fine. */}
             </main>
+
+            <EveningCheckout open={checkoutOpen} onClose={() => setCheckoutOpen(false)} />
 
             <ManageSubscriptionModal
                 isOpen={manageSubOpen}

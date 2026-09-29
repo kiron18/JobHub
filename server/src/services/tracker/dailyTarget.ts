@@ -52,12 +52,28 @@ export interface DailyTargetState {
   max: number;
   /** Whether the one-time commit explainer has been shown to them. */
   explainerSeen: boolean;
+  /** They pressed "No more good roles today" (option B). */
+  swapped: boolean;
+  /** Outreach logged today (OutreachLog rows created today). */
+  outreachToday: number;
+  /** After a swap: outreach messages that make up the rest of the target. */
+  outreachNeeded: number;
+  /** Today's commitment is met, by applications or by the swap. */
+  done: boolean;
 }
+
+/** Two outreach messages stand in for each application still missing. */
+export const OUTREACH_PER_MISSING_APPLICATION = 2;
 
 export class DailyTargetError extends Error {
   constructor(public status: number, public payload: Record<string, unknown>) {
     super(String(payload.error ?? 'daily target error'));
   }
+}
+
+/** Outreach logged today. Each OutreachLog row is one person messaged. */
+async function countOutreachToday(userId: string): Promise<number> {
+  return prisma.outreachLog.count({ where: { userId, createdAt: { gte: tokenToInstant(todayAEST()) } } });
 }
 
 /** Applications sent today, de-duplicated by source URL like everywhere else. */
@@ -94,16 +110,27 @@ export async function getDailyTargetState(userId: string): Promise<DailyTargetSt
      even been switched on yet. A new column on a hot table couples the
      entire app to one migration; keeping this inside DailyTarget means a
      missing migration can only ever break this feature. */
-  const [row, filedToday, bounds, everCommitted] = await Promise.all([
+  const [row, filedToday, bounds, everCommitted, outreachToday] = await Promise.all([
     prisma.dailyTarget.findUnique({ where: { userId_date: { userId, date: today } } }),
     countFiledToday(userId),
     loadBounds(userId),
     prisma.dailyTarget.count({ where: { userId } }),
+    countOutreachToday(userId),
   ]);
 
   const committed = row?.target ?? null;
+  const target = effectiveTarget(committed ?? bounds.min, filedToday, bounds.max);
+  const swapped = !!row?.swappedAt;
+  const outreachNeeded = swapped
+    ? Math.max(0, target - (row?.swapFiled ?? filedToday)) * OUTREACH_PER_MISSING_APPLICATION
+    : 0;
+  // After a swap, applications still count one for one and outreach covers
+  // the rest two for one, so sending one more application late is never
+  // punished.
+  const done = filedToday >= target
+    || (swapped && filedToday + Math.floor(outreachToday / OUTREACH_PER_MISSING_APPLICATION) >= target);
   return {
-    target: effectiveTarget(committed ?? bounds.min, filedToday, bounds.max),
+    target,
     committed,
     locked: row?.locked ?? false,
     undoAvailable: row ? !row.undoUsed : true,
@@ -111,7 +138,45 @@ export async function getDailyTargetState(userId: string): Promise<DailyTargetSt
     min: bounds.min,
     max: bounds.max,
     explainerSeen: everCommitted > 0,
+    swapped,
+    outreachToday,
+    outreachNeeded,
+    done,
   };
+}
+
+/**
+ * "No more good roles today" (option B, Kiron 2026-09-29).
+ *
+ * Some days there are not enough roles worth a tailored application, and a
+ * commitment that can only fail on those days teaches people to commit low.
+ * So once the number is set, they can switch the rest of it to outreach: two
+ * messages for each application still missing. The target itself does not
+ * move, and the day still counts for the streak (see closeout.ts).
+ *
+ * Once per day, only while the number is locked and not yet met.
+ */
+export async function swapToOutreach(userId: string): Promise<DailyTargetState> {
+  const today = todayAEST();
+  const [row, filedToday, bounds] = await Promise.all([
+    prisma.dailyTarget.findUnique({ where: { userId_date: { userId, date: today } } }),
+    countFiledToday(userId),
+    loadBounds(userId),
+  ]);
+  if (!row || !row.locked) {
+    throw new DailyTargetError(409, { error: 'Set today\'s number first.' });
+  }
+  if (row.swappedAt) {
+    throw new DailyTargetError(409, { error: 'Today is already switched to outreach.' });
+  }
+  if (filedToday >= effectiveTarget(row.target, filedToday, bounds.max)) {
+    throw new DailyTargetError(409, { error: 'Today\'s number is already met.' });
+  }
+  await prisma.dailyTarget.update({
+    where: { userId_date: { userId, date: today } },
+    data: { swappedAt: new Date(), swapFiled: filedToday },
+  });
+  return getDailyTargetState(userId);
 }
 
 /** Commit today's number. Rejected while the day's number is locked. */

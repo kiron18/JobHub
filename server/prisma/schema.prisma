@@ -140,7 +140,7 @@ model CandidateProfile {
   // needed. This — not a phone number typed into a form — is how an inbound
   // "START" text gets matched back to the right profile: the candidate never
   // has to type or copy anything, the link/QR does it in one tap.
-  whatsappOptInCode            String?   @unique
+  whatsappOptInCode            String?           @unique
   /// Day 1 of this member's 90-day challenge. Null until the challenge is
   /// assigned; the WhatsApp check-ins only mention "Day N of 90" once set.
   challengeStartedAt           DateTime?
@@ -924,16 +924,40 @@ model GoalChange {
 /// used to dodge a miss. Raises are automatic and lowering is not offered;
 /// `undoUsed` is the single per-day escape hatch.
 model DailyTarget {
-  id          String   @id @default(uuid())
-  userId      String
+  id        String    @id @default(uuid())
+  userId    String
   /// AEST midnight-UTC token, same convention as todayAEST().
-  date        DateTime
-  target      Int
+  date      DateTime
+  target    Int
   /// True once committed. The day's undo flips it back exactly once.
-  locked      Boolean  @default(true)
-  undoUsed    Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  locked    Boolean   @default(true)
+  undoUsed  Boolean   @default(false)
+  /// Set when the member pressed "No more good roles today". From then the
+  /// rest of the target can be met with outreach, two messages for each
+  /// application still missing, and the day still counts for the streak.
+  swappedAt DateTime?
+  /// Applications already sent at the moment of the swap.
+  swapFiled Int?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+/// The evening check-out: what happened today and what tomorrow starts with.
+/// One per member per AEST day; submitting again the same day replaces it.
+model SessionLog {
+  id        String   @id @default(uuid())
+  userId    String
+  /// AEST midnight-UTC token, same convention as todayAEST().
+  date      DateTime
+  /// Ids of the ticked outcomes (see sessionLog.ts for the list).
+  outcomes  String[]
+  /// Ids of the ticked plans for tomorrow.
+  tomorrow  String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([userId, date])
   @@index([userId, date])
@@ -1054,17 +1078,17 @@ model TrialChallenge {
 }
 
 model TrialChallengeDay {
-  id                String         @id @default(uuid())
-  trialChallengeId  String
-  day               Int
-  windowStartedAt   DateTime
-  windowEndsAt      DateTime
-  minimumRequired   Int
+  id               String         @id @default(uuid())
+  trialChallengeId String
+  day              Int
+  windowStartedAt  DateTime
+  windowEndsAt     DateTime
+  minimumRequired  Int
   // null while running; "pass" | "fail" | "forfeited" once decided.
-  outcome           String?
-  crossedMinimumAt  DateTime?
-  decidedAt         DateTime?
-  trialChallenge    TrialChallenge @relation(fields: [trialChallengeId], references: [id])
+  outcome          String?
+  crossedMinimumAt DateTime?
+  decidedAt        DateTime?
+  trialChallenge   TrialChallenge @relation(fields: [trialChallengeId], references: [id])
 
   @@unique([trialChallengeId, day])
 }

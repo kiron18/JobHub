@@ -6,6 +6,7 @@ vi.mock('../../index', () => ({
     jobApplication: { findMany: vi.fn() },
     goalChange: { findFirst: vi.fn(), updateMany: vi.fn() },
     dailyTarget: { findUnique: vi.fn(), upsert: vi.fn(), update: vi.fn(), count: vi.fn() },
+    outreachLog: { count: vi.fn() },
   },
 }));
 
@@ -22,10 +23,12 @@ async function mod() {
 function setup(prisma: any, opts: {
   goal?: number;
   filed?: number;
-  row?: { target: number; locked: boolean; undoUsed: boolean } | null;
+  row?: { target: number; locked: boolean; undoUsed: boolean; swappedAt?: Date | null; swapFiled?: number | null } | null;
   everCommitted?: number;
+  outreach?: number;
 } = {}) {
-  const { goal = 5, filed = 0, row = null, everCommitted = 0 } = opts;
+  const { goal = 5, filed = 0, row = null, everCommitted = 0, outreach = 0 } = opts;
+  prisma.outreachLog.count.mockResolvedValue(outreach);
   prisma.goalChange.findFirst.mockResolvedValue(null);
   prisma.candidateProfile.findUnique.mockResolvedValue({
     dailyApplicationGoal: goal, applicationGoalType: 'daily',
@@ -153,6 +156,44 @@ describe('useDailyUndo', () => {
     const { m, prisma } = await mod();
     setup(prisma, { row: null });
     await expect(m.useDailyUndo('u1')).rejects.toMatchObject({ status: 409 });
+  });
+});
+
+describe('swapToOutreach (option B: no more good roles today)', () => {
+  it('records the swap with the count at that moment', async () => {
+    const { m, prisma } = await mod();
+    setup(prisma, { filed: 2, row: { target: 5, locked: true, undoUsed: false } });
+    await m.swapToOutreach('u1');
+    expect(prisma.dailyTarget.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ swapFiled: 2 }),
+    }));
+  });
+
+  it('asks for two outreach messages per missing application, and counts the day done once sent', async () => {
+    const { m, prisma } = await mod();
+    const swapped = { target: 5, locked: true, undoUsed: false, swappedAt: new Date(), swapFiled: 2 };
+    setup(prisma, { filed: 2, row: swapped, outreach: 4 });
+    let s = await m.getDailyTargetState('u1');
+    expect(s).toMatchObject({ swapped: true, outreachNeeded: 6, outreachToday: 4, done: false });
+    setup(prisma, { filed: 2, row: swapped, outreach: 6 });
+    s = await m.getDailyTargetState('u1');
+    expect(s.done).toBe(true);
+  });
+
+  it('still counts an application sent after the swap one for one', async () => {
+    const { m, prisma } = await mod();
+    setup(prisma, { filed: 3, row: { target: 5, locked: true, undoUsed: false, swappedAt: new Date(), swapFiled: 2 }, outreach: 4 });
+    expect((await m.getDailyTargetState('u1')).done).toBe(true);
+  });
+
+  it('refuses before the number is set, twice in a day, or once the number is met', async () => {
+    const { m, prisma } = await mod();
+    setup(prisma, { row: null });
+    await expect(m.swapToOutreach('u1')).rejects.toMatchObject({ status: 409 });
+    setup(prisma, { filed: 1, row: { target: 5, locked: true, undoUsed: false, swappedAt: new Date() } });
+    await expect(m.swapToOutreach('u1')).rejects.toMatchObject({ status: 409 });
+    setup(prisma, { filed: 5, row: { target: 5, locked: true, undoUsed: false } });
+    await expect(m.swapToOutreach('u1')).rejects.toMatchObject({ status: 409 });
   });
 });
 

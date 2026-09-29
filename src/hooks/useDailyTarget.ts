@@ -22,6 +22,13 @@ export interface DailyTargetState {
   min: number;
   max: number;
   explainerSeen: boolean;
+  /** "No more good roles today" was pressed. Optional: older server build. */
+  swapped?: boolean;
+  outreachToday?: number;
+  /** Outreach messages that make up the rest of the number after a swap. */
+  outreachNeeded?: number;
+  /** Today's commitment is met, by applications or by the swap. */
+  done?: boolean;
 }
 
 export const DAILY_TARGET_KEY = ['tracker-daily-target'];
@@ -67,5 +74,12 @@ export function useDailyTarget(enabled = true) {
     onError: e => onError(e, 'Could not undo today\'s target.'),
   });
 
-  return { ...query, setTarget, useUndo };
+  const swap = useMutation({
+    mutationFn: async () =>
+      (await api.post('/tracker/daily-target/swap')).data as DailyTargetState,
+    onSuccess: adopt,
+    onError: e => onError(e, 'Could not switch today to outreach.'),
+  });
+
+  return { ...query, setTarget, useUndo, swap };
 }
