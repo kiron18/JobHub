@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/api';
 import { onCelebrate } from '../../lib/feedback';
@@ -41,13 +41,38 @@ export function PostApplicationHost() {
     enabled: signedIn,
   });
 
+  /* When it shows (Kiron, 2026-09-29): not on the "Last step" screen, where
+     the application is marked sent, but the moment they press "Apply for
+     another role" and land back on the dashboard. Opening at the save showed
+     the count from before this application ("0 of 5") and then flipped it
+     to 1 in front of them, which read as two pop-ups.
+
+     So the save only arms it. "Apply for another role" fires process:saved;
+     that refetches today's count and then opens, so the number is right the
+     first time. Leaving the last step any other way shows nothing. */
+  const armed = useRef(false);
+
   useEffect(() => onCelebrate(() => {
-    // The count in the popup has to be the server's, not a local tally —
-    // "7 of 10" has to survive a refresh and a second device.
+    armed.current = true;
     qc.invalidateQueries({ queryKey: DAILY_TARGET_KEY });
     qc.invalidateQueries({ queryKey: ['tracker-engagement'] });
-    setOpen(true);
   }), [qc]);
+
+  useEffect(() => {
+    const onSaved = async () => {
+      if (!armed.current) return;
+      armed.current = false;
+      // The count in the popup has to be the server's, not a local tally —
+      // "7 of 10" has to survive a refresh and a second device.
+      await Promise.all([
+        qc.refetchQueries({ queryKey: DAILY_TARGET_KEY }),
+        qc.refetchQueries({ queryKey: ['tracker-engagement'] }),
+      ]).catch(() => {});
+      setOpen(true);
+    };
+    window.addEventListener('process:saved', onSaved);
+    return () => window.removeEventListener('process:saved', onSaved);
+  }, [qc]);
 
   /* No daily-target data means the popup cannot say "7 of 10", so the old
      sidebar pill takes the moment instead. Filing an application must

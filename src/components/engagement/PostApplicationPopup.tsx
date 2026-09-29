@@ -127,7 +127,7 @@ export const PostApplicationPopup: React.FC<PostApplicationPopupProps> = ({
             exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.15, ease: EASE.in } }}
             transition={reduced ? { duration: 0.12 } : SPRING.arrive}
             style={{
-              width: '100%', maxWidth: 440,
+              width: '100%', maxWidth: 480,
               /* The over-cap variant has no click-away, so if the card is
                  ever taller than the window the "Got it" button is the
                  only exit and it must stay reachable. Scroll the card,
@@ -153,31 +153,31 @@ export const PostApplicationPopup: React.FC<PostApplicationPopupProps> = ({
                 </span>
               </div>
               <p style={{
-                ...warm.text.h3, margin: '0 0 12px', textAlign: 'center',
+                ...warm.popup.title, margin: '0 0 12px', textAlign: 'center',
                 fontWeight: warm.weight.bold, color: warm.colors.textPrimary,
               }}>
                 Great job — you've sent ten high-quality applications
               </p>
-              <p style={{ ...warm.text.small, margin: '0 0 12px', lineHeight: 1.6, color: warm.colors.textSecondary }}>
+              <p style={{ ...warm.popup.body, margin: '0 0 12px', lineHeight: 1.6, color: warm.colors.textSecondary }}>
                 We're pausing your counter here. The system is built on high-quality
                 applications sent consistently, and in our experience this is where
                 fatigue starts setting in — the tailoring gets thinner, the research
                 gets skipped, and the tiredness that builds tonight is exactly what
                 turns tomorrow into a day off.
               </p>
-              <p style={{ ...warm.text.small, margin: '0 0 14px', lineHeight: 1.6, color: warm.colors.textSecondary }}>
+              <p style={{ ...warm.popup.body, margin: '0 0 14px', lineHeight: 1.6, color: warm.colors.textSecondary }}>
                 You may feel fine right now, but powering through more than you need to
                 can leave you emotionally drained in three days — which is not where we
                 want you to be.
               </p>
               <p style={{
-                ...warm.text.small, margin: '0 0 8px',
+                ...warm.popup.body, margin: '0 0 8px',
                 fontWeight: warm.weight.bold, color: warm.colors.textPrimary,
               }}>
                 Still got energy and drive? Try one of these.
               </p>
               <ul style={{
-                ...warm.text.small, margin: '0 0 18px', paddingLeft: 20,
+                ...warm.popup.body, margin: '0 0 18px', paddingLeft: 20,
                 lineHeight: 1.7, color: warm.colors.textSecondary,
                 /* Explicit: the global preflight sets list-style:none on
                    every ul, so a bare <ul> renders as unmarked lines. */
@@ -201,37 +201,29 @@ export const PostApplicationPopup: React.FC<PostApplicationPopupProps> = ({
             </>
           ) : (
           <>
-            {/* The tick — drawn on, one bloom, same gesture as the old pill. */}
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-              <span style={{ position: 'relative', width: 68, height: 68 }}>
-                {/* A burst of colour behind the tick. Eight dots, thrown
-                    out once; gold on the application that hits the goal. */}
+            {/* The receipt, small (Kiron's mock-up, 2026-09-29): the tick, the
+                count and the bar say "that one landed" in a glance and step
+                aside. The quiz or fact underneath is the thing to read. */}
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+              <span style={{ position: 'relative', width: 44, height: 44 }}>
                 {!reduced && BURST.map((b, i) => (
                   <motion.span
                     key={i}
                     initial={{ x: 0, y: 0, scale: 0.4, opacity: 1 }}
-                    animate={{ x: b.x, y: b.y, scale: 1, opacity: 0 }}
+                    animate={{ x: b.x * 0.6, y: b.y * 0.6, scale: 1, opacity: 0 }}
                     transition={{ duration: 0.75, ease: EASE.out, delay: 0.12 }}
                     style={{
-                      position: 'absolute', left: '50%', top: '50%', width: 9, height: 9, marginLeft: -4.5, marginTop: -4.5,
+                      position: 'absolute', left: '50%', top: '50%', width: 7, height: 7, marginLeft: -3.5, marginTop: -3.5,
                       borderRadius: i % 2 ? 2 : '50%',
                       background: hitGoal ? (i % 2 ? warm.colors.accentGoldBright : warm.colors.accentGold) : b.color,
                     }}
                   />
                 ))}
-                {!reduced && (
-                  <motion.span
-                    initial={{ scale: 0.9, opacity: 0.55 }}
-                    animate={{ scale: 2.1, opacity: 0 }}
-                    transition={{ duration: 0.8, ease: EASE.out, delay: 0.08 }}
-                    style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: `2px solid ${warm.colors.success}` }}
-                  />
-                )}
                 <span style={{
                   position: 'absolute', inset: 0, borderRadius: '50%', background: warm.colors.successSoft,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
-                  <svg width={34} height={34} viewBox="0 0 24 24" fill="none" stroke={warm.colors.success} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+                  <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={warm.colors.success} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
                     <motion.path
                       d="M20 6 9 17l-5-5"
                       initial={reduced ? { pathLength: 1 } : { pathLength: 0 }}
@@ -243,32 +235,25 @@ export const PostApplicationPopup: React.FC<PostApplicationPopupProps> = ({
               </span>
             </div>
 
-            <motion.p
-              initial={reduced ? false : { scale: 0.6, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={reduced ? { duration: 0 } : { ...SPRING.arrive, delay: 0.15 }}
-              style={{
-                margin: '0 0 6px', textAlign: 'center',
-                fontSize: 48, fontWeight: 800, lineHeight: 1.05, color: warm.colors.textPrimary,
-                fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.03em',
-              }}
-            >
-              {count}<span style={{ fontSize: 26, fontWeight: 700, color: warm.colors.textMuted }}> of {goal}</span>
-            </motion.p>
             <p style={{
-              margin: '0 0 14px', textAlign: 'center', fontSize: 16, fontWeight: 600, lineHeight: 1.45,
+              margin: 0, textAlign: 'center', fontSize: 24, fontWeight: 800, lineHeight: 1.15,
+              color: warm.colors.textPrimary, fontVariantNumeric: 'tabular-nums',
+            }}>
+              {count}<span style={{ fontSize: 15, fontWeight: 700, color: warm.colors.textMuted }}> of {goal}</span>
+            </p>
+            <p style={{
+              margin: '2px 0 8px', textAlign: 'center', fontSize: 14, fontWeight: 600, lineHeight: 1.4,
               color: hitGoal ? warm.colors.accentGold : warm.colors.textSecondary,
             }}>
               {applause.title}
             </p>
 
-            {/* Today's goal as segments, the newest one filling in. */}
-            <div style={{ display: 'flex', gap: 5, marginBottom: 16 }}>
+            <div style={{ display: 'flex', gap: 4, width: 200, margin: '0 auto 6px' }}>
               {Array.from({ length: Math.max(goal, count) }, (_, i) => {
                 const filled = i < count;
                 const isNew = i === count - 1;
                 return (
-                  <span key={i} style={{ flex: 1, height: 8, borderRadius: 99, background: warm.colors.borderWhisper, overflow: 'hidden' }}>
+                  <span key={i} style={{ flex: 1, height: 5, borderRadius: 99, background: warm.colors.borderWhisper, overflow: 'hidden' }}>
                     {filled && (
                       <motion.span
                         initial={isNew && !reduced ? { scaleX: 0 } : false}
@@ -286,47 +271,37 @@ export const PostApplicationPopup: React.FC<PostApplicationPopupProps> = ({
             </div>
 
             {streak > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 16px', borderRadius: 999,
-                  fontSize: 15, fontWeight: 800, background: 'rgba(196,113,58,0.13)', color: '#C4713A',
-                }}>
-                  <motion.span
-                    animate={reduced ? undefined : { rotate: [0, -12, 10, -6, 0], scale: [1, 1.2, 1.1, 1.15, 1] }}
-                    transition={{ duration: 0.9, delay: 0.4 }}
-                    style={{ display: 'inline-flex' }}
-                  >
-                    <Flame size={17} />
-                  </motion.span>
-                  {streak}-day streak
-                </span>
-              </div>
+              <p style={{ margin: '6px 0 0', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 4, fontSize: 14, fontWeight: 700, color: '#C4713A' }}>
+                <Flame size={14} />
+                {streak}-day streak
+              </p>
             )}
 
-            {/* One of two shapes below the hairline: a question to answer,
-                or something worth knowing. Never both, never neither. */}
-            <div style={{ borderTop: `1px solid ${warm.colors.borderWhisper}`, paddingTop: 16 }}>
+            {/* One of two shapes: a question to answer, or something worth
+                knowing. Never both, never neither. The heading is the loud
+                thing on the card. */}
+            <div style={{ marginTop: 18 }}>
+              <p style={{
+                margin: '0 0 12px', textAlign: 'center',
+                fontFamily: "'Fraunces', Georgia, 'Times New Roman', serif",
+                fontSize: quiz ? 44 : 34, fontWeight: 500, lineHeight: 1.05,
+                letterSpacing: '0.03em', textTransform: 'uppercase',
+                color: warm.colors.accentGold,
+              }}>
+                {quiz ? 'Pop quiz' : fact?.tone === 'mindset' ? 'Worth remembering' : 'Quick fact'}
+              </p>
               {quiz ? (
                 <>
-  <p style={{ ...warm.text.micro, margin: '0 0 8px', color: warm.colors.accentGoldBright }}>
-                  Pop quiz
-                </p>
                 {/* The setting, before the question. A question with no
                     setting makes the reader guess whether this is about a
                     resume, a cover letter or a phone screen. */}
-                <p style={{
-                  ...warm.text.small, margin: '0 0 4px', fontSize: 13.5,
-                  fontWeight: warm.weight.semibold, color: warm.colors.textMuted,
-                }}>
+                <p style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 500, color: warm.colors.textMuted }}>
                   {quiz.context}
                 </p>
-                <p style={{
-                  ...warm.text.small, margin: '0 0 12px', fontSize: 16,
-                  fontWeight: warm.weight.bold, lineHeight: 1.45, color: warm.colors.textPrimary,
-                }}>
+                <p style={{ margin: '0 0 14px', fontSize: 20, fontWeight: 700, lineHeight: 1.35, color: warm.colors.textPrimary }}>
                   {quiz.prompt}
                 </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {quiz.choices.map((choice, i) => {
                     const answered = picked !== null;
                     const isPicked = picked === i;
@@ -336,10 +311,10 @@ export const PostApplicationPopup: React.FC<PostApplicationPopupProps> = ({
                     let icon: React.ReactNode = null;
                     if (answered && isCorrect) {
                       border = warm.colors.success; bg = warm.colors.successSoft;
-                      icon = <Check size={13} color={warm.colors.success} />;
+                      icon = <Check size={16} color={warm.colors.success} />;
                     } else if (answered && isPicked && !isCorrect) {
                       border = warm.colors.danger; bg = warm.colors.dangerSoft;
-                      icon = <XIcon size={13} color={warm.colors.danger} />;
+                      icon = <XIcon size={16} color={warm.colors.danger} />;
                     }
                     return (
                       <button
@@ -347,11 +322,11 @@ export const PostApplicationPopup: React.FC<PostApplicationPopupProps> = ({
                         onClick={e => { e.stopPropagation(); if (picked === null) setAnswer({ qid: quiz.id, index: i }); }}
                         disabled={answered}
                         style={{
-                          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
-                          textAlign: 'left', padding: '11px 14px', borderRadius: 11,
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+                          textAlign: 'left', padding: '14px 16px', borderRadius: 12,
                           border: `1.5px solid ${border}`, background: bg,
                           cursor: answered ? 'default' : 'pointer',
-                          fontSize: 14, fontWeight: 600, color: warm.colors.textPrimary,
+                          fontSize: 16, fontWeight: 600, lineHeight: 1.4, color: warm.colors.textPrimary,
                         }}
                       >
                         <span>{choice.text}</span>
@@ -366,7 +341,7 @@ export const PostApplicationPopup: React.FC<PostApplicationPopupProps> = ({
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      style={{ margin: '10px 0 0', fontSize: 13.5, lineHeight: 1.55, color: warm.colors.textSecondary, overflow: 'hidden' }}
+                      style={{ margin: '12px 0 0', fontSize: 15.5, lineHeight: 1.55, color: warm.colors.textSecondary, overflow: 'hidden' }}
                     >
                       {quiz.explain}
                     </motion.p>
@@ -375,23 +350,17 @@ export const PostApplicationPopup: React.FC<PostApplicationPopupProps> = ({
                 </>
               ) : fact && (
                 <>
-                  <p style={{ ...warm.text.micro, margin: '0 0 8px', color: warm.colors.accentGoldBright }}>
-                    {fact.tone === 'mindset' ? 'Worth remembering' : 'Quick fact'}
-                  </p>
-                  <p style={{
-                    ...warm.text.small, margin: '0 0 6px', fontSize: 16,
-                    fontWeight: warm.weight.bold, lineHeight: 1.4, color: warm.colors.textPrimary,
-                  }}>
+                  <p style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 700, lineHeight: 1.35, color: warm.colors.textPrimary }}>
                     {fact.headline}
                   </p>
-                  <p style={{ ...warm.text.small, margin: 0, fontSize: 14, lineHeight: 1.6, color: warm.colors.textSecondary }}>
+                  <p style={{ margin: 0, fontSize: 16.5, lineHeight: 1.6, color: warm.colors.textSecondary }}>
                     {fact.body}
                   </p>
                 </>
               )}
             </div>
 
-            <p style={{ margin: '16px 0 0', textAlign: 'center', fontSize: 12, color: warm.colors.textMuted }}>
+            <p style={{ margin: '18px 0 0', textAlign: 'center', fontSize: 13.5, color: warm.colors.textMuted }}>
               Click anywhere to close
             </p>
           </>
