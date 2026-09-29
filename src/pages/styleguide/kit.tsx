@@ -74,7 +74,7 @@ export function Section({
 
 /** One reviewable item: what is on the site now, beside what I propose. */
 export function Item({
-  n, title, note, verdict, now, next: nextEl, stack,
+  n, title, note, verdict, now, next: nextEl, stack, labels = ['Before', 'Built'],
 }: {
   n: string;
   title: string;
@@ -85,6 +85,8 @@ export function Item({
   next: React.ReactNode;
   /** Force the two panels to stack rather than sit side by side. */
   stack?: boolean;
+  /** Panel headings. Defaults to Before / Built. */
+  labels?: [string, string];
 }) {
   return (
     <div
@@ -131,8 +133,8 @@ export function Item({
           background: CHROME.hairline,
         }}
       >
-        <Panel label="Before" tone="now">{now}</Panel>
-        <Panel label="Built" tone="next">{nextEl}</Panel>
+        <Panel label={labels[0]} tone="now">{now}</Panel>
+        <Panel label={labels[1]} tone="next">{nextEl}</Panel>
       </div>
     </div>
   );

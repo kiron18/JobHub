@@ -8,6 +8,7 @@ import {
   SectionTables, SectionNav, SectionToasts, SectionStepper, SectionMotion, SectionIcons,
   SectionFeedback,
 } from './sectionsB';
+import { SectionDuolingo } from './sectionDuolingo';
 
 /* ── /styleguide ───────────────────────────────────────────────────────
    A review surface, not a product surface. It renders what JobHub looks
@@ -38,6 +39,7 @@ const INDEX: Array<[string, string]> = [
   ['15', 'Motion'],
   ['16', 'Icons'],
   ['17', 'Feedback and celebration'],
+  ['18', 'The Duolingo direction'],
 ];
 
 const KEYFRAMES = `
@@ -161,6 +163,7 @@ export default function StyleGuidePage() {
               <SectionMotion />
               <SectionIcons />
               <SectionFeedback />
+              <SectionDuolingo />
 
               <footer style={{
                 marginTop: 8, padding: '20px 22px', background: CHROME.ink,
