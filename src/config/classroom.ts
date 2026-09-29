@@ -52,7 +52,7 @@ export const CLASSROOM: ClassroomModule[] = [
     title: 'Start here: what this is, and what it isn\'t',
     hook: 'No secrets, no fear tactics. What you are getting into before you watch a single lesson.',
     minutes: 3,
-    youtubeId: '',
+    youtubeId: 'o1RLPd2ISKA',
     chapters: [
       { at: 0, label: 'Burnt before you got here' },
       { at: t(0, 54), label: 'There are no secrets' },
@@ -67,7 +67,7 @@ export const CLASSROOM: ClassroomModule[] = [
     title: 'Why you\'re not hearing back, and 3 steps to fix it',
     hook: 'The biggest gaps people hit in the Australian market, and three things you can start today.',
     minutes: 12,
-    youtubeId: '',
+    youtubeId: '_gyZty2lNHM',
     chapters: [
       { at: 0, label: 'Months of applying, no replies' },
       { at: t(1, 25), label: 'A degree does not equal a job' },
@@ -86,7 +86,7 @@ export const CLASSROOM: ClassroomModule[] = [
     title: 'The Australian resume, line by line',
     hook: 'What the market expects, the five biggest gaps, and a real rewrite on screen.',
     minutes: 16,
-    youtubeId: '',
+    youtubeId: 'drJ2vIQMKKc',
     chapters: [
       { at: 0, label: 'Why your resume matters' },
       { at: t(1, 36), label: 'Where ChatGPT and Claude fall over' },
@@ -107,7 +107,7 @@ export const CLASSROOM: ClassroomModule[] = [
     title: 'Cover letters and selection criteria',
     hook: 'The document most people get wrong, and the one most international grads have never heard of.',
     minutes: 20,
-    youtubeId: '',
+    youtubeId: '-W1rHO9v7Rw',
     chapters: [
       { at: 0, label: 'What this covers' },
       { at: t(2, 12), label: 'Resume vs cover letter vs criteria' },
@@ -129,7 +129,7 @@ export const CLASSROOM: ClassroomModule[] = [
     title: 'Set up LinkedIn so recruiters can find you',
     hook: 'What a recruiter actually does at 9am on a Monday. If you\'re not in those results, you don\'t exist.',
     minutes: 7,
-    youtubeId: '',
+    youtubeId: 'JIMOuVIZJUw',
     chapters: [
       { at: 0, label: 'What the recruiter sees' },
       { at: t(1, 43), label: 'Your headline' },
@@ -149,7 +149,7 @@ export const CLASSROOM: ClassroomModule[] = [
     title: 'Where the jobs are, and the system to work them',
     hook: 'Seek is the visible 20%. A real multi-channel strategy, and the tracker that makes it work.',
     minutes: 8,
-    youtubeId: '',
+    youtubeId: 'QqvqhMD-6gM',
     chapters: [
       { at: 0, label: 'Seek is not the job market' },
       { at: t(1, 26), label: 'The platforms worth using' },
@@ -170,7 +170,7 @@ export const CLASSROOM: ClassroomModule[] = [
     title: 'Networking that gets replies, without feeling fake',
     hook: 'Networking isn\'t asking for a job. It\'s making friends, and there\'s a method to it.',
     minutes: 16,
-    youtubeId: '',
+    youtubeId: 'FCD0JTLgCFo',
     chapters: [
       { at: 0, label: 'The mistake almost everyone makes' },
       { at: t(2, 27), label: 'Junior vs senior contacts' },
@@ -190,7 +190,7 @@ export const CLASSROOM: ClassroomModule[] = [
     title: 'Walk into an Australian interview and perform',
     hook: 'The questions you\'ll actually get, how to handle the unexpected ones, and the visa question.',
     minutes: 13,
-    youtubeId: '',
+    youtubeId: 'JNiHDWtn-Vk',
     chapters: [
       { at: 0, label: 'What an interview really is' },
       { at: t(1, 32), label: 'Cultural expectations' },
@@ -231,7 +231,7 @@ export const CLASSROOM: ClassroomModule[] = [
     title: 'Bonus: how the Australian market actually works',
     hook: 'Optional background. The cultural rules underneath everything else in the course.',
     minutes: 9,
-    youtubeId: '',
+    youtubeId: 'iNxB18-gyFA',
     chapters: [],
     resources: ['rules'],
     doThis: 'Read the cheat sheet once, then keep it open while you write your next application.',
