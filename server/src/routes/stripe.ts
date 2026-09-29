@@ -340,25 +340,7 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
        */
       case 'customer.subscription.created': {
         const sub = event.data.object as any;
-
-        // The $250/mo "until cancelled" link (plink_1UJ1c2RRHBMzeTPTMxcXCjaw)
-        // is the one subscription in this account meant to run open-ended —
-        // everything else, premium included, is sold as a fixed-length
-        // program and gets a term below. Tagged via subscription_data.metadata
-        // at Payment Link creation so it's set before this handler ever runs.
-        if (sub.metadata?.no_auto_term === 'true') {
-          console.log(`[stripe/webhook] ${sub.id} is tagged no_auto_term — leaving open-ended`);
-          break;
-        }
-
-        // The $500/2-month link (subscription_data.metadata.bundle set at
-        // Payment Link creation, see plink_1UJ1c1RRHBMzeTPTJxf5j1EI) is two
-        // charges, not the account-wide default term. Every other monthly
-        // subscription — premium, the $750 coach link, anything else — keeps
-        // running on SUBSCRIPTION_MONTHS below.
-        const months = sub.metadata?.bundle === 'two_month_500'
-          ? 2
-          : Number(process.env.SUBSCRIPTION_MONTHS || 3);
+        const months = Number(process.env.SUBSCRIPTION_MONTHS || 3);
 
         if (sub.cancel_at || sub.cancel_at_period_end) {
           console.log(`[stripe/webhook] ${sub.id} already has an end date — leaving it alone`);
