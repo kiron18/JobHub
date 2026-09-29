@@ -88,7 +88,7 @@ const Shell: React.FC<ShellProps> = ({
             </div>
 
             <h2 style={{
-              ...warm.text.h3, margin: '0 0 12px', textAlign: 'center',
+              ...warm.popup.title, margin: '0 0 12px', textAlign: 'center',
               fontWeight: warm.weight.bold, color: warm.colors.textPrimary,
             }}>
               {title}
@@ -105,7 +105,7 @@ const Shell: React.FC<ShellProps> = ({
                 style={{
                   width: '100%', padding: '12px 20px', borderRadius: 10, border: 'none',
                   background: warm.colors.accentPetrol, color: warm.colors.textOnDeep,
-                  ...warm.text.body, fontWeight: warm.weight.bold,
+                  ...warm.popup.body, fontSize: 17, fontWeight: warm.weight.bold,
                   cursor: busy ? 'progress' : 'pointer', opacity: busy ? 0.75 : 1,
                   transition: t(['background-color', 'opacity'], DUR.fast),
                 }}
@@ -121,7 +121,7 @@ const Shell: React.FC<ShellProps> = ({
                     width: '100%', padding: '10px 20px', borderRadius: 10,
                     border: 'none', background: 'transparent',
                     color: warm.colors.textMuted,
-                    ...warm.text.small, fontWeight: warm.weight.semibold, cursor: 'pointer',
+                    ...warm.popup.body, fontWeight: warm.weight.semibold, cursor: 'pointer',
                     transition: t(['color'], DUR.fast),
                   }}
                 >
@@ -137,7 +137,7 @@ const Shell: React.FC<ShellProps> = ({
 };
 
 const para: React.CSSProperties = {
-  ...warm.text.small, margin: '0 0 10px', lineHeight: 1.6, color: warm.colors.textSecondary,
+  ...warm.popup.body, margin: '0 0 10px', lineHeight: 1.6, color: warm.colors.textSecondary,
 };
 
 /** First Set, ever. Explains what setting a number actually means. */
@@ -168,12 +168,12 @@ export const TargetCommitDialog: React.FC<{
     <p style={{
       margin: '0', padding: '11px 13px', borderRadius: 10,
       background: warm.colors.bgAlt, border: `1px solid ${warm.colors.borderWhisper}`,
-      ...warm.text.small, lineHeight: 1.55, color: warm.colors.textSecondary,
+      ...warm.popup.body, lineHeight: 1.55, color: warm.colors.textSecondary,
     }}>
       Mistakes and genuinely bad days happen, so you get <strong style={{ color: warm.colors.textPrimary }}>one
       undo per day</strong>. After that, today's number stands.
     </p>
-    <p style={{ ...warm.text.small, margin: '10px 0 0', color: warm.colors.textMuted }}>
+    <p style={{ ...warm.popup.body, margin: '10px 0 0', color: warm.colors.textMuted }}>
       You'll only see this once. From tomorrow, Set is instant.
     </p>
   </Shell>

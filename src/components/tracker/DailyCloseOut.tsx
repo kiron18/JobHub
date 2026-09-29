@@ -107,7 +107,7 @@ export function DailyCloseOut() {
             }}
           >
             <div style={{
-              fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em',
+              fontSize: 14, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em',
               color: warm.colors.success, marginBottom: 10,
             }}>
               Day done
@@ -115,13 +115,13 @@ export function DailyCloseOut() {
             <div style={{ fontSize: 30, fontWeight: 800, color: warm.colors.textPrimary, marginBottom: 6 }}>
               {data.appliedToday} of {data.goal}
             </div>
-            <p style={{ margin: '0 0 16px', fontSize: 14, color: warm.colors.textSecondary, lineHeight: 1.5 }}>
+            <p style={{ margin: '0 0 16px', fontSize: 16, color: warm.colors.textSecondary, lineHeight: 1.5 }}>
               {closeoutLineFor(data.dailyStreak)}
             </p>
             {data.dailyStreak > 0 && (
               <div style={{
                 display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 999,
-                fontSize: 12, fontWeight: 800, background: 'rgba(196,113,58,0.12)', color: '#C4713A',
+                fontSize: 14, fontWeight: 800, background: 'rgba(196,113,58,0.12)', color: '#C4713A',
                 marginBottom: 18,
               }}>
                 <Flame size={12} /> {data.dailyStreak}-day streak
@@ -131,7 +131,7 @@ export function DailyCloseOut() {
               <button
                 onClick={dismiss}
                 style={{
-                  padding: '9px 22px', borderRadius: 10, fontSize: 13, fontWeight: 700, border: 'none',
+                  padding: '9px 22px', borderRadius: 10, fontSize: 15, fontWeight: 700, border: 'none',
                   cursor: 'pointer', background: warm.colors.accentPetrol, color: 'white',
                 }}
               >

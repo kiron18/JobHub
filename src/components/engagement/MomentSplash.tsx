@@ -74,14 +74,14 @@ export const MomentSplash: React.FC<MomentSplashProps> = ({
               <Icon size={38} color={warm.colors.accentPetrol} />
             </motion.div>
 
-            <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: warm.colors.accentPetrol, margin: '0 0 8px' }}>
+            <p style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: warm.colors.accentPetrol, margin: '0 0 8px' }}>
               {eyebrow}
             </p>
             <h1 style={{ fontSize: 'clamp(22px, 4vw, 28px)', fontWeight: 800, color: warm.colors.textPrimary, margin: '0 0 8px', letterSpacing: '-0.02em' }}>
               {title}
             </h1>
             {subtitle && (
-              <p style={{ fontSize: 14, color: warm.colors.textSecondary, margin: '0 0 22px', lineHeight: 1.5 }}>
+              <p style={{ fontSize: 16, color: warm.colors.textSecondary, margin: '0 0 22px', lineHeight: 1.5 }}>
                 {subtitle}
               </p>
             )}
@@ -93,7 +93,7 @@ export const MomentSplash: React.FC<MomentSplashProps> = ({
                 borderRadius: 14, padding: '14px 16px', marginTop: subtitle ? 0 : 22, marginBottom: 26,
               }}>
                 <Lightbulb size={16} color={warm.colors.accentGoldBright} style={{ flexShrink: 0, marginTop: 1 }} />
-                <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.55, color: warm.colors.textSecondary }}>
+                <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.55, color: warm.colors.textSecondary }}>
                   {shownTip}
                 </p>
               </div>
@@ -103,7 +103,7 @@ export const MomentSplash: React.FC<MomentSplashProps> = ({
               onClick={onContinue}
               style={{
                 width: '100%', padding: '15px 24px', borderRadius: 12, border: 'none',
-                background: warm.colors.accentPetrol, color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer',
+                background: warm.colors.accentPetrol, color: '#fff', fontSize: 18, fontWeight: 700, cursor: 'pointer',
               }}
             >
               {ctaLabel}

@@ -45,6 +45,8 @@ export interface StreakHeadingProps {
   onBrainClick: () => void;
 }
 
+const SHOW_FREEZE_CHIP = false;
+
 const FREEZE_HELP =
   'Streak freezes: a missed weekday uses one automatically, so your streak survives. ' +
   'You earn one for every 5 days in a row and can hold 2.';
@@ -75,8 +77,12 @@ export const StreakHeading: React.FC<StreakHeadingProps> = ({ streak, freezes, t
         <PulsingBrainIcon streak={streak} onClick={onBrainClick} size={20} variant="inline" />
       </h1>
 
-      {freezes !== undefined && (
+      {/* The freeze chip is hidden (Kiron, 2026-09-29). Freezes still work
+          silently: a missed weekday spends one, the streak survives, and the
+          week dots show a snowflake on that day. SHOW_FREEZE_CHIP brings it back. */}
+      {((SHOW_FREEZE_CHIP && freezes !== undefined) || (streak > 0 && todayDone === false && floor !== undefined)) && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', margin: '-2px 0 10px' }}>
+          {SHOW_FREEZE_CHIP && freezes !== undefined && (
           <span
             title={FREEZE_HELP}
             style={{
@@ -90,8 +96,9 @@ export const StreakHeading: React.FC<StreakHeadingProps> = ({ streak, freezes, t
             <Snowflake size={13} strokeWidth={2.4} />
             {freezes === 0 ? 'No streak freezes' : `${freezes} streak freeze${freezes === 1 ? '' : 's'}`}
           </span>
+          )}
           {streak > 0 && todayDone === false && floor !== undefined && (
-            <span style={{ fontSize: 12.5, fontWeight: 600, color: warm.colors.accentGoldBright }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: warm.colors.accentGoldBright }}>
               Send {floor} today to make it {streak + 1} days
             </span>
           )}

@@ -76,7 +76,7 @@ const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: number |
     <div style={{ display: 'flex', alignItems: 'center', gap: 5, color, minWidth: 0 }}>
       {icon}
       <span style={{
-        fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.02em',
+        fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.02em',
         color: warm.colors.textMuted, whiteSpace: 'nowrap',
       }}>{label}</span>
     </div>
@@ -130,7 +130,7 @@ export const BrainPopup: React.FC<BrainPopupProps> = ({ open, onClose, seed, pro
             <div style={{ textAlign: 'center', marginBottom: 4 }}>
               <span style={{
                 display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: 999,
-                fontSize: 10.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em',
+                fontSize: 12.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em',
                 background: `${TIER_COLOR[tier]}18`, color: TIER_COLOR[tier],
               }}>
                 <Flame size={11} /> {TIER_LABEL[tier]}
@@ -160,7 +160,7 @@ export const BrainPopup: React.FC<BrainPopupProps> = ({ open, onClose, seed, pro
             </div>
 
             <div style={{
-              margin: '14px 0 0', ...warm.text.small, lineHeight: 1.7,
+              margin: '14px 0 0', ...warm.popup.body, lineHeight: 1.7,
               color: warm.colors.textMuted, textAlign: 'center',
             }}>
               <p style={{ margin: 0 }}>Applications are leaves.</p>

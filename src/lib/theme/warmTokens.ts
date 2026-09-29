@@ -61,6 +61,17 @@ export const warm = {
      Spread one of these into a style object:
        style={{ ...warm.text.body, color: warm.colors.textSecondary }}
   */
+  /* ── Pop-up text ─────────────────────────────────────────────────────
+     A step up from the page scale (Kiron, 2026-09-29: "make the text just
+     a bit larger, it's really small"). A modal is read in one sitting at
+     arm's length, often on a phone, so it gets its own, larger steps.
+  */
+  popup: {
+    title: { fontSize: 20, lineHeight: 1.3, fontWeight: 700, letterSpacing: '-0.01em' },
+    body:  { fontSize: 16, lineHeight: 1.6, fontWeight: 400 },
+    small: { fontSize: 14.5, lineHeight: 1.5, fontWeight: 400 },
+  },
+
   text: {
     display: { fontSize: 34, lineHeight: 1.15, fontWeight: 700, letterSpacing: '-0.021em' },
     h1:      { fontSize: 26, lineHeight: 1.22, fontWeight: 700, letterSpacing: '-0.018em' },
