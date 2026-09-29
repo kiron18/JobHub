@@ -115,7 +115,9 @@ export function alertOnServerError(params: { method: string; url: string; status
   resend.emails.send({
     from: FROM_ADDRESS,
     to: ADMIN_EMAIL,
-    subject: `[JobHub] ${status} on ${method} ${url}`,
+    // Staging runs on its own Railway service and emails the same inbox, so
+    // say which one it was; otherwise a test run reads as a production outage.
+    subject: `[JobHub${/staging/i.test(process.env.RAILWAY_SERVICE_NAME ?? '') ? ' STAGING' : ''}] ${status} on ${method} ${url}`,
     text: [
       `${method} ${url} -> ${status}`,
       '',

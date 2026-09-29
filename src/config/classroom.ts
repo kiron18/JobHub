@@ -212,7 +212,7 @@ export const CLASSROOM: ClassroomModule[] = [
     title: 'Put it together into one system',
     hook: 'The parts are done. This is how they combine into something you can run every week.',
     minutes: 13,
-    youtubeId: '',
+    youtubeId: 'kf92wtSGueA',
     chapters: [
       { at: 0, label: 'Do you have a system?' },
       { at: t(1, 41), label: 'Targeting' },
