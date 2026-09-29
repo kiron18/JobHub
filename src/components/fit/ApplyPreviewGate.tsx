@@ -209,7 +209,7 @@ const OFFER = {
   ],
   stackTotal: '$2,350',
 
-  price: '$250 per month',
+  price: '$250 per month for 3 months',
   /* Only true at a month: $250 over about 4.33 weeks is $57.69. */
   anchor: 'About $58 per week.',
 

@@ -188,11 +188,11 @@ const STACK = [
 const FAQS = [
   {
     q: 'What do I pay today?',
-    a: `Nothing. The first ${TRIAL_DAYS} days are free, and ${PRICE} is charged on day ${TRIAL_DAYS + 1} unless you cancel before then. Your card is collected at checkout so the subscription can start on its own, but it is not charged during those ${TRIAL_DAYS} days. After that it is ${PRICE} a month, about ${PRICE_WEEKLY} a week, and that is the whole price: no setup fee and no second tier you find out about later.`,
+    a: `Nothing. The first ${TRIAL_DAYS} days are free, and ${PRICE} is charged on day ${TRIAL_DAYS + 1} unless you cancel before then. Your card is collected at checkout so the subscription can start on its own, but it is not charged during those ${TRIAL_DAYS} days. After that it is ${PRICE} a month for 3 months, about ${PRICE_WEEKLY} a week, and then it stops. That is the whole price: no setup fee and no second tier you find out about later.`,
   },
   {
     q: 'Can I cancel?',
-    a: `Any time, in one click, from your account. Cancel inside the first ${TRIAL_DAYS} days and you are never charged at all. After that it is a monthly subscription, not a lock-in: if you land a role in week three, you cancel in week three.`,
+    a: `Any time, in one click, from your account. Cancel inside the first ${TRIAL_DAYS} days and you are never charged at all. After that it is ${PRICE} a month for 3 months and then it ends on its own. It is not a lock-in: if you land a role in week three, you cancel in week three.`,
   },
   {
     q: 'How does the guarantee actually work?',
@@ -1228,7 +1228,7 @@ export function PricingPage() {
                     put an exit ramp in the same breath as the price and one
                     line above the button. They are answered in full in the FAQ,
                     where somebody looking for them will look. */}
-                Billed {PRICE} a month.
+                Billed {PRICE} a month for 3 months.
               </div>
               <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: colors.success, marginTop: 8 }}>
                 Free for your first {TRIAL_DAYS} days

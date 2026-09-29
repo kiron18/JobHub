@@ -17,15 +17,15 @@ interface Props {
   variant?: Variant;
 }
 
-const FULL = `Your diagnostic is yours to keep, free. If you want to act on what it found, 30 days of full access is $197, which is less than $50 a week. Afterpay splits that into four payments.`;
-const COMPACT = `Tailored documents for this role unlock with 30-Day Access. $197 once.`;
-const INLINE = `30-Day Access, $197 once`;
-const AFTERPAY_INLINE = `Afterpay available`;
+const FULL = `Your diagnostic is yours to keep, free. If you want to act on what it found, full access is $250 a month for 3 months, about $58 a week.`;
+const COMPACT = `Tailored documents for this role unlock with full access, $250 a month for 3 months.`;
+const INLINE = `Full access, $250 a month for 3 months`;
 
 const LINES: Record<Variant, { body: string; afterpay?: string }> = {
   full: { body: FULL },
   compact: { body: COMPACT },
-  inline: { body: INLINE, afterpay: AFTERPAY_INLINE },
+  // No Afterpay line: Stripe does not offer Afterpay or Zip on subscriptions.
+  inline: { body: INLINE },
 };
 
 export function PricingTeaser({ source, variant = 'full' }: Props) {
@@ -90,11 +90,6 @@ export function PricingTeaser({ source, variant = 'full' }: Props) {
           See plans &rarr;
         </span>
       </button>
-      {variant === 'full' && (
-        <p style={{ margin: '8px 0 0', fontSize: 12, color: warm.colors.textMuted }}>
-          Afterpay and Zip are supported at checkout.
-        </p>
-      )}
     </div>
   );
 }

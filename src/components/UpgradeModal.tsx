@@ -90,7 +90,9 @@ export const UpgradeModal: React.FC<Props> = ({ trigger, onClose }) => {
     trackFreeLimitHit(trigger);
   }, [trigger]);
 
-  const handleCheckout = async (plan: 'monthly' | 'annual' | 'three_month') => {
+  // premium is the $250/month price, the same Stripe price as the public
+  // payment link. The server ends every subscription after 3 months.
+  const handleCheckout = async (plan: 'premium') => {
     trackCheckoutStarted(plan);
     setLoading(plan);
     try {
@@ -133,21 +135,21 @@ export const UpgradeModal: React.FC<Props> = ({ trigger, onClose }) => {
           </div>
           <h2 className="text-xl font-black text-[#1A1814] mb-1">{TRIGGER_HEADLINES[trigger]}</h2>
           <p className="text-sm text-[#5C5750] mb-6">
-            One payment unlocks full access for 30 days. No subscription, no recurring charge.
+            Full access for 3 months: $250 a month, 3 payments, then it stops.
           </p>
 
           <div className="max-w-xs mx-auto mb-5">
             <PlanCard
-              name="30-Day Access"
-              price="$197 AUD"
-              weekly="Less than $50 per week"
-              billing="One payment, 30 days access"
+              name="3 months of full access"
+              price="$250 AUD a month"
+              weekly="About $58 a week"
+              billing="for 3 months, $750 in total"
               trial={null}
-              savings={"One payment of $197 for 30 days of everything.\nAfterpay and Zip both work at checkout."}
+              savings={"3 monthly payments of $250, then it stops.\nNo ongoing subscription."}
               cta="Unlock everything"
               recommended
-              onSelect={() => handleCheckout('three_month')}
-              loading={loading === 'three_month'}
+              onSelect={() => handleCheckout('premium')}
+              loading={loading === 'premium'}
             />
           </div>
 

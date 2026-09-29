@@ -189,7 +189,7 @@
      lesser product rather than the smaller commitment. Equal height, with the
      price pinned to the bottom of each, makes them one choice instead of a
      big option and a small one. */
-  .tiers{display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:stretch}
+  .tiers{display:grid; grid-template-columns:minmax(0,560px); justify-content:center; gap:20px; align-items:stretch}
   .tier .pricebox{margin-top:auto}
   @media (max-width:900px){ .tiers{grid-template-columns:1fr} }
   .tier{
@@ -430,30 +430,6 @@
       </div>
 
       <div class="tiers">
-        <div class="tier">
-          <div class="flag">Do it yourself, with the tooling</div>
-          <h3>The Job Hub System</h3>
-          <p class="sell">Everything you need to send a high quality application in about five minutes, and to keep doing it every day without burning your evening.</p>
-          <div class="stackrows">
-            <div class="row"><span class="it">Resume builder</span><span class="val">$200</span></div>
-            <div class="row"><span class="it">Cover letter builder</span><span class="val">$150</span></div>
-            <div class="row"><span class="it">Interview prep</span><span class="val">$300</span></div>
-            <div class="row"><span class="it">Selection criteria writer</span><span class="val">$250</span></div>
-            <div class="row"><span class="it">Follow up sender</span><span class="val">$150</span></div>
-            <div class="row"><span class="it">Outreach assistant</span><span class="val">$250</span></div>
-            <div class="row"><span class="it">Tracking system</span><span class="val">$100</span></div>
-            <div class="row"><span class="it">Accountability partner</span><span class="val">$200</span></div>
-            <div class="row sum"><span class="it">What that costs separately</span><span class="tot">$1,600</span></div>
-          </div>
-          <div class="pricebox">
-            <span class="lb">Your price</span>
-            <span class="tier-price">$100</span>
-            <span class="per">per month, about $25 a week</span>
-          </div>
-          <a class="btn" data-link="machine" data-ev="buy_system" href="#offer">Start this week <span class="arrow">&#8594;</span></a>
-          <p class="foot">Billed monthly. I will not sell you a single week, because the system needs about three weeks before it gives you anything back. Cancel any time after that.</p>
-        </div>
-
         <div class="tier lead">
           <div class="flag">Fastest, and it is my calendar</div>
           <h3>The Job Hub System + Me</h3>
@@ -468,8 +444,8 @@
           </div>
           <div class="pricebox">
             <span class="lb">Your price</span>
-            <span class="tier-price">$750</span>
-            <span class="per">three months with me, limited seats</span>
+            <span class="tier-price">$250</span>
+            <span class="per">a month for 3 months, $750 in total. Limited seats</span>
           </div>
           <a class="btn signal" data-link="coach" data-ev="buy_coaching" href="#offer">Take a seat <span class="arrow">&#8594;</span></a>
           <a class="undercta-link" data-link="bookcall" data-ev="book_call" href="#offer">Not sure yet? Book a 20 minute call first</a>
@@ -566,8 +542,8 @@
   /* ============ EDIT THESE LINES ONLY ============ */
   const CLOSES  = new Date("2026-08-28T23:59:00+10:00"); // when the countdown hits zero
   const SKOOL   = "https://www.skool.com/touch-grass-5787/about";
-  const MACHINE = "https://buy.stripe.com/4gMbJ340S4Ep4wa2lofMA05";   // $100/month, live Stripe payment link
-  const COACH   = "https://buy.stripe.com/9B6bJ37d49YJ2o23psfMA04";  // $750 three months, live Stripe payment link
+  const MACHINE = "https://buy.stripe.com/9B6bJ37d49YJ2o23psfMA04";   // was the $100/month link; the only offer is now $250/month for 3 months
+  const COACH   = "https://buy.stripe.com/9B6bJ37d49YJ2o23psfMA04";  // $250/month for 3 months ($750), live Stripe payment link
   const BOOKCALL= "https://aussiegradcareers.com.au/book-a-call";     // the quiet way in for anyone not ready to pay
   const POSTHOG_KEY = "phc_m5zx5fZKeJ5cE2pbtWVkhcTFhuqPe62d2uZiXMos3gGq";
   const POSTHOG_HOST = "https://us.i.posthog.com";

@@ -70,7 +70,7 @@ const RESPONSES: Record<ReasonKey, React.ReactNode> = {
   ),
   price: (
     <>
-      <p>Our most popular plan is around $65 a month. One interview call, let alone an offer, is worth more than a year of that.</p>
+      <p>The plan is $250 a month for 3 months. One interview call, let alone an offer, is worth more than that.</p>
       <p>If the current plan isn't the right fit, you can switch without losing anything you've already built. Your profile, achievements, and documents stay exactly where they are.</p>
     </>
   ),
