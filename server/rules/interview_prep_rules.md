@@ -102,8 +102,10 @@ about this role.
 
 The answer to "tell me about yourself", which is also the frame for the whole call.
 
-SAY: "[Under 45 seconds spoken, so 60 to 80 words. Where they come from, what they are strongest
-at, and why that points at this role. Lead with the specialty, never with what they lack.]"
+SAY: "[Short enough to remember after reading it twice: three sentences, 35 to 50 words, under
+30 seconds spoken. Sentence one, who they are now. Sentence two, the one result worth remembering,
+with its number. Sentence three, why that points at this role. Plain everyday words, no lists, no
+sub-clauses to trip over. Lead with the specialty, never with what they lack.]"
 WHY: [Why this lands. Name what the interviewer hears, and in what order.]
 
 ### THE GAP

@@ -19,6 +19,7 @@ import { ChevronRight, ArrowLeft } from 'lucide-react';
 import { warm } from '../lib/theme/warmTokens';
 import { UniversalPlaybook } from '../components/interview/UniversalPlaybook';
 import { JobPrepCard } from '../components/interview/JobPrepCard';
+import { SimplePrep } from '../components/interview/SimplePrep';
 import type { CheatSheet as Sheet } from '../components/interview/parseCheatSheet';
 
 const C = warm.colors;
@@ -171,6 +172,12 @@ export default function InterviewPrepRedesignPreview() {
                 <DevLabel>Mock — /interview/:jobId (specialized only, nothing general repeated)</DevLabel>
                 <MockPanel>
                     <JobPrepCard sheet={SAMPLE_SHEET} company={COMPANY} role={ROLE} />
+                </MockPanel>
+
+                <div id="simple" style={{ margin: '36px 0 14px' }} />
+                <DevLabel>Shipped 2026-09-29: what /interview/:jobId renders now (SimplePrep)</DevLabel>
+                <MockPanel>
+                    <SimplePrep sheet={SAMPLE_SHEET} company={COMPANY} role={ROLE} />
                 </MockPanel>
             </div>
         </div>

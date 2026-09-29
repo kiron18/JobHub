@@ -6,6 +6,11 @@ import { OnTheDay } from './interview/OnTheDay';
 import { FinalChecklist } from './interview/FinalChecklist';
 import { CheatSheet } from './interview/CheatSheet';
 import { isCheatSheet, parseCheatSheet } from './interview/parseCheatSheet';
+import { SimplePrep } from './interview/SimplePrep';
+
+/** The four-part prep (mindset, about me, their questions, yours). Off shows
+ *  the full cheat sheet again. Kiron, 2026-09-29: "way too complicated". */
+const SIMPLE_INTERVIEW_PREP = true;
 
 interface StoryCard {
     title: string;
@@ -414,6 +419,7 @@ export function InterviewPrepView({ doc, company, role, stageLabel = null }: {
     // page, since a client with a prep already built should never lose it to a
     // format change they did not ask for.
     if (isCheatSheet(doc)) {
+        if (SIMPLE_INTERVIEW_PREP) return <SimplePrep sheet={parseCheatSheet(doc)} company={company} role={role} />;
         return <CheatSheet sheet={parseCheatSheet(doc)} company={company} role={role} stageLabel={stageLabel} />;
     }
 

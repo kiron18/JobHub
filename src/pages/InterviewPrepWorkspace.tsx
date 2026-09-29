@@ -188,8 +188,8 @@ export function InterviewPrepWorkspace() {
                             {job.title}{job.company ? ` · ${job.company}` : ''}
                         </h1>
                         <p style={{ margin: '8px 0 0', fontSize: 14, color: warm.colors.textMuted, lineHeight: 1.6, maxWidth: 520 }}>
-                            A cheat sheet you keep open during the call: what to say, the questions they will ask,
-                            and the things you cannot fumble. Built from your real experience.
+                            Four things to take in with you: how to walk in, a short answer to "tell me about
+                            yourself", the questions they will probably ask, and the ones to ask them.
                         </p>
                     </div>
                     {setup('Build my interview prep')}
