@@ -17,6 +17,18 @@ import { trackAchievementAdded } from '../lib/analytics';
 import { toggleEmphasis, type EmphasisMarker } from '../lib/toggleEmphasis';
 import { toggleLinePrefix, continueList, lineStyleOf, type LineStyle } from '../lib/toggleLinePrefix';
 
+/**
+ * Add, edit and delete on the bank items under "Under the hood": roles,
+ * achievements, projects, education, certifications, volunteering.
+ *
+ * Off because the server no longer takes those writes: the resume is the
+ * source of truth and a profile changes by re-uploading it (see
+ * server/src/routes/profile/experience.ts). With this on, every one of those
+ * buttons failed. Personal details, skills and the bank text still save.
+ * Turn it back on together with the server routes, never on its own.
+ */
+const BANK_ITEM_EDITING = false;
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface Experience {
@@ -1041,13 +1053,13 @@ const AchievementRow: React.FC<AchievementRowProps> = ({ ach }) => {
                   onClose={() => setShowHowModal(false)}
                   isDark={false}
                   achievementDescription={ach.description}
-                  onMarkQualitative={markQualitative}
+                  onMarkQualitative={BANK_ITEM_EDITING ? markQualitative : undefined}
                 />
               </motion.div>
             )}
           </AnimatePresence>
         </div>
-        {!editing && <EditButton onClick={() => setEditing(true)} />}
+        {BANK_ITEM_EDITING && !editing && <EditButton onClick={() => setEditing(true)} />}
       </div>
     </div>
   );
@@ -1167,7 +1179,7 @@ const ExperienceIsland: React.FC<ExperienceIslandProps> = ({ experience, achieve
     <Island>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <SectionHeader icon={<Briefcase size={13} />} title="Work Experience" />
-        {!isAdding && (
+        {BANK_ITEM_EDITING && !isAdding && (
           <button onClick={() => setIsAdding(true)} style={{ fontSize: 11, fontWeight: 700, color: warm.colors.accentPetrol, background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>
             + Add
           </button>
@@ -1200,7 +1212,7 @@ const ExperienceIsland: React.FC<ExperienceIslandProps> = ({ experience, achieve
 
       {workEntries.length === 0 && !isAdding && (
         <p style={{ fontSize: 13, color: warm.colors.textMuted, fontStyle: 'italic' }}>
-          No experience yet. Upload a resume, or click <strong>+ Add</strong> above.
+          No experience yet. Upload your resume on the Your Resume tab and it will appear here.
         </p>
       )}
       {workEntries.map(exp => {
@@ -1258,7 +1270,7 @@ const ExperienceIsland: React.FC<ExperienceIslandProps> = ({ experience, achieve
                   )}
                 </AnimatePresence>
               </div>
-              {!isEditing && (
+              {BANK_ITEM_EDITING && !isEditing && (
                 <EditButton
                   onClick={() => {
                     setForms(prev => ({ ...prev, [exp.id]: { company: exp.company, role: exp.role, startDate: exp.startDate, endDate: exp.endDate ?? '', description: exp.description } }));
@@ -1280,7 +1292,7 @@ const ExperienceIsland: React.FC<ExperienceIslandProps> = ({ experience, achieve
               {linked.map(ach => (
                 <AchievementRow key={ach.id} ach={ach} />
               ))}
-              <AddAchievementForm experienceId={exp.id} />
+              {BANK_ITEM_EDITING && <AddAchievementForm experienceId={exp.id} />}
             </div>
           </div>
         );
@@ -1320,7 +1332,7 @@ const ProjectsIsland: React.FC<{ experience: Experience[]; achievements: Achieve
                 Achievements
               </p>
               {linked.map(ach => <AchievementRow key={ach.id} ach={ach} />)}
-              <AddAchievementForm experienceId={proj.id} />
+              {BANK_ITEM_EDITING && <AddAchievementForm experienceId={proj.id} />}
             </div>
           </div>
         );
@@ -1362,7 +1374,7 @@ const EducationIsland: React.FC<{ education: Education[] }> = ({ education }) =>
     <Island>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <SectionHeader icon={<GraduationCap size={13} />} title="Education" />
-        {!isAdding && (
+        {BANK_ITEM_EDITING && !isAdding && (
           <button onClick={() => setIsAdding(true)} style={{ fontSize: 11, fontWeight: 700, color: warm.colors.accentPetrol, background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>
             + Add
           </button>
@@ -1398,7 +1410,7 @@ const EducationIsland: React.FC<{ education: Education[] }> = ({ education }) =>
           <div>
             <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: warm.colors.danger }}>Education missing</p>
             <p style={{ margin: '2px 0 0', fontSize: 12, color: warm.colors.danger }}>
-              No education records found. Add your degree so it appears in generated resumes, click <strong>+ Add</strong> above.
+              No education records found. Upload your resume on the Your Resume tab and your degree will appear here.
             </p>
           </div>
         </div>
@@ -1436,7 +1448,7 @@ const EducationIsland: React.FC<{ education: Education[] }> = ({ education }) =>
                   )}
                 </AnimatePresence>
               </div>
-              {!isEditing && (
+              {BANK_ITEM_EDITING && !isEditing && (
                 <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                   <EditButton onClick={() => { setForms(prev => ({ ...prev, [edu.id]: { institution: edu.institution, degree: edu.degree, field: edu.field ?? '', year: edu.year ?? '' } })); setEditingId(edu.id); }} />
                   <button onClick={() => deleteMutation.mutate(edu.id)} style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${'rgba(0,0,0,0.08)'}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: warm.colors.textMuted }}>
@@ -1567,7 +1579,7 @@ const CertificationsIsland: React.FC<{ certifications: Certification[] }> = ({ c
     <Island>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <SectionHeader icon={<Award size={13} />} title="Certifications" />
-        {!isAdding && (
+        {BANK_ITEM_EDITING && !isAdding && (
           <button onClick={() => setIsAdding(true)} style={{ fontSize: 11, fontWeight: 700, color: warm.colors.accentPetrol, background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>
             + Add
           </button>
@@ -1626,7 +1638,7 @@ const CertificationsIsland: React.FC<{ certifications: Certification[] }> = ({ c
                   )}
                 </AnimatePresence>
               </div>
-              {!isEditing && (
+              {BANK_ITEM_EDITING && !isEditing && (
                 <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                   <EditButton onClick={() => { setForms(prev => ({ ...prev, [cert.id]: { name: cert.name, issuingBody: cert.issuingBody, year: cert.year ?? '' } })); setEditingId(cert.id); }} />
                   <button onClick={() => deleteMutation.mutate(cert.id)} style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${'rgba(0,0,0,0.08)'}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: warm.colors.textMuted }}>
@@ -1675,7 +1687,7 @@ const VolunteeringIsland: React.FC<{ volunteering: Volunteering[] }> = ({ volunt
     <Island>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <SectionHeader icon={<Heart size={13} />} title="Volunteering" />
-        {!isAdding && (
+        {BANK_ITEM_EDITING && !isAdding && (
           <button onClick={() => setIsAdding(true)} style={{ fontSize: 11, fontWeight: 700, color: warm.colors.accentPetrol, background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>
             + Add
           </button>
@@ -1739,7 +1751,7 @@ const VolunteeringIsland: React.FC<{ volunteering: Volunteering[] }> = ({ volunt
                   )}
                 </AnimatePresence>
               </div>
-              {!isEditing && (
+              {BANK_ITEM_EDITING && !isEditing && (
                 <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                   <EditButton onClick={() => { setForms(prev => ({ ...prev, [vol.id]: { organization: vol.organization, role: vol.role, description: vol.description ?? '' } })); setEditingId(vol.id); }} />
                   <button onClick={() => deleteMutation.mutate(vol.id)} style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${'rgba(0,0,0,0.08)'}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: warm.colors.textMuted }}>
