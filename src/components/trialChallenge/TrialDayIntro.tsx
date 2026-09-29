@@ -44,7 +44,7 @@ export function TrialDayIntro({ windowMinutes, minimum, onBegin, beginning }: Pr
             Here's how to make the most of it
           </p>
           <Step n={1} text={`Make sure you have ${windowMinutes} minutes uninterrupted.`} />
-          <Step n={2} text={`Apply to ${minimum} job${minimum === 1 ? '' : 's'} within ${windowMinutes} minutes to unlock day 2 + a secret gift.`} />
+          <Step n={2} text={`Apply to ${minimum} job${minimum === 1 ? '' : 's'} within ${windowMinutes} minutes.`} />
           <Step n={3} text="Your time starts when you press the button below." last />
         </div>
 
