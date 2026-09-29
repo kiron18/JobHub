@@ -5,6 +5,7 @@ import { onCelebrate } from '../../lib/feedback';
 import { useDailyTarget, DAILY_TARGET_KEY } from '../../hooks/useDailyTarget';
 import { PostApplicationPopup } from './PostApplicationPopup';
 import { CelebrationHost } from '../shared/Celebration';
+import { useAuth } from '../../contexts/AuthContext';
 
 /* ── PostApplicationHost ───────────────────────────────────────────────
    Listens for a filed application and shows the one popup.
@@ -26,7 +27,10 @@ import { CelebrationHost } from '../shared/Celebration';
 export function PostApplicationHost() {
   const [open, setOpen] = useState(false);
   const qc = useQueryClient();
-  const { data } = useDailyTarget();
+  // Mounted on every page, public ones included. Same gate as DailyCloseOut.
+  const { user } = useAuth();
+  const signedIn = !!user && !(user as { is_anonymous?: boolean }).is_anonymous;
+  const { data } = useDailyTarget(signedIn);
   // The streak pill wants the real number, and this is the same query the
   // dashboard strip already holds, so it is usually a cache read.
   const { data: summary } = useQuery({
@@ -34,6 +38,7 @@ export function PostApplicationHost() {
     queryFn: async () => (await api.get('/tracker/engagement')).data as { streak: number },
     staleTime: 60_000,
     retry: false,
+    enabled: signedIn,
   });
 
   useEffect(() => onCelebrate(() => {

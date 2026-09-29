@@ -187,10 +187,11 @@ router.post('/closeout/ack', async (req: any, res: any) => {
 // services/whatsappBaileys.ts.
 router.get('/whatsapp', async (req: any, res: any) => {
   try {
-    const [optInCode, profile] = await Promise.all([
-      getOrCreateWhatsappOptInCode(req.user.id),
-      prisma.candidateProfile.findUnique({ where: { userId: req.user.id }, select: { whatsappVerifiedAt: true } }),
-    ]);
+    // No profile yet (mid-onboarding): there is nothing to attach a code to,
+    // and creating one would fail five times and surface as a 500.
+    const profile = await prisma.candidateProfile.findUnique({ where: { userId: req.user.id }, select: { whatsappVerifiedAt: true } });
+    if (!profile) return res.status(404).json({ error: 'Profile not found' });
+    const optInCode = await getOrCreateWhatsappOptInCode(req.user.id);
     res.json({
       verified: !!profile?.whatsappVerifiedAt,
       whatsappOptInLink: `https://wa.me/${WHATSAPP_COACH_NUMBER}?text=${encodeURIComponent(`START ${optInCode}`)}`,
