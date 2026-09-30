@@ -9,6 +9,8 @@ const C = warm.colors;
 const DISMISS_KEY = 'jobhub_whatsapp_coach_dismissed';
 
 interface WhatsappState {
+  /** Check-ins are switched on in this environment. Undefined: older server. */
+  enabled?: boolean;
   verified: boolean;
   whatsappOptInLink: string;
 }
@@ -42,7 +44,7 @@ export function WhatsAppCoachCard() {
       .catch(() => setQrDataUrl(null));
   }, [data?.whatsappOptInLink]);
 
-  if (!data || dismissed) return null;
+  if (!data || dismissed || data.enabled === false) return null;
 
   const dismiss = () => {
     try { localStorage.setItem(DISMISS_KEY, '1'); } catch { /* ignore */ }

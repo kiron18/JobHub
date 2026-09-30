@@ -15,6 +15,7 @@ import {
   getDailyTargetState, setDailyTarget, useDailyUndo, swapToOutreach, DailyTargetError,
 } from '../services/tracker/dailyTarget';
 import { getTodaySessionLog, saveSessionLog, SessionLogError } from '../services/tracker/sessionLog';
+import { coachCheckinsEnabled } from '../services/coachCheckin/flags';
 import { getEngagementSummary } from '../services/tracker/engagement';
 import { getMilestoneState, ackMilestone } from '../services/tracker/milestones';
 import { getCloseoutState, ackCloseout } from '../services/tracker/closeout';
@@ -217,6 +218,8 @@ router.get('/whatsapp', async (req: any, res: any) => {
     if (!profile) return res.status(404).json({ error: 'Profile not found' });
     const optInCode = await getOrCreateWhatsappOptInCode(req.user.id);
     res.json({
+      // The client hides the coach card unless check-ins are actually on here.
+      enabled: coachCheckinsEnabled(),
       verified: !!profile?.whatsappVerifiedAt,
       whatsappOptInLink: `https://wa.me/${WHATSAPP_COACH_NUMBER}?text=${encodeURIComponent(`START ${optInCode}`)}`,
     });
