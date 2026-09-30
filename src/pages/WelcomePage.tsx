@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ChallengeTicker } from '../components/shared/ChallengeTicker';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -1481,7 +1482,8 @@ export const WelcomePage: React.FC = () => {
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.22, ease: EASE }}
             style={{
-              position: 'fixed', top: 20, right: 24, zIndex: 3,
+              // 60, not 20: clears the running challenge banner across the top.
+              position: 'fixed', top: 60, right: 24, zIndex: 3,
               display: 'inline-flex', alignItems: 'center',
               padding: '9px 18px', borderRadius: 99,
               background: colors.bgSurface,
@@ -1495,7 +1497,7 @@ export const WelcomePage: React.FC = () => {
           </motion.a>
         )}
       </AnimatePresence>
-      <Shell wide onWash footer={step === 'upload' ? <HowItWorksArticle onStart={() => document.getElementById('agc-front-door')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} /> : undefined}>
+      <Shell wide onWash ticker={step === 'upload'} footer={step === 'upload' ? <HowItWorksArticle onStart={() => document.getElementById('agc-front-door')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} /> : undefined}>
       {/* The first screen keeps its own full-height, centred composition now
           that the article sits under it: the Shell only centres content that
           is shorter than the viewport, so without this the card would jump
@@ -2527,7 +2529,10 @@ function BrandLockup({ tight }: { tight?: boolean }) {
  * screen puts the testimonial marquee there). Everything else keeps the flat
  * canvas it has always had.
  */
-function Shell({ children, wide, onWash, footer }: { children: React.ReactNode; wide?: boolean; onWash?: boolean; footer?: React.ReactNode }) {
+function Shell({ children, wide, onWash, footer, ticker }: { children: React.ReactNode; wide?: boolean; onWash?: boolean; footer?: React.ReactNode; ticker?: boolean }) {
+  // The running "Start your 90 day challenge" banner, top and bottom of the
+  // front door only; clicking it brings the upload box into view.
+  const toFrontDoor = () => document.getElementById('agc-front-door')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   const isMobile = useIsMobile();
   return (
     /* 48px of vertical air and 24 a side is right for a 720px card floating in
@@ -2535,6 +2540,7 @@ function Shell({ children, wide, onWash, footer }: { children: React.ReactNode; 
        so the same insets are 96px of height and 48px of width taken off a
        screen that has neither to give. */
     <div data-shell-scroll style={{ position: 'relative', zIndex: 1, height: '100dvh', overflowY: 'auto', background: onWash ? 'transparent' : colors.bgCanvas, display: 'flex', flexDirection: 'column' }}>
+      {ticker && <ChallengeTicker onClick={toFrontDoor} />}
       <div style={{ flex: '1 0 auto', display: 'flex', padding: isMobile ? '16px 14px' : '48px 24px', boxSizing: 'border-box' }}>
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}
         style={{ width: '100%', maxWidth: wide ? 720 : 520, margin: 'auto' }}>
@@ -2544,6 +2550,7 @@ function Shell({ children, wide, onWash, footer }: { children: React.ReactNode; 
       {/* A plain white band the full width of the page, so long-form copy is
           not floating over the marquee. */}
       {footer && <div style={{ background: '#fff', padding: isMobile ? '0 20px' : '0 24px', borderTop: `1px solid ${PANEL_BORDER}` }}>{footer}</div>}
+      {ticker && <ChallengeTicker onClick={toFrontDoor} />}
     </div>
   );
 }

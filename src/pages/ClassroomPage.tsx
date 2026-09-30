@@ -23,6 +23,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, Navigate, Link } from 'react-router-dom';
 import { Check, Play, Download, ArrowRight, Clock, Users, Compass } from 'lucide-react';
+import { ChallengeTicker } from '../components/shared/ChallengeTicker';
 import { CLASSROOM, WALKTHROUGH, findModule, formatTime, type ClassroomModule } from '../config/classroom';
 import { FREE_RESOURCES } from '../config/freeResources';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -246,6 +247,7 @@ export default function ClassroomPage() {
       height: '100dvh', overflowY: 'auto', background: C.bg,
       fontFamily: BODY, color: C.ink,
     }}>
+      <ChallengeTicker to="/" />
       <header style={{
         borderBottom: `1px solid ${C.line}`, padding: isMobile ? '14px 16px' : '16px 32px',
         display: 'flex', alignItems: 'center', gap: 12,
@@ -537,6 +539,7 @@ export default function ClassroomPage() {
           </a>
         </aside>
       </div>
+      <ChallengeTicker to="/" />
     </div>
   );
 }
