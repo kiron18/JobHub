@@ -183,17 +183,47 @@ async function sendThrottled(socketRef: WASocket, jid: string, text: string): Pr
  * itself is captured right here, straight off the inbound message, which is
  * more reliable than anything a candidate could type in anyway.
  */
+/**
+ * The sender's phone number as +E164, whichever way the chat is addressed:
+ * the jid itself when it is a phone jid, else the alternate jid Baileys 7
+ * carries alongside an @lid, else the socket's own LID-to-number mapping.
+ */
+async function senderNumber(socketRef: WASocket, key: any): Promise<string | null> {
+  const pnJid = [key?.remoteJid, key?.remoteJidAlt, key?.senderPn]
+    .find((j: unknown): j is string => typeof j === 'string' && j.endsWith('@s.whatsapp.net'));
+  if (pnJid) return `+${pnJid.split('@')[0].split(':')[0]}`;
+  if (typeof key?.remoteJid === 'string' && key.remoteJid.endsWith('@lid')) {
+    try {
+      const pn = await (socketRef as any).signalRepository?.lidMapping?.getPNForLID?.(key.remoteJid);
+      if (typeof pn === 'string' && pn) return `+${pn.split('@')[0].split(':')[0]}`;
+    } catch { /* fall through */ }
+  }
+  return null;
+}
+
 async function handleIncoming(socketRef: WASocket, msg: any): Promise<void> {
   if (msg.key?.fromMe) return;
   const remoteJid: string | undefined = msg.key?.remoteJid;
-  if (!remoteJid || !remoteJid.endsWith('@s.whatsapp.net')) return; // ignore groups/broadcast/status
+  // One-to-one chats only. Since Baileys 7 / WhatsApp's LID rollout a direct
+  // chat can arrive addressed to a private "@lid" id instead of the phone
+  // number, with the number in key.remoteJidAlt. Only accepting
+  // "@s.whatsapp.net" silently dropped those, START codes included
+  // (found 2026-09-30: a test opt-in got no reply at all).
+  if (!remoteJid || !(remoteJid.endsWith('@s.whatsapp.net') || remoteJid.endsWith('@lid'))) return;
 
   const text: string = (msg.message?.conversation || msg.message?.extendedTextMessage?.text || '').trim();
+  const senderE164 = await senderNumber(socketRef, msg.key);
+  // What arrived, never what it said: member replies are private.
+  const kind = /^start\s/i.test(text) ? 'START' : /^stop$/i.test(text) ? 'STOP' : `text(${text.length})`;
+  console.log(`[whatsapp] inbound ${remoteJid.endsWith('@lid') ? 'lid' : 'pn'} from ${senderE164 ? senderE164.slice(0, 5) + '***' + senderE164.slice(-2) : 'unknown number'}: ${kind}`);
+  if (!senderE164) {
+    console.warn('[whatsapp] could not resolve a phone number for this chat; ignoring');
+    return;
+  }
 
   // STOP works for anyone already verified, from whichever number they
   // texted in with — the promise made in both confirm texts above.
   if (/^stop$/i.test(text)) {
-    const senderE164 = `+${remoteJid.split('@')[0]}`;
     const { count } = await prisma.candidateProfile.updateMany({
       where: { whatsappNumber: senderE164, whatsappVerifiedAt: { not: null } },
       data: { whatsappVerifiedAt: null, whatsappNumber: null },
@@ -212,7 +242,6 @@ async function handleIncoming(socketRef: WASocket, msg: any): Promise<void> {
     // the feature off, the bot must not auto-reply (distress, "is this a
     // bot") or log those conversations.
     if (!text || !coachCheckinsEnabled()) return;
-    const senderE164 = `+${remoteJid.split('@')[0]}`;
     const member = await prisma.candidateProfile.findFirst({
       where: { whatsappNumber: senderE164, whatsappVerifiedAt: { not: null }, plan: { not: 'free' } },
       select: { userId: true },
@@ -226,7 +255,6 @@ async function handleIncoming(socketRef: WASocket, msg: any): Promise<void> {
   }
 
   const code = match[1].toUpperCase();
-  const senderE164 = `+${remoteJid.split('@')[0]}`;
   const profile = await prisma.candidateProfile.findFirst({ where: { whatsappOptInCode: code } });
 
   if (!profile) {
