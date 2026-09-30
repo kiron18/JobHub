@@ -1,5 +1,6 @@
 import { prisma } from '../../index';
-import { getCheckinContext, firstName } from './context';
+import { getCheckinContext } from './context';
+import { firstName } from './names';
 import { welcomeText, distressReplyText, botQuestionText } from './messages';
 import { composeReply, looksSevere, BOT_QUESTION, type ReplyCategory } from './compose';
 
