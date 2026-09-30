@@ -12,16 +12,17 @@ export const CHALLENGE_INTRO = {
   title: 'Welcome. Here is how the next 90 days work.',
 
   lead:
-    'Most people apply in bursts: a big weekend, then nothing for a fortnight. The people who get hired ' +
-    'here show up a little every day. For the next 90 days, that is the whole job: send a few high-quality ' +
-    'applications, reach a few real people, and come back tomorrow.',
+    'Consistency over time beats short bursts of activity. ' +
+    'You now have access to a streamlined system and all the resources you need to land a job. ' +
+    'For the next 90 days, that is the whole job: send a few high-quality ' +
+    'applications, reach a few real people consistently.',
 
   steps: [
     {
-      title: 'Every morning, set your number',
+      title: 'Set your daily goal',
       body:
         'Before anything else, choose how many roles you will apply to today, between 5 and 10. Once it is set, ' +
-        'it is locked for the day. Doing more raises it on its own, and you get one undo if you slip.',
+        'it is locked for the day. Doing more raises it on its own, and you get one undo if you can’t make it.',
     },
     {
       title: 'Apply with JobHub',

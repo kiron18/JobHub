@@ -26,6 +26,8 @@ const ANSWER_WINDOW_MS = 24 * 3600 * 1000;
 const DISTRESS_COOLDOWN_MS = 6 * 3600 * 1000;
 const BOT_COOLDOWN_MS = 12 * 3600 * 1000;
 const MAX_INBOUND_CHARS = 600;
+/** The one-time welcome before the first reply. Off: the morning reply's closing line covers it. */
+const SEND_WELCOME = false;
 
 const inFlight = new Set<string>();
 
@@ -85,7 +87,7 @@ async function respond(userId: string, text: string): Promise<string[]> {
   if (looksSevere(text)) {
     await logIn('distress', true);
     if (sentSince('distress_reply', DISTRESS_COOLDOWN_MS)) return [];
-    const reply = distressReplyText(name);
+    const reply = distressReplyText(name, true);
     await logOut(userId, 'distress_reply', reply, { flagged: true });
     return [reply];
   }
@@ -111,7 +113,9 @@ async function respond(userId: string, text: string): Promise<string[]> {
   const { category, body, kind, topic, flagged } = await composeReply(ctx, lastPrompt.kind as 'morning' | 'evening', text);
   const out: string[] = [];
 
-  if (!profile?.coachWelcomedAt && kind === 'reply') {
+  // The separate welcome is off (Kiron, 2026-09-30): the morning reply now
+  // ends with the "these check-ins are automated" line, which does its job.
+  if (SEND_WELCOME && !profile?.coachWelcomedAt && kind === 'reply') {
     out.push(welcomeText(name));
     await prisma.candidateProfile.update({ where: { userId }, data: { coachWelcomedAt: new Date() } });
     await logOut(userId, 'welcome', out[0]);

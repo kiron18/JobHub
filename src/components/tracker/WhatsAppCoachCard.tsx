@@ -21,6 +21,45 @@ interface WhatsappState {
  * WhatsApp pre-filled with "START <code>"; nothing is sent until that number
  * texts in first (see services/whatsappBaileys.ts for why).
  */
+const SCAN_CSS = `@keyframes jh-scanline { 0% { top: 8%; } 50% { top: 86%; } 100% { top: 8%; } }`;
+
+/** The QR inside camera-viewfinder corners with a sweeping scan line, so it
+ *  reads at a glance as "scan this", not just a picture of a code. */
+function ScanFrame({ src }: { src: string }) {
+  const corner = (pos: React.CSSProperties): React.CSSProperties => ({
+    position: 'absolute', width: 22, height: 22, borderColor: C.accentPetrol, borderStyle: 'solid', borderWidth: 0, ...pos,
+  });
+  return (
+    <div style={{ position: 'relative', width: 140, height: 140, flexShrink: 0, padding: 10 }}>
+      <style>{SCAN_CSS}</style>
+      <span style={corner({ top: 0, left: 0, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: 10 })} />
+      <span style={corner({ top: 0, right: 0, borderTopWidth: 3, borderRightWidth: 3, borderTopRightRadius: 10 })} />
+      <span style={corner({ bottom: 0, left: 0, borderBottomWidth: 3, borderLeftWidth: 3, borderBottomLeftRadius: 10 })} />
+      <span style={corner({ bottom: 0, right: 0, borderBottomWidth: 3, borderRightWidth: 3, borderBottomRightRadius: 10 })} />
+      <img src={src} alt="QR code: scan with your phone's camera to start WhatsApp check-ins" width={120} height={120} style={{ display: 'block', borderRadius: 6 }} />
+      <span style={{
+        position: 'absolute', left: 12, right: 12, height: 2, borderRadius: 2,
+        background: `linear-gradient(90deg, transparent, ${C.accentPetrol}, transparent)`,
+        boxShadow: `0 0 8px ${C.accentPetrol}`, animation: 'jh-scanline 2.4s ease-in-out infinite',
+      }} />
+    </div>
+  );
+}
+
+/** A phone with its camera pointed at the code. */
+function PhoneScanIcon() {
+  return (
+    <svg width="46" height="64" viewBox="0 0 46 64" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
+      <rect x="4" y="2" width="30" height="58" rx="6" stroke={C.accentPetrol} strokeWidth="2.5" fill="#fff" />
+      <rect x="15" y="6" width="8" height="2.5" rx="1.25" fill={C.accentPetrol} />
+      <path d="M11 20v-4h4M27 16h4v4M31 36v4h-4M15 40h-4v-4" stroke={C.accentPetrol} strokeWidth="2" strokeLinecap="round" />
+      <rect x="15" y="22" width="4" height="4" fill={C.accentPetrol} /><rect x="21" y="22" width="4" height="4" fill={C.accentPetrol} />
+      <rect x="15" y="28" width="4" height="4" fill={C.accentPetrol} /><rect x="21" y="30" width="4" height="4" fill={C.accentPetrol} />
+      <path d="M36 28h8m0 0-3.5-3.5M44 28l-3.5 3.5" stroke={C.accentGoldBright} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function WhatsAppCoachCard() {
   const [dismissed, setDismissed] = useState(() => {
     try { return localStorage.getItem(DISMISS_KEY) === '1'; } catch { return false; }
@@ -72,15 +111,22 @@ export function WhatsAppCoachCard() {
           Daily check-ins on WhatsApp
         </span>
       </div>
-      <p style={{ margin: '0 0 14px', fontSize: 13, color: C.textSecondary, lineHeight: 1.5 }}>
-        A morning question to set up your day, and an evening check-in on how it went. It uses your real numbers, and typing your answers back is what turns a plan into a commitment. Your replies are saved for your weekly check-in.
+      {/* Kiron's copy, 2026-09-30. */}
+      <p style={{ margin: '0 0 16px', fontSize: 15, color: C.textSecondary, lineHeight: 1.6 }}>
+        Consistency over time yields results, always, inevitably. The problem is life gets in the way.
+        Scan the code to set up reminders and communication over WhatsApp, so you can move a little
+        closer to your goal every day.
       </p>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 14 }}>
-        {qrDataUrl && <img src={qrDataUrl} alt="WhatsApp opt-in QR" width={80} height={80} style={{ borderRadius: 8, flexShrink: 0 }} />}
-        <p style={{ margin: 0, fontSize: 12.5, color: C.textMuted, lineHeight: 1.5 }}>
-          On this phone? Tap below.<br />On a computer? Scan this with your phone's camera.
-        </p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 16, flexWrap: 'wrap' }}>
+        {qrDataUrl && <ScanFrame src={qrDataUrl} />}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <PhoneScanIcon />
+          <p style={{ margin: 0, fontSize: 14, color: C.textSecondary, lineHeight: 1.5 }}>
+            <strong style={{ color: C.textPrimary }}>On a computer?</strong> Point your phone's camera at the code.<br />
+            <strong style={{ color: C.textPrimary }}>On your phone?</strong> Tap the button below.
+          </p>
+        </div>
       </div>
 
       <a

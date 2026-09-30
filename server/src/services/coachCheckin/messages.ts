@@ -10,6 +10,13 @@
  * written per person by replies.ts under the rules in replyRules.ts.
  */
 
+import { MORNING_QUOTES } from './quotes';
+
+/** Ends every reply to a morning check-in (Kiron, 2026-09-30). Added in code,
+ *  never left to the model, so it is always exactly this. */
+export const MORNING_REPLY_CLOSE =
+  "These check-ins are automated, but declaring your intention matters. I want you to promise yourself you'll see this through.";
+
 export interface CheckinContext {
   name: string;
   /** Today's committed target, or their program goal if they have not set one. */
@@ -42,14 +49,21 @@ function progressLine(c: CheckinContext): string {
 
 /* ── Morning: asks the question the member answers ─────────────────────── */
 
+/* Kiron's format (2026-09-30):
+     Good morning, <name>
+     <short positive quote from quotes.ts>
+     Let's set some goals for today...
+   Each on its own line. The quote rotates by day of the year, so nobody sees
+   a repeat until the whole bank has gone round. */
 export function morningCheckinText(c: CheckinContext, at: Date = new Date()): string {
+  const quote = pick(MORNING_QUOTES, dayOfYear(at));
   const progress = progressLine(c);
-  const variants = [
-    `Good morning ${c.name}. ${progress} It's a new day, and the steps you take today are the ones that create your future. Life gets busy fast, so let's make a commitment before it does. How do you want to approach your goal of getting hired today?`,
-    `Morning ${c.name}. ${progress} Today is a blank page, and you decide what goes on it. Before the day gets loud, let's lock something in. How are you going to go after getting hired today?`,
-    `${c.name}, good morning. ${progress} Every offer starts with a day like today. Decide now, while it's quiet: how do you want to attack your goal of getting hired today?`,
-  ];
-  return pick(variants, dayOfYear(at)).replace(/\s{2,}/g, ' ').replace(/ \./g, '.');
+  return [
+    `Good morning, ${c.name}`,
+    quote,
+    ...(progress ? [progress] : []),
+    "Let's set some goals for today. How many applications and/or outreach do you want to do today?",
+  ].join('\n\n');
 }
 
 /* ── Evening: reacts to the real number, ends on a reflection ──────────── */
@@ -82,13 +96,23 @@ export function eveningCheckinText(c: CheckinContext, at: Date = new Date()): st
 /* ── First ever reply: how this works, sent once ───────────────────────── */
 
 export function welcomeText(name: string): string {
-  return `Thanks ${name}, that's the first step. Quick note on how this works: these check-ins are automated, so I can't chat back and forth like a person. But typing out your answer matters. Putting a plan into words is what turns "I should" into "I'm going to", so keep answering, even in one line. Your replies are saved and your weekly check-in is where anything bigger gets dealt with. For something to dig into, the Resources section in JobHub has the course material.`;
+  return `Thanks ${name}, that's the first step. Quick note on how this works: these check-ins are automated, so I can't chat back and forth like a person. But typing out your answer matters. Putting a plan into words is what turns "I should" into "I'm going to", so keep answering, even in one line. For something to dig into, the Resources section in JobHub has the course material.`;
 }
 
 /* ── Distress: warm acknowledgement, no hype, no task ──────────────────── */
 
-export function distressReplyText(name: string): string {
-  return `${name}, thank you for telling me that. It sounds really heavy right now, and job hunting can do that to anyone. It doesn't say anything about your worth, and this feeling isn't permanent. There's nothing to prove today. Take a breath and look after yourself first, applications can wait a day. I've flagged this for your weekly check-in so a person sees it. If it ever feels like too much, Lifeline is there any time on 13 11 14.`;
+/* Kiron's wording (2026-09-30). `severe` is set when the message mentions
+   self-harm or suicide (looksSevere): only then is the Lifeline line added,
+   because that is the one case where a crisis number has to be there. */
+export function distressReplyText(name: string, severe = false): string {
+  const parts = [
+    `Hey ${name}, I genuinely get it, it's rough out there. I know this from first-hand experience, and from working directly with people who have walked similar paths.`,
+    "If you need to throw in the towel today so that you can keep going tomorrow, that's okay.",
+    "The seed of an oak tree is tiny and fits in the palm of your hand, but the tree that grows out of it can give shade to a small group of people.",
+    'Even the smallest action you take today can yield great results tomorrow.',
+  ];
+  if (severe) parts.push("If it ever feels like too much, please talk to someone now: Lifeline is there any time on 13 11 14.");
+  return parts.join('\n\n');
 }
 
 /** When the reply model is unavailable. Deliberately plain and safe for any answer. */
@@ -98,5 +122,5 @@ export function fallbackReplyText(name: string, target: number): string {
 
 /** Sent when they ask whether this is a bot or a person. Honest, short. */
 export function botQuestionText(name: string): string {
-  return `Good question ${name}. This is an automated check-in system from Aussie Grad Careers, built to keep you accountable every day. It uses your real numbers from JobHub. Kiron sees what members flag and covers it in the weekly check-in.`;
+  return `Good question ${name}. This is an automated check-in system from Aussie Grad Careers, built to keep you accountable every day. It uses your real numbers from JobHub, and Kiron sees anything members flag.`;
 }

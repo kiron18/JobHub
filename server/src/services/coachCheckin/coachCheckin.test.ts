@@ -57,11 +57,20 @@ describe('fixed wording', () => {
     for (const t of all) expect(t).not.toMatch(NO_DASH);
   });
 
-  it('morning asks the question and uses real progress', () => {
+  it('morning follows the format: greeting, quote, progress, goal question, on separate lines', () => {
     const t = morningCheckinText(ctx);
-    expect(t).toMatch(/getting hired today\?/);
+    const lines = t.split('\n\n');
+    expect(lines[0]).toMatch(/^Good morning, /);
+    expect(lines[1].length).toBeGreaterThan(10); // the quote
     expect(t).toContain('Day 18 of 90');
     expect(t).toContain('4-day streak');
+    expect(lines[lines.length - 1]).toMatch(/How many applications and\/or outreach do you want to do today\?$/);
+  });
+
+  it('rotates the quote by day, so consecutive days differ', () => {
+    const a = morningCheckinText(ctx, new Date('2026-10-01T00:00:00Z')).split('\n\n')[1];
+    const b = morningCheckinText(ctx, new Date('2026-10-02T00:00:00Z')).split('\n\n')[1];
+    expect(a).not.toBe(b);
   });
 
   it('omits day and streak when they are not real', () => {
@@ -75,10 +84,16 @@ describe('fixed wording', () => {
     expect(eveningCheckinText({ ...ctx, filedToday: 5 })).toMatch(/5/);
   });
 
-  it('distress reply carries no task and points to Lifeline', () => {
+  it('distress reply is Kiron\'s wording, with no task', () => {
     const t = distressReplyText('Sam');
-    expect(t).toContain('13 11 14');
+    expect(t).toMatch(/^Hey Sam, I genuinely get it/);
+    expect(t).toContain('oak tree');
     expect(t).not.toMatch(/30 minutes|applications today|go for it/i);
+    expect(t).not.toContain('13 11 14');
+  });
+
+  it('adds Lifeline only for self-harm wording', () => {
+    expect(distressReplyText('Sam', true)).toContain('13 11 14');
   });
 
   it('every resource topic yields a link that only claims "closest match"', () => {
@@ -102,14 +117,14 @@ describe('reply flow', () => {
     });
   });
 
-  it('first reply gets the welcome, then one tailored answer with a resource line', async () => {
+  it('first reply is one tailored answer, with the resource line and the fixed automated close', async () => {
     db.coachMessage.findMany.mockResolvedValue([promptRow]);
     const out = await handleCoachReply('u1', 'I want to go and meet people');
-    expect(out).toHaveLength(2);
-    expect(out[0]).toMatch(/automated/);
-    expect(out[1]).toMatch(/Love it/);
-    expect(out[1]).toMatch(/Closest match.*Networking/);
-    expect(db.candidateProfile.update).toHaveBeenCalledTimes(1);
+    expect(out).toHaveLength(1); // the separate welcome is off
+    expect(out[0]).toMatch(/^Love it/);
+    expect(out[0]).toMatch(/Closest match.*Networking/);
+    expect(out[0]).toMatch(/These check-ins are automated, but declaring your intention matters\. I want you to promise yourself you'll see this through\.$/);
+    expect(out[0].split('\n\n').length).toBeGreaterThanOrEqual(3);
   });
 
   it('welcome is not repeated once sent', async () => {
