@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { MorningCommit } from './MorningCommit';
+import { ChallengeIntro } from './ChallengeIntro';
 import { Modal } from '../shared/Modal';
-import { useTrialChallengeState } from '../../lib/trialChallenge';
 import { warm } from '../../lib/theme/warmTokens';
 import api from '../../lib/api';
 import { useDailyTarget } from '../../hooks/useDailyTarget';
@@ -36,6 +36,8 @@ import { WeekStrip } from '../jobs/WeekStrip';
 
 export interface EngagementSummary {
   streak: number;
+  /** False until the one-time 90-day intro is accepted. Optional: older server. */
+  challengeStarted?: boolean;
   /** Optional so an older server build still renders. */
   streakFreezes?: number;
   streakTodayDone?: boolean;
@@ -57,9 +59,11 @@ export function EngagementStrip() {
   const [undoDialog, setUndoDialog] = useState(false);
   const [pending, setPending] = useState<number | null>(null);
   const [swapDialog, setSwapDialog] = useState(false);
-  // The trial challenge runs its own day (its own number and window), so the
-  // morning commit stays out of its way, the same rule DailyCloseOut follows.
-  const { data: trial } = useTrialChallengeState();
+  const qc = useQueryClient();
+  const startChallenge = useMutation({
+    mutationFn: async () => (await api.post('/tracker/challenge/start')).data as EngagementSummary,
+    onSuccess: data => qc.setQueryData(['tracker-engagement'], data),
+  });
 
   const { data: summary, isError: summaryFailed } = useQuery({
     queryKey: ['tracker-engagement'],
@@ -115,8 +119,15 @@ export function EngagementStrip() {
   const clearPending = () => setPending(null);
   const commit = () => live.setTarget.mutate(shown, { onSuccess: clearPending });
 
-  /* Morning: nothing on the dashboard until today has a number. */
-  if (!t.locked && !trial?.eligible) {
+  /* First visit ever: the 90-day intro, which makes today Day 1. */
+  if (summary.challengeStarted === false) {
+    return <ChallengeIntro busy={startChallenge.isPending} onStart={() => startChallenge.mutate()} />;
+  }
+
+  /* Morning: nothing on the dashboard until today has a number. Trial
+     accounts too (Kiron, 2026-09-30); the trial's own day-start screen waits
+     for this, see TrialChallengeOverlay. */
+  if (!t.locked) {
     return (
       <MorningCommit
         min={t.min}

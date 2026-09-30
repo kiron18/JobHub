@@ -137,6 +137,17 @@ router.post('/daily-target/swap', async (req: any, res: any) => {
   }
 });
 
+/** The one-time 90-day intro was accepted: today becomes day 1. Idempotent. */
+router.post('/challenge/start', async (req: any, res: any) => {
+  try {
+    await prisma.candidateProfile.updateMany({
+      where: { userId: req.user.id, challengeStartedAt: null },
+      data: { challengeStartedAt: new Date() },
+    });
+    res.json(await getEngagementSummary(req.user.id));
+  } catch (e) { console.error('[tracker/challenge/start]', e); res.status(500).json({ error: 'failed' }); }
+});
+
 /** The evening check-out, today's entry. */
 router.get('/session-log', async (req: any, res: any) => {
   try { res.json(await getTodaySessionLog(req.user.id)); }

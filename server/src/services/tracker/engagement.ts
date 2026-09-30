@@ -2,7 +2,7 @@ import { prisma } from '../../index';
 import { todayAEST } from '../jobFeed';
 import { countDistinctJobs, SENT_APPLICATION_FILTER, isSentStatus } from './metricHelpers';
 import { computeStreakState, DAILY_STREAK_FLOOR } from './closeout';
-import { tokenToInstant } from './goals';
+import { appliedToken } from './goals';
 
 /**
  * Everything the dashboard's engagement strip needs, in one round trip.
@@ -32,6 +32,8 @@ export interface EngagementSummary {
   streakTodayDone: boolean;
   /** Applications in a day that count it toward the streak. */
   streakFloor: number;
+  /** False until the one-time 90-day intro has been accepted. */
+  challengeStarted: boolean;
   /** 1-based day of the 90-day program. */
   programDay: number;
   programLength: number;
@@ -80,7 +82,7 @@ export async function getEngagementSummary(userId: string): Promise<EngagementSu
       where: { userId },
       // Explicit select, always. A bare include on this table is what took
       // /api/profile down when a column went missing — see dailyTarget.ts.
-      select: { createdAt: true, dailyApplicationGoal: true },
+      select: { createdAt: true, dailyApplicationGoal: true, challengeStartedAt: true },
     }),
     prisma.jobApplication.findMany({
       where: { userId, ...SENT_APPLICATION_FILTER },
@@ -91,12 +93,13 @@ export async function getEngagementSummary(userId: string): Promise<EngagementSu
 
   const goal = profile?.dailyApplicationGoal ?? 5;
 
-  // Day 1 is the day the profile was created; the program is 90 days and
-  // the counter neither goes below 1 nor past the end.
-  const start = profile?.createdAt ?? new Date();
-  const elapsed = Math.floor((today.getTime() - tokenToInstant(new Date(
-    Math.floor((start.getTime() + 10 * 3600 * 1000) / DAY_MS) * DAY_MS,
-  )).getTime()) / DAY_MS);
+  // Day 1 is the day they pressed "Start my 90 days" (the one-time intro,
+  // POST /tracker/challenge/start), not the day the account was made: an
+  // account opened in June and first used in September is on day 1, not 90.
+  // Until they start, the counter shows day 1 and challengeStarted is false,
+  // which is what puts the intro in front of them.
+  const startedAt = profile?.challengeStartedAt ?? null;
+  const elapsed = startedAt ? Math.floor((today.getTime() - appliedToken(startedAt).getTime()) / DAY_MS) : 0;
   const programDay = Math.min(PROGRAM_DAYS, Math.max(1, elapsed + 1));
 
   const applications = countDistinctJobs(jobs);
@@ -125,6 +128,7 @@ export async function getEngagementSummary(userId: string): Promise<EngagementSu
     streakFreezes: streakState.freezes,
     streakTodayDone: streakState.todayDone,
     streakFloor: DAILY_STREAK_FLOOR,
+    challengeStarted: !!startedAt,
     programDay,
     programLength: PROGRAM_DAYS,
     applications,

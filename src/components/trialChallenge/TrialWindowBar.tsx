@@ -44,6 +44,8 @@ function SkimTip() {
   );
 }
 
+const SHOW_SKIM_TIP = false;
+
 function formatRemaining(ms: number): string {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
   const m = Math.floor(totalSeconds / 60);
@@ -110,7 +112,9 @@ export function TrialWindowBar({ currentDay, windowEndsAt, appliedThisWindow, mi
             </motion.div>
           )}
         </AnimatePresence>
-        <SkimTip />
+        {/* SkimTip is off (Kiron, 2026-09-30): "skim it and hit send" is the
+            opposite of the edit-first message, and it read as a stray. */}
+        {SHOW_SKIM_TIP && <SkimTip />}
       </div>
     </>
   );

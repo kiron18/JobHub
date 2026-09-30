@@ -1,4 +1,7 @@
 import { useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import api from '../../lib/api';
+import { useDailyTarget } from '../../hooks/useDailyTarget';
 import { useTrialChallengeState, useBeginTrialDay, useResetTrialChallenge } from '../../lib/trialChallenge';
 import { useProfile } from '../../hooks/useProfile';
 import { ruleForDay } from '../../lib/trialChallengeRules';
@@ -35,10 +38,26 @@ export function TrialChallengeOverlay() {
   const { profile } = useProfile();
   const begin = useBeginTrialDay();
   const reset = useResetTrialChallenge();
+  /* The 90-day intro and the morning commit come first. The trial's start
+     screens ("Day 1 of 3, Begin") start a 30-minute clock, so they wait until
+     the member has started the challenge and set today's number. An open
+     window (the timer bar) is never held back. */
+  const signedIn = !!profile?.hasCompletedOnboarding;
+  const { data: daily } = useDailyTarget(signedIn);
+  const { data: engagement } = useQuery({
+    queryKey: ['tracker-engagement'],
+    queryFn: async () => (await api.get('/tracker/engagement')).data as { challengeStarted?: boolean },
+    enabled: signedIn,
+    staleTime: 60_000,
+    retry: false,
+  });
+  const dayReady = engagement?.challengeStarted !== false && daily?.locked !== false;
 
   if (pathname.startsWith('/dev/')) return null;
   if (!profile?.hasCompletedOnboarding) return null;
   if (!data || !data.eligible) return null;
+
+  if (!dayReady && (data.status === 'not_started' || data.status === 'day_passed_waiting')) return null;
 
   switch (data.status) {
     case 'not_started': {
