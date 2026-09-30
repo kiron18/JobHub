@@ -9,6 +9,13 @@ export const CHALLENGE_LENGTH = 90;
 const DAY_MS = 86400000;
 
 /** 1-based challenge day for a start instant, or null when unset or past day 90. */
+/** First name, written normally: "KIRON KURIAN" and "kiron" both become "Kiron". */
+export function firstName(full: string | null | undefined): string {
+  const first = (full ?? '').trim().split(/\s+/)[0] ?? '';
+  if (!first) return 'there';
+  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+}
+
 export function challengeDay(startedAt: Date | null | undefined, today: Date = todayAEST()): number | null {
   if (!startedAt) return null;
   const day = Math.floor((today.getTime() - appliedToken(startedAt).getTime()) / DAY_MS) + 1;
@@ -41,7 +48,7 @@ export async function getCheckinContext(userId: string): Promise<CheckinContext>
   ]);
 
   return {
-    name: (profile?.name ?? '').split(/\s+/)[0] || 'there',
+    name: firstName(profile?.name),
     target: settings.appGoal,
     filedToday,
     streak: streaks.get(userId) ?? 0,

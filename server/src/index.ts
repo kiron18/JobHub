@@ -374,10 +374,13 @@ async function ensureColumns() {
         "topic" TEXT,
         "flagged" BOOLEAN NOT NULL DEFAULT false,
         "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
-      CREATE INDEX IF NOT EXISTS "CoachMessage_userId_createdAt_idx" ON "CoachMessage"("userId", "createdAt");
-      CREATE INDEX IF NOT EXISTS "CoachMessage_flagged_createdAt_idx" ON "CoachMessage"("flagged", "createdAt");
+      )
     `);
+    // One statement per call: Postgres refuses several in one prepared
+    // statement, and when these three shared a call it threw and aborted
+    // everything after it in ensureColumns (found 2026-09-30).
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "CoachMessage_userId_createdAt_idx" ON "CoachMessage"("userId", "createdAt")`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "CoachMessage_flagged_createdAt_idx" ON "CoachMessage"("flagged", "createdAt")`);
     await prisma.$executeRawUnsafe(`
       ALTER TABLE "DiagnosticReport"
         ADD COLUMN IF NOT EXISTS "overallRating" INTEGER,

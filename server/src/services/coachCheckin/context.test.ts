@@ -27,3 +27,13 @@ describe('challengeDay', () => {
     expect(challengeDay(start, at('2026-08-30'))).toBeNull();
   });
 });
+
+describe('firstName', () => {
+  it('writes the first name normally whatever the stored casing', async () => {
+    const { firstName } = await import('./context');
+    expect(firstName('KIRON KURIAN JOHN')).toBe('Kiron');
+    expect(firstName('vaibhav')).toBe('Vaibhav');
+    expect(firstName('  ')).toBe('there');
+    expect(firstName(null)).toBe('there');
+  });
+});

@@ -1,5 +1,5 @@
 import { prisma } from '../../index';
-import { getCheckinContext } from './context';
+import { getCheckinContext, firstName } from './context';
 import { welcomeText, distressReplyText, botQuestionText } from './messages';
 import { composeReply, looksSevere, BOT_QUESTION, type ReplyCategory } from './compose';
 
@@ -61,7 +61,7 @@ async function respond(userId: string, text: string): Promise<string[]> {
     where: { userId },
     select: { name: true, coachWelcomedAt: true },
   });
-  const name = (profile?.name ?? '').split(/\s+/)[0] || 'there';
+  const name = firstName(profile?.name);
 
   const recent = await prisma.coachMessage.findMany({
     where: { userId, createdAt: { gte: new Date(now - ANSWER_WINDOW_MS) } },
