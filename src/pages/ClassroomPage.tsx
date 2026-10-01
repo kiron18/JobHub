@@ -22,7 +22,7 @@
    ──────────────────────────────────────────────────────────────────────────── */
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, Navigate, Link } from 'react-router-dom';
-import { Check, Play, Download, ArrowRight, Clock, Users, Compass } from 'lucide-react';
+import { Check, Play, Download, ArrowRight, Clock, Compass } from 'lucide-react';
 import { ChallengeTicker } from '../components/shared/ChallengeTicker';
 import { CLASSROOM, WALKTHROUGH, findModule, formatTime, type ClassroomModule } from '../config/classroom';
 import { FREE_RESOURCES } from '../config/freeResources';
@@ -522,21 +522,6 @@ export default function ClassroomPage() {
               ))}
             </ul>
           </details>
-          <a
-            href="/community?src=classroom"
-            style={{
-              display: 'flex', gap: 12, alignItems: 'flex-start', padding: 16,
-              borderRadius: 14, border: `1px solid ${C.line}`, textDecoration: 'none', color: C.ink,
-            }}
-          >
-            <Users size={18} color={C.blue} style={{ flexShrink: 0, marginTop: 2 }} />
-            <span style={{ fontSize: 14, lineHeight: 1.5 }}>
-              <strong>Stuck on something?</strong>{' '}
-              <span style={{ color: C.ink2 }}>
-                Ask in the free community. Other grads working the same market, and I answer personally.
-              </span>
-            </span>
-          </a>
         </aside>
       </div>
       <ChallengeTicker to="/" />

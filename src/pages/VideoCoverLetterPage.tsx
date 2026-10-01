@@ -65,7 +65,6 @@ const EDIT_STEPS = [
 ];
 
 const SEND_STEPS = [
-  'Watch it once on mute. If it makes sense without sound, it\'s ready.',
   'Upload to YouTube as Unlisted.',
   'Paste the link in your application email, cover letter or LinkedIn message.',
 ];

@@ -21,6 +21,8 @@ interface Resource {
   body: string;
   /** What you would actually be here to do. Concrete, not a category. */
   cue: string;
+  /** Shown as a small "New" pill beside the title. Remove once it has aged out. */
+  isNew?: boolean;
 }
 
 const RESOURCES: Resource[] = [
@@ -30,6 +32,7 @@ const RESOURCES: Resource[] = [
     title: 'Classroom',
     body: 'The full course in eight short modules: resume, cover letters, LinkedIn, networking, interviews, and how it all runs as one system.',
     cue: 'Learning how hiring in Australia actually works, one module at a time',
+    isNew: true,
   },
   {
     to: '/email-templates',
@@ -44,6 +47,7 @@ const RESOURCES: Resource[] = [
     title: 'Video cover letter',
     body: 'A one-minute video to send with your application. Your script is written for you, and the opening changes for each company.',
     cue: 'Standing out for a role you really want',
+    isNew: true,
   },
   {
     to: '/visa-sponsors',
@@ -53,7 +57,7 @@ const RESOURCES: Resource[] = [
     cue: 'Checking whether a company can sponsor you before you spend an hour applying',
   },
   {
-    to: '/local-experience-playbook',
+    to: 'https://www.aussiegradcareers.com.au/local-experience-playbook',
     icon: Building2,
     title: 'Local experience',
     body: 'Six routes to Australian experience when every ad wants it and nobody will give you the first one.',
@@ -100,7 +104,9 @@ export default function ResourcesPage() {
             <motion.button
               key={r.to}
               variants={rise}
-              onClick={() => navigate(r.to)}
+              onClick={() => r.to.startsWith('http')
+                ? window.open(r.to, '_blank', 'noopener,noreferrer')
+                : navigate(r.to)}
               whileHover={{ y: -2 }}
               whileTap={{ scale: 0.995 }}
               transition={SPRING.tap}
@@ -125,11 +131,23 @@ export default function ResourcesPage() {
               </span>
 
               <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{
-                  display: 'block', fontFamily: warm.type.fontBody,
-                  ...warm.text.h3, color: warm.colors.textPrimary,
-                }}>
-                  {r.title}
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{
+                    display: 'block', fontFamily: warm.type.fontBody,
+                    ...warm.text.h3, color: warm.colors.textPrimary,
+                  }}>
+                    {r.title}
+                  </span>
+                  {r.isNew && (
+                    <span style={{
+                      display: 'inline-block', padding: '2px 8px', borderRadius: 99,
+                      fontFamily: warm.type.fontBody, fontSize: 11, fontWeight: 700,
+                      letterSpacing: '0.04em', textTransform: 'uppercase',
+                      background: warm.colors.accentPetrolSoft, color: warm.colors.accentPetrol,
+                    }}>
+                      New
+                    </span>
+                  )}
                 </span>
                 <span style={{
                   display: 'block', marginTop: 4,

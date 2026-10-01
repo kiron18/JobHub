@@ -136,6 +136,49 @@ function TemplateCard({ label, content, tip, charLimit, editableNote, logEnabled
   );
 }
 
+const WARM_TEMPLATE = "Hey [name], I'm currently looking out for roles in [industry]. If you know of anything please let me know";
+
+/* Start with people you already know: the fastest returns come from warm
+   contacts, before any cold outreach to strangers. */
+function WarmContactsCard() {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    await navigator.clipboard.writeText(WARM_TEMPLATE);
+    setCopied(true);
+    toast.success('Copied to clipboard');
+    setTimeout(() => setCopied(false), 1800);
+  }
+
+  return (
+    <div style={{ background: warm.colors.bgSurface, border: `1px solid ${warm.colors.borderWhisper}`, borderRadius: 16, padding: 20, marginBottom: 20 }}>
+      <p style={{ margin: '0 0 12px', fontSize: 14, lineHeight: 1.6, color: warm.colors.textPrimary }}>
+        When networking in Australia your quickest returns will come from people you already know. Look through your
+        existing contacts and reach out to people you already know that are working in your industry.
+      </p>
+      <p style={{ margin: '0 0 8px', fontSize: 13, color: warm.colors.textSecondary }}>Use this simple template:</p>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, background: warm.colors.bgAlt, border: `1px solid ${warm.colors.borderWhisper}`, borderRadius: 10, padding: '12px 14px' }}>
+        <p style={{ flex: 1, margin: 0, fontSize: 13.5, lineHeight: 1.6, color: warm.colors.textPrimary }}>
+          {WARM_TEMPLATE}
+        </p>
+        <button
+          onClick={handleCopy}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
+            fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 6,
+            border: `1px solid ${copied ? warm.colors.success : warm.colors.borderWhisper}`,
+            background: copied ? 'rgba(52,211,153,0.1)' : 'transparent',
+            color: copied ? warm.colors.success : warm.colors.textSecondary, cursor: 'pointer',
+          }}
+        >
+          {copied ? <Check size={11} /> : <Copy size={11} />}
+          {copied ? 'Copied' : 'Copy'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export const OutreachTemplates: React.FC = () => {
   const [targetFirstName, setTargetFirstName] = useState('');
   const [targetCompany, setTargetCompany] = useState('');
@@ -273,8 +316,7 @@ export const OutreachTemplates: React.FC = () => {
         times in three voices, and between them they filled the screen above
         the tool people came here to use.
       */}
-      {/* Anyone waiting on a reply sees it before they write a new message. */}
-      <OutreachDueNudges compact />
+      <WarmContactsCard />
 
       <NetworkingGuide />
 
@@ -461,6 +503,11 @@ export const OutreachTemplates: React.FC = () => {
           )}
         </>
       )}
+
+      {/* Follow-up reminders sit below the outreach tool, not above it. */}
+      <div style={{ marginTop: 20 }}>
+        <OutreachDueNudges compact />
+      </div>
     </div>
   );
 };

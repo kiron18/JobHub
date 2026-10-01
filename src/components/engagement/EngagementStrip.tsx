@@ -69,7 +69,14 @@ export function EngagementStrip() {
     queryKey: ['tracker-engagement'],
     queryFn: async () => (await api.get('/tracker/engagement')).data as EngagementSummary,
     staleTime: 60_000,
-    retry: false,
+    // Only skip retries for an actual auth failure — see useDailyTarget.ts
+    // for why a blanket retry:false turns one slow request into a
+    // permanent fallback until something unrelated refetches it.
+    retry: (count, err) => {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 401 || status === 403) return false;
+      return count < 2;
+    },
   });
   const live = useDailyTarget();
 

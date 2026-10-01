@@ -19,7 +19,7 @@ import { StrategicIntelligenceCard } from '../components/StrategicIntelligenceCa
 import { JobStream } from '../components/strategy/JobStream';
 import { StaleApplicationsCard } from '../components/strategy/StaleApplicationsCard';
 import { FirstApplicationCelebration } from '../components/FirstApplicationCelebration';
-import { EligibilityIntroModal } from '../components/EligibilityIntroModal';
+import { ResourcesUpdateNudge } from '../components/ResourcesUpdateNudge';
 import type { JobFeedItem } from '../components/jobs/JobCard';
 import { warm } from '../lib/theme/warmTokens';
 import { jdMentionsSelectionCriteria } from '../lib/selectionCriteria';
@@ -752,9 +752,8 @@ export function StrategyHub() {
         <div style={{ maxWidth: 720, margin: '0 auto' }}>
             {/* Fires once when sent-count crosses 0 -> >=1. Self-managed via localStorage. */}
             <FirstApplicationCelebration />
-            {/* Fires once per account, off the profile's eligibilityIntroSeenAt
-                column. Self-managed: it reads the same ['profile'] query. */}
-            <EligibilityIntroModal />
+            {/* One-time toast pointing at the reworked Resources section. Self-managed via localStorage. */}
+            <ResourcesUpdateNudge />
             <DimRegion>
                 <HubHeader profile={profile} />
 

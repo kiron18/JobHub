@@ -9,12 +9,11 @@ import { BannerCopyPicker } from '../components/linkedin/BannerCopyPicker';
 import { BannerCanvas } from '../components/linkedin/BannerCanvas';
 import { HeadshotGenerator } from '../components/linkedin/HeadshotGenerator';
 import { OutreachTemplates } from '../components/linkedin/OutreachTemplates';
-import { LocalExperience } from '../components/linkedin/LocalExperience';
 import type { LinkedInProfileData, BannerConfig } from '../components/linkedin/types';
 import { useProfile } from '../hooks/useProfile';
 import { SectionIntroBanner } from '../components/processStrip';
 
-type Tab = 'profile' | 'outreach' | 'tracker' | 'local-experience';
+type Tab = 'profile' | 'outreach';
 
 const DEFAULT_BANNER: BannerConfig = {
   mainMessage: '',
@@ -34,9 +33,7 @@ export const LinkedInPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab');
   const [tab, setTab] = useState<Tab>(
-    requestedTab === 'profile' || requestedTab === 'local-experience'
-      ? requestedTab
-      : 'outreach',
+    requestedTab === 'profile' ? 'profile' : 'outreach',
   );
   const [targetRole, setTargetRole] = useState('');
   const [generating, setGenerating] = useState(false);
@@ -122,7 +119,7 @@ export const LinkedInPage: React.FC = () => {
           LinkedIn Hub
         </h1>
         <p style={{ fontSize: 14, color: warm.colors.textSecondary, margin: 0 }}>
-Write the message, fix the profile behind it, and log the local experience that backs both.
+Write the message and fix the profile behind it.
         </p>
       </div>
 
@@ -140,9 +137,7 @@ Write the message, fix the profile behind it, and log the local experience that 
             The Tracker tab is gone: outreach history now lives in Your tracker,
             beside applications, instead of being a second tracker in a corner. */}
         <button style={tabStyle(tab === 'outreach')} onClick={() => setTab('outreach')}>Outreach</button>
-        <button style={tabStyle(tab === 'profile')} onClick={() => setTab('profile')}>LinkedIn profile</button>
-        <button style={tabStyle(tab === 'local-experience')} onClick={() => setTab('local-experience')}>Local experience</button>
-      </div>
+        <button style={tabStyle(tab === 'profile')} onClick={() => setTab('profile')}>LinkedIn profile</button>      </div>
 
       {tab === 'profile' && (
         <>
@@ -193,8 +188,6 @@ Write the message, fix the profile behind it, and log the local experience that 
           the Tracker to check something cost you the draft you were writing. */}
       <div style={{ display: tab === 'outreach' ? 'block' : 'none' }}>
         <OutreachTemplates />
-      </div>
-      {tab === 'local-experience' && <LocalExperience />}
-    </div>
+      </div>    </div>
   );
 };

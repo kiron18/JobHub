@@ -41,10 +41,18 @@ export function useDailyTarget(enabled = true) {
     queryFn: async () => (await api.get('/tracker/daily-target')).data as DailyTargetState,
     enabled,
     staleTime: 30_000,
-    /* No retries. The only expected failure here is "not signed in", and
-       retrying a 401 three times just leaves the UI insisting it is still
-       checking for half a second per attempt. */
-    retry: false,
+    /* Never retry a 401/403 — that is "not signed in", and retrying it
+       three times just leaves the UI insisting it is still checking for
+       half a second per attempt. Anything else (a slow Railway cold
+       start, a momentary 502) is worth two quick retries: without this,
+       one transient failure gets cached forever (no retry means no
+       second chance) and the dashboard falls back to the old bar until
+       some unrelated refetch — e.g. a window focus — papers over it. */
+    retry: (count, err) => {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 401 || status === 403) return false;
+      return count < 2;
+    },
   });
 
   /** The server returns the whole new state, so every mutation just adopts it. */
