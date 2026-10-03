@@ -233,6 +233,11 @@ export function trackEmailOutcome(outcome: EmailOutcome) {
   relay('email_outcome', { outcome });
 }
 
+/** The walkthrough video on the 90-day challenge intro was played. */
+export function trackChallengeIntroVideoPlayed() {
+  posthog.capture('challenge_intro_video_played');
+}
+
 /** An old link to a closed route (config/frontDoor.ts) was sent to the home page. */
 export function trackClosedRouteRedirect(from: string) {
   relay('closed_route_redirected', { from });
