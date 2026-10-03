@@ -48,7 +48,8 @@ import {
 import { MustKeep, describeRetention } from '../services/retentionGate';
 import { targetRoleSeed } from '../lib/targetRoleSeed';
 import { assertResumeSource, ResumeSourceError } from '../lib/resumeSourceGate';
-import { captureServerEvent } from '../lib/posthogServer';
+import { captureServerEvent, posthogServer } from '../lib/posthogServer';
+import { anonymousId, originHost } from './track';
 
 const router = Router();
 
@@ -63,6 +64,27 @@ const MAX_BUILDS = 3;
  * column that every future generation is then built from.
  */
 const MAX_RESUME_CHARS = 60_000;
+
+// ── Funnel events ────────────────────────────────────────────────────────────
+// Upload, build and signup are recorded here as well as in the browser, because
+// the browser copy is lost to ad blockers and the WelcomeSession rows that
+// would otherwise prove an upload happened are swept after a day. These are the
+// complete record of the front door.
+//
+// Keyed the same way as /api/track (see anonymousId there): the browser's
+// PostHog id when the page sends one, so they join that visitor's own events;
+// otherwise our own visitor id (vid), then the welcome session. /finish
+// aliases whichever was used onto the account, so a visitor with PostHog
+// blocked still comes out as one person.
+
+/** Who a funnel event belongs to, before there is an account. */
+function funnelId(req: Request, token?: string | null): string {
+  return anonymousId(req.body, token) ?? `welcome-anon:${randomUUID()}`;
+}
+
+function captureFunnel(req: Request, distinctId: string, event: string, properties: Record<string, unknown> = {}) {
+  captureServerEvent({ distinctId, event, properties: { ...properties, $host: originHost(req), source: 'server' } });
+}
 
 // ── Upload ───────────────────────────────────────────────────────────────────
 const upload = multer({
@@ -81,6 +103,9 @@ function handleUpload(req: Request, res: Response, next: NextFunction) {
       const message = err instanceof multer.MulterError
         ? (err.code === 'LIMIT_FILE_SIZE' ? 'File too large. Max 5MB.' : err.message)
         : err.message;
+      captureFunnel(req, funnelId(req), 'resume_upload_failed', {
+        reason: err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE' ? 'too_large' : 'upload_error',
+      });
       res.status(400).json({ error: message });
       return;
     }
@@ -137,12 +162,20 @@ async function loadSession(token: unknown) {
 // Upload the resume. Returns the prose read plus the question list. Anonymous:
 // optionalAuthenticate so a signed-in client can also re-run this.
 router.post('/brief', ipRateLimit, optionalAuthenticate, handleUpload, async (req: Request, res: Response) => {
+  const startedAt = Date.now();
+  const fileType = (name?: string) => (name?.split('.').pop() || '').toLowerCase();
   try {
     const file = (req.files as any)?.resume?.[0];
-    if (!file) { res.status(400).json({ error: 'Resume file is required' }); return; }
+    if (!file) {
+      // multer's fileFilter drops a wrong file type silently, so this is mostly that.
+      captureFunnel(req, funnelId(req), 'resume_upload_failed', { reason: 'no_file_or_wrong_type' });
+      res.status(400).json({ error: 'Resume file is required' });
+      return;
+    }
 
     const text = await extractTextFromBuffer(file.buffer, file.mimetype, file.originalname);
     if (!text || text.trim().length < 200) {
+      captureFunnel(req, funnelId(req), 'resume_upload_failed', { reason: 'unreadable', file_type: fileType(file.originalname) });
       res.status(422).json({ error: 'Could not read enough text from that file. Try a text-based PDF or DOCX.' });
       return;
     }
@@ -190,6 +223,14 @@ router.post('/brief', ipRateLimit, optionalAuthenticate, handleUpload, async (re
       },
     });
 
+    captureFunnel(req, funnelId(req, token), 'resume_uploaded', {
+      file_type: fileType(file.originalname),
+      size_kb: Math.round(file.size / 1024),
+      has_photo: !!signals.likelyPhoto,
+      question_count: Array.isArray(analysis.questions) ? analysis.questions.length : 0,
+      duration_ms: Date.now() - startedAt,
+    });
+
     res.json({
       token,
       resumeEmail: emailFromResume(text),
@@ -205,6 +246,7 @@ router.post('/brief', ipRateLimit, optionalAuthenticate, handleUpload, async (re
     });
   } catch (err) {
     console.error('[welcome/brief]', err instanceof Error ? `${err.name}: ${err.message}` : String(err));
+    captureFunnel(req, funnelId(req), 'resume_upload_failed', { reason: 'analysis_error', duration_ms: Date.now() - startedAt });
     res.status(502).json({ error: 'Could not read your resume, please try again.' });
   }
 });
@@ -213,11 +255,16 @@ router.post('/brief', ipRateLimit, optionalAuthenticate, handleUpload, async (re
 // Their answers in, the finished clean resume out. Still anonymous — this is the
 // value we hand over before asking for anything.
 router.post('/build', async (req: Request, res: Response) => {
+  const startedAt = Date.now();
+  const token = typeof req.body?.token === 'string' ? req.body.token : null;
+  const buildFailed = (reason: string) =>
+    captureFunnel(req, funnelId(req, token), 'resume_build_failed', { reason, duration_ms: Date.now() - startedAt });
   try {
-    const { token, answers, targetRole } = req.body || {};
+    const { answers, targetRole } = req.body || {};
 
     const session = await loadSession(token);
     if (!session) {
+      buildFailed('session_expired');
       res.status(410).json({ error: 'Your session expired, please upload your resume again.' });
       return;
     }
@@ -226,6 +273,7 @@ router.post('/build', async (req: Request, res: Response) => {
       return;
     }
     if (session.buildCount >= MAX_BUILDS) {
+      buildFailed('build_limit');
       res.status(429).json({ error: 'You have rebuilt this resume a few times already. Upload it again to start fresh.' });
       return;
     }
@@ -284,6 +332,14 @@ router.post('/build', async (req: Request, res: Response) => {
     }
 
     const unanswered = resolved.filter((a) => a.status !== 'answered');
+    captureFunnel(req, funnelId(req, token), 'resume_built', {
+      build_number: session.buildCount + 1,
+      answered_count: resolved.length - unanswered.length,
+      question_count: resolved.length,
+      page_count: pageCount ?? undefined,
+      repaired: built.repaired,
+      duration_ms: Date.now() - startedAt,
+    });
     res.json({
       resume: clean,
       pageCount,
@@ -317,6 +373,7 @@ router.post('/build', async (req: Request, res: Response) => {
       // It is their own resume content, so there is nothing here they are not
       // already looking at.
       console.error('[welcome/build] content loss, refused to save:', err.message);
+      buildFailed('content_loss');
       res.status(502).json({
         error: 'We could not rebuild your resume without leaving something out. Please try again.',
         missing: err.missing?.map((m) => m.item) ?? [],
@@ -325,6 +382,7 @@ router.post('/build', async (req: Request, res: Response) => {
     }
     if (err instanceof UngroundedFigureError) {
       console.error('[welcome/build] unsourced figures, refused to save:', err.message);
+      buildFailed('ungrounded_figure');
       res.status(502).json({ error: 'We could not rebuild your resume without adding a figure we cannot verify. Please try again.' });
       return;
     }
@@ -332,10 +390,12 @@ router.post('/build', async (req: Request, res: Response) => {
       // Never persist this. Better to ask them to retry than to poison every
       // future generation with "[how many]" sitting in their resume text.
       console.error('[welcome/build] blank leak, refused to save:', err.message);
+      buildFailed('blank_leak');
       res.status(502).json({ error: 'We could not finish your resume cleanly. Please try again.' });
       return;
     }
     console.error('[welcome/build]', err instanceof Error ? `${err.name}: ${err.message}` : String(err));
+    buildFailed('error');
     res.status(502).json({ error: 'Could not build your resume, please try again.' });
   }
 });
@@ -516,6 +576,22 @@ router.post('/finish', authenticate, async (req: AuthRequest, res: Response) => 
     await prisma.welcomeSession.update({
       where: { id: session.id },
       data: { claimedByUserId: userId },
+    });
+
+    // The account now exists. Join the anonymous funnel onto it, always from
+    // here. The browser's identify() cannot be relied on: with an ad blocker,
+    // posthog-js still makes up an id locally (so ph_id arrives) but its
+    // identify call never reaches PostHog, which would leave every pre-signup
+    // event stranded on that id. Aliasing an id identify() already merged is
+    // a no-op, so doing it for everyone costs nothing.
+    const anonId = funnelId(req, session.token);
+    if (posthogServer && !anonId.startsWith('welcome-anon:')) {
+      try { posthogServer.alias({ distinctId: userId, alias: anonId }); } catch { /* analytics never blocks signup */ }
+    }
+    captureFunnel(req, userId, 'signup_completed', {
+      flow: 'welcome',
+      new_profile: !existing,
+      target_city: loc ?? undefined,
     });
 
     // Build the structured bank from the CLEAN text, not the messy upload.

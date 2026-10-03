@@ -1,14 +1,22 @@
 import posthog from 'posthog-js';
+import api from './api';
 
 // ── Initialisation ────────────────────────────────────────────────────────────
 
 export function initAnalytics() {
   const key = import.meta.env.VITE_POSTHOG_KEY;
-  const host = import.meta.env.VITE_POSTHOG_HOST ?? 'https://us.i.posthog.com';
   if (!key) return;
 
+  // Production sends through our own domain (/ingest, a rewrite in
+  // vercel.json) because ad blockers drop requests to *.posthog.com, and they
+  // were hiding whole people: signups who never appeared in PostHog at all.
+  // VITE_POSTHOG_PROXY=off goes straight to PostHog again.
+  const direct = import.meta.env.VITE_POSTHOG_HOST ?? 'https://us.i.posthog.com';
+  const useProxy = import.meta.env.PROD && import.meta.env.VITE_POSTHOG_PROXY !== 'off';
+
   posthog.init(key, {
-    api_host: host,
+    api_host: useProxy ? '/ingest' : direct,
+    ui_host: 'https://us.posthog.com',
     capture_pageview: true,        // auto-tracks every route change
     capture_pageleave: true,
     autocapture: false,            // we control events explicitly
@@ -34,7 +42,7 @@ export function initAnalytics() {
 // event for this visit, and PostHog's own $initial_utm_source /
 // $initial_referrer already carry the true first-touch onto the person once
 // they identify — this is the human-readable label next to that raw data.
-function resolveAcquisitionSource(): string {
+export function resolveAcquisitionSource(): string {
   const params = new URLSearchParams(window.location.search);
   const utmSource = (params.get('utm_source') || '').toLowerCase();
   if (utmSource.includes('instagram') || utmSource === 'ig') return 'Instagram';
@@ -74,6 +82,75 @@ export function identifyUser(userId: string, props: {
   });
 }
 
+/**
+ * This browser's PostHog id, sent with the welcome-flow requests so the
+ * server-side funnel events land on the same person as the browser ones.
+ * Undefined when PostHog never loaded (blocked, or no key); the server then
+ * keys the events on our own visitor id instead.
+ */
+export function getAnalyticsId(): string | undefined {
+  try {
+    return posthog.__loaded ? posthog.get_distinct_id() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Our own anonymous id for this browser, kept in localStorage. It is what
+ * follows a visitor whose ad blocker stopped PostHog loading at all: every
+ * relayed event and every welcome request carries it, and signup aliases it
+ * onto the account. Falls back to an id for this page load when storage is
+ * unavailable (private windows, blocked storage).
+ */
+let memoryVisitorId: string | undefined;
+export function getVisitorId(): string {
+  const make = () => (crypto.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`);
+  try {
+    let id = localStorage.getItem('agc_vid');
+    if (!id) { id = make(); localStorage.setItem('agc_vid', id); }
+    return id;
+  } catch {
+    return (memoryVisitorId ??= make());
+  }
+}
+
+/** The ids every welcome request carries, so its server events join this visitor. */
+export function funnelIds(): { ph_id?: string; vid: string } {
+  return { ph_id: getAnalyticsId(), vid: getVisitorId() };
+}
+
+/**
+ * Funnel events go to our own API (/api/track), never straight to PostHog,
+ * so an ad blocker cannot drop them. The server records them in PostHog on
+ * the visitor's behalf. Only events the server allowlists are kept (see
+ * server/src/routes/track.ts). Fire and forget: tracking never throws.
+ */
+function relay(event: string, props: Record<string, unknown> = {}) {
+  const params = new URLSearchParams(window.location.search);
+  const utm: Record<string, string> = {};
+  for (const k of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term']) {
+    const v = params.get(k);
+    if (v) utm[k] = v;
+  }
+  let sessionId: string | undefined;
+  try { sessionId = posthog.__loaded ? posthog.get_session_id() : undefined; } catch { /* blocked */ }
+  void api.post('/track', {
+    event,
+    ...funnelIds(),
+    props: {
+      ...props,
+      ...utm,
+      acquisition_source: resolveAcquisitionSource(),
+      $current_url: window.location.href,
+      $pathname: window.location.pathname,
+      $referrer: document.referrer || '$direct',
+      $session_id: sessionId,
+      is_mobile: window.matchMedia?.('(max-width: 640px)').matches ?? false,
+    },
+  }, { timeout: 10000 }).catch(() => { /* never surface tracking */ });
+}
+
 export function resetAnalytics() {
   posthog.reset();
 }
@@ -106,10 +183,11 @@ export function trackCommunityClick(src: string, srcRaw: string | null) {
   posthog.capture('community_link_clicked', { src, src_raw: srcRaw });
 }
 
-// ── Welcome funnel (the public scan at /welcome) ──────────────────────────────
+// ── Welcome funnel (the home page, signed out) ────────────────────────────────
 // This is the acquisition flow: anonymous resume upload through to signup.
 // It ran completely untracked until 2026-08-07, so the only thing we knew about
 // it was the pageview count. One event per step, fired wherever the step is set.
+// Relayed through our own API since 2026-10-03, so ad blockers cannot hide it.
 
 /** Ordered so a PostHog funnel can be built straight off step_index. */
 export const WELCOME_STEPS = [
@@ -120,7 +198,7 @@ export const WELCOME_STEPS = [
 export type WelcomeStep = (typeof WELCOME_STEPS)[number];
 
 export function trackWelcomeStep(step: WelcomeStep) {
-  posthog.capture('welcome_step_viewed', {
+  relay('welcome_step_viewed', {
     step,
     step_index: WELCOME_STEPS.indexOf(step),
   });
@@ -128,12 +206,94 @@ export function trackWelcomeStep(step: WelcomeStep) {
 
 /** A step the user could not get past. `reason` should be short and stable. */
 export function trackWelcomeFailed(step: WelcomeStep, reason: string) {
-  posthog.capture('welcome_step_failed', { step, reason });
+  relay('welcome_step_failed', { step, reason });
 }
 
 /** Terminal success: account created (or signed in) with a resume attached. */
 export function trackWelcomeCompleted(wasNewUser: boolean) {
-  posthog.capture('welcome_completed', { new_user: wasNewUser });
+  relay('welcome_completed', { new_user: wasNewUser });
+}
+
+/**
+ * What happened when they pressed Next on the email step. The one answer
+ * PostHog could never give: was this a NEW person or someone who already had
+ * an account.
+ *   new_account          signed up just now
+ *   existing_signed_in   already had an account, password matched
+ *   wrong_password       already had an account, password did not match
+ *   confirmation_needed  Supabase wants the email confirmed, sent to the code step
+ *   code_verified        finished through the emailed code instead
+ *   error                anything else
+ */
+export type EmailOutcome =
+  | 'new_account' | 'existing_signed_in' | 'wrong_password'
+  | 'confirmation_needed' | 'code_verified' | 'error';
+
+export function trackEmailOutcome(outcome: EmailOutcome) {
+  relay('email_outcome', { outcome });
+}
+
+/** An old link to a closed route (config/frontDoor.ts) was sent to the home page. */
+export function trackClosedRouteRedirect(from: string) {
+  relay('closed_route_redirected', { from });
+}
+
+/** The trial's "Day N, Begin" screen was shown. Starting it is the server's trial_started. */
+export function trackTrialOfferViewed(day: number) {
+  relay('trial_offer_viewed', { day });
+}
+
+/** A welcome step failed on a server response. Buckets the status so the
+ * reason stays a short stable label rather than one per error message. */
+export function welcomeFailureReason(status: number | undefined): string {
+  if (status === 400 || status === 413) return 'file_rejected';
+  if (status === 422) return 'unreadable';
+  if (status === 410) return 'session_expired';
+  if (status === 429) return 'rate_limited';
+  if (!status) return 'network';
+  return 'server_error';
+}
+
+// ── The upload screen (the home page, signed out) ─────────────────────────────
+// Everything a visitor can do on the front door before uploading. Upload itself
+// is welcome_step_viewed step 'loading' plus the server's resume_uploaded.
+
+/** Clicked the upload box, which opens the file picker. Picked a file or not. */
+export function trackUploadPickerOpened() {
+  posthog.capture('upload_picker_opened');
+}
+
+/** A file was chosen. `method` says how; picker opens minus these is cancels. */
+export function trackResumeFileSelected(method: 'browse' | 'drop', file: File) {
+  posthog.capture('resume_file_selected', {
+    method,
+    file_ext: (file.name.split('.').pop() || '').toLowerCase(),
+    size_kb: Math.round(file.size / 1024),
+  });
+}
+
+export function trackLoginClicked(position: string) {
+  posthog.capture('login_clicked', { position });
+}
+
+/** "Find out how" under the upload box. */
+export function trackHowItWorksClicked() {
+  posthog.capture('how_it_works_clicked');
+}
+
+/** The explainer under the upload box scrolled into view. Once per visit. */
+export function trackHowItWorksViewed() {
+  posthog.capture('how_it_works_viewed');
+}
+
+/** The explainer's own button back up to the upload box. */
+export function trackHowItWorksStartClicked() {
+  posthog.capture('how_it_works_start_clicked');
+}
+
+/** The running "Start your 90 day challenge" banner, top or bottom. */
+export function trackChallengeTickerClicked(position: 'top' | 'bottom') {
+  posthog.capture('challenge_ticker_clicked', { position });
 }
 
 export function trackSection5CtaClicked() {
@@ -336,7 +496,7 @@ export function trackResumeQuestionCompleted(
  */
 export function trackEmailSubmitted(email: string) {
   const domain = email.split('@')[1]?.toLowerCase() || 'unknown';
-  posthog.capture('email_submitted', { email_domain: domain });
+  relay('email_submitted', { email_domain: domain });
 }
 
 // ── Job matching (/check) ─────────────────────────────────────────────────────

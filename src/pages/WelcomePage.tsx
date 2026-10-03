@@ -10,7 +10,11 @@ import { toast } from 'sonner';
 import api from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { trackWelcomeStep, trackWelcomeFailed, trackWelcomeCompleted, trackResumeQuestionStarted, trackResumeQuestionCompleted, trackEmailSubmitted } from '../lib/analytics';
+import {
+  trackWelcomeStep, trackWelcomeFailed, trackWelcomeCompleted, trackResumeQuestionStarted, trackResumeQuestionCompleted, trackEmailSubmitted,
+  funnelIds, trackEmailOutcome, welcomeFailureReason, trackUploadPickerOpened, trackResumeFileSelected, trackLoginClicked,
+  trackHowItWorksClicked, trackHowItWorksViewed, trackHowItWorksStartClicked, trackChallengeTickerClicked,
+} from '../lib/analytics';
 import { colors, type as T } from '../components/landing/tokens';
 import { MarkdownDocEditor, FormattingHelp } from '../components/MarkdownDocEditor';
 import { DocumentPaper } from '../components/shared/DocumentPaper';
@@ -122,6 +126,25 @@ export const WelcomePage: React.FC = () => {
   // without being tracked — this funnel ran blind until 2026-08-07 and the
   // whole point is that it stays measured.
   useEffect(() => { trackWelcomeStep(step); }, [step]);
+
+  // Whether the explainer under the upload box is read at all. Once per visit.
+  const howItWorksSeen = useRef(false);
+  useEffect(() => {
+    if (step !== 'upload' || howItWorksSeen.current) return;
+    const el = document.getElementById(HOW_IT_WORKS_ID);
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(entries => {
+      if (entries.some(e => e.isIntersecting) && !howItWorksSeen.current) {
+        howItWorksSeen.current = true;
+        trackHowItWorksViewed();
+        io.disconnect();
+      }
+      // Any part of it, once it is past the bottom 30% of the screen. A share
+      // of the article as the threshold never fires: it is several screens tall.
+    }, { threshold: 0, rootMargin: '0px 0px -30% 0px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [step]);
 
   const [file, setFile] = useState<File | null>(null);
   const [token, setToken] = useState('');
@@ -243,6 +266,10 @@ export const WelcomePage: React.FC = () => {
     setStep('loading');
     try {
       const fd = new FormData();
+      // Ahead of the file, so the server has them even when it rejects the file.
+      const ids = funnelIds();
+      if (ids.ph_id) fd.append('ph_id', ids.ph_id);
+      fd.append('vid', ids.vid);
       fd.append('resume', f);
       const { data } = await api.post('/welcome/brief', fd, {
         timeout: 180000,
@@ -265,7 +292,7 @@ export const WelcomePage: React.FC = () => {
       if (seed) setRoles([seed]);
       setStep('brief');
     } catch (err: any) {
-      trackWelcomeFailed('loading', 'brief_failed');
+      trackWelcomeFailed('loading', welcomeFailureReason(err?.response?.status));
       toast.error(err?.response?.data?.error || 'Could not read your resume, please try again.');
       setStep('upload');
     }
@@ -345,6 +372,7 @@ export const WelcomePage: React.FC = () => {
         token,
         answers: finalAnswers,
         targetRole: cleanRoles()[0] ?? null,
+        ...funnelIds(),
       }, { timeout: 240000 });
       setCleanResume(data.resume || '');
       setToCheck(Array.isArray(data?.retention?.missing) ? data.retention.missing : []);
@@ -355,7 +383,7 @@ export const WelcomePage: React.FC = () => {
       setPageCount(typeof data.pageCount === 'number' ? data.pageCount : null);
       setStep('resume');
     } catch (err: any) {
-      trackWelcomeFailed('building', 'build_failed');
+      trackWelcomeFailed('building', welcomeFailureReason(err?.response?.status));
       toast.error(err?.response?.data?.error || 'Could not build your resume, please try again.');
       setStep('roles');
     }
@@ -452,6 +480,7 @@ export const WelcomePage: React.FC = () => {
     try {
       const signIn = await supabase.auth.signInWithPassword({ email: addr, password });
       if (!signIn.error && signIn.data.session) {
+        trackEmailOutcome('existing_signed_in');
         setEmail(addr);
         await finishNow();
         return;
@@ -466,6 +495,7 @@ export const WelcomePage: React.FC = () => {
           ? 'That email already has an account and the password did not match. Try again, or have us email you a code.'
           : signUp.error.message;
         trackWelcomeFailed('email', 'signup_rejected');
+        trackEmailOutcome(known ? 'wrong_password' : 'error');
         toast.error(msg);
         return;
       }
@@ -473,15 +503,18 @@ export const WelcomePage: React.FC = () => {
       if (!signUp.data.session) {
         // Email confirmation is on: no session yet, so fall back to the code.
         trackWelcomeFailed('email', 'confirmation_required');
+        trackEmailOutcome('confirmation_needed');
         toast.info('Almost there — we need to verify your email. Sending you a code.');
         await sendCode();
         return;
       }
 
+      trackEmailOutcome('new_account');
       setEmail(addr);
       await finishNow();
     } catch (err: any) {
       trackWelcomeFailed('email', 'unexpected');
+      trackEmailOutcome('error');
       toast.error(err?.message || 'Could not save your resume, please try again.');
     } finally {
       setSending(false);
@@ -528,6 +561,7 @@ export const WelcomePage: React.FC = () => {
     try {
       const { error } = await supabase.auth.verifyOtp({ email: email.trim().toLowerCase(), token: otp, type: 'email' });
       if (error) throw error;
+      trackEmailOutcome('code_verified');
       await finishNow();
     } catch (err: any) {
       endWelcomeHandoff();
@@ -543,7 +577,7 @@ export const WelcomePage: React.FC = () => {
     if (clean.length === 0) { endWelcomeHandoff(); toast.error('Add at least one target role.'); setStep('roles'); return; }
     setStep('finishing');
     try {
-      await api.post('/welcome/finish', { token, targetRoles: clean, targetCity: city.trim() || null });
+      await api.post('/welcome/finish', { token, targetRoles: clean, targetCity: city.trim() || null, ...funnelIds() });
       // Terminal success: from here they have an account AND a resume on file.
       trackWelcomeCompleted(!user);
 
@@ -761,14 +795,18 @@ export const WelcomePage: React.FC = () => {
                         <Sparkles size={15} style={{ flexShrink: 0, marginTop: 2, color: colors.accentGold }} />
                         <span>
                           Fix it once and our system intelligently positions it for every job after that.{' '}
-                          <a
-                            href={POSITIONING_EXPLAINER_URL}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={{ color: colors.accentPetrol, fontWeight: 700, textUnderlineOffset: 3 }}
-                          >
-                            See how
-                          </a>
+                          {/* Members only: /pricing is closed to strangers (config/frontDoor.ts),
+                              so for them this would open a second copy of the home page. */}
+                          {user && (
+                            <a
+                              href={POSITIONING_EXPLAINER_URL}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{ color: colors.accentPetrol, fontWeight: 700, textUnderlineOffset: 3 }}
+                            >
+                              See how
+                            </a>
+                          )}
                         </span>
                       </p>
                       {questions.map((q, qi) => (
@@ -1477,6 +1515,7 @@ export const WelcomePage: React.FC = () => {
           <motion.a
             key="login"
             href="/auth"
+            onClick={() => trackLoginClicked('upload_desktop')}
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
@@ -1497,7 +1536,7 @@ export const WelcomePage: React.FC = () => {
           </motion.a>
         )}
       </AnimatePresence>
-      <Shell wide onWash ticker={step === 'upload'} footer={step === 'upload' ? <HowItWorksArticle onStart={() => document.getElementById('agc-front-door')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} /> : undefined}>
+      <Shell wide onWash ticker={step === 'upload'} footer={step === 'upload' ? <HowItWorksArticle onStart={() => { trackHowItWorksStartClicked(); document.getElementById('agc-front-door')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }} /> : undefined}>
       {/* The first screen keeps its own full-height, centred composition now
           that the article sits under it: the Shell only centres content that
           is shorter than the viewport, so without this the card would jump
@@ -1507,6 +1546,7 @@ export const WelcomePage: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
           <a
             href="/auth"
+            onClick={() => trackLoginClicked('upload_mobile')}
             style={{
               display: 'inline-flex', alignItems: 'center',
               minHeight: 44, padding: '0 16px', borderRadius: 99,
@@ -1551,14 +1591,14 @@ export const WelcomePage: React.FC = () => {
           <motion.div key="drop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <button
               className="agc-dropzone"
-              onClick={() => inputRef.current?.click()}
+              onClick={() => { trackUploadPickerOpened(); inputRef.current?.click(); }}
               onDragOver={e => { e.preventDefault(); if (!dragging) setDragging(true); }}
               onDragLeave={e => { e.preventDefault(); setDragging(false); }}
               onDrop={e => {
                 e.preventDefault();
                 setDragging(false);
                 const f = e.dataTransfer.files?.[0] ?? null;
-                if (f) { setFile(f); void uploadResume(f); }
+                if (f) { trackResumeFileSelected('drop', f); setFile(f); void uploadResume(f); }
               }}
               style={{
                 width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -1588,7 +1628,7 @@ export const WelcomePage: React.FC = () => {
               </span>
             </button>
             <input ref={inputRef} type="file" accept=".pdf,.docx,.doc,.txt" style={{ display: 'none' }}
-              onChange={e => { const f = e.target.files?.[0] ?? null; setFile(f); if (f) uploadResume(f); }} />
+              onChange={e => { const f = e.target.files?.[0] ?? null; setFile(f); if (f) { trackResumeFileSelected('browse', f); uploadResume(f); } }} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -1611,6 +1651,7 @@ export const WelcomePage: React.FC = () => {
           href={`#${HOW_IT_WORKS_ID}`}
           onClick={e => {
             e.preventDefault();
+            trackHowItWorksClicked();
             const el = document.getElementById(HOW_IT_WORKS_ID);
             const scroller = el?.closest('[data-shell-scroll]') as HTMLElement | null;
             if (el && scroller) scroller.scrollTo({ top: el.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop, behavior: 'smooth' });
@@ -2532,7 +2573,10 @@ function BrandLockup({ tight }: { tight?: boolean }) {
 function Shell({ children, wide, onWash, footer, ticker }: { children: React.ReactNode; wide?: boolean; onWash?: boolean; footer?: React.ReactNode; ticker?: boolean }) {
   // The running "Start your 90 day challenge" banner, top and bottom of the
   // front door only; clicking it brings the upload box into view.
-  const toFrontDoor = () => document.getElementById('agc-front-door')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const toFrontDoor = (position: 'top' | 'bottom') => {
+    trackChallengeTickerClicked(position);
+    document.getElementById('agc-front-door')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
   const isMobile = useIsMobile();
   return (
     /* 48px of vertical air and 24 a side is right for a 720px card floating in
@@ -2540,7 +2584,7 @@ function Shell({ children, wide, onWash, footer, ticker }: { children: React.Rea
        so the same insets are 96px of height and 48px of width taken off a
        screen that has neither to give. */
     <div data-shell-scroll style={{ position: 'relative', zIndex: 1, height: '100dvh', overflowY: 'auto', background: onWash ? 'transparent' : colors.bgCanvas, display: 'flex', flexDirection: 'column' }}>
-      {ticker && <ChallengeTicker onClick={toFrontDoor} />}
+      {ticker && <ChallengeTicker onClick={() => toFrontDoor('top')} />}
       <div style={{ flex: '1 0 auto', display: 'flex', padding: isMobile ? '16px 14px' : '48px 24px', boxSizing: 'border-box' }}>
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}
         style={{ width: '100%', maxWidth: wide ? 720 : 520, margin: 'auto' }}>
@@ -2550,7 +2594,7 @@ function Shell({ children, wide, onWash, footer, ticker }: { children: React.Rea
       {/* A plain white band the full width of the page, so long-form copy is
           not floating over the marquee. */}
       {footer && <div style={{ background: '#fff', padding: isMobile ? '0 20px' : '0 24px', borderTop: `1px solid ${PANEL_BORDER}` }}>{footer}</div>}
-      {ticker && <ChallengeTicker onClick={toFrontDoor} />}
+      {ticker && <ChallengeTicker onClick={() => toFrontDoor('bottom')} />}
     </div>
   );
 }

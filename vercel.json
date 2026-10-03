@@ -6,6 +6,8 @@
     { "source": "/assets/(.*)", "destination": "/assets/$1" },
     { "source": "/free/(.*\\..*)", "destination": "/free/$1" },
     { "source": "/offer", "destination": "/offer.html" },
+    { "source": "/ingest/static/(.*)", "destination": "https://us-assets.i.posthog.com/static/$1" },
+    { "source": "/ingest/(.*)", "destination": "https://us.i.posthog.com/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

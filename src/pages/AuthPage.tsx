@@ -9,6 +9,7 @@ import { warm } from '../lib/theme/warmTokens';
 import { PrimaryButton } from '../components/shared/PrimaryButton';
 import { Card } from '../components/shared/Card';
 import api from '../lib/api';
+import { AUTH_PAGE_SIGNUP } from '../config/frontDoor';
 
 export const AuthPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -20,7 +21,9 @@ export const AuthPage: React.FC = () => {
   const [sendingReset, setSendingReset] = useState(false);
 
   const navigate = useNavigate();
-  const [isSignup, setIsSignup] = useState(() => searchParams.get('intent') === 'signup');
+  // Sign up here is off (config/frontDoor.ts): new accounts start at the home
+  // page, with a resume. ?intent=signup lands on sign in instead.
+  const [isSignup, setIsSignup] = useState(() => AUTH_PAGE_SIGNUP && searchParams.get('intent') === 'signup');
   const { user, signOut } = useAuth();
 
   async function handlePassword(e: React.FormEvent) {
@@ -239,7 +242,7 @@ export const AuthPage: React.FC = () => {
                   </div>
                 )}
               </form>
-              <p style={{
+              {AUTH_PAGE_SIGNUP && <p style={{
                 textAlign: 'center', marginTop: 20, fontSize: 13,
                 color: warm.colors.textSecondary,
               }}>
@@ -255,7 +258,7 @@ export const AuthPage: React.FC = () => {
                   }}>
                   {isSignup ? 'Sign in' : 'Sign up'}
                 </button>
-              </p>
+              </p>}
             </motion.div>
           </AnimatePresence>
         </Card>
@@ -264,7 +267,7 @@ export const AuthPage: React.FC = () => {
           textAlign: 'center', marginTop: 24, fontSize: 13,
           color: warm.colors.textMuted,
         }}>
-          New user?{' '}
+          New here?{' '}
           <button
             onClick={() => {
               localStorage.removeItem('jobhub_auth_email');
@@ -278,7 +281,7 @@ export const AuthPage: React.FC = () => {
               fontFamily: warm.type.fontBody,
               textDecoration: 'underline', textUnderlineOffset: 3,
             }}>
-            Start fresh →
+            Start with your resume →
           </button>
         </p>
       </motion.div>

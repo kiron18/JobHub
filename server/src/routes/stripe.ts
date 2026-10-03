@@ -299,6 +299,16 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
             },
           });
           console.log(`[stripe/webhook] Subscription access granted to userId=${userId}, trialing=${isTrialing}`);
+          // A card-on-file trial starts here and nowhere else. Keyed on the
+          // subscription so a webhook redelivery cannot count it twice.
+          if (isTrialing) {
+            captureServerEvent({
+              distinctId: userId,
+              event: 'trial_started',
+              properties: { kind: 'stripe', plan: session.metadata?.plan ?? 'monthly', trial_end: trialEndDate!.toISOString() },
+              uuid: idempotencyUuid(`trial:${subscriptionId ?? session.id}`),
+            });
+          }
         }
 
         // Paid is the one signal that must never be lost, so it goes onto the

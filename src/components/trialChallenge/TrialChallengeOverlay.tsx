@@ -10,6 +10,8 @@ import { TrialDayPassScreen } from './TrialDayPassScreen';
 import { TrialWindowBar } from './TrialWindowBar';
 import { TrialDayEndScreen } from './TrialDayEndScreen';
 import { WHATSAPP_VISIBLE } from '../../lib/features';
+import { useEffect } from 'react';
+import { trackTrialOfferViewed } from '../../lib/analytics';
 
 /**
  * Mounted once, globally (see App.tsx, next to DailyCloseOut) — same reasoning
@@ -52,6 +54,18 @@ export function TrialChallengeOverlay() {
     retry: false,
   });
   const dayReady = engagement?.challengeStarted !== false && daily?.locked !== false;
+
+  // The "Day N, Begin" screen is on show: the last step before a trial starts.
+  // Once per day number per mount, so a re-render does not count it twice.
+  const offerDay =
+    // engagement and daily loaded first: while they load, dayReady reads true
+    // for a moment and would count a screen that is about to be held back.
+    profile?.hasCompletedOnboarding && data?.eligible && engagement && daily && dayReady && !pathname.startsWith('/dev/')
+      ? data.status === 'not_started' ? 1
+        : data.status === 'day_passed_waiting' && data.forfeitureDeadline ? data.currentDay + 1
+        : null
+      : null;
+  useEffect(() => { if (offerDay) trackTrialOfferViewed(offerDay); }, [offerDay]);
 
   if (pathname.startsWith('/dev/')) return null;
   if (!profile?.hasCompletedOnboarding) return null;

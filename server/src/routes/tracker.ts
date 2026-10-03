@@ -20,6 +20,7 @@ import { getEngagementSummary } from '../services/tracker/engagement';
 import { getMilestoneState, ackMilestone } from '../services/tracker/milestones';
 import { getCloseoutState, ackCloseout } from '../services/tracker/closeout';
 import { getOrCreateWhatsappOptInCode } from '../services/trialChallenge/engine';
+import { captureServerEvent } from '../lib/posthogServer';
 
 /** The number the WhatsApp bot links as — same one the trial challenge uses. */
 const WHATSAPP_COACH_NUMBER = '61422769597';
@@ -112,7 +113,11 @@ router.get('/daily-target', async (req: any, res: any) => {
 });
 
 router.post('/daily-target', async (req: any, res: any) => {
-  try { res.json(await setDailyTarget(req.user.id, req.body?.target)); }
+  try {
+    const state = await setDailyTarget(req.user.id, req.body?.target);
+    captureServerEvent({ distinctId: req.user.id, event: 'daily_target_set', properties: { target: Number(req.body?.target) || undefined } });
+    res.json(state);
+  }
   catch (e) {
     if (e instanceof DailyTargetError) return res.status(e.status).json(e.payload);
     console.error('[tracker/daily-target:set]', e); res.status(500).json({ error: 'failed' });
@@ -140,10 +145,12 @@ router.post('/daily-target/swap', async (req: any, res: any) => {
 /** The one-time 90-day intro was accepted: today becomes day 1. Idempotent. */
 router.post('/challenge/start', async (req: any, res: any) => {
   try {
-    await prisma.candidateProfile.updateMany({
+    const started = await prisma.candidateProfile.updateMany({
       where: { userId: req.user.id, challengeStartedAt: null },
       data: { challengeStartedAt: new Date() },
     });
+    // Once per person: a repeat call matches no row.
+    if (started.count > 0) captureServerEvent({ distinctId: req.user.id, event: 'challenge_started' });
     res.json(await getEngagementSummary(req.user.id));
   } catch (e) { console.error('[tracker/challenge/start]', e); res.status(500).json({ error: 'failed' }); }
 });

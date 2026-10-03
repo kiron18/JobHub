@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation, Outlet } from 'react-router-dom';
+import { CLOSED_ROUTES } from './config/frontDoor';
+import { trackClosedRouteRedirect } from './lib/analytics';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { motion } from 'framer-motion';
@@ -33,6 +35,9 @@ const AdminDashboard = React.lazy(() =>
 );
 const AdminFunnel = React.lazy(() =>
   import('./pages/AdminFunnel').then(m => ({ default: m.AdminFunnel }))
+);
+const AdminTraffic = React.lazy(() =>
+  import('./pages/AdminTraffic').then(m => ({ default: m.AdminTraffic }))
 );
 const AdminUserUsage = React.lazy(() =>
   import('./pages/AdminUserUsage').then(m => ({ default: m.AdminUserUsage }))
@@ -376,6 +381,23 @@ type ReportFlowStage = 'loading' | 'diagnostic' | 'from-scratch' | 'dashboard';
 
 // --- Public landing route guard ---
 
+/**
+ * Sends a closed public route to the home page. Which routes, and for whom,
+ * lives in config/frontDoor.ts. A layout route around the public routes, so a
+ * route is closed by its line in that file and nothing here changes.
+ */
+function FrontDoorGate() {
+  const { user, loading } = useAuth();
+  const { pathname, search } = useLocation();
+  const closedFor = CLOSED_ROUTES['/' + (pathname.split('/')[1] ?? '')];
+  const redirect = !!closedFor && !loading && !(closedFor === 'signed_out' && user);
+  React.useEffect(() => { if (redirect) trackClosedRouteRedirect(pathname); }, [redirect, pathname]);
+  if (!closedFor) return <Outlet />;
+  if (loading) return null;
+  if (redirect) return <Navigate to={`/${search}`} replace />;
+  return <Outlet />;
+}
+
 function LandingPageOrExisting() {
   const { user, loading } = useAuth();
   /*
@@ -548,6 +570,7 @@ function ReportOrDashboard() {
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/admin/coach" element={<CoachDashboard />} />
                 <Route path="/admin/funnel" element={<AdminFunnel />} />
+                <Route path="/admin/traffic" element={<AdminTraffic />} />
                 {/* The sales board, replacing the local Python CRM. */}
                 <Route path="/admin/sales" element={<AdminSales />} />
                 {/* The prep console for one live session: roster, questions,
@@ -580,7 +603,9 @@ function App() {
         <AuthProvider>
           <Router>
             <Routes>
-              {/* Public Routes */}
+              {/* Public Routes. FrontDoorGate closes the ones listed in
+                  config/frontDoor.ts: one way in, the home page. */}
+              <Route element={<FrontDoorGate />}>
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/set-password" element={<SetPasswordPage />} />
               <Route path="/welcome" element={<WelcomePage />} />
@@ -691,6 +716,7 @@ function App() {
                   <ReceiptsPage />
                 </React.Suspense>
               } />
+              </Route>
 
               {/* Public Landing — unauth sees new landing, auth preserves existing behaviour */}
               <Route path="/" element={<LandingPageOrExisting />} />

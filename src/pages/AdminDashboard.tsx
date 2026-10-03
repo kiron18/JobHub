@@ -836,6 +836,18 @@ export function AdminDashboard() {
               <ExternalLink size={10} />
             </a>
             <a
+              href="/admin/traffic"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                background: `${S.petrol}14`, border: `1px solid ${S.petrol}30`,
+                borderRadius: 10, padding: '8px 16px', fontSize: 12, fontWeight: 700,
+                color: S.petrol, textDecoration: 'none',
+              }}>
+              <TrendingUp size={12} />
+              Site traffic
+              <ExternalLink size={10} />
+            </a>
+            <a
               href="/admin/quality"
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,

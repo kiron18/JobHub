@@ -3,6 +3,7 @@ import { SENT_APPLICATION_FILTER } from '../tracker/metricHelpers';
 import { isPaidOrExempt } from '../../middleware/accessControl';
 import { isTrialChallengeTestMode } from '../../config/trialChallengeGate';
 import { DAY_RULES, LAST_DAY, ruleForDay, DayRule, TrialChallengeStatus } from './rules';
+import { captureServerEvent, idempotencyUuid } from '../../lib/posthogServer';
 
 /**
  * Real minutes normally; compressed 6x under TRIAL_CHALLENGE_TEST_MODE (30
@@ -244,6 +245,14 @@ export async function beginDay(userId: string): Promise<TrialState> {
     });
     await prisma.trialChallengeDay.create({
       data: { trialChallengeId: trial.id, day: 1, windowStartedAt, windowEndsAt, minimumRequired: rule.minimum },
+    });
+    // Day 1 beginning is the trial starting. Server-side so a closed tab
+    // can't lose it; keyed on the trial row so a retry can't double-count.
+    captureServerEvent({
+      distinctId: userId,
+      event: 'trial_started',
+      properties: { kind: 'challenge' },
+      uuid: idempotencyUuid(`trial-challenge:${trial.id}`),
     });
     return (await resolveTrialState(userId))!;
   }

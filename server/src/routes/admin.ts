@@ -5,7 +5,7 @@ import { prisma } from '../index';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { callClaude } from '../services/llm';
 import { sendFridayBriefEmail } from '../services/email';
-import { EXEMPT_EMAILS } from './stripe';
+import { EXEMPT_EMAILS, TRIAL_PERIOD_DAYS } from './stripe';
 import { supabase } from '../lib/supabase';
 import { serpApiKey } from '../services/serpapi';
 
@@ -689,6 +689,153 @@ router.get('/posthog-stats', authenticate, requireAdmin, async (_req, res) => {
   } catch (err) {
     console.error('[admin/posthog-stats] error:', err);
     return res.status(500).json({ error: 'Failed to fetch PostHog data' });
+  }
+});
+
+// GET /api/admin/traffic?from=YYYY-MM-DD&to=YYYY-MM-DD&interval=day|week|month
+// Visitors per bucket for the bar chart on /admin/traffic, plus the funnel
+// totals for the whole range: visited -> uploaded -> saw resume -> signed up
+// -> trial -> paid.
+//
+// Two sources, on purpose. Visits, uploads and "saw resume" exist only in
+// PostHog (live host, test accounts out, a pageview needs a browser so headless
+// crawlers drop). From 2026-10-03 every front-door step is recorded on our
+// own server (resume_uploaded/built in routes/welcome.ts, the rest relayed by
+// routes/track.ts), which ad blockers cannot drop; the browser-only events
+// still count for older dates.
+// Signups and trials come from the database, because PostHog
+// misses them: ad blockers hide whole people, and welcome_completed only fires
+// in the /welcome flow, not for someone who signs up at /auth. Checked on
+// 2026-10-03: PostHog had 4 signups and 0 trials for a month the database had
+// 8 and 9. All buckets are UTC, which is the PostHog project's timezone.
+const TRAFFIC_HOST = 'www.aussiegradcareers.com.au';
+const TEST_EMAIL = /kiron|norik|kamiproject/i;
+const TRAFFIC_NOT_TEST = `not (ifNull(person.properties.email, '') ilike '%kiron%'
+  or ifNull(person.properties.email, '') ilike '%norik%'
+  or ifNull(person.properties.email, '') ilike 'kamiproject%')`;
+const TRAFFIC_COLUMNS = `
+  count(distinct if((event = '$pageview' and properties.$browser is not null) or (event = 'welcome_step_viewed' and properties.step_index = 0), person_id, null)) as visitors,
+  count(distinct if((event = 'welcome_step_viewed' and properties.step_index = 1) or event = 'resume_uploaded', person_id, null)) as uploaded,
+  count(distinct if((event = 'welcome_step_viewed' and properties.step_index = 6) or event = 'resume_built', person_id, null)) as resume,
+  count(distinct if(event = 'email_submitted', person_id, null)) as entered_email,
+  count(distinct if(event = 'payment_completed', person_id, null)) as paid`;
+const POSTHOG_METRICS = ['visitors', 'uploaded', 'resume', 'enteredEmail', 'paid'] as const;
+type TrafficInterval = 'day' | 'week' | 'month';
+
+/** The bucket a moment falls in, matching HogQL's toStartOfDay/Week(Sunday)/Month in UTC. */
+function trafficBucketOf(d: Date, interval: TrafficInterval): string {
+  const b = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  if (interval === 'week') b.setUTCDate(b.getUTCDate() - b.getUTCDay());
+  if (interval === 'month') b.setUTCDate(1);
+  return b.toISOString().slice(0, 10);
+}
+
+/** Every bucket between two YYYY-MM-DD dates, so empty days still get a bar. */
+function trafficBuckets(from: string, to: string, interval: TrafficInterval): string[] {
+  const out: string[] = [];
+  const d = new Date(trafficBucketOf(new Date(`${from}T00:00:00Z`), interval) + 'T00:00:00Z');
+  const end = new Date(`${to}T00:00:00Z`);
+  while (d <= end) {
+    out.push(d.toISOString().slice(0, 10));
+    if (interval === 'day') d.setUTCDate(d.getUTCDate() + 1);
+    else if (interval === 'week') d.setUTCDate(d.getUTCDate() + 7);
+    else d.setUTCMonth(d.getUTCMonth() + 1);
+  }
+  return out;
+}
+
+/** Every Supabase auth user, paged. getRealUserIds stops at 1000 and only
+ * knows the bare test addresses, not the +tag ones. */
+async function allAuthUsers(): Promise<{ id: string; email?: string; created_at: string }[]> {
+  const users: { id: string; email?: string; created_at: string }[] = [];
+  for (let page = 1; ; page++) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) throw error;
+    users.push(...data.users);
+    if (data.users.length < 1000) return users;
+  }
+}
+
+router.get('/traffic', authenticate, requireAdmin, async (req, res) => {
+  const key = process.env.POSTHOG_PERSONAL_API_KEY || process.env.POSTHOG_API_KEY;
+  const projectId = process.env.POSTHOG_PROJECT_ID?.match(/\d+/)?.[0];
+  if (!key || !projectId) return res.status(503).json({ error: 'PostHog not configured' });
+
+  // Strict shapes only: these values are interpolated into the query.
+  const isDate = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+  const { from, to } = req.query;
+  const interval = req.query.interval;
+  if (!isDate(from) || !isDate(to) || from > to) return res.status(400).json({ error: 'from and to must be YYYY-MM-DD, from <= to' });
+  if (interval !== 'day' && interval !== 'week' && interval !== 'month') return res.status(400).json({ error: 'interval must be day, week or month' });
+
+  const rangeStart = new Date(`${from}T00:00:00Z`);
+  const rangeEnd = new Date(`${to}T00:00:00Z`);
+  rangeEnd.setUTCDate(rangeEnd.getUTCDate() + 1);
+  const inRange = (d: Date) => d >= rangeStart && d < rangeEnd;
+
+  const bucketFn = { day: 'toStartOfDay', week: 'toStartOfWeek', month: 'toStartOfMonth' }[interval];
+  const where = `timestamp >= toDateTime('${from} 00:00:00') and timestamp < toDateTime('${to} 00:00:00') + interval 1 day
+    and event in ('$pageview', 'welcome_step_viewed', 'resume_uploaded', 'resume_built', 'email_submitted', 'payment_completed')
+    and (properties.$host = '${TRAFFIC_HOST}' or event = 'payment_completed')
+    and ${TRAFFIC_NOT_TEST}`;
+
+  async function hogql(query: string): Promise<any[][]> {
+    const r = await fetch(`https://us.posthog.com/api/projects/${projectId}/query`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: { kind: 'HogQLQuery', query } }),
+    });
+    if (!r.ok) throw new Error(`PostHog ${r.status}: ${(await r.text().catch(() => '')).slice(0, 200)}`);
+    return ((await r.json()) as { results?: any[][] }).results ?? [];
+  }
+  const toMetrics = (row: any[] | undefined, offset: number) =>
+    Object.fromEntries(POSTHOG_METRICS.map((m, i) => [m, Number(row?.[offset + i] ?? 0)]));
+
+  try {
+    const [byBucket, totals, users, challenges, stripeTrials] = await Promise.all([
+      hogql(`select toString(toDate(${bucketFn}(timestamp))) as bucket, ${TRAFFIC_COLUMNS} from events where ${where} group by bucket order by bucket`),
+      hogql(`select ${TRAFFIC_COLUMNS} from events where ${where}`),
+      allAuthUsers(),
+      prisma.trialChallenge.findMany({ where: { currentDay: { gte: 1 } }, select: { userId: true, createdAt: true } }),
+      // A card-on-file trial stores only its end; the start is TRIAL_PERIOD_DAYS before it.
+      prisma.candidateProfile.findMany({ where: { trialEndDate: { not: null } }, select: { userId: true, trialEndDate: true } }),
+    ]);
+
+    const realIds = new Set(users.filter(u => !TEST_EMAIL.test(u.email ?? '')).map(u => u.id));
+    const signups = users.filter(u => realIds.has(u.id)).map(u => new Date(u.created_at)).filter(inRange);
+    // One trial per person: the earliest start across both kinds.
+    const trialStart = new Map<string, Date>();
+    const addTrial = (userId: string, at: Date) => {
+      if (!realIds.has(userId)) return;
+      const prev = trialStart.get(userId);
+      if (!prev || at < prev) trialStart.set(userId, at);
+    };
+    for (const c of challenges) addTrial(c.userId, c.createdAt);
+    for (const p of stripeTrials) addTrial(p.userId, new Date(p.trialEndDate!.getTime() - TRIAL_PERIOD_DAYS * 86_400_000));
+    const trials = [...trialStart.values()].filter(inRange);
+
+    const countBy = (dates: Date[]) => {
+      const m = new Map<string, number>();
+      for (const d of dates) { const b = trafficBucketOf(d, interval); m.set(b, (m.get(b) ?? 0) + 1); }
+      return m;
+    };
+    const signupsBy = countBy(signups);
+    const trialsBy = countBy(trials);
+    const found = new Map(byBucket.map(row => [String(row[0]), row]));
+
+    return res.json({
+      from, to, interval,
+      buckets: trafficBuckets(from, to, interval).map(bucket => ({
+        bucket,
+        ...toMetrics(found.get(bucket), 1),
+        signedUp: signupsBy.get(bucket) ?? 0,
+        trials: trialsBy.get(bucket) ?? 0,
+      })),
+      totals: { ...toMetrics(totals[0], 0), signedUp: signups.length, trials: trials.length },
+    });
+  } catch (err) {
+    console.error('[admin/traffic] error:', err);
+    return res.status(500).json({ error: 'Failed to fetch traffic data' });
   }
 });
 
