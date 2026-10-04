@@ -4,6 +4,8 @@ import type { CvGapResult, RoadmapStep } from './cvGapScan';
 import { PUBLIC_APP_URL } from '../lib/appUrl';
 import { skoolMemberSearchUrl, skoolMemberSearchByName } from '../lib/skoolLinks';
 import { unmatchedAlertMode } from '../config/alerts';
+import { prisma } from '../index';
+import { injectEmailTracking } from '../email/send/sendEmail';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -1111,13 +1113,47 @@ export async function sendWelcomeResumeEmail(params: {
     `</td></tr></table></div>`,
   ].join('');
 
-  await resend.emails.send({
+  const subject = name ? `${name}, here is your rewritten resume` : 'Here is your rewritten resume';
+
+  // An EmailSend row before the send, not after: its id is what the open
+  // pixel and click redirect are keyed on, so /admin/email-analytics can
+  // show this email's real recipients/opens/CTR. Best-effort — a tracking
+  // failure must never be the reason someone doesn't get their resume.
+  let trackingId: string | null = null;
+  try {
+    const [contact, template] = await Promise.all([
+      prisma.contact.upsert({
+        where: { email: to },
+        update: { firstName: name || undefined, lastActivityAt: new Date() },
+        create: { email: to, firstName: name || undefined, source: 'welcome_resume' },
+      }),
+      prisma.emailTemplate.upsert({
+        where: { name: 'welcome_resume' },
+        // bodyHtml tracks the live copy above, so the dashboard's "has links"
+        // check (and anyone previewing it there) never goes stale.
+        update: { subject: 'Here is your rewritten resume', bodyHtml: html },
+        create: { name: 'welcome_resume', subject: 'Here is your rewritten resume', bodyHtml: html },
+      }),
+    ]);
+    const emailSend = await prisma.emailSend.create({
+      data: { contactId: contact.id, templateId: template.id, subject, fromEmail: FROM_ADDRESS, toEmail: to },
+    });
+    trackingId = emailSend.id;
+  } catch (err) {
+    console.warn('[email] could not record welcome resume send for tracking:', (err as Error).message);
+  }
+
+  const result = await resend.emails.send({
     from: FROM_ADDRESS,
     to,
-    subject: name ? `${name}, here is your rewritten resume` : 'Here is your rewritten resume',
-    html,
+    subject,
+    html: trackingId ? injectEmailTracking(html, trackingId) : html,
     ...(attachments ? { attachments } : {}),
   });
+
+  if (trackingId && result.data?.id) {
+    await prisma.emailSend.update({ where: { id: trackingId }, data: { resendEmailId: result.data.id } }).catch(() => {});
+  }
 }
 
 /** The candidate's full name off the resume's own H1, for the filename. */

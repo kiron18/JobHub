@@ -19,7 +19,7 @@ Resumes/
 evals/fixtures/resumes/
 
 # Campaign recipient lists (real contact PII, not part of web app)
-scripts/campaigns/*/recipients.csv
+server/scripts/campaigns/*/recipients.csv
 
 # Marketing automation scripts (contain local keys, not part of web app)
 instagram_analysis.py
