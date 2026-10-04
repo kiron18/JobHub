@@ -1091,11 +1091,12 @@ export async function sendWelcomeResumeEmail(params: {
     `<tr><td>`,
 
     `<p style="font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:15px;color:#1a1814;margin:0 0 14px;line-height:1.6;">${hi}</p>`,
-    `<p style="font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:15px;color:#5c5750;margin:0 0 16px;line-height:1.65;">Here is your new and improved resume. The obvious next step is getting it seen by the people who make hiring decisions.</p>`,
-    `<p style="font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:15px;color:#5c5750;margin:0 0 16px;line-height:1.65;">High quality applications, outreach and follow-ups, sent consistently, in just one hour every day.</p>`,
-    `<p style="font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:15px;color:#1a1814;margin:0 0 22px;line-height:1.65;font-weight:600;">Come see how it all happens.</p>`,
+    `<p style="font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:15px;color:#5c5750;margin:0 0 16px;line-height:1.65;">Here is your new and improved resume.</p>`,
+    `<p style="font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:15px;color:#5c5750;margin:0 0 16px;line-height:1.65;">Imagine sending a highly personalised resume and cover letter of this quality to every company you apply to, along with a short personalised email to a key decision maker. All in under five minutes.</p>`,
+    `<p style="font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:15px;color:#5c5750;margin:0 0 16px;line-height:1.65;">Finding your dream role takes time, but it doesn't need to take stress.</p>`,
+    `<p style="font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:15px;color:#1a1814;margin:0 0 22px;line-height:1.65;font-weight:600;">Work smart. Try the 90-day challenge today.</p>`,
 
-    `<p style="margin:0 0 24px;"><a href="${WELCOME_EMAIL_CTA_URL}" style="display:inline-block;background:#2d5a6e;color:#faf7f2;text-decoration:none;font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:14.5px;font-weight:700;padding:13px 26px;border-radius:8px;">Find out more</a></p>`,
+    `<p style="margin:0 0 24px;"><a href="${WELCOME_EMAIL_CTA_URL}" style="display:inline-block;background:#2d5a6e;color:#faf7f2;text-decoration:none;font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:14.5px;font-weight:700;padding:13px 26px;border-radius:8px;">Start the free challenge</a></p>`,
 
     // Only when there is no file to point at. Reading a resume in an email is a
     // poor second to holding one, but it beats an email that promises a resume
