@@ -263,6 +263,9 @@ function Tooltip({ b, interval, leftPct }: { b: Metrics & { bucket: string }; in
 
 const inputStyle: CSSProperties = {
   ...warm.text.small,
+  // 16px, not the 13px small() gives everywhere else: under 16px, iOS Safari
+  // zooms the whole page in on focus for any real form control.
+  fontSize: 16,
   padding: '5px 8px',
   borderRadius: 8,
   border: `1px solid ${C.borderDefined}`,

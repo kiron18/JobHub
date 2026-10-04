@@ -48,7 +48,11 @@ const readEnv = (f) => Object.fromEntries(
 );
 
 const feEnv = readEnv('.env.local');
-const beEnv = readEnv(path.join('server', '.env'));
+// .env.local overrides .env, same precedence the server itself loads with —
+// without it this ran against the production Supabase project's service key
+// while the frontend's anon client (VITE_SUPABASE_URL above) talks to staging,
+// a mismatch that fails every generateLink call with "Invalid API key".
+const beEnv = { ...readEnv(path.join('server', '.env')), ...readEnv(path.join('server', '.env.local')) };
 const SUPA_URL = feEnv.VITE_SUPABASE_URL || beEnv.SUPABASE_URL;
 const ANON = feEnv.VITE_SUPABASE_ANON_KEY;
 const SERVICE = beEnv.SUPABASE_SERVICE_ROLE_KEY;
@@ -109,6 +113,7 @@ const PAGES = [
   { id: '48-admin-contacts',  url: '/admin/contacts' },
   { id: '49-admin-broadcast', url: '/admin/broadcasts' },
   { id: '50-admin-email',     url: '/admin/email-analytics' },
+  { id: '51-admin-traffic',   url: '/admin/traffic' },
 ];
 
 /**
