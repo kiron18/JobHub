@@ -70,7 +70,9 @@
       "Bash(echo \"--- jobhub .claude dir ---\"; ls -la /e/AntiGravity/JobHub/.claude 2>/dev/null; echo \"--- local settings ---\"; cat /e/AntiGravity/JobHub/.claude/settings.local.json 2>/dev/null | head -40; echo \"--- grep additionalDirectories ---\"; grep -rl \"additionalDirectories\" /c/Users/Kiron/.claude /e/AntiGravity/JobHub/.claude /e/AntiGravity/Daekwon/.claude 2>/dev/null)",
       "Bash(ls -la /e/AntiGravity/ | head -30; echo \"--- vscode dir at root ---\"; ls -la /e/AntiGravity/.vscode 2>/dev/null)",
       "Read(//e/AntiGravity//**)",
-      "Bash(ls /e/AntiGravity/JobHub/.claude/ 2>/dev/null; echo \"---\"; ls /c/Users/Kiron/.claude/*.json 2>/dev/null)"
+      "Bash(ls /e/AntiGravity/JobHub/.claude/ 2>/dev/null; echo \"---\"; ls /c/Users/Kiron/.claude/*.json 2>/dev/null)",
+      "WebFetch(domain:www.careerflow.ai)",
+      "WebFetch(domain:help.careerflow.ai)"
     ],
     "deny": [
       "Bash(rm -rf:*)",
