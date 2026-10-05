@@ -109,7 +109,12 @@ export const UpgradeModal: React.FC<Props> = ({ trigger, onClose }) => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        // z-[5500], not z-50: its only caller (TrialDayEndScreen) sits in the
+        // app's full-screen-takeover tier at zIndex 5000, which is opaque and
+        // stacks strictly by z-index value regardless of DOM order — at z-50
+        // this modal mounted but rendered fully behind that still-visible
+        // screen, so "See how to keep going" looked like it did nothing.
+        className="fixed inset-0 z-[5500] flex items-center justify-center p-4"
         style={{ background: 'rgba(26,24,20,0.40)', backdropFilter: 'blur(8px)' }}
         onClick={onClose}
       >
