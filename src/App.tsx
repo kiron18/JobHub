@@ -30,26 +30,17 @@ const LocalExperiencePlaybookPage = React.lazy(() => import('./pages/LocalExperi
 const FridayBriefPage = React.lazy(() =>
   import('./pages/FridayBriefPage').then(m => ({ default: m.FridayBriefPage }))
 );
-const AdminDashboard = React.lazy(() =>
-  import('./pages/AdminDashboard').then(m => ({ default: m.AdminDashboard }))
-);
-const AdminFunnel = React.lazy(() =>
-  import('./pages/AdminFunnel').then(m => ({ default: m.AdminFunnel }))
-);
 const AdminTraffic = React.lazy(() =>
   import('./pages/AdminTraffic').then(m => ({ default: m.AdminTraffic }))
 );
-const AdminUserUsage = React.lazy(() =>
-  import('./pages/AdminUserUsage').then(m => ({ default: m.AdminUserUsage }))
+const AdminPeople = React.lazy(() =>
+  import('./pages/AdminPeople').then(m => ({ default: m.default }))
 );
 const AdminSales = React.lazy(() =>
   import('./pages/AdminSales').then(m => ({ default: m.default }))
 );
 const AdminWorkshop = React.lazy(() =>
   import('./pages/AdminWorkshop').then(m => ({ default: m.default }))
-);
-const AdminContacts = React.lazy(() =>
-  import('./pages/AdminContacts').then(m => ({ default: m.default }))
 );
 const AdminContactDetail = React.lazy(() =>
   import('./pages/AdminContactDetail').then(m => ({ default: m.default }))
@@ -59,9 +50,6 @@ const AdminBroadcasts = React.lazy(() =>
 );
 const EmailAnalytics = React.lazy(() =>
   import('./pages/EmailAnalytics').then(m => ({ default: m.default }))
-);
-const AdminQuality = React.lazy(() =>
-  import('./pages/AdminQuality').then(m => ({ default: m.AdminQuality }))
 );
 const VideoCoverLetterPage = React.lazy(() =>
   import('./pages/VideoCoverLetterPage').then(m => ({ default: m.VideoCoverLetterPage }))
@@ -567,23 +555,31 @@ function ReportOrDashboard() {
                 <Route path="/jobs" element={<Navigate to="/" replace />} />
                 <Route path="/mindset" element={<MindsetPage />} />
                 <Route path="/video-cover-letter" element={<VideoCoverLetterPage />} />
-                <Route path="/admin" element={<AdminDashboard />} />
+                {/* Admin is four pages, joined by the bar in
+                    components/admin/AdminShell.tsx. */}
+                <Route path="/admin" element={<Navigate to="/admin/growth" replace />} />
+                <Route path="/admin/growth" element={<AdminTraffic />} />
+                <Route path="/admin/people" element={<AdminPeople />} />
+                <Route path="/admin/email" element={<EmailAnalytics />} />
                 <Route path="/admin/coach" element={<CoachDashboard />} />
-                <Route path="/admin/funnel" element={<AdminFunnel />} />
-                <Route path="/admin/traffic" element={<AdminTraffic />} />
+                {/* Tools reached from inside those pages. */}
                 {/* The sales board, replacing the local Python CRM. */}
                 <Route path="/admin/sales" element={<AdminSales />} />
                 {/* The prep console for one live session: roster, questions,
                     fact sheets and the run sheet. */}
                 <Route path="/admin/workshop" element={<AdminWorkshop />} />
-                <Route path="/admin/quality" element={<AdminQuality />} />
-                <Route path="/admin/users" element={<AdminUserUsage />} />
-                <Route path="/admin/friday-brief" element={<FridayBriefPage />} />
-                <Route path="/admin/contacts" element={<AdminContacts />} />
+                <Route path="/admin/broadcasts" element={<AdminBroadcasts />} />
                 <Route path="/admin/contacts/new" element={<AdminContactDetail />} />
                 <Route path="/admin/contacts/:id" element={<AdminContactDetail />} />
-                <Route path="/admin/broadcasts" element={<AdminBroadcasts />} />
-                <Route path="/admin/email-analytics" element={<EmailAnalytics />} />
+                <Route path="/admin/friday-brief" element={<FridayBriefPage />} />
+                {/* The pages the four replaced. Redirected, so old bookmarks
+                    and links in old emails still land somewhere useful. */}
+                <Route path="/admin/traffic" element={<Navigate to="/admin/growth" replace />} />
+                <Route path="/admin/funnel" element={<Navigate to="/admin/people?status=Trial" replace />} />
+                <Route path="/admin/users" element={<Navigate to="/admin/people?status=Paid" replace />} />
+                <Route path="/admin/contacts" element={<Navigate to="/admin/people" replace />} />
+                <Route path="/admin/email-analytics" element={<Navigate to="/admin/email" replace />} />
+                <Route path="/admin/quality" element={<Navigate to="/admin/coach" replace />} />
                 <Route path="*" element={<StrategyHub />} />
               </Routes>
             </React.Suspense>

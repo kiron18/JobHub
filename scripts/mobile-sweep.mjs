@@ -20,7 +20,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const ROOT = process.cwd();
-const APP = 'http://localhost:5173';
+// Overridable so a second dev stack (other ports) can be swept without
+// stopping the one already running.
+const APP = process.env.SWEEP_APP_URL || 'http://localhost:5173';
 const EMAIL = process.env.CAPTURE_EMAIL || 'kiron182@gmail.com';
 
 const args = process.argv.slice(2);
@@ -102,18 +104,15 @@ const PAGES = [
   { id: '36-diagnostic',      url: '/', act: 'diagnostic' },
 
   // ── admin (light pass) ──
-  { id: '40-admin',           url: '/admin' },
-  { id: '41-admin-coach',     url: '/admin/coach' },
-  { id: '42-admin-funnel',    url: '/admin/funnel' },
-  { id: '43-admin-sales',     url: '/admin/sales' },
-  { id: '44-admin-workshop',  url: '/admin/workshop' },
-  { id: '45-admin-quality',   url: '/admin/quality' },
-  { id: '46-admin-users',     url: '/admin/users' },
+  // The four pages in the admin bar, then the tools reached from inside them.
+  { id: '40-admin-growth',    url: '/admin/growth' },
+  { id: '41-admin-people',    url: '/admin/people' },
+  { id: '42-admin-email',     url: '/admin/email' },
+  { id: '43-admin-coach',     url: '/admin/coach' },
+  { id: '44-admin-sales',     url: '/admin/sales' },
+  { id: '45-admin-workshop',  url: '/admin/workshop' },
+  { id: '46-admin-broadcast', url: '/admin/broadcasts' },
   { id: '47-admin-brief',     url: '/admin/friday-brief' },
-  { id: '48-admin-contacts',  url: '/admin/contacts' },
-  { id: '49-admin-broadcast', url: '/admin/broadcasts' },
-  { id: '50-admin-email',     url: '/admin/email-analytics' },
-  { id: '51-admin-traffic',   url: '/admin/traffic' },
 ];
 
 /**

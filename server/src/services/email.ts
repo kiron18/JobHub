@@ -35,6 +35,91 @@ const FROM_ADDRESS = `Aussie Grad Careers <kiron@aussiegradcareers.com.au>`;
  */
 const SKOOL_GROUP_LINK = `${APP_URL}/community?src=email`;
 
+/**
+ * Every email that goes to a client or lead goes out through here, so
+ * /admin/email-analytics can say when each kind last went out and how it did.
+ * Mail to Kiron himself (alerts, payment notices, the Skool task) does not, and
+ * neither do password resets: none of those are things to measure.
+ *
+ * `kind` names the email, not the send: it becomes the EmailTemplate the sends
+ * are grouped under on the dashboard, so keep it stable once it has shipped.
+ *
+ * Only HTML can be measured. A plain-text email has nowhere to put an open
+ * pixel, and its links are left as written rather than swapped for a long
+ * tracking URL, so for those the dashboard counts sends and nothing else.
+ *
+ * Tracking is best-effort: a failure to record a send must never be the reason
+ * someone does not get their email.
+ */
+async function sendLogged(
+  kind: string,
+  email: {
+    to: string;
+    subject: string;
+    text?: string;
+    html?: string;
+    attachments?: Array<{ filename: string; content: string; contentType?: string }>;
+    firstName?: string | null;
+  },
+  opts: { trackLinks?: boolean } = {},
+) {
+  const { to, subject, text, html, attachments, firstName } = email;
+  let trackingId: string | null = null;
+  try {
+    // As typed, not lowercased: existing Contact rows were keyed this way, and
+    // a lowercased key would split one person into two contacts.
+    const contactEmail = to.trim();
+    const [contact, template] = await Promise.all([
+      prisma.contact.upsert({
+        where: { email: contactEmail },
+        update: firstName ? { firstName } : {},
+        create: { email: contactEmail, firstName: firstName || undefined, source: kind },
+      }),
+      prisma.emailTemplate.upsert({
+        where: { name: kind },
+        // The latest copy, so the dashboard's "has links" check never goes stale.
+        update: { subject, bodyHtml: html ?? null, bodyText: text ?? null },
+        create: { name: kind, subject, bodyHtml: html ?? null, bodyText: text ?? null },
+      }),
+    ]);
+    const row = await prisma.emailSend.create({
+      data: { contactId: contact.id, templateId: template.id, subject, fromEmail: FROM_ADDRESS, toEmail: to },
+    });
+    trackingId = row.id;
+  } catch (err) {
+    console.warn(`[email] could not record ${kind} send for tracking:`, (err as Error).message);
+  }
+
+  const forget = () => trackingId
+    ? prisma.emailSend.delete({ where: { id: trackingId } }).catch(() => {})
+    : Promise.resolve();
+
+  let result: Awaited<ReturnType<typeof resend.emails.send>>;
+  try {
+    result = await resend.emails.send({
+      from: FROM_ADDRESS,
+      to,
+      subject,
+      ...(text ? { text } : {}),
+      ...(html ? { html: trackingId ? injectEmailTracking(html, trackingId, opts) : html } : {}),
+      ...(attachments ? { attachments } : {}),
+    } as Parameters<typeof resend.emails.send>[0]);
+  } catch (err) {
+    await forget();
+    throw err;
+  }
+
+  // Resend reports a rejected send in the result rather than throwing. A send
+  // that never left must not count as sent on the dashboard.
+  if (result.error) {
+    console.error(`[email] ${kind} to ${to} was rejected by Resend:`, result.error.message);
+    await forget();
+  } else if (trackingId && result.data?.id) {
+    await prisma.emailSend.update({ where: { id: trackingId }, data: { resendEmailId: result.data.id } }).catch(() => {});
+  }
+  return result;
+}
+
 export async function sendAccessRequestNotification(params: {
   userName: string;
   userEmail: string;
@@ -161,8 +246,7 @@ export async function sendWelcomeEmail(to: string): Promise<void> {
     console.warn('[email] RESEND_API_KEY not set — skipping welcome email');
     return;
   }
-  await resend.emails.send({
-    from: FROM_ADDRESS,
+  await sendLogged('diagnosis_ready', {
     to,
     subject: 'Your diagnosis is ready - here\'s what we found',
     text: [
@@ -326,8 +410,7 @@ export async function sendWorkshopConfirmationEmail(params: {
     });
   }
 
-  await resend.emails.send({
-    from: FROM_ADDRESS,
+  await sendLogged('workshop_confirmation', {
     to,
     subject: `You're in. Here's your ${workshopTitle} link`,
     text: [
@@ -387,8 +470,7 @@ export async function sendWorkshopReminderEmail(params: {
   const { to, name, meetLink, workshopTitle, minutesBefore } = params;
   const firstName = (name || '').trim().split(/\s+/)[0] || '';
 
-  await resend.emails.send({
-    from: FROM_ADDRESS,
+  await sendLogged('workshop_reminder', {
     to,
     subject: `Starting in ${minutesBefore} minutes`,
     text: [
@@ -422,8 +504,7 @@ export async function sendClientOnboardingEmail(params: {
   }
   const { to, actionLink } = params;
 
-  await resend.emails.send({
-    from: FROM_ADDRESS,
+  await sendLogged('client_onboarding', {
     to,
     subject: "You're in — set your password and get started",
     html: [
@@ -443,7 +524,9 @@ export async function sendClientOnboardingEmail(params: {
       `</td></tr>`,
       `</table>`,
     ].join(''),
-  });
+    // The set-password link is a login token: it must not pass through the
+    // click redirect, which would write it into the database.
+  }, { trackLinks: false });
 }
 
 /**
@@ -525,8 +608,7 @@ export async function sendStatusEmail(params: {
 
   const template = status === 'APPLIED' ? applied : rejected;
 
-  await resend.emails.send({
-    from: FROM_ADDRESS,
+  await sendLogged('application_status', {
     to,
     subject: template.subject,
     text: template.text,
@@ -589,8 +671,7 @@ export async function sendFollowUpReminderEmail(params: {
   const tool = (href: string, name: string, how: string) =>
     `<li style="margin: 0 0 10px;"><a href="${href}" style="color: ${A}; font-weight: 700; text-decoration: none;">${name}</a> — <span style="color: #6b6559;">${how}</span></li>`;
 
-  await resend.emails.send({
-    from: FROM_ADDRESS,
+  await sendLogged('follow_up_reminder', {
     to,
     subject,
     html: [
@@ -730,8 +811,7 @@ export async function sendTrialReminderEmail(to: string, name: string): Promise<
   }
   const displayName = name || 'there';
   const cancelUrl = `${APP_URL}/pricing`;
-  await resend.emails.send({
-    from: FROM_ADDRESS,
+  await sendLogged('trial_ending', {
     to,
     subject: 'Your free trial ends tomorrow',
     text: [
@@ -773,8 +853,7 @@ export async function sendTrialChallengeReminderEmail(
     timeZone: 'Australia/Sydney', dateStyle: 'full', timeStyle: 'short',
   });
   const appUrl = `${PUBLIC_APP_URL}/check`;
-  await resend.emails.send({
-    from: FROM_ADDRESS,
+  await sendLogged('challenge_day_unlocked', {
     to,
     subject: `Day ${day} is unlocked — don't lose it`,
     text: [
@@ -825,8 +904,7 @@ export async function sendRoadmapEmail(
     )
     .join('');
 
-  await resend.emails.send({
-    from: FROM_ADDRESS,
+  await sendLogged('cv_roadmap', {
     to,
     subject: `${firstName ? firstName + ', ' : ''}your CV roadmap — 7 fixes, in order`,
     html: [
@@ -884,8 +962,7 @@ export async function sendPaceNudgeEmail(params: {
     'Keep going,',
     'Kiron — Aussie Grad Careers',
   );
-  await resend.emails.send({
-    from: FROM_ADDRESS,
+  await sendLogged('pace_nudge', {
     to,
     subject: "You're behind pace this week — still fixable today",
     text: lines.join('\n'),
@@ -932,8 +1009,7 @@ export async function sendWeeklyWrapEmail(params: {
     '',
     'Kiron — Aussie Grad Careers',
   );
-  await resend.emails.send({
-    from: FROM_ADDRESS,
+  await sendLogged('weekly_wrap', {
     to,
     subject: hit
       ? `Week hit: ${applications} applications, ${outreach} outreach ✔`
@@ -1115,45 +1191,7 @@ export async function sendWelcomeResumeEmail(params: {
 
   const subject = name ? `${name}, here is your rewritten resume` : 'Here is your rewritten resume';
 
-  // An EmailSend row before the send, not after: its id is what the open
-  // pixel and click redirect are keyed on, so /admin/email-analytics can
-  // show this email's real recipients/opens/CTR. Best-effort — a tracking
-  // failure must never be the reason someone doesn't get their resume.
-  let trackingId: string | null = null;
-  try {
-    const [contact, template] = await Promise.all([
-      prisma.contact.upsert({
-        where: { email: to },
-        update: { firstName: name || undefined, lastActivityAt: new Date() },
-        create: { email: to, firstName: name || undefined, source: 'welcome_resume' },
-      }),
-      prisma.emailTemplate.upsert({
-        where: { name: 'welcome_resume' },
-        // bodyHtml tracks the live copy above, so the dashboard's "has links"
-        // check (and anyone previewing it there) never goes stale.
-        update: { subject: 'Here is your rewritten resume', bodyHtml: html },
-        create: { name: 'welcome_resume', subject: 'Here is your rewritten resume', bodyHtml: html },
-      }),
-    ]);
-    const emailSend = await prisma.emailSend.create({
-      data: { contactId: contact.id, templateId: template.id, subject, fromEmail: FROM_ADDRESS, toEmail: to },
-    });
-    trackingId = emailSend.id;
-  } catch (err) {
-    console.warn('[email] could not record welcome resume send for tracking:', (err as Error).message);
-  }
-
-  const result = await resend.emails.send({
-    from: FROM_ADDRESS,
-    to,
-    subject,
-    html: trackingId ? injectEmailTracking(html, trackingId) : html,
-    ...(attachments ? { attachments } : {}),
-  });
-
-  if (trackingId && result.data?.id) {
-    await prisma.emailSend.update({ where: { id: trackingId }, data: { resendEmailId: result.data.id } }).catch(() => {});
-  }
+  await sendLogged('welcome_resume', { to, subject, html, attachments, firstName: name || null });
 }
 
 /** The candidate's full name off the resume's own H1, for the filename. */
@@ -1202,8 +1240,7 @@ export async function sendGapReportEmail(params: {
     ? `The short version: ${findings.join(', and ')}.`
     : 'I went through it properly and pulled out what is holding it back.';
 
-  await resend.emails.send({
-    from: FROM_ADDRESS,
+  await sendLogged('gap_report', {
     to,
     subject: firstName ? `${firstName}, the line I would change first` : 'The line I would change first',
     text: [
@@ -1295,8 +1332,7 @@ export async function sendPremiumWelcomeEmail(params: {
   const { to, name, skoolUrl } = params;
   const firstName = (name || '').trim().split(/\s+/)[0] || '';
 
-  await resend.emails.send({
-    from: FROM_ADDRESS,
+  await sendLogged('premium_welcome', {
     to,
     subject: firstName ? `You're in, ${firstName}. Here is what happens now.` : "You're in. Here is what happens now.",
     text: [

@@ -720,6 +720,66 @@ const TRAFFIC_COLUMNS = `
   count(distinct if(event = 'email_submitted', person_id, null)) as entered_email,
   count(distinct if(event = 'payment_completed', person_id, null)) as paid`;
 const POSTHOG_METRICS = ['visitors', 'uploaded', 'resume', 'enteredEmail', 'paid'] as const;
+
+/**
+ * Where a visitor came from, in plain words. Keyed on the first pageview's
+ * utm_source, else its referring domain, so one person is one source even if
+ * they came back later another way. Returns null for our own test hosts.
+ */
+function trafficSourceOf(raw: string | null): string | null {
+  const s = (raw ?? '').toLowerCase();
+  if (!s || s === '$direct' || s.includes('aussiegradcareers')) return 'Direct';
+  if (s.includes('test') || s.includes('deploycheck')) return null;
+  if (s.includes('linkedin') || s === 'lnkd.in') return 'LinkedIn';
+  if (s.includes('google') || s.includes('bing') || s.includes('duckduckgo') || s.includes('yahoo')) return 'Search';
+  if (s.includes('instagram') || s === 'ig' || s.includes('facebook') || s === 'fb') return 'Instagram / Facebook';
+  if (s.includes('tiktok')) return 'TikTok';
+  if (s.includes('skool')) return 'Skool';
+  if (s.includes('chatgpt') || s.includes('openai') || s.includes('perplexity') || s.includes('claude')) return 'AI chat';
+  return 'Other';
+}
+
+/** The front-door funnel per visitor, split by first source and device. Only
+ * the steps PostHog sees: signups and trials are counted from the database and
+ * cannot be joined to a pageview reliably. */
+async function trafficSegments(
+  hogql: (q: string) => Promise<any[][]>,
+  from: string,
+  to: string,
+): Promise<{ source: SegmentRow[]; device: SegmentRow[] }> {
+  const rows = await hogql(`select device, src, count() as visitors, sum(u), sum(r), sum(e) from (
+    select person_id,
+      max(if((event = '$pageview' and properties.$browser is not null) or (event = 'welcome_step_viewed' and properties.step_index = 0), 1, 0)) as v,
+      max(if((event = 'welcome_step_viewed' and properties.step_index = 1) or event = 'resume_uploaded', 1, 0)) as u,
+      max(if((event = 'welcome_step_viewed' and properties.step_index = 6) or event = 'resume_built', 1, 0)) as r,
+      max(if(event = 'email_submitted', 1, 0)) as e,
+      argMinIf(properties.$device_type, timestamp, event = '$pageview') as device,
+      argMinIf(coalesce(nullIf(properties.utm_source, ''), properties.$referring_domain), timestamp, event = '$pageview') as src
+    from events
+    where timestamp >= toDateTime('${from} 00:00:00') and timestamp < toDateTime('${to} 00:00:00') + interval 1 day
+      and event in ('$pageview', 'welcome_step_viewed', 'resume_uploaded', 'resume_built', 'email_submitted')
+      and properties.$host = '${TRAFFIC_HOST}'
+      and ${TRAFFIC_NOT_TEST}
+    group by person_id
+  ) where v = 1 group by device, src`);
+
+  const source = new Map<string, SegmentRow>();
+  const device = new Map<string, SegmentRow>();
+  const add = (m: Map<string, SegmentRow>, key: string, r: any[]) => {
+    const row = m.get(key) ?? { key, visitors: 0, uploaded: 0, resume: 0, enteredEmail: 0 };
+    row.visitors += Number(r[2]); row.uploaded += Number(r[3]); row.resume += Number(r[4]); row.enteredEmail += Number(r[5]);
+    m.set(key, row);
+  };
+  for (const r of rows) {
+    const src = trafficSourceOf(r[1] == null ? null : String(r[1]));
+    if (!src) continue;
+    add(source, src, r);
+    add(device, r[0] ? String(r[0]) : 'Unknown', r);
+  }
+  const sorted = (m: Map<string, SegmentRow>) => [...m.values()].sort((a, b) => b.visitors - a.visitors);
+  return { source: sorted(source), device: sorted(device) };
+}
+interface SegmentRow { key: string; visitors: number; uploaded: number; resume: number; enteredEmail: number }
 type TrafficInterval = 'day' | 'week' | 'month';
 
 /** The bucket a moment falls in, matching HogQL's toStartOfDay/Week(Sunday)/Month in UTC. */
@@ -792,9 +852,14 @@ router.get('/traffic', authenticate, requireAdmin, async (req, res) => {
     Object.fromEntries(POSTHOG_METRICS.map((m, i) => [m, Number(row?.[offset + i] ?? 0)]));
 
   try {
-    const [byBucket, totals, users, challenges, stripeTrials] = await Promise.all([
+    const [byBucket, totals, segments, users, challenges, stripeTrials] = await Promise.all([
       hogql(`select toString(toDate(${bucketFn}(timestamp))) as bucket, ${TRAFFIC_COLUMNS} from events where ${where} group by bucket order by bucket`),
       hogql(`select ${TRAFFIC_COLUMNS} from events where ${where}`),
+      // A failed breakdown should cost the page its tables, not the whole funnel.
+      trafficSegments(hogql, from, to).catch((err) => {
+        console.warn('[admin/traffic] segments failed:', err.message);
+        return null;
+      }),
       allAuthUsers(),
       prisma.trialChallenge.findMany({ where: { currentDay: { gte: 1 } }, select: { userId: true, createdAt: true } }),
       // A card-on-file trial stores only its end; the start is TRIAL_PERIOD_DAYS before it.
@@ -832,6 +897,7 @@ router.get('/traffic', authenticate, requireAdmin, async (req, res) => {
         trials: trialsBy.get(bucket) ?? 0,
       })),
       totals: { ...toMetrics(totals[0], 0), signedUp: signups.length, trials: trials.length },
+      segments,
     });
   } catch (err) {
     console.error('[admin/traffic] error:', err);

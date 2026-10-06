@@ -26,30 +26,41 @@ export async function sendBroadcast(broadcastId: string): Promise<{ total: numbe
 
   for (const ct of contactTags) {
     try {
-      const { resendEmailId, error } = await sendEmail({
-        to: ct.contact.email,
-        subject: broadcast.subject,
-        bodyText: broadcast.bodyText ?? undefined,
-        bodyHtml: broadcast.bodyHtml ?? undefined,
-      });
-
-      await prisma.emailSend.create({
+      // The row comes first: its id is what the open pixel and click redirect
+      // are keyed on. Written after the send, as it used to be, no broadcast
+      // could ever record an open or a click.
+      const row = await prisma.emailSend.create({
         data: {
           contactId: ct.contactId,
           broadcastId: broadcast.id,
-          resendEmailId,
           subject: broadcast.subject,
           fromEmail: process.env.EMAIL_FROM ?? 'Aussie Grad Careers <kiron@aussiegradcareers.com.au>',
           toEmail: ct.contact.email,
         },
       });
 
+      const { resendEmailId, error } = await sendEmail({
+        to: ct.contact.email,
+        subject: broadcast.subject,
+        bodyText: broadcast.bodyText ?? undefined,
+        bodyHtml: broadcast.bodyHtml ?? undefined,
+        trackingId: row.id,
+      });
+
+      // A send that never left must not count as sent on the dashboard.
+      if (error) {
+        await prisma.emailSend.delete({ where: { id: row.id } }).catch(() => {});
+        errors++;
+        continue;
+      }
+      if (resendEmailId) {
+        await prisma.emailSend.update({ where: { id: row.id }, data: { resendEmailId } });
+      }
+
       await prisma.contact.update({
         where: { id: ct.contactId },
         data: { lastActivityAt: new Date() },
       });
-
-      if (error) { errors++; continue; }
       sent++;
     } catch {
       errors++;

@@ -1,150 +1,152 @@
 /**
- * EmailAnalytics — every email that has actually gone out, one row each.
+ * EmailAnalytics: what went out, when, and how it did.
  *
- * Deliberately flat: one list, one Mail button per row, a popup with exactly
- * what the button promises (subject, recipients, opens, CTR). CTR reads N/A
- * rather than 0% when the email had no links to click — those are different
- * facts and the old version conflated them.
+ * One headline row (last send, volume, open and click rate over 30 days) and
+ * one row per kind of email. Click rate is the number to trust: Apple Mail
+ * opens every message on delivery to hide the reader, so opens run high.
+ *
+ * Plain-text emails can't be measured (no pixel, and their links are left as
+ * written), so their rates read "not tracked" rather than a 0% that would look
+ * like nobody opened them.
  */
-import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Mail, Users, Eye, MousePointer, X } from 'lucide-react';
 import api from '../lib/api';
+import { warm } from '../lib/theme/warmTokens';
+import { AdminShell, AdminToolLink } from '../components/admin/AdminShell';
 
-const warm = {
-  surface: '#f8f8f8',
-  border: '#eee',
-  muted: '#888',
-  text: '#1a1814',
-  accent: '#2d5a6e',
-};
+const C = warm.colors;
 
-interface EmailEntry {
+interface EmailRow {
   id: string;
-  kind: 'broadcast' | 'template';
   label: string;
-  subject: string;
-  sentAt: string;
-  recipients: number;
-  opens: number;
-  clicks: number;
-  ctr: number | null; // null -> N/A, no links in the body
+  kind: 'automated' | 'campaign';
+  tracked: boolean;
   hasLinks: boolean;
+  lastSentAt: string;
+  lastSubject: string;
+  sent: number;
+  sent30: number;
+  openRate: number | null;
+  clickRate: number | null;
+}
+
+interface EmailResponse {
+  summary: {
+    lastSentAt: string | null;
+    lastSubject: string | null;
+    sent7: number;
+    sent30: number;
+    openRate30: number | null;
+    clickRate30: number | null;
+    trackedSent30: number;
+    unsubscribed: number;
+    contacts: number;
+  };
+  emails: EmailRow[];
+}
+
+/** "3 hours ago", "2 days ago": a last-sent time is read for how stale it is. */
+function ago(iso: string): string {
+  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60_000);
+  if (mins < 60) return `${Math.max(mins, 1)} min ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs} hour${hrs === 1 ? '' : 's'} ago`;
+  const days = Math.round(hrs / 24);
+  return `${days} day${days === 1 ? '' : 's'} ago`;
+}
+
+function rateText(r: EmailRow, which: 'open' | 'click'): string {
+  if (!r.tracked) return 'not tracked';
+  if (which === 'click' && !r.hasLinks) return 'no links';
+  const v = which === 'open' ? r.openRate : r.clickRate;
+  return v === null ? '–' : `${v}%`;
 }
 
 export default function EmailAnalytics() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['email-analytics'],
-    queryFn: () => api.get('/admin/email-analytics').then((r) => r.data),
+    queryFn: async () => (await api.get('/admin/email-analytics')).data as EmailResponse,
     refetchInterval: 60_000,
   });
-  const [open, setOpen] = useState<EmailEntry | null>(null);
-
-  const emails: EmailEntry[] = data?.emails ?? [];
-
-  if (isLoading) return <p style={{ padding: 24 }}>Loading analytics...</p>;
+  const s = data?.summary;
 
   return (
-    <div style={{ padding: 24, maxWidth: 760, margin: '0 auto', boxSizing: 'border-box' }}>
-      <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>Emails</h1>
-      <p style={{ fontSize: 13.5, color: warm.muted, margin: '0 0 24px' }}>
-        {data?.totals?.totalSends ?? 0} sends total, across {data?.totals?.totalContacts ?? 0} contacts
-        ({data?.totals?.optedIn ?? 0} opted in).
-      </p>
+    <AdminShell
+      title="Email"
+      subtitle="Every email we send to leads and clients. Rates are the last 30 days. Trust clicks over opens: Apple Mail opens everything on arrival, so opens run high."
+      actions={<AdminToolLink to="/admin/broadcasts">Send a broadcast</AdminToolLink>}
+    >
+      {error && <p style={{ ...warm.text.body, color: C.danger }}>Could not load email stats.</p>}
+      {isLoading && <p style={{ ...warm.text.body, color: C.textMuted }}>Loading…</p>}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {emails.map((e) => (
-          <div
-            key={e.id}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
-              background: warm.surface, border: `1px solid ${warm.border}`,
-              borderRadius: 12, padding: '14px 16px',
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => setOpen(e)}
-              aria-label={`Mail details for ${e.subject}`}
-              style={{
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                width: 40, height: 40, minWidth: 40, borderRadius: 10, flexShrink: 0,
-                background: warm.accent, color: '#fff', border: 'none', cursor: 'pointer',
-              }}
-            >
-              <Mail size={18} />
-            </button>
-            <div style={{ flex: 1, minWidth: 180 }}>
-              <p style={{ margin: 0, fontWeight: 600, fontSize: 14.5, color: warm.text }}>{e.subject}</p>
-              <p style={{ margin: '2px 0 0', fontSize: 12.5, color: warm.muted }}>
-                {e.sentAt ? new Date(e.sentAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
-                {' · '}{e.kind === 'broadcast' ? 'Campaign' : 'Automated'}
-              </p>
-            </div>
-            <div style={{ display: 'flex', gap: 18, fontSize: 13, color: warm.muted }}>
-              <span><strong style={{ color: warm.text }}>{e.recipients}</strong> sent</span>
-              <span><strong style={{ color: warm.text }}>{e.opens}</strong> opened</span>
-              <span><strong style={{ color: warm.text }}>{e.ctr === null ? 'N/A' : `${e.ctr}%`}</strong> CTR</span>
-            </div>
-          </div>
-        ))}
-        {emails.length === 0 && (
-          <p style={{ padding: '24px 0', color: warm.muted, textAlign: 'center' }}>No emails sent yet.</p>
-        )}
-      </div>
+      {s && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8, marginBottom: 24 }}>
+          <Stat
+            label="Last email sent"
+            value={s.lastSentAt ? ago(s.lastSentAt) : 'never'}
+            note={s.lastSubject ?? ''}
+          />
+          <Stat label="Sent" value={String(s.sent30)} note={`last 30 days · ${s.sent7} this week`} />
+          <Stat label="Click rate" value={s.clickRate30 === null ? '–' : `${s.clickRate30}%`} note="the one to watch" strong />
+          <Stat label="Open rate" value={s.openRate30 === null ? '–' : `${s.openRate30}%`} note={`of ${s.trackedSent30} trackable sends`} />
+          <Stat label="Unsubscribed" value={String(s.unsubscribed)} note={`of ${s.contacts} contacts`} />
+        </div>
+      )}
 
-      {open && <MailPopup email={open} onClose={() => setOpen(null)} />}
-    </div>
+      {data && (
+        <div style={{ border: `1px solid ${C.borderWhisper}`, borderRadius: 12, overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 680 }}>
+            <thead>
+              <tr style={{ background: C.bgAlt, textAlign: 'left' }}>
+                {['Email', 'Last sent', 'Sent (30d)', 'Opened', 'Clicked'].map((h) => (
+                  <th key={h} style={{ ...warm.text.micro, color: C.textMuted, padding: '10px 14px', fontWeight: 600 }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {data.emails.map((r) => (
+                <tr key={r.id} style={{ borderTop: `1px solid ${C.borderWhisper}` }}>
+                  <td style={cell}>
+                    <div style={{ fontWeight: 600 }}>{r.label}</div>
+                    <div style={{ color: C.textMuted, marginTop: 2 }}>
+                      {r.kind === 'campaign' ? 'Broadcast' : 'Automated'} · {r.lastSubject}
+                    </div>
+                  </td>
+                  <td style={{ ...cell, whiteSpace: 'nowrap', color: C.textSecondary }}>{ago(r.lastSentAt)}</td>
+                  <td style={{ ...cell, whiteSpace: 'nowrap' }}>
+                    {r.sent30} <span style={{ color: C.textMuted }}>({r.sent} all time)</span>
+                  </td>
+                  <td style={{ ...cell, whiteSpace: 'nowrap', color: r.tracked ? C.textPrimary : C.textMuted }}>{rateText(r, 'open')}</td>
+                  <td style={{ ...cell, whiteSpace: 'nowrap', fontWeight: r.tracked && r.hasLinks ? 600 : 400, color: r.tracked && r.hasLinks ? C.textPrimary : C.textMuted }}>
+                    {rateText(r, 'click')}
+                  </td>
+                </tr>
+              ))}
+              {data.emails.length === 0 && (
+                <tr><td colSpan={5} style={{ ...cell, color: C.textMuted, textAlign: 'center', padding: 32 }}>No emails recorded yet.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {data && data.emails.some((r) => !r.tracked) && (
+        <p style={{ ...warm.text.small, color: C.textMuted, marginTop: 12 }}>
+          "Not tracked" means a plain-text email. We count those sends, but there's no way to see opens or clicks without switching them to HTML.
+        </p>
+      )}
+    </AdminShell>
   );
 }
 
-function MailPopup({ email, onClose }: { email: EmailEntry; onClose: () => void }) {
-  const stat = (icon: React.ReactNode, label: string, value: string) => (
-    <div style={{ flex: '1 1 110px', background: warm.surface, borderRadius: 10, padding: '12px 14px', border: `1px solid ${warm.border}` }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, color: warm.muted }}>
-        {icon}<span style={{ fontSize: 12 }}>{label}</span>
-      </div>
-      <div style={{ fontSize: 22, fontWeight: 700, color: warm.text }}>{value}</div>
-    </div>
-  );
+const cell = { ...warm.text.small, padding: '10px 14px', verticalAlign: 'top' as const };
 
+function Stat({ label, value, note, strong }: { label: string; value: string; note?: string; strong?: boolean }) {
   return (
-    <div
-      role="dialog" aria-modal="true"
-      onClick={onClose}
-      style={{
-        position: 'fixed', inset: 0, background: 'rgba(26,24,20,0.45)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 16, zIndex: 1000,
-      }}
-    >
-      <div
-        onClick={(ev) => ev.stopPropagation()}
-        style={{
-          background: '#fff', borderRadius: 16, padding: 24, width: '100%', maxWidth: 420,
-          boxShadow: '0 12px 40px rgba(26,24,20,0.22)', boxSizing: 'border-box',
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 14 }}>
-          <p style={{ margin: 0, fontSize: 17, fontWeight: 700, color: warm.text, lineHeight: 1.35 }}>{email.subject}</p>
-          <button type="button" onClick={onClose} aria-label="Close"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: warm.muted, padding: 4, flexShrink: 0 }}>
-            <X size={20} />
-          </button>
-        </div>
-
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          {stat(<Users size={13} />, 'Sent to', String(email.recipients))}
-          {stat(<Eye size={13} />, 'Opened', String(email.opens))}
-          {stat(<MousePointer size={13} />, 'Click-through', email.ctr === null ? 'N/A' : `${email.ctr}%`)}
-        </div>
-
-        {!email.hasLinks && (
-          <p style={{ margin: '14px 0 0', fontSize: 12.5, color: warm.muted }}>
-            N/A — this email had no links to click.
-          </p>
-        )}
-      </div>
+    <div style={{ padding: '14px 16px', border: `1px solid ${strong ? C.accentPetrol : C.borderWhisper}`, borderRadius: 12, minWidth: 0 }}>
+      <p style={{ ...warm.text.micro, margin: 0, color: C.textMuted }}>{label}</p>
+      <p style={{ ...warm.text.h2, margin: '4px 0 2px', color: strong ? C.accentPetrol : C.textPrimary }}>{value}</p>
+      {note && <p style={{ ...warm.text.small, margin: 0, color: C.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{note}</p>}
     </div>
   );
 }

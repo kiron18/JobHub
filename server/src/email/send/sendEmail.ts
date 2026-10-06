@@ -18,16 +18,39 @@ export function emailHasLinks(html: string | null | undefined): boolean {
   return !!html && /href="https?:\/\//.test(html);
 }
 
-/** Appends the open pixel and rewrites every http(s) link through the click
- * redirect, both keyed on the EmailSend row's id. Shared by sendEmail() and
- * any caller (e.g. the welcome resume email) that builds its own HTML and
- * sends through Resend directly instead of through sendEmail(). */
-export function injectEmailTracking(html: string, trackingId: string): string {
+/** The only hosts the click redirect will forward to (an open redirect is a
+ * phishing tool). Links anywhere else are left untouched by the tracker, since
+ * rewriting them would send the reader to a 400 instead of the Meet room. */
+export const TRACKABLE_LINK_HOSTS = new Set([
+  'aussiegradcareers.com.au',
+  'www.aussiegradcareers.com.au',
+  'aussiegradcareers.com',
+  'www.aussiegradcareers.com',
+  'job-hub.vercel.app',
+]);
+
+export function isTrackableLink(raw: string): boolean {
+  try {
+    const u = new URL(raw);
+    return u.protocol === 'https:' && TRACKABLE_LINK_HOSTS.has(u.hostname);
+  } catch {
+    return false;
+  }
+}
+
+/** Appends the open pixel and rewrites every link on our own domains through
+ * the click redirect, both keyed on the EmailSend row's id. Shared by
+ * sendEmail() and services/email.ts, which builds its own HTML and sends
+ * through Resend directly. `trackLinks: false` keeps the pixel but leaves links
+ * alone, for emails whose links carry a login token that must not be logged. */
+export function injectEmailTracking(html: string, trackingId: string, opts: { trackLinks?: boolean } = {}): string {
   const baseUrl = process.env.API_URL ?? 'http://localhost:3002/api';
   const pixelUrl = `${baseUrl}/email/track/open/${trackingId}`;
   let out = `${html}\n<img src="${pixelUrl}" width="1" height="1" alt="" style="display:none;" />`;
-  out = out.replace(/href="(https?:\/\/[^"]+)"/g, (_match: string, url: string) => {
-    const encoded = encodeURIComponent(url);
+  if (opts.trackLinks === false) return out;
+  out = out.replace(/href="(https?:\/\/[^"]+)"/g, (match: string, url: string) => {
+    if (!isTrackableLink(url.replace(/&amp;/g, '&'))) return match;
+    const encoded = encodeURIComponent(url.replace(/&amp;/g, '&'));
     return `href="${baseUrl}/email/track/click/${trackingId}?url=${encoded}"`;
   });
   return out;

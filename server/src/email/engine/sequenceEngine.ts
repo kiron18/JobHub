@@ -65,31 +65,36 @@ export async function processSequenceEmails(): Promise<void> {
         continue;
       }
 
-      const { resendEmailId, error } = await sendEmail({
-        to: enrollment.contact.email,
-        subject: template.subject,
-        bodyText: template.bodyText ?? undefined,
-        bodyHtml: template.bodyHtml ?? undefined,
-      });
-
-      if (error) {
-        console.error(`[sequenceEngine] send error for contact ${enrollment.contactId}:`, error);
-        continue; // Don't advance — retry next cron run
-      }
-
-      // Create EmailSend record
-      await prisma.emailSend.create({
+      // The row comes first: its id is what the open pixel and click redirect
+      // are keyed on, so a row written after the send could never record either.
+      const row = await prisma.emailSend.create({
         data: {
           contactId: enrollment.contactId,
           sequenceId: enrollment.sequenceId,
           sequenceStepId: step.id,
           templateId: template.id,
-          resendEmailId,
           subject: template.subject,
           fromEmail: process.env.EMAIL_FROM ?? 'Aussie Grad Careers <kiron@aussiegradcareers.com.au>',
           toEmail: enrollment.contact.email,
         },
       });
+
+      const { resendEmailId, error } = await sendEmail({
+        to: enrollment.contact.email,
+        subject: template.subject,
+        bodyText: template.bodyText ?? undefined,
+        bodyHtml: template.bodyHtml ?? undefined,
+        trackingId: row.id,
+      });
+
+      if (error) {
+        await prisma.emailSend.delete({ where: { id: row.id } }).catch(() => {});
+        console.error(`[sequenceEngine] send error for contact ${enrollment.contactId}:`, error);
+        continue; // Don't advance — retry next cron run
+      }
+      if (resendEmailId) {
+        await prisma.emailSend.update({ where: { id: row.id }, data: { resendEmailId } });
+      }
 
       // Update Contact lastActivityAt
       await prisma.contact.update({

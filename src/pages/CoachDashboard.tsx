@@ -10,6 +10,7 @@ import { warm } from '../lib/theme/warmTokens';
 import { QualityControlPanel } from '../components/coach/QualityControlPanel';
 import { MemberActivity } from '../components/coach/MemberActivity';
 import { ManualLeaderboardPanel } from '../components/coach/ManualLeaderboardPanel';
+import { AdminNav } from '../components/admin/AdminShell';
 
 interface WeekCell { weekStart: string; applications: number; outreach: number; paused: boolean; hit: boolean; }
 
@@ -86,7 +87,8 @@ export const CoachDashboard: React.FC = () => {
     const attention = members.filter(m => m.flags.needsConversation).length;
 
     return (
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '8px 4px 60px' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(12px, 4vw, 24px) 16px 60px' }}>
+            <AdminNav />
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
                 <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>

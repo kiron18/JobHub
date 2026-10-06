@@ -1,24 +1,8 @@
 import { Router } from 'express';
 import { prisma } from '../../index';
+import { isTrackableLink as isSafeRedirectUrl } from '../send/sendEmail';
 
 const router = Router();
-
-const ALLOWED_REDIRECT_HOSTS = new Set([
-  'aussiegradcareers.com.au',
-  'www.aussiegradcareers.com.au',
-  'aussiegradcareers.com',
-  'www.aussiegradcareers.com',
-  'job-hub.vercel.app',
-]);
-
-function isSafeRedirectUrl(raw: string): boolean {
-  try {
-    const u = new URL(raw);
-    return u.protocol === 'https:' && ALLOWED_REDIRECT_HOSTS.has(u.hostname);
-  } catch {
-    return false;
-  }
-}
 
 router.get('/email/track/click/:emailSendId', async (req, res) => {
   const { emailSendId } = req.params;
