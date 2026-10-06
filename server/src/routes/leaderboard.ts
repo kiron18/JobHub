@@ -56,10 +56,11 @@ const DAY_MS = 86400000;
 const STREAK_WEEKS = 26;
 
 /**
- * The board is capped at ten ranked names, and a name only takes one of those
- * ten spots by actually clearing a volume floor for the board it's on. The
+ * The board is capped at twenty ranked names (Kiron's call, 2026-10-06: a
+ * full room of 20 is what keeps people competing), and a name only takes one
+ * of those spots by actually clearing a volume floor for the board it's on. The
  * point is competitiveness without deception: someone doing little should
- * never see themselves (or a real client) sitting in the top ten, because
+ * never see themselves (or a real client) sitting on the board, because
  * that tells them they're already doing fine when they aren't. Below-floor
  * members still get their true rank in "Your rank" — they just don't
  * decorate the shared board.
@@ -68,7 +69,7 @@ const STREAK_WEEKS = 26;
  * eight weeks of that same minimum, i.e. sustained rather than one hot week.
  * Tune freely; it's just this constant.
  */
-const TOP_TEN_SIZE = 10;
+const BOARD_SIZE = 20;
 const ALL_TIME_MINIMUM = {
     applications: WEEKLY_MINIMUM.applications * 8,
     outreach: WEEKLY_MINIMUM.outreach * 8,
@@ -311,10 +312,10 @@ router.get('/', async (req: any, res: any) => {
             e.rank = ++rank;
         }
 
-        // The visible board: top ten ranked names that actually clear the
+        // The visible board: the top BOARD_SIZE ranked names that actually clear the
         // volume floor, plus the pace rows for reference (they don't count
         // against the cap — see meetsVolumeFloor above). Someone below the
-        // floor, or ranked past ten, keeps their real rank (used by "Your
+        // floor, or ranked past the cap, keeps their real rank (used by "Your
         // rank" below) but doesn't get a row here — unless it's the viewer's
         // own row, which is always pinned in so they can see where they
         // stand, not just that they didn't make it.
@@ -322,7 +323,7 @@ router.get('/', async (req: any, res: any) => {
         let shown = 0;
         for (const e of withPace) {
             if (e.isExample) { board.push(e); continue; }
-            if (shown >= TOP_TEN_SIZE || !meetsVolumeFloor(e, period)) continue;
+            if (shown >= BOARD_SIZE || !meetsVolumeFloor(e, period)) continue;
             board.push(e);
             shown++;
         }
