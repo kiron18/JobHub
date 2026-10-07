@@ -12,7 +12,8 @@ import {
     Trophy,
     BookOpen,
     MessagesSquare,
-    Moon } from 'lucide-react';
+    Moon,
+    Sparkles } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../lib/api';
@@ -72,6 +73,12 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
         },
         staleTime: 5 * 60 * 1000,
     });
+
+    // Same test FitCheckPage uses. A profile that has not loaded counts as
+    // paid, so somebody who already bought is never shown the offer.
+    const isFreeAccount = profile
+        ? (profile.plan ?? 'free') === 'free' && !profile.isAdmin && profile.dashboardAccess !== true
+        : false;
 
     const [manageSubOpen, setManageSubOpen] = useState(false);
     const [checkoutOpen, setCheckoutOpen] = useState(false);
@@ -335,6 +342,28 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
             </nav>
 
             <div className="mt-auto pt-4 space-y-2">
+                {/* Free accounts only, and the one gold thing in the rail so
+                    it reads as an offer rather than another destination. Kept
+                    out of navItems on purpose: it is not a place you work in.
+                    Shown collapsed too, as the icon alone. */}
+                {isFreeAccount && (
+                    <Link
+                        to="/pricing"
+                        onClick={() => isTouch && setDrawerOpen(false)}
+                        className={`w-full flex items-center justify-center gap-2 rounded-lg font-bold transition-all hover:brightness-95 ${isTouch ? "py-3.5" : "py-2.5"}`}
+                        style={{
+                            color: warm.colors.accentGold,
+                            background: warm.colors.accentGoldSoft,
+                            border: `1px solid ${warm.colors.accentGold}33`,
+                            fontSize: 14,
+                        }}
+                        title="Upgrade to full access"
+                        aria-label="Upgrade to full access"
+                    >
+                        <Sparkles size={16} className="flex-shrink-0" />
+                        {showLabels && <span>Upgrade</span>}
+                    </Link>
+                )}
                 <AnimatePresence>
                     {showLabels && (
                         <motion.div
