@@ -49,6 +49,9 @@ const PLAN_KEY = 'premium';
  */
 const CTA_LABEL = 'I want to commit';
 
+/** The eight client photos with their own message on them. Same set ProofTicker uses. */
+const FACES = Array.from({ length: 8 }, (_, i) => `/Assets/testimonials/card_${i + 1}.jpg`);
+
 export function PricingPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -126,9 +129,10 @@ export function PricingPage() {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'center',
           textAlign: 'center',
-          padding: '32px 24px 96px',
+          /* Tall enough at the top that the promise and the button own the
+             first screen, with the faces starting just below the fold. */
+          padding: 'clamp(56px, 14vh, 140px) 24px 96px',
         }}
       >
         <h1
@@ -175,6 +179,45 @@ export function PricingPage() {
           You will be charged {PRICE} on a monthly basis for the first three months, after which payment stops but
           you still have access to the platform for a year.
         </p>
+
+        {/* The faces, and nothing said about them. Each card already carries
+            the message that client sent on the day, so a caption would only be
+            us talking over them. Below the button on purpose: the promise and
+            the button stay on the first screen. */}
+        <div className="pricing-faces">
+          {FACES.map((src, i) => (
+            <img
+              key={src}
+              src={src}
+              alt={`A client's message on the day it happened, ${i + 1} of ${FACES.length}`}
+              loading="lazy"
+              style={{
+                width: '100%',
+                height: 'auto',
+                display: 'block',
+                borderRadius: 12,
+                border: `1px solid ${colors.borderDefined}`,
+                boxShadow: '0 1px 2px rgba(26,24,20,0.05), 0 14px 30px -20px rgba(26,24,20,0.45)',
+              }}
+            />
+          ))}
+        </div>
+
+        <style>{`
+          /* Two across on a phone keeps the message on each card readable;
+             four across is as dense as it gets before it stops being. */
+          .pricing-faces {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+            width: 100%;
+            max-width: 420px;
+            margin-top: 56px;
+          }
+          @media (min-width: 760px) {
+            .pricing-faces { grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 860px; gap: 18px; }
+          }
+        `}</style>
       </main>
     </div>
   );
