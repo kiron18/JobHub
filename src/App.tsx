@@ -36,6 +36,9 @@ const AdminTraffic = React.lazy(() =>
 const AdminPeople = React.lazy(() =>
   import('./pages/AdminPeople').then(m => ({ default: m.default }))
 );
+const AdminDaily = React.lazy(() =>
+  import('./pages/AdminDaily').then(m => ({ default: m.default }))
+);
 const AdminSales = React.lazy(() =>
   import('./pages/AdminSales').then(m => ({ default: m.default }))
 );
@@ -562,6 +565,8 @@ function ReportOrDashboard() {
                 <Route path="/admin/people" element={<AdminPeople />} />
                 <Route path="/admin/email" element={<EmailAnalytics />} />
                 <Route path="/admin/coach" element={<CoachDashboard />} />
+                {/* Kiron's own checklist for the day. */}
+                <Route path="/admin/daily" element={<AdminDaily />} />
                 {/* Tools reached from inside those pages. */}
                 {/* The sales board, replacing the local Python CRM. */}
                 <Route path="/admin/sales" element={<AdminSales />} />

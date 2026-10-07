@@ -1,10 +1,11 @@
 /**
- * The admin area is four pages and this is the bar that joins them.
+ * The admin area is five pages and this is the bar that joins them.
  *
  *   Growth  where visitors drop off on the way to paying (/admin/growth)
  *   People  every lead and client in one filterable list (/admin/people)
  *   Email   what went out, when, and how it did           (/admin/email)
  *   Coach   paying members' week                          (/admin/coach)
+ *   Daily   Kiron's own checklist for the day             (/admin/daily)
  *
  * Everything else that used to live under /admin either redirects into one of
  * these (see App.tsx) or is a tool reached from inside one of them.
@@ -20,6 +21,7 @@ const TABS = [
   { to: '/admin/people', label: 'People' },
   { to: '/admin/email', label: 'Email' },
   { to: '/admin/coach', label: 'Coach' },
+  { to: '/admin/daily', label: 'Daily' },
 ];
 
 export function AdminNav() {

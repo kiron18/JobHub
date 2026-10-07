@@ -1562,3 +1562,17 @@ model CoachMessage {
   @@index([userId, createdAt])
   @@index([flagged, createdAt])
 }
+
+/// Kiron's own daily checklist at /admin/daily, one row per Sydney calendar
+/// day. `done` is a loose map of task id to true or a count, on purpose: the
+/// task list lives in src/config/dailyTasks.ts and changes week to week, and a
+/// new task must never mean a new migration.
+model AdminDailyLog {
+  /// YYYY-MM-DD in Australia/Sydney.
+  date      String   @id
+  done      Json     @default("{}")
+  /// userIds of new signups personally welcomed on this day.
+  welcomed  String[] @default([])
+  note      String   @default("")
+  updatedAt DateTime @updatedAt
+}
