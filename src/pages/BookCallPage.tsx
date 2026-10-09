@@ -3,7 +3,7 @@
    Route: /book-a-call  (public, non-destructive)
 
    Single goal: get an international graduate to click through and book a
-   30-minute strategy call. Everything on the page exists to lower the
+   strategy call. Everything on the page exists to lower the
    perceived risk of that one click.
 
    Booking link: the CTA opens BOOKING_URL in a new tab. Set BOOKING_URL below
@@ -12,14 +12,14 @@
 import { useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, useInView, AnimatePresence } from 'framer-motion';
-import { Check, ArrowRight, Clock, Compass, MessageSquare, X, Upload } from 'lucide-react';
+import { Check, ArrowRight, Compass, MessageSquare, X, Upload } from 'lucide-react';
 import { colors, type as typeTokens } from '../components/landing/tokens';
 import { trackBookCallCtaClicked } from '../lib/analytics';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
 
 // ── Booking destination ───────────────────────────────────────────────────────
-// Live Calendly for Aussie Grad Careers (30 min strategy call, weekdays 3-5pm).
+// Live Calendly for Aussie Grad Careers (strategy call; length and hours are set in Calendly, not here).
 // Exported: ManageSubscriptionModal's pre-cancel screen points "Reach out" here too.
 export const BOOKING_URL = 'https://calendly.com/kiron-aussiegradcareers';
 
@@ -353,16 +353,15 @@ export function BookCallPage() {
               color: colors.textSecondary, margin: '22px auto 0', maxWidth: 560,
             }}>
               Most international graduates spend months applying to the wrong roles in the wrong way —
-              and are never told the real reason nothing is moving. Thirty minutes with someone
+              and are never told the real reason nothing is moving. One call with someone
               who has been through it, and helped hundreds do the same, changes the equation.
             </p>
             <div style={{ display: 'flex', justifyContent: 'center', marginTop: 36 }}>
               <BookButton position="hero" label="Claim my strategy call" onClick={openIntake} />
             </div>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 18 }}>
-              <Clock size={14} color={colors.textMuted} strokeWidth={1.8} />
               <span style={{ fontFamily: typeTokens.body, fontSize: '0.8125rem', color: colors.textMuted }}>
-                Free · 30 minutes · Built for international graduates in Australia
+                Free · Built for international graduates in Australia
               </span>
             </div>
           </Reveal>
@@ -375,7 +374,7 @@ export function BookCallPage() {
           <Reveal>
             <Eyebrow>What happens on the call</Eyebrow>
             <h2 style={display({ fontSize: 'clamp(1.7rem, 3.2vw, 2.3rem)', lineHeight: 1.1, margin: '14px 0 0', maxWidth: 560 })}>
-              In 30 minutes, we do the work most job seekers spend six months guessing at.
+              In one call, we do the work most job seekers spend six months guessing at.
             </h2>
           </Reveal>
 
@@ -523,14 +522,14 @@ export function BookCallPage() {
             </h2>
             <p style={{ fontFamily: typeTokens.body, fontSize: '1.125rem', lineHeight: 1.65, color: colors.textSecondary, margin: '18px auto 0', maxWidth: 480 }}>
               Every week you spend applying without a plan is a week you will not get back.
-              Thirty minutes from now, you could know exactly what is in the way —
+              One call from now, you could know exactly what is in the way,
               and exactly how to move it.
             </p>
             <div style={{ display: 'flex', justifyContent: 'center', marginTop: 36 }}>
               <BookButton position="final" label="Claim my strategy call" onClick={openIntake} />
             </div>
             <p style={{ fontFamily: typeTokens.body, fontSize: '0.8125rem', color: colors.textMuted, marginTop: 16 }}>
-              Free · 30 minutes · Built for international graduates in Australia
+              Free · Built for international graduates in Australia
             </p>
           </Reveal>
         </div>
