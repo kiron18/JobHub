@@ -2,6 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import { prisma } from '../index';
 import { extractTextFromBuffer } from '../services/pdf';
+import { sendBookingIntakeNotification } from '../services/email';
 
 const router = Router();
 
@@ -45,6 +46,12 @@ router.post('/intake', upload.single('resume'), async (req, res) => {
     }
   }
 
+  // Keep the original file, even when text extraction failed: a resume we
+  // could not parse is still one Kiron can open and read before the call.
+  const fileFields = req.file
+    ? { resumeFile: new Uint8Array(req.file.buffer), resumeFilename: req.file.originalname, resumeMime: req.file.mimetype }
+    : {};
+
   try {
     const intake = await prisma.bookingIntake.upsert({
       where: { email: email.toLowerCase().trim() },
@@ -57,6 +64,9 @@ router.post('/intake', upload.single('resume'), async (req, res) => {
         biggestChallenge: biggestChallenge?.trim() || null,
         // Only overwrite resumeText if a new file was actually uploaded
         ...(resumeText ? { resumeText } : {}),
+        ...fileFields,
+        // Changed since the CRM last saw it, so hand it over again
+        crmSyncedAt: null,
         // Reset battle card so it regenerates with the latest data
         obsidianSynced: false,
         battleCard: null,
@@ -71,11 +81,26 @@ router.post('/intake', upload.single('resume'), async (req, res) => {
         visaStatus: visaStatus?.trim() || null,
         biggestChallenge: biggestChallenge?.trim() || null,
         resumeText: resumeText || null,
+        ...fileFields,
       },
+      // Never read the file bytes back just to learn the id
+      select: { id: true },
     });
 
     console.log(`[bookings/intake] stored intake for ${email} (id=${intake.id})`);
-    return res.json({ ok: true, id: intake.id });
+    res.json({ ok: true, id: intake.id });
+
+    // After the response: the visitor is already on Calendly, and a mail
+    // problem must never be the reason an intake looks like it failed.
+    sendBookingIntakeNotification({
+      name: name.trim(),
+      email: email.toLowerCase().trim(),
+      visaStatus: visaStatus?.trim() || null,
+      biggestChallenge: biggestChallenge?.trim() || null,
+      resume: req.file ? { filename: req.file.originalname, content: req.file.buffer } : null,
+      resumeReadable: !!resumeText,
+    }).catch(err => console.error('[bookings/intake] notification failed:', err));
+    return;
   } catch (err) {
     console.error('[bookings/intake] DB error:', err);
     return res.status(500).json({ error: 'Failed to store intake' });
@@ -137,6 +162,66 @@ router.patch('/ready-cards/:id/ack', async (req, res) => {
     return res.json({ ok: true });
   } catch (err) {
     console.error('[bookings/ack] error:', err);
+    return res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// GET /api/bookings/crm-pending
+// Private, called by the local sales CRM (Daekwon/crm/booking_sync.py).
+// Returns intakes the CRM has not picked up yet, original resume file included.
+router.get('/crm-pending', async (req, res) => {
+  const key = req.headers['x-obsidian-sync-key'];
+  if (!key || key !== process.env.OBSIDIAN_SYNC_KEY) {
+    return res.status(401).json({ error: 'Unauthorised' });
+  }
+
+  try {
+    const rows = await prisma.bookingIntake.findMany({
+      where: { crmSyncedAt: null },
+      orderBy: { createdAt: 'asc' },
+      // Small batches: each row can carry a 5 MB file
+      take: 10,
+    });
+
+    return res.json(rows.map(r => ({
+      id: r.id,
+      name: r.name,
+      email: r.email,
+      linkedinUrl: r.linkedinUrl,
+      visaStatus: r.visaStatus,
+      biggestChallenge: r.biggestChallenge,
+      callScheduledAt: r.callScheduledAt ? r.callScheduledAt.toISOString() : null,
+      createdAt: r.createdAt.toISOString(),
+      resumeFilename: r.resumeFile ? (r.resumeFilename || 'resume') : null,
+      resumeBase64: r.resumeFile ? Buffer.from(r.resumeFile).toString('base64') : null,
+      // Rows from before the file was kept only have the extracted text
+      resumeText: r.resumeFile ? null : r.resumeText,
+    })));
+  } catch (err) {
+    console.error('[bookings/crm-pending] error:', err);
+    return res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// PATCH /api/bookings/crm-pending/:id/ack
+// Called by the CRM once the lead is written. The CRM sends back the call time
+// it saw: if a booking landed in between, the row stays pending and the next
+// poll carries the call time across.
+router.patch('/crm-pending/:id/ack', async (req, res) => {
+  const key = req.headers['x-obsidian-sync-key'];
+  if (!key || key !== process.env.OBSIDIAN_SYNC_KEY) {
+    return res.status(401).json({ error: 'Unauthorised' });
+  }
+
+  const seen = (req.body?.callScheduledAt as string | null | undefined) || null;
+  try {
+    const result = await prisma.bookingIntake.updateMany({
+      where: { id: req.params.id, callScheduledAt: seen ? new Date(seen) : null },
+      data: { crmSyncedAt: new Date() },
+    });
+    return res.json({ ok: true, acked: result.count === 1 });
+  } catch (err) {
+    console.error('[bookings/crm-ack] error:', err);
     return res.status(500).json({ error: 'Internal error' });
   }
 });

@@ -872,6 +872,13 @@ model BookingIntake {
   visaStatus       String?
   biggestChallenge String?
   resumeText       String?
+  // The file as uploaded, so the sales CRM can show the real document and not
+  // just the extracted text.
+  resumeFile       Bytes?
+  resumeFilename   String?
+  resumeMime       String?
+  // Null means the CRM has not picked this intake up yet (or it changed since).
+  crmSyncedAt      DateTime?
   calendlyEventId  String?
   callScheduledAt  DateTime?
   battleCard       String?

@@ -125,9 +125,15 @@ router.post('/calendly', async (req, res) => {
   // Fire-and-forget: find intake record, generate battle card
   setImmediate(async () => {
     try {
+      // Named fields only: the row can carry a 5 MB resume file we do not need here
+      const fields = {
+        id: true, name: true, linkedinUrl: true, currentRole: true, targetRole: true,
+        visaStatus: true, biggestChallenge: true, resumeText: true,
+      } as const;
       let intake = await prisma.bookingIntake.findFirst({
         where: { email: inviteeEmail },
         orderBy: { createdAt: 'desc' },
+        select: fields,
       });
 
       if (!intake) {
@@ -139,6 +145,7 @@ router.post('/calendly', async (req, res) => {
             calendlyEventId: calendlyEventId || null,
             callScheduledAt: startTime ? new Date(startTime) : null,
           },
+          select: fields,
         });
         console.log(`[webhook/calendly] created minimal intake for ${inviteeEmail}`);
       } else {
@@ -148,7 +155,10 @@ router.post('/calendly', async (req, res) => {
             calendlyEventId: calendlyEventId || null,
             callScheduledAt: startTime ? new Date(startTime) : null,
             name: inviteeName || intake.name,
+            // Hand it back to the CRM so the lead picks up the call time
+            crmSyncedAt: null,
           },
+          select: { id: true },
         });
       }
 
@@ -167,6 +177,7 @@ router.post('/calendly', async (req, res) => {
       await prisma.bookingIntake.update({
         where: { id: intake.id },
         data: { battleCard, battleCardAt: new Date(), obsidianSynced: false },
+        select: { id: true },
       });
 
       console.log(`[webhook/calendly] battle card generated for ${inviteeEmail}`);

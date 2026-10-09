@@ -182,6 +182,58 @@ const ERROR_ALERT_COOLDOWN_MS = 10 * 60 * 1000;
 let lastErrorAlertAt = 0;
 let suppressedSinceLastAlert = 0;
 
+/**
+ * Tells Kiron someone filled in the /book-a-call form, with their resume
+ * attached, so it is in his inbox before the call whether or not the CRM is
+ * open. Reply-to is the lead, so answering the email answers them.
+ */
+export async function sendBookingIntakeNotification(params: {
+  name: string;
+  email: string;
+  visaStatus: string | null;
+  biggestChallenge: string | null;
+  resume: { filename: string; content: Buffer } | null;
+  resumeReadable: boolean;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[email] RESEND_API_KEY not set, skipping booking intake notification');
+    return;
+  }
+  const { name, email, visaStatus, biggestChallenge, resume, resumeReadable } = params;
+  const resumeLine = !resume
+    ? 'No resume uploaded.'
+    : resumeReadable
+      ? `Resume attached: ${resume.filename}`
+      : `Resume attached: ${resume.filename} (could not read text from it, open the file)`;
+
+  const result = await resend.emails.send({
+    from: FROM_ADDRESS,
+    to: ADMIN_EMAIL,
+    replyTo: email,
+    subject: `[Book a call] ${name}${resume ? ' (resume attached)' : ''}`,
+    text: [
+      'New /book-a-call form submission.',
+      '',
+      `Name:   ${name}`,
+      `Email:  ${email}`,
+      `Visa:   ${visaStatus || '(not given)'}`,
+      '',
+      'Biggest challenge right now:',
+      biggestChallenge || '(not given)',
+      '',
+      resumeLine,
+      '',
+      'They were sent on to Calendly to pick a slot. This email means the form',
+      'was filled in, not that a call is booked. The lead and resume also land',
+      'on the sales board the next time the CRM is running.',
+    ].join('\n'),
+    ...(resume ? { attachments: [{ filename: resume.filename, content: resume.content }] } : {}),
+  });
+  if (result.error) {
+    console.error('[email] booking intake notification rejected by Resend:', result.error.message);
+  }
+}
+
 export function alertOnServerError(params: { method: string; url: string; status: number; body: unknown }): void {
   if (!process.env.RESEND_API_KEY) return; // same silent-skip as every other sender here
   const now = Date.now();
