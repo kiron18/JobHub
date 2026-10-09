@@ -1323,11 +1323,67 @@ model SalesLead {
   notes    String?
   nextBest String?
 
+  /// Read off the resume at intake, then editable by hand. `profession` is one
+  /// of a short fixed list (see PROFESSIONS in services/resumeContact.ts) so
+  /// the board can be grouped by it: a free-text job title is different on
+  /// every row and groups nothing.
+  location   String?
+  jobTitle   String?
+  profession String?
+  visaStatus String?
+  education  String?
+
+  meetings SalesMeeting[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([archived, stage])
   @@index([updatedAt])
+}
+
+/// A call booked with someone on the sales board.
+///
+/// Its own table rather than a `meetingAt` column on the lead, because a second
+/// call would otherwise overwrite the first and the week and month overview
+/// would lose every meeting that had a follow-up.
+///
+/// Moving a meeting updates the row in place and keeps the Google event id, so
+/// a reschedule moves the one calendar entry instead of leaving a trail of
+/// them. Cancelling stamps `cancelledAt` and keeps the row.
+model SalesMeeting {
+  id     String    @id @default(cuid())
+  leadId String
+  lead   SalesLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  startsAt DateTime
+  minutes  Int      @default(30)
+
+  /// Whether the person gets the calendar invite and the reminder emails.
+  /// Off for a meeting logged for the record only.
+  notify Boolean @default(true)
+
+  /// Null until the Google Calendar write succeeds. `calendarError` holds why
+  /// it did not, because a meeting that is on the board but not on the
+  /// calendar has to say so rather than look booked.
+  googleEventId String?
+  meetLink      String?
+  calendarLink  String?
+  calendarError String?
+
+  cancelledAt DateTime?
+
+  /// Claimed before each send, the same way the workshop reminder is, so two
+  /// overlapping cron ticks cannot both mail the same person. Cleared when the
+  /// meeting is moved.
+  reminderDaySentAt  DateTime?
+  reminderHourSentAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([startsAt])
+  @@index([leadId])
 }
 
 /// A story intake: the interview that builds somebody's answer bank.

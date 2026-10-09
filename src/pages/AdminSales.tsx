@@ -27,11 +27,26 @@
    stage Registered today, sitting in the same tab as tonight's sign-ups with
    nothing to tell them apart. The column, and the filter next to the search
    box, are what stop "25 registered" being read as "25 people coming tonight".
+
+   MEETINGS. The board also books calls. A resume dropped on the bar at the top
+   becomes a contact (components/admin/sales/IntakeBar), each row carries its
+   next call and can set, move or cancel it (MeetingEditor), and the strip
+   under the heading is the week or month at a glance (MeetingsOverview). The
+   meeting is deliberately NOT a stage: stages are derived from funnel facts,
+   and "has a call booked" is a diary entry, not a step someone has reached.
    ──────────────────────────────────────────────────────────────────────────── */
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Search, FileText, ExternalLink, Loader2, ChevronDown, Archive, Trash2, X, Upload, Copy, Check, Video } from 'lucide-react';
 import api from '../lib/api';
+import IntakeBar from '../components/admin/sales/IntakeBar';
+import MeetingEditor from '../components/admin/sales/MeetingEditor';
+import MeetingsOverview from '../components/admin/sales/MeetingsOverview';
+import ContactFieldGrid from '../components/admin/sales/ContactFieldGrid';
+import {
+  C, CONTACT_FIELDS, contactValuesOf, errorText, isFinished, meetingLabel, sectionLabel,
+  type ContactField, type ContactValues, type Meeting, type MeetingDot,
+} from '../components/admin/sales/shared';
 
 const STAGES = ['Lead', 'Registered', 'Attended', 'Pitched', 'Client', 'Dead'] as const;
 type Stage = (typeof STAGES)[number];
@@ -44,6 +59,15 @@ interface Lead {
   linkedinUrl: string | null;
   headline: string | null;
   company: string | null;
+  location: string | null;
+  jobTitle: string | null;
+  /** One of a short fixed list, so the board can be grouped by it. */
+  profession: string | null;
+  visaStatus: string | null;
+  education: string | null;
+  /** The next call that has not finished, or the last one that has. */
+  meeting: Meeting | null;
+  updatedAt: string;
   stage: Stage;
   source: string;
   sourceAsset: string | null;
@@ -67,10 +91,67 @@ interface Lead {
   reportError: string | null;
 }
 
-const C = {
-  bg: '#FFFFFF', alt: '#F7FAFC', line: '#E3EAF0', lineStrong: '#CBD7E1',
-  ink: '#0F1E2B', ink2: '#4A5A68', ink3: '#8496A4', blue: '#1857A0', danger: '#B4432F',
-};
+/** How the table is arranged. "Last touched" is the server's own order. */
+const SORTS = [
+  ['touched', 'Last touched'],
+  ['meeting', 'Meeting time'],
+  ['profession', 'Profession'],
+] as const;
+type Sort = (typeof SORTS)[number][0];
+
+const NO_PROFESSION = 'Profession not set';
+
+/**
+ * Where a row falls when the board is arranged by meeting time.
+ *
+ * Calls still to come first, soonest at the top, because that is the order
+ * they have to be prepared for. Then people with nothing booked, who are the
+ * ones to chase. Calls that have already happened go last, most recent first.
+ */
+function meetingRank(l: Lead, now: number): [number, number] {
+  if (!l.meeting) return [1, 0];
+  const at = new Date(l.meeting.startsAt).getTime();
+  return isFinished(l.meeting, now) ? [2, -at] : [0, at];
+}
+
+/**
+ * The contact details in a row's drawer. Each field saves as you leave it.
+ *
+ * Local state rather than `defaultValue`, because the profession is a select
+ * and has to show its new value before the refetch lands.
+ */
+function LeadContact({
+  lead,
+  professions,
+  onSave,
+}: {
+  lead: Lead;
+  professions: readonly string[];
+  onSave: (body: Partial<ContactValues>) => void;
+}) {
+  const [values, setValues] = useState<ContactValues>(() => contactValuesOf(lead));
+  // Follow the server when it changes underneath, for instance after an email
+  // clash was refused and the old address is still the true one.
+  const fromServer = CONTACT_FIELDS.map(([f]) => lead[f] ?? '').join('\u0000');
+  useEffect(() => { setValues(contactValuesOf(lead)); }, [fromServer]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const leave = (field: ContactField, value = values[field]) => {
+    if (value.trim() !== (lead[field] ?? '').trim()) onSave({ [field]: value.trim() });
+  };
+
+  return (
+    <ContactFieldGrid
+      values={values}
+      professions={professions}
+      onChange={(field, value) => {
+        setValues((v) => ({ ...v, [field]: value }));
+        // A select has no "leaving" worth waiting for: picking is the edit.
+        if (field === 'profession') leave(field, value);
+      }}
+      onLeave={(field) => { if (field !== 'profession') leave(field); }}
+    />
+  );
+}
 
 /**
  * The Meet room the signup and reminder emails are pointing at.
@@ -142,6 +223,7 @@ export default function AdminSales() {
   const [showArchived, setShowArchived] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [sort, setSort] = useState<Sort>('touched');
 
   /**
    * Polled, not pushed. The board is a page that sits open on a second screen
@@ -167,6 +249,12 @@ export default function AdminSales() {
   const patch = useMutation({
     mutationFn: (v: { id: string; body: Partial<Lead> }) => api.patch(`/admin/sales/${v.id}`, v.body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-sales'] }),
+    // Mostly an email that already belongs to someone else. Said out loud, and
+    // the board refetched, so the box goes back to the address that is true.
+    onError: (err) => {
+      window.alert(errorText(err, 'That change was not saved.'));
+      qc.invalidateQueries({ queryKey: ['admin-sales'] });
+    },
   });
 
   /** Selection is cleared on success rather than optimistically: a half-failed
@@ -213,6 +301,9 @@ export default function AdminSales() {
 
   const leads: Lead[] = data?.leads ?? [];
   const nextSessionKey: string | null = data?.nextSessionKey ?? null;
+  const professions: readonly string[] = data?.professions ?? [];
+  const meetings: MeetingDot[] = data?.meetings ?? [];
+  const calendarConnected: boolean = data?.calendarConnected ?? true;
 
   /** Every session anyone on the board is registered for, newest first, plus
    *  the upcoming one even when nobody has signed up for it yet. */
@@ -247,7 +338,59 @@ export default function AdminSales() {
     return c;
   }, [inSession]);
 
-  const shown = stageFilter === 'All' ? inSession : inSession.filter((l) => l.stage === stageFilter);
+  const filtered = stageFilter === 'All' ? inSession : inSession.filter((l) => l.stage === stageFilter);
+
+  /** Arranged after filtering, so the tabs and the session filter still decide
+   *  who is on screen and this only decides the order. */
+  const shown = useMemo(() => {
+    if (sort === 'touched') return filtered;
+    // When the board was last fetched, which is at most twenty seconds old
+    // and, unlike the clock, is the same on every render.
+    const now = dataUpdatedAt;
+    const byName = (a: Lead, b: Lead) => a.name.localeCompare(b.name);
+    if (sort === 'meeting') {
+      return [...filtered].sort((a, b) => {
+        const [ga, ta] = meetingRank(a, now);
+        const [gb, tb] = meetingRank(b, now);
+        return ga - gb || ta - tb || byName(a, b);
+      });
+    }
+    // Unset goes last: it is the pile still to be sorted, not a profession.
+    return [...filtered].sort((a, b) => {
+      if (!a.profession !== !b.profession) return a.profession ? -1 : 1;
+      return (a.profession ?? '').localeCompare(b.profession ?? '') || byName(a, b);
+    });
+  }, [filtered, sort, dataUpdatedAt]);
+
+  /** How many people are under each profession heading. */
+  const professionCounts = useMemo(() => {
+    const c = new Map<string, number>();
+    for (const l of shown) {
+      const key = l.profession ?? NO_PROFESSION;
+      c.set(key, (c.get(key) ?? 0) + 1);
+    }
+    return c;
+  }, [shown]);
+
+  /**
+   * Open someone's row from outside the table: the overview's list, or the
+   * upload card closing. The filters are cleared first, because a row hidden
+   * by the Registered tab cannot be opened, and "nothing happened" is the
+   * wrong answer to clicking a name.
+   */
+  const openLead = (id: string) => {
+    setStageFilter('All');
+    setSessionFilter('All');
+    setSearch('');
+    setOpenId(id);
+    // After the row has rendered, which with a cleared search is a refetch away.
+    const find = (tries: number) => {
+      const row = document.getElementById(`lead-${id}`);
+      if (row) row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      else if (tries > 0) setTimeout(() => find(tries - 1), 250);
+    };
+    setTimeout(() => find(8), 60);
+  };
 
   const shownSelected = shown.filter((l) => selected.has(l.id));
   const allShownSelected = shown.length > 0 && shownSelected.length === shown.length;
@@ -314,6 +457,10 @@ export default function AdminSales() {
           </span>
         </div>
 
+        <IntakeBar professions={professions} calendarConnected={calendarConnected} onDone={openLead} />
+
+        <MeetingsOverview meetings={meetings} onOpenLead={openLead} />
+
         {/* Stage filter. Counts are the pipeline, so the filter is also the
             summary and there is no separate stat row to keep in step. */}
         <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 14 }}>
@@ -374,6 +521,21 @@ export default function AdminSales() {
             <option value="none">Never registered</option>
           </select>
 
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as Sort)}
+            aria-label="Arrange by"
+            style={{
+              padding: '10px 12px', borderRadius: 9, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              border: `1.5px solid ${sort === 'touched' ? C.line : C.blue}`,
+              background: C.bg, color: sort === 'touched' ? C.ink2 : C.blue,
+            }}
+          >
+            {SORTS.map(([key, label]) => (
+              <option key={key} value={key}>Arrange by: {label.toLowerCase()}</option>
+            ))}
+          </select>
+
           <button
             onClick={() => setShowArchived((v) => !v)}
             style={{
@@ -396,7 +558,7 @@ export default function AdminSales() {
           <p style={{ color: C.ink3 }}>Nobody here yet.</p>
         ) : (
           <div className="scroll-x">
-          <table style={{ width: '100%', minWidth: 880, borderCollapse: 'collapse', fontSize: 14 }}>
+          <table style={{ width: '100%', minWidth: 1120, borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
               <tr style={{ textAlign: 'left', borderBottom: `2px solid ${C.line}`, color: C.ink3, fontSize: 12 }}>
                 <th style={{ ...cell, width: 30, paddingRight: 0 }}>
@@ -415,7 +577,9 @@ export default function AdminSales() {
                     style={checkStyle}
                   />
                 </th>
-                <th style={{ ...cell, width: '26%' }}>Who</th>
+                <th style={{ ...cell, width: '21%' }}>Who</th>
+                <th style={{ ...cell, width: '15%' }}>Profession</th>
+                <th style={{ ...cell, width: 150 }}>Meeting</th>
                 <th style={{ ...cell }}>Progress</th>
                 <th style={{ ...cell, width: 104 }}>Session</th>
                 <th style={{ ...cell, width: 130 }}>Came from</th>
@@ -423,12 +587,27 @@ export default function AdminSales() {
               </tr>
             </thead>
             <tbody>
-              {shown.map((l) => {
+              {shown.map((l, i) => {
                 const open = openId === l.id;
                 const isSelected = selected.has(l.id);
+                const group = l.profession ?? NO_PROFESSION;
+                const startsGroup = sort === 'profession'
+                  && (i === 0 || (shown[i - 1].profession ?? NO_PROFESSION) !== group);
+                const upcoming = l.meeting && !isFinished(l.meeting) ? l.meeting : null;
                 return (
                   <Fragment key={l.id}>
+                    {startsGroup && (
+                      <tr style={{ background: C.alt, borderBottom: `1px solid ${C.line}` }}>
+                        <td colSpan={8} style={{ padding: '8px 10px', fontSize: 12, fontWeight: 700, color: C.ink2 }}>
+                          {group}
+                          <span style={{ marginLeft: 8, fontWeight: 500, color: C.ink3, fontVariantNumeric: 'tabular-nums' }}>
+                            {professionCounts.get(group)}
+                          </span>
+                        </td>
+                      </tr>
+                    )}
                     <tr
+                      id={`lead-${l.id}`}
                       onClick={() => setOpenId(open ? null : l.id)}
                       style={{
                         borderBottom: `1px solid ${C.line}`, cursor: 'pointer',
@@ -461,6 +640,45 @@ export default function AdminSales() {
                         <div style={{ fontSize: 12.5, color: C.ink3, marginTop: 3, paddingLeft: 21 }}>
                           {l.email || <span style={{ fontStyle: 'italic' }}>no email</span>}
                         </div>
+                      </td>
+
+                      <td style={{ ...cell, fontSize: 12.5 }}>
+                        {l.profession || l.jobTitle ? (
+                          <>
+                            <div style={{ fontWeight: 600, color: C.ink2 }}>{l.profession ?? '—'}</div>
+                            {(l.jobTitle || l.location) && (
+                              <div style={{ color: C.ink3, marginTop: 3 }}>
+                                {[l.jobTitle, l.location].filter(Boolean).join(' · ')}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <span style={{ color: C.ink3 }}>{l.location ?? '—'}</span>
+                        )}
+                      </td>
+
+                      {/* The next call, or the last one. A call that failed to
+                          reach the calendar says so here, on the row, because
+                          that is the one that gets missed. */}
+                      <td style={{ ...cell, fontSize: 12.5 }}>
+                        {upcoming ? (
+                          <>
+                            <div style={{ fontWeight: 700, color: C.blue, whiteSpace: 'nowrap' }}>
+                              {meetingLabel(upcoming.startsAt)}
+                            </div>
+                            {upcoming.calendarError && (
+                              <div title={upcoming.calendarError} style={{ color: C.danger, marginTop: 3, fontWeight: 600 }}>
+                                Not on calendar
+                              </div>
+                            )}
+                          </>
+                        ) : l.meeting ? (
+                          <span title="The last call. Nothing booked since." style={{ color: C.ink3, whiteSpace: 'nowrap' }}>
+                            Met {new Date(l.meeting.startsAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                          </span>
+                        ) : (
+                          <span style={{ color: C.ink3 }}>Not booked</span>
+                        )}
                       </td>
 
                       {/* The facts, in funnel order. Filled means it happened,
@@ -559,12 +777,23 @@ export default function AdminSales() {
 
                     {open && (
                       <tr style={{ background: C.alt, borderBottom: `1px solid ${C.line}` }}>
-                        <td colSpan={6} style={{ padding: '4px 14px 20px 51px' }}>
+                        <td colSpan={8} style={{ padding: '10px 14px 20px 51px' }}>
                           <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
 
                             {/* What they told us. The reason this board exists:
                                 it is what gets read in the hour before a call. */}
                             <div style={{ flex: '1 1 380px', minWidth: 0 }}>
+                              {/* Read off the resume by a model, so every
+                                  field can be typed over. Saves as you leave. */}
+                              <p style={sectionLabel}>Contact</p>
+                              <div style={{ marginBottom: 20 }}>
+                                <LeadContact
+                                  lead={l}
+                                  professions={professions}
+                                  onSave={(body) => patch.mutate({ id: l.id, body })}
+                                />
+                              </div>
+
                               <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.ink3, margin: '0 0 9px' }}>
                                 What they told me
                               </p>
@@ -599,7 +828,19 @@ export default function AdminSales() {
                               )}
                             </div>
 
-                            <div style={{ flex: '0 1 300px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                            <div style={{ flex: '0 1 320px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                              {/* Keyed on the meeting itself, so the inputs
+                                  re-seed when a save or a cancel lands rather
+                                  than holding on to what was typed before. */}
+                              <MeetingEditor
+                                key={`${l.id}:${l.meeting?.id ?? 'none'}:${l.meeting?.startsAt ?? ''}:${l.meeting?.minutes ?? ''}:${l.meeting?.notify ?? ''}`}
+                                leadId={l.id}
+                                name={l.name}
+                                hasEmail={!!l.email}
+                                meeting={l.meeting}
+                                calendarConnected={calendarConnected}
+                              />
+
                               {l.linkedinUrl && (
                                 <a href={l.linkedinUrl} target="_blank" rel="noopener noreferrer"
                                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: C.blue, fontWeight: 600 }}>

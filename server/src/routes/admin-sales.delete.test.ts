@@ -13,6 +13,7 @@ vi.mock('../index', () => ({
   prisma: {
     salesLead: { findMany: vi.fn(), deleteMany: vi.fn(), count: vi.fn() },
     sessionRegistration: { deleteMany: vi.fn(), findMany: vi.fn() },
+    salesMeeting: { findMany: vi.fn().mockResolvedValue([]) },
     $transaction: vi.fn(),
   },
 }));
@@ -49,6 +50,7 @@ describe('POST /api/admin/sales/delete', () => {
     passthroughTransaction();
     db.sessionRegistration.deleteMany.mockResolvedValue({ count: 0 });
     db.salesLead.deleteMany.mockResolvedValue({ count: 0 });
+    db.salesMeeting.findMany.mockResolvedValue([]);
   });
 
   it('takes the registration with the lead, matched on email', async () => {

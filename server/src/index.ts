@@ -58,6 +58,7 @@ import { startPaymentReconcileCron } from './cron/paymentReconcileCron';
 import { startFollowUpReminderCron } from './cron/followUpReminderCron';
 import { startTrialChallengeReminderCron } from './cron/trialChallengeReminderCron';
 import { startCoachCheckinCron } from './cron/coachCheckinCron';
+import { startSalesMeetingReminderCron } from './cron/salesMeetingReminderCron';
 import { startWhatsApp } from './services/whatsappBaileys';
 import { analyzeRateLimit } from './middleware/analyzeRateLimit';
 import { ensureSponsorJobTable } from './db/ensureSponsorJobTable';
@@ -511,6 +512,7 @@ if (process.env.SKIP_SERVER === 'true') {
       startGapReportCron();
       startTrialChallengeReminderCron();
       startCoachCheckinCron();
+      startSalesMeetingReminderCron();
       console.log('[cron] Trial reminder cron scheduled (10:00 UTC daily)');
       console.log('[cron] Follow-up reminder cron scheduled (09:00 UTC daily)');
       console.log('[cron] Payment reconciliation cron scheduled (11:00 UTC daily)');

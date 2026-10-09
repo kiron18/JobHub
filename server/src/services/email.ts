@@ -546,6 +546,68 @@ export async function sendWorkshopReminderEmail(params: {
   });
 }
 
+/**
+ * The reminder before a booked sales call: one the day before, one an hour out.
+ *
+ * Sent by salesMeetingReminderCron. The calendar invite Google sends at booking
+ * only helps the people who accept it, and a no-show on a sales call costs the
+ * whole slot, so this lands regardless.
+ *
+ * The time is written in Sydney time with the zone spelled out. The server
+ * runs in UTC, and "3:00 pm" without a zone, rendered there, would be ten or
+ * eleven hours wrong.
+ *
+ * Deliberately no em dashes in this copy.
+ */
+export async function sendSalesMeetingReminderEmail(params: {
+  to: string;
+  name: string;
+  startsAt: Date;
+  meetLink: string | null;
+  kind: 'day' | 'hour';
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[email] RESEND_API_KEY not set — skipping sales meeting reminder');
+    return;
+  }
+  const { to, name, startsAt, meetLink, kind } = params;
+  const firstName = (name || '').trim().split(/\s+/)[0] || '';
+  const tz = process.env.WORKSHOP_TZ || 'Australia/Sydney';
+  const time = new Intl.DateTimeFormat('en-AU', {
+    timeZone: tz, hour: 'numeric', minute: '2-digit', hour12: true, timeZoneName: 'short',
+  }).format(startsAt);
+  const day = new Intl.DateTimeFormat('en-AU', {
+    timeZone: tz, weekday: 'long', day: 'numeric', month: 'long',
+  }).format(startsAt);
+
+  const link = meetLink
+    ? ['Here is the link:', meetLink, '']
+    // No room on file means the calendar write failed, so there is no invite
+    // to point at either. Saying nothing beats promising a link that is not there.
+    : [];
+
+  await sendLogged(kind === 'day' ? 'sales_meeting_reminder_day' : 'sales_meeting_reminder_hour', {
+    to,
+    firstName: firstName || null,
+    subject: kind === 'day' ? `Our call tomorrow at ${time}` : 'Our call starts in an hour',
+    text: [
+      firstName ? `Hey ${firstName},` : 'Hey,',
+      '',
+      kind === 'day'
+        ? `A quick reminder that we are talking tomorrow, ${day}, at ${time}.`
+        : `We are on in an hour, at ${time}.`,
+      '',
+      ...link,
+      kind === 'day'
+        ? 'If the time no longer works, reply to this email and we will move it.'
+        : 'Have your resume open and bring the thing you most want sorted.',
+      '',
+      'Kiron',
+      'aussiegradcareers.com.au',
+    ].join('\n'),
+  });
+}
+
 export async function sendClientOnboardingEmail(params: {
   to: string;
   actionLink: string;
