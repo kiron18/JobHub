@@ -93,6 +93,7 @@ router.get('/', authenticate, requireAdmin, async (req: AuthRequest, res: Respon
     select: {
       id: true, leadId: true, startsAt: true, minutes: true, notify: true,
       meetLink: true, calendarLink: true, calendarError: true,
+      reminderDaySentAt: true, reminderHourSentAt: true,
       lead: { select: { name: true } },
     },
   });
@@ -138,6 +139,9 @@ router.get('/', authenticate, requireAdmin, async (req: AuthRequest, res: Respon
           ? {
               id: meeting.id, startsAt: meeting.startsAt, minutes: meeting.minutes, notify: meeting.notify,
               meetLink: meeting.meetLink, calendarLink: meeting.calendarLink, calendarError: meeting.calendarError,
+              // Null means still to send. The board turns these into "next reminder goes at".
+              reminderDayPending: !meeting.reminderDaySentAt,
+              reminderHourPending: !meeting.reminderHourSentAt,
             }
           : null,
         // Resume text is deliberately not sent to the board: it is long enough
@@ -225,6 +229,14 @@ router.patch('/:id', authenticate, requireAdmin, async (req: AuthRequest, res: R
     if (!taken) {
       await prisma.sessionRegistration.updateMany({ where: { email: current.email }, data: { email: emailChange } });
     }
+  }
+
+  // A call booked before the email was known went on the calendar with nobody
+  // invited. Writing the event again with the same time adds them, and Google
+  // sends the invite. Same time means the reminders are left as they were.
+  if (emailChange !== undefined) {
+    const booked = await activeMeeting(id);
+    if (booked) await setMeeting({ leadId: id, startsAt: booked.startsAt });
   }
 
   res.json({ lead });

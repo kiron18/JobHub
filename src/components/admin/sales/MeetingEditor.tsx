@@ -6,7 +6,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { CalendarCheck, CalendarX, Check, Copy, Loader2 } from 'lucide-react';
 import api from '../../../lib/api';
 import {
-  C, DURATIONS, buttonStyle, errorText, inputStyle, isFinished, meetingLabel, primaryButtonStyle,
+  C, DURATIONS, buttonStyle, errorText, inputStyle, isFinished, meetingLabel, nextReminder, primaryButtonStyle,
   sectionLabel, toLocalInput, type Meeting,
 } from './shared';
 
@@ -38,6 +38,15 @@ export default function MeetingEditor({
       api.put(`/admin/sales/${leadId}/meeting`, { startsAt: new Date(when).toISOString(), minutes, notify }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-sales'] }),
     onError: (err) => window.alert(errorText(err, 'The meeting was not saved. Try again.')),
+  });
+
+  /** The meeting exactly as it is saved, written to the calendar again. Not
+   *  `save`, which would also apply whatever is half-typed in the boxes. */
+  const resend = useMutation({
+    mutationFn: () =>
+      api.put(`/admin/sales/${leadId}/meeting`, { startsAt: upcoming!.startsAt, minutes: upcoming!.minutes, notify: upcoming!.notify }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-sales'] }),
+    onError: (err) => window.alert(errorText(err, 'The invite was not sent. Try again.')),
   });
 
   const cancel = useMutation({
@@ -111,6 +120,25 @@ export default function MeetingEditor({
               )}
             </p>
           )}
+
+          <p style={{ margin: '6px 0 0', fontSize: 12.5, color: C.ink2, lineHeight: 1.5 }}>
+            {nextReminder(upcoming, hasEmail)}
+            {/* For the invite that never arrived. Writes the same meeting to
+                the calendar again, which invites anyone not yet on it. */}
+            {hasEmail && upcoming.notify && !upcoming.calendarError && (
+              <>
+                {' '}
+                <button
+                  onClick={() => resend.mutate()}
+                  disabled={busy || resend.isPending}
+                  title="Writes this meeting to the calendar again. Google emails the invite to them if they are not on it yet."
+                  style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: C.blue, fontWeight: 600, fontSize: 12.5 }}
+                >
+                  {resend.isPending ? 'Sending…' : resend.isSuccess ? 'Invite sent' : 'Send the invite again'}
+                </button>
+              </>
+            )}
+          </p>
         </div>
       ) : (
         <p style={{ margin: '0 0 10px', fontSize: 13, color: C.ink3 }}>

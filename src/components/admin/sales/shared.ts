@@ -18,6 +18,9 @@ export interface Meeting {
   calendarLink: string | null;
   /** Why the meeting is on the board but not on the calendar, when it is not. */
   calendarError: string | null;
+  /** True while that reminder email has not gone and is still going to. */
+  reminderDayPending: boolean;
+  reminderHourPending: boolean;
 }
 
 /** One entry in the overview: every meeting, for everyone, not just this page. */
@@ -94,6 +97,23 @@ export function meetingLabel(iso: string): string {
 export function timeLabel(iso: string): string {
   // Twelve-hour on purpose: "6:03" on a sales call could be either end of the day.
   return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
+}
+
+/**
+ * When the next reminder email goes, or why none will.
+ *
+ * Here so the board can answer "will they actually be reminded" without
+ * anyone having to trust that a cron somewhere is doing its job.
+ */
+export function nextReminder(m: Meeting, hasEmail: boolean, now = Date.now()): string {
+  if (!hasEmail) return 'No reminders: there is no email on file.';
+  if (!m.notify) return 'No reminders: the invite and reminders are switched off for this meeting.';
+  const start = new Date(m.startsAt).getTime();
+  const at = (ms: number) => meetingLabel(new Date(ms).toISOString());
+  // Each reminder has a cut-off after which it is skipped rather than sent late.
+  if (m.reminderDayPending && now < start - 12 * 3_600_000) return `Next reminder email: ${at(start - 24 * 3_600_000)} (the day before).`;
+  if (m.reminderHourPending && now < start - 20 * 60_000) return `Next reminder email: ${at(start - 3_600_000)} (an hour before).`;
+  return 'No more reminder emails to send for this meeting.';
 }
 
 export function isFinished(m: { startsAt: string; minutes: number }, now = Date.now()): boolean {

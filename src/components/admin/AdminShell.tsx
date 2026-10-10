@@ -1,8 +1,9 @@
 /**
- * The admin area is five pages and this is the bar that joins them.
+ * The admin area is six pages and this is the bar that joins them.
  *
  *   Growth  where visitors drop off on the way to paying (/admin/growth)
  *   People  every lead and client in one filterable list (/admin/people)
+ *   Sales   resume intake, booked calls and the pipeline  (/admin/sales)
  *   Email   what went out, when, and how it did           (/admin/email)
  *   Coach   paying members' week                          (/admin/coach)
  *   Daily   Kiron's own checklist for the day             (/admin/daily)
@@ -19,6 +20,7 @@ const C = warm.colors;
 const TABS = [
   { to: '/admin/growth', label: 'Growth' },
   { to: '/admin/people', label: 'People' },
+  { to: '/admin/sales', label: 'Sales' },
   { to: '/admin/email', label: 'Email' },
   { to: '/admin/coach', label: 'Coach' },
   { to: '/admin/daily', label: 'Daily' },

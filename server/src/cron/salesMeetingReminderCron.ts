@@ -37,14 +37,20 @@ export function reminderWindow(kind: Kind, now: Date): { gt: Date; lte: Date } {
 export async function sendDueReminders(kind: Kind, now: Date = new Date()): Promise<number> {
   const field = FIELD[kind];
   const due = await prisma.salesMeeting.findMany({
-    where: { cancelledAt: null, notify: true, [field]: null, startsAt: reminderWindow(kind, now) },
+    // Only people who can actually be mailed. A meeting booked before the
+    // email was known is left unclaimed, so the reminder still goes if the
+    // address is added while the window is open.
+    where: {
+      cancelledAt: null, notify: true, [field]: null, startsAt: reminderWindow(kind, now),
+      lead: { email: { not: null } },
+    },
     select: { id: true, startsAt: true, meetLink: true, lead: { select: { name: true, email: true } } },
   });
 
   let sent = 0;
   for (const m of due) {
-    // Claim first, whether or not there is anyone to mail, so a lead with no
-    // email is not re-queried on every tick until the call.
+    // Claim first. If another tick got there, updateMany reports 0 rows and
+    // we skip rather than sending a duplicate.
     const claimed = await prisma.salesMeeting.updateMany({
       where: { id: m.id, [field]: null },
       data: { [field]: new Date() },

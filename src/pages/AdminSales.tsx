@@ -39,6 +39,7 @@ import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Search, FileText, ExternalLink, Loader2, ChevronDown, Archive, Trash2, X, Upload, Copy, Check, Video } from 'lucide-react';
 import api from '../lib/api';
+import { AdminNav } from '../components/admin/AdminShell';
 import IntakeBar from '../components/admin/sales/IntakeBar';
 import MeetingEditor from '../components/admin/sales/MeetingEditor';
 import MeetingsOverview from '../components/admin/sales/MeetingsOverview';
@@ -430,6 +431,10 @@ export default function AdminSales() {
       padding: '24px clamp(14px, 3vw, 28px) 80px', boxSizing: 'border-box',
     }}>
       <div style={{ maxWidth: 1240, margin: '0 auto' }}>
+
+        {/* The same bar as the other admin pages, so this one is a tab and
+            not a page you have to know the address of. */}
+        <AdminNav />
 
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, flexWrap: 'wrap', marginBottom: 18 }}>
           <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>Sales</h1>
