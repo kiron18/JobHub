@@ -1,7 +1,7 @@
 /**
  * AdminDaily: Kiron's own checklist for the day, at /admin/daily.
  *
- * One screen, top to bottom: what goes out today, the tasks, the new signups
+ * One screen, top to bottom: what goes out today, who the calls are with, the tasks, the new signups
  * waiting on a personal welcome, a note, and the last two weeks at a glance.
  * Every tap saves. The task list is src/config/dailyTasks.ts.
  */
@@ -12,6 +12,7 @@ import { Check, Minus, Plus } from 'lucide-react';
 import api from '../lib/api';
 import { warm } from '../lib/theme/warmTokens';
 import { AdminShell } from '../components/admin/AdminShell';
+import DayCalls from '../components/admin/sales/DayCalls';
 import {
   POST_OF_THE_DAY, tasksFor, weekdayOf, isDone, doneCount,
   type DailyTask, type DoneMap,
@@ -125,6 +126,9 @@ export default function AdminDaily() {
           <div style={{ ...warm.text.body, fontSize: 18, fontWeight: 600, marginTop: 4 }}>{post.name}</div>
           <div style={{ ...warm.text.body, color: C.textSecondary, marginTop: 2 }}>{post.what}</div>
         </section>
+
+        <h2 style={heading}>{isToday ? 'Calls today' : 'Calls that day'}</h2>
+        <DayCalls date={date} isToday={isToday} />
 
         <h2 style={heading}>Tasks <span style={{ color: C.textMuted, fontWeight: 400 }}>{progress.done} of {progress.total} done</span></h2>
         <div style={{ display: 'grid', gap: 8 }}>

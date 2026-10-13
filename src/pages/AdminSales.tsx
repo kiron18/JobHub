@@ -37,6 +37,7 @@
    ──────────────────────────────────────────────────────────────────────────── */
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { Search, FileText, ExternalLink, Loader2, ChevronDown, Archive, Trash2, X, Upload, Copy, Check, Video } from 'lucide-react';
 import api from '../lib/api';
 import { AdminNav } from '../components/admin/AdminShell';
@@ -44,6 +45,8 @@ import IntakeBar from '../components/admin/sales/IntakeBar';
 import MeetingEditor from '../components/admin/sales/MeetingEditor';
 import MeetingsOverview from '../components/admin/sales/MeetingsOverview';
 import ContactFieldGrid from '../components/admin/sales/ContactFieldGrid';
+import JourneyBar from '../components/admin/sales/JourneyBar';
+import { buildJourney } from '../components/admin/sales/journey';
 import {
   C, CONTACT_FIELDS, contactValuesOf, errorText, isFinished, meetingLabel, sectionLabel,
   type ContactField, type ContactValues, type Meeting, type MeetingDot,
@@ -69,6 +72,9 @@ interface Lead {
   /** The next call that has not finished, or the last one that has. */
   meeting: Meeting | null;
   updatedAt: string;
+  createdAt: string;
+  /** Every email the system sent them, oldest first. One tick each on the journey bar. */
+  emailsSent: { at: string; subject: string }[];
   stage: Stage;
   source: string;
   sourceAsset: string | null;
@@ -222,7 +228,11 @@ export default function AdminSales() {
   const [stageFilter, setStageFilter] = useState<Stage | 'All'>('All');
   const [sessionFilter, setSessionFilter] = useState<string>('All');
   const [showArchived, setShowArchived] = useState(false);
-  const [openId, setOpenId] = useState<string | null>(null);
+  // /admin/sales?lead=<id> arrives with that person's row already open, which
+  // is how the call list on the Daily page links here.
+  const [params, setParams] = useSearchParams();
+  const linkedLead = params.get('lead');
+  const [openId, setOpenId] = useState<string | null>(linkedLead);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sort, setSort] = useState<Sort>('touched');
 
@@ -363,6 +373,17 @@ export default function AdminSales() {
     });
   }, [filtered, sort, dataUpdatedAt]);
 
+  /** Each person's calls, for their journey bar. Every call, not only the
+   *  one the row shows, because a second call is a point of contact too. */
+  const meetingsByLead = useMemo(() => {
+    const map = new Map<string, MeetingDot[]>();
+    for (const m of meetings) {
+      const list = map.get(m.leadId);
+      if (list) list.push(m); else map.set(m.leadId, [m]);
+    }
+    return map;
+  }, [meetings]);
+
   /** How many people are under each profession heading. */
   const professionCounts = useMemo(() => {
     const c = new Map<string, number>();
@@ -392,6 +413,14 @@ export default function AdminSales() {
     };
     setTimeout(() => find(8), 60);
   };
+
+  // Bring the linked row into view once the board has loaded, then drop the
+  // param so a reload does not keep reopening it.
+  useEffect(() => {
+    if (!linkedLead || isLoading) return;
+    document.getElementById(`lead-${linkedLead}`)?.scrollIntoView({ block: 'center' });
+    setParams({}, { replace: true });
+  }, [linkedLead, isLoading, setParams]);
 
   const shownSelected = shown.filter((l) => selected.has(l.id));
   const allShownSelected = shown.length > 0 && shownSelected.length === shown.length;
@@ -562,8 +591,10 @@ export default function AdminSales() {
         ) : !shown.length ? (
           <p style={{ color: C.ink3 }}>Nobody here yet.</p>
         ) : (
-          <div className="scroll-x">
-          <table style={{ width: '100%', minWidth: 1120, borderCollapse: 'collapse', fontSize: 14 }}>
+          /* A size container, so an open drawer can be exactly as wide as the
+             board on screen (100cqw) however wide the table inside it is. */
+          <div className="scroll-x" style={{ containerType: 'inline-size' }}>
+          <table style={{ width: '100%', minWidth: 880, borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
               <tr style={{ textAlign: 'left', borderBottom: `2px solid ${C.line}`, color: C.ink3, fontSize: 12 }}>
                 <th style={{ ...cell, width: 30, paddingRight: 0 }}>
@@ -585,10 +616,9 @@ export default function AdminSales() {
                 <th style={{ ...cell, width: '21%' }}>Who</th>
                 <th style={{ ...cell, width: '15%' }}>Profession</th>
                 <th style={{ ...cell, width: 150 }}>Meeting</th>
-                <th style={{ ...cell }}>Progress</th>
-                <th style={{ ...cell, width: 104 }}>Session</th>
-                <th style={{ ...cell, width: 130 }}>Came from</th>
-                <th style={{ ...cell, width: 90 }}>Resume</th>
+                <th style={{ ...cell }}>Journey</th>
+                <th style={{ ...cell, width: 124 }}>Came from</th>
+                <th style={{ ...cell, width: 76 }}>Resume</th>
               </tr>
             </thead>
             <tbody>
@@ -599,11 +629,12 @@ export default function AdminSales() {
                 const startsGroup = sort === 'profession'
                   && (i === 0 || (shown[i - 1].profession ?? NO_PROFESSION) !== group);
                 const upcoming = l.meeting && !isFinished(l.meeting) ? l.meeting : null;
+                const journey = buildJourney(l, meetingsByLead.get(l.id) ?? []);
                 return (
                   <Fragment key={l.id}>
                     {startsGroup && (
                       <tr style={{ background: C.alt, borderBottom: `1px solid ${C.line}` }}>
-                        <td colSpan={8} style={{ padding: '8px 10px', fontSize: 12, fontWeight: 700, color: C.ink2 }}>
+                        <td colSpan={7} style={{ padding: '8px 10px', fontSize: 12, fontWeight: 700, color: C.ink2 }}>
                           {group}
                           <span style={{ marginLeft: 8, fontWeight: 500, color: C.ink3, fontVariantNumeric: 'tabular-nums' }}>
                             {professionCounts.get(group)}
@@ -699,7 +730,7 @@ export default function AdminSales() {
                           "Group", which read as though it meant they were in
                           one. Do not shorten it again. */}
                       <td style={cell}>
-                        <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                        <div style={{ display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap' }}>
                           {([
                             ['Registered', l.registeredAt, false],
                             ['Skool click', l.skoolClickedAt, true],
@@ -732,37 +763,29 @@ export default function AdminSales() {
                             );
                           })}
                         </div>
+                        {/* The same person over time: days on the board, and a
+                            tick for every email and call. */}
+                        <JourneyBar journey={journey} compact />
                       </td>
 
                       {/* Which workshop, not when they signed up. The upcoming
                           one is called out because on a board where the stage
                           never expires, "is this person coming tonight" is the
                           question the Registered tab cannot answer on its own. */}
-                      <td style={{ ...cell, fontSize: 12.5 }}>
-                        {l.sessionKey && l.sessionKey !== MANUAL_UPLOAD_SESSION ? (
-                          <span
+                      <td style={{ ...cell, fontSize: 12.5, color: C.ink2 }}>
+                        <div style={{ wordBreak: 'break-word' }}>{l.sourceAsset ? `/free/${l.sourceAsset}` : l.source}</div>
+                        {l.sessionKey && l.sessionKey !== MANUAL_UPLOAD_SESSION && (
+                          <div
                             title={`Registered for the ${l.sessionKey} workshop`}
                             style={{
+                              marginTop: 3,
                               fontWeight: l.sessionKey === nextSessionKey ? 700 : 500,
-                              color: l.sessionKey === nextSessionKey ? C.blue : C.ink2,
+                              color: l.sessionKey === nextSessionKey ? C.blue : C.ink3,
                             }}
                           >
-                            {sessionLabel(l.sessionKey)}
-                          </span>
-                        ) : (
-                          <span
-                            title={l.sessionKey === MANUAL_UPLOAD_SESSION
-                              ? 'No workshop registration. This row exists only to hold a resume that was uploaded by hand.'
-                              : 'No workshop registration on file'}
-                            style={{ color: C.ink3 }}
-                          >
-                            —
-                          </span>
+                            Session {sessionLabel(l.sessionKey)}
+                          </div>
                         )}
-                      </td>
-
-                      <td style={{ ...cell, fontSize: 12.5, color: C.ink2 }}>
-                        {l.sourceAsset ? `/free/${l.sourceAsset}` : l.source}
                       </td>
 
                       <td style={cell}>
@@ -782,7 +805,22 @@ export default function AdminSales() {
 
                     {open && (
                       <tr style={{ background: C.alt, borderBottom: `1px solid ${C.line}` }}>
-                        <td colSpan={8} style={{ padding: '10px 14px 20px 51px' }}>
+                        <td colSpan={7} style={{ padding: 0 }}>
+                          {/* Pinned to the board's own width, not the table's.
+                              The table can be wider than the screen, and a
+                              drawer that followed it put the meeting, resume
+                              and notes off the right-hand edge. */}
+                          <div style={{
+                            position: 'sticky', left: 0, boxSizing: 'border-box',
+                            width: '100cqw', maxWidth: '100%', padding: '12px 16px 20px 51px',
+                          }}>
+                          <div style={{
+                            marginBottom: 20, padding: '13px 16px 14px', borderRadius: 10,
+                            background: C.bg, border: `1px solid ${C.line}`,
+                          }}>
+                            <p style={sectionLabel}>Journey</p>
+                            <JourneyBar journey={journey} />
+                          </div>
                           <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
 
                             {/* What they told us. The reason this board exists:
@@ -963,6 +1001,7 @@ export default function AdminSales() {
                                 </button>
                               </div>
                             </div>
+                          </div>
                           </div>
                         </td>
                       </tr>

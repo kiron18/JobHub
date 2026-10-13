@@ -110,6 +110,30 @@ router.get('/', authenticate, requireAdmin, async (req: AuthRequest, res: Respon
     if (m.startsAt.getTime() + m.minutes * 60_000 > now) hasUpcoming.add(m.leadId);
   }
 
+  // Every email that went to anyone on the board, for the journey bar: one
+  // tick per send. Matched on the address in lower case, because EmailSend
+  // keeps `toEmail` as typed and the lead keeps it lowercased. Raw because
+  // Prisma cannot compare case-insensitively against a list. Best effort: a
+  // board with no ticks on it is still a board.
+  const emailsByLead = new Map<string, { at: Date; subject: string }[]>();
+  if (emails.length) {
+    try {
+      const sends = await prisma.$queryRaw<{ email: string; sentAt: Date; subject: string }[]>`
+        SELECT lower("toEmail") AS email, "sentAt", "subject"
+        FROM "EmailSend"
+        WHERE lower("toEmail") = ANY(${emails.map((e) => e.toLowerCase())})
+        ORDER BY "sentAt" ASC
+        LIMIT 5000`;
+      for (const s of sends) {
+        const list = emailsByLead.get(s.email);
+        const row = { at: s.sentAt, subject: s.subject };
+        if (list) list.push(row); else emailsByLead.set(s.email, [row]);
+      }
+    } catch (err) {
+      console.warn('[admin-sales] could not read email sends for the journey bar:', (err as Error).message);
+    }
+  }
+
   res.json({
     counts,
     archivedCount,
@@ -153,6 +177,7 @@ router.get('/', authenticate, requireAdmin, async (req: AuthRequest, res: Respon
         sessionKey: reg?.sessionKey ?? null,
         reportToken: reg?.reportToken ?? null,
         reportError: reg?.reportError ?? null,
+        emailsSent: (l.email ? emailsByLead.get(l.email.toLowerCase()) : undefined) ?? [],
       };
     }),
   });
