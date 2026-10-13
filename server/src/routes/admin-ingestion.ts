@@ -1,8 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../db';
-import { EXEMPT_EMAILS } from './stripe';
-import type { Response, NextFunction } from 'express';
-import type { AuthRequest } from '../middleware/auth';
+import { requireAdmin } from '../middleware/requireAdmin';
+import { authenticate } from '../middleware/auth';
 
 export async function buildIngestionSummary() {
   const grouped = await prisma.sourceResult.groupBy({
@@ -22,16 +21,8 @@ export async function buildIngestionSummary() {
   };
 }
 
-async function requireAdmin(req: AuthRequest, res: Response, next: NextFunction) {
-  const email = (req.user?.email ?? '').toLowerCase();
-  if (!email || !EXEMPT_EMAILS.includes(email)) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
-  next();
-}
-
 const router = Router();
-router.get('/summary', requireAdmin, async (_req, res) => {
+router.get('/summary', authenticate, requireAdmin, async (_req, res) => {
   res.json(await buildIngestionSummary());
 });
 

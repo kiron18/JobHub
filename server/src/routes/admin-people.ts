@@ -18,15 +18,10 @@ import { Router, Response, NextFunction } from 'express';
 import { prisma } from '../index';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { EXEMPT_EMAILS } from './stripe';
+import { requireAdmin } from '../middleware/requireAdmin';
 import { supabase } from '../lib/supabase';
 
 const router = Router();
-
-function requireAdmin(req: AuthRequest, res: Response, next: NextFunction) {
-  const email = (req.user?.email ?? '').toLowerCase();
-  if (!email || !EXEMPT_EMAILS.includes(email)) return res.status(403).json({ error: 'Forbidden' });
-  next();
-}
 
 /** Our own inboxes, +tag variants included. Same rule /admin/traffic uses. */
 const TEST_EMAIL = /kiron|norik|kamiproject/i;
@@ -35,10 +30,9 @@ const isTest = (email: string | null | undefined) =>
 
 export type PersonStatus = 'Paid' | 'Trial' | 'Signed up' | 'Lapsed' | 'Lead';
 
-/** Same three signals as /admin/funnel/user-usage: payments reach us by three
- * routes, and reading only `plan` misses anyone whose payment was never matched
- * back to their account. */
-function isPaidNow(p: {
+/** Three signals, because payments reach us by three routes, and reading only
+ * `plan` misses anyone whose payment was never matched back to their account. */
+export function isPaidNow(p: {
   plan: string | null; planStatus: string | null; subscriptionStatus: string | null; accessExpiresAt: Date | null;
 }, now: Date): boolean {
   const plan = (p.plan ?? 'free').toLowerCase();

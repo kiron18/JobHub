@@ -1,19 +1,10 @@
-import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import QRCode from 'qrcode';
+import { useState } from 'react';
 import { MessageCircle, Check } from 'lucide-react';
-import api from '../../lib/api';
 import { warm } from '../../lib/theme/warmTokens';
+import { useWhatsappOptIn } from '../../hooks/useWhatsappOptIn';
 
 const C = warm.colors;
 const DISMISS_KEY = 'jobhub_whatsapp_coach_dismissed';
-
-interface WhatsappState {
-  /** Check-ins are switched on in this environment. Undefined: older server. */
-  enabled?: boolean;
-  verified: boolean;
-  whatsappOptInLink: string;
-}
 
 /**
  * Opt-in card for the paid-member WhatsApp coach check-in (morning nudge +
@@ -60,30 +51,51 @@ function PhoneScanIcon() {
   );
 }
 
+/** Everything between the heading and the dismiss link: the pitch, the QR,
+ *  the two ways in, and the button. */
+export function WhatsAppOptInBody({ link, qrDataUrl }: { link: string; qrDataUrl: string | null }) {
+  return (
+    <>
+      {/* Kiron's copy, 2026-09-30. */}
+      <p style={{ margin: '0 0 16px', fontSize: 15, color: C.textSecondary, lineHeight: 1.6 }}>
+        Consistency over time yields results, always, inevitably. The problem is life gets in the way.
+        Scan the code to set up reminders and communication over WhatsApp, so you can move a little
+        closer to your goal every day.
+      </p>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 16, flexWrap: 'wrap' }}>
+        {qrDataUrl && <ScanFrame src={qrDataUrl} />}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <PhoneScanIcon />
+          <p style={{ margin: 0, fontSize: 14, color: C.textSecondary, lineHeight: 1.5 }}>
+            <strong style={{ color: C.textPrimary }}>On a computer?</strong> Point your phone's camera at the code.<br />
+            <strong style={{ color: C.textPrimary }}>On your phone?</strong> Tap the button below.
+          </p>
+        </div>
+      </div>
+
+      <a
+        href={link} target="_blank" rel="noopener noreferrer"
+        style={{
+          display: 'block', textAlign: 'center', width: '100%', padding: 11, borderRadius: 10,
+          background: C.accentPetrol, color: '#fff', fontSize: 14, fontWeight: 700, textDecoration: 'none',
+          marginBottom: 8, boxSizing: 'border-box',
+        }}
+      >
+        Start check-ins on WhatsApp
+      </a>
+    </>
+  );
+}
+
 export function WhatsAppCoachCard() {
   const [dismissed, setDismissed] = useState(() => {
     try { return localStorage.getItem(DISMISS_KEY) === '1'; } catch { return false; }
   });
-  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const { data, qrDataUrl } = useWhatsappOptIn(!dismissed);
 
-  const { data } = useQuery({
-    queryKey: ['tracker-whatsapp'],
-    queryFn: async () => (await api.get('/tracker/whatsapp')).data as WhatsappState,
-    staleTime: 30_000,
-    // Verification happens outside the app (a WhatsApp text), so poll while
-    // this card is showing the unverified state — it flips on its own once
-    // the candidate sends START, no page reload needed.
-    refetchInterval: (query) => (query.state.data?.verified ? false : 10_000),
-  });
-
-  useEffect(() => {
-    if (!data?.whatsappOptInLink) return;
-    QRCode.toDataURL(data.whatsappOptInLink, { width: 160, margin: 1 })
-      .then(setQrDataUrl)
-      .catch(() => setQrDataUrl(null));
-  }, [data?.whatsappOptInLink]);
-
-  if (!data || dismissed || data.enabled === false) return null;
+  // A free account that opted in here would be promised check-ins it never gets.
+  if (!data || dismissed || data.enabled === false || data.paid === false) return null;
 
   const dismiss = () => {
     try { localStorage.setItem(DISMISS_KEY, '1'); } catch { /* ignore */ }
@@ -111,34 +123,7 @@ export function WhatsAppCoachCard() {
           Daily check-ins on WhatsApp
         </span>
       </div>
-      {/* Kiron's copy, 2026-09-30. */}
-      <p style={{ margin: '0 0 16px', fontSize: 15, color: C.textSecondary, lineHeight: 1.6 }}>
-        Consistency over time yields results, always, inevitably. The problem is life gets in the way.
-        Scan the code to set up reminders and communication over WhatsApp, so you can move a little
-        closer to your goal every day.
-      </p>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 16, flexWrap: 'wrap' }}>
-        {qrDataUrl && <ScanFrame src={qrDataUrl} />}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <PhoneScanIcon />
-          <p style={{ margin: 0, fontSize: 14, color: C.textSecondary, lineHeight: 1.5 }}>
-            <strong style={{ color: C.textPrimary }}>On a computer?</strong> Point your phone's camera at the code.<br />
-            <strong style={{ color: C.textPrimary }}>On your phone?</strong> Tap the button below.
-          </p>
-        </div>
-      </div>
-
-      <a
-        href={data.whatsappOptInLink} target="_blank" rel="noopener noreferrer"
-        style={{
-          display: 'block', textAlign: 'center', width: '100%', padding: 11, borderRadius: 10,
-          background: C.accentPetrol, color: '#fff', fontSize: 14, fontWeight: 700, textDecoration: 'none',
-          marginBottom: 8,
-        }}
-      >
-        Start check-ins on WhatsApp
-      </a>
+      <WhatsAppOptInBody link={data.whatsappOptInLink} qrDataUrl={qrDataUrl} />
       <button
         onClick={dismiss}
         style={{ display: 'block', width: '100%', padding: '6px 0', background: 'none', border: 'none', fontSize: 12, color: C.textMuted, cursor: 'pointer' }}

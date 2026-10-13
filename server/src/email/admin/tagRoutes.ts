@@ -2,18 +2,14 @@ import { Router } from 'express';
 import type { Response, NextFunction } from 'express';
 import { prisma } from '../../index';
 import { authenticate, AuthRequest } from '../../middleware/auth';
-import { EXEMPT_EMAILS } from '../../routes/stripe';
+import { requireAdmin } from '../../middleware/requireAdmin';
 import { handleTagAssigned } from '../engine/enrollment';
 
 const router = Router();
 
-async function requireAdmin(req: AuthRequest, res: Response, next: NextFunction) {
-  const email = (req.user?.email ?? '').toLowerCase();
-  if (!email || !EXEMPT_EMAILS.includes(email)) return res.status(403).json({ error: 'Forbidden' });
-  next();
-}
-
-router.use(authenticate, requireAdmin);
+// Scoped to /admin: this router is mounted at /api, and an unscoped guard
+// would put the admin check in front of every route mounted after it.
+router.use('/admin', authenticate, requireAdmin);
 
 // GET /admin/tags — List all tags (ordered by name asc)
 router.get('/admin/tags', async (req: AuthRequest, res: Response, next: NextFunction) => {

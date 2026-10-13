@@ -12,7 +12,7 @@ import { Router, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { prisma } from '../index';
 import { authenticate, AuthRequest } from '../middleware/auth';
-import { EXEMPT_EMAILS } from './stripe';
+import { requireAdmin } from '../middleware/requireAdmin';
 import { STAGES, type Stage } from '../services/salesLead';
 import { currentSessionKey, MEET_LINK } from '../config/workshop';
 import { attachResumeToLead } from '../services/leadResume';
@@ -22,14 +22,6 @@ import { calendarConfigured } from '../services/googleCalendar';
 import { activeMeeting, cancelMeeting, removeCalendarEvents, setMeeting } from '../services/salesMeeting';
 
 const router = Router();
-
-function requireAdmin(req: AuthRequest, res: Response, next: NextFunction) {
-  const email = (req.user?.email ?? '').toLowerCase();
-  if (!email || !EXEMPT_EMAILS.includes(email)) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
-  next();
-}
 
 /**
  * The board.

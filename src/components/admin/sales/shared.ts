@@ -1,6 +1,32 @@
 /* Shared by the sales board (pages/AdminSales.tsx) and the pieces it is built
    from: the resume upload, the meeting editor and the week and month overview. */
 import type { CSSProperties } from 'react';
+import api from '../../../lib/api';
+
+/**
+ * Open the resume on file for a lead.
+ *
+ * ⚠️ NOT A PLAIN LINK. The file sits behind the admin check, and an
+ * `<a href="/api/admin/...">` sends no login token (and on Vercel does not
+ * reach the API at all), so it has to be fetched and handed to a tab.
+ *
+ * The tab is opened before the request, not after: a window opened once the
+ * await returns is no longer tied to the click and gets popup-blocked.
+ */
+export async function openLeadResume(leadId: string) {
+  const tab = window.open('', '_blank');
+  try {
+    const r = await api.get(`/admin/sales/${leadId}/resume`, { responseType: 'blob' });
+    const url = URL.createObjectURL(r.data as Blob);
+    if (tab) tab.location.href = url;
+    else window.location.href = url;
+    // Revoked late: revoking immediately races the new tab reading it.
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  } catch {
+    tab?.close();
+    window.alert('That resume could not be opened. Try again.');
+  }
+}
 
 export const C = {
   bg: '#FFFFFF', alt: '#F7FAFC', line: '#E3EAF0', lineStrong: '#CBD7E1',

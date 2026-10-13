@@ -4,7 +4,6 @@ import { prisma } from '../index';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { extractTextFromBuffer } from '../services/pdf';
 import { generateDiagnosticReport, DiagnosticReportInput } from '../services/diagnosticReport';
-import { sendWelcomeEmail } from '../services/email';
 import { autoExtractAchievements } from '../services/autoExtract';
 import { assertResumeSource } from '../lib/resumeSourceGate';
 import { buildDailyFeed } from '../services/jobFeed';
@@ -224,14 +223,6 @@ router.post(
             where: { userId },
             data: { hasCompletedOnboarding: true },
           });
-          const freshProfile = await prisma.candidateProfile.findUnique({ where: { userId } });
-          if ((answers as any).marketingConsent && freshProfile && !freshProfile.marketingEmailSent && (answers as any).marketingEmail) {
-            await sendWelcomeEmail((answers as any).marketingEmail);
-            await prisma.candidateProfile.update({
-              where: { userId },
-              data: { marketingEmailSent: true },
-            });
-          }
           generateBaselineResume(userId, resumeText, markdown).catch(err =>
             console.error('[Onboarding] Baseline resume failed:', err)
           );
@@ -310,14 +301,6 @@ router.post('/retry', authenticate, async (req: AuthRequest, res: Response) => {
           where: { userId },
           data: { hasCompletedOnboarding: true },
         });
-        const freshProfile = await prisma.candidateProfile.findUnique({ where: { userId } });
-        if (answers.marketingConsent && freshProfile && !freshProfile.marketingEmailSent && answers.marketingEmail) {
-          await sendWelcomeEmail(answers.marketingEmail);
-          await prisma.candidateProfile.update({
-            where: { userId },
-            data: { marketingEmailSent: true },
-          });
-        }
         generateBaselineResume(userId, reportInput.resumeText, markdown).catch(err =>
           console.error('[Onboarding] Retry baseline resume failed:', err)
         );

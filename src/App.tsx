@@ -558,7 +558,7 @@ function ReportOrDashboard() {
                 <Route path="/jobs" element={<Navigate to="/" replace />} />
                 <Route path="/mindset" element={<MindsetPage />} />
                 <Route path="/video-cover-letter" element={<VideoCoverLetterPage />} />
-                {/* Admin is four pages, joined by the bar in
+                {/* Admin is six pages, joined by the bar in
                     components/admin/AdminShell.tsx. */}
                 <Route path="/admin" element={<Navigate to="/admin/growth" replace />} />
                 <Route path="/admin/growth" element={<AdminTraffic />} />
@@ -577,7 +577,7 @@ function ReportOrDashboard() {
                 <Route path="/admin/contacts/new" element={<AdminContactDetail />} />
                 <Route path="/admin/contacts/:id" element={<AdminContactDetail />} />
                 <Route path="/admin/friday-brief" element={<FridayBriefPage />} />
-                {/* The pages the four replaced. Redirected, so old bookmarks
+                {/* The pages those replaced. Redirected, so old bookmarks
                     and links in old emails still land somewhere useful. */}
                 <Route path="/admin/traffic" element={<Navigate to="/admin/growth" replace />} />
                 <Route path="/admin/funnel" element={<Navigate to="/admin/people?status=Trial" replace />} />

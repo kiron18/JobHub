@@ -47,8 +47,8 @@ export default function AdminContactDetail() {
 
   return (
     <div style={{ padding: '24px', maxWidth: 900, margin: '0 auto' }}>
-      <Link to="/admin/contacts" style={{ color: '#2d5a6e', textDecoration: 'none', fontSize: 14, display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 16 }}>
-        <ArrowLeft size={16} /> Back to contacts
+      <Link to="/admin/people" style={{ color: '#2d5a6e', textDecoration: 'none', fontSize: 14, display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 16 }}>
+        <ArrowLeft size={16} /> Back to people
       </Link>
 
       <h1 style={{ fontSize: 24, fontWeight: 700, margin: '0 0 4px' }}>{contact.email}</h1>

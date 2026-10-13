@@ -13,7 +13,7 @@ const log = (msg: string) => {
 };
 
 export interface AuthRequest extends Request {
-  user?: { id: string; email?: string };
+  user?: { id: string; email?: string; viaExtensionToken?: boolean };
 }
 
 const DEV_BYPASS_USER_ID = 'dev-test-00000000-0000-0000-0000-000000000001';
@@ -66,14 +66,44 @@ export function mintExtensionToken(): string {
   return EXTENSION_TOKEN_PREFIX + crypto.randomBytes(32).toString('base64url');
 }
 
+/**
+ * The address this user signs in with, from Supabase auth.
+ *
+ * ⚠️ NEVER profile.email. That column is whatever was printed on the resume
+ * and the candidate can edit it, so reading identity from it let anyone become
+ * whoever they typed in, owner list included. The sign-in address is the only
+ * one that has been proven.
+ *
+ * Cached briefly because the extension calls in bursts. A failed lookup is not
+ * cached and yields no email, which fails closed: the request still belongs to
+ * the right user, it just carries no email-based privileges.
+ */
+const SIGN_IN_EMAIL_TTL_MS = 10 * 60 * 1000;
+const signInEmailCache = new Map<string, { email?: string; at: number }>();
+
+async function signInEmail(userId: string): Promise<string | undefined> {
+  const hit = signInEmailCache.get(userId);
+  if (hit && Date.now() - hit.at < SIGN_IN_EMAIL_TTL_MS) return hit.email;
+  try {
+    const { data, error } = await supabase.auth.admin.getUserById(userId);
+    if (error) throw error;
+    const email = data.user?.email ?? undefined;
+    signInEmailCache.set(userId, { email, at: Date.now() });
+    return email;
+  } catch (e: any) {
+    log(`Sign-in email lookup failed for ${userId}: ${e?.message}`);
+    return undefined;
+  }
+}
+
 /** Resolve an `agc_` token to its owner, or null. */
-async function userFromExtensionToken(token: string): Promise<{ id: string; email?: string } | null> {
+async function userFromExtensionToken(token: string): Promise<AuthRequest['user'] | null> {
   const profile = await prisma.candidateProfile.findUnique({
     where: { extensionTokenHash: hashExtensionToken(token) },
-    select: { userId: true, email: true },
+    select: { userId: true },
   });
   if (!profile?.userId) return null;
-  return { id: profile.userId, email: profile.email ?? undefined };
+  return { id: profile.userId, email: await signInEmail(profile.userId), viaExtensionToken: true };
 }
 
 export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {

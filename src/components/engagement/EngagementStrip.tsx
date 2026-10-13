@@ -7,6 +7,7 @@ import { Modal } from '../shared/Modal';
 import { warm } from '../../lib/theme/warmTokens';
 import api from '../../lib/api';
 import { useDailyTarget } from '../../hooks/useDailyTarget';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { StreakHeading } from './StreakHeading';
 import { TodaysRitual } from './TodaysRitual';
 import { ApplicationSquares } from './ApplicationSquares';
@@ -15,6 +16,8 @@ import { BrainPopup } from './BrainPopup';
 import { TargetCommitDialog, TargetUndoDialog } from './TargetDialogs';
 import { DailyProgressBar } from '../jobs/DailyProgressBar';
 import { WeekStrip } from '../jobs/WeekStrip';
+import { WhatsAppReminderPill } from './WhatsAppReminderPill';
+import { WHATSAPP_VISIBLE } from '../../lib/features';
 
 /* ── EngagementStrip ───────────────────────────────────────────────────
    The top of the real dashboard: the streak heading with the brain in it,
@@ -59,6 +62,7 @@ export function EngagementStrip() {
   const [undoDialog, setUndoDialog] = useState(false);
   const [pending, setPending] = useState<number | null>(null);
   const [swapDialog, setSwapDialog] = useState(false);
+  const isMobile = useIsMobile();
   const qc = useQueryClient();
   const startChallenge = useMutation({
     mutationFn: async () => (await api.post('/tracker/challenge/start')).data as EngagementSummary,
@@ -205,7 +209,11 @@ export function EngagementStrip() {
         )}
       </div>
 
-      <div style={{ paddingTop: 4 }}>
+      {/* On a phone this column wraps under the ritual and sits on the left
+          edge; right-aligning there would indent the Day chip under the
+          wider pill. */}
+      <div style={{ paddingTop: 4, display: 'flex', flexDirection: 'column', alignItems: isMobile ? 'flex-start' : 'flex-end', gap: 10 }}>
+        {WHATSAPP_VISIBLE && <WhatsAppReminderPill />}
         <DayCounter
           day={summary.programDay}
           of={summary.programLength}

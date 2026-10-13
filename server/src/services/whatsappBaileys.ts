@@ -258,7 +258,12 @@ async function handleIncoming(socketRef: WASocket, msg: any): Promise<void> {
   const profile = await prisma.candidateProfile.findFirst({ where: { whatsappOptInCode: code } });
 
   if (!profile) {
-    await sendThrottled(socketRef, remoteJid, NO_MATCH_TEXT);
+    // Staging and production are each linked to this same number, each with
+    // its own database, so both receive every START. A code one of them does
+    // not know is normally the other's, and answering "enter this number on
+    // the app first" on top of the other's "You're set" tells a member who
+    // just opted in that it failed. Staging sets this to stay quiet.
+    if (process.env.WHATSAPP_SILENT_UNKNOWN_CODE !== 'true') await sendThrottled(socketRef, remoteJid, NO_MATCH_TEXT);
     return;
   }
 

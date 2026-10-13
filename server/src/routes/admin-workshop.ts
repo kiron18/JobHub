@@ -19,7 +19,7 @@
 import { Router, Response, NextFunction } from 'express';
 import { prisma } from '../index';
 import { authenticate, AuthRequest } from '../middleware/auth';
-import { EXEMPT_EMAILS } from './stripe';
+import { requireAdmin } from '../middleware/requireAdmin';
 import {
   currentSessionKey,
   workshopStart,
@@ -39,14 +39,6 @@ import {
 } from '../services/coachBrief';
 
 const router = Router();
-
-function requireAdmin(req: AuthRequest, res: Response, next: NextFunction) {
-  const email = (req.user?.email ?? '').toLowerCase();
-  if (!email || !EXEMPT_EMAILS.includes(email)) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
-  next();
-}
 
 /** The session being looked at. Defaults to the next one, resolved now. */
 function sessionOf(req: AuthRequest): string {

@@ -48,7 +48,7 @@ import ContactFieldGrid from '../components/admin/sales/ContactFieldGrid';
 import JourneyBar from '../components/admin/sales/JourneyBar';
 import { buildJourney } from '../components/admin/sales/journey';
 import {
-  C, CONTACT_FIELDS, contactValuesOf, errorText, isFinished, meetingLabel, sectionLabel,
+  C, CONTACT_FIELDS, contactValuesOf, errorText, isFinished, meetingLabel, openLeadResume, sectionLabel,
   type ContactField, type ContactValues, type Meeting, type MeetingDot,
 } from '../components/admin/sales/shared';
 
@@ -790,13 +790,13 @@ export default function AdminSales() {
 
                       <td style={cell}>
                         {l.hasResumeText ? (
-                          <a
-                            href={`/api/admin/sales/${l.id}/resume`}
-                            onClick={(e) => e.stopPropagation()}
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: C.blue, fontSize: 12.5, fontWeight: 600 }}
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); openLeadResume(l.id); }}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: C.blue, fontSize: 12.5, fontWeight: 600, background: 'none', border: 0, padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}
                           >
                             <FileText size={13} /> Open
-                          </a>
+                          </button>
                         ) : (
                           <span style={{ color: C.ink3, fontSize: 12.5 }}>none</span>
                         )}

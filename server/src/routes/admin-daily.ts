@@ -13,6 +13,7 @@ import { Router, Response, NextFunction } from 'express';
 import { prisma } from '../index';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { EXEMPT_EMAILS } from './stripe';
+import { requireAdmin } from '../middleware/requireAdmin';
 
 const router = Router();
 
@@ -21,12 +22,6 @@ const HISTORY_DAYS = 14;
 const WELCOME_WINDOW_DAYS = 7;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TEST_EMAIL = /kiron|norik|kamiproject/i;
-
-function requireAdmin(req: AuthRequest, res: Response, next: NextFunction) {
-  const email = (req.user?.email ?? '').toLowerCase();
-  if (!email || !EXEMPT_EMAILS.includes(email)) return res.status(403).json({ error: 'Forbidden' });
-  next();
-}
 
 /** YYYY-MM-DD in Sydney, optionally shifted by whole days. */
 function sydneyDate(offsetDays = 0): string {

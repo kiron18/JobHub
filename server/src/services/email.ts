@@ -293,31 +293,6 @@ export async function sendFridayBriefEmail(script: string, reportCount: number, 
   });
 }
 
-export async function sendWelcomeEmail(to: string): Promise<void> {
-  if (!process.env.RESEND_API_KEY) {
-    console.warn('[email] RESEND_API_KEY not set — skipping welcome email');
-    return;
-  }
-  await sendLogged('diagnosis_ready', {
-    to,
-    subject: 'Your diagnosis is ready - here\'s what we found',
-    text: [
-      "G'day,",
-      '',
-      "Your diagnostic report is ready.",
-      '',
-      "We've gone through your resume, your answers, and your situation. What's in there is written specifically for you, not a template.",
-      '',
-      "Click below to read your full diagnosis and three-step fix:",
-      '',
-      `${APP_URL}/?view=report`,
-      '',
-      "The Aussie Grad Careers team",
-      `aussiegradcareers.com.au`,
-    ].join('\n'),
-  });
-}
-
 function icsEscape(value: string): string {
   // RFC 5545: backslash, semicolon and comma are escaped, newlines become \n.
   return value.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');

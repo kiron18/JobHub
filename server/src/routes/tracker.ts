@@ -232,12 +232,15 @@ router.get('/whatsapp', async (req: any, res: any) => {
   try {
     // No profile yet (mid-onboarding): there is nothing to attach a code to,
     // and creating one would fail five times and surface as a 500.
-    const profile = await prisma.candidateProfile.findUnique({ where: { userId: req.user.id }, select: { whatsappVerifiedAt: true } });
+    const profile = await prisma.candidateProfile.findUnique({ where: { userId: req.user.id }, select: { whatsappVerifiedAt: true, plan: true } });
     if (!profile) return res.status(404).json({ error: 'Profile not found' });
     const optInCode = await getOrCreateWhatsappOptInCode(req.user.id);
     res.json({
       // The client hides the coach card unless check-ins are actually on here.
       enabled: coachCheckinsEnabled(),
+      // Check-ins only go to paying members (same test as coachCheckin/run.ts),
+      // so the client only offers them to paying members.
+      paid: !!profile.plan && profile.plan !== 'free',
       verified: !!profile?.whatsappVerifiedAt,
       whatsappOptInLink: `https://wa.me/${WHATSAPP_COACH_NUMBER}?text=${encodeURIComponent(`START ${optInCode}`)}`,
     });

@@ -201,10 +201,43 @@ router.delete('/profile/resumes/:id', authenticate, async (req, res) => {
     }
 });
 
+/**
+ * The only columns a candidate may write through PATCH /api/profile.
+ *
+ * ⚠️ THIS IS A WHITELIST AND MUST STAY ONE. The route used to spread the
+ * request body straight into the update, which let anyone set their own
+ * `plan`, `accessExpiresAt` or `dashboardAccess` from the browser console.
+ * Billing, access and usage counters are written by Stripe and the server,
+ * never by the person they describe. A new editable field is added here on
+ * purpose, not by sending it.
+ */
+const PATCHABLE_PROFILE_FIELDS = [
+    'name', 'email', 'phone', 'linkedin', 'location',
+    'professionalSummary', 'skills',
+    'targetRole', 'targetCity',
+    'visaStatus', 'visaExpiry', 'salaryExpectation', 'availability',
+    'outreachFromEmail',
+] as const;
+
+/** An owner address on a profile that does not sign in with it is never a
+ *  typo. Nothing reads identity from this column any more, but it is still
+ *  the join key for payments and coach check-ins. */
+function claimsOwnerEmail(email: unknown, authEmail: string): boolean {
+    const wanted = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    return !!wanted && wanted !== authEmail && EXEMPT_EMAILS.includes(wanted);
+}
+
 // PATCH /api/profile — partial updates (from-scratch onboarding flow)
 router.patch('/profile', authenticate, async (req, res) => {
     const userId = (req as any).user.id;
-    const updates = req.body;
+    const authEmail = ((req as any).user?.email ?? '').toLowerCase();
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const updates: Record<string, string | null> = {};
+    for (const key of PATCHABLE_PROFILE_FIELDS) {
+        const value = body[key];
+        if (typeof value === 'string' || value === null) updates[key] = value;
+    }
+    if (claimsOwnerEmail(updates.email, authEmail)) delete updates.email;
 
     try {
         const existing = await prisma.candidateProfile.findUnique({ where: { userId } });
@@ -249,6 +282,7 @@ router.post('/profile', authenticate, async (req, res) => {
         if (!profile) {
             return res.status(400).json({ error: 'Profile data is required' });
         }
+        if (claimsOwnerEmail(profile.email, (authEmail ?? '').toLowerCase())) profile.email = undefined;
 
         const result = await prisma.$transaction(async (tx) => {
             // ── Ensure the CandidateProfile row exists ──────────────────────────

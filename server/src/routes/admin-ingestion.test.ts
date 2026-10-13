@@ -4,6 +4,11 @@ vi.mock('./stripe', () => ({
   EXEMPT_EMAILS: ['admin@test.com'],
 }));
 
+// The real one imports the whole server through ../index.
+vi.mock('../middleware/auth', () => ({
+  authenticate: (_req: any, _res: any, next: any) => next(),
+}));
+
 vi.mock('../db', () => ({
   prisma: {
     sourceResult: { groupBy: vi.fn(async () => ([

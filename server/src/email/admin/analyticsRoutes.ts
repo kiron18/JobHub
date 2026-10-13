@@ -2,18 +2,14 @@ import { Router } from 'express';
 import type { Response, NextFunction } from 'express';
 import { prisma } from '../../index';
 import { authenticate, AuthRequest } from '../../middleware/auth';
-import { EXEMPT_EMAILS } from '../../routes/stripe';
+import { requireAdmin } from '../../middleware/requireAdmin';
 import { emailHasLinks } from '../send/sendEmail';
 
 const router = Router();
 
-async function requireAdmin(req: AuthRequest, res: Response, next: NextFunction) {
-  const email = (req.user?.email ?? '').toLowerCase();
-  if (!email || !EXEMPT_EMAILS.includes(email)) return res.status(403).json({ error: 'Forbidden' });
-  next();
-}
-
-router.use(authenticate, requireAdmin);
+// Scoped to /admin: this router is mounted at /api, and an unscoped guard
+// would put the admin check in front of every route mounted after it.
+router.use('/admin', authenticate, requireAdmin);
 
 /** Mail to our own test inboxes would flatter every rate on the page. Same
  * pattern /admin/traffic drops. */

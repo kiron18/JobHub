@@ -12,7 +12,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ExternalLink, FileText, Video } from 'lucide-react';
 import api from '../../../lib/api';
 import { warm } from '../../../lib/theme/warmTokens';
-import { timeLabel, type Meeting, type MeetingDot } from './shared';
+import { openLeadResume, timeLabel, type Meeting, type MeetingDot } from './shared';
 import JourneyBar from './JourneyBar';
 import { buildJourney, daysAgo, type JourneyLead } from './journey';
 
@@ -133,7 +133,7 @@ export default function DayCalls({ date, isToday }: { date: string; isToday: boo
                     <a href={meetLink} target="_blank" rel="noopener noreferrer" style={link}><Video size={14} /> Join the call</a>
                   )}
                   {l.hasResumeText && (
-                    <a href={`/api/admin/sales/${l.id}/resume`} style={link}><FileText size={14} /> Resume</a>
+                    <button type="button" onClick={() => openLeadResume(l.id)} style={{ ...link, background: 'none', border: 0, padding: 0, cursor: 'pointer' }}><FileText size={14} /> Resume</button>
                   )}
                   {l.linkedinUrl && (
                     <a href={l.linkedinUrl} target="_blank" rel="noopener noreferrer" style={link}><ExternalLink size={14} /> LinkedIn</a>
