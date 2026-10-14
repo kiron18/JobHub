@@ -1,99 +1,138 @@
 /**
- * The admin area is six pages and this is the bar that joins them.
+ * The admin console is three pages and this is the frame around them.
  *
- *   Growth  where visitors drop off on the way to paying (/admin/growth)
- *   People  every lead and client in one filterable list (/admin/people)
- *   Sales   resume intake, booked calls and the pipeline  (/admin/sales)
- *   Email   what went out, when, and how it did           (/admin/email)
- *   Coach   paying members' week                          (/admin/coach)
- *   Daily   Kiron's own checklist for the day             (/admin/daily)
+ *   Today     the list of things to do                  (/admin/today)
+ *   People    every lead and client, one page each      (/admin/people)
+ *   Business  money, the funnel and marketing email     (/admin/business)
  *
- * Everything else that used to live under /admin either redirects into one of
- * these (see App.tsx) or is a tool reached from inside one of them.
+ * Tools (broadcasts, quality control, the leaderboard, the Friday brief) sit
+ * at the bottom of the rail: reached for now and then, not read every day.
+ *
+ * `AdminFrame` is the layout route every /admin page renders inside (see
+ * App.tsx). It is also the door: someone who is not on the owner list is sent
+ * home before a page mounts. The server refuses them anyway; this is so they
+ * are not shown an empty console on the way.
+ *
+ * The look is admin.css, scoped under `.adm`.
  */
-import type { ReactNode } from 'react';
-import { NavLink } from 'react-router-dom';
-import { warm } from '../../lib/theme/warmTokens';
+import { Suspense, type ReactNode } from 'react';
+import { NavLink, Navigate, Outlet } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import api from '../../lib/api';
+import './admin.css';
 
-const C = warm.colors;
-
-const TABS = [
-  { to: '/admin/growth', label: 'Growth' },
+const MAIN = [
+  { to: '/admin/today', label: 'Today' },
   { to: '/admin/people', label: 'People' },
-  { to: '/admin/sales', label: 'Sales' },
-  { to: '/admin/email', label: 'Email' },
+  { to: '/admin/business', label: 'Business' },
+];
+
+const TOOLS = [
+  { to: '/admin/broadcasts', label: 'Send a broadcast' },
+  { to: '/admin/quality', label: 'Quality control' },
+  { to: '/admin/leaderboard', label: 'Leaderboard' },
+  { to: '/admin/friday-brief', label: 'Friday brief' },
+];
+
+/** Still here while the new pages are being checked against them. */
+const OLD = [
+  { to: '/admin/sales', label: 'Sales board' },
   { to: '/admin/coach', label: 'Coach' },
+  { to: '/admin/email', label: 'Email' },
   { to: '/admin/daily', label: 'Daily' },
 ];
 
-export function AdminNav() {
+const linkClass = ({ isActive }: { isActive: boolean }) => (isActive ? 'on' : undefined);
+
+export function AdminFrame() {
+  // The same query the rest of the app keeps warm, so this is rarely a wait.
+  const { data: profile, isLoading } = useQuery({
+    queryKey: ['profile'],
+    queryFn: async () => (await api.get('/profile')).data,
+    staleTime: 5 * 60 * 1000,
+  });
+  const { data: today } = useQuery({
+    queryKey: ['admin-today'],
+    queryFn: async () => (await api.get('/admin/today')).data as TodayCounts,
+    enabled: !!profile?.isAdmin,
+    staleTime: 60_000,
+  });
+
+  if (isLoading) return <div className="adm" />;
+  if (!profile?.isAdmin) return <Navigate to="/" replace />;
+
+  const waiting = today
+    ? today.calls.filter((c) => !c.finished).length + today.followUpsTotal + today.quietTotal + today.moneyTotal
+    : 0;
+
   return (
-    <nav aria-label="Admin" style={{ display: 'flex', gap: 4, borderBottom: `1px solid ${C.borderWhisper}`, marginBottom: 24, overflowX: 'auto' }}>
-      {TABS.map((t) => (
-        <NavLink
-          key={t.to}
-          to={t.to}
-          style={({ isActive }) => ({
-            ...warm.text.body,
-            padding: '10px 14px',
-            marginBottom: -1,
-            textDecoration: 'none',
-            whiteSpace: 'nowrap',
-            fontWeight: isActive ? 600 : 400,
-            color: isActive ? C.accentPetrol : C.textSecondary,
-            borderBottom: `2px solid ${isActive ? C.accentPetrol : 'transparent'}`,
-          })}
-        >
-          {t.label}
-        </NavLink>
-      ))}
-    </nav>
+    <div className="adm">
+      <nav className="adm-rail" aria-label="Admin">
+        <div className="adm-brand">AGC Admin<small>Aussie Grad Careers</small></div>
+        {MAIN.map((t) => (
+          <NavLink key={t.to} to={t.to} className={linkClass}>
+            {t.label}
+            {t.to === '/admin/today' && waiting > 0 && <span className="adm-count">{waiting}</span>}
+          </NavLink>
+        ))}
+        <div className="adm-rail-foot">
+          <div className="adm-rail-label">Tools</div>
+          {TOOLS.map((t) => <NavLink key={t.to} to={t.to} className={linkClass}>{t.label}</NavLink>)}
+          <div className="adm-rail-label">Old pages</div>
+          {OLD.map((t) => <NavLink key={t.to} to={t.to} className={linkClass}>{t.label}</NavLink>)}
+          <NavLink to="/" style={{ marginTop: 8 }}>Back to the app</NavLink>
+        </div>
+      </nav>
+      {/* Its own boundary, so a page loading does not blank the rail. */}
+      <main className="adm-main"><Suspense fallback={null}><Outlet /></Suspense></main>
+    </div>
   );
 }
 
+interface TodayCounts {
+  calls: { finished: boolean }[];
+  followUpsTotal: number;
+  quietTotal: number;
+  moneyTotal: number;
+}
+
+/** A page inside the frame: a title, a line under it, and room for buttons. */
 export function AdminShell({
   title,
   subtitle,
   actions,
+  wide,
   children,
 }: {
-  title: string;
+  title: ReactNode;
   subtitle?: ReactNode;
   actions?: ReactNode;
+  /** For the old full-width boards that were built to fill the screen. */
+  wide?: boolean;
   children: ReactNode;
 }) {
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(12px, 4vw, 24px) 16px 80px', color: C.textPrimary }}>
-      <AdminNav />
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
+    <div className={wide ? 'adm-page wide' : 'adm-page'}>
+      <div className="adm-head">
         <div style={{ minWidth: 0 }}>
-          <h1 style={{ ...warm.text.h1, margin: 0 }}>{title}</h1>
-          {subtitle && <p style={{ ...warm.text.small, margin: '4px 0 0', color: C.textMuted, maxWidth: 720 }}>{subtitle}</p>}
+          <h1>{title}</h1>
+          {subtitle ? <p className="adm-sub">{subtitle}</p> : <div style={{ height: 24 }} />}
         </div>
-        {actions && <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>{actions}</div>}
+        {actions && <div className="adm-actions">{actions}</div>}
       </div>
       {children}
     </div>
   );
 }
 
-/** A small secondary link, for the tools that live inside a page (the sales
- * pipeline, the workshop console, the broadcast composer). */
+/** The old pages drew their own tab bar with this. The rail does that job
+ *  now, so it draws nothing; it is kept so those pages need no edits before
+ *  they are retired. */
+export function AdminNav() {
+  return null;
+}
+
+/** A small secondary link, for a tool reached from inside a page. */
 export function AdminToolLink({ to, children }: { to: string; children: ReactNode }) {
-  return (
-    <NavLink
-      to={to}
-      style={{
-        ...warm.text.small,
-        padding: '6px 12px',
-        borderRadius: 8,
-        border: `1px solid ${C.borderDefined}`,
-        color: C.textSecondary,
-        textDecoration: 'none',
-        whiteSpace: 'nowrap',
-      }}
-    >
-      {children}
-    </NavLink>
-  );
+  return <NavLink to={to} className="adm-btn ghost">{children}</NavLink>;
 }

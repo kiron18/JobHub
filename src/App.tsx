@@ -33,6 +33,18 @@ const FridayBriefPage = React.lazy(() =>
 const AdminTraffic = React.lazy(() =>
   import('./pages/AdminTraffic').then(m => ({ default: m.AdminTraffic }))
 );
+const AdminToday = React.lazy(() => import('./pages/AdminToday'));
+const AdminPerson = React.lazy(() => import('./pages/AdminPerson'));
+const AdminBusiness = React.lazy(() => import('./pages/AdminBusiness'));
+const AdminQualityTool = React.lazy(() =>
+  import('./pages/AdminTools').then(m => ({ default: m.AdminQualityTool }))
+);
+const AdminLeaderboardTool = React.lazy(() =>
+  import('./pages/AdminTools').then(m => ({ default: m.AdminLeaderboardTool }))
+);
+const AdminFrame = React.lazy(() =>
+  import('./components/admin/AdminShell').then(m => ({ default: m.AdminFrame }))
+);
 const AdminPeople = React.lazy(() =>
   import('./pages/AdminPeople').then(m => ({ default: m.default }))
 );
@@ -558,33 +570,39 @@ function ReportOrDashboard() {
                 <Route path="/jobs" element={<Navigate to="/" replace />} />
                 <Route path="/mindset" element={<MindsetPage />} />
                 <Route path="/video-cover-letter" element={<VideoCoverLetterPage />} />
-                {/* Admin is six pages, joined by the bar in
-                    components/admin/AdminShell.tsx. */}
-                <Route path="/admin" element={<Navigate to="/admin/growth" replace />} />
-                <Route path="/admin/growth" element={<AdminTraffic />} />
-                <Route path="/admin/people" element={<AdminPeople />} />
-                <Route path="/admin/email" element={<EmailAnalytics />} />
-                <Route path="/admin/coach" element={<CoachDashboard />} />
-                {/* Kiron's own checklist for the day. */}
-                <Route path="/admin/daily" element={<AdminDaily />} />
-                {/* Tools reached from inside those pages. */}
-                {/* The sales board, replacing the local Python CRM. */}
-                <Route path="/admin/sales" element={<AdminSales />} />
-                {/* The prep console for one live session: roster, questions,
-                    fact sheets and the run sheet. */}
-                <Route path="/admin/workshop" element={<AdminWorkshop />} />
-                <Route path="/admin/broadcasts" element={<AdminBroadcasts />} />
-                <Route path="/admin/contacts/new" element={<AdminContactDetail />} />
-                <Route path="/admin/contacts/:id" element={<AdminContactDetail />} />
-                <Route path="/admin/friday-brief" element={<FridayBriefPage />} />
-                {/* The pages those replaced. Redirected, so old bookmarks
-                    and links in old emails still land somewhere useful. */}
-                <Route path="/admin/traffic" element={<Navigate to="/admin/growth" replace />} />
-                <Route path="/admin/funnel" element={<Navigate to="/admin/people?status=Trial" replace />} />
-                <Route path="/admin/users" element={<Navigate to="/admin/people?status=Paid" replace />} />
-                <Route path="/admin/contacts" element={<Navigate to="/admin/people" replace />} />
-                <Route path="/admin/email-analytics" element={<Navigate to="/admin/email" replace />} />
-                <Route path="/admin/quality" element={<Navigate to="/admin/coach" replace />} />
+                {/* The admin console: three pages and a few tools, all
+                    inside one frame that is also the door (non-owners are
+                    sent home). See components/admin/AdminShell.tsx. */}
+                <Route path="/admin" element={<AdminFrame />}>
+                  <Route index element={<Navigate to="/admin/today" replace />} />
+                  <Route path="today" element={<AdminToday />} />
+                  <Route path="people" element={<AdminPeople />} />
+                  <Route path="people/view" element={<AdminPerson />} />
+                  <Route path="business" element={<AdminBusiness />} />
+                  {/* Tools, at the bottom of the rail. */}
+                  <Route path="broadcasts" element={<AdminBroadcasts />} />
+                  <Route path="quality" element={<AdminQualityTool />} />
+                  <Route path="leaderboard" element={<AdminLeaderboardTool />} />
+                  <Route path="friday-brief" element={<FridayBriefPage />} />
+                  <Route path="growth" element={<AdminTraffic />} />
+                  <Route path="contacts/new" element={<AdminContactDetail />} />
+                  <Route path="contacts/:id" element={<AdminContactDetail />} />
+                  {/* Not linked from anywhere: workshops are not running.
+                      Kept so it can be switched back on without a rebuild. */}
+                  <Route path="workshop" element={<AdminWorkshop />} />
+                  {/* The pages the console replaced, still reachable from
+                      "Old pages" in the rail until they are retired. */}
+                  <Route path="sales" element={<AdminSales />} />
+                  <Route path="coach" element={<CoachDashboard />} />
+                  <Route path="email" element={<EmailAnalytics />} />
+                  <Route path="daily" element={<AdminDaily />} />
+                  {/* Old bookmarks and links in old emails. */}
+                  <Route path="traffic" element={<Navigate to="/admin/growth" replace />} />
+                  <Route path="funnel" element={<Navigate to="/admin/people?stage=Trial" replace />} />
+                  <Route path="users" element={<Navigate to="/admin/people?stage=Client" replace />} />
+                  <Route path="contacts" element={<Navigate to="/admin/people" replace />} />
+                  <Route path="email-analytics" element={<Navigate to="/admin/business" replace />} />
+                </Route>
                 <Route path="*" element={<StrategyHub />} />
               </Routes>
             </React.Suspense>

@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin mockup</title>
+<style>
+  :root {
+    --nav: #3E4B5A; --nav-2: #35414F; --nav-line: #4C5A6B;
+    --blue: #29A8DF; --blue-dark: #1E90C4; --green: #5CBC5B; --green-dark: #4CA54B;
+    --amber: #D4A017; --red: #C0392B;
+    --bg: #F0F0F0; --card: #FFFFFF; --line: #E2E2E2;
+    --ink: #2B2B2B; --muted: #5F5F5F; --faint: #767676;
+    --t-xs: 12px; --t-sm: 13px; --t-ui: 14px; --t-md: 15px; --t-rd: 17px; --t-lg: 20px; --t-xl: 24px; --t-2xl: 28px;
+    --shadow: 0 1px 2px rgba(0,0,0,.05), 0 1px 3px rgba(0,0,0,.06);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Open Sans", system-ui, -apple-system, "Segoe UI", sans-serif; font-size: var(--t-md); color: var(--ink); background: var(--bg); display: flex; min-height: 100vh; }
+  button { font: inherit; cursor: pointer; }
+
+  /* rail */
+  .rail { width: 208px; background: var(--nav); color: #fff; padding: 20px 12px; flex-shrink: 0; display: flex; flex-direction: column; gap: 4px; }
+  .brand { font-size: var(--t-rd); font-weight: 700; padding: 4px 12px 20px; }
+  .brand small { display: block; font-size: var(--t-xs); font-weight: 400; color: #C7D0DA; margin-top: 2px; }
+  .rail button { background: none; border: 0; color: #DCE3EA; text-align: left; padding: 11px 12px; border-radius: 6px; font-size: var(--t-md); display: flex; justify-content: space-between; align-items: center; }
+  .rail button:hover { background: var(--nav-2); }
+  .rail button.on { background: var(--nav-2); color: #fff; font-weight: 600; box-shadow: inset 3px 0 0 var(--blue); }
+  .count { background: var(--blue); color: #fff; font-size: var(--t-xs); font-weight: 700; border-radius: 10px; padding: 1px 8px; }
+  .rail .tools { margin-top: auto; border-top: 1px solid var(--nav-line); padding-top: 12px; }
+  .rail .tools button { font-size: var(--t-sm); color: #C7D0DA; padding: 8px 12px; width: 100%; }
+
+  /* page */
+  main { flex: 1; padding: 32px 40px 80px; max-width: 1040px; }
+  .page { display: none; } .page.on { display: block; }
+  h1 { font-size: var(--t-2xl); margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: var(--t-ui); margin: 0 0 28px; }
+  h2 { font-size: var(--t-xs); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 28px 0 10px; font-weight: 700; }
+  .card { background: var(--card); border-radius: 8px; box-shadow: var(--shadow); }
+  .row { display: flex; align-items: center; gap: 16px; padding: 16px 20px; border-bottom: 1px solid var(--line); }
+  .row:last-child { border-bottom: 0; }
+  .row.click { cursor: pointer; } .row.click:hover { background: #F7FAFC; }
+  .grow { flex: 1; min-width: 0; }
+  .name { font-weight: 600; font-size: var(--t-md); }
+  .meta { color: var(--muted); font-size: var(--t-sm); margin-top: 2px; }
+  .time { font-weight: 700; font-size: var(--t-rd); width: 84px; }
+  .btn { background: var(--blue); color: #fff; border: 0; border-radius: 6px; padding: 8px 14px; font-size: var(--t-ui); font-weight: 600; }
+  .btn:hover { background: var(--blue-dark); }
+  .btn.ghost { background: #fff; color: var(--ink); border: 1px solid #C9C9C9; }
+  .btn.green { background: var(--green-dark); }
+  .check { width: 22px; height: 22px; border: 2px solid #9A9A9A; border-radius: 50%; flex-shrink: 0; }
+  .pill { font-size: var(--t-xs); font-weight: 700; padding: 3px 10px; border-radius: 12px; color: #fff; white-space: nowrap; }
+  .p-lead { background: #6B7C8D; } .p-call { background: #7A4FB3; } .p-pitched { background: var(--blue-dark); } .p-client { background: var(--green-dark); } .p-dead { background: #8A8A8A; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .d-red { background: var(--red); } .d-amber { background: var(--amber); } .d-green { background: var(--green-dark); }
+
+  /* people */
+  .filters { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+  .chip { background: #fff; border: 1px solid #C9C9C9; border-radius: 18px; padding: 6px 14px; font-size: var(--t-ui); color: var(--ink); }
+  .chip.on { background: var(--nav); border-color: var(--nav); color: #fff; font-weight: 600; }
+  .search { margin-left: auto; border: 1px solid #C9C9C9; border-radius: 6px; padding: 8px 12px; font: inherit; font-size: var(--t-ui); width: 220px; }
+  .back { background: none; border: 0; color: var(--blue-dark); font-weight: 600; padding: 0; margin-bottom: 16px; font-size: var(--t-ui); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .pad { padding: 20px; }
+  .kv { display: grid; grid-template-columns: 110px 1fr; gap: 8px 12px; font-size: var(--t-ui); }
+  .kv span:nth-child(odd) { color: var(--muted); }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .stat { padding: 18px 20px; }
+  .stat b { display: block; font-size: var(--t-xl); }
+  .stat span { color: var(--muted); font-size: var(--t-sm); }
+  .note { font-size: var(--t-ui); line-height: 1.55; color: var(--ink); }
+
+  /* business */
+  .bars { display: flex; align-items: flex-end; gap: 18px; height: 150px; padding: 20px 20px 0; }
+  .bar { flex: 1; text-align: center; font-size: var(--t-sm); color: var(--muted); }
+  .bar i { display: block; background: var(--blue); border-radius: 4px 4px 0 0; margin-bottom: 6px; }
+  .bar b { display: block; color: var(--ink); font-size: var(--t-ui); margin-bottom: 4px; }
+  .funnel .row { padding: 12px 20px; }
+  .fbar { height: 10px; background: var(--blue); border-radius: 5px; }
+  table { width: 100%; border-collapse: collapse; font-size: var(--t-ui); }
+  th { text-align: left; font-size: var(--t-xs); text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding: 12px 20px; border-bottom: 1px solid var(--line); }
+  td { padding: 14px 20px; border-bottom: 1px solid var(--line); }
+  tr:last-child td { border-bottom: 0; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .banner { position: fixed; right: 16px; bottom: 16px; background: var(--nav); color: #fff; font-size: var(--t-xs); padding: 6px 12px; border-radius: 6px; opacity: .85; }
+</style>
+</head>
+<body>
+
+<nav class="rail">
+  <div class="brand">AGC Admin<small>Aussie Grad Careers</small></div>
+  <button class="on" data-page="today">Today <span class="count">7</span></button>
+  <button data-page="people">People</button>
+  <button data-page="business">Business</button>
+  <div class="tools">
+    <button>Send a broadcast</button>
+    <button>Quality control</button>
+    <button>Leaderboard</button>
+  </div>
+</nav>
+
+<main>
+
+  <!-- TODAY -->
+  <section class="page on" id="today">
+    <h1>Today</h1>
+    <p class="sub">Wednesday 14 October. 7 things to do.</p>
+
+    <h2>Calls today</h2>
+    <div class="card">
+      <div class="row click" data-person>
+        <div class="time">11:00 am</div>
+        <div class="grow"><div class="name">Ananya Rao</div><div class="meta">Sales call. Data analyst, 485 visa.</div></div>
+        <span class="pill p-call">Call booked</span>
+        <button class="btn">Join</button>
+      </div>
+      <div class="row click" data-person>
+        <div class="time">3:30 pm</div>
+        <div class="grow"><div class="name">Rohan Mehta</div><div class="meta">Client check-in. 9 applications this week.</div></div>
+        <span class="pill p-client">Client</span>
+        <button class="btn">Join</button>
+      </div>
+    </div>
+
+    <h2>Follow up</h2>
+    <div class="card">
+      <div class="row click" data-person>
+        <div class="check"></div>
+        <div class="grow"><div class="name">Mei Lin Tan</div><div class="meta">Pitched 4 days ago. No reply yet.</div></div>
+        <button class="btn ghost">Message</button>
+      </div>
+      <div class="row click" data-person>
+        <div class="check"></div>
+        <div class="grow"><div class="name">Daniel Okafor</div><div class="meta">Sent resume on Monday. No call booked.</div></div>
+        <button class="btn ghost">Book a call</button>
+      </div>
+    </div>
+
+    <h2>Clients gone quiet</h2>
+    <div class="card">
+      <div class="row click" data-person>
+        <span class="dot d-red"></span>
+        <div class="grow"><div class="name">Sofia Hernandez</div><div class="meta">No activity for 9 days.</div></div>
+        <button class="btn ghost">Nudge on WhatsApp</button>
+      </div>
+      <div class="row click" data-person>
+        <span class="dot d-amber"></span>
+        <div class="grow"><div class="name">Arjun Patel</div><div class="meta">No activity for 5 days.</div></div>
+        <button class="btn ghost">Nudge on WhatsApp</button>
+      </div>
+    </div>
+
+    <h2>Money</h2>
+    <div class="card">
+      <div class="row">
+        <span class="dot d-red"></span>
+        <div class="grow"><div class="name">Liam Nguyen</div><div class="meta">Instalment failed 2 days ago. $250.</div></div>
+        <button class="btn ghost">Send invoice link</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- PEOPLE -->
+  <section class="page" id="people">
+    <div id="list">
+      <h1>People</h1>
+      <p class="sub">Every lead and client in one list.</p>
+      <div class="filters">
+        <button class="chip on">All 31</button>
+        <button class="chip">Lead 12</button>
+        <button class="chip">Call booked 3</button>
+        <button class="chip">Pitched 5</button>
+        <button class="chip">Client 8</button>
+        <button class="chip">Dead 3</button>
+        <input class="search" placeholder="Search name or email">
+      </div>
+      <div class="card">
+        <div class="row click" data-person><div class="grow"><div class="name">Rohan Mehta</div><div class="meta">Active today. 9 applications this week.</div></div><span class="pill p-client">Client</span></div>
+        <div class="row click" data-person><div class="grow"><div class="name">Sofia Hernandez</div><div class="meta">Last active 9 days ago.</div></div><span class="pill p-client">Client</span></div>
+        <div class="row click" data-person><div class="grow"><div class="name">Ananya Rao</div><div class="meta">Call today at 11:00 am.</div></div><span class="pill p-call">Call booked</span></div>
+        <div class="row click" data-person><div class="grow"><div class="name">Mei Lin Tan</div><div class="meta">Pitched 4 days ago.</div></div><span class="pill p-pitched">Pitched</span></div>
+        <div class="row click" data-person><div class="grow"><div class="name">Daniel Okafor</div><div class="meta">Resume on file. No call booked.</div></div><span class="pill p-lead">Lead</span></div>
+        <div class="row click" data-person><div class="grow"><div class="name">Grace Kim</div><div class="meta">Signed up yesterday from Instagram.</div></div><span class="pill p-lead">Lead</span></div>
+      </div>
+    </div>
+
+    <div id="person" style="display:none">
+      <button class="back">&larr; Back to people</button>
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:6px">
+        <h1 style="margin:0">Rohan Mehta</h1><span class="pill p-client">Client</span>
+      </div>
+      <p class="sub">Business analyst. Sydney. 485 visa to March 2027.</p>
+      <div style="display:flex;gap:10px;margin-bottom:8px">
+        <button class="btn">Join call 3:30 pm</button>
+        <button class="btn ghost">Open resume</button>
+        <button class="btn ghost">WhatsApp</button>
+        <button class="btn ghost">Email</button>
+      </div>
+
+      <h2>This week in the app</h2>
+      <div class="stats">
+        <div class="card stat"><b>9</b><span>applications (goal 25)</span></div>
+        <div class="card stat"><b>4</b><span>outreach messages</span></div>
+        <div class="card stat"><b>2</b><span>follow-ups sent</span></div>
+        <div class="card stat"><b>Today</b><span>last active</span></div>
+      </div>
+
+      <div class="two">
+        <div>
+          <h2>Notes</h2>
+          <div class="card pad note">Wants BA roles in fintech. Getting views but no interviews, so the resume is fine and the targeting is the issue. Push referrals this week.</div>
+          <h2>Calls</h2>
+          <div class="card">
+            <div class="row"><div class="grow"><div class="name">Today, 3:30 pm</div><div class="meta">Client check-in</div></div></div>
+            <div class="row"><div class="grow"><div class="name">7 October</div><div class="meta">Client check-in</div></div></div>
+            <div class="row"><div class="grow"><div class="name">22 September</div><div class="meta">Sales call. Signed up.</div></div></div>
+          </div>
+        </div>
+        <div>
+          <h2>Details</h2>
+          <div class="card pad kv">
+            <span>Email</span><span>rohan@example.com</span>
+            <span>Phone</span><span>0400 000 000</span>
+            <span>Source</span><span>LinkedIn</span>
+            <span>Joined</span><span>22 September</span>
+          </div>
+          <h2>Payments</h2>
+          <div class="card">
+            <div class="row"><div class="grow"><div class="name">$250</div><div class="meta">1 October. Instalment 2 of 3.</div></div><span class="dot d-green"></span></div>
+            <div class="row"><div class="grow"><div class="name">$250</div><div class="meta">22 September. Instalment 1 of 3.</div></div><span class="dot d-green"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BUSINESS -->
+  <section class="page" id="business">
+    <h1>Business</h1>
+    <p class="sub">The weekly read. Last 90 days.</p>
+
+    <div class="stats">
+      <div class="card stat"><b>$3,749</b><span>revenue, 90 days</span></div>
+      <div class="card stat"><b>8</b><span>paying clients</span></div>
+      <div class="card stat"><b>2</b><span>on trial</span></div>
+      <div class="card stat"><b>$165</b><span>monthly costs</span></div>
+    </div>
+
+    <h2>Revenue by month</h2>
+    <div class="card">
+      <div class="bars">
+        <div class="bar"><b>$1,000</b><i style="height:72px"></i>Jul</div>
+        <div class="bar"><b>$1,250</b><i style="height:90px"></i>Aug</div>
+        <div class="bar"><b>$1,249</b><i style="height:90px"></i>Sep</div>
+        <div class="bar"><b>$250</b><i style="height:18px"></i>Oct so far</div>
+      </div>
+    </div>
+
+    <h2>Where visitors drop off</h2>
+    <div class="card funnel">
+      <div class="row"><div style="width:130px">Visited</div><div class="grow"><div class="fbar" style="width:100%"></div></div><b style="width:50px;text-align:right">1,240</b></div>
+      <div class="row"><div style="width:130px">Uploaded resume</div><div class="grow"><div class="fbar" style="width:22%"></div></div><b style="width:50px;text-align:right">273</b></div>
+      <div class="row"><div style="width:130px">Signed up</div><div class="grow"><div class="fbar" style="width:9%"></div></div><b style="width:50px;text-align:right">112</b></div>
+      <div class="row"><div style="width:130px">Started trial</div><div class="grow"><div class="fbar" style="width:3%"></div></div><b style="width:50px;text-align:right">31</b></div>
+      <div class="row"><div style="width:130px">Paid</div><div class="grow"><div class="fbar" style="width:1%"></div></div><b style="width:50px;text-align:right">8</b></div>
+    </div>
+
+    <h2>Marketing emails</h2>
+    <div class="card">
+      <table>
+        <tr><th>Email</th><th>Sent</th><th class="num">Recipients</th><th class="num">Opened</th><th class="num">Clicked</th></tr>
+        <tr><td><b>Why your resume gets no replies</b></td><td>6 Oct</td><td class="num">214</td><td class="num">41%</td><td class="num">9%</td></tr>
+        <tr><td><b>The 25 a week method</b></td><td>29 Sep</td><td class="num">198</td><td class="num">38%</td><td class="num">6%</td></tr>
+        <tr><td><b>Visa sponsors list is live</b></td><td>22 Sep</td><td class="num">187</td><td class="num">52%</td><td class="num">17%</td></tr>
+      </table>
+    </div>
+    <p class="meta" style="margin-top:10px">Automated emails (reminders, application status): 109 sent in the last 30 days.</p>
+
+    <h2>Costs to watch</h2>
+    <div class="card">
+      <div class="row"><span class="dot d-red"></span><div class="grow"><div class="name">OpenRouter</div><div class="meta">$1.80 credit left</div></div><button class="btn ghost">Top up</button></div>
+      <div class="row"><span class="dot d-amber"></span><div class="grow"><div class="name">Apify</div><div class="meta">74% of monthly credits used</div></div></div>
+      <div class="row"><span class="dot d-green"></span><div class="grow"><div class="name">Everything else</div><div class="meta">8 services, no action needed</div></div></div>
+    </div>
+  </section>
+
+</main>
+
+<div class="banner">Mockup. Sample data only.</div>
+
+<script>
+  const pages = document.querySelectorAll('.page');
+  const navs = document.querySelectorAll('.rail > button');
+  function show(id) {
+    pages.forEach(p => p.classList.toggle('on', p.id === id));
+    navs.forEach(b => b.classList.toggle('on', b.dataset.page === id));
+    window.scrollTo(0, 0);
+  }
+  function person(open) {
+    document.getElementById('list').style.display = open ? 'none' : '';
+    document.getElementById('person').style.display = open ? '' : 'none';
+  }
+  navs.forEach(b => b.onclick = () => { person(false); show(b.dataset.page); });
+  document.querySelectorAll('[data-person]').forEach(r => r.onclick = e => {
+    if (e.target.closest('button')) return;
+    show('people'); person(true);
+  });
+  document.querySelector('.back').onclick = () => person(false);
+  document.querySelectorAll('.chip').forEach(c => c.onclick = () => {
+    document.querySelectorAll('.chip').forEach(x => x.classList.remove('on')); c.classList.add('on');
+  });
+</script>
+</body>
+</html>

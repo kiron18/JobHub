@@ -421,6 +421,11 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
         </>
     );
 
+    // The admin console has its own frame and its own look (see
+    // components/admin/AdminShell.tsx). Wrapping it in the client sidebar put
+    // one navigation inside another.
+    if (location.pathname.startsWith('/admin')) return <>{children}</>;
+
     return (
         <div
             className="flex overflow-hidden w-full"
