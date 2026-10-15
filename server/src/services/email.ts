@@ -6,20 +6,12 @@ import { skoolMemberSearchUrl, skoolMemberSearchByName } from '../lib/skoolLinks
 import { unmatchedAlertMode } from '../config/alerts';
 import { prisma } from '../index';
 import { injectEmailTracking } from '../email/send/sendEmail';
+import { lifecycleEmail, renderHtml, renderText } from './lifecycle/copy';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const APP_URL = 'https://aussiegradcareers.com.au';
 
-/**
- * Where "Find out more" in the welcome resume email goes.
- *
- * Points at the app root, not at /how-it-works, because that explainer page is
- * not built yet and an email cannot be fixed once it is sent. A 404 in the
- * inbox is a dead lead. Repoint this the day the page ships; it is the same
- * destination as POSITIONING_EXPLAINER_URL on the front door.
- */
-const WELCOME_EMAIL_CTA_URL = APP_URL;
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'kiron@aussiegradcareers.com.au';
 const FROM_ADDRESS = `Aussie Grad Careers <kiron@aussiegradcareers.com.au>`;
 
@@ -51,7 +43,7 @@ const SKOOL_GROUP_LINK = `${APP_URL}/community?src=email`;
  * Tracking is best-effort: a failure to record a send must never be the reason
  * someone does not get their email.
  */
-async function sendLogged(
+export async function sendLogged(
   kind: string,
   email: {
     to: string;
@@ -1230,7 +1222,6 @@ export async function sendWelcomeResumeEmail(params: {
   }
   const { to, firstName, resumeMarkdown } = params;
   const name = (firstName || '').trim();
-  const hi = name ? `Hey ${esc(name)},` : 'Hey,';
 
   // The resume travels as a file, not as text in the body.
   //
@@ -1252,35 +1243,27 @@ export async function sendWelcomeResumeEmail(params: {
     console.warn('[email] resume PDF render failed, falling back to inline text:', (err as Error).message);
   }
 
-  const html = [
-    `<div style="background:#faf7f2;padding:28px 12px;">`,
-    `<table cellpadding="0" cellspacing="0" style="width:100%;max-width:640px;margin:0 auto;">`,
-    `<tr><td>`,
-
-    `<p style="font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:15px;color:#1a1814;margin:0 0 14px;line-height:1.6;">${hi}</p>`,
-    `<p style="font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:15px;color:#5c5750;margin:0 0 16px;line-height:1.65;">Here is your new and improved resume.</p>`,
-    `<p style="font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:15px;color:#5c5750;margin:0 0 16px;line-height:1.65;">Imagine sending a highly personalised resume and cover letter of this quality to every company you apply to, along with a short personalised email to a key decision maker. All in under five minutes.</p>`,
-    `<p style="font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:15px;color:#5c5750;margin:0 0 16px;line-height:1.65;">Finding your dream role takes time, but it doesn't need to take stress.</p>`,
-    `<p style="font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:15px;color:#1a1814;margin:0 0 22px;line-height:1.65;font-weight:600;">Work smart. Try the 90-day challenge today.</p>`,
-
-    `<p style="margin:0 0 24px;"><a href="${WELCOME_EMAIL_CTA_URL}" style="display:inline-block;background:#2d5a6e;color:#faf7f2;text-decoration:none;font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:14.5px;font-weight:700;padding:13px 26px;border-radius:8px;">Start the free challenge</a></p>`,
-
-    // Only when there is no file to point at. Reading a resume in an email is a
-    // poor second to holding one, but it beats an email that promises a resume
-    // and carries nothing.
-    ...(attachments ? [] : [
-      `<div style="background:#ffffff;border:1px solid #dddad2;border-radius:12px;padding:34px 34px 30px;margin:0 0 24px;">`,
-      resumeMarkdownToHtml(resumeMarkdown),
-      `</div>`,
-    ]),
-
-    `<p style="font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:12.5px;color:#9b9488;margin:22px 0 0;line-height:1.6;">Sent to ${esc(to)} because you created an Aussie Grad Careers account. Kiron.</p>`,
-    `</td></tr></table></div>`,
+  // Email 1 of the client lifecycle. The words live in lifecycle/copy.ts with
+  // the other nine so they are edited in one place.
+  const email = lifecycleEmail('resume_ready', {
+    firstName: name,
+    appUrl: `${PUBLIC_APP_URL}/`,
+    billingUrl: `${PUBLIC_APP_URL}/pricing`,
+    amount: '$250',
+    resumeAttached: !!attachments,
+  });
+  // Only when there is no file to point at. Reading a resume in an email is a
+  // poor second to holding one, but it beats an email that promises a resume
+  // and carries nothing.
+  const inlineResume = attachments ? '' : [
+    `<div style="background:#ffffff;border:1px solid #dddad2;border-radius:12px;padding:34px 34px 30px;margin:0 0 24px;">`,
+    resumeMarkdownToHtml(resumeMarkdown),
+    `</div>`,
   ].join('');
+  const html = renderHtml(email, inlineResume);
+  const text = attachments ? renderText(email) : undefined;
 
-  const subject = name ? `${name}, here is your rewritten resume` : 'Here is your rewritten resume';
-
-  await sendLogged('welcome_resume', { to, subject, html, attachments, firstName: name || null });
+  await sendLogged('welcome_resume', { to, subject: email.subject, html, text, attachments, firstName: name || null });
 }
 
 /** The candidate's full name off the resume's own H1, for the filename. */

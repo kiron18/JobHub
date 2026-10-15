@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { prisma } from '../index';
 import { sendTrialReminderEmail } from '../services/email';
+import { lifecycleEmailsEnabled } from '../services/lifecycle/send';
 
 let cronStarted = false;
 
@@ -10,6 +11,10 @@ export function startTrialReminderCron(): void {
 
   // 10:00 UTC daily = 20:00 AEST
   cron.schedule('0 10 * * *', async () => {
+    // Superseded by lifecycle email 5 (48 hours before the first charge) once
+    // LIFECYCLE_EMAILS is on. Kept for when it is off, so a trial never ends
+    // without a reminder.
+    if (lifecycleEmailsEnabled()) return;
     console.log('[trialReminder] Checking for trials ending tomorrow');
 
     const now = new Date();

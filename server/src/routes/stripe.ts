@@ -8,6 +8,7 @@ import { raiseSkoolUpgrade } from '../services/skoolUpgrade';
 import { recordLeadSignal } from '../services/salesLead';
 import { accessExpiryFromNow, PAID_ACCESS_DAYS } from '../lib/accessWindow';
 import { captureServerEvent, idempotencyUuid } from '../lib/posthogServer';
+import { onTrialStarted, onInvoicePaid } from '../services/lifecycle/send';
 
 export const EXEMPT_EMAILS = [
   'kamiproject2021@gmail.com',
@@ -308,6 +309,8 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
               properties: { kind: 'stripe', plan: session.metadata?.plan ?? 'monthly', trial_end: trialEndDate!.toISOString() },
               uuid: idempotencyUuid(`trial:${subscriptionId ?? session.id}`),
             });
+            // Lifecycle email 4: card added, first charge date stated.
+            if (subscriptionId) await onTrialStarted(userId, subscriptionId);
           }
         }
 
@@ -425,15 +428,24 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
           where: { stripeSubscriptionId: sub.id },
         });
         if (!profile) break;
+        // A plan that ran its full three payments ends here too (cancel_at),
+        // and that client is owed 12 months of included access. That lives in
+        // accessExpiresAt, set on the third payment, which outranks the plan
+        // fields below (see withinPaidWindow). 'completed' says which ending it was.
+        const completed = !!profile.accessExpiresAt && profile.accessExpiresAt > new Date();
         await prisma.candidateProfile.update({
           where: { id: profile.id },
           data: {
             plan: 'free',
-            planStatus: 'cancelled',
+            planStatus: completed ? 'completed' : 'cancelled',
             dashboardAccess: false,
           },
         });
-        console.log(`[stripe/webhook] Access revoked for subscriptionId=${sub.id}`);
+        console.log(
+          completed
+            ? `[stripe/webhook] Subscription ${sub.id} completed, included access runs to ${profile.accessExpiresAt!.toISOString().slice(0, 10)}`
+            : `[stripe/webhook] Access revoked for subscriptionId=${sub.id}`,
+        );
         break;
       }
 
@@ -536,6 +548,8 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
           },
           uuid: idempotencyUuid(`invoice:${invoice.id}`),
         });
+        // Lifecycle emails 6 and 10, and the 12 months of included access on the last payment.
+        await onInvoicePaid(subId, invoice);
         break;
       }
 

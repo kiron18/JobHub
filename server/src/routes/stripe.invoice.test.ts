@@ -9,6 +9,7 @@ vi.mock('../services/email', () => ({ sendAdminPaymentAlert: vi.fn() }));
 vi.mock('../services/onboarding', () => ({ onboardPaidCustomer: vi.fn() }));
 vi.mock('../services/skoolUpgrade', () => ({ raiseSkoolUpgrade: vi.fn() }));
 vi.mock('../services/salesLead', () => ({ recordLeadSignal: vi.fn() }));
+vi.mock('../services/lifecycle/send', () => ({ onTrialStarted: vi.fn(), onInvoicePaid: vi.fn() }));
 
 let subscriptionIdFromInvoice: (i: any) => string | null;
 

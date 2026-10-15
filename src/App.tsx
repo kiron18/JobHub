@@ -17,6 +17,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
    back if a full popup turns out to be too much at ten a day. */
 import { PostApplicationHost } from './components/engagement/PostApplicationHost';
 import { DailyCloseOut } from './components/tracker/DailyCloseOut';
+import { LifecycleNotice } from './components/lifecycle/LifecycleNotice';
 import { TrialChallengeOverlay } from './components/trialChallenge/TrialChallengeOverlay';
 import { warm } from './lib/theme/warmTokens';
 
@@ -119,6 +120,7 @@ const StyleGuidePage = React.lazy(() => import('./pages/styleguide/StyleGuidePag
 const TrialChallengePreview = React.lazy(() => import('./pages/TrialChallengePreview'));
 const InterviewPrepRedesignPreview = React.lazy(() => import('./pages/InterviewPrepRedesignPreview'));
 const EngagementPreview = React.lazy(() => import('./pages/EngagementPreview'));
+const LifecyclePreview = React.lazy(() => import('./pages/LifecyclePreview'));
 const EngagementDashboardPreview = React.lazy(() => import('./pages/EngagementDashboardPreview'));
 
 // Auth & Context
@@ -647,6 +649,11 @@ function App() {
                   <InterviewPrepRedesignPreview />
                 </React.Suspense>
               } />
+              <Route path="/dev/lifecycle-preview" element={
+                <React.Suspense fallback={null}>
+                  <LifecyclePreview />
+                </React.Suspense>
+              } />
               <Route path="/dev/engagement-preview" element={
                 <React.Suspense fallback={null}>
                   <EngagementPreview />
@@ -755,6 +762,8 @@ function App() {
                 rendering on /dev/* preview pages. See TrialChallengeOverlay
                 for why. */}
             <TrialChallengeOverlay />
+            {/* Login popups for the client lifecycle (trial, payments). Needs the router for navigation. */}
+            <LifecycleNotice />
           </Router>
           {/*
             Was theme="dark" position="top-right" on a white product, where it
