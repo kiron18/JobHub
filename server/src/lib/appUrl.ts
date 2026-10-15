@@ -12,6 +12,15 @@
  *
  * Must match an entry in Supabase Auth > URL Configuration > Redirect URLs.
  */
-export const PUBLIC_APP_URL = (process.env.PUBLIC_APP_URL ?? 'https://www.aussiegradcareers.com.au')
-  .trim()
-  .replace(/\/+$/, '');
+export const PUBLIC_APP_URL = withScheme(process.env.PUBLIC_APP_URL ?? 'https://www.aussiegradcareers.com.au');
+
+/**
+ * A host typed into Railway without its https:// (production had
+ * "www.aussiegradcareers.com.au" until 2026-10-15) turns every emailed link
+ * into a relative one that goes nowhere. Supply the scheme rather than trust it.
+ */
+export function withScheme(raw: string): string {
+  const v = raw.trim().replace(/\/+$/, '');
+  if (!v) return v;
+  return /^https?:\/\//i.test(v) ? v : `https://${v}`;
+}

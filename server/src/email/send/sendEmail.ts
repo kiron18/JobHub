@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { withScheme } from '../../lib/appUrl';
 
 // Built lazily, not at import time: a standalone script that sets
 // RESEND_API_KEY after this module is first imported (its own env file isn't
@@ -38,13 +39,35 @@ export function isTrackableLink(raw: string): boolean {
   }
 }
 
+/** Where the open pixel and click redirect live, as a public https address, or
+ * null when there is none. API_URL wins; on Railway the service's own public
+ * domain is the fallback. A localhost base is never used: a reader cannot reach
+ * it, so the email would carry a dead pixel and dead buttons. */
+export function trackingBaseUrl(env: NodeJS.ProcessEnv = process.env): string | null {
+  const raw = env.API_URL?.trim()
+    || (env.RAILWAY_PUBLIC_DOMAIN?.trim() ? `${env.RAILWAY_PUBLIC_DOMAIN.trim()}/api` : '');
+  if (!raw) return null;
+  const base = withScheme(raw);
+  try {
+    const host = new URL(base).hostname;
+    if (host === 'localhost' || host === '127.0.0.1') return null;
+  } catch {
+    return null;
+  }
+  return base;
+}
+
 /** Appends the open pixel and rewrites every link on our own domains through
  * the click redirect, both keyed on the EmailSend row's id. Shared by
  * sendEmail() and services/email.ts, which builds its own HTML and sends
  * through Resend directly. `trackLinks: false` keeps the pixel but leaves links
  * alone, for emails whose links carry a login token that must not be logged. */
 export function injectEmailTracking(html: string, trackingId: string, opts: { trackLinks?: boolean } = {}): string {
-  const baseUrl = process.env.API_URL ?? 'http://localhost:3002/api';
+  const baseUrl = trackingBaseUrl();
+  // No public address for the tracker: send the email untouched. Before
+  // 2026-10-15 this fell back to localhost, and every button in every client
+  // email since 6 October pointed at http://localhost:3002.
+  if (!baseUrl) return html;
   const pixelUrl = `${baseUrl}/email/track/open/${trackingId}`;
   let out = `${html}\n<img src="${pixelUrl}" width="1" height="1" alt="" style="display:none;" />`;
   if (opts.trackLinks === false) return out;
