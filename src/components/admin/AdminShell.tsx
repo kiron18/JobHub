@@ -3,7 +3,8 @@
  *
  *   Today     the list of things to do                  (/admin/today)
  *   People    every lead and client, one page each      (/admin/people)
- *   Business  money, the funnel and marketing email     (/admin/business)
+ *   Business  money, the funnel and costs               (/admin/business)
+ *   Email     every email: arrived, opened, clicked     (/admin/email)
  *
  * Tools (broadcasts, quality control, the leaderboard, the Friday brief) sit
  * at the bottom of the rail: reached for now and then, not read every day.
@@ -25,6 +26,7 @@ const MAIN = [
   { to: '/admin/today', label: 'Today' },
   { to: '/admin/people', label: 'People' },
   { to: '/admin/business', label: 'Business' },
+  { to: '/admin/email', label: 'Email' },
 ];
 
 const TOOLS = [
@@ -38,7 +40,6 @@ const TOOLS = [
 const OLD = [
   { to: '/admin/sales', label: 'Sales board' },
   { to: '/admin/coach', label: 'Coach' },
-  { to: '/admin/email', label: 'Email' },
   { to: '/admin/daily', label: 'Daily' },
 ];
 

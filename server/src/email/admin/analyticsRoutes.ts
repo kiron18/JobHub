@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import type { Response, NextFunction } from 'express';
+import type { Response } from 'express';
 import { prisma } from '../../index';
 import { authenticate, AuthRequest } from '../../middleware/auth';
 import { requireAdmin } from '../../middleware/requireAdmin';
-import { emailHasLinks } from '../send/sendEmail';
+import { emailHasLinks, isTrackableLink } from '../send/sendEmail';
 
 const router = Router();
 
@@ -20,8 +20,8 @@ const TEST_EMAIL = /kiron|norik|kamiproject/i;
 const LABELS: Record<string, string> = {
   welcome_resume: 'Welcome: your resume is ready',
   lifecycle_resume_ready: 'Welcome: your resume is ready',
-  lifecycle_first_application:'Signup: first application',
-  lifecycle_day3_no_card: 'Signup: trial nearly over',
+  lifecycle_first_application: 'First application nudge',
+  lifecycle_day3_no_card: 'Trial nearly over',
   lifecycle_card_added: 'Card added',
   lifecycle_pre_first_charge: 'Before first charge',
   lifecycle_first_payment: 'First payment',
@@ -46,41 +46,120 @@ const LABELS: Record<string, string> = {
   weekly_wrap: 'Weekly wrap',
 };
 
+/** Where each automated email sits in someone's journey, for grouping. */
+const STAGE: Record<string, string> = {
+  welcome_resume: 'Signup and trial',
+  lifecycle_resume_ready: 'Signup and trial',
+  lifecycle_first_application: 'Signup and trial',
+  lifecycle_day3_no_card: 'Signup and trial',
+  trial_ending: 'Signup and trial',
+  challenge_day_unlocked: 'Signup and trial',
+  cv_roadmap: 'Signup and trial',
+  diagnosis_ready: 'Signup and trial',
+  lifecycle_card_added: 'Paying clients',
+  lifecycle_pre_first_charge: 'Paying clients',
+  lifecycle_first_payment: 'Paying clients',
+  lifecycle_weekly_checkin: 'Paying clients',
+  lifecycle_pre_second_charge: 'Paying clients',
+  lifecycle_pre_third_charge: 'Paying clients',
+  lifecycle_plan_completed: 'Paying clients',
+  client_onboarding: 'Paying clients',
+  premium_welcome: 'Paying clients',
+  follow_up_reminder: 'Job search nudges',
+  application_status: 'Job search nudges',
+  pace_nudge: 'Job search nudges',
+  weekly_wrap: 'Job search nudges',
+  sales_meeting_reminder_day: 'Calls and workshops',
+  sales_meeting_reminder_hour: 'Calls and workshops',
+  workshop_confirmation: 'Calls and workshops',
+  workshop_reminder: 'Calls and workshops',
+  gap_report: 'Calls and workshops',
+};
+
 const DAY = 86_400_000;
+const WINDOWS = [7, 30, 90];
+
+/**
+ * When measuring started on production: the Resend webhook and the ?e= click
+ * tags went live on 15 October 2026. Before that nothing was recorded (the old
+ * pixel and click redirect pointed at localhost), so a send from before this
+ * moment is not "unopened", it is unmeasured. Rates only count sends after it.
+ */
+export const TRACKING_SINCE = new Date('2026-10-15T05:00:00Z');
 
 /** Percent, or null when there is nothing to divide by. */
 function rate(n: number, of: number): number | null {
   return of > 0 ? Math.round((n / of) * 100) : null;
 }
 
-// GET /admin/email-analytics
+/** Whether a plain-text body has a link to our site (those are tagged too). */
+function textHasLinks(text: string | null | undefined): boolean {
+  if (!text) return false;
+  for (const m of text.matchAll(/https:\/\/[^\s<>"']+/g)) {
+    if (isTrackableLink(m[0].replace(/[.,;:!?)\]]+$/, ''))) return true;
+  }
+  return false;
+}
+
+interface Tally {
+  sent: number; measured: number; delivered: number; bounced: number; complained: number;
+  openable: number; opened: number; clickable: number; clicked: number;
+}
+const tally = (): Tally => ({ sent: 0, measured: 0, delivered: 0, bounced: 0, complained: 0, openable: 0, opened: 0, clickable: 0, clicked: 0 });
+
+function summarise(t: Tally) {
+  return {
+    sent: t.sent,
+    /** Sends since measuring started: the base every rate is worked out on. */
+    measured: t.measured,
+    delivered: t.delivered,
+    opened: t.opened,
+    clicked: t.clicked,
+    /** HTML sends since measuring started: the base for the open rate. */
+    openable: t.openable,
+    /** Sends with a link to us since measuring started: the base for the click rate. */
+    clickable: t.clickable,
+    bounced: t.bounced,
+    complained: t.complained,
+    deliveryRate: rate(t.delivered, t.measured),
+    openRate: rate(t.opened, t.openable),
+    clickRate: rate(t.clicked, t.clickable),
+    /** False when the email cannot show it: plain text has no opens, no link to us has no clicks. */
+    canOpen: t.openable > 0 || t.measured === 0,
+    canClick: t.clickable > 0 || t.measured === 0,
+  };
+}
+
+// GET /admin/email-analytics?days=7|30|90
 //
-// One row per kind of email (each automated email, each broadcast), with when
-// it last went out and how it did.
+// One row per kind of email (each automated email, each broadcast) for the
+// window, the headline numbers, the latest sends and the bounces.
 //
 //   delivered, bounced, spam   Resend's webhook, for every email
-//   opened                     Resend's webhook, HTML email only (plain text has
-//                              nowhere for an open pixel), else null: "not
-//                              tracked" rather than a 0% that reads as "nobody"
+//   opened                     Resend's webhook, HTML email only (plain text
+//                              has nowhere for an open pixel)
 //   clicked                    our own site, for links to it (?e= on landing)
 //
-// Delivery numbers only exist from 2026-10-15, when the webhook went in, so
-// rates are worked out over the sends that could have reported one.
-router.get('/admin/email-analytics', async (_req: AuthRequest, res: Response) => {
+// Every rate is worked out over the sends that could have reported it: sent
+// after TRACKING_SINCE, and for opens HTML, for clicks with a link to us.
+router.get('/admin/email-analytics', async (req: AuthRequest, res: Response) => {
   try {
-    const since30 = new Date(Date.now() - 30 * DAY);
-    const since7 = new Date(Date.now() - 7 * DAY);
+    const asked = Number(req.query.days);
+    const days = WINDOWS.includes(asked) ? asked : 30;
+    const since = new Date(Date.now() - days * DAY);
+    const measuredFrom = since > TRACKING_SINCE ? since : TRACKING_SINCE;
 
     const [sends, templates, broadcasts, unsubscribed, contacts] = await Promise.all([
       prisma.emailSend.findMany({
+        where: { sentAt: { gte: since } },
         select: {
           id: true, templateId: true, broadcastId: true, sentAt: true, subject: true, toEmail: true,
           deliveredAt: true, bouncedAt: true, bounceReason: true, complainedAt: true,
         },
         orderBy: { sentAt: 'desc' },
       }),
-      prisma.emailTemplate.findMany({ select: { id: true, name: true, bodyHtml: true } }),
-      prisma.broadcast.findMany({ select: { id: true, name: true, bodyHtml: true } }),
+      prisma.emailTemplate.findMany({ select: { id: true, name: true, bodyHtml: true, bodyText: true } }),
+      prisma.broadcast.findMany({ select: { id: true, name: true, bodyHtml: true, bodyText: true } }),
       prisma.contact.count({ where: { unsubscribedAt: { not: null } } }),
       prisma.contact.count(),
     ]);
@@ -99,114 +178,83 @@ router.get('/admin/email-analytics', async (_req: AuthRequest, res: Response) =>
     const templateById = new Map(templates.map((t) => [t.id, t]));
     const broadcastById = new Map(broadcasts.map((b) => [b.id, b]));
 
+    const add = (t: Tally, s: typeof real[number], html: boolean, links: boolean) => {
+      t.sent++;
+      if (s.bouncedAt) t.bounced++;
+      if (s.complainedAt) t.complained++;
+      if (s.sentAt < measuredFrom) return;
+      t.measured++;
+      if (s.deliveredAt) t.delivered++;
+      if (html) { t.openable++; if (openedSet.has(s.id)) t.opened++; }
+      if (links) { t.clickable++; if (clickedSet.has(s.id)) t.clicked++; }
+    };
+
     interface Group {
-      id: string;
-      label: string;
-      kind: 'automated' | 'campaign';
-      tracked: boolean;
-      hasLinks: boolean;
-      sent: number;
-      sent30: number;
-      opened30: number;
-      clicked30: number;
-      /** Sends in the window that Resend has reported on at all. */
-      reported30: number;
-      delivered30: number;
-      bounced30: number;
-      complained30: number;
-      lastSentAt: Date;
-      lastSubject: string;
+      id: string; label: string; kind: 'automated' | 'campaign'; stage: string;
+      html: boolean; links: boolean; t: Tally; lastSentAt: Date; lastSubject: string;
     }
     const groups = new Map<string, Group>();
+    const total = tally();
+    const recent: Array<{ id: string; toEmail: string; subject: string; label: string; sentAt: Date; status: string; detail: string | null }> = [];
 
     for (const s of real) {
       const b = s.broadcastId ? broadcastById.get(s.broadcastId) : undefined;
       const t = !b && s.templateId ? templateById.get(s.templateId) : undefined;
-      if (!b && !t) continue;
+      const source = b ?? t;
+      if (!source) continue;
       const key = b ? `b:${b.id}` : `t:${t!.id}`;
       let g = groups.get(key);
       if (!g) {
-        const html = (b ?? t)!.bodyHtml;
         g = {
           id: key,
           label: b ? b.name : LABELS[t!.name] ?? t!.name,
           kind: b ? 'campaign' : 'automated',
-          tracked: !!html,
-          hasLinks: emailHasLinks(html),
-          sent: 0, sent30: 0, opened30: 0, clicked30: 0,
-          reported30: 0, delivered30: 0, bounced30: 0, complained30: 0,
+          stage: b ? 'Marketing' : STAGE[t!.name] ?? 'Other',
+          html: !!source.bodyHtml,
+          links: emailHasLinks(source.bodyHtml) || textHasLinks(source.bodyText),
+          t: tally(),
           // Sends arrive newest first, so the first one seen is the latest.
           lastSentAt: s.sentAt,
           lastSubject: s.subject,
         };
         groups.set(key, g);
       }
-      g.sent++;
-      if (s.sentAt >= since30) {
-        g.sent30++;
-        if (openedSet.has(s.id)) g.opened30++;
-        if (clickedSet.has(s.id)) g.clicked30++;
-        if (s.deliveredAt || s.bouncedAt) g.reported30++;
-        if (s.deliveredAt) g.delivered30++;
-        if (s.bouncedAt) g.bounced30++;
-        if (s.complainedAt) g.complained30++;
+      add(g.t, s, g.html, g.links);
+      add(total, s, g.html, g.links);
+
+      if (recent.length < 15) {
+        const status = s.complainedAt ? 'Marked as spam'
+          : s.bouncedAt ? 'Bounced'
+          : clickedSet.has(s.id) ? 'Clicked'
+          : openedSet.has(s.id) ? 'Opened'
+          : s.deliveredAt ? 'Delivered'
+          : s.sentAt < TRACKING_SINCE ? 'Sent, not measured'
+          : 'Sent';
+        recent.push({ id: s.id, toEmail: s.toEmail, subject: s.subject, label: g.label, sentAt: s.sentAt, status, detail: s.bouncedAt ? s.bounceReason : null });
       }
     }
 
     const rows = [...groups.values()]
       .sort((a, b) => +b.lastSentAt - +a.lastSentAt)
       .map((g) => ({
-        id: g.id,
-        label: g.label,
-        kind: g.kind,
-        tracked: g.tracked,
-        lastSentAt: g.lastSentAt,
-        lastSubject: g.lastSubject,
-        sent: g.sent,
-        sent30: g.sent30,
-        openRate: g.tracked ? rate(g.opened30, g.sent30) : null,
-        clickRate: g.hasLinks ? rate(g.clicked30, g.sent30) : null,
-        hasLinks: g.hasLinks,
-        bounced30: g.bounced30,
-        complained30: g.complained30,
-        deliveryRate: rate(g.delivered30, g.reported30),
+        id: g.id, label: g.label, kind: g.kind, stage: g.stage,
+        lastSentAt: g.lastSentAt, lastSubject: g.lastSubject,
+        ...summarise(g.t),
       }));
-
-    // Headline rates only count the sends that could have recorded an open or
-    // a click, or plain-text volume would drag both towards zero.
-    let trackedSent = 0, trackedOpened = 0, linkSent = 0, linkClicked = 0;
-    for (const g of groups.values()) {
-      if (!g.tracked) continue;
-      trackedSent += g.sent30;
-      trackedOpened += g.opened30;
-    }
-    for (const g of groups.values()) {
-      if (g.hasLinks) { linkSent += g.sent30; linkClicked += g.clicked30; }
-    }
 
     // The ones that never arrived, newest first: a missed call reminder is
     // worth knowing about the same day.
     const bounces = real
-      .filter((s) => s.bouncedAt && s.sentAt >= since30)
+      .filter((s) => s.bouncedAt)
       .slice(0, 20)
       .map((s) => ({ toEmail: s.toEmail, subject: s.subject, bouncedAt: s.bouncedAt, reason: s.bounceReason }));
 
-    const last = real[0];
     return res.json({
-      summary: {
-        lastSentAt: last?.sentAt ?? null,
-        lastSubject: last?.subject ?? null,
-        sent7: real.filter((s) => s.sentAt >= since7).length,
-        sent30: real.filter((s) => s.sentAt >= since30).length,
-        openRate30: rate(trackedOpened, trackedSent),
-        clickRate30: rate(linkClicked, linkSent),
-        trackedSent30: trackedSent,
-        bounced30: real.filter((s) => s.bouncedAt && s.sentAt >= since30).length,
-        complained30: real.filter((s) => s.complainedAt && s.sentAt >= since30).length,
-        unsubscribed,
-        contacts,
-      },
+      days,
+      trackingSince: TRACKING_SINCE,
+      summary: { ...summarise(total), unsubscribed, contacts },
       emails: rows,
+      recent,
       bounces,
     });
   } catch (err) {

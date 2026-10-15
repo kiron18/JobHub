@@ -64,9 +64,7 @@ const AdminContactDetail = React.lazy(() =>
 const AdminBroadcasts = React.lazy(() =>
   import('./pages/AdminBroadcasts').then(m => ({ default: m.default }))
 );
-const EmailAnalytics = React.lazy(() =>
-  import('./pages/EmailAnalytics').then(m => ({ default: m.default }))
-);
+const AdminEmail = React.lazy(() => import('./pages/AdminEmail'));
 const VideoCoverLetterPage = React.lazy(() =>
   import('./pages/VideoCoverLetterPage').then(m => ({ default: m.VideoCoverLetterPage }))
 );
@@ -581,6 +579,7 @@ function ReportOrDashboard() {
                   <Route path="people" element={<AdminPeople />} />
                   <Route path="people/view" element={<AdminPerson />} />
                   <Route path="business" element={<AdminBusiness />} />
+                  <Route path="email" element={<AdminEmail />} />
                   {/* Tools, at the bottom of the rail. */}
                   <Route path="broadcasts" element={<AdminBroadcasts />} />
                   <Route path="quality" element={<AdminQualityTool />} />
@@ -596,14 +595,13 @@ function ReportOrDashboard() {
                       "Old pages" in the rail until they are retired. */}
                   <Route path="sales" element={<AdminSales />} />
                   <Route path="coach" element={<CoachDashboard />} />
-                  <Route path="email" element={<EmailAnalytics />} />
                   <Route path="daily" element={<AdminDaily />} />
                   {/* Old bookmarks and links in old emails. */}
                   <Route path="traffic" element={<Navigate to="/admin/growth" replace />} />
                   <Route path="funnel" element={<Navigate to="/admin/people?stage=Trial" replace />} />
                   <Route path="users" element={<Navigate to="/admin/people?stage=Client" replace />} />
                   <Route path="contacts" element={<Navigate to="/admin/people" replace />} />
-                  <Route path="email-analytics" element={<Navigate to="/admin/business" replace />} />
+                  <Route path="email-analytics" element={<Navigate to="/admin/email" replace />} />
                 </Route>
                 <Route path="*" element={<StrategyHub />} />
               </Routes>
