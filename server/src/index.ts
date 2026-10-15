@@ -73,6 +73,7 @@ import { startSequenceCron } from './cron/sequenceCron';
 import { linkCandidateProfiles } from './email/sync/linkCandidateProfiles';
 import emailOpenRouter from './email/tracking/openTracker';
 import emailClickRouter from './email/tracking/clickTracker';
+import { resendWebhookHandler } from './email/tracking/resendWebhook';
 import emailContactRouter from './email/admin/contactRoutes';
 import emailTagRouter from './email/admin/tagRoutes';
 import emailBroadcastRouter from './email/admin/broadcastRoutes';
@@ -138,6 +139,8 @@ app.use(cors(corsOptions));
 
 // Stripe webhook — raw body required for signature verification, must be before express.json()
 app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), stripeWebhookHandler);
+// Resend's delivery events. Same reason: the signature is over the raw body.
+app.post('/api/email/resend-webhook', express.raw({ type: 'application/json' }), resendWebhookHandler);
 
 app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());

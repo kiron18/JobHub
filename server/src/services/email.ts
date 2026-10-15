@@ -5,7 +5,7 @@ import { PUBLIC_APP_URL } from '../lib/appUrl';
 import { skoolMemberSearchUrl, skoolMemberSearchByName } from '../lib/skoolLinks';
 import { unmatchedAlertMode } from '../config/alerts';
 import { prisma } from '../index';
-import { injectEmailTracking } from '../email/send/sendEmail';
+import { tagEmailLinks, tagTextLinks } from '../email/send/sendEmail';
 import { lifecycleEmail, renderHtml, renderText } from './lifecycle/copy';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -36,9 +36,10 @@ const SKOOL_GROUP_LINK = `${APP_URL}/community?src=email`;
  * `kind` names the email, not the send: it becomes the EmailTemplate the sends
  * are grouped under on the dashboard, so keep it stable once it has shipped.
  *
- * Only HTML can be measured. A plain-text email has nowhere to put an open
- * pixel, and its links are left as written rather than swapped for a long
- * tracking URL, so for those the dashboard counts sends and nothing else.
+ * Links to our own site, in the HTML and the plain text, carry the send's id
+ * (`?e=`), so a click is recorded when the page loads. Opens, deliveries and
+ * bounces come from Resend's webhook. Resend can only see an open in HTML mail,
+ * so a plain-text email reports deliveries, bounces and clicks but no opens.
  *
  * Tracking is best-effort: a failure to record a send must never be the reason
  * someone does not get their email.
@@ -92,8 +93,8 @@ export async function sendLogged(
       from: FROM_ADDRESS,
       to,
       subject,
-      ...(text ? { text } : {}),
-      ...(html ? { html: trackingId ? injectEmailTracking(html, trackingId, opts) : html } : {}),
+      ...(text ? { text: trackingId ? tagTextLinks(text, trackingId, opts) : text } : {}),
+      ...(html ? { html: trackingId ? tagEmailLinks(html, trackingId, opts) : html } : {}),
       ...(attachments ? { attachments } : {}),
     } as Parameters<typeof resend.emails.send>[0]);
   } catch (err) {
@@ -129,7 +130,7 @@ export async function sendAccessRequestNotification(params: {
   await resend.emails.send({
     from: FROM_ADDRESS,
     to: ADMIN_EMAIL,
-    subject: `[JobHub Access Request] ${userName || userEmail}${targetRole ? ` — ${targetRole}` : ''}`,
+    subject: `[JobHub Access Request] ${userName || userEmail}${targetRole ? ` (${targetRole})` : ''}`,
     text: [
       'New dashboard access request',
       '',
@@ -270,9 +271,9 @@ export async function sendFridayBriefEmail(script: string, reportCount: number, 
   await resend.emails.send({
     from: FROM_ADDRESS,
     to: ADMIN_EMAIL,
-    subject: `Friday Brief — ${weekLabel} (${reportCount} report${reportCount === 1 ? '' : 's'})`,
+    subject: `Friday Brief: ${weekLabel} (${reportCount} report${reportCount === 1 ? '' : 's'})`,
     text: [
-      `Friday Brief — Week of ${weekLabel}`,
+      `Friday Brief, week of ${weekLabel}`,
       `Reports this week: ${reportCount}`,
       '',
       '─'.repeat(60),
@@ -587,21 +588,21 @@ export async function sendClientOnboardingEmail(params: {
 
   await sendLogged('client_onboarding', {
     to,
-    subject: "You're in — set your password and get started",
+    subject: "You're in. Set your password and get started",
     html: [
       `<table cellpadding="0" cellspacing="0" style="width: 100%; max-width: 560px; margin: 0 auto; font-family: Arial, sans-serif;">`,
       `<tr><td style="padding: 32px 24px; background: #f5f3ef; border-radius: 12px;">`,
       `<h1 style="font-size: 20px; font-weight: 600; color: #1a1814; margin: 0 0 12px;">Welcome to Aussie Grad Careers</h1>`,
-      `<p style="font-size: 14px; color: #6b6559; margin: 0 0 16px; line-height: 1.6;">Your payment is confirmed and your account is ready. Your login is this email address (<strong>${to}</strong>) — use the same email that's on your resume so everything stays in sync.</p>`,
+      `<p style="font-size: 14px; color: #6b6559; margin: 0 0 16px; line-height: 1.6;">Your payment is confirmed and your account is ready. Your login is this email address (<strong>${to}</strong>). Use the same email that's on your resume so everything stays in sync.</p>`,
       `<p style="font-size: 14px; color: #6b6559; margin: 0 0 20px; line-height: 1.6;">First, set your password:</p>`,
       `<p style="margin: 0 0 24px;"><a href="${actionLink}" style="display: inline-block; background: #2d5a6e; color: #faf7f2; text-decoration: none; font-size: 14px; font-weight: 700; padding: 12px 24px; border-radius: 8px;">Set your password</a></p>`,
       `<p style="font-size: 13px; color: #6b6559; margin: 0 0 8px; line-height: 1.6;"><strong>How to get started once you're in:</strong></p>`,
       `<ol style="font-size: 13px; color: #6b6559; margin: 0 0 20px; padding-left: 18px; line-height: 1.7;">`,
       `<li>Upload your resume so we can tailor everything to you.</li>`,
-      `<li>Tell us your target roles — every application gets positioned for them automatically.</li>`,
-      `<li>Work your daily application goal from the dashboard — every application is a rep.</li>`,
+      `<li>Tell us your target roles, and every application gets positioned for them automatically.</li>`,
+      `<li>Work your daily application goal from the dashboard. Every application is a rep.</li>`,
       `</ol>`,
-      `<p style="font-size: 12px; color: #9b9488; margin: 0 0 0; border-top: 1px solid #dddad2; padding-top: 16px; line-height: 1.6;">The set-password link expires for security — if it's lapsed, just use "forgot password" on the sign-in page. Any trouble, reply to this email.<br/><br/>The Aussie Grad Careers team &middot; <a href="${APP_URL}" style="color: #2d5a6e;">aussiegradcareers.com.au</a></p>`,
+      `<p style="font-size: 12px; color: #9b9488; margin: 0 0 0; border-top: 1px solid #dddad2; padding-top: 16px; line-height: 1.6;">The set-password link expires for security. If it has lapsed, just use "forgot password" on the sign-in page. Any trouble, reply to this email.<br/><br/>The Aussie Grad Careers team &middot; <a href="${APP_URL}" style="color: #2d5a6e;">aussiegradcareers.com.au</a></p>`,
       `</td></tr>`,
       `</table>`,
     ].join(''),
@@ -662,26 +663,26 @@ export async function sendStatusEmail(params: {
   const role = company ? `${jobTitle} at ${company}` : jobTitle;
 
   const applied = {
-    subject: `Following up on your ${jobTitle} application — a reminder`,
+    subject: `Following up on your ${jobTitle} application: a reminder`,
     text: [
       'Nice work submitting.',
       '',
       `We'll remind you to follow up on your ${role} application in 7 days if you haven't heard back. A short, polite check-in is often all it takes to stay top of mind.`,
       '',
-      'Keep the momentum going — every application is a rep.',
+      'Keep the momentum going. Every application is a rep.',
       '',
       'The Aussie Grad Careers team',
     ].join('\n'),
   };
 
   const rejected = {
-    subject: 'It happens — here\'s what to do next',
+    subject: 'It happens. Here\'s what to do next',
     text: [
-      `The ${role} application didn't go your way this time — that's genuinely tough, and it's okay to feel it.`,
+      `The ${role} application didn't go your way this time. That's genuinely tough, and it's okay to feel it.`,
       '',
       'One move worth making: send a short, gracious email to the hiring manager asking for feedback. Most candidates don\'t do this. It shows maturity, and occasionally it even reverses the decision.',
       '',
-      'Keep going — the right role is still out there.',
+      'Keep going. The right role is still out there.',
       '',
       'The Aussie Grad Careers team',
     ].join('\n'),
@@ -730,8 +731,8 @@ export async function sendFollowUpReminderEmail(params: {
   // frames the batch.
   const subject =
     totalCount === 1
-      ? `Time to follow up — ${describeJob(jobs[0])}`
-      : `${countLabel} worth a follow-up — here's exactly how`;
+      ? `Time to follow up: ${describeJob(jobs[0])}`
+      : `${countLabel} worth a follow-up. Here's exactly how`;
 
   const jobListItems = jobs
     .map(
@@ -750,7 +751,7 @@ export async function sendFollowUpReminderEmail(params: {
   const btn = (href: string, label: string) =>
     `<a href="${href}" style="display: inline-block; background: ${A}; color: #faf7f2; text-decoration: none; font-size: 14px; font-weight: 700; padding: 12px 24px; border-radius: 8px;">${label}</a>`;
   const tool = (href: string, name: string, how: string) =>
-    `<li style="margin: 0 0 10px;"><a href="${href}" style="color: ${A}; font-weight: 700; text-decoration: none;">${name}</a> — <span style="color: #6b6559;">${how}</span></li>`;
+    `<li style="margin: 0 0 10px;"><a href="${href}" style="color: ${A}; font-weight: 700; text-decoration: none;">${name}</a>: <span style="color: #6b6559;">${how}</span></li>`;
 
   await sendLogged('follow_up_reminder', {
     to,
@@ -760,13 +761,13 @@ export async function sendFollowUpReminderEmail(params: {
       `<tr><td style="padding: 32px 24px; background: #f5f3ef; border-radius: 12px;">`,
 
       `<h1 style="font-size: 20px; font-weight: 600; color: #1a1814; margin: 0 0 12px;">${greeting}</h1>`,
-      `<p style="font-size: 14px; color: #6b6559; margin: 0 0 12px; line-height: 1.6;">You've got <strong>${countLabel}</strong> from over a week ago that are worth a follow-up. If you haven't heard back, this is the moment — not next week.</p>`,
+      `<p style="font-size: 14px; color: #6b6559; margin: 0 0 12px; line-height: 1.6;">You've got <strong>${countLabel}</strong> from over a week ago that are worth a follow-up. If you haven't heard back, this is the moment, not next week.</p>`,
       `<ul style="font-size: 14px; margin: 0 0 20px; padding-left: 18px; line-height: 1.6;">${jobListItems}${moreLine}</ul>`,
 
       // Why it's worth doing
       `<p style="font-size: 13px; color: #1a1814; font-weight: 700; margin: 0 0 8px;">Why it's worth two minutes:</p>`,
       `<ul style="font-size: 13px; color: #6b6559; margin: 0 0 24px; padding-left: 18px; line-height: 1.7;">`,
-      `<li>Recruiters sift through dozens of applicants — a follow-up moves you back to the top of the pile.</li>`,
+      `<li>Recruiters sift through dozens of applicants. A follow-up moves you back to the top of the pile.</li>`,
       `<li>It signals initiative and genuine interest, the exact traits they're hiring for.</li>`,
       `<li>Applications genuinely get buried or stalled; a nudge at the right time can be the difference between a callback and silence.</li>`,
       `<li><strong>Most candidates never follow up.</strong> That's exactly why it works.</li>`,
@@ -774,13 +775,13 @@ export async function sendFollowUpReminderEmail(params: {
 
       // Step 1 — the template
       `<p style="font-size: 14px; color: #1a1814; font-weight: 700; margin: 0 0 6px;">1. Grab your ready-made message</p>`,
-      `<p style="font-size: 13px; color: #6b6559; margin: 0 0 14px; line-height: 1.6;">Open your dashboard, find the job under <strong>Follow up</strong>, and click the <strong>Follow up</strong> button. A template is already written and waiting — just copy it.</p>`,
+      `<p style="font-size: 13px; color: #6b6559; margin: 0 0 14px; line-height: 1.6;">Open your dashboard, find the job under <strong>Follow up</strong>, and click the <strong>Follow up</strong> button. A template is already written and waiting. Just copy it.</p>`,
       `<p style="margin: 0 0 14px;">${btn(dashboardUrl, 'Open your dashboard')}</p>`,
       `<p style="margin: 0 0 24px;"><img src="${screenshotUrl}" alt="The Follow up section on your dashboard" width="512" style="width: 100%; max-width: 512px; border: 1px solid #dddad2; border-radius: 10px; display: block;" /></p>`,
 
       // Step 2 — who to send it to
       `<p style="font-size: 14px; color: #1a1814; font-weight: 700; margin: 0 0 6px;">2. Work out who to send it to</p>`,
-      `<p style="font-size: 13px; color: #6b6559; margin: 0 0 24px; line-height: 1.6;">Best target is <strong>HR / talent acquisition / the recruiter</strong> on the listing. If there's no HR contact, go to the <strong>hiring manager</strong> — the person who'd be your department head if you got the role.</p>`,
+      `<p style="font-size: 13px; color: #6b6559; margin: 0 0 24px; line-height: 1.6;">Best target is <strong>HR / talent acquisition / the recruiter</strong> on the listing. If there's no HR contact, go to the <strong>hiring manager</strong>, the person who'd be your department head if you got the role.</p>`,
 
       // Step 3 — find the email
       `<p style="font-size: 14px; color: #1a1814; font-weight: 700; margin: 0 0 6px;">3. Find their email</p>`,
@@ -836,8 +837,8 @@ export async function sendAdminPaymentAlert(params: {
       from: FROM_ADDRESS,
       to: ADMIN_EMAIL,
       subject: repeat
-        ? `[JobHub] ⚠️ STILL UNRESOLVED (${outstandingDays}d) — ${userEmail}`
-        : `[JobHub] ⚠️ PAID BUT UNMATCHED — ${userEmail}`,
+        ? `[JobHub] ⚠️ STILL UNRESOLVED (${outstandingDays}d): ${userEmail}`
+        : `[JobHub] ⚠️ PAID BUT UNMATCHED: ${userEmail}`,
       text: [
         'A payment was collected but could NOT be matched to a JobHub account.',
         'This customer has paid and has no way in until you create their account.',
@@ -867,8 +868,8 @@ export async function sendAdminPaymentAlert(params: {
     from: FROM_ADDRESS,
     to: ADMIN_EMAIL,
     subject: succeeded
-      ? `[JobHub] Payment succeeded — ${userEmail}`
-      : `[JobHub] PAYMENT FAILED — ${userEmail}`,
+      ? `[JobHub] Payment succeeded: ${userEmail}`
+      : `[JobHub] PAYMENT FAILED: ${userEmail}`,
     text: [
       succeeded ? 'A subscription payment was collected.' : 'A subscription payment failed.',
       '',
@@ -936,11 +937,11 @@ export async function sendTrialChallengeReminderEmail(
   const appUrl = `${PUBLIC_APP_URL}/check`;
   await sendLogged('challenge_day_unlocked', {
     to,
-    subject: `Day ${day} is unlocked — don't lose it`,
+    subject: `Day ${day} is unlocked. Don't lose it`,
     text: [
       `Hi ${displayName},`,
       '',
-      `You passed yesterday's challenge — day ${day} is ready for you.`,
+      `You passed yesterday's challenge. Day ${day} is ready for you.`,
       '',
       `If you don't start it before ${deadlineStr} (AEST), it's gone for good.`,
       '',
@@ -987,7 +988,7 @@ export async function sendRoadmapEmail(
 
   await sendLogged('cv_roadmap', {
     to,
-    subject: `${firstName ? firstName + ', ' : ''}your CV roadmap — 7 fixes, in order`,
+    subject: `${firstName ? firstName + ', ' : ''}your CV roadmap: 7 fixes, in order`,
     html: [
       `<table cellpadding="0" cellspacing="0" style="width: 100%; max-width: 560px; margin: 0 auto; font-family: Arial, sans-serif;">`,
       `<tr><td style="padding: 32px 24px; background: #f5f3ef; border-radius: 12px;">`,
@@ -1041,11 +1042,12 @@ export async function sendPaceNudgeEmail(params: {
     `${APP_URL}/tracker`,
     '',
     'Keep going,',
-    'Kiron — Aussie Grad Careers',
+    'Kiron',
+    'Aussie Grad Careers',
   );
   await sendLogged('pace_nudge', {
     to,
-    subject: "You're behind pace this week — still fixable today",
+    subject: "You're behind pace this week. Still fixable today",
     text: lines.join('\n'),
   });
 }
@@ -1071,7 +1073,7 @@ export async function sendWeeklyWrapEmail(params: {
   const lines: string[] = [`Hi ${displayName},`, ''];
   if (hit) {
     lines.push(
-      `Last week: ${applications} applications and ${outreach} outreach. Both minimums hit — that's how it's done.`,
+      `Last week: ${applications} applications and ${outreach} outreach. Both minimums hit. That's how it's done.`,
       streak > 1 ? `Your streak is now ${streak} weeks. Protect it.` : 'That starts a streak. Protect it.',
     );
   } else {
@@ -1079,7 +1081,7 @@ export async function sendWeeklyWrapEmail(params: {
       `Last week: ${applications} of ${appsTarget} applications, ${outreach} of ${outreachTarget} outreach. That's a missed week.`,
       '',
       consecutiveMisses >= 2
-        ? `That's ${consecutiveMisses} weeks in a row under the minimum. This is coming up on our next call — come ready to talk about what's blocking you.`
+        ? `That's ${consecutiveMisses} weeks in a row under the minimum. This is coming up on our next call, so come ready to talk about what's blocking you.`
         : 'One missed week is a signal, not a verdict. This week decides which way it goes.',
     );
   }
@@ -1088,13 +1090,14 @@ export async function sendWeeklyWrapEmail(params: {
     'This week the counter is back to zero for everyone. Leaderboard:',
     `${APP_URL}/leaderboard`,
     '',
-    'Kiron — Aussie Grad Careers',
+    'Kiron',
+    'Aussie Grad Careers',
   );
   await sendLogged('weekly_wrap', {
     to,
     subject: hit
       ? `Week hit: ${applications} applications, ${outreach} outreach ✔`
-      : 'Last week came up short — reset starts now',
+      : 'Last week came up short. Reset starts now',
     text: lines.join('\n'),
   });
 }
@@ -1112,31 +1115,31 @@ export async function sendCoachDigestEmail(params: {
     return;
   }
   const { to, weekLabel, missed, hit, backdated, goalChanges } = params;
-  const lines: string[] = [`Accountability digest — week of ${weekLabel}`, ''];
+  const lines: string[] = [`Accountability digest, week of ${weekLabel}`, ''];
 
   lines.push(`MISSED THE MINIMUM (${missed.length})`);
   if (missed.length === 0) lines.push('  Nobody. Great week.');
   for (const m of missed) {
-    lines.push(`  ${m.name} <${m.email}> — ${m.applications} apps, ${m.outreach} outreach${m.consecutiveMisses >= 2 ? ` — ${m.consecutiveMisses} weeks in a row, TALK TO THEM` : ''}`);
+    lines.push(`  ${m.name} <${m.email}>: ${m.applications} apps, ${m.outreach} outreach${m.consecutiveMisses >= 2 ? `, ${m.consecutiveMisses} weeks in a row, TALK TO THEM` : ''}`);
   }
   lines.push('', `HIT THE MINIMUM (${hit.length})`);
   for (const h of hit) {
-    lines.push(`  ${h.name} — ${h.applications} apps, ${h.outreach} outreach${h.streak > 1 ? ` (streak ${h.streak}w)` : ''}`);
+    lines.push(`  ${h.name}: ${h.applications} apps, ${h.outreach} outreach${h.streak > 1 ? ` (streak ${h.streak}w)` : ''}`);
   }
   if (backdated.length > 0) {
     lines.push('', 'BACKDATED ENTRIES (last 14 days)');
-    for (const b of backdated) lines.push(`  ${b.name} — ${b.count} entr${b.count === 1 ? 'y' : 'ies'}`);
+    for (const b of backdated) lines.push(`  ${b.name}: ${b.count} entr${b.count === 1 ? 'y' : 'ies'}`);
   }
   if (goalChanges.length > 0) {
     lines.push('', 'GOAL CHANGES (last 7 days)');
-    for (const g of goalChanges) lines.push(`  ${g.name} — ${g.summary}`);
+    for (const g of goalChanges) lines.push(`  ${g.name}: ${g.summary}`);
   }
   lines.push('', `Coach view: ${APP_URL}/admin/coach`);
 
   await resend.emails.send({
     from: FROM_ADDRESS,
     to,
-    subject: `AGC accountability digest — ${missed.length} missed, ${hit.length} hit`,
+    subject: `AGC accountability digest: ${missed.length} missed, ${hit.length} hit`,
     text: lines.join('\n'),
   });
 }

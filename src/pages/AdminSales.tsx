@@ -681,7 +681,7 @@ export default function AdminSales() {
                       <td style={{ ...cell, fontSize: 12.5 }}>
                         {l.profession || l.jobTitle ? (
                           <>
-                            <div style={{ fontWeight: 600, color: C.ink2 }}>{l.profession ?? '—'}</div>
+                            <div style={{ fontWeight: 600, color: C.ink2 }}>{l.profession ?? 'n/a'}</div>
                             {(l.jobTitle || l.location) && (
                               <div style={{ color: C.ink3, marginTop: 3 }}>
                                 {[l.jobTitle, l.location].filter(Boolean).join(' · ')}
@@ -689,7 +689,7 @@ export default function AdminSales() {
                             )}
                           </>
                         ) : (
-                          <span style={{ color: C.ink3 }}>{l.location ?? '—'}</span>
+                          <span style={{ color: C.ink3 }}>{l.location ?? 'n/a'}</span>
                         )}
                       </td>
 

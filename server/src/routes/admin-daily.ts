@@ -3,7 +3,7 @@
  * (same allowlist as the other admin routes).
  *
  *   GET /?date=YYYY-MM-DD   that day's log, the last 14 days, and the new
- *                           signups still waiting on a personal welcome
+ *                           signups with whether the welcome email reached them
  *   PUT /:date              save that day's ticks, counts and note
  *
  * The task list itself is not known here. It lives in src/config/dailyTasks.ts
@@ -20,6 +20,11 @@ const router = Router();
 const HISTORY_DAYS = 14;
 /** How far back a signup still counts as "new" and worth a welcome. */
 const WELCOME_WINDOW_DAYS = 7;
+
+/** The email a new account gets at signup: the resume email from /welcome.
+ * lifecycle_resume_ready is the same email if it is ever sent from the
+ * lifecycle runner instead. */
+const WELCOME_EMAIL_KINDS = ['welcome_resume', 'lifecycle_resume_ready'];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TEST_EMAIL = /kiron|norik|kamiproject/i;
 
@@ -67,9 +72,30 @@ router.get('/', async (req: AuthRequest, res: Response) => {
     const welcomedOn = new Map<string, string>();
     for (const r of welcomedRows) for (const id of r.welcomed) welcomedOn.set(id, r.date);
 
+    // The welcome is automatic now (the resume email at signup, then the
+    // lifecycle emails), so what matters is who it did NOT reach: no welcome
+    // email recorded, or one that bounced.
+    const welcomeSends = await prisma.emailSend.findMany({
+      where: {
+        template: { name: { in: WELCOME_EMAIL_KINDS } },
+        sentAt: { gte: new Date(Date.now() - (WELCOME_WINDOW_DAYS + 1) * 864e5) },
+      },
+      select: { toEmail: true, sentAt: true, bouncedAt: true },
+    });
+    const welcomeByEmail = new Map<string, { sentAt: Date; bouncedAt: Date | null }>();
+    for (const w of welcomeSends) welcomeByEmail.set(w.toEmail.trim().toLowerCase(), { sentAt: w.sentAt, bouncedAt: w.bouncedAt });
+
     const signups = profiles
       .filter((p) => !(p.email && (TEST_EMAIL.test(p.email) || EXEMPT_EMAILS.includes(p.email.toLowerCase()))))
-      .map((p) => ({ userId: p.userId, name: p.name, email: p.email, joinedAt: p.createdAt, welcomedOn: welcomedOn.get(p.userId) ?? null }));
+      .map((p) => {
+        const w = p.email ? welcomeByEmail.get(p.email.trim().toLowerCase()) : undefined;
+        return {
+          userId: p.userId, name: p.name, email: p.email, joinedAt: p.createdAt,
+          welcomedOn: welcomedOn.get(p.userId) ?? null,
+          welcomeEmailAt: w?.sentAt ?? null,
+          welcomeBouncedAt: w?.bouncedAt ?? null,
+        };
+      });
 
     res.json({
       today,

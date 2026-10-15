@@ -5,7 +5,10 @@ import { Analytics } from '@vercel/analytics/react'
 import './index.css'
 import App from './App.tsx'
 import { initAnalytics, registerAcquisitionSource } from './lib/analytics'
+import { recordEmailClick } from './lib/emailClick'
 
+// Before anything reads the address: takes ?e= off it.
+recordEmailClick();
 initAnalytics();
 registerAcquisitionSource();
 

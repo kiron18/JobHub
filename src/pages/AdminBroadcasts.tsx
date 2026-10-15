@@ -111,7 +111,7 @@ export default function AdminBroadcasts() {
           {broadcasts?.map((b: any) => (
             <tr key={b.id} style={{ borderBottom: '1px solid #eee' }}>
               <td style={{ padding: '8px' }}>{b.name}</td>
-              <td style={{ padding: '8px', fontSize: 13 }}>{b.targetCriteria?.tag || '—'}</td>
+              <td style={{ padding: '8px', fontSize: 13 }}>{b.targetCriteria?.tag || 'No tag'}</td>
               <td style={{ padding: '8px' }}>
                 <span style={{
                   padding: '2px 8px', borderRadius: 12, fontSize: 12, fontWeight: 600,

@@ -38,7 +38,11 @@ interface TodayResponse {
   moneyTotal: number;
 }
 
-interface Signup { userId: string; name: string | null; email: string | null; joinedAt: string; welcomedOn: string | null }
+interface Signup {
+  userId: string; name: string | null; email: string | null; joinedAt: string; welcomedOn: string | null;
+  /** The automatic welcome email, if it went out, and whether it bounced. */
+  welcomeEmailAt: string | null; welcomeBouncedAt: string | null;
+}
 
 interface DailyResponse {
   today: string;
@@ -102,8 +106,13 @@ export default function AdminToday() {
   const tasks = date ? tasksFor(date) : [];
   const tasksLeft = tasks.filter((t) => !isDone(t, done)).length;
   const post = date ? POST_OF_THE_DAY[weekdayOf(date)] : null;
-  const toWelcome = (daily.data?.signups ?? []).filter((s) => !s.welcomedOn || s.welcomedOn === date || welcomed.includes(s.userId));
-  const welcomeLeft = toWelcome.filter((s) => !welcomed.includes(s.userId)).length;
+  // Welcoming is automatic. Only the people it missed are listed, and ticking
+  // one (after reaching them some other way) takes them off tomorrow's list.
+  const signups = daily.data?.signups ?? [];
+  const missedWelcome = (s: Signup) => !s.welcomeEmailAt || !!s.welcomeBouncedAt;
+  const missed = signups.filter((s) => missedWelcome(s) && (!s.welcomedOn || s.welcomedOn === date || welcomed.includes(s.userId)));
+  const welcomeLeft = missed.filter((s) => !welcomed.includes(s.userId)).length;
+  const reached = signups.length - signups.filter(missedWelcome).length;
 
   const f = feed.data;
   const left = (f ? f.calls.filter((c) => !c.finished).length + f.followUpsTotal + f.quietTotal + f.moneyTotal : 0) + tasksLeft + welcomeLeft;
@@ -214,28 +223,45 @@ export default function AdminToday() {
         </div>
       </>}
 
-      {toWelcome.length > 0 && <>
-        <h2>New signups to welcome <span>until this is automated</span></h2>
+      {signups.length > 0 && <>
+        <h2>New signups <span>last 7 days, welcomed by email automatically</span></h2>
         <div className="adm-card">
-          {toWelcome.map((s) => {
+          {missed.map((s) => {
             const on = welcomed.includes(s.userId);
             return (
-              <button
-                key={s.userId}
-                className={`adm-row${on ? ' done' : ''}`}
-                aria-pressed={on}
-                onClick={() => change(setWelcomed, (w) => (on ? w.filter((id) => id !== s.userId) : [...w, s.userId]))}
-              >
-                <Tick on={on} />
-                <div className="adm-grow">
+              <div key={s.userId} className={`adm-row${on ? ' done' : ''}`}>
+                <button
+                  className="adm-tick-btn"
+                  aria-pressed={on}
+                  aria-label={on ? 'Mark as not reached yet' : 'Mark as reached'}
+                  onClick={() => change(setWelcomed, (w) => (on ? w.filter((id) => id !== s.userId) : [...w, s.userId]))}
+                >
+                  <Tick on={on} />
+                </button>
+                <Link to={personPath({ userId: s.userId })} className="adm-grow" style={{ color: 'inherit', textDecoration: 'none' }}>
                   <div className="adm-name">{s.name || s.email || 'No name yet'}</div>
                   <div className="adm-meta">
-                    {s.name && s.email ? `${s.email}. ` : ''}Joined {new Date(s.joinedAt).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })}.
+                    {!s.email ? 'No email address on the account, so no welcome went out.'
+                      : s.welcomeBouncedAt ? `The welcome email to ${s.email} bounced.`
+                      : `No welcome email went out to ${s.email}.`}
+                    {' '}Joined {new Date(s.joinedAt).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })}.
                   </div>
-                </div>
-              </button>
+                </Link>
+                {s.email && !s.welcomeBouncedAt && <a className="adm-btn ghost" href={`mailto:${s.email}`}>Email</a>}
+              </div>
             );
           })}
+          <div className="adm-row">
+            <span className="adm-dot green" />
+            <div className="adm-grow">
+              <div className="adm-name">
+                {reached === signups.length
+                  ? `All ${signups.length} got the welcome email.`
+                  : `${reached} of ${signups.length} got the welcome email.`}
+              </div>
+              <div className="adm-meta">The follow-up emails after that go out on their own.</div>
+            </div>
+          </div>
         </div>
       </>}
     </AdminShell>

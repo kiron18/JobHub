@@ -199,7 +199,7 @@ export function AdminTraffic() {
               }}>
                 <p style={{ ...warm.text.micro, margin: 0, color: C.textMuted }}>{s.label}</p>
                 <p style={{ ...warm.text.h1, margin: '4px 0 0', color: i === 0 ? C.accentPetrol : C.textPrimary }}>
-                  {isLoading ? '…' : value ?? '–'}
+                  {isLoading ? '…' : value ?? 'n/a'}
                 </p>
                 <p style={{ ...warm.text.small, margin: 0, color: C.textMuted, minHeight: 20 }}>
                   {conv ? `${conv} of ${prev}` : ''}

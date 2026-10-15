@@ -13,9 +13,14 @@
  *   /admin/email-analytics  every email, of which only broadcasts are shown
  *   /admin/expenses         running costs and credit balances
  *
- * Automated emails (reminders, application status) are counted in one line
- * rather than listed. They are plumbing: the question about them is "are they
- * going out", not "how did each one do".
+ * Automated emails (reminders, application status) are folded away under one
+ * line. They are plumbing: the question about them is "are they going out and
+ * arriving", not "how did each one do". Bounces are listed in the open, since
+ * each one is a person who did not get something.
+ *
+ * Delivered, opened and bounced come from Resend's webhook, from 15 October
+ * 2026. Clicked is counted on our own site. Before that date nothing was
+ * recorded, so older sends show as unreported rather than as zero.
  */
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -38,7 +43,10 @@ interface EmailRow {
   id: string; label: string; kind: 'automated' | 'campaign'; tracked: boolean; hasLinks: boolean;
   lastSentAt: string; lastSubject: string; sent: number; sent30: number;
   openRate: number | null; clickRate: number | null;
+  deliveryRate: number | null; bounced30: number; complained30: number;
 }
+
+interface Bounce { toEmail: string; subject: string; bouncedAt: string; reason: string | null }
 
 interface Expense {
   id: string; name: string; status: 'live' | 'manual' | 'error'; urgency: 'good' | 'warning' | 'critical' | 'unknown';
@@ -58,8 +66,9 @@ const STEPS: { key: keyof Traffic['totals']; label: string }[] = [
 
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const monthLabel = (m: string) => new Date(`${m}-01T00:00:00`).toLocaleDateString('en-AU', { month: 'short' });
-const rate = (r: EmailRow, which: 'openRate' | 'clickRate') =>
-  !r.tracked ? 'not tracked' : which === 'clickRate' && !r.hasLinks ? 'no links' : r[which] === null ? '–' : `${r[which]}%`;
+const pct = (n: number | null) => (n === null ? 'n/a' : `${n}%`);
+const opened = (r: EmailRow) => (!r.tracked ? 'plain text' : pct(r.openRate));
+const clicked = (r: EmailRow) => (!r.hasLinks ? 'no links' : pct(r.clickRate));
 
 function costLine(e: Expense): string {
   if (e.status === 'error') return `Could not be checked${e.error ? `: ${e.error}` : ''}.`;
@@ -85,7 +94,7 @@ export default function AdminBusiness() {
   });
   const email = useQuery({
     queryKey: ['email-analytics'],
-    queryFn: async () => (await api.get('/admin/email-analytics')).data as { emails: EmailRow[] },
+    queryFn: async () => (await api.get('/admin/email-analytics')).data as { emails: EmailRow[]; bounces: Bounce[] },
     staleTime: 60_000,
   });
   const expenses = useQuery({
@@ -101,11 +110,12 @@ export default function AdminBusiness() {
   const campaigns = (email.data?.emails ?? []).filter((e) => e.kind === 'campaign');
   const automated = (email.data?.emails ?? []).filter((e) => e.kind === 'automated');
   const automated30 = automated.reduce((n, e) => n + e.sent30, 0);
+  const bounces = email.data?.bounces ?? [];
   const services = expenses.data?.services ?? [];
   const watch = services.filter((s) => s.urgency === 'critical' || s.urgency === 'warning' || s.status === 'error');
   const fine = services.length - watch.length;
 
-  const dash = (v: string | number | undefined, loading: boolean) => (v !== undefined ? v : loading ? '…' : '–');
+  const dash = (v: string | number | undefined, loading: boolean) => (v !== undefined ? v : loading ? '…' : 'n/a');
 
   return (
     <AdminShell title="Business" subtitle={`The weekly read. Last ${DAYS} days.`}>
@@ -162,15 +172,16 @@ export default function AdminBusiness() {
         {email.data && campaigns.length === 0 && <div className="adm-empty">No broadcasts have been sent yet.</div>}
         {campaigns.length > 0 && (
           <table>
-            <thead><tr><th>Email</th><th>Sent</th><th className="num">Recipients</th><th className="num">Opened</th><th className="num">Clicked</th></tr></thead>
+            <thead><tr><th>Email</th><th>Sent</th><th className="num">Recipients</th><th className="num">Delivered</th><th className="num">Opened</th><th className="num">Clicked</th></tr></thead>
             <tbody>
               {campaigns.map((c) => (
                 <tr key={c.id}>
                   <td><b>{c.lastSubject || c.label}</b></td>
                   <td>{new Date(c.lastSentAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</td>
                   <td className="num">{c.sent}</td>
-                  <td className="num">{rate(c, 'openRate')}</td>
-                  <td className="num">{rate(c, 'clickRate')}</td>
+                  <td className="num">{pct(c.deliveryRate)}</td>
+                  <td className="num">{opened(c)}</td>
+                  <td className="num">{clicked(c)}</td>
                 </tr>
               ))}
             </tbody>
@@ -187,12 +198,33 @@ export default function AdminBusiness() {
                   <div className="adm-name">{e.label}</div>
                   <div className="adm-meta">{e.lastSubject}</div>
                 </div>
-                <span className="adm-meta" style={{ marginTop: 0 }}>{e.sent30} sent</span>
+                <span className="adm-meta" style={{ marginTop: 0, textAlign: 'right' }}>
+                  {e.sent30} sent{e.sent30 > 0 && <>, {opened(e)} opened, {clicked(e)} clicked</>}
+                  {e.bounced30 > 0 && <>, <b className="adm-error">{e.bounced30} bounced</b></>}
+                </span>
               </div>
             ))}
           </div>
         </details>
       )}
+
+      {bounces.length > 0 && <>
+        <h2>Emails that did not arrive <span>last 30 days</span></h2>
+        <div className="adm-card">
+          {bounces.map((b, i) => (
+            <div key={`${b.toEmail}:${b.bouncedAt}:${i}`} className="adm-row">
+              <span className="adm-dot red" />
+              <div className="adm-grow">
+                <div className="adm-name">{b.toEmail}</div>
+                <div className="adm-meta">
+                  {b.subject}. {new Date(b.bouncedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
+                  {b.reason ? `. ${b.reason}` : ''}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </>}
 
       <h2>Costs to watch</h2>
       <div className="adm-card">

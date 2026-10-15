@@ -763,6 +763,11 @@ model EmailSend {
   fromEmail      String
   toEmail        String
   sentAt         DateTime @default(now())
+  /// From Resend's webhook (email/tracking/resendWebhook.ts).
+  deliveredAt    DateTime?
+  bouncedAt      DateTime?
+  bounceReason   String?
+  complainedAt   DateTime?
 
   contact  Contact        @relation(fields: [contactId], references: [id], onDelete: Cascade)
   sequence EmailSequence? @relation(fields: [sequenceId], references: [id])
@@ -772,6 +777,7 @@ model EmailSend {
 
   @@index([contactId, sentAt])
   @@index([sentAt])
+  @@index([resendEmailId])
 }
 
 model EmailOpen {

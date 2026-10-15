@@ -72,6 +72,7 @@ a.adm-row:hover, button.adm-row:hover, .adm-row.click:hover { background: #F7FAF
 
 .adm-check { width: 22px; height: 22px; border: 2px solid #8A8A8A; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: #fff; }
 .adm-check.on { background: var(--green); border-color: var(--green); }
+.adm-tick-btn { background: none; border: 0; padding: 0; margin: 0; cursor: pointer; display: flex; }
 .adm-step { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .adm-step button { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line-strong); background: #fff; font: inherit; font-size: var(--t-rd); line-height: 1; cursor: pointer; color: var(--ink); }
 
