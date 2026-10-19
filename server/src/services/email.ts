@@ -7,6 +7,7 @@ import { unmatchedAlertMode } from '../config/alerts';
 import { prisma } from '../index';
 import { tagEmailLinks, tagTextLinks } from '../email/send/sendEmail';
 import { lifecycleEmail, renderHtml, renderText } from './lifecycle/copy';
+import { statusEmailDue, APPLIED_SUBJECT, REJECTED_SUBJECT } from './statusEmailGate';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -658,16 +659,30 @@ export async function sendStatusEmail(params: {
     return;
   }
   const { to, status, jobTitle, company } = params;
+
+  // One applied email ever, one rejection a week: see statusEmailGate. If the
+  // history can't be read, send nothing; these are encouragement, not notices.
+  try {
+    const prior = await prisma.emailSend.findMany({
+      where: { toEmail: { equals: to.trim(), mode: 'insensitive' }, template: { name: 'application_status' } },
+      select: { subject: true, sentAt: true },
+    });
+    if (!statusEmailDue(status, prior)) return;
+  } catch (err) {
+    console.warn('[email] could not read status email history, skipping:', (err as Error).message);
+    return;
+  }
+
   // "Business Analyst at null" is how a placeholder leaks into a real inbox.
   // With no employer the role title stands on its own.
   const role = company ? `${jobTitle} at ${company}` : jobTitle;
 
   const applied = {
-    subject: `Following up on your ${jobTitle} application: a reminder`,
+    subject: APPLIED_SUBJECT,
     text: [
-      'Nice work submitting.',
+      `Your ${role} application is in. That's the first one done.`,
       '',
-      `We'll remind you to follow up on your ${role} application in 7 days if you haven't heard back. A short, polite check-in is often all it takes to stay top of mind.`,
+      "From here we'll keep track for you. When applications from a week or more ago haven't heard back, they come to you together in one email, each with a follow-up message ready to send.",
       '',
       'Keep the momentum going. Every application is a rep.',
       '',
@@ -676,7 +691,7 @@ export async function sendStatusEmail(params: {
   };
 
   const rejected = {
-    subject: 'It happens. Here\'s what to do next',
+    subject: REJECTED_SUBJECT,
     text: [
       `The ${role} application didn't go your way this time. That's genuinely tough, and it's okay to feel it.`,
       '',

@@ -39,6 +39,7 @@ vi.mock('../index', () => ({
     contact: { upsert: async () => ({ id: 'contact-1' }) },
     emailTemplate: { upsert: async () => ({ id: 'template-1' }) },
     emailSend: {
+      findMany: async () => [],
       create: async () => ({ id: SEND_ID }),
       update: async () => ({}),
       delete: async () => ({}),
