@@ -25,7 +25,8 @@ import { suggestCuts } from '../lib/resumeCuts';
 import { SALES_PAGE_URL } from '../lib/salesPage';
 import { beginWelcomeHandoff, endWelcomeHandoff } from '../lib/welcomeHandoff';
 import { HowItWorksArticle, HOW_IT_WORKS_ID } from '../components/welcome/HowItWorksArticle';
-import { GoogleSignInButton, OrDivider, useGoogleSignInAvailable } from '../components/auth/GoogleSignInButton';
+import { GoogleSignInButton, OrDivider } from '../components/auth/GoogleSignInButton';
+import { useGoogleSignInAvailable } from '../lib/googleSignIn';
 
 /**
  * What the claim step needs again after Google sends them back. The resume and

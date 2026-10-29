@@ -10,7 +10,8 @@ import { PrimaryButton } from '../components/shared/PrimaryButton';
 import { Card } from '../components/shared/Card';
 import api from '../lib/api';
 import { AUTH_PAGE_SIGNUP } from '../config/frontDoor';
-import { GoogleSignInButton, OrDivider, useGoogleSignInAvailable } from '../components/auth/GoogleSignInButton';
+import { GoogleSignInButton, OrDivider } from '../components/auth/GoogleSignInButton';
+import { useGoogleSignInAvailable } from '../lib/googleSignIn';
 
 export const AuthPage: React.FC = () => {
   const [searchParams] = useSearchParams();
