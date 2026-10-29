@@ -6,7 +6,7 @@
  *   signup        email 1, resume ready (sent by /welcome itself)
  *   ~day 1        email 2, first application (only if none recorded yet)
  *   day 3         email 3 + popup, no card yet: "you will not be charged"
- *   card added    email 4 + popup, 7 more days, first charge date stated
+ *   card added    email 4 + popup, 4 more days, first charge date stated
  *   48h out       email 5 + popup, first charge reminder
  *   paid #1       email 6 + popup, the next 90 days
  *   weekly        email 7, check-in (paid clients only)

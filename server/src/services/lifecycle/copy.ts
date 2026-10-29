@@ -91,8 +91,8 @@ export function lifecycleEmail(key: LifecycleEmailKey, v: CopyVars): LifecycleEm
         blocks: [
           hi(v),
           { p: 'Your initial three days of limited access are nearly up.' },
-          { p: "If you haven't had enough time to try the system properly, you can unlock another seven days by adding your card." },
-          { strong: `You won't be charged when you add your card. Your extended trial gives you another seven days to explore the system before your first scheduled payment of ${amount}.` },
+          { p: "If you haven't had enough time to try the system properly, you can unlock four more days by adding your card." },
+          { strong: `You won't be charged when you add your card. Your extended trial gives you four more days to use the system before your first scheduled payment of ${amount}.` },
           { p: "We'll make the upcoming charge date and plan terms clear before you proceed." },
           { p: "My recommendation: don't spend the extra time simply exploring features. Use it to complete applications, contact relevant people, and establish a repeatable job-search routine." },
           { cta: 'Continue your trial', url: v.billingUrl },
@@ -102,11 +102,11 @@ export function lifecycleEmail(key: LifecycleEmailKey, v: CopyVars): LifecycleEm
 
     case 'card_added':
       return {
-        subject: 'Your extra seven days are unlocked',
+        subject: 'Your extra four days are unlocked',
         blocks: [
           hi(v),
           { p: 'Your extended trial is now active.' },
-          { p: 'To confirm, you have seven additional days before your first scheduled payment. You have not been charged today.' },
+          { p: 'To confirm, you have four more days before your first scheduled payment. You have not been charged today.' },
           { p: 'Here are your plan details:' },
           { ul: [
             `First scheduled payment: ${amount} on ${v.chargeDate}`,

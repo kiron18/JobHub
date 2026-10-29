@@ -154,7 +154,7 @@ export async function subscriptionSnapshot(subscriptionId: string): Promise<SubS
 
 // ── Webhook moments (called from routes/stripe.ts, never allowed to throw) ────
 
-/** Email 4. Card is on file and the 7-day trial has started. */
+/** Email 4. Card is on file and the four-day card trial has started. */
 export async function onTrialStarted(userId: string, subscriptionId: string): Promise<void> {
   try {
     const profile = await prisma.candidateProfile.findUnique({ where: { userId }, select: { email: true, name: true } });

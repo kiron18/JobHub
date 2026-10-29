@@ -217,7 +217,7 @@ export function PricingPage() {
           }}
         >
           You will be charged {PRICE} on a monthly basis for the first three months, after which payment stops but
-          you still have access to the platform for a year.
+          you still have access to the platform for a year. Paying here starts your plan today, with no trial.
         </p>
 
         <ul style={{ listStyle: 'none', padding: 0, margin: '32px 0 0', display: 'grid', gap: 10, textAlign: 'left', maxWidth: 460 }}>

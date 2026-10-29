@@ -188,7 +188,7 @@ export function LifecycleNoticeCard({ notice: n, busy = false, onDismiss: dismis
         <>
           <NotCharged
             headline="You will not be charged when you add your card."
-            detail={`Adding your card unlocks another seven days, free. Your first payment of ${n.amount} is only scheduled after those seven days, and you will see the exact date before you confirm.`}
+            detail={`Adding your card unlocks four more days, free. Your first payment of ${n.amount} is only scheduled after those four days, and you will see the exact date before you confirm.`}
           />
           <P>Don't spend the extra time simply exploring features. Use it to complete applications, contact relevant people, and build a job-search routine you can repeat.</P>
           <label style={{
@@ -204,22 +204,22 @@ export function LifecycleNoticeCard({ notice: n, busy = false, onDismiss: dismis
               style={{ marginTop: 3, width: 18, height: 18, accentColor: warm.colors.accentPetrol, flexShrink: 0 }}
             />
             <span style={{ fontSize: 15, lineHeight: 1.5, color: warm.colors.textPrimary, fontWeight: 600 }}>
-              I'm committing to the next seven days: one complete application a day, and someone relevant contacted for each one.
+              I'm committing to the next four days: one complete application a day, and someone relevant contacted for each one.
             </span>
           </label>
           <Small>Plan: three monthly payments of {n.amount}, then {n.includedMonths} months of access included. Cancel before your first payment and you pay nothing.</Small>
         </>
       );
-      primary = { label: busy ? 'Opening...' : 'I commit, unlock 7 more days', onClick: startTrial, disabled: !committed || busy };
+      primary = { label: busy ? 'Opening...' : 'I commit, unlock 4 more days', onClick: startTrial, disabled: !committed || busy };
       secondary = { label: 'Not today', onClick: dismiss };
       break;
 
     case 'card_added':
       eyebrow = 'Extended trial active';
-      title = 'Your extra seven days are unlocked';
+      title = 'Your extra four days are unlocked';
       body = (
         <>
-          <NotCharged headline="You have not been charged today." detail="You have seven additional days before your first scheduled payment." />
+          <NotCharged headline="You have not been charged today." detail="You have four more days before your first scheduled payment." />
           <List items={planLines} />
           <P>Use these extra days to establish your workflow and see how the system fits into your job search.</P>
         </>

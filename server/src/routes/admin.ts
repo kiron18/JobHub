@@ -3,7 +3,7 @@ import { prisma } from '../index';
 import { authenticate } from '../middleware/auth';
 import { callClaude } from '../services/llm';
 import { sendFridayBriefEmail } from '../services/email';
-import { TRIAL_PERIOD_DAYS } from './stripe';
+import { CARD_TRIAL_DAYS } from './stripe';
 import { requireAdmin } from '../middleware/requireAdmin';
 import { supabase } from '../lib/supabase';
 
@@ -387,7 +387,7 @@ router.get('/traffic', authenticate, requireAdmin, async (req, res) => {
       }),
       allAuthUsers(),
       prisma.trialChallenge.findMany({ where: { currentDay: { gte: 1 } }, select: { userId: true, createdAt: true } }),
-      // A card-on-file trial stores only its end; the start is TRIAL_PERIOD_DAYS before it.
+      // A card-on-file trial stores only its end; the start is CARD_TRIAL_DAYS before it.
       prisma.candidateProfile.findMany({ where: { trialEndDate: { not: null } }, select: { userId: true, trialEndDate: true } }),
     ]);
 
@@ -401,7 +401,7 @@ router.get('/traffic', authenticate, requireAdmin, async (req, res) => {
       if (!prev || at < prev) trialStart.set(userId, at);
     };
     for (const c of challenges) addTrial(c.userId, c.createdAt);
-    for (const p of stripeTrials) addTrial(p.userId, new Date(p.trialEndDate!.getTime() - TRIAL_PERIOD_DAYS * 86_400_000));
+    for (const p of stripeTrials) addTrial(p.userId, new Date(p.trialEndDate!.getTime() - CARD_TRIAL_DAYS * 86_400_000));
     const trials = [...trialStart.values()].filter(inRange);
 
     const countBy = (dates: Date[]) => {

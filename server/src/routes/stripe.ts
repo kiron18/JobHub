@@ -114,20 +114,35 @@ const PRICE_IDS: Record<string, string> = {
   premium: PREMIUM_MONTHLY_PRICE_ID,
 };
 
-/** How many free days a trialling plan gets. One number, both checkout paths. */
-export const TRIAL_PERIOD_DAYS = 7;
+/**
+ * The trial, as Kiron set it on 29 Oct 2026: three days free from signup with
+ * no card, then four more once a card is added. Seven in all.
+ */
+export const FREE_DAYS = 3;
+export const CARD_TRIAL_DAYS = 4;
+
+/**
+ * When a card-on-file trial ends: four days after the free three run out, or
+ * four days from now if they come back after that. A card added on day one
+ * still ends on day seven, so the early card loses nothing. Always at least
+ * four days out, well clear of Stripe's 48 hour minimum for trial_end.
+ */
+export function cardTrialEnd(signedUpAt: Date | null | undefined, now = new Date()): number {
+  const freeEnds = (signedUpAt ?? now).getTime() + FREE_DAYS * 86_400_000;
+  return Math.floor((Math.max(freeEnds, now.getTime()) + CARD_TRIAL_DAYS * 86_400_000) / 1000);
+}
 
 /**
  * Plans sold WITHOUT a free trial.
  *
  * Empty by default: every subscription plan, `premium` included, is sold with
- * seven free days.
+ * the card trial (cardTrialEnd).
  *
  * `premium` sat in here for a day on the argument that a trial takes $0 from
  * somebody who has just watched their application being written. That call was
- * reversed deliberately: the seven days are now the reason they say yes, and
- * the card is still collected, so the charge lands on day eight unless they
- * cancel. It is out of the set by decision, not by deletion.
+ * reversed deliberately: the free days are now the reason they say yes, and
+ * the card is still collected, so the charge lands when the trial ends unless
+ * they cancel. It is out of the set by decision, not by deletion.
  *
  * Kept as a switch rather than removed, because "no trial on plan X" is a
  * pricing call that has been made once and can be made again. NO_TRIAL_PLANS is
@@ -670,7 +685,7 @@ router.post('/checkout', authenticate, async (req: AuthRequest, res: Response) =
     if (!isOneTime) {
       sessionParams.subscription_data = {
         metadata: { userId, plan },
-        ...(NO_TRIAL_PLANS.has(plan) ? {} : { trial_period_days: TRIAL_PERIOD_DAYS }),
+        ...(NO_TRIAL_PLANS.has(plan) ? {} : { trial_end: cardTrialEnd(profile?.createdAt) }),
       };
     }
 

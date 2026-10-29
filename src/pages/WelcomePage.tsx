@@ -1966,7 +1966,7 @@ function HowItWorksStrip({ tight }: { tight?: boolean }) {
         ))}
       </ol>
       <p style={{ margin: tight ? '10px 0 0' : '14px 0 0', fontFamily: T.body, fontSize: tight ? 12.5 : 13.5, color: colors.textMuted }}>
-        <strong style={{ color: colors.textPrimary }}>Free 7-day trial.</strong> Have your resume ready to get started.
+        <strong style={{ color: colors.textPrimary }}>Free for 3 days, no card.</strong> Add a card for 4 more. Have your resume ready to get started.
       </p>
     </div>
   );
