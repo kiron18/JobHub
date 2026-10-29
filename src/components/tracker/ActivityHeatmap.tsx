@@ -4,6 +4,9 @@ import api from '../../lib/api';
 import { warm } from '../../lib/theme/warmTokens';
 import { intensityLevel, HEATMAP_GREENS } from './heatmapGrid';
 
+/** The shortest strip shown, so a first week still has a little runway either side of it. */
+const MIN_WEEKS = 8;
+
 export function ActivityHeatmap() {
   const { data } = useQuery({
     queryKey: ['tracker-activity'],
@@ -24,8 +27,17 @@ export function ActivityHeatmap() {
     if (el) el.scrollLeft = el.scrollWidth;
   }, [days.length]);
   // Chunk into weeks (columns of 7).
-  const weeks: Array<Array<{ date: string; count: number }>> = [];
-  for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7));
+  const allWeeks: Array<Array<{ date: string; count: number }>> = [];
+  for (let i = 0; i < days.length; i += 7) allWeeks.push(days.slice(i, i + 7));
+  /*
+    Only as much history as they have. A new member's first application was one
+    green square in a year of grey, which says "empty" louder than it says
+    "started". Show the last MIN_WEEKS, and grow back from there as their own
+    history does.
+  */
+  const firstActive = allWeeks.findIndex(w => w.some(d => d.count > 0));
+  const start = Math.max(0, Math.min(allWeeks.length - MIN_WEEKS, firstActive === -1 ? Infinity : firstActive));
+  const weeks = allWeeks.slice(start);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -35,7 +47,7 @@ export function ActivityHeatmap() {
         className="scroll-x"
         style={{ display: 'flex', gap: 3 }}
         role="img"
-        aria-label={`Application activity over the last ${days.length} days`}
+        aria-label={`Application activity over the last ${weeks.length} weeks`}
       >
         {weeks.map((week, wi) => (
           <div key={wi} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>

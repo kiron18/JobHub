@@ -10,6 +10,8 @@
  * So the box takes both, and this decides which one arrived.
  */
 
+import { ACCEPT_SEEK_LINKS } from '../config/features';
+
 /** A Seek job link, in any of the shapes Seek actually hands out. */
 const SEEK_JOB = /(?:^|\s)(?:https?:\/\/)?(?:www\.)?(?:au\.seek\.com|seek\.com\.au)\/[^\s]*/i;
 
@@ -57,25 +59,30 @@ export function normaliseUrl(url: string): string {
  * and the old 50-character floor rejected every one of them, which is the
  * reason the link path could not simply be dropped into the existing box.
  */
-export function isSubmittable(raw: string): boolean {
+export function isSubmittable(raw: string, acceptLinks = ACCEPT_SEEK_LINKS): boolean {
   const input = classifyPaste(raw);
-  if (input.kind === 'seek-url') return true;
+  if (input.kind === 'seek-url') return acceptLinks;
   if (input.kind === 'other-url') return false;
   return (raw ?? '').trim().length >= 50;
 }
 
 /** What to tell someone whose paste cannot be used yet, or null if it can. */
-export function pasteHint(raw: string): string | null {
+export function pasteHint(raw: string, acceptLinks = ACCEPT_SEEK_LINKS): string | null {
   const text = (raw ?? '').trim();
   if (!text) return null;
 
   const input = classifyPaste(text);
+  if (!acceptLinks && input.kind !== 'description') {
+    return "We don't open links. Open the ad, copy the whole description, and paste it here.";
+  }
   if (input.kind === 'seek-url') return null;
   if (input.kind === 'other-url') {
     return 'Links only work for Seek right now. For any other site, paste the job description instead.';
   }
   if (text.length < 100) {
-    return 'Paste the full job description, or a Seek link. The more text, the sharper the analysis.';
+    return acceptLinks
+      ? 'Paste the full job description, or a Seek link. The more text, the sharper the analysis.'
+      : 'Paste the full job description. The more text, the sharper the analysis.';
   }
   return null;
 }

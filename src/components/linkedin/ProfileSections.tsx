@@ -53,7 +53,7 @@ export const ProfileSections: React.FC<Props> = ({
           type="text"
           value={targetRole}
           onChange={e => onTargetRoleChange(e.target.value)}
-          placeholder="e.g. Senior Product Manager · B2B SaaS"
+          placeholder="e.g. Graduate Data Analyst"
           style={{
             width: '100%', padding: '11px 14px', borderRadius: 10, fontSize: 14,
             background: 'rgba(255,255,255,0.04)', border: `1px solid ${warm.colors.borderWhisper}`,

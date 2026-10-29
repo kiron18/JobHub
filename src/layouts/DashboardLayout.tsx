@@ -8,7 +8,8 @@ import {
     LogOut,
     Menu,
     X,
-    Plus,
+    FilePlus2,
+    UserPlus,
     Trophy,
     BookOpen,
     MessagesSquare,
@@ -20,6 +21,7 @@ import api from '../lib/api';
 import { warm } from '../lib/theme/warmTokens';
 import { ManageSubscriptionModal } from '../components/ManageSubscriptionModal';
 import { EveningCheckout } from '../components/engagement/EveningCheckout';
+import { SHOW_LEADERBOARD } from '../config/features';
 
 const COLLAPSED_WIDTH = 72;
 const EXPANDED_WIDTH = 240;
@@ -193,20 +195,27 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
         onClick?: () => void;
         icon: typeof LayoutDashboard;
         label: string;
+        /** The hover tip on the collapsed rail: what you do there, not just its name. */
+        hint: string;
         divider?: boolean;
     }> = [
-        // The two verbs. Same icon, because they are the same kind of act.
-        { to: '/', icon: Plus, label: 'New application' },
-        { to: '/linkedin?tab=outreach', icon: Plus, label: 'New outreach' },
+        // The two verbs. They used to share one "+" icon, which on the collapsed
+        // rail made two identical buttons nobody could tell apart. Same family
+        // (a plus on a thing), different thing.
+        { to: '/', icon: FilePlus2, label: 'New application', hint: 'New application: paste a job ad and apply' },
+        { to: '/linkedin?tab=outreach', icon: UserPlus, label: 'New outreach', hint: 'New outreach: message someone on LinkedIn' },
 
         // Yours.
-        { to: '/tracker', icon: Briefcase, label: 'Your tracker', divider: true },
-        { to: '/workspace', icon: FileText, label: 'Your profile' },
-        { to: '/interview-prep', icon: MessagesSquare, label: 'Interview prep' },
+        { to: '/tracker', icon: Briefcase, label: 'Your tracker', hint: 'Your tracker: every job you have applied to', divider: true },
+        { to: '/workspace', icon: FileText, label: 'Your profile', hint: 'Your profile: your resume and details' },
+        { to: '/interview-prep', icon: MessagesSquare, label: 'Interview prep', hint: 'Interview prep: practise for a job you applied to' },
 
-        // Looked at, not worked in.
-        { to: '/leaderboard', icon: Trophy, label: 'Leaderboard', divider: true },
-        { to: '/resources', icon: BookOpen, label: 'Resources' },
+        // Looked at, not worked in. The leaderboard is off until there are
+        // enough members for a ranking to mean something (config/features.ts).
+        ...(SHOW_LEADERBOARD
+            ? [{ to: '/leaderboard', icon: Trophy, label: 'Leaderboard', hint: 'Leaderboard: how your streak compares', divider: true }]
+            : []),
+        { to: '/resources', icon: BookOpen, label: 'Resources', hint: 'Resources: guides, classroom and templates', divider: !SHOW_LEADERBOARD },
     ];
 
     const sidebarContent = (showLabels: boolean) => (
@@ -291,6 +300,8 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                             <button
                                 type="button"
                                 onClick={() => { item.onClick!(); if (isTouch) setDrawerOpen(false); }}
+                                title={showLabels ? undefined : item.hint}
+                                aria-label={item.label}
                                 className={`relative flex items-center gap-3 px-3 rounded-xl transition-all hover:bg-black/[0.04] text-left ${isTouch ? "py-3.5" : "py-2.5"}`}
                                 style={{ color: warmT.textMuted, background: 'transparent', border: '1px solid transparent' }}
                             >
@@ -315,6 +326,8 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                             to={item.to!}
                             end={item.to === '/'}
                             onClick={() => isTouch && setDrawerOpen(false)}
+                            title={showLabels ? undefined : item.hint}
+                            aria-label={item.label}
                             {...(item.to === '/tracker'
                                 // data-celebration-target is where the "application
                                 // filed" chip flies to, and what pulses on arrival.

@@ -57,6 +57,14 @@ export const WORK_RIGHTS_RULES: Rule[] = [
  */
 const NO_SPONSORSHIP = /\b(no|not|unable to|cannot|can't|does not|do not|will not)\b[^.\n]{0,40}\b(sponsor(ship)?|visa sponsor(ship)?|472|482|sponsor(ing)? visas?)\b/i;
 
+/**
+ * The ad saying temporary graduate visa holders are welcome. A 485 carries full
+ * working rights, so "full working rights (temporary graduate visa holders
+ * welcome)" is the ad saying yes to exactly the people reading this, and a bare
+ * "This ad asks for full working rights" was telling them the opposite.
+ */
+const GRAD_VISA_WELCOME = /\b(temporary graduate|graduate visa|subclass 485|485 visa|485 holders?|visa holders?)\b[^.\n]{0,40}\b(welcome|encouraged|accepted|eligible|considered)\b|\b(welcome|accept|consider)s?\b[^.\n]{0,40}\b(temporary graduate|graduate visa|485)\b/i;
+
 export interface WorkRightsNotice {
   /** The pre-written sentence, ready to render. */
   sentence: string;
@@ -64,6 +72,8 @@ export interface WorkRightsNotice {
   kinds: WorkRightsKind[];
   /** True when the ad separately rules out sponsoring a visa. */
   noSponsorship: boolean;
+  /** True when the ad says temporary graduate (485) visa holders are welcome. */
+  gradVisaWelcome?: boolean;
 }
 
 function joinPhrases(phrases: string[]): string {
@@ -88,9 +98,15 @@ export function detectWorkRights(jobText: string): WorkRightsNotice | null {
 
   if (matched.length === 0 && !noSponsorship) return null;
 
+  const gradVisaWelcome = GRAD_VISA_WELCOME.test(jd);
   const parts: string[] = [];
   if (matched.length > 0) {
     parts.push(`This ad asks for ${joinPhrases(matched.map((r) => r.phrase))}.`);
+  }
+  // Only worth saying beside working rights alone: citizenship or PR is not
+  // something a 485 gives, whatever else the ad says.
+  if (gradVisaWelcome && matched.every((r) => r.kind === 'working-rights')) {
+    parts.push('It also says temporary graduate (485) visa holders are welcome, and a 485 gives full working rights.');
   }
   if (noSponsorship) {
     parts.push('It also states that visa sponsorship is not available.');
@@ -100,5 +116,6 @@ export function detectWorkRights(jobText: string): WorkRightsNotice | null {
     sentence: parts.join(' '),
     kinds: matched.map((r) => r.kind),
     noSponsorship,
+    gradVisaWelcome,
   };
 }

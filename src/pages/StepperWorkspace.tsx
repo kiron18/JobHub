@@ -55,6 +55,7 @@ import { extractReactText } from '../lib/extractReactText';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { trackDocumentGenerated, trackApplicationFailed } from '../lib/analytics';
 import { useTrialChallengeState } from '../lib/trialChallenge';
+import { CONFIRM_BEFORE_APPLIED } from '../config/features';
 
 /**
  * Regenerate on a finished draft. Off since 2026-09-29 (Kiron): a new draft
@@ -1182,7 +1183,7 @@ function DocumentStep({
     }, [measurable]);
 
     const stepLabel = stepId === 'resume' ? 'Tailored Resume' : stepId === 'cover-letter' ? 'Cover Letter' : 'Selection Criteria';
-    const coverLetterNote = 'Most candidates skip the cover letter. Australian recruiters use it to filter genuine interest from automated applications, a tailored cover letter measurably increases callback rates.';
+    const coverLetterNote = 'Most candidates skip the cover letter. In a crowded and noisy market, this is how you stand apart: a personalised statement of what you bring to the company.';
 
     const markdownComponents = React.useMemo(
         () => buildMarkdownComponents(resumeTips, showTips),
@@ -1691,9 +1692,39 @@ function TrackStep({
         return stored && stored !== '1' ? stored : undefined;
     });
 
+    /*
+      Reaching this step used to MARK the job Applied, on mount. Most people
+      download the drafts here and send them later, or never, so the tracker,
+      the daily goal, the streak, the follow-up reminders and the "your first
+      application is in" email were all counting documents, not applications.
+      With CONFIRM_BEFORE_APPLIED on, the row stays SAVED until they say they
+      sent it. Off restores the old behaviour exactly.
+    */
+    const draftFlag = `jobhub_tracker_draft_${workspaceKey}`;
+    const [confirming, setConfirming] = useState(false);
+    const [markNow, setMarkNow] = useState(!CONFIRM_BEFORE_APPLIED);
+
+    // Without a fit check there is no row yet. Make one as SAVED, once, so the
+    // drafts are findable in the tracker before they are sent.
+    useEffect(() => {
+        if (!CONFIRM_BEFORE_APPLIED || fitJobId) return;
+        if (localStorage.getItem(`jobhub_tracker_saved_${workspaceKey}`) || localStorage.getItem(draftFlag)) return;
+        api.post('/jobs', {
+            title: role ?? 'Untitled role',
+            company: company || undefined,
+            agency: agency || undefined,
+            sourceUrl: sourceUrl || undefined,
+            description: jobDescription,
+            status: 'SAVED',
+        }).then(({ data }) => {
+            if (data?.id) localStorage.setItem(draftFlag, data.id);
+        }).catch(() => { /* the confirm below creates it if this did not */ });
+    }, [workspaceKey, fitJobId, draftFlag, role, company, agency, sourceUrl, jobDescription]);
+
     useEffect(() => {
         const flag = `jobhub_tracker_saved_${workspaceKey}`;
         if (localStorage.getItem(flag)) return;
+        if (!markNow) return;
         let cancelled = false;
         (async () => {
             const appliedAt = new Date().toISOString();
@@ -1731,8 +1762,9 @@ function TrackStep({
                 // wrote this ad into the tracker as SAVED. Moving that row to
                 // APPLIED is the whole job here. Creating a second one would
                 // double every applied count in the product.
-                if (fitJobId) {
-                    await api.patch(`/jobs/${fitJobId}`, { status: 'APPLIED', dateApplied: appliedAt });
+                const existingId = fitJobId || localStorage.getItem(draftFlag);
+                if (existingId) {
+                    await api.patch(`/jobs/${existingId}`, { status: 'APPLIED', dateApplied: appliedAt });
                     if (!cancelled) {
                         localStorage.setItem(flag, appliedAt);
                         setSavedAt(appliedAt);
@@ -1768,10 +1800,14 @@ function TrackStep({
                 }
             } catch {
                 if (!cancelled) setAutoSaveError(true);
+            } finally {
+                if (!cancelled) setConfirming(false);
             }
         })();
         return () => { cancelled = true; };
-    }, [workspaceKey, jobDescription, role, company, agency, sourceUrl, fitJobId]);
+    }, [workspaceKey, jobDescription, role, company, agency, sourceUrl, fitJobId, markNow, draftFlag]);
+
+    const awaitingSend = CONFIRM_BEFORE_APPLIED && !savedAt && !autoSaveError;
 
     /**
      * Every document this application actually produced. Built from what is on
@@ -1821,15 +1857,21 @@ function TrackStep({
         }}>
             <div>
                 <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: warm.colors.accentGold }}>
-                    {autoSaveError ? 'Almost there' : 'Saved to your tracker'}
+                    {autoSaveError ? 'Almost there' : awaitingSend ? 'Ready to send' : 'Saved to your tracker'}
                 </p>
                 <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: warm.colors.textPrimary, letterSpacing: '-0.01em' }}>
-                    {autoSaveError ? 'Your application is ready, but the tracker save failed.' : 'Nice work. This one is in your tracker.'}
+                    {autoSaveError
+                        ? 'Your application is ready, but the tracker save failed.'
+                        : awaitingSend
+                            ? 'Your documents are ready. Send it, then tell us.'
+                            : 'Nice work. This one is in your tracker.'}
                 </h2>
                 <p style={{ margin: '8px 0 0', fontSize: 13, color: warm.colors.textMuted, lineHeight: 1.6 }}>
                     {autoSaveError
                         ? 'We could not save automatically. Retry below, or come back from the dashboard.'
-                        : `${role ?? 'This role'}${company ? ` at ${company}` : ''} is now under Applications, with today's date set.`}
+                        : awaitingSend
+                            ? `Download them below and apply. Once it's in, we move ${role ?? 'this role'}${company ? ` at ${company}` : ''} to Applications and remind you when to follow up.`
+                            : `${role ?? 'This role'}${company ? ` at ${company}` : ''} is now under Applications, with today's date set.`}
                 </p>
             </div>
 
@@ -1865,6 +1907,27 @@ function TrackStep({
                     <p style={{ margin: '8px 0 0', fontSize: 11.5, color: warm.colors.textMuted }}>
                         Word format. Your browser may ask permission to save more than one file.
                     </p>
+                </div>
+            )}
+
+            {awaitingSend && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
+                    <button
+                        onClick={() => { setConfirming(true); setMarkNow(true); }}
+                        disabled={confirming}
+                        style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 8,
+                            padding: '11px 18px', fontSize: 13.5, fontWeight: 700,
+                            fontFamily: 'inherit', color: warm.colors.accentPetrol,
+                            background: 'transparent', border: `1.5px solid ${warm.colors.accentPetrol}`,
+                            borderRadius: 10, cursor: confirming ? 'wait' : 'pointer',
+                        }}
+                    >
+                        {confirming ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} I've sent it
+                    </button>
+                    <span style={{ fontSize: 12, color: warm.colors.textMuted }}>
+                        Not yet? It stays in your tracker as saved. Come back and tick it off once it's in.
+                    </span>
                 </div>
             )}
 

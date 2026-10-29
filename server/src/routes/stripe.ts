@@ -203,7 +203,10 @@ export async function stripeWebhookHandler(req: Request, res: Response): Promise
         const customerEmail: string | undefined =
           session.customer_details?.email ?? session.customer_email ?? undefined;
 
-        let userId: string | undefined = session.metadata?.userId;
+        // /pricing opens the payment link with client_reference_id set to the
+        // signed-in user, so a member who pays with a different email still
+        // lands on their own account instead of a new one.
+        let userId: string | undefined = session.metadata?.userId ?? session.client_reference_id ?? undefined;
 
         // Payment links created by hand in the Stripe dashboard carry no
         // userId metadata — that's only injected by our /checkout route. Fall

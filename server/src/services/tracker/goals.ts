@@ -303,9 +303,29 @@ export function aestDayOfWeek(): number {
   return day === 0 ? 7 : day;
 }
 
-/** Prorated share of a weekly target for a 5-day (Mon–Fri) working week. */
-export function proratedPace(weeklyTarget: number, dayOfWeek = aestDayOfWeek()): number {
-  return Math.ceil(weeklyTarget * Math.min(dayOfWeek, 5) / 5);
+/**
+ * Prorated share of a weekly target for a 5-day (Mon–Fri) working week.
+ *
+ * `fromDay` is the first day of this week that counts (Monday = 1). Someone who
+ * joined on Thursday has had two working days, not four, and telling them in
+ * their first hour that they should already be at 16 of 20 was the most
+ * demoralising sentence in the app. Defaults to Monday, which is everyone who
+ * joined before this week.
+ */
+export function proratedPace(weeklyTarget: number, dayOfWeek = aestDayOfWeek(), fromDay = 1): number {
+  const workdays = Math.max(0, Math.min(dayOfWeek, 5) - Math.min(Math.max(fromDay, 1), 6) + 1);
+  return Math.ceil(weeklyTarget * workdays / 5);
+}
+
+/**
+ * The first day of the current AEST week that counts toward pace for someone
+ * who joined at `joinedAt`: Monday (1) unless they joined this week.
+ */
+export function paceStartDay(joinedAt: Date | null | undefined, monday = mondayAEST()): number {
+  if (!joinedAt) return 1;
+  const joinedToken = Math.floor((joinedAt.getTime() + AEST_OFFSET_MS) / DAY_MS) * DAY_MS;
+  const days = Math.round((joinedToken - monday.getTime()) / DAY_MS);
+  return days <= 0 ? 1 : days + 1;
 }
 
 export interface ChangeEligibility {
@@ -468,7 +488,7 @@ export async function getGoalState(userId: string): Promise<GoalState> {
   const today = todayAEST();
   const monday = mondayAEST();
 
-  const [todayApps, weekly, pendingRow, eligibility, history, todayOutreach] = await Promise.all([
+  const [todayApps, weekly, pendingRow, eligibility, history, todayOutreach, profile] = await Promise.all([
     prisma.jobApplication.findMany({
       // tokenToInstant so raw-timestamp rows logged 00:00-10:00 AEST count as today.
       where: { userId, ...SENT_APPLICATION_FILTER, dateApplied: { gte: tokenToInstant(today) } },
@@ -488,9 +508,11 @@ export async function getGoalState(userId: string): Promise<GoalState> {
     prisma.outreachLog.count({
       where: { userId, createdAt: { gte: tokenToInstant(today) } },
     }),
+    prisma.candidateProfile.findUnique({ where: { userId }, select: { createdAt: true } }),
   ]);
 
   const currentWeek = weekly[weekly.length - 1];
+  const fromDay = paceStartDay(profile?.createdAt, monday);
   const asType = (t: string): GoalType => (t === 'weekly' ? 'weekly' : 'daily');
 
   return {
@@ -510,8 +532,8 @@ export async function getGoalState(userId: string): Promise<GoalState> {
       outreach: currentWeek.outreach,
       applicationsTarget: weeklyEquivalent(settings.appGoal, settings.appGoalType),
       outreachTarget: weeklyEquivalent(settings.outreachGoal, settings.outreachGoalType),
-      applicationsPace: proratedPace(weeklyEquivalent(settings.appGoal, settings.appGoalType)),
-      outreachPace: proratedPace(weeklyEquivalent(settings.outreachGoal, settings.outreachGoalType)),
+      applicationsPace: proratedPace(weeklyEquivalent(settings.appGoal, settings.appGoalType), aestDayOfWeek(), fromDay),
+      outreachPace: proratedPace(weeklyEquivalent(settings.outreachGoal, settings.outreachGoalType), aestDayOfWeek(), fromDay),
     },
     pending: pendingRow
       ? {

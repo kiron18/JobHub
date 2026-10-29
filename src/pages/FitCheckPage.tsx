@@ -23,6 +23,7 @@ import { toast } from 'sonner';
 import api from '../lib/api';
 import { warm } from '../lib/theme/warmTokens';
 import { classifyPaste } from '../lib/seekLink';
+import { ACCEPT_SEEK_LINKS } from '../config/features';
 import { jdMentionsSelectionCriteria } from '../lib/selectionCriteria';
 import { FitReportView, type FitReport } from '../components/fit/FitReportView';
 import { ApplyPreviewGate } from '../components/fit/ApplyPreviewGate';
@@ -96,7 +97,7 @@ export default function FitCheckPage() {
   const pasted = classifyPaste(trimmed);
   // A Seek link is ~35 characters. Judging the paste by what it is rather than
   // how long it is, so a link is not rejected for being short.
-  const canSubmit = !checking && (pasted.kind === 'seek-url' || trimmed.length >= 100);
+  const canSubmit = !checking && ((ACCEPT_SEEK_LINKS && pasted.kind === 'seek-url') || (pasted.kind === 'description' && trimmed.length >= 100));
 
   const runCheck = async (payload: { jobDescription?: string; url?: string }) => {
     setChecking(true);
@@ -384,7 +385,9 @@ export default function FitCheckPage() {
               {/* Says what is missing, rather than leaving a dead button. */}
               {!checking && !canSubmit && trimmed.length > 0 && (
                 <span style={{ fontSize: 13, color: C.textMuted }}>
-                  Paste a bit more of the ad, or the Seek link.
+                  {pasted.kind !== 'description' && !ACCEPT_SEEK_LINKS
+                    ? "We don't open links. Copy the whole ad from the page and paste it here."
+                    : ACCEPT_SEEK_LINKS ? 'Paste a bit more of the ad, or the Seek link.' : 'Paste a bit more of the ad.'}
                 </span>
               )}
             </div>

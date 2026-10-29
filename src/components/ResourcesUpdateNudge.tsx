@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { SHOW_RESOURCES_NUDGE } from '../config/features';
 
 const SEEN_KEY = 'jobhub_resources_update_nudge_seen';
 
@@ -14,6 +15,7 @@ export function ResourcesUpdateNudge() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (!SHOW_RESOURCES_NUDGE) return;
     if (localStorage.getItem(SEEN_KEY)) return;
     localStorage.setItem(SEEN_KEY, '1');
     toast('Check out the new and improved Resources section', {

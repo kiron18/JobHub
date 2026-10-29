@@ -76,3 +76,21 @@ describe('detectWorkRights — says what the ad asks, and nothing more', () => {
     expect(detectWorkRights(undefined as unknown as string)).toBeNull();
   });
 });
+
+describe('temporary graduate visa holders welcome', () => {
+  it('says so beside a working-rights line, instead of reading as a no', () => {
+    const n = detectWorkRights('Requirements:\n- Full working rights in Australia (temporary graduate visa holders welcome)');
+    expect(n?.sentence).toBe('This ad asks for full working rights in Australia. It also says temporary graduate (485) visa holders are welcome, and a 485 gives full working rights.');
+    expect(n?.gradVisaWelcome).toBe(true);
+  });
+
+  it('does not soften a citizenship requirement', () => {
+    const n = detectWorkRights('Must be an Australian citizen. Temporary graduate visa holders welcome to apply for other roles.');
+    expect(n?.sentence).toBe('This ad asks for Australian citizenship.');
+  });
+
+  it('leaves a plain working-rights ad alone', () => {
+    expect(detectWorkRights('You must have full working rights in Australia.')?.sentence)
+      .toBe('This ad asks for full working rights in Australia.');
+  });
+});

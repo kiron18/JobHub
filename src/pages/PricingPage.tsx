@@ -1,11 +1,12 @@
 import { useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Zap } from 'lucide-react';
+import { Zap, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../lib/api';
 import { colors, type as typeTokens } from '../components/landing/tokens';
 import { PrimaryCTA } from '../components/landing/shared/PrimaryCTA';
+import { PRICING_PAYMENT_LINK } from '../config/features';
 
 /* ── The last nudge ───────────────────────────────────────────────────────────
    One promise, one button.
@@ -39,6 +40,38 @@ import { PrimaryCTA } from '../components/landing/shared/PrimaryCTA';
    advertise something checkout does not do.                                  */
 
 const PRICE = '$250';
+const TOTAL = '$750';
+
+/**
+ * The live offer's Stripe payment link ($250 a month for 3 months), the one
+ * Kiron named on 29 Oct 2026. The webhook matches the buyer to their account by
+ * client_reference_id, then by email, so both ride along when we know them.
+ */
+const PAYMENT_LINK = 'https://buy.stripe.com/9B6bJ37d49YJ2o23psfMA04';
+
+/** What the money buys, in the product's own terms. Nothing here that the app does not do. */
+const WHAT_YOU_GET = [
+  'A resume and cover letter tailored to every job you apply for',
+  'A fit check on every ad, so your time goes where you can get hired',
+  'Daily targets, a tracker and follow-up reminders that keep you consistent',
+  'LinkedIn outreach: who to message, and what to say',
+];
+
+/** The three questions a ready buyer still asks. Terms as they stand in the legal page. */
+const FAQ: Array<{ q: string; a: string }> = [
+  {
+    q: "What if it doesn't work for me?",
+    a: 'Ask within 7 days of your first charge and a refund will generally be approved. After that, email kiron@aussiegradcareers.com.au and we will talk it through. Your rights under Australian Consumer Law always apply.',
+  },
+  {
+    q: 'What happens after three months?',
+    a: 'Payments stop after the third one. You keep full access to the platform for the rest of the year.',
+  },
+  {
+    q: 'Can I cancel?',
+    a: 'Yes. Email kiron@aussiegradcareers.com.au from your account email and it is cancelled, usually within one business day.',
+  },
+];
 
 /** The plan key checkout is opened with. Must be the plan PRICE describes. */
 const PLAN_KEY = 'premium';
@@ -71,6 +104,13 @@ export function PricingPage() {
 
   async function startCheckout() {
     if (busy.current) return;
+    if (PRICING_PAYMENT_LINK) {
+      const url = new URL(PAYMENT_LINK);
+      if (user?.email) url.searchParams.set('prefilled_email', user.email);
+      if (user?.id) url.searchParams.set('client_reference_id', user.id);
+      window.location.href = url.toString();
+      return;
+    }
     if (!user) {
       navigate('/auth?next=/pricing');
       return;
@@ -165,7 +205,7 @@ export function PricingPage() {
         <PrimaryCTA label={CTA_LABEL} onClick={startCheckout} />
 
         <p style={{ fontSize: '1.0625rem', fontWeight: 600, color: colors.textPrimary, margin: '22px 0 0' }}>
-          {PRICE} per month. Keep full access after 3 payments.
+          {PRICE} a month for 3 months ({TOTAL} in total). Then access for the rest of the year, included.
         </p>
         <p
           style={{
@@ -180,27 +220,52 @@ export function PricingPage() {
           you still have access to the platform for a year.
         </p>
 
+        <ul style={{ listStyle: 'none', padding: 0, margin: '32px 0 0', display: 'grid', gap: 10, textAlign: 'left', maxWidth: 460 }}>
+          {WHAT_YOU_GET.map(item => (
+            <li key={item} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: '0.9375rem', lineHeight: 1.5, color: colors.textSecondary }}>
+              <Check size={17} strokeWidth={2.6} style={{ flexShrink: 0, marginTop: 2, color: colors.accentPetrol }} />
+              {item}
+            </li>
+          ))}
+        </ul>
+
         {/* The faces, and nothing said about them. Each card already carries
             the message that client sent on the day, so a caption would only be
             us talking over them. Below the button on purpose: the promise and
             the button stay on the first screen. */}
         <div className="pricing-faces">
           {FACES.map((src, i) => (
-            <img
-              key={src}
-              src={src}
-              alt={`A client's message on the day it happened, ${i + 1} of ${FACES.length}`}
-              loading="lazy"
-              style={{
-                width: '100%',
-                height: 'auto',
-                display: 'block',
-                borderRadius: 12,
-                border: `1px solid ${colors.borderDefined}`,
-                boxShadow: '0 1px 2px rgba(26,24,20,0.05), 0 14px 30px -20px rgba(26,24,20,0.45)',
-              }}
-            />
+            // Opens full size: the message on each card is the proof, and at
+            // grid size it is too small to read.
+            <a key={src} href={src} target="_blank" rel="noreferrer" style={{ display: 'block' }}>
+              <img
+                src={src}
+                alt={`A client's message on the day it happened, ${i + 1} of ${FACES.length}`}
+                loading="lazy"
+                style={{
+                  width: '100%',
+                  height: 'auto',
+                  display: 'block',
+                  borderRadius: 12,
+                  border: `1px solid ${colors.borderDefined}`,
+                  boxShadow: '0 1px 2px rgba(26,24,20,0.05), 0 14px 30px -20px rgba(26,24,20,0.45)',
+                }}
+              />
+            </a>
           ))}
+        </div>
+
+        <div style={{ width: '100%', maxWidth: 620, margin: '56px 0 0', textAlign: 'left', display: 'grid', gap: 10 }}>
+          {FAQ.map(({ q, a }) => (
+            <details key={q} style={{ padding: '14px 18px', borderRadius: 12, background: colors.bgSurface, border: `1px solid ${colors.borderDefined}` }}>
+              <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: '0.9375rem', color: colors.textPrimary }}>{q}</summary>
+              <p style={{ margin: '10px 0 0', fontSize: '0.875rem', lineHeight: 1.6, color: colors.textSecondary }}>{a}</p>
+            </details>
+          ))}
+        </div>
+
+        <div style={{ marginTop: 40 }}>
+          <PrimaryCTA label={CTA_LABEL} onClick={startCheckout} />
         </div>
 
         <style>{`

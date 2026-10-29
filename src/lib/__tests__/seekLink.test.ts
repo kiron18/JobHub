@@ -57,7 +57,7 @@ describe('isSubmittable', () => {
         // exactly why links could not be pasted into this box before.
         const url = 'https://au.seek.com/job/93833475';
         expect(url.length).toBeLessThan(50);
-        expect(isSubmittable(url)).toBe(true);
+        expect(isSubmittable(url, true)).toBe(true);
     });
 
     it('still demands a real description when text is pasted', () => {
@@ -80,7 +80,7 @@ describe('pasteHint', () => {
     });
 
     it('says nothing about a good Seek link', () => {
-        expect(pasteHint('https://au.seek.com/job/93833475')).toBeNull();
+        expect(pasteHint('https://au.seek.com/job/93833475', true)).toBeNull();
     });
 
     it('says nothing about a full description', () => {
@@ -88,7 +88,7 @@ describe('pasteHint', () => {
     });
 
     it('explains that other job boards need the description instead', () => {
-        expect(pasteHint('https://www.linkedin.com/jobs/view/4438464998'))
+        expect(pasteHint('https://www.linkedin.com/jobs/view/4438464998', true))
             .toMatch(/paste the job description/i);
     });
 
@@ -116,5 +116,20 @@ describe('normaliseUrl', () => {
 
     it('leaves an existing scheme alone', () => {
         expect(normaliseUrl('http://au.seek.com/job/1')).toBe('http://au.seek.com/job/1');
+    });
+});
+
+describe('with Seek links switched off (the default from 29 Oct 2026)', () => {
+    it('does not submit a bare link', () => {
+        expect(isSubmittable('https://au.seek.com/job/93833475', false)).toBe(false);
+    });
+
+    it('asks for the ad text instead of a link', () => {
+        expect(pasteHint('https://au.seek.com/job/93833475', false)).toMatch(/copy the whole description/i);
+        expect(pasteHint('https://www.linkedin.com/jobs/view/4438464998', false)).toMatch(/copy the whole description/i);
+    });
+
+    it('no longer suggests a Seek link for a short paste', () => {
+        expect(pasteHint('Graduate analyst, Sydney', false)).not.toMatch(/seek/i);
     });
 });

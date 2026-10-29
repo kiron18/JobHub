@@ -5,6 +5,7 @@ import {
   mondayAEST,
   aestDayOfWeek,
   proratedPace,
+  paceStartDay,
   weeklyEquivalent,
   computeStreak,
   getWeeklyCountsBatch,
@@ -37,6 +38,7 @@ interface Member {
   userId: string;
   name: string;
   email: string;
+  joinedAt: Date;
   weeklyAppTarget: number;
   weeklyOutreachTarget: number;
   weekly: WeekCounts[];
@@ -56,7 +58,7 @@ async function getMembers(): Promise<Member[]> {
     prisma.candidateProfile.findMany({
       where: { userId: { in: userIds }, email: { not: null } },
       select: {
-        userId: true, name: true, email: true, plan: true,
+        userId: true, name: true, email: true, plan: true, createdAt: true,
         dailyApplicationGoal: true, applicationGoalType: true,
         dailyOutreachGoal: true, outreachGoalType: true,
       },
@@ -71,6 +73,7 @@ async function getMembers(): Promise<Member[]> {
       userId: p.userId,
       name: (p.name ?? '').split(/\s+/)[0] || (p.email ?? '').split('@')[0],
       email: p.email!,
+      joinedAt: p.createdAt,
       weeklyAppTarget: weeklyEquivalent(p.dailyApplicationGoal, (p.applicationGoalType === 'weekly' ? 'weekly' : 'daily') as GoalType),
       weeklyOutreachTarget: weeklyEquivalent(p.dailyOutreachGoal, (p.outreachGoalType === 'weekly' ? 'weekly' : 'daily') as GoalType),
       weekly: weeklyMap.get(p.userId)!,
@@ -107,8 +110,10 @@ export async function runPaceNudges(opts: { dryRun?: boolean; force?: boolean } 
     const week = m.weekly[m.weekly.length - 1];
     if (week.paused) { result.skipped.push({ email: m.email, reason: 'paused week' }); continue; }
 
-    const appsPace = proratedPace(m.weeklyAppTarget, dow);
-    const outreachPace = proratedPace(m.weeklyOutreachTarget, dow);
+    // Counted from the day they joined if that was this week, same as the tracker card.
+    const fromDay = paceStartDay(m.joinedAt);
+    const appsPace = proratedPace(m.weeklyAppTarget, dow, fromDay);
+    const outreachPace = proratedPace(m.weeklyOutreachTarget, dow, fromDay);
     const behindApps = week.applications < appsPace;
     const behindOutreach = week.outreach < outreachPace;
     if (!behindApps && !behindOutreach) { result.skipped.push({ email: m.email, reason: 'on pace' }); continue; }

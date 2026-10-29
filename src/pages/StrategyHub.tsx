@@ -25,6 +25,7 @@ import { warm } from '../lib/theme/warmTokens';
 import { jdMentionsSelectionCriteria } from '../lib/selectionCriteria';
 import { extractJobFacts } from '../lib/extractJobFacts';
 import { classifyPaste, isSubmittable, pasteHint } from '../lib/seekLink';
+import { ACCEPT_SEEK_LINKS } from '../config/features';
 import { trackJobsDashboardViewed } from '../lib/analytics';
 import { buildSeekSearchUrl } from '../lib/seekSearchUrl';
 import { browseRoleLabel, ROLE_BUDGET } from '../lib/roleLabel';
@@ -196,7 +197,7 @@ function AnalysisHeroCard() {
     // the floor itself is what kept links out of this box. Both shapes are now
     // judged by what they are rather than how long they are.
     const pasted = classifyPaste(trimmed);
-    const isLink = pasted.kind === 'seek-url';
+    const isLink = ACCEPT_SEEK_LINKS && pasted.kind === 'seek-url';
     const hint = pasteHint(trimmed);
     const canSubmit = isSubmittable(trimmed) && !analysing;
 
@@ -406,7 +407,7 @@ function AnalysisHeroCard() {
                     }
                     setJd(next);
                 }}
-                placeholder="Paste the job description here, or a Seek link…"
+                placeholder={ACCEPT_SEEK_LINKS ? 'Paste the job description here, or a Seek link…' : 'Paste the full job description here…'}
                 rows={6}
                 style={{
                     width: '100%',

@@ -75,3 +75,33 @@ describe('promoteAndGetSettings', () => {
     expect(prisma.candidateProfile.update).not.toHaveBeenCalled();
   });
 });
+
+describe('proratedPace from the day they joined', () => {
+  it('counts the whole week for someone who joined before it', async () => {
+    const { proratedPace } = (await mod()).m;
+    expect(proratedPace(20, 4)).toBe(16);
+    expect(proratedPace(20, 4, 1)).toBe(16);
+  });
+
+  it('counts only the days since joining this week', async () => {
+    const { proratedPace } = (await mod()).m;
+    // Joined Thursday, looking on Thursday: one working day, not four.
+    expect(proratedPace(20, 4, 4)).toBe(4);
+    expect(proratedPace(20, 5, 4)).toBe(8);
+  });
+
+  it('asks nothing of someone who joined at the weekend until Monday', async () => {
+    const { proratedPace } = (await mod()).m;
+    expect(proratedPace(20, 6, 6)).toBe(0);
+    expect(proratedPace(20, 7, 7)).toBe(0);
+  });
+
+  it('paceStartDay is Monday unless they joined this week', async () => {
+    const { paceStartDay } = (await mod()).m;
+    const monday = new Date('2026-10-26T00:00:00Z'); // AEST date token
+    expect(paceStartDay(null, monday)).toBe(1);
+    expect(paceStartDay(new Date('2026-10-20T03:00:00Z'), monday)).toBe(1);
+    // 29 Oct 2026, 10am AEST = 00:00 UTC
+    expect(paceStartDay(new Date('2026-10-29T00:00:00Z'), monday)).toBe(4);
+  });
+});

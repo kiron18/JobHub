@@ -9,6 +9,7 @@ import { BannerCopyPicker } from '../components/linkedin/BannerCopyPicker';
 import { BannerCanvas } from '../components/linkedin/BannerCanvas';
 import { HeadshotGenerator } from '../components/linkedin/HeadshotGenerator';
 import { OutreachTemplates } from '../components/linkedin/OutreachTemplates';
+import { FindPeopleCard } from '../components/linkedin/FindPeopleCard';
 import type { LinkedInProfileData, BannerConfig } from '../components/linkedin/types';
 import { useProfile } from '../hooks/useProfile';
 import { SectionIntroBanner } from '../components/processStrip';
@@ -35,7 +36,10 @@ export const LinkedInPage: React.FC = () => {
   const [tab, setTab] = useState<Tab>(
     requestedTab === 'profile' ? 'profile' : 'outreach',
   );
-  const [targetRole, setTargetRole] = useState('');
+  // Their own target role until they type something else. Null means untouched,
+  // so a profile that loads after mount still fills the box.
+  const [typedRole, setTargetRole] = useState<string | null>(null);
+  const targetRole = typedRole ?? profile?.targetRole ?? '';
   const [generating, setGenerating] = useState(false);
   const [regeneratingSection, setRegeneratingSection] = useState<string | null>(null);
   const [profileData, setProfileData] = useState<LinkedInProfileData | null>(null);
@@ -187,6 +191,7 @@ Write the message and fix the profile behind it.
           generated templates and everything typed into them, so flicking to
           the Tracker to check something cost you the draft you were writing. */}
       <div style={{ display: tab === 'outreach' ? 'block' : 'none' }}>
+        <FindPeopleCard targetRole={profile?.targetRole} targetCity={profile?.location} />
         <OutreachTemplates />
       </div>    </div>
   );
