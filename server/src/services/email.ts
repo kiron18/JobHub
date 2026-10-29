@@ -1386,7 +1386,7 @@ export async function sendWelcomeClaimReminderEmail(params: {
     blocks: [
       { p: name ? `Hi ${name},` : 'Hi,' },
       { p: "You rebuilt your resume with us earlier but didn't quite finish saving it." },
-      { p: "It's still there, with every answer you gave. One step left: set a password and we send you the PDF." },
+      { p: "It's still there, with every answer you gave. One step left: continue with Google or set a password, and we send you the PDF." },
       { cta: 'Save my resume', url: welcomeResumeLink(params.token) },
       { p: 'The link works for 24 hours from when you uploaded it. Any trouble, just reply to this email.' },
       { sign: ['Kiron', 'Aussie Grad Careers'] },
