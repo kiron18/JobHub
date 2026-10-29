@@ -25,6 +25,15 @@ import { suggestCuts } from '../lib/resumeCuts';
 import { SALES_PAGE_URL } from '../lib/salesPage';
 import { beginWelcomeHandoff, endWelcomeHandoff } from '../lib/welcomeHandoff';
 import { HowItWorksArticle, HOW_IT_WORKS_ID } from '../components/welcome/HowItWorksArticle';
+import { GoogleSignInButton, OrDivider, useGoogleSignInAvailable } from '../components/auth/GoogleSignInButton';
+
+/**
+ * What the claim step needs again after Google sends them back. The resume and
+ * answers are already on the server under the token; only the target roles and
+ * city live solely in this page's state, so they ride in sessionStorage, which
+ * survives a same-tab redirect and nothing else.
+ */
+const GOOGLE_CLAIM_KEY = 'agc_welcome_google_claim';
 
 // The resume is built BEFORE we ask for an email — they see the finished thing,
 // then decide to save it. Email/code only appear if they aren't already signed in.
@@ -131,7 +140,11 @@ type Answers = Record<string, { status: AnswerStatus; value: string }>;
 export const WelcomePage: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const googleOn = useGoogleSignInAvailable();
+  /** Back from Google with the session reopened, waiting on auth to settle before finishing. */
+  const [googleReturn, setGoogleReturn] = useState(false);
+  const googleFinishStarted = useRef(false);
   const isMobile = useIsMobile();
 
   const [step, setStep] = useState<Step>('upload');
@@ -156,15 +169,35 @@ export const WelcomePage: React.FC = () => {
     const params = new URLSearchParams(window.location.search);
     const resumeToken = params.get('resume');
     if (!resumeToken) return;
+    const fromGoogle = params.get('google') === '1';
+    // Read once and cleared at once, whatever happens next: App.tsx redirects
+    // here while this key exists, so leaving it behind would loop.
+    let savedClaim: { token?: string; roles?: string[]; city?: string } | null = null;
+    try {
+      savedClaim = JSON.parse(sessionStorage.getItem(GOOGLE_CLAIM_KEY) || 'null');
+      sessionStorage.removeItem(GOOGLE_CLAIM_KEY);
+    } catch { /* fall back to the suggested role */ }
     params.delete('resume');
+    params.delete('google');
     const rest = params.toString();
-    window.history.replaceState(null, '', window.location.pathname + (rest ? `?${rest}` : ''));
-    setStep('loading');
+    // The hash stays: on a Google return it carries the session, and Supabase
+    // clears it itself once read.
+    window.history.replaceState(null, '', window.location.pathname + (rest ? `?${rest}` : '') + window.location.hash);
+    setStep(fromGoogle ? 'finishing' : 'loading');
     api.get(`/welcome/session/${encodeURIComponent(resumeToken)}`).then(({ data }) => {
       applyBrief(data);
       if (data.answers && typeof data.answers === 'object') setAnswers(data.answers);
-      if (data.resume) { setCleanResume(data.resume); setStep('resume'); }
-      else setStep('brief');
+      if (data.resume) setCleanResume(data.resume);
+      if (fromGoogle && data.resume) {
+        const claim = savedClaim;
+        if (claim && claim.token === data.token) {
+          if (Array.isArray(claim.roles) && claim.roles.length) setRoles(claim.roles);
+          if (typeof claim.city === 'string') setCity(claim.city);
+        }
+        setGoogleReturn(true);
+        return;
+      }
+      setStep(data.resume ? 'resume' : 'brief');
     }).catch((err: ApiError) => {
       toast.error(err?.response?.data?.error || 'That link has expired. Upload your resume again.');
       setStep('upload');
@@ -307,6 +340,27 @@ export const WelcomePage: React.FC = () => {
   function cleanRoles() {
     return roles.map(r => r.trim()).filter(Boolean).slice(0, 3);
   }
+
+  /*
+    Back from Google: once auth has read the session out of the URL, claim the
+    resume exactly as the password path does. No account means they backed out
+    or Google refused, so they land on the claim step with the password option.
+  */
+  useEffect(() => {
+    if (!googleReturn || authLoading || googleFinishStarted.current) return;
+    googleFinishStarted.current = true;
+    if (user) {
+      trackEmailOutcome('google_signed_in');
+      if (user.email) setEmail(user.email);
+      void finishNow();
+    } else {
+      trackEmailOutcome('google_failed');
+      toast.error("Google sign-in didn't finish. Try again, or set a password instead.");
+      setStep('email');
+    }
+    // finishNow reads this render's roles, which is the point of waiting a render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [googleReturn, authLoading, user]);
 
   /** The diagnosis payload, from a fresh upload or from a session reopened by an email link. */
   function applyBrief(data: BriefPayload) {
@@ -1490,8 +1544,26 @@ export const WelcomePage: React.FC = () => {
           and see which jobs you have the best chance to get hired for.
         </p>
 
+        {/* One tap, no password to invent. Password creation is where this
+            step lost people: 7 of 12 who reached it left without an account. */}
+        {googleOn && token && (
+          <>
+            <GoogleSignInButton
+              fontFamily={T.body}
+              redirectTo={`${window.location.origin}/welcome?resume=${encodeURIComponent(token)}&google=1`}
+              onClicked={() => trackEmailOutcome('google_started')}
+              beforeLeave={() => {
+                try {
+                  sessionStorage.setItem(GOOGLE_CLAIM_KEY, JSON.stringify({ token, roles: cleanRoles(), city: city.trim() }));
+                } catch { /* the suggested role is the fallback */ }
+              }}
+            />
+            <OrDivider color={colors.textMuted} />
+          </>
+        )}
+
         <input
-          type="email" inputMode="email" autoComplete="email" autoFocus
+          type="email" inputMode="email" autoComplete="email" autoFocus={!googleOn}
           value={email}
           onChange={e => setEmail(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') passwordRef.current?.focus(); }}

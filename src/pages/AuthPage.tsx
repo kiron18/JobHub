@@ -10,6 +10,7 @@ import { PrimaryButton } from '../components/shared/PrimaryButton';
 import { Card } from '../components/shared/Card';
 import api from '../lib/api';
 import { AUTH_PAGE_SIGNUP } from '../config/frontDoor';
+import { GoogleSignInButton, OrDivider, useGoogleSignInAvailable } from '../components/auth/GoogleSignInButton';
 
 export const AuthPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -25,6 +26,9 @@ export const AuthPage: React.FC = () => {
   // page, with a resume. ?intent=signup lands on sign in instead.
   const [isSignup, setIsSignup] = useState(() => AUTH_PAGE_SIGNUP && searchParams.get('intent') === 'signup');
   const { user, signOut } = useAuth();
+  // Anyone who claimed their resume with Google has no password, so this is
+  // their only way back in.
+  const googleOn = useGoogleSignInAvailable();
 
   async function handlePassword(e: React.FormEvent) {
     e.preventDefault();
@@ -174,6 +178,12 @@ export const AuthPage: React.FC = () => {
             <motion.div key="password"
               initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.18 }}>
+              {googleOn && (
+                <>
+                  <GoogleSignInButton redirectTo={`${window.location.origin}/`} fontFamily={warm.type.fontBody} />
+                  <OrDivider color={warm.colors.textMuted} />
+                </>
+              )}
               <form onSubmit={handlePassword}>
                 <div style={{ marginBottom: 16 }}>
                   <label style={labelStyle}>Email</label>

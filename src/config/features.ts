@@ -36,3 +36,10 @@ export const ACCEPT_SEEK_LINKS = false;
  * day-3 card and the upgrade modal.
  */
 export const PRICING_PAYMENT_LINK = true;
+
+/**
+ * "Continue with Google" on the claim step and /auth. Shown only when this is
+ * on AND the Supabase project has the Google provider enabled (production does,
+ * staging does not), so flipping either one off hides it.
+ */
+export const SHOW_GOOGLE_SIGN_IN = true;

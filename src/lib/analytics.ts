@@ -227,7 +227,8 @@ export function trackWelcomeCompleted(wasNewUser: boolean) {
  */
 export type EmailOutcome =
   | 'new_account' | 'existing_signed_in' | 'wrong_password'
-  | 'confirmation_needed' | 'code_verified' | 'error';
+  | 'confirmation_needed' | 'code_verified' | 'error'
+  | 'google_started' | 'google_signed_in' | 'google_failed';
 
 export function trackEmailOutcome(outcome: EmailOutcome) {
   relay('email_outcome', { outcome });

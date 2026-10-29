@@ -401,6 +401,16 @@ function FrontDoorGate() {
   return <Outlet />;
 }
 
+/** The welcome token a Google claim left behind, if one is still waiting. See WelcomePage. */
+function readPendingGoogleClaim(): string | null {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem('agc_welcome_google_claim') || 'null');
+    return typeof saved?.token === 'string' && saved.token ? saved.token : null;
+  } catch {
+    return null;
+  }
+}
+
 function LandingPageOrExisting() {
   const { user, loading } = useAuth();
   /*
@@ -421,6 +431,12 @@ function LandingPageOrExisting() {
   // removed in Aug 2026: two resume readers meant two prompts, two qualities,
   // and two writers racing to build the same achievement bank.
   if (!user) return <WelcomePage />;
+  // Back from Google on the home page rather than /welcome: Supabase falls back
+  // to its Site URL when a redirect is not on its allowed list. The claim is
+  // still in sessionStorage, so finish it where it belongs instead of dropping
+  // a brand-new account into an empty onboarding.
+  const pendingGoogleClaim = readPendingGoogleClaim();
+  if (pendingGoogleClaim) return <Navigate to={`/welcome?resume=${encodeURIComponent(pendingGoogleClaim)}&google=1`} replace />;
   // Authenticated — render the existing protected route content
   return (
     <ProtectedRoute>
